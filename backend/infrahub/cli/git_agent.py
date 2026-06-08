@@ -24,6 +24,7 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import configure_trace
+from infrahub.workers.dependencies import build_tls_registry, get_http
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -43,9 +44,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 @app.callback()
 def callback() -> None:
-    """
-    Control the Git Agent.
-    """
+    """Control the Git Agent."""
 
 
 async def initialize_git_agent(service: InfrahubServices) -> None:
@@ -62,7 +61,12 @@ async def start(
     ),
     port: int = typer.Argument(8000, envvar="INFRAHUB_METRICS_PORT", help="Port used to expose a metrics endpoint"),
 ) -> None:
-    """Start Infrahub Git Agent."""
+    """Start Infrahub Git Agent.
+
+    Raises:
+        Exit: When initial communication with the Infrahub API fails (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("httpx").setLevel(logging.ERROR)
     logging.getLogger("httpcore").setLevel(logging.ERROR)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -112,7 +116,7 @@ async def start(
     database = await context.init_db(retry=1)
 
     workflow = config.OVERRIDE.workflow or (
-        WorkflowWorkerExecution()
+        WorkflowWorkerExecution(tls_registry=build_tls_registry())
         if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
         else WorkflowLocalExecution()
     )
@@ -130,6 +134,7 @@ async def start(
         workflow=workflow,
         message_bus=message_bus,
         component_type=component_type,
+        http=get_http(),
     )
 
     # Initialize the lock

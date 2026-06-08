@@ -7,7 +7,7 @@ This reference document describes the available SSO protocols, configuration opt
 ## Supported protocols
 
 :::info
-See [Authentication topic](../topics/authentication.mdx) for details on the differences between OIDC and OAuth2.
+See [Authentication topic](../deploy-manage/user-management/authentication) for details on the differences between OIDC and OAuth2.
 :::
 
 ### OpenID Connect (OIDC)
@@ -41,6 +41,7 @@ The Google provider configuration is simplified compared to standard providers. 
 | Client Secret | `INFRAHUB_OIDC_<SLOT>_CLIENT_SECRET` | `security.oidc_provider_settings.<slot>.client_secret` | The client secret issued to the client by the identity provider | No |
 | Discovery URL | `INFRAHUB_OIDC_<SLOT>_DISCOVERY_URL` | `security.oidc_provider_settings.<slot>.discovery_url` | The URL of the OIDC discovery document | Yes |
 | PKCE | `INFRAHUB_OIDC_<SLOT>_PKCE_ENABLED` | `security.oidc_provider_settings.<slot>.pkce_enabled` | Indicates if PKCE is enabled | No |
+| Verify id_token signature | `INFRAHUB_OIDC_<SLOT>_ID_TOKEN_VERIFY_SIGNATURE` | `security.oidc_provider_settings.<slot>.id_token_verify_signature` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. Defaults to `true`; disable only for a misconfigured provider | No |
 | Display Label | `INFRAHUB_OIDC_<SLOT>_DISPLAY_LABEL` | `security.oidc_provider_settings.<slot>.display_label` | The label displayed on the login button | No |
 | Icon | `INFRAHUB_OIDC_<SLOT>_ICON` | `security.oidc_provider_settings.<slot>.icon` | The Material Design icon name to display on the login button | No |
 | Enabled Providers | `INFRAHUB_SECURITY_OIDC_PROVIDERS` | `security.oidc_providers` | Array of enabled OIDC provider slots | Yes* |
@@ -78,14 +79,25 @@ https://<your-infrahub-hostname>/auth/<protocol>/<provider-slot>/callback
 
 ## User attributes mapping
 
-Infrahub maps standard profile attributes from identity providers to its internal user model:
+Infrahub maps the following claims from identity providers to its internal user model:
 
-| Infrahub User Field | OIDC Claim | OAuth 2.0 Field |
-|---------------------|------------|-----------------|
-| Username | `preferred_username` or `email` | `preferred_username` or `email` |
-| Email | `email` | `email` |
-| First Name | `given_name` | `given_name` |
-| Last Name | `family_name` | `family_name` |
+| Infrahub Field | OIDC Claim | OAuth 2.0 Field | Notes |
+|----------------|------------|-----------------|-------|
+| Identity anchor | `sub` | `sub` | Provider-issued subject identifier; used to resolve accounts across logins. Requires the `openid` scope. |
+| Account name | `name` | `name` | Used as the account name on creation. If `name` is already claimed by another SSO user, `email` is used instead. |
+| Display label | `name` | `name` | Synced on every login. |
+
+### Account name fallback
+
+On a user's first SSO login (before an identity is linked), Infrahub can adopt a pre-existing account whose name matches the provider's display name, as long as that account has never been linked to another identity. This eases upgrades where local accounts already exist.
+
+| Parameter | Environment Variable | TOML Path | Description | Default |
+|-----------|---------------------|-----------|-------------|---------|
+| Account name fallback | `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` | `security.sso_account_name_fallback` | Allow a first-time SSO login to adopt a pre-existing account that matches by display name. When disabled, such a login always provisions a separate account. | `true` |
+
+:::warning
+This fallback is a transitional convenience and is deprecated; it will be removed in a future release. Once all SSO users have completed their first login, set `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK=false` as a hardening step so that accounts are resolved only by the immutable `sub` identity anchor.
+:::
 
 ## Examples
 

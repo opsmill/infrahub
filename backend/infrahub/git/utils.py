@@ -34,7 +34,6 @@ async def get_repositories_commit_per_branch(
 
     NOTE: At some point, we should refactor this function to use a single Database query instead of one per branch
     """
-
     repositories: dict[str, RepositoryData] = {}
 
     for branch in list(registry.branch.values()):

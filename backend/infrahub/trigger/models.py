@@ -72,12 +72,22 @@ class TriggerSetupReport(BaseModel):
 
         Returns:
             List of triggers of the specified type from all categories
+
         """
         created = self._created_triggers_with_type(trigger_type=trigger_type)
         updated = self._updated_triggers_with_type(trigger_type=trigger_type)
         refreshed = self._refreshed_triggers_with_type(trigger_type=trigger_type)
         unchanged = self._unchanged_triggers_with_type(trigger_type=trigger_type)
         return created + updated + refreshed + unchanged
+
+    def prefect_updated_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
+        """Return pre-existing triggers that were updated in Prefect.
+
+        This corresponds to TriggerComparison.update_prefect (REFRESH + UPDATE).
+        """
+        updated = self._updated_triggers_with_type(trigger_type=trigger_type)
+        refreshed = self._refreshed_triggers_with_type(trigger_type=trigger_type)
+        return updated + refreshed
 
     def modified_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
         """Return all created and updated triggers that match the specified type.
@@ -87,6 +97,7 @@ class TriggerSetupReport(BaseModel):
 
         Returns:
             List of triggers of the specified type from both created and updated lists
+
         """
         created = self._created_triggers_with_type(trigger_type=trigger_type)
         updated = self._updated_triggers_with_type(trigger_type=trigger_type)
@@ -189,6 +200,7 @@ class ChangeFlowRunStateAction(BaseModel):
 
         Returns:
             A Prefect ChangeFlowRunState action.
+
         """
         return ChangeFlowRunState(  # type: ignore[call-arg]
             state=self.state,
@@ -249,7 +261,7 @@ class TriggerDefinition(BaseModel):
     actions: list[TriggerActionType]
 
     def get_deployment_names(self) -> list[str]:
-        """Return the name of all deployments used by this trigger"""
+        """Return the name of all deployments used by this trigger."""
         return [action.name for action in self.actions if isinstance(action, ExecuteWorkflow)]
 
     def get_description(self) -> str:

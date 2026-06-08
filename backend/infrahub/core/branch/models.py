@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
 
 from pydantic import Field, field_validator
 
-from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID
 from infrahub.core.graph import GRAPH_VERSION
@@ -98,7 +98,7 @@ class Branch(StandardNode):
 
     @property
     def is_terminal(self) -> bool:
-        return self.status in (BranchStatus.MERGED, BranchStatus.DELETING)
+        return self.status in TERMINAL_BRANCH_STATUSES
 
     @property
     def active_schema_hash(self) -> SchemaBranchHash:
@@ -157,16 +157,16 @@ class Branch(StandardNode):
         cls,
         db: InfrahubDatabase,
         limit: int = 1000,
+        offset: int | None = None,
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-        **kwargs: dict[str, Any],
+        branch_filters: BranchListFilters | None = None,
+        exclude_global: bool = False,
+        exclude_default: bool = False,
+        exclude_terminal: bool = False,
+        **kwargs: Any,  # noqa: ARG003
     ) -> list[Self]:
-        # Extract branch-specific params from kwargs, a future refactoring could update the parent signature for
-        # standard nodes instead. Should be considered when additional StandardNode subclasses are introduced
-        branch_filters: BranchListFilters | None = kwargs.pop("branch_filters", None)  # type: ignore[assignment]
-        exclude_global: bool = kwargs.pop("exclude_global", False)  # type: ignore[assignment]
-
         if branch_filters is None:
             branch_filters = BranchListFilters(name=name, ids=ids)
         else:
@@ -179,7 +179,10 @@ class Branch(StandardNode):
             node_class=cls,
             branch_filters=branch_filters,
             exclude_global=exclude_global,
+            exclude_default=exclude_default,
+            exclude_terminal=exclude_terminal,
             limit=limit,
+            offset=offset,
             node_ordering=node_ordering,
         )
         await query.execute(db=db)
@@ -240,8 +243,7 @@ class Branch(StandardNode):
         return [default_branch, self.name]
 
     def get_branches_and_times_to_query(self, at: Optional[Timestamp] = None) -> dict[frozenset, str]:
-        """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
-
+        """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch."""
         at = Timestamp(at)
 
         if self.is_default:
@@ -264,7 +266,6 @@ class Branch(StandardNode):
         is_isolated: bool = True,
     ) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituting this branch with the associated times."""
-
         at = Timestamp(at)
 
         if self.is_default:
@@ -285,7 +286,6 @@ class Branch(StandardNode):
         self, start_time: Timestamp, end_time: Timestamp
     ) -> tuple[dict[str, str], dict[str, str]]:
         """Return the names of the branches that are constituing this branch with the start and end times."""
-
         start = {}
         end = {}
 
@@ -332,10 +332,12 @@ class Branch(StandardNode):
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False
     ) -> tuple[list, dict]:
-        """
-        Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
-        """
+        """Generate a CYPHER Query filter from a list of relationships to query a part of the graph at a specific time and on a specific branch.
 
+        Raises:
+            TypeError: When `rel_labels` is not a list.
+
+        """
         filters = []
         params: dict[str, Any] = {}
 
@@ -374,8 +376,7 @@ class Branch(StandardNode):
         variable_name: str = "r",
         params_prefix: str = "",
     ) -> tuple[str, dict]:
-        """
-        Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
+        """Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
 
         Examples:
             >>> rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -383,6 +384,7 @@ class Branch(StandardNode):
             >>> query += "\n WHERE all(r IN relationships(p) WHERE %s)" % rels_filter
 
             There is a currently an assumption that the relationship in the path will be named 'r'
+
         """
         pp = params_prefix
         params: dict[str, Any] = {}
@@ -420,8 +422,7 @@ class Branch(StandardNode):
     async def rebase(
         self, db: InfrahubDatabase, at: str | Timestamp | None = None, user_id: str = SYSTEM_USER_ID
     ) -> None:
-        """Rebase the current Branch with its origin branch"""
-
+        """Rebase the current Branch with its origin branch."""
         at = Timestamp(at)
 
         await self.rebase_graph(db=db, at=at)

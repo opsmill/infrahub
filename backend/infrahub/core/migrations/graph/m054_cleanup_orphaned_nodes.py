@@ -11,9 +11,10 @@ if TYPE_CHECKING:
 
 
 class CleanupOrphanedNodesQuery(Query):
-    """
-    Clean up orphaned Node vertices (no IS_PART_OF edge to Root) and their linked
+    """Clean up orphaned Node vertices (no IS_PART_OF edge to Root) and their linked.
+
     Attributes and Relationships.
+
     """
 
     name = "cleanup_orphaned_nodes"
@@ -63,8 +64,7 @@ CALL (n) {
 
 
 class Migration054(GraphMigration):
-    """
-    Clean up orphaned Node vertices that have no IS_PART_OF edge to Root.
+    """Clean up orphaned Node vertices that have no IS_PART_OF edge to Root.
 
     This can happen when a branch-aware node is deleted during branch deletion,
     but its branch-agnostic attributes or relationships are not properly cleaned up.

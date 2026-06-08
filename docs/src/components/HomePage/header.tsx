@@ -38,7 +38,7 @@ export default function HomepageHeader() {
                     </Link>
                     <Link
                         className={clsx(styles.heroButton, "button button--secondary button--lg")}
-                        to="topics/community-vs-enterprise"
+                        to="overview/community-vs-enterprise"
                     >
                         {translate({
                             id: 'home.header.editions',

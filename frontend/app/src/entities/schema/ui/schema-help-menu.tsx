@@ -1,7 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { Pressable } from "react-aria-components";
 
-import { Menu, MenuItem, MenuPopover, MenuTrigger } from "@/shared/components/aria/menu";
+import { Menu, MenuItem, MenuTrigger } from "@/shared/components/aria/menu";
+import { Popover } from "@/shared/components/aria/popover";
 import { Button } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { MENU_EXCLUDELIST } from "@/shared/config/constants";
@@ -28,7 +29,7 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
         </Button>
       </Pressable>
 
-      <MenuPopover placement="bottom end">
+      <Popover placement="bottom end">
         <Menu data-testid="schema-help-menu-content">
           <MenuItem isDisabled={!schema.documentation} href={documentationUrl} target="_blank">
             <Icon icon="mdi:book-open-variant-outline" className="text-custom-blue-700 text-lg" />
@@ -44,7 +45,7 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
             Open list view
           </MenuItem>
         </Menu>
-      </MenuPopover>
+      </Popover>
     </MenuTrigger>
   );
 };

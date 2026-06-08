@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { Menu } from "@/shared/components/aria/menu";
 
-import { useImportCurrentCommitMutation } from "@/entities/repository/domain/import-current-commit.mutation";
-import { useReimportLastCommitMutation } from "@/entities/repository/domain/reimport-last-commit.mutation";
+import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
+import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
 
 import { render } from "../../../../tests/components/render";
 import { generatePermission } from "../../../../tests/fake/permission";
 import { generateNodeSchema } from "../../../../tests/fake/schema";
 import { RepositoryMenuSection } from "./repository-menu-section";
 
-vi.mock("@/entities/repository/domain/reimport-last-commit.mutation");
-vi.mock("@/entities/repository/domain/import-current-commit.mutation");
+vi.mock("@/entities/repository/ui/queries/reimport-last-commit.mutation");
+vi.mock("@/entities/repository/ui/queries/import-current-commit.mutation");
 
 describe("RepositoryMenuSection", () => {
   const mockReimportLastCommit = vi.fn();
@@ -167,7 +167,7 @@ describe("RepositoryMenuSection", () => {
       .toBeVisible();
   });
 
-  test("does not show Reimport current commit for non-read-only repositories", async () => {
+  test("shows Reimport current commit for non-read-only repositories", async () => {
     // GIVEN
     const component = await render(
       <Menu aria-label="Repository actions">
@@ -181,7 +181,9 @@ describe("RepositoryMenuSection", () => {
     );
 
     // THEN
-    await expect.element(component.baseElement).not.toHaveTextContent("Reimport current commit");
+    await expect
+      .element(component.getByRole("menuitem", { name: /Reimport current commit/i }))
+      .toBeVisible();
   });
 
   test("calls importCurrentCommit mutation when clicking Reimport current commit", async () => {

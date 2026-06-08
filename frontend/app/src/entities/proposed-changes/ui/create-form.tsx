@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
@@ -26,14 +27,13 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
+import { DRAFT_STATE, OPEN_STATE } from "@/entities/proposed-changes/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-import { DRAFT_STATE, OPEN_STATE } from "../constants";
 import { PcStateButton } from "./action-button/pc-state-button";
 
 export const ProposedChangeCreateForm = () => {
@@ -41,7 +41,7 @@ export const ProposedChangeCreateForm = () => {
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter(
-    (branch) => !branch.is_default && branch.status !== BRANCH_STATUS.MERGED
+    (branch) => !branch.is_default && branch.status !== BranchStatus.MERGED
   );
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);

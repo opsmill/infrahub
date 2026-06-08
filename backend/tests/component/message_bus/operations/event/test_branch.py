@@ -30,8 +30,7 @@ async def init_service() -> InfrahubServices:
     recorder = BusRecorder()
     database = MagicMock()
     workflow = WorkflowLocalExecution()
-    service = await InfrahubServices.new(message_bus=recorder, database=database, workflow=workflow)
-    return service
+    return await InfrahubServices.new(message_bus=recorder, database=database, workflow=workflow)
 
 
 @pytest.fixture
@@ -49,11 +48,12 @@ async def test_merged(
     context: InfrahubContext,
     init_service: InfrahubServices,
 ) -> None:
-    """
-    Test that merge flow triggers corrects events/workflows. It does not actually test these events/workflows behaviors
-    as they are mocked.
-    """
+    """Test that merge flow triggers corrects events/workflows.
 
+    It does not actually test these events/workflows behaviors
+    as they are mocked.
+
+    """
     source_branch_name = "cr1234"
     target_branch_name = "main"
     right_now = Timestamp()

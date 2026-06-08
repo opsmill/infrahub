@@ -28,7 +28,7 @@ class PropertyChangelog(BaseModel):
 
     @computed_field
     def value_type(self) -> str:
-        """The value_type of the property, used to help external systems"""
+        """The value_type of the property, used to help external systems."""
         if isinstance(self.value, str):
             return "Text"
 
@@ -36,7 +36,7 @@ class PropertyChangelog(BaseModel):
 
     @computed_field
     def value_update_status(self) -> DiffAction:
-        """Indicate how the value was changed during this update"""
+        """Indicate how the value was changed during this update."""
         if self.value == self.value_previous:
             return DiffAction.UNCHANGED
         if self.value_previous is not None and self.value is None:
@@ -59,7 +59,7 @@ class AttributeChangelog(BaseModel):
 
     @computed_field
     def value_update_status(self) -> DiffAction:
-        """Indicate how the peer was changed during this update"""
+        """Indicate how the peer was changed during this update."""
         if self.value_previous is not None and self.value is None:
             return DiffAction.REMOVED
         if self.value_previous is None and self.value is not None:
@@ -132,7 +132,7 @@ class RelationshipCardinalityOneChangelog(BaseModel):
 
     @computed_field
     def peer_status(self) -> DiffAction:
-        """Indicate how the peer was changed during this update"""
+        """Indicate how the peer was changed during this update."""
         if self.peer_id_previous == self.peer_id:
             return DiffAction.UNCHANGED
         if self.peer_id_previous and not self.peer_id:
@@ -224,7 +224,7 @@ class ChangelogRelatedNode(BaseModel):
 
 
 class NodeChangelog(BaseModel):
-    """Emitted when a node is updated"""
+    """Emitted when a node is updated."""
 
     node_id: str
     node_kind: str
@@ -243,7 +243,7 @@ class NodeChangelog(BaseModel):
 
     @property
     def updated_fields(self) -> list[str]:
-        """Return a list of update fields i.e. attributes and relationships"""
+        """Return a list of update fields i.e. attributes and relationships."""
         return list(self.relationships.keys()) + list(self.attributes.keys())
 
     @property
@@ -252,7 +252,7 @@ class NodeChangelog(BaseModel):
 
     @property
     def root_node_id(self) -> str:
-        """Return the top level node_id"""
+        """Return the top level node_id."""
         if self.parent:
             return self.parent.node_id
         return self.node_id
@@ -457,7 +457,7 @@ class RelationshipChangelogGetter:
         self._branch = branch
 
     async def get_changelogs(self, primary_changelog: NodeChangelog) -> list[NodeChangelog]:
-        """Return secondary changelogs based on this update
+        """Return secondary changelogs based on this update.
 
         These will typically include updates to relationships on other nodes.
         """

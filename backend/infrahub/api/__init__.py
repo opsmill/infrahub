@@ -20,6 +20,7 @@ from infrahub.api import (
     oidc,
     query,
     schema,
+    telemetry,
     transformation,
 )
 from infrahub.api.dependencies import get_current_user
@@ -42,6 +43,7 @@ router.include_router(oidc.router)
 router.include_router(query.router)
 router.include_router(schema.router)
 router.include_router(storage.router)
+router.include_router(telemetry.router)
 router.include_router(transformation.router)
 
 
@@ -54,6 +56,7 @@ async def custom_swagger_ui_html(
         title="Infrahub - Swagger UI",
         swagger_js_url="/api-static/swagger-ui-bundle.js",
         swagger_css_url="/api-static/swagger-ui.css",
+        swagger_favicon_url="/favicons/favicon.ico",
     )
 
 
@@ -63,6 +66,7 @@ async def redoc_html(_: AccountSession = Depends(get_current_user)) -> HTMLRespo
         openapi_url="/api/openapi.json",
         title="Infrahub - ReDoc",
         redoc_js_url="/api-static/redoc.standalone.js",
+        redoc_favicon_url="/favicons/favicon.ico",
     )
 
 
@@ -73,7 +77,12 @@ async def redoc_html(_: AccountSession = Depends(get_current_user)) -> HTMLRespo
     response_model=None,
 )
 async def not_found(rest_of_path: str) -> NoReturn:
-    """Used to avoid having the mounting of the React App mask 404 errors."""
+    """Used to avoid having the mounting of the React App mask 404 errors.
+
+    Raises:
+        ResourceNotFoundError: Always raised to signal that the requested API endpoint does not exist.
+
+    """
     raise ResourceNotFoundError(
         message=f"The requested endpoint /api/{rest_of_path} does not exist",
     )

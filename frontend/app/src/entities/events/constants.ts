@@ -2,6 +2,14 @@ export const INFRAHUB_EVENT = "InfrahubEvent";
 
 export const EVENT_TYPE_CHOICES = [
   {
+    label: "Account logged in",
+    name: "infrahub.account.logged_in",
+  },
+  {
+    label: "Account logged out",
+    name: "infrahub.account.logged_out",
+  },
+  {
     label: "Artifact created",
     name: "infrahub.artifact.created",
   },

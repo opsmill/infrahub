@@ -73,11 +73,13 @@ async def get_refresh_token(
 
 
 async def get_branch_params(
+    request: Request,
     db: InfrahubDatabase = Depends(get_db),
     branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
     at: str | None = Query(None, description="Time to use for the query, in absolute or relative format"),
 ) -> BranchParams:
     branch = await registry.get_branch(db=db, branch=branch_name)
+    request.state.branch_name = branch.name
 
     return BranchParams(branch=branch, at=Timestamp(at))
 
@@ -95,7 +97,12 @@ async def get_current_user(
     db: InfrahubDatabase = Depends(get_db),
     api_key: str = Depends(api_key_scheme),
 ) -> AccountSession:
-    """Return current user"""
+    """Return current user.
+
+    Raises:
+        AuthorizationError: When authentication is required but the request is not authenticated.
+
+    """
     jwt_token = None
     if jwt_header:
         jwt_token = jwt_header.credentials
@@ -110,6 +117,7 @@ async def get_current_user(
         or request.url.path.startswith("/graphql")
         or (config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"])
     ):
+        request.state.account_session = account_session
         return account_session
 
     raise AuthorizationError("Authentication is required")

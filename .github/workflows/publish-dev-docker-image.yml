@@ -31,8 +31,7 @@ jobs:
   meta_data:
     permissions:
       contents: read
-    runs-on:
-      group: huge-runners
+    runs-on: ubuntu-24.04
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}

@@ -1,9 +1,9 @@
 import { useState } from "react";
 
+import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
+import { Button } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
-import { Button } from "../../ui/button";
-import { CodeViewer } from "../code/code-viewer";
 import { MarkdownRender } from "./markdown-render";
 
 export function MarkdownViewer({ children }: { children: string }) {

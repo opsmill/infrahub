@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
 
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
-import { DEFAULT_FORM_FIELD_VALUE } from "../constants";
 
 describe("getFormFieldFromRelationship", () => {
   const schema = generateNodeSchema();

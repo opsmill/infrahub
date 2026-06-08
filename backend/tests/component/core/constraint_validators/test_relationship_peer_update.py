@@ -23,7 +23,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "order_by": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -45,7 +45,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
             {
                 "name": "ElectricCar",
                 "namespace": "Test",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "inherit_from": ["TestCar"],
                 "default_filter": "name__value",
                 "attributes": [
@@ -55,7 +55,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
             {
                 "name": "GazCar",
                 "namespace": "Test",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "inherit_from": ["TestCar"],
                 "default_filter": "name__value",
                 "attributes": [
@@ -66,7 +66,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -450,7 +450,7 @@ async def test_validator(
         constraint_name="relationship.peer.update",
         node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = RelationshipPeerChecker(db=db, branch=default_branch)

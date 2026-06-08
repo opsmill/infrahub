@@ -4,8 +4,10 @@ import base64
 import hashlib
 import hmac
 import json
-from enum import Enum
-from typing import TYPE_CHECKING, Any
+import logging
+import os
+from enum import Enum, StrEnum
+from typing import TYPE_CHECKING, Any, assert_never
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -19,6 +21,8 @@ from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubReposito
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from httpx import Response
@@ -65,7 +69,7 @@ class WebhookTriggerDefinition(TriggerDefinition):
         if obj.node_kind.value and event_type in get_all_infrahub_node_kind_events():
             event_trigger.match = {"infrahub.node.kind": obj.node_kind.value}
 
-        definition = cls(
+        return cls(
             id=obj.id,
             name=obj.name.value,
             trigger=event_trigger,
@@ -89,8 +93,6 @@ class WebhookTriggerDefinition(TriggerDefinition):
             ],
         )
 
-        return definition
-
 
 class EventContext(BaseModel):
     id: str = Field(..., description="The internal id of the event")
@@ -102,7 +104,6 @@ class EventContext(BaseModel):
     @classmethod
     def from_event(cls, event_id: str, event_type: str, event_occured_at: str, event_payload: dict[str, Any]) -> Self:
         """Extract the context from the raw event we are getting from Prefect."""
-
         infrahub_context: dict[str, Any] = event_payload.get("context", {})
         account_info: dict[str, Any] = infrahub_context.get("account", {})
         branch_info: dict[str, Any] = infrahub_context.get("branch", {})
@@ -117,12 +118,48 @@ class EventContext(BaseModel):
         )
 
 
+class HeaderKind(StrEnum):
+    STATIC = "static"
+    ENVIRONMENT = "environment"
+
+
+class WebhookHeaderResolutionError(Exception):
+    pass
+
+
+class WebhookHeader(BaseModel):
+    key: str
+    value: str
+    kind: HeaderKind
+
+    def resolve(self) -> str:
+        """Resolve the header value based on its kind.
+
+        Raises WebhookHeaderResolutionError if the value cannot be resolved.
+
+        Raises:
+            WebhookHeaderResolutionError: When the referenced environment variable is not set.
+
+        """
+        match self.kind:
+            case HeaderKind.STATIC:
+                return self.value
+            case HeaderKind.ENVIRONMENT:
+                resolved = os.environ.get(self.value)
+                if resolved is None:
+                    raise WebhookHeaderResolutionError(f"Environment variable '{self.value}' not found")
+                return resolved
+            case _:
+                assert_never(self.kind)
+
+
 class Webhook(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(...)
     url: str = Field(...)
     event_type: str = Field(...)
     validate_certificates: bool | None = Field(...)
+    custom_headers: list[WebhookHeader] = Field(default_factory=list)
     _payload: Any = None
     _headers: dict[str, Any] | None = None
     shared_key: str | None = Field(default=None, description="Shared key for signing the webhook requests")
@@ -135,6 +172,20 @@ class Webhook(BaseModel):
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
+
+        seen_keys: set[str] = set()
+        for header in self.custom_headers:
+            if header.key in seen_keys:
+                logger.warning(
+                    "Webhook '%s': duplicate header key '%s', later value will overwrite earlier one",
+                    self.name,
+                    header.key,
+                )
+            seen_keys.add(header.key)
+            try:
+                self._headers[header.key] = header.resolve()
+            except WebhookHeaderResolutionError as exc:
+                logger.warning("Webhook '%s': %s, skipping header '%s'", self.name, exc, header.key)
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
@@ -153,7 +204,12 @@ class Webhook(BaseModel):
 
     @property
     def signing_key(self) -> str:
-        """Return the signing key for the webhook."""
+        """Return the signing key for the webhook.
+
+        Raises:
+            ValueError: When the webhook has no shared key configured.
+
+        """
         if self.shared_key:
             return self.shared_key
         raise ValueError("Shared key is not set for the webhook")
@@ -185,28 +241,30 @@ class Webhook(BaseModel):
 
 
 class CustomWebhook(Webhook):
-    """Custom webhook"""
+    """Custom webhook."""
 
     @classmethod
-    def from_object(cls, obj: CoreCustomWebhook) -> Self:
+    def from_object(cls, obj: CoreCustomWebhook, custom_headers: list[WebhookHeader] | None = None) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
             event_type=obj.event_type.value,
             validate_certificates=obj.validate_certificates.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )
 
 
 class StandardWebhook(Webhook):
     @classmethod
-    def from_object(cls, obj: CoreStandardWebhook) -> Self:
+    def from_object(cls, obj: CoreStandardWebhook, custom_headers: list[WebhookHeader] | None = None) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
             event_type=obj.event_type.value,
             validate_certificates=obj.validate_certificates.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )
 
 
@@ -242,7 +300,9 @@ class TransformWebhook(Webhook):
         )  # type: ignore[call-overload]
 
     @classmethod
-    def from_object(cls, obj: CoreCustomWebhook, transform: CoreTransformPython) -> Self:
+    def from_object(
+        cls, obj: CoreCustomWebhook, transform: CoreTransformPython, custom_headers: list[WebhookHeader] | None = None
+    ) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
@@ -257,4 +317,5 @@ class TransformWebhook(Webhook):
             transform_timeout=transform.timeout.value,
             convert_query_response=transform.convert_query_response.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )

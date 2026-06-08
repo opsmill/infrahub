@@ -125,7 +125,7 @@ CALL (rel) {
 
 
 class Migration041(ArbitraryMigration):
-    """Clean up improper merges that duplicated edges to nodes with migrated kinds
+    """Clean up improper merges that duplicated edges to nodes with migrated kinds.
 
     - delete all existing diffs b/c they could contain incorrect nodes linking to deleted nodes with migrated kind/inheritance
     - delete all edges added to any nodes AFTER they were deleted on main
@@ -136,9 +136,7 @@ class Migration041(ArbitraryMigration):
     minimum_version: int = 40
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db

@@ -23,7 +23,6 @@ NAMESPACE = "BACKEND"
 
 def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
-
     print(f" - [{NAMESPACE}] Format code with ruff")
     exec_cmd = f"uv run ruff format {MAIN_DIRECTORY} &&"
     exec_cmd += f"uv run ruff check --fix {MAIN_DIRECTORY}"
@@ -34,7 +33,6 @@ def _format_ruff(context: Context) -> None:
 @task(name="format")
 def format_all(context: Context) -> None:
     """Format all backend Python files with ruff."""
-
     _format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
@@ -46,7 +44,6 @@ def format_all(context: Context) -> None:
 @task
 def ruff(context: Context) -> None:
     """Run ruff linter against backend Python files."""
-
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY}"
 
@@ -61,7 +58,6 @@ def ruff(context: Context) -> None:
 @task
 def ty(context: Context) -> None:
     """Run ty type checker against project files."""
-
     print(f" - [{NAMESPACE}] Check code with ty")
     exec_cmd = "uv run ty check ."
 
@@ -72,7 +68,6 @@ def ty(context: Context) -> None:
 @task
 def mypy(context: Context) -> None:
     """Run mypy type checking against backend Python files."""
-
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"uv run mypy --show-error-codes {MAIN_DIRECTORY}"
 
@@ -94,7 +89,7 @@ def lint(context: Context) -> None:
 def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     """Run backend component tests."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub --durations=20 {MAIN_DIRECTORY}/tests/component"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
@@ -206,7 +201,6 @@ def generate(context: Context) -> None:
 @task
 def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
     """Validate that generated schemas and protocols are committed to Git."""
-
     _generate_schemas(context=context)
     exec_cmd = "git diff --exit-code backend/infrahub/core/schema/generated"
     with context.cd(ESCAPED_REPO_PATH):

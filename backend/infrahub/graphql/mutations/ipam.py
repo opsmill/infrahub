@@ -37,7 +37,12 @@ async def validate_namespace(
     data: InputObjectType,
     existing_namespace_id: str | None = None,
 ) -> str:
-    """Validate or set (if not present) the namespace to pass to the mutation and return its ID."""
+    """Validate or set (if not present) the namespace to pass to the mutation and return its ID.
+
+    Raises:
+        ValidationError: When the provided ip_namespace does not include a valid identifier.
+
+    """
     namespace_id: str | None = None
     if "ip_namespace" not in data or not data["ip_namespace"]:
         namespace_id = existing_namespace_id or registry.default_ipnamespace
@@ -132,10 +137,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         )
 
         reconciler = IpamReconciler(db=db, branch=branch)
-        reconciled_address = await reconciler.reconcile(
-            ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
-        )
-        return reconciled_address
+        return await reconciler.reconcile(ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id())
 
     @classmethod
     @retry_db_transaction(name="ipaddress_create")
@@ -174,10 +176,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         address = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=address)
         reconciler = IpamReconciler(db=db, branch=branch)
         ip_address = ipaddress.ip_interface(address.address.value)
-        reconciled_address = await reconciler.reconcile(
-            ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id
-        )
-        return reconciled_address
+        return await reconciler.reconcile(ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id)
 
     @classmethod
     @retry_db_transaction(name="ipaddress_update")
@@ -422,10 +421,9 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     ) -> Node:
         reconciler = IpamReconciler(db=db, branch=branch)
         ip_network = ipaddress.ip_network(prefix.prefix.value)
-        reconciled_prefix = await reconciler.reconcile(
+        return await reconciler.reconcile(
             ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id, is_delete=is_delete
         )
-        return reconciled_prefix
 
     @classmethod
     @retry_db_transaction(name="ipprefix_delete")

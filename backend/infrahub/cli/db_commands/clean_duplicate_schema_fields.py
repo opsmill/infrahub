@@ -72,9 +72,9 @@ WHERE size(fields_reverse_chron) > 1
 
 
 class GetDuplicateSchemaFields(DuplicateSchemaFields):
-    """
-    Get the kind, field type, and field name for any duplicated attributes or relationships on a given schema
-    on the default branch
+    """Get the kind, field type, and field name for any duplicated attributes or relationships.
+
+    Operates on a given schema on the default branch.
     """
 
     name = "get_duplicate_schema_fields"
@@ -123,9 +123,7 @@ ORDER BY schema_kind ASC, is_attribute DESC, field_name ASC
 
 
 class FixDuplicateSchemaFields(DuplicateSchemaFields):
-    """
-    Fix the duplicate schema fields by hard deleting the earlier duplicate(s)
-    """
+    """Fix the duplicate schema fields by hard deleting the earlier duplicate(s)."""
 
     name = "fix_duplicate_schema_fields"
     type = QueryType.WRITE
@@ -187,11 +185,11 @@ def display_duplicate_schema_fields(duplicate_schema_fields: list[SchemaFieldDet
 
 
 async def clean_duplicate_schema_fields(db: InfrahubDatabase, fix: bool = False) -> bool:
-    """
-    Identify any attributes or relationships that are duplicated in a schema on the default branch
-    If fix is True, runs cypher queries to hard delete the earlier duplicate
-    """
+    """Identify any attributes or relationships that are duplicated in a schema on the default branch.
 
+    If fix is True, runs cypher queries to hard delete the earlier duplicate.
+
+    """
     duplicate_schema_fields_query = await GetDuplicateSchemaFields.init(db=db)
     await duplicate_schema_fields_query.execute(db=db)
     duplicate_schema_fields = duplicate_schema_fields_query.get_schema_field_details()

@@ -23,18 +23,27 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import (
+        AttributeSchema,
         MainSchemaTypes,
         SchemaAttributePath,
     )
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
+    from .uniqueness_violation_message import UniquenessViolationMessageBuilder
+
 
 class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        message_builder: UniquenessViolationMessageBuilder,
+    ) -> None:
         self.db = db
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name)
+        self._message_builder = message_builder
 
     async def _get_unique_valued_paths(
         self,
@@ -178,7 +187,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         for schema in schemas_to_check:
             schema_filters = list(filters) if filters is not None else []
             for attr_schema in schema.attributes:
-                if attr_schema.optional and attr_schema.unique and attr_schema.name not in schema_filters:
+                if self._should_implicitly_check_uniqueness(attr_schema=attr_schema, schema_filters=schema_filters):
                     schema_filters.append(attr_schema.name)
 
             schema_violations = await self._get_single_schema_violations(
@@ -208,9 +217,22 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 ):
                     continue
 
-            error_msg = f"Violates uniqueness constraint '{'-'.join(violation.fields)}'"
+            error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=violation.fields)
             raise ValidationError(error_msg)
 
         if hfid_violation:
-            error_msg = f"Violates uniqueness constraint '{'-'.join(hfid_violation.fields)}'"
+            error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=hfid_violation.fields)
             raise HFIDViolatedError(error_msg, matching_nodes_ids=hfid_violation.nodes_ids)
+
+    def _should_implicitly_check_uniqueness(self, attr_schema: AttributeSchema, schema_filters: list[str]) -> bool:
+        """Decide whether an attribute must be validated for uniqueness despite being absent from the user-provided filters.
+
+        Optional attributes can carry a default value and computed attributes are populated after
+        the request is submitted, so neither appears in the user-provided filter list but both must
+        still be evaluated for uniqueness.
+        """
+        if attr_schema.name in schema_filters:
+            return False
+        if not attr_schema.unique:
+            return False
+        return bool(attr_schema.optional or attr_schema.computed_attribute)

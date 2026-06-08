@@ -15,8 +15,7 @@ jobs:
     permissions:
       contents: read
     if: contains(github.event.pull_request.labels.*.name, 'cd/preview')
-    runs-on:
-      group: huge-runners
+    runs-on: ubuntu-24.04
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}

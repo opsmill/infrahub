@@ -26,7 +26,7 @@ async def transform_python(message: TransformPythonData) -> Any:
         commit=message.commit,
     )
 
-    transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=message.timeout)(
+    return await repo.execute_python_transform.with_options(timeout_seconds=message.timeout)(
         client=client,
         branch_name=message.branch,
         commit=message.commit,
@@ -34,8 +34,6 @@ async def transform_python(message: TransformPythonData) -> Any:
         data=message.data,
         convert_query_response=message.convert_query_response,
     )  # type: ignore[call-overload]
-
-    return transformed_data
 
 
 @flow(name="transform_render_jinja2_template", flow_run_name="Render transform Jinja2", persist_result=True)
@@ -52,8 +50,6 @@ async def transform_render_jinja2_template(message: TransformJinjaTemplateData) 
         commit=message.commit,
     )
 
-    rendered_template = await repo.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
+    return await repo.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
         commit=message.commit, location=message.template_location, data={"data": message.data}
     )  # type: ignore[call-overload]
-
-    return rendered_template

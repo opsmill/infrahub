@@ -72,7 +72,6 @@ class SchemaRoot(BaseModel):
     @classmethod
     def has_schema(cls, values: dict[str, Any], name: str) -> bool:
         """Check if a schema exist locally as a node or as a generic."""
-
         available_schemas = [item.kind for item in values.get("nodes", []) + values.get("generics", [])]
         if name not in available_schemas:
             return False
@@ -80,8 +79,12 @@ class SchemaRoot(BaseModel):
         return True
 
     def get(self, name: str) -> NodeSchema | GenericSchema:
-        """Check if a schema exist locally as a node or as a generic."""
+        """Check if a schema exist locally as a node or as a generic.
 
+        Raises:
+            SchemaNotFoundError: When no node or generic with the given name exists locally.
+
+        """
         for item in self.nodes + self.generics:
             if item.kind == name:
                 return item
@@ -154,8 +157,11 @@ class SchemaRoot(BaseModel):
         return warnings
 
     def generate_uuid(self) -> None:
-        """Generate UUID for all nodes, attributes & relationships
-        Mainly useful during unit tests."""
+        """Generate UUID for all nodes, attributes & relationships.
+
+        Mainly useful during unit tests.
+
+        """
         for node in self.nodes + self.generics:
             if not node.id:
                 node.id = str(uuid.uuid4())

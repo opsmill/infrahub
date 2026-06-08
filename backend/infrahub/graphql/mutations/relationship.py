@@ -99,6 +99,7 @@ class RelationshipAdd(Mutation):
         )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
+        _validate_cardinality_add(rel_schema=rel_schema, existing_peers=existing_peers)
 
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
@@ -236,6 +237,7 @@ class RelationshipRemove(Mutation):
         )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
+        _validate_optional_remove(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
         )
@@ -353,14 +355,10 @@ async def _validate_node(info: GraphQLResolveInfo, data: RelationshipNodesInput)
     ):
         raise NodeNotFoundError(node_type="node", identifier=input_id, branch_name=graphql_context.branch.name)
 
-    # Check if the name of the relationship provided exist for this node and is of cardinality Many
     if relationship_name not in source.get_schema().relationship_names:
         raise ValidationError({"name": f"'{relationship_name}' is not a valid relationship for '{source.get_kind()}'"})
 
     rel_schema = source.get_schema().get_relationship(name=relationship_name)
-    if rel_schema.cardinality != RelationshipCardinality.MANY:
-        raise ValidationError({"name": f"'{relationship_name}' must be a relationship of cardinality Many"})
-
     if rel_schema.read_only:
         # These mutations should never be allowed to update read-only relationships, as those typically
         # have custom code tied to them such as the approved_by relationship of a CoreProposedChange.
@@ -490,6 +488,24 @@ async def _collect_current_peers(
     )
     await query.execute(db=graphql_context.db)
     return {str(peer.peer_id): peer for peer in query.get_peers()}
+
+
+def _validate_cardinality_add(rel_schema: RelationshipSchema, existing_peers: dict[str, RelationshipPeerData]) -> None:
+    if rel_schema.cardinality == RelationshipCardinality.ONE and existing_peers:
+        raise ValidationError(f"'{rel_schema.name}' is a cardinality-one relationship and already has a peer")
+
+
+def _validate_optional_remove(
+    data: RelationshipNodesInput,
+    rel_schema: RelationshipSchema,
+    existing_peers: dict[str, RelationshipPeerData],
+) -> None:
+    if rel_schema.optional is True:
+        return
+    peers_to_remove = {node_data.get("id") for node_data in data.get("nodes") if node_data.get("id")}
+    remaining = set(existing_peers.keys()) - peers_to_remove
+    if not remaining:
+        raise ValidationError({"name": f"'{rel_schema.name}' is a mandatory relationship and cannot be fully removed"})
 
 
 def _get_group_event_type(

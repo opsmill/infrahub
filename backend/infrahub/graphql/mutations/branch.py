@@ -8,14 +8,19 @@ from typing_extensions import Self
 
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
+from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.workflows.catalogue import (
     BRANCH_CREATE,
     BRANCH_DELETE,
@@ -109,6 +114,11 @@ class BranchNameInput(InputObjectType):
     name = String(required=False)
 
 
+class BranchDeleteInput(InputObjectType):
+    name = String(required=False)
+    delete_from_git = Boolean(required=False, default_value=False)
+
+
 class BranchUpdateInput(InputObjectType):
     name = String(required=True)
     description = String(required=False)
@@ -117,7 +127,7 @@ class BranchUpdateInput(InputObjectType):
 
 class BranchDelete(Mutation):
     class Arguments:
-        data = BranchNameInput(required=True)
+        data = BranchDeleteInput(required=True)
         context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
@@ -129,7 +139,7 @@ class BranchDelete(Mutation):
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
-        data: BranchNameInput,
+        data: BranchDeleteInput,
         context: ContextInput | None = None,
         wait_until_completion: bool = True,
     ) -> Self:
@@ -137,14 +147,36 @@ class BranchDelete(Mutation):
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
+        parameters = {
+            "branch": obj.name,
+            "delete_from_git": bool(data.delete_from_git),
+        }
+        active_proposed_changes = await NodeManager.query(
+            db=graphql_context.db,
+            schema=CoreProposedChange,
+            filters={
+                "source_branch__value": obj.name,
+                "state__value": ProposedChangeState.OPEN.value,
+            },
+        )
+        if active_proposed_changes:
+            parameters["proposed_change_id"] = active_proposed_changes[0].id
+        if obj.created_by != graphql_context.active_account_session.account_id:
+            graphql_context.active_permissions.raise_for_permission(
+                permission=GlobalPermission(
+                    action=GlobalPermissions.DELETE_BRANCH.value,
+                    decision=PermissionDecision.ALLOW_ALL.value,
+                )
+            )
+
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters={"branch": obj.name}
+                workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters=parameters
             )
             return cls(ok=True)
 
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters={"branch": obj.name}
+            workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters=parameters
         )
         return cls(ok=True, task={"id": str(workflow.id)})
 
@@ -205,6 +237,8 @@ class BranchRebase(Mutation):
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
         if obj.status == BranchStatus.MERGED:
             raise ValidationError(f"Branch '{obj.name}' has been merged and is read-only. Rebase is not allowed.")
+        if obj.status == BranchStatus.MERGING:
+            raise ValidationError(f"Branch '{obj.name}' is currently being merged. Rebase is not allowed.")
         await apply_external_context(graphql_context=graphql_context, context_input=context)
         task: dict | None = None
 
@@ -302,6 +336,8 @@ class BranchMerge(Mutation):
             raise ValidationError(f"Cannot merge branch '{branch_name}' with status '{obj.status.name}'")
         if obj.status == BranchStatus.MERGED:
             raise ValidationError(f"Branch '{branch_name}' has already been merged")
+        if obj.status == BranchStatus.MERGING:
+            raise ValidationError(f"Branch '{branch_name}' is currently being merged")
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(

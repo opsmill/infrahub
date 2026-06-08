@@ -6,7 +6,7 @@ import {
   type DissociateRelationshipModalProps,
   DissociateRelationshipsModal,
 } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
-import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
+import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 
 export interface ToolBarRemoveFromGroupActionProps
   extends Omit<DissociateRelationshipModalProps, "isOpen" | "onOpenChange"> {

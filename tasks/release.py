@@ -99,7 +99,12 @@ def ship(context: Context) -> None:
 
 @task
 def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:  # noqa: ARG001
-    """Update helm/Chart.yaml with the current version from pyproject.toml."""
+    """Update helm/Chart.yaml with the current version from pyproject.toml.
+
+    Raises:
+        ValueError: When ``appVersion`` or ``version`` is missing from a Chart.yaml file.
+
+    """
     print(" - [release] Update Helm chart")
 
     # Import here to not require installing packaging when running invoke without installing dependencies.
@@ -440,3 +445,14 @@ def gen_config_env(
     else:
         for var in sorted(env_vars):
             print(f"{var}:")
+
+
+@task
+def validate_dockercomposeenv(context: Context) -> None:
+    """Validate that the generated docker compose environment variables is up to date."""
+    docker_compose_file_path = "docker-compose.yml"
+    gen_config_env(context, docker_compose_file_path, True)
+
+    exec_cmd = f"git diff --exit-code {docker_compose_file_path}"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)

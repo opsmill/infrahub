@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { type ComponentPropsWithoutRef, type ElementRef, forwardRef } from "react";
+import type React from "react";
 
 import {
   Accordion,
@@ -17,10 +17,10 @@ export const DropdownMenu = (props: DropdownMenuPrimitive.DropdownMenuProps) => 
 
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
-export const DropdownMenuContent = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, ...props }, ref) => {
+interface DropdownMenuContentProps
+  extends React.ComponentProps<typeof DropdownMenuPrimitive.Content> {}
+
+export const DropdownMenuContent = ({ className, ref, ...props }: DropdownMenuContentProps) => {
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -37,12 +37,11 @@ export const DropdownMenuContent = forwardRef<
       />
     </DropdownMenuPrimitive.Portal>
   );
-});
+};
 
-export const DropdownMenuItem = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Item>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>
->(({ className, ...props }, ref) => (
+interface DropdownMenuItemProps extends React.ComponentProps<typeof DropdownMenuPrimitive.Item> {}
+
+export const DropdownMenuItem = ({ className, ref, ...props }: DropdownMenuItemProps) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={classNames(
@@ -55,25 +54,30 @@ export const DropdownMenuItem = forwardRef<
     )}
     {...props}
   />
-));
+);
 
-export const DropdownMenuDivider = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Separator>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
->(({ className, ...props }, ref) => (
+interface DropdownMenuDividerProps
+  extends React.ComponentProps<typeof DropdownMenuPrimitive.Separator> {}
+
+export const DropdownMenuDivider = ({ className, ref, ...props }: DropdownMenuDividerProps) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
     className={classNames("-mx-1 my-1 h-px bg-gray-200", className)}
     {...props}
   />
-));
+);
 
 export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
-export const DropdownMenuSubTrigger = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger>
->(({ className, children, ...props }, ref) => (
+interface DropdownMenuSubTriggerProps
+  extends React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> {}
+
+export const DropdownMenuSubTrigger = ({
+  className,
+  children,
+  ref,
+  ...props
+}: DropdownMenuSubTriggerProps) => (
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
@@ -85,12 +89,16 @@ export const DropdownMenuSubTrigger = forwardRef<
     {children}
     <Icon icon="mdi:chevron-right" className="ml-auto text-lg" />
   </DropdownMenuPrimitive.SubTrigger>
-));
+);
 
-export const DropdownMenuSubContent = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.SubContent>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
+interface DropdownMenuSubContentProps
+  extends React.ComponentProps<typeof DropdownMenuPrimitive.SubContent> {}
+
+export const DropdownMenuSubContent = ({
+  className,
+  ref,
+  ...props
+}: DropdownMenuSubContentProps) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={classNames(
@@ -102,23 +110,33 @@ export const DropdownMenuSubContent = forwardRef<
     )}
     {...props}
   />
-));
+);
 
-export const DropdownMenuAccordion = forwardRef<
-  ElementRef<typeof AccordionItem>,
-  ComponentPropsWithoutRef<typeof AccordionItem> & { defaultOpen?: boolean }
->(({ defaultOpen, ...props }, ref) => {
+interface DropdownMenuAccordionProps extends React.ComponentProps<typeof AccordionItem> {
+  defaultOpen?: boolean;
+}
+
+export const DropdownMenuAccordion = ({
+  defaultOpen,
+  ref,
+  ...props
+}: DropdownMenuAccordionProps) => {
   return (
     <Accordion type="single" collapsible defaultValue={defaultOpen ? props.value : undefined}>
       <AccordionItem {...props} ref={ref} />
     </Accordion>
   );
-});
+};
 
-export const DropdownMenuAccordionTrigger = forwardRef<
-  ElementRef<typeof DropdownMenuItem>,
-  ComponentPropsWithoutRef<typeof AccordionTrigger>
->((props, ref) => {
+interface DropdownMenuAccordionTriggerProps
+  extends Omit<React.ComponentProps<typeof AccordionTrigger>, "ref"> {
+  ref?: React.Ref<React.ComponentRef<typeof DropdownMenuItem>>;
+}
+
+export const DropdownMenuAccordionTrigger = ({
+  ref,
+  ...props
+}: DropdownMenuAccordionTriggerProps) => {
   return (
     <DropdownMenuItem
       ref={ref}
@@ -130,21 +148,26 @@ export const DropdownMenuAccordionTrigger = forwardRef<
       <AccordionTrigger className="font-normal" {...props} />
     </DropdownMenuItem>
   );
-});
+};
 
 export const DropdownMenuAccordionContent = AccordionContent;
 
 export interface DropdownMenuItemWithTooltipProps
-  extends ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> {
+  extends React.ComponentProps<typeof DropdownMenuPrimitive.Item> {
   tooltipContent?: TooltipProps["content"];
   tooltipEnabled?: TooltipProps["enabled"];
   side?: TooltipProps["side"];
 }
 
-export const DropdownMenuItemWithTooltip = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Item>,
-  DropdownMenuItemWithTooltipProps
->(({ tooltipContent, tooltipEnabled, side = "left", disabled, children, ...props }, ref) => {
+export const DropdownMenuItemWithTooltip = ({
+  tooltipContent,
+  tooltipEnabled,
+  side = "left",
+  disabled,
+  children,
+  ref,
+  ...props
+}: DropdownMenuItemWithTooltipProps) => {
   return (
     <Tooltip enabled={tooltipEnabled && disabled} content={tooltipContent} side={side}>
       <div>
@@ -154,4 +177,4 @@ export const DropdownMenuItemWithTooltip = forwardRef<
       </div>
     </Tooltip>
   );
-});
+};

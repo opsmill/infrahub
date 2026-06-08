@@ -14,8 +14,8 @@ import { Popover } from "@/shared/components/aria/popover";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -61,7 +61,7 @@ function BreadcrumbProposedChangeSelector({ proposedChangeId }: { proposedChange
       <MenuTrigger>
         <BreadcrumbSelectorTrigger>{getNodeLabel(data)}</BreadcrumbSelectorTrigger>
 
-        <Popover className="bg-stone-100/50 backdrop-blur">
+        <Popover>
           <ObjectAutocomplete className="max-h-58" objectKind={PROPOSED_CHANGES_OBJECT} />
         </Popover>
       </MenuTrigger>

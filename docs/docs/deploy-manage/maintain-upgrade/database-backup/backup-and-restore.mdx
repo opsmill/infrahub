@@ -1,0 +1,391 @@
+---
+title: Backup and restore
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Backup and restore
+
+This guide shows you how to create comprehensive backups of your Infrahub deployment and restore them when needed. You'll learn to backup the Neo4j graph database, object storage, and task management data to ensure complete data recovery capabilities.
+
+For Neo4j cluster deployments, see [Cluster backup and restore](./cluster-backup-and-restore.mdx).
+
+## Prerequisites
+
+- Running Infrahub deployment (Docker Compose or Kubernetes)
+- Administrative access to the Neo4j database
+- Access to the object storage location (S3 or local filesystem)
+- Sufficient storage space for backup files
+- For cluster deployments: Understanding of your cluster topology
+
+## Create a full backup
+
+### Step 1: Install the backup tool
+
+<Tabs groupId="backup-method" queryString>
+<TabItem value="infrahubops" label="infrahub-backup CLI (Recommended)" default>
+
+Install the infrahub-backup CLI tool:
+
+```bash
+curl https://infrahub.opsmill.io/ops/$(uname -s)/$(uname -m)/infrahub-backup -o infrahub-backup
+chmod +x infrahub-backup
+```
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated backup guide:
+
+[Kubernetes Backup Guide](https://docs.infrahub.app/backup/guides/kubernetes-backup)
+
+</TabItem>
+<TabItem value="manual" label="Docker Compose">
+
+If you prefer manual control, proceed to backup each component individually as described in the following steps.
+
+</TabItem>
+<TabItem value="remote" label="Remote Database">
+
+Alternatively, you can use the [legacy tool](#using-the-python-based-backup-utility) to backup a remote Neo4j database.
+
+</TabItem>
+</Tabs>
+
+### Step 2: Backup the databases
+
+<Tabs groupId="backup-method" queryString>
+<TabItem value="infrahubops" label="infrahub-backup CLI" default>
+
+Create a backup of your running Infrahub instance:
+
+```bash
+./infrahub-backup create
+```
+
+The tool automatically:
+
+- Checks for running tasks before starting (use `--force` to skip)
+- Creates a timestamped backup archive (for example, `infrahub_backup_20250129_153045.tar.gz`)
+- Backs up Neo4j database with metadata (configurable with `--neo4jmetadata`)
+- Backs up Prefect/PostgreSQL task management database
+- Calculates SHA256 checksums for integrity verification
+
+:::note
+We plan to add object storage backup in a future release. Handle object storage backups separately for now.
+:::
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated backup guide:
+
+[Kubernetes Backup Guide](https://docs.infrahub.app/backup/guides/kubernetes-backup)
+
+</TabItem>
+<TabItem value="manual" label="Docker Compose">
+
+Connect to your Neo4j container and create a backup:
+
+```bash
+# Connect as neo4j user to avoid permission issues
+docker exec -it -u neo4j infrahub-database-1 bash
+
+# Create backup directory and run backup
+mkdir -p backups
+neo4j-admin database backup --to-path=backups/
+
+# Verify backup creation
+ls backups/
+# Output: neo4j-2025-03-24T19-57-18.backup
+```
+
+Backup the Prefect PostgreSQL database containing task logs and execution history:
+
+```bash
+# Export Prefect database (using default credentials)
+docker compose exec -T task-manager-db \
+  pg_dump -Fc -U postgres -d prefect > prefect.dump
+```
+
+</TabItem>
+<TabItem value="remote" label="Remote Database">
+
+For remote database backups using the Python utility:
+
+```bash
+# Clone the repository or use Docker image
+python -m utilities.db_backup neo4j backup \
+  --database-url=172.28.64.1 \
+  /infrahub_backups
+
+# If network access issues occur, use host network
+python -m utilities.db_backup neo4j backup \
+  --host-network \
+  --database-url=172.28.64.1 \
+  /infrahub_backups
+```
+
+</TabItem>
+</Tabs>
+
+### Step 3: Backup the object storage
+
+The [object storage](../../../artifact-file-storage/overview.mdx) layer holds all file content (file objects and artifacts) outside of the graph database. The graph database references this content through `storage_id` values, so both must be backed up together to maintain consistency.
+
+<Tabs groupId="storage-type" queryString>
+<TabItem value="s3" label="S3 Storage" default>
+
+If using S3 for object storage, use AWS CLI or your preferred S3 backup tool:
+
+```bash
+# Sync S3 bucket to local backup directory
+aws s3 sync s3://your-infrahub-bucket /backup/object_store/
+```
+
+</TabItem>
+<TabItem value="local" label="Local Filesystem">
+
+For local filesystem storage, copy the object storage directory:
+
+```bash
+# Copy object storage directory to backup location
+docker compose cp infrahub-server:/opt/infrahub/storage/. /backup/object_store/
+```
+
+</TabItem>
+</Tabs>
+
+## Restore from backup
+
+### Step 1: Prepare the environment
+
+Ensure Infrahub services are running before starting the restore process. You can start from a scratch/blank deployment.
+
+<Tabs groupId="restore-method" queryString>
+<TabItem value="infrahubops" label="infrahub-backup CLI" default>
+
+Restore from a backup archive:
+
+```bash
+./infrahub-backup restore infrahub_backup_20250129_153045.tar.gz
+```
+
+The tool automatically:
+
+- Validates backup integrity using checksums
+- Wipes cache and message queue data
+- Stops application containers
+- Restores PostgreSQL database first
+- Restores Neo4j database with metadata
+- Restarts all services in correct order
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
+
+</TabItem>
+<TabItem value="manual" label="Manual Process">
+
+If restoring manually, follow the steps below for each component.
+
+</TabItem>
+</Tabs>
+
+### Step 2: Restore the databases
+
+<Tabs groupId="restore-method" queryString>
+<TabItem value="infrahubops" label="infrahub-backup CLI" default>
+
+This is automatically handled by infrahub-backup.
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
+
+</TabItem>
+<TabItem value="manual" label="Docker Compose">
+
+```bash
+# Stop app services
+docker compose stop task-worker infrahub-server task-manager
+
+# Copy backup directory to container
+docker cp database-backup infrahub-database-1:/tmp/backup
+
+# Connect to container as neo4j user
+docker exec -it -u neo4j infrahub-database-1 bash
+
+# Drop existing database
+cypher-shell -d system -u neo4j
+DROP DATABASE neo4j;
+exit;
+
+# Clean residual data
+rm -rf /data/databases/neo4j
+rm -rf /data/transactions/neo4j
+
+# Restore from backup
+neo4j-admin database restore \
+  --from-path=/tmp/backup neo4j \
+  --overwrite-destination=true
+
+# Recreate database
+cypher-shell -d system -u neo4j
+CREATE DATABASE neo4j;
+SHOW DATABASES;
+```
+
+Restore the task manager PostgreSQL database
+
+```bash
+# Restore Prefect database
+docker compose exec -T task-manager-db \
+  pg_restore -d postgres -U postgres --clean --create prefect.dump
+
+# Restart task manager to apply changes
+docker compose restart task-manager
+```
+
+</TabItem>
+<TabItem value="remote" label="Remote Database">
+
+```bash
+# Restore using Python utility
+python -m utilities.db_backup neo4j restore \
+  /infrahub_backups \
+  --database-cypher-port=7687
+```
+
+</TabItem>
+</Tabs>
+
+### Step 3: Restore the object storage
+
+<Tabs groupId="storage-type" queryString>
+<TabItem value="s3" label="S3 Storage" default>
+
+```bash
+# Restore S3 bucket from backup
+aws s3 sync /backup/object_store/ s3://your-infrahub-bucket
+```
+
+</TabItem>
+<TabItem value="local" label="Local Filesystem">
+
+```bash
+# Restore object storage directory into the container
+docker compose cp /backup/object_store/. infrahub-server:/opt/infrahub/storage/
+```
+
+</TabItem>
+</Tabs>
+
+### Step 4: Restart Infrahub services
+
+<Tabs groupId="restore-method" queryString>
+<TabItem value="infrahubops" label="infrahub-backup CLI" default>
+
+This is automatically handled by infrahub-backup.
+
+</TabItem>
+<TabItem value="k8s" label="Kubernetes Helm">
+
+For Kubernetes deployments using Helm, see the dedicated restore guide:
+
+[Kubernetes Restore Guide](https://docs.infrahub.app/backup/guides/kubernetes-restore)
+
+</TabItem>
+<TabItem value="manual" label="Docker Compose">
+Restart services in the correct order to ensure proper initialization:
+
+```bash
+# Restart API servers first
+docker compose restart infrahub-server
+
+# Then restart task workers
+docker compose restart task-worker
+```
+
+</TabItem>
+</Tabs>
+
+## Validation
+
+Verify your restoration was successful:
+
+1. **Check database status:**
+
+   ```bash
+   docker compose exec -T database cypher-shell -u neo4j \
+     -c "SHOW DATABASES;"
+   ```
+
+   The Neo4j database should show as "online".
+
+2. **Verify Infrahub API:**
+
+   ```bash
+   curl http://localhost:8000/api/schema/summary
+   ```
+
+   You should receive a valid schema response.
+
+3. **Check task manager:**
+
+   ```bash
+   docker compose logs task-manager --tail 50
+   ```
+
+   Logs should show normal operation without errors.
+
+4. **Test artifact retrieval:**
+   Access the Infrahub UI and verify that stored artifacts (Transformations, queries) are accessible.
+
+## Advanced usage
+
+### Using the Python-based backup utility
+
+:::info Legacy Tool
+The Python-based utility (`utilities/db_backup`) is still available in the main Infrahub repository but is being replaced by infrahub-backup. Use it only if infrahub-backup doesn't meet your specific requirements.
+:::
+
+### Use non-default ports
+
+If your deployment uses custom ports, specify them during backup and restore operations:
+
+```bash
+# Backup with custom backup port
+python -m utilities.db_backup neo4j backup \
+  --database-backup-port=12345 \
+  /infrahub_backups
+
+# Restore with custom Cypher port
+python -m utilities.db_backup neo4j restore \
+  /infrahub_backups \
+  --database-cypher-port=9876
+```
+
+### Run backup tool via Docker
+
+If you don't have the repository cloned locally, run the backup tool directly from the Infrahub Docker image:
+
+```bash
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  registry.opsmill.io/opsmill/infrahub \
+  python -m utilities.db_backup
+```
+
+## Related resources
+
+- [Database backup overview](./overview.mdx) - Architecture and backup strategy concepts
+- [Cluster backup and restore](./cluster-backup-and-restore.mdx) - Neo4j cluster-specific backup and restore
+- [infrahub-backup CLI reference](https://docs.infrahub.app/backup/) - Command-line reference for the infrahub-backup tool

@@ -9,7 +9,7 @@ from .models import EventNode, InfrahubEvent
 
 
 class GroupMutatedEvent(InfrahubEvent):
-    """Event generated when a node has been mutated"""
+    """Event generated when a node has been mutated."""
 
     kind: str = Field(..., description="The type of updated group")
     node_id: str = Field(..., description="The ID of the updated group")
@@ -94,7 +94,7 @@ class GroupMutatedEvent(InfrahubEvent):
 
 
 class GroupMemberAddedEvent(GroupMutatedEvent):
-    """Event generated when a one or more members have been added to a group"""
+    """Event generated when a one or more members have been added to a group."""
 
     action: MutationAction = MutationAction.CREATED
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.member_added"
@@ -102,7 +102,7 @@ class GroupMemberAddedEvent(GroupMutatedEvent):
 
 
 class GroupMemberRemovedEvent(GroupMutatedEvent):
-    """Event generated when a one or more members have been removed to a group"""
+    """Event generated when a one or more members have been removed to a group."""
 
     action: MutationAction = MutationAction.DELETED
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.member_removed"

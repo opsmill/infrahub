@@ -24,24 +24,30 @@ class BranchRelativePermissionDecision(StrEnum):
 GLOBAL_PERMISSION_DENIAL_MESSAGE = {
     GlobalPermissions.EDIT_DEFAULT_BRANCH.value: "You are not allowed to change data in the default branch",
     GlobalPermissions.MERGE_BRANCH.value: "You are not allowed to merge a branch",
+    GlobalPermissions.REBASE_BRANCH.value: "You are not allowed to rebase a branch",
+    GlobalPermissions.DELETE_BRANCH.value: "You are not allowed to delete a branch you did not create",
     GlobalPermissions.MERGE_PROPOSED_CHANGE.value: "You are not allowed to merge proposed changes",
     GlobalPermissions.REVIEW_PROPOSED_CHANGE.value: "You are not allowed to review proposed changes",
     GlobalPermissions.MANAGE_SCHEMA.value: "You are not allowed to manage the schema",
     GlobalPermissions.MANAGE_ACCOUNTS.value: "You are not allowed to manage user accounts, groups or roles",
     GlobalPermissions.MANAGE_PERMISSIONS.value: "You are not allowed to manage permissions",
     GlobalPermissions.MANAGE_REPOSITORIES.value: "You are not allowed to manage repositories",
+    GlobalPermissions.READ_TELEMETRY.value: "You are not allowed to read telemetry data",
     GlobalPermissions.UPDATE_OBJECT_HFID_DISPLAY_LABEL.value: "You are not allowed to update human friendly IDs and display labels ad hoc",
 }
 
 GLOBAL_PERMISSION_DESCRIPTION = {
     GlobalPermissions.EDIT_DEFAULT_BRANCH: "Allow a user to change data in the default branch",
     GlobalPermissions.MERGE_BRANCH: "Allow a user to merge branches",
+    GlobalPermissions.REBASE_BRANCH: "Allow a user to rebase branches",
+    GlobalPermissions.DELETE_BRANCH: "Allow a user to delete branches",
     GlobalPermissions.MERGE_PROPOSED_CHANGE: "Allow a user to merge proposed changes",
     GlobalPermissions.REVIEW_PROPOSED_CHANGE: "Allow a user to approve or reject proposed changes",
     GlobalPermissions.MANAGE_SCHEMA: "Allow a user to manage the schema",
     GlobalPermissions.MANAGE_ACCOUNTS: "Allow a user to manage accounts, account roles and account groups",
     GlobalPermissions.MANAGE_PERMISSIONS: "Allow a user to manage permissions",
     GlobalPermissions.MANAGE_REPOSITORIES: "Allow a user to manage repositories",
+    GlobalPermissions.READ_TELEMETRY: "Allow a user to read telemetry data",
     GlobalPermissions.SUPER_ADMIN: "Allow a user to do anything",
     GlobalPermissions.UPDATE_OBJECT_HFID_DISPLAY_LABEL: "Allow a user to update objects' display labels and human friendly IDs ad hoc",
 }

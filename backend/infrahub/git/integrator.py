@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING, Any
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
+from infrahub_sdk.exceptions import Error as InfrahubSdkError
 from infrahub_sdk.exceptions import ValidationError
+from infrahub_sdk.graphql.query_renderer import render_query
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -33,6 +35,7 @@ from infrahub_sdk.spec.menu import MenuFile
 from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError
+from infrahub_sdk.template.filters import ExecutionContext
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import InfrahubFile, SchemaFile
 from prefect import flow, task
@@ -42,6 +45,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
+from infrahub import config
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
@@ -135,10 +139,13 @@ class TransformPythonInformation(BaseModel):
         ..., description="Indicate if the transform should convert the query response to InfrahubNode objects"
     )
 
+    description: str | None = None
+    """Description of the Transform"""
+
 
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
-    """
-    This class provides interfaces to read and process information from .infrahub.yml files and can perform
+    """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
+
     actions for objects defined within those files.
 
     This class will later be broken out from the "InfrahubRepository" based classes and instead be a separate
@@ -154,6 +161,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         except RepositoryInvalidFileSystemError:
             await self.ensure_location_is_defined()
             await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
+            self.reinitialized = True
             log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
         if commit:
@@ -191,6 +199,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
             await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+            if config_file.schemas:
+                await self.sdk.schema.all(branch=infrahub_branch_name, refresh=True)
             await self.import_all_graphql_query(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )  # type: ignore[call-overload]
@@ -447,6 +457,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         Raises:
             RepositoryConfigurationError: If the configuration file is missing,
                 cannot be parsed as YAML, or has an invalid format.
+
         """
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
@@ -575,13 +586,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_all_graphql_query(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
-        """Search for all .gql file and import them as GraphQL query."""
+        """Search for all .gql file and import them as GraphQL query.
+
+        Raises:
+            Error: When rendering a configured GraphQL query template fails (from infrahub_sdk).
+
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
-        local_queries = {
-            query.name: query.load_query(relative_path=commit_wt.directory) for query in config_file.queries
-        }
+
+        local_queries: dict[str, str] = {}
+        for query_config in config_file.queries:
+            try:
+                local_queries[query_config.name] = render_query(
+                    name=query_config.name,
+                    config=config_file,
+                    relative_path=str(commit_wt.directory),
+                )
+            except InfrahubSdkError as exc:
+                log.error(f"Query '{query_config.name}': {exc}")
+                raise
 
         if not local_queries:
             return
@@ -878,8 +903,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch: str,
         file_type: type[InfrahubFile],
     ) -> None:
-        """Load one or multiple objects files into Infrahub."""
+        """Load one or multiple objects files into Infrahub.
 
+        Raises:
+            ValueError: When a referenced schema lacks both ``human_friendly_id`` and ``default_filter``.
+
+        """
         log = get_run_logger()
         files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
 
@@ -1001,6 +1030,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     query=str(graphql_query.id),
                     timeout=transform_class.timeout,
                     convert_query_response=transform.convert_query_response,
+                    description=transform.description,
                 )
             )
 
@@ -1115,8 +1145,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def compare_python_check_definition(
         cls, check: CheckDefinitionInformation, existing_check: CoreCheckDefinition
     ) -> bool:
-        """Compare an existing Python Check Object with a Check Class
-        and identify if we need to update the object in the database."""
+        """Compare an existing Python Check Object with a Check Class.
+
+        and identify if we need to update the object in the database.
+
+        """
         if (
             existing_check.query.id != check.query
             or existing_check.file_path.value != check.file_path
@@ -1133,6 +1166,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name)
         data = {
             "name": transform.name,
+            "description": transform.description,
             "repository": transform.repository,
             "query": transform.query,
             "file_path": transform.file_path,
@@ -1153,6 +1187,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def update_python_transform(
         self, existing_transform: CoreTransformPython, local_transform: TransformPythonInformation
     ) -> None:
+        if existing_transform.description.value != local_transform.description:
+            existing_transform.description.value = local_transform.description
+
         if existing_transform.query.id != local_transform.query:
             existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
 
@@ -1172,7 +1209,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         cls, existing_transform: CoreTransformPython, local_transform: TransformPythonInformation
     ) -> bool:
         if (
-            existing_transform.query.id != local_transform.query
+            existing_transform.description.value != local_transform.description
+            or existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
             or existing_transform.convert_query_response.value != local_transform.convert_query_response
@@ -1197,8 +1235,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
-        jinja2_template = Jinja2Template(template=Path(location), template_directory=Path(commit_worktree.directory))
+        jinja2_template = Jinja2Template(
+            template=Path(location), template_directory=Path(commit_worktree.directory), client=self.sdk
+        )
         try:
+            context = ExecutionContext.CORE | ExecutionContext.WORKER
+            if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+                context = ExecutionContext.ALL
+            jinja2_template.validate(context=context)
             return await jinja2_template.render(variables=data)
         except JinjaTemplateError as exc:
             log.error(str(exc), exc_info=True)
@@ -1216,7 +1260,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         client: InfrahubClient,
         params: dict | None = None,
     ) -> InfrahubCheck:
-        """Execute A Python Check stored in the repository."""
+        """Execute A Python Check stored in the repository.
+
+        Raises:
+            CheckError: When the check module cannot be loaded, the class is missing or running the check raises an unexpected exception.
+
+        """
         log = get_run_logger()
 
         commit_worktree = self.get_commit_worktree(commit=commit)
@@ -1275,7 +1324,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         convert_query_response: bool,
         data: dict | None = None,
     ) -> Any:
-        """Execute A Python Transform stored in the repository."""
+        """Execute A Python Transform stored in the repository.
+
+        Raises:
+            ValueError: When ``location`` does not contain the expected ``module::class`` separator.
+            TransformError: When the transform module cannot be loaded, the class is missing or running the transform raises an unexpected exception.
+
+        """
         log = get_run_logger()
 
         if "::" not in location:

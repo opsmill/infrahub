@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import logging
 import os
@@ -41,6 +42,7 @@ from infrahub.core.schema.definitions.core import (
     core_account_token,
     core_generic_account,
     core_profile_schema_definition,
+    internal_external_identity,
 )
 from infrahub.core.schema.definitions.core.propose_change import core_proposed_change
 from infrahub.core.schema.manager import SchemaManager
@@ -51,6 +53,8 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.lock import initialize_lock
+from infrahub.menu.constants import DEFAULT_MENU
+from infrahub.menu.models import MenuItemDefinition, MenuSection
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
 from infrahub.permissions import LocalPermissionBackend
@@ -71,6 +75,7 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
+from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
 ResponseClass = TypeVar("ResponseClass")
@@ -109,6 +114,18 @@ def pytest_configure(config: pytest.Config) -> None:
 @pytest.fixture(scope="session", autouse=True)
 def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _install_redis_loop_diagnostics() -> None:
+    # This fixture should be deleted once the flakiness is gone
+    install_redis_loop_diagnostics()
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
+async def _register_pytest_session_loop() -> None:
+    # This fixture should be deleted once the flakiness is gone
+    register_known_loop("pytest-session", asyncio.get_running_loop())
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -299,7 +316,6 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
 
 def do_register_simplified_proposed_change_schema(branch: Branch) -> SchemaBranch:
     """Register a minimal CoreProposedChange schema with only the attributes needed for queries."""
-
     minimal_pc = NodeSchema(
         name=core_proposed_change.name,
         namespace=core_proposed_change.namespace,
@@ -576,7 +592,7 @@ def do_data_schema(branch: Branch) -> None:
             core_profile_schema_definition,
             core_generic_account,
         ],
-        "nodes": [core_account_token],
+        "nodes": [core_account_token, internal_external_identity],
     }
 
     schema = SchemaRoot(**SCHEMA)
@@ -605,7 +621,7 @@ def do_group_schema(branch: Branch) -> None:
                 "label": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -620,7 +636,7 @@ def do_group_schema(branch: Branch) -> None:
                 "namespace": "Core",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.GENERICGROUP],
             },
@@ -638,7 +654,7 @@ def do_car_person_schema_unregistered() -> SchemaRoot:
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "uniqueness_constraints": [["name__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -677,7 +693,7 @@ def do_car_person_schema_unregistered() -> SchemaRoot:
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "uniqueness_constraints": [["name__value"]],
                 "attributes": [
@@ -709,17 +725,14 @@ async def car_person_schema_unregistered(
 
 @pytest.fixture
 async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> SchemaRoot:
-    """
-    Person schema with no unicity constraint set except default filter.
-    """
-
+    """Person schema with no unicity constraint set except default filter."""
     schema: dict[str, Any] = {
         "nodes": [
             {
                 "name": "PersonDF",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text"},
@@ -741,13 +754,13 @@ async def car_person_schema(
 
 @pytest.fixture
 async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
-    schema = SchemaRoot(
+    return SchemaRoot(
         nodes=[
             NodeSchema(
                 name="Car",
                 namespace="Test",
                 default_filter="name__value",
-                display_labels=["name__value", "color__value"],
+                display_label="{{ name__value }} {{ color__value }}",
                 uniqueness_constraints=[["name__value"]],
                 branch=BranchSupportType.LOCAL,
                 attributes=[
@@ -768,7 +781,7 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
                 name="Person",
                 namespace="Test",
                 default_filter="name__value",
-                display_labels=["name__value"],
+                display_label="name__value",
                 branch=BranchSupportType.AWARE,
                 uniqueness_constraints=[["name__value"]],
                 attributes=[
@@ -786,7 +799,6 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
             ),
         ],
     )
-    return schema
 
 
 @pytest.fixture
@@ -837,7 +849,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Dog",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value"],
+                "display_label": "{{ name__value }} {{ breed__value }}",
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -847,7 +859,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Cat",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value", "color__value"],
+                "display_label": "{{ name__value }} {{ breed__value }} {{ color__value }}",
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -856,7 +868,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
             {
                 "name": "Person",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "default_filter": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
@@ -895,7 +907,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
             {
                 "name": "Person",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -906,7 +918,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
             {
                 "name": "Car",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "human_friendly_id": ["owner__name__value", "name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text"},
@@ -926,7 +938,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
             {
                 "name": "Thing",
                 "namespace": "Test",
-                "display_labels": ["value__value"],
+                "display_label": "value__value",
                 "attributes": [
                     {"name": "value", "kind": "Text"},
                 ],
@@ -1020,7 +1032,7 @@ async def dependent_generics_unregistered(
                 "name": "Dog",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value"],
+                "display_label": "{{ name__value }} {{ breed__value }}",
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -1030,7 +1042,7 @@ async def dependent_generics_unregistered(
                 "name": "Cat",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value", "color__value"],
+                "display_label": "{{ name__value }} {{ breed__value }} {{ color__value }}",
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -1039,14 +1051,14 @@ async def dependent_generics_unregistered(
             {
                 "name": "Human",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "inherit_from": ["TestPerson"],
                 "human_friendly_id": ["name__value"],
             },
             {
                 "name": "Cylon",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "inherit_from": ["TestPerson"],
                 "human_friendly_id": ["name__value"],
                 "attributes": [
@@ -1083,7 +1095,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
                 "label": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "uniqueness_constraints": [["name__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1135,7 +1147,7 @@ async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, da
 
 @pytest.fixture(scope="module")
 def tmp_path_module_scope() -> Generator[Path, None, None]:
-    """Fixture similar to tmp_path but with scope=module"""
+    """Fixture similar to tmp_path but with scope=module."""
     with TemporaryDirectory() as tmpdir:
         directory = tmpdir
         if sys.platform == "darwin" and tmpdir.startswith("/var/"):
@@ -1191,11 +1203,11 @@ class BusRPCMock(InfrahubMessageBus):
 
 
 class TestHelper:
-    """TestHelper profiles functions that can be used as a fixture throughout the test framework"""
+    """TestHelper profiles functions that can be used as a fixture throughout the test framework."""
 
     @staticmethod
     def schema_file(file_name: str) -> dict:
-        """Return the contents of a schema file as a dictionary"""
+        """Return the contents of a schema file as a dictionary."""
         file_content = (TestHelper.get_fixtures_dir() / "schemas" / file_name).read_text(encoding="utf-8")
 
         return ujson.loads(file_content)
@@ -1209,7 +1221,6 @@ class TestHelper:
     @staticmethod
     def import_module_in_fixtures(module: str) -> Any:
         """Import a python module from the fixtures directory."""
-
         sys.path.append(str(TestHelper.get_fixtures_dir()))
         module_name = module.replace("/", ".")
         return importlib.import_module(module_name)
@@ -1281,7 +1292,7 @@ def car_person_branch_agnostic_schema() -> dict[str, Any]:
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "uniqueness_constraints": [["name__value"]],
                 "attributes": [
@@ -1331,7 +1342,7 @@ async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "uniqueness_constraints": [["name__value"], ["owner"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1354,7 +1365,7 @@ async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "uniqueness_constraints": [["name__value"]],
                 "attributes": [
@@ -1790,3 +1801,108 @@ def git_user_config() -> Generator[None, None, None]:
     yield
     config.SETTINGS.git.user_email = initial_user_email
     config.SETTINGS.git.user_name = initial_user_name
+
+
+@pytest.fixture
+def menu_fixture_01_data() -> list[MenuItemDefinition]:
+    return [
+        MenuItemDefinition(
+            namespace="Userdefined",
+            name="Test",
+            label="Test",
+            protected=False,
+            icon="mdi:cube-outline",
+            section=MenuSection.OBJECT,
+            order_weight=12000,
+        ),
+        MenuItemDefinition(
+            namespace="Builtin",
+            name=DEFAULT_MENU,
+            label=DEFAULT_MENU.title(),
+            protected=True,
+            icon="mdi:cube-outline",
+            section=MenuSection.OBJECT,
+            order_weight=10000,
+            children=[
+                MenuItemDefinition(
+                    namespace="Builtin",
+                    name="Tag",
+                    label="Tags",
+                    kind=InfrahubKind.TAG,
+                    protected=True,
+                    section=MenuSection.OBJECT,
+                    order_weight=10000,
+                )
+            ],
+        ),
+        MenuItemDefinition(
+            namespace="Builtin",
+            name="IPAM",
+            label="IPAM",
+            protected=True,
+            section=MenuSection.OBJECT,
+            icon="mdi:ip-network",
+            order_weight=9500,
+            children=[
+                MenuItemDefinition(
+                    namespace="Builtin",
+                    name="IPPrefix",
+                    label="IP Prefixes",
+                    kind=InfrahubKind.IPPREFIX,
+                    path="/ipam",
+                    protected=True,
+                    section=MenuSection.INTERNAL,
+                    order_weight=1000,
+                ),
+                MenuItemDefinition(
+                    namespace="Builtin",
+                    name="IPAddress",
+                    label="IP Addresses",
+                    kind=InfrahubKind.IPPREFIX,
+                    path="/ipam/ip_addresses",
+                    protected=True,
+                    section=MenuSection.INTERNAL,
+                    order_weight=2000,
+                ),
+            ],
+        ),
+        MenuItemDefinition(
+            namespace="Builtin",
+            name="ProposedChanges",
+            label="Proposed Changes",
+            path="/proposed-changes",
+            protected=True,
+            section=MenuSection.INTERNAL,
+            order_weight=1000,
+        ),
+        MenuItemDefinition(
+            namespace="Builtin",
+            name="Deployment",
+            label="Deployment",
+            icon="mdi:rocket-launch",
+            protected=True,
+            section=MenuSection.INTERNAL,
+            order_weight=3000,
+            children=[
+                MenuItemDefinition(
+                    namespace="Builtin",
+                    name="ArtifactMenu",
+                    label="Artifact",
+                    protected=True,
+                    section=MenuSection.INTERNAL,
+                    order_weight=1000,
+                    children=[
+                        MenuItemDefinition(
+                            namespace="Builtin",
+                            name="Artifact",
+                            label="Artifact",
+                            kind=InfrahubKind.ARTIFACT,
+                            protected=True,
+                            section=MenuSection.INTERNAL,
+                            order_weight=1000,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ]

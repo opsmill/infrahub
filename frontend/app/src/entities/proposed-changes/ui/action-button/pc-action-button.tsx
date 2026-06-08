@@ -8,7 +8,6 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/domain/get-proposed-change-available-actions.query";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ActionComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-action-combobox-list";
 import { CloseButton } from "@/entities/proposed-changes/ui/action-button/pc-close-button";
@@ -17,6 +16,7 @@ import { MergeButton } from "@/entities/proposed-changes/ui/action-button/pc-mer
 import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
 import type { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { PcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/ui/queries/get-proposed-change-available-actions.query";
 
 type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 

@@ -23,7 +23,7 @@ class TemplateLabel:
 
     @property
     def has_related_components(self) -> bool:
-        """Indicate if the associated template use variables from relationships"""
+        """Indicate if the associated template use variables from relationships."""
         return len(self.relationships) > 0
 
     def get_hash(self) -> str:
@@ -69,7 +69,6 @@ class DisplayLabels:
 
     def register_template_schema_path(self, kind: str, schema_path: SchemaAttributePath, template: str) -> None:
         """Register Jinja2 template based display labels using the schema path of each impacted variable in the node."""
-
         if kind not in self._template_based_display_labels:
             self._template_based_display_labels[kind] = TemplateLabel(template=template)
 
@@ -106,7 +105,7 @@ class DisplayLabels:
             )
 
     def targets_node(self, kind: str) -> bool:
-        """Indicates if there is a display_label defined for the targeted node"""
+        """Indicates if there is a display_label defined for the targeted node."""
         return kind in self._template_based_display_labels
 
     def get_template_node(self, kind: str) -> TemplateLabel:

@@ -148,7 +148,6 @@ async def rabbitmq_api(rabbitmq: None) -> RabbitMQManager:
 
 async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
     """Validates creation of exchanges, queues and bindings."""
-
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     _ = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
 
@@ -342,8 +341,7 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
 
 
 async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
-    """Validate that the adapter publishes messages to the correct queue"""
-
+    """Validate that the adapter publishes messages to the correct queue."""
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
 
@@ -377,7 +375,6 @@ async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
 
 async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
     """Validates that incoming messages gets parsed by the callback method."""
-
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
 
@@ -394,7 +391,6 @@ async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log: FakeLo
 
 async def test_rabbitmq_callback_with_invalid_routing_key(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
     """Validate that messages with an invalid routing key is logged."""
-
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
 
@@ -411,7 +407,6 @@ async def test_rabbitmq_callback_with_invalid_routing_key(rabbitmq_api: RabbitMQ
 
 async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger, dependency_provider: Provider) -> None:
     """Validates that incoming messages gets parsed by the callback method."""
-
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
     with dependency_provider.scope(build_message_bus, lambda: bus):
@@ -430,7 +425,6 @@ async def test_rabbitmq_rpc(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger,
 
 async def test_rabbitmq_on_message(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
     """Validates the on_message method."""
-
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     await bus.shutdown()
 
@@ -449,8 +443,7 @@ async def test_rabbitmq_on_message(rabbitmq_api: RabbitMQManager, fake_log: Fake
 
 
 async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
-    """Validates logging of invalid routing key"""
-
+    """Validates logging of invalid routing key."""
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     await bus.shutdown()
 

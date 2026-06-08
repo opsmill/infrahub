@@ -445,10 +445,26 @@ async def test_delete_branch_after_merge_preserves_node(
 
 
 async def test_create_branch(db: InfrahubDatabase, empty_database: None) -> None:
-    """Validate that creating a branch with quotes in descriptions work and are properly handled with params"""
+    """Validate that creating a branch with quotes in descriptions work and are properly handled with params."""
     branch_name = "branching-out"
     description = "It's supported with quotes"
     await create_branch(branch_name=branch_name, db=db, description=description)
     branch = await Branch.get_by_name(name=branch_name, db=db)
     assert branch.name == branch_name
     assert branch.description == description
+
+
+async def test_get_list_with_offset(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """Test that Branch.get_list offset skips the expected number of records."""
+    for i in range(5):
+        await create_branch(branch_name=f"offset-test-{i}", db=db)
+
+    all_branches = await Branch.get_list(db=db)
+    total = len(all_branches)
+    assert total >= 6  # main + global + 5 created
+
+    offset_branches = await Branch.get_list(db=db, offset=3)
+
+    assert len(offset_branches) == total - 3, (
+        f"offset=3 should skip 3 branches, expected {total - 3} but got {len(offset_branches)}"
+    )

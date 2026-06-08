@@ -446,7 +446,7 @@ async def test_schema_load_endpoint_constraints_not_valid(
         "name": "Person",
         "namespace": "Test",
         "default_filter": "name__value",
-        "display_labels": ["name__value"],
+        "display_label": "name__value",
         "branch": "aware",
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True, "regex": "^[A-Z]+$"},

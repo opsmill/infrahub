@@ -1,106 +1,103 @@
-import Handlebars from "@/shared/libs/handlebars";
+import { graphql } from "gql.tada";
 
-export const getValidatorDetails = Handlebars.compile(`
-query GET_VALIDATOR_DETAILS {
-  CoreValidator(
-    ids: ["{{id}}"]
-  ) {
-    edges {
-      node {
-        id
-        display_label
-        conclusion {
-          value
-        }
-        started_at {
-          value
-        }
-        completed_at {
-          value
-        }
-        state {
-          value
-        }
-        ... on CoreRepositoryValidator {
-          repository {
-            node {
-              display_label
-            }
+export const GET_VALIDATOR_DETAILS = graphql(`
+  query GET_VALIDATOR_DETAILS($ids: [ID!], $checksOffset: Int, $checksLimit: Int) {
+    CoreValidator(ids: $ids) {
+      edges {
+        node {
+          id
+          display_label
+          conclusion {
+            value
           }
-        }
-        ... on CoreArtifactValidator {
-          definition {
-            node {
-              display_label
-              name {
-                value
-              }
-              description {
-                value
+          started_at {
+            value
+          }
+          completed_at {
+            value
+          }
+          state {
+            value
+          }
+          ... on CoreRepositoryValidator {
+            repository {
+              node {
+                display_label
               }
             }
           }
-        }
-        checks {{#if filters}}({{{filters}}}){{/if}} {
-          count
-          edges {
-            node {
-              id
-              display_label
-              name {
-                value
-              }
-              message {
-                value
-              }
-              severity {
-                value
-              }
-              conclusion {
-                value
-              }
-              kind {
-                value
-              }
-              origin{
-                value
-              }
-              created_at {
-                value
-              }
-              ... on CoreDataCheck {
-                conflicts {
+          ... on CoreArtifactValidator {
+            definition {
+              node {
+                display_label
+                name {
+                  value
+                }
+                description {
                   value
                 }
               }
-              ... on CoreSchemaCheck {
-                 conflicts {
+            }
+          }
+          checks(offset: $checksOffset, limit: $checksLimit) {
+            count
+            edges {
+              node {
+                id
+                display_label
+                name {
                   value
                 }
+                message {
+                  value
+                }
+                severity {
+                  value
+                }
+                conclusion {
+                  value
+                }
+                kind {
+                  value
+                }
+                origin {
+                  value
+                }
+                created_at {
+                  value
+                }
+                ... on CoreDataCheck {
+                  conflicts {
+                    value
+                  }
+                }
+                ... on CoreSchemaCheck {
+                  conflicts {
+                    value
+                  }
+                }
+                ... on CoreFileCheck {
+                  files {
+                    value
+                  }
+                  commit {
+                    value
+                  }
+                }
+                ... on CoreArtifactCheck {
+                  storage_id {
+                    value
+                  }
+                  artifact_id {
+                    value
+                  }
+                }
+                __typename
               }
-              ... on CoreFileCheck {
-                files {
-                  value
-                }
-                commit {
-                  value
-                }
-              }
-              ... on CoreArtifactCheck {
-                storage_id {
-                  value
-                }
-                artifact_id {
-                  value
-                }
-              }
-              __typename
             }
           }
         }
       }
     }
   }
-}
-
 `);

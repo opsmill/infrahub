@@ -9,7 +9,7 @@ import { debounce } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
+import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";

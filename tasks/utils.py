@@ -48,7 +48,6 @@ ESCAPED_REPO_PATH = escape_path(REPO_BASE)
 
 def project_ver() -> str:
     """Find version from pyproject.toml to use for docker image tagging."""
-
     with (REPO_BASE / "pyproject.toml").open("rb") as file:
         return tomllib.load(file)["project"].get("version", "latest")
 
@@ -73,8 +72,13 @@ def get_group_id(context: Context) -> int:
 
 
 def str_to_bool(value: str) -> bool:
-    """Convert a String to a Boolean"""
+    """Convert a String to a Boolean.
 
+    Raises:
+        TypeError: When ``value`` is not a string, bool, or supported integer.
+        ValueError: When ``value`` cannot be mapped to a boolean.
+
+    """
     if isinstance(value, bool):
         return value
 
@@ -106,7 +110,6 @@ def str_to_bool(value: str) -> bool:
 
 def get_version_from_pyproject() -> str:
     """Retrieve the current version from the pyproject.toml file."""
-
     with (REPO_BASE / "pyproject.toml").open("rb") as file:
         return tomllib.load(file)["project"]["version"]
 
@@ -115,5 +118,4 @@ def get_yamllint_rules() -> dict:
     from ruamel.yaml import YAML
 
     yaml = YAML(typ="rt")
-    yamllint_rules = yaml.load(Path(".yamllint.yml"))
-    return yamllint_rules
+    return yaml.load(Path(".yamllint.yml"))

@@ -166,7 +166,7 @@ async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main:
         constraint_name="attribute.optional.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="height"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = AttributeOptionalChecker(db=db, branch=branch)

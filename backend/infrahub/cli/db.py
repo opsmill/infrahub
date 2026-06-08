@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
+from uuid import UUID
 
 import typer
 import ujson
@@ -23,7 +24,6 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -35,7 +35,7 @@ from infrahub.core.graph.schema import (
     GraphRelationshipIsPartOf,
     GraphRelationshipProperties,
 )
-from infrahub.core.initialization import get_root_node, initialize_registry
+from infrahub.core.initialization import get_root_node, initialize_registry, reset_deployment_id
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.shared import MigrationInput, get_migration_console
@@ -49,6 +49,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import ValidationError
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
@@ -89,9 +90,7 @@ class IndexAction(StrEnum):
 
 @app.callback()
 def callback() -> None:
-    """
-    Manage the graph in the database.
-    """
+    """Manage the graph in the database."""
 
 
 async def do_migrate(
@@ -107,6 +106,7 @@ async def do_migrate(
         root_node: The root node containing the current graph version.
         check: If True, only check which migrations need to run without applying them.
         migration_number: If provided, run only this specific migration.
+
     """
     migrations = await detect_migration_to_run(
         current_graph_version=root_node.graph_version, migration_number=migration_number
@@ -129,7 +129,7 @@ async def migrate_cmd(
         None, help="Apply a specific migration by number, regardless of current database version"
     ),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations"""
+    """Check the current format of the internal graph and apply the necessary migrations."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -151,7 +151,12 @@ async def check_inheritance_cmd(
     fix: bool = typer.Option(False, help="Fix the inheritance of any invalid nodes."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the database for any vertices with incorrect inheritance"""
+    """Check the database for any vertices with incorrect inheritance.
+
+    Raises:
+        Exit: When inheritance checks fail (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -169,13 +174,80 @@ async def check_inheritance_cmd(
     await dbdriver.close()
 
 
+@app.command(name="reset-deployment-id")
+async def reset_deployment_id_cmd(
+    ctx: typer.Context,
+    deployment_id: str | None = typer.Option(
+        None, "--deployment-id", help="Set an explicit UUID instead of generating a random one."
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Reset the internal deployment_id on the Root node.
+
+    Running Infrahub server and worker processes cache this value at startup and
+    must be restarted after this command to pick up the new value.
+
+    Raises:
+        Exit: When the provided deployment_id is not a valid UUID, the user declines the
+            confirmation prompt, or resetting the deployment_id fails (raises typer.Exit to
+            terminate the CLI command).
+
+    """
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    console = Console()
+
+    if deployment_id is not None:
+        try:
+            UUID(deployment_id)
+        except ValueError:
+            console.print(f"[red]{deployment_id!r} is not a valid UUID.[/red]")
+            raise typer.Exit(code=1) from None
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    try:
+        root = await get_root_node(db=dbdriver)
+        current = str(root.get_uuid())
+        console.print(f"Current deployment_id: [bold]{current}[/bold]")
+
+        if not yes and not typer.confirm("Reset the deployment_id?"):
+            console.print("Aborted.")
+            raise typer.Exit(code=1)
+
+        try:
+            old_uuid, new_uuid = await reset_deployment_id(db=dbdriver, new_uuid=deployment_id)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(code=1) from exc
+
+        console.print(f"New deployment_id:     [bold green]{new_uuid}[/bold green]")
+        console.print(f"(was {old_uuid})")
+        console.print(
+            "[yellow]Restart all running Infrahub server and worker processes to pick up the new value.[/yellow]"
+        )
+    finally:
+        await dbdriver.close()
+
+
 @app.command(name="check-duplicate-schema-fields")
 async def check_duplicate_schema_fields_cmd(
     ctx: typer.Context,
     fix: bool = typer.Option(False, help="Fix the duplicate schema fields on the default branch."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check for any duplicate schema attributes or relationships on the default branch"""
+    """Check for any duplicate schema attributes or relationships on the default branch.
+
+    Raises:
+        Exit: When duplicate schema fields are detected and not resolved (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -198,7 +270,7 @@ async def update_core_schema_cmd(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations"""
+    """Check the current format of the internal graph and apply the necessary migrations."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -221,7 +293,12 @@ async def constraint(
     action: ConstraintAction = typer.Argument(ConstraintAction.SHOW),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Manage Database Constraints"""
+    """Manage Database Constraints.
+
+    Raises:
+        Exit: When the configured database type is not supported (raises typer.Exit to terminate the CLI command).
+
+    """
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
@@ -265,7 +342,7 @@ async def index(
     action: IndexAction = typer.Argument(IndexAction.SHOW),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Manage Database Indexes"""
+    """Manage Database Indexes."""
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
@@ -347,6 +424,7 @@ async def migrate_database(
         migrations: Sequence of migrations to apply.
         initialize: Whether to initialize the registry before running migrations.
         update_graph_version: Whether to update the graph version after each migration.
+
     """
     if not migrations:
         return True
@@ -381,9 +459,7 @@ async def migrate_database(
 
 
 async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
-    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
-    if not branches:
-        return []
+    branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
 
     branches_needing_rebase: list[Branch] = []
     for branch in branches:
@@ -436,13 +512,20 @@ async def initialize_internal_schema() -> None:
 
 
 async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debug: bool = False) -> None:
-    """Update the core schema of Infrahub to the latest version"""
+    """Update the core schema of Infrahub to the latest version.
+
+    Raises:
+        Exit: When schema validation fails, migration validation reports violations, or the
+            schema update execution raises an exception (raises typer.Exit to terminate the CLI command).
+
+    """
     # ----------------------------------------------------------
     # Initialize Schema and Registry
     # ----------------------------------------------------------
     if initialize:
         await initialize_registry(db=db)
         await initialize_internal_schema()
+        build_component_registry()
 
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
 
@@ -540,7 +623,7 @@ async def selected_export_cmd(
     export_dir: Path = typer.Option(Path("infrahub-exports"), help="Path of directory to save exports"),  # noqa: B008
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Export database structure of selected nodes from the database without any actual data"""
+    """Export database structure of selected nodes from the database without any actual data."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -705,8 +788,8 @@ async def load_export_cmd(
     query_limit: int = typer.Option(1000, help="Maximum batch size of import query"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """
-    Cannot be used for backup/restore functionality.
+    """Cannot be used for backup/restore functionality.
+
     Loads an anonymized export into Neo4j.
     Only used for analysis of output of the selected-export command.
     """
@@ -863,6 +946,7 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
     Args:
         db: The database object.
         output_dir: Directory to save detailed check results.
+
     """
     get_migration_console().log("Running database health checks...")
 

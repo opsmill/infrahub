@@ -1,5 +1,4 @@
-"""
-Tests for Migration 061: Link ProposedChanges to DiffRoots.
+"""Tests for Migration 061: Link ProposedChanges to DiffRoots.
 
 Test scenarios:
 1. DiffRoots with no appropriate proposed change - should remain unlinked
@@ -92,8 +91,7 @@ class TestMigration061:
         is_merged: bool = False,
         tracking_id: TrackingId | None = None,
     ) -> tuple[str, str]:
-        """
-        Create a pair of DiffRoots using the proper DiffRepository API.
+        """Create a pair of DiffRoots using the proper DiffRepository API.
 
         Returns tuple of (diff_branch_root_uuid, base_branch_root_uuid).
         """
@@ -169,9 +167,7 @@ class TestMigration061:
         default_branch: Branch,
         diff_repository: DiffRepository,
     ) -> None:
-        """
-        Comprehensive test covering all scenarios for migration 061.
-        """
+        """Comprehensive test covering all scenarios for migration 061."""
         # Create timestamps for testing
         base_time = Timestamp()
         t0 = base_time.add(seconds=-600)

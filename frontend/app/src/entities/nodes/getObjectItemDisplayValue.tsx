@@ -12,18 +12,20 @@ import type {
   NumberAttribute,
   RelationshipProperty,
   TextAttribute,
-} from "@/shared/api/graphql/generated/graphql";
+} from "@/shared/api/graphql/generated/types";
 import { ColorDisplay } from "@/shared/components/display/color-display";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
+import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
 import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
@@ -177,10 +179,14 @@ export const ObjectAttributeValue = ({
   attributeData,
 }: {
   attributeSchema: FieldSchema;
-  attributeData: AttributeType;
+  attributeData: NodeAttributeWithMetadata;
 }) => {
   if (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false) {
     return "-";
+  }
+
+  if (attributeSchema.name === "utilization" && typeof attributeData.value === "number") {
+    return <ProgressBarChart value={attributeData.value} />;
   }
 
   switch (attributeSchema.kind as AttributeKind) {
@@ -212,27 +218,27 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.HASHED_PASSWORD:
       return <PasswordDisplay value={getTextValue(attributeData)} />;
     case ATTRIBUTE_KIND.DROPDOWN: {
-      const dropdownAttribute = attributeData as Dropdown;
+      const dropdownAttribute = attributeData as unknown as Dropdown;
       return (
         <ColorDisplay value={getTextValue(dropdownAttribute)} color={dropdownAttribute.color} />
       );
     }
     case ATTRIBUTE_KIND.COLOR:
-      return <ColorDisplay color={attributeData.value} />;
+      return <ColorDisplay color={attributeData.value as string | null} />;
     case ATTRIBUTE_KIND.LIST: {
-      const items = attributeData.value?.map((value?: string) => value ?? "-").slice(0, 5);
-
-      const rest = attributeData.value.slice(5).length;
+      const listData = attributeData.value as string[] | null;
+      const items = listData?.slice(0, 5);
+      const rest = listData?.slice(5).length;
 
       return (
         <div className="flex flex-wrap items-center gap-1">
-          {items?.map((item: string, index: number) => (
+          {items?.map((item, index) => (
             <Badge key={index} className="font-normal">
               {item}
             </Badge>
           ))}
 
-          {items?.length !== attributeData.value?.length && <i>{`(${rest} more)`}</i>}
+          {items?.length !== listData?.length && <i>{`(${rest} more)`}</i>}
         </div>
       );
     }

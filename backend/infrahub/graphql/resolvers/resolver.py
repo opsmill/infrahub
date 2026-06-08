@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from graphql import GraphQLError
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
@@ -43,12 +44,32 @@ async def account_resolver(
             order=OrderModel(disable=True),
         )
         if results:
-            account_profile = await results[0].to_graphql(db=db, fields=fields)
-            return account_profile
+            return await results[0].to_graphql(db=db, fields=fields)
 
         raise NodeNotFoundError(
             node_type=InfrahubKind.GENERICACCOUNT, identifier=graphql_context.account_session.account_id
         )
+
+
+@trace.get_tracer(__name__).start_as_current_span("is_externally_managed_resolver")
+@retry_db_transaction(name="is_externally_managed_resolver")
+async def is_externally_managed_resolver(parent: dict, info: GraphQLResolveInfo) -> bool:
+    """Return True when the parent account has at least one linked external identity."""
+    account_id = parent.get("id")
+    if not account_id:
+        return False
+    graphql_context: GraphqlContext = info.context
+    async with graphql_context.db.start_session(read_only=True) as db:
+        identities = await NodeManager.query(
+            schema=InfrahubKind.EXTERNALIDENTITY,
+            filters={"account__ids": [account_id]},
+            db=db,
+            at=graphql_context.at,
+            branch=graphql_context.branch,
+            branch_agnostic=True,
+            limit=1,
+        )
+    return bool(identities)
 
 
 @trace.get_tracer(__name__).start_as_current_span("default_resolver")
@@ -64,8 +85,11 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     When it returns 2, they are organized as follow
         - parent
         - info
-    """
 
+    Raises:
+        ValueError: When the resolver is called with an unexpected number of positional arguments.
+
+    """
     parent = None
     info = None
     field_name = None
@@ -141,7 +165,6 @@ async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResol
 
     An example of this is the permissions field at the top level within default_paginated_list_resolver()
     """
-
     return parent[info.field_name]
 
 
@@ -184,6 +207,13 @@ def _transform_metadata_day_filters(filters: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def validate_offset_and_limit(offset: int | None, limit: int | None) -> None:
+    if limit is not None and limit < 0:
+        raise GraphQLError("limit must be a non-negative integer")
+    if offset is not None and offset < 0:
+        raise GraphQLError("offset must be a non-negative integer")
+
+
 @trace.get_tracer(__name__).start_as_current_span("default_paginated_list_resolver")
 @retry_db_transaction(name="default_paginated_list_resolver")
 async def default_paginated_list_resolver(
@@ -195,6 +225,7 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
+    validate_offset_and_limit(offset, limit)
     schema: MainSchemaTypes = (
         info.return_type.of_type.graphene_type._meta.schema
         if isinstance(info.return_type, GraphQLNonNull)
@@ -320,7 +351,7 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
 async def hierarchy_resolver(
     direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
 ) -> dict[str, Any]:
-    """Resolver for ancestors and dependants for Hierarchical nodes
+    """Resolver for ancestors and dependants for Hierarchical nodes.
 
     This resolver is used for paginated responses and as such we redefined the requested
     fields by only reusing information below the 'node' key.

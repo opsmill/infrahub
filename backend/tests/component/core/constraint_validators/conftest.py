@@ -16,7 +16,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "order_by": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -45,7 +45,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
             {
                 "name": "ElectricCar",
                 "namespace": "Test",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "inherit_from": ["TestCar"],
                 "default_filter": "name__value",
                 "attributes": [
@@ -55,7 +55,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
             {
                 "name": "GazCar",
                 "namespace": "Test",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "inherit_from": ["TestCar"],
                 "default_filter": "name__value",
                 "attributes": [
@@ -66,7 +66,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -109,15 +109,13 @@ async def car_person_generics_data_simple(
     await c3.new(db=db, name="nolt", nbr_seats=4, mpg=25, owner=p2)
     await c3.save(db=db)
 
-    nodes = {
+    return {
         "p1": p1,
         "p2": p2,
         "c1": c1,
         "c2": c2,
         "c3": c3,
     }
-
-    return nodes
 
 
 @pytest.fixture
@@ -146,7 +144,7 @@ async def car_person_schema_hfid(db: InfrahubDatabase, default_branch: Branch) -
                 "name": "Person",
                 "namespace": "Test",
                 "human_friendly_id": ["name__value"],
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},

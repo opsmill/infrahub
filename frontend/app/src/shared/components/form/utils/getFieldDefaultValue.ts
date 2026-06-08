@@ -13,7 +13,7 @@ import type {
   FormAttributeValue,
 } from "@/shared/components/form/type";
 
-import type { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
   NodeAttributeWithMetadata,
@@ -27,7 +27,7 @@ import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
-  initialObject?: Record<string, AttributeType>;
+  initialObject?: Record<string, NodeAttributeWithMetadata>;
   objectTemplate?: NodeObject | null;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
@@ -58,7 +58,7 @@ export const getFieldDefaultValue = ({
 
 export const getCurrentFieldValue = (
   fieldName: string,
-  objectData?: Record<string, AttributeType>
+  objectData?: Record<string, NodeAttributeWithMetadata>
 ): AttributeValueFromUser | AttributeValueFromPool | AttributeValueFromTemplate | null => {
   if (!objectData) return null;
 
@@ -123,7 +123,7 @@ const getDefaultValueFromProfiles = (
 
   const profileWithDefaultValueForField = R.find(orderedProfiles, (profile) => {
     const profileFieldData = profile[fieldName] as
-      | Pick<AttributeType, "value" | "__typename">
+      | Pick<NodeAttributeWithMetadata, "value">
       | undefined;
 
     if (!profileFieldData) return false;
@@ -139,15 +139,14 @@ const getDefaultValueFromProfiles = (
       label: getNodeLabel(profileWithDefaultValueForField),
       kind: profileWithDefaultValueForField.__typename,
     },
-    value: (
-      profileWithDefaultValueForField[fieldName] as Pick<AttributeType, "value" | "__typename">
-    ).value,
+    value: (profileWithDefaultValueForField[fieldName] as Pick<NodeAttributeWithMetadata, "value">)
+      .value as AttributeValueFromProfile["value"],
   };
 };
 
 const getDefaultValueFromPoolRelationship = (
   fieldName: string,
-  objectData?: Record<string, AttributeType>
+  objectData?: Record<string, NodeAttributeWithMetadata>
 ): AttributeValueFromPool | null => {
   if (!objectData) return null;
 
@@ -171,30 +170,28 @@ const getDefaultValueFromPoolRelationship = (
 
 const getDefaultValueFromPool = (
   fieldName: string,
-  objectData?: Record<string, AttributeType>
+  objectData?: Record<string, NodeAttributeWithMetadata>
 ): AttributeValueFromPool | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
   if (!currentField) return null;
 
-  if (!currentField.source?.__typename?.match(/Pool$/g)) {
+  const source = currentField.source;
+  if (!source || !("__typename" in source) || !source.__typename?.match(/Pool$/g)) {
     return null;
   }
 
-  const pool = currentField.source;
-
-  if (!pool) return null;
-  if (!pool.id) return null;
+  if (!source.id) return null;
 
   return {
     source: {
       type: "pool",
-      id: pool.id,
-      label: pool.display_label || null,
-      kind: pool.__typename,
+      id: source.id,
+      label: source.display_label || null,
+      kind: source.__typename,
     },
-    value: currentField.value,
+    value: currentField.value as unknown as AttributeValueFromPool["value"],
   };
 };
 
@@ -227,7 +224,7 @@ export const getDefaultValueFromTemplate = (
 
     const poolFromRelationship = getDefaultValueFromPoolRelationship(
       fieldName,
-      objectTemplate as Record<string, AttributeType>
+      objectTemplate as unknown as Record<string, NodeAttributeWithMetadata>
     );
     if (poolFromRelationship) {
       return {

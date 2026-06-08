@@ -222,7 +222,6 @@ class SchemaManager(NodeManager):
 
     def register_schema(self, schema: SchemaRoot, branch: str | None = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
-
         branch = branch or registry.default_branch
         schema_branch = self.get_schema_branch(name=branch)
         schema_branch.load_schema(schema=schema)
@@ -239,7 +238,6 @@ class SchemaManager(NodeManager):
         branch: Branch | str | None = None,
     ) -> SchemaBranchDiff:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
-
         branch = await registry.get_branch(branch=branch, db=db)
 
         added_nodes = []
@@ -380,7 +378,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch | str | None = None,
     ) -> NodeSchema | GenericSchema:
-        """Update a Node with its attributes and its relationships in the database."""
+        """Update a Node with its attributes and its relationships in the database.
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
@@ -454,7 +457,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch | str | None = None,
     ) -> NodeSchema | GenericSchema:
-        """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff."""
+        """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff.
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
@@ -585,7 +593,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         user_id: str,
     ) -> None:
-        """Create, update, or delete attribute and relationship DB nodes based on the schema diff."""
+        """Create, update, or delete attribute and relationship DB nodes based on the schema diff.
+
+        Raises:
+            ValueError: When an attribute or relationship marked for update or removal cannot be found in the existing items.
+
+        """
         attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
         relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
@@ -654,7 +667,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch | str | None = None,
     ) -> None:
-        """Delete the node with its attributes and relationships."""
+        """Delete the node with its attributes and relationships.
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db, prefetch_relationships=True)
@@ -730,7 +748,7 @@ class SchemaManager(NodeManager):
         db: InfrahubDatabase,
         branch: Branch | str | None = None,
     ) -> SchemaBranch:
-        """Load the schema either from the cache or from the database"""
+        """Load the schema either from the cache or from the database."""
         branch = await registry.get_branch(branch=branch, db=db)
 
         if not branch.is_default and branch.origin_branch:
@@ -772,8 +790,8 @@ class SchemaManager(NodeManager):
 
         Returns:
             SchemaBranch
-        """
 
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         schema = schema or SchemaBranch(cache=self._cache, name=branch.name)
 
@@ -882,7 +900,6 @@ class SchemaManager(NodeManager):
 
     def purge_inactive_branches(self, active_branches: list[str]) -> list[str]:
         """Return non active branches that were purged."""
-
         hashes_to_keep: set[str] = set()
         branch_processed: set[str] = set()
         for active_branch in active_branches:

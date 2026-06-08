@@ -49,8 +49,7 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
             database=await get_database(),
         )
 
-    results = [result async for _, result in batch.execute()]
-    return results
+    return [result async for _, result in batch.execute()]
 
 
 @task(  # type: ignore[arg-type]

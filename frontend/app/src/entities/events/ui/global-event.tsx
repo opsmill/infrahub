@@ -1,16 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 
-import type {
-  ArtifactEvent,
-  GroupEvent,
-  StandardEvent,
-} from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { classNames } from "@/shared/utils/common";
+import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
-import type { BranchEvent, EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/types";
+import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/account-logged-in-event-title";
+import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
 import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
 import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";
@@ -19,37 +16,45 @@ import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-e
 import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
 import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
 
-const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
+const GlobalEventDisplay = (props: EventType) => {
   if ("attributes" in props) {
     return <NodeEventTitle {...props} />;
   }
 
-  if (
-    __typename === "BranchCreatedEvent" ||
-    __typename === "BranchDeletedEvent" ||
-    __typename === "BranchMergedEvent" ||
-    __typename === "BranchRebasedEvent"
-  ) {
-    return <BranchEventTitle {...(props as BranchEvent)} />;
+  switch (props.__typename) {
+    case "BranchCreatedEvent":
+    case "BranchDeletedEvent":
+    case "BranchMergedEvent":
+    case "BranchRebasedEvent": {
+      return <BranchEventTitle {...props} />;
+    }
+    case "StandardEvent": {
+      if (PROPOSED_CHANGE_EVENTS.includes(props.event)) {
+        return <ProposedChangeEventTitle {...props} />;
+      }
+      return <StandardEventTitle {...props} />;
+    }
+    case "GroupEvent": {
+      return <GroupEventTitle {...props} />;
+    }
+    case "ArtifactEvent": {
+      return <ArtifactEventTitle {...props} />;
+    }
+    case "AccountLoggedInEventType": {
+      return <AccountLoggedInEventTitle {...props} />;
+    }
+    case "AccountLoggedOutEventType": {
+      return <AccountLoggedOutEventTitle {...props} />;
+    }
+    default: {
+      warnUnexpectedType(props);
+      return (
+        <span className="flex items-center text-gray-500 text-sm">
+          {(props as EventType).event}
+        </span>
+      );
+    }
   }
-
-  if (__typename === "StandardEvent" && PROPOSED_CHANGE_EVENTS.includes(props.event)) {
-    return <ProposedChangeEventTitle {...props} />;
-  }
-
-  if (__typename === "StandardEvent") {
-    return <StandardEventTitle {...(props as StandardEvent)} />;
-  }
-
-  if (__typename === "GroupEvent") {
-    return <GroupEventTitle {...(props as GroupEvent)} />;
-  }
-
-  if (__typename === "ArtifactEvent") {
-    return <ArtifactEventTitle {...(props as ArtifactEvent)} />;
-  }
-
-  return <span className="flex items-center text-gray-500 text-sm">{props.event}</span>;
 };
 
 export const Event = (props: EventType) => {

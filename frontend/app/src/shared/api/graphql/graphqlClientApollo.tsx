@@ -9,7 +9,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
-import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
+import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {

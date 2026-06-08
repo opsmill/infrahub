@@ -163,7 +163,6 @@ async def run_generator(
     node_ids: list[str],
     generator_definition_id: str,
     context: InfrahubContext,
-    service: InfrahubServices,  # noqa: ARG001
 ) -> None:
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
 
@@ -187,7 +186,6 @@ async def run_generator_group_event(
     members: list[EventGroupMember],
     generator_definition_id: str,
     context: InfrahubContext,
-    service: InfrahubServices,  # noqa: ARG001
 ) -> None:
     node_ids = [node.id for node in members]
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
@@ -210,11 +208,12 @@ async def run_generator_group_event(
 async def configure_action_rules(
     service: InfrahubServices,
 ) -> None:
-    await setup_triggers_specific(
-        gatherer=gather_trigger_action_rules,  # type: ignore[arg-type]
-        trigger_type=TriggerType.ACTION_TRIGGER_RULE,
-        db=service.database,
-    )
+    async with service.database.start_session(read_only=True) as db:
+        await setup_triggers_specific(
+            gatherer=gather_trigger_action_rules,  # type: ignore[arg-type]
+            trigger_type=TriggerType.ACTION_TRIGGER_RULE,
+            db=db,
+        )
 
 
 async def _get_targets(
@@ -223,7 +222,6 @@ async def _get_targets(
     client: InfrahubClient,
 ) -> dict[str, dict[str, InfrahubNode]]:
     """Get the targets per kind in order to extract the variables."""
-
     targets_per_kind: dict[str, dict[str, InfrahubNode]] = defaultdict(dict)
 
     for target in targets:
@@ -261,6 +259,7 @@ async def _run_generators(
     Raises:
         ValueError: If the generator definition is not found or none of the requested
             targets are members of the target group.
+
     """
     response = await client.execute_graphql(
         query=get_generator_run_query(definition_id=generator_definition_id, target_ids=node_ids).render(),

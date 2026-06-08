@@ -29,7 +29,7 @@ def add_tracker() -> None:
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator:
-    """Overrides pytest default function scoped event loop"""
+    """Overrides pytest default function scoped event loop."""
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
     yield loop
@@ -105,14 +105,12 @@ def git_repos_dir(tmp_path_factory: TempPathFactory) -> Path:
 @pytest.fixture(scope="session")
 def git_repo_infrahub_demo_edge_integration(git_sources_dir: Path) -> FileRepo:
     """Git Repository used as part of the  demo-edge tutorial."""
-
     return FileRepo(name="infrahub-demo-edge-integration", sources_directory=git_sources_dir)
 
 
 @pytest.fixture(scope="session")
 def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
     """Simple Git Repository used for testing."""
-
     return FileRepo(name="car-dealership", sources_directory=git_sources_dir)
 
 

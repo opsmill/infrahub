@@ -1,0 +1,42 @@
+---
+title: Merge a branch
+---
+
+Once changes are complete, they merge back into the parent branch through a controlled process — almost always via a [Proposed Change](../proposed-changes/overview.mdx). This ensures that all modifications are validated and conflicts are resolved before integration.
+
+The merge process creates a permanent record in the commit history that documents what changed and why.
+
+## What happens at merge
+
+Infrahub implements a **"latest-value wins"** merge strategy that optimizes for clarity and efficiency. During a merge, only the most recent value for each changed attribute transfers to the destination branch. The complete change history within the branch doesn't carry over — instead, the final state becomes a single change at the merge point.
+
+This approach provides several benefits:
+
+- **Maintains immutability** of the main branch by creating a clean, atomic change
+- **Simplifies conflict resolution** by focusing only on the final state rather than intermediate changes
+- **Provides clear merge points** in history that are straightforward to trace and understand
+- **Reduces storage overhead** by not duplicating the entire change history of the branch
+
+This merge strategy aligns with Infrahub's focus on the current state of infrastructure rather than the historical evolution of individual files, making it particularly well-suited for infrastructure management workflows.
+
+## After the merge
+
+After a successful merge, the source branch is automatically **frozen**:
+
+- GraphQL mutations (create, upsert, update, delete) are blocked on the merged branch
+- The UI disables editing controls with a visual indicator
+- Opening a new Proposed Change against the merged branch is prevented
+
+:::warning
+Once merged, a branch enters a frozen state and no further mutations are allowed on it.
+:::
+
+The merged source branch can be deleted manually or automatically — see [Delete a branch](./delete.mdx) for the deletion options, including the `delete_branch_after_merge` configuration that removes branches automatically right after a successful merge.
+
+## Related
+
+- [Branches](./overview.mdx) — branch lifecycle and concepts
+- [Proposed Changes](../proposed-changes/overview.mdx) — the recommended path for merging
+- [Resolve conflicts](./resolve-conflicts.mdx) — handle conflicts before or during merge
+- [Rebase a branch](./rebase.mdx) — keep your branch up-to-date before merging
+- [Delete a branch](./delete.mdx) — what happens after merging

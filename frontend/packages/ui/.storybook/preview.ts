@@ -1,6 +1,6 @@
-import type { Preview } from "@storybook/react";
+import type { Preview } from "@storybook/react-vite";
 
-import "./preview.css";
+import "../src/index.css";
 
 const preview: Preview = {
   parameters: {
@@ -11,8 +11,6 @@ const preview: Preview = {
       },
     },
   },
-
-  tags: ["autodocs"]
 };
 
 export default preview;
