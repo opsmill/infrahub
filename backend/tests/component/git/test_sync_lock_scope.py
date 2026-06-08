@@ -37,4 +37,4 @@ async def test_repository_lock_released_before_import(
 
     await syncer.sync(git_repo_04)
 
-    timeline.assert_held_at_checkpoint(f"repository.{git_repo_04.name}", "import", expected=False)
+    timeline.assert_not_held_at_checkpoint(f"repository.{git_repo_04.name}", "import")
