@@ -45,7 +45,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
@@ -53,6 +53,7 @@ from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import (
     CheckError,
+    CommitNotFoundError,
     RepositoryConfigurationError,
     RepositoryInvalidFileSystemError,
     TransformError,
@@ -165,7 +166,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
         if commit:
-            self.get_commit_worktree(commit=commit)
+            try:
+                self.get_commit_worktree(commit=commit)
+            except CommitNotFoundError:
+                if not self.has_origin:
+                    raise
+                # The commit may exist on the remote but not yet in this worker's clone.
+                # Fetch under the repository lock, which serializes shared-clone mutations, and retry.
+                async with lock.registry.get(name=self.name, namespace="repository"):
+                    await self.fetch()
+                    self.get_commit_worktree(commit=commit)
 
         log.debug(
             f"Initiated the object on an existing directory for {self.name}",

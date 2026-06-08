@@ -3,10 +3,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+from .repository import InfrahubRepository, PendingObjectImport
+
 if TYPE_CHECKING:
+    from infrahub_sdk.client import InfrahubClient
+
     from infrahub.lock import InfrahubLockRegistry
 
-    from .repository import InfrahubRepository, PendingObjectImport
+    from .models import GitRepositoryAdd
 
 
 class RepositoryImporter(ABC):
@@ -25,6 +29,46 @@ class RepositoryFileImporter(RepositoryImporter):
             git_branch_name=pending_import.git_branch_name,
             commit=pending_import.commit,
         )
+
+
+class RepositoryAdder:
+    """Adds a new repository, holding the repository lock only for the git working-copy mutations.
+
+    The lock serializes the clone and worktree creation. The default-branch object import runs after
+    the lock is released; it reads from the per-commit worktree pinned during the locked phase, so it
+    does not need the lock.
+    """
+
+    def __init__(
+        self, lock_registry: InfrahubLockRegistry, importer: RepositoryImporter, client: InfrahubClient
+    ) -> None:
+        self._lock_registry = lock_registry
+        self._importer = importer
+        self._client = client
+
+    async def add(self, model: GitRepositoryAdd) -> InfrahubRepository:
+        async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
+            repo = await InfrahubRepository.new(
+                id=model.repository_id,
+                name=model.repository_name,
+                location=model.location,
+                client=self._client,
+                infrahub_branch_name=model.infrahub_branch_name,
+                internal_status=model.internal_status,
+                default_branch_name=model.default_branch_name,
+            )
+            default_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
+            repo.create_commit_worktree(commit=default_commit)
+
+        await self._importer.import_branch(
+            repo,
+            PendingObjectImport(
+                infrahub_branch_name=model.infrahub_branch_name,
+                git_branch_name=repo.default_branch,
+                commit=default_commit,
+            ),
+        )
+        return repo
 
 
 class RepositorySyncer:
