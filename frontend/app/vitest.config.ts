@@ -6,11 +6,13 @@ import viteConfig from "./vite.config";
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    // @infrahub/ui and @infrahub/graph are workspace packages consumed as SOURCE (live
+    // symlinks), so Vite treats their imports as source and would otherwise discover the
+    // transitive deps below mid-run, triggering a re-optimization reload that resets vi.mock
+    // and flakes the browser tests. Pre-bundle them up front. (These are @infrahub/ui's deps
+    // that the app does not import directly; graph's deps — @xyflow/react, @iconify-icon/react,
+    // lucide-react — are already optimized via the app's own usage.)
     optimizeDeps: {
-      // @infrahub/ui is a workspace package consumed as source (live symlink),
-      // so Vite treats its imports as source and would otherwise discover these
-      // runtime deps mid-run, triggering a re-optimization reload that resets
-      // vi.mock and flakes the browser tests. Pre-bundle them up front.
       include: [
         "react-aria-components",
         "lucide-react",

@@ -23,6 +23,25 @@ The package is published locally via the workspace and consumed in `frontend/app
 
 Source of truth: `frontend/packages/ui/src/index.ts`.
 
+## How the package is consumed (resolution + styling)
+
+- **Consumed from source, not built output.** `frontend/app` resolves `@infrahub/ui` to its TypeScript source — `package.json` `main` is `./src/index.ts` and the subpath exports point at `.tsx` files. The app's own Vite/Tailwind build compiles them. Consequence: the app never needs `@infrahub/ui` to be pre-built, and the package's own `pnpm build` (`tsc -b && vite build`) is independent of app builds and tests.
+- **Cross-package Tailwind scanning.** Because components ship as source, each consumer's Tailwind build must *scan* the package source to emit its utility classes. The app does this via an `@source` directive in `frontend/app/src/app/styles/index.css`. The `schema-visualizer` submodule does **not** by default — it's a separate repo that builds a self-contained IIFE (`vite.config.webview.ts`, `external: []`). To consume `@infrahub/ui` there you must add both the dependency (`"@infrahub/ui": "file:../ui"`) **and** `@source "../../ui/src/**/*.{ts,tsx}";` to `frontend/packages/schema-visualizer/src/webview.css` — without the `@source` line the imported components bundle but render **unstyled**.
+
+## Sibling package: `@infrahub/graph`
+
+`frontend/packages/graph` (`@infrahub/graph`) is a second workspace package for **graph-view primitives** that compose `@infrahub/ui`. It is consumed the same way (from source, `workspace:*`) and is itself a `@infrahub/ui` consumer, so the app's `@source` directive must also scan `packages/graph/src`.
+
+| Component | Exports | Notes |
+|---|---|---|
+| `Toolbar` | `Toolbar`, `Toolbar.Divider`, `ToolbarProps`, `ToolbarDividerProps` | Floating toolbar container (`role="toolbar"`, `aria-label` required) + vertical divider. |
+| `FloatingPanel` | `FloatingPanel`, `FloatingPanelProps` | Floating overlay built on `Card` + a ghost square `Button`: header (title/description/close) + scroll body; optional `dismissable` (outside-click + Escape). |
+| `ExportMenu` | `ExportMenu`, `ExportFormat`, `ExportMenuProps` | PNG/SVG export popover. |
+| `GraphControls` | `GraphControls`, `GraphControlsProps`, `EdgeStyle`, `LayoutDirection` | Zoom / fit / edge-style / layout controls; uses `useReactFlow` from `@xyflow/react`. |
+| `useDismiss` | `useDismiss` | Hook — outside-pointerdown + Escape dismissal. |
+
+Source of truth: `frontend/packages/graph/src/index.ts`. Adopted by `path-traversal`.
+
 ## When to consume from `@infrahub/ui`
 
 Always, for the components above. Do not reimplement them inline in feature code, even if it "feels lighter":
