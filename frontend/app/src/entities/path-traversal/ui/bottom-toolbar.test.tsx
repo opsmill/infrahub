@@ -38,18 +38,18 @@ describe("BottomToolbar", () => {
 
   test("edge-style button shows 'Smooth' text when edgeStyle is bezier", async () => {
     const { component } = await setup({ edgeStyle: "bezier" });
-    await expect.element(component.getByRole("button", { name: /Smooth/i })).toBeVisible();
+    await expect.element(component.getByText("Smooth")).toBeVisible();
   });
 
   test("edge-style button shows 'Step' text when edgeStyle is smoothstep", async () => {
     const { component } = await setup({ edgeStyle: "smoothstep" });
-    await expect.element(component.getByRole("button", { name: /Step/i })).toBeVisible();
+    await expect.element(component.getByText("Step")).toBeVisible();
   });
 
   test("onEdgeStyleChange is called with 'smoothstep' when edgeStyle is bezier", async () => {
     const { props, component } = await setup({ edgeStyle: "bezier" });
 
-    await component.getByRole("button", { name: /Smooth/i }).click();
+    await component.getByRole("button", { name: "Toggle edge style" }).click();
 
     expect(props.onEdgeStyleChange).toHaveBeenCalledWith("smoothstep");
   });
@@ -57,7 +57,7 @@ describe("BottomToolbar", () => {
   test("onEdgeStyleChange is called with 'bezier' when edgeStyle is smoothstep", async () => {
     const { props, component } = await setup({ edgeStyle: "smoothstep" });
 
-    await component.getByRole("button", { name: /Step/i }).click();
+    await component.getByRole("button", { name: "Toggle edge style" }).click();
 
     expect(props.onEdgeStyleChange).toHaveBeenCalledWith("bezier");
   });

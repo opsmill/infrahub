@@ -50,7 +50,7 @@ importers:
         version: 1.2.3
       '@infrahub/graph':
         specifier: file:../packages/graph
-        version: file:../packages/graph(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(tailwind-merge@3.6.0)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: file:../packages/graph(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(@xyflow/react@12.10.2(@types/react@19.2.16)(immer@11.1.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(tailwind-merge@3.6.0)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       '@infrahub/ui':
         specifier: file:../packages/ui
         version: file:../packages/ui(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -1237,6 +1237,8 @@ packages:
 
   '@infrahub/graph@file:../packages/graph':
     resolution: {directory: ../packages/graph, type: directory}
+    peerDependencies:
+      '@xyflow/react': ^12.10.2
 
   '@infrahub/ui@file:../packages/ui':
     resolution: {directory: ../packages/ui, type: directory}
@@ -7287,11 +7289,12 @@ snapshots:
 
   '@iconify/types@2.0.0': {}
 
-  '@infrahub/graph@file:../packages/graph(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(tailwind-merge@3.6.0)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))':
+  '@infrahub/graph@file:../packages/graph(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(@xyflow/react@12.10.2(@types/react@19.2.16)(immer@11.1.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(tailwind-merge@3.6.0)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))':
     dependencies:
       '@iconify-icon/react': 3.0.3(react@19.2.7)
       '@infrahub/ui': file:../packages/ui(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       '@tailwindcss/vite': 4.3.0(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@xyflow/react': 12.10.2(@types/react@19.2.16)(immer@11.1.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       lucide-react: 1.17.0(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)

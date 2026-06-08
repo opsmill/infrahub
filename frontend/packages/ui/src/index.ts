@@ -27,6 +27,7 @@ export {
 } from "./components/resizable/resizable";
 export { ScrollArea, type ScrollAreaProps } from "./components/scroll-area/scroll-area";
 export { Spinner, type SpinnerProps } from "./components/spinner/spinner";
+export { Tooltip, type TooltipProps } from "./components/tooltip/tooltip";
 export {
   Tree,
   TreeItem,

@@ -9,8 +9,13 @@ export default mergeConfig(
     // @infrahub/ui is consumed as workspace SOURCE, so transitive deps it pulls in (e.g.
     // lucide-react via FloatingPanel) must be pre-bundled up front. Otherwise Vite discovers
     // them mid-run and triggers a page reload that resets vi.mock(), breaking unrelated tests.
+    //
+    // @infrahub/graph is excluded so its components are processed as source: GraphControls'
+    // `useReactFlow` import then resolves to the same @xyflow/react module that tests mock via
+    // vi.mock() — a dep bundled inside an optimized chunk can't be intercepted.
     optimizeDeps: {
       include: ["lucide-react"],
+      exclude: ["@infrahub/graph"],
     },
     test: {
       browser: {
