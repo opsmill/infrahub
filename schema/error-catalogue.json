@@ -1,7 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "infrahub_catalogue_version": "1",
-  "generated_at": "2026-05-22T06:45:07Z",
   "codes": {
     "NODE_NOT_FOUND": {
       "description": "The requested node does not exist in the database.",

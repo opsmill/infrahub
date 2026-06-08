@@ -60,6 +60,7 @@ async def custom_swagger_ui_html(
         title="Infrahub - Swagger UI",
         swagger_js_url="/api-static/swagger-ui-bundle.js",
         swagger_css_url="/api-static/swagger-ui.css",
+        swagger_favicon_url="/favicons/favicon.ico",
     )
 
 
@@ -69,6 +70,7 @@ async def redoc_html(_: AccountSession = Depends(get_current_user)) -> HTMLRespo
         openapi_url="/api/openapi.json",
         title="Infrahub - ReDoc",
         redoc_js_url="/api-static/redoc.standalone.js",
+        redoc_favicon_url="/favicons/favicon.ico",
     )
 
 

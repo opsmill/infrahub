@@ -333,11 +333,13 @@ class IPPrefixSubnetFetchFree(Query):
         obj: IPNetworkType,
         target_prefixlen: int,
         namespace: Node | str | None = None,
+        parent_uuid: str | None = None,
         **kwargs,
     ) -> None:
         self.obj = obj
         self.target_prefixlen = target_prefixlen
         self.namespace_id = _get_namespace_id(namespace)
+        self.parent_uuid = parent_uuid
 
         super().__init__(**kwargs)
 
@@ -351,6 +353,7 @@ class IPPrefixSubnetFetchFree(Query):
         self.params["parent_start"] = int(self.obj.network_address)
         self.params["parent_end"] = int(self.obj.broadcast_address)
         self.params["block_size"] = 1 << (32 - self.target_prefixlen)
+        self.params["exclude_uuid"] = self.parent_uuid or ""
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at.to_string(), branch_agnostic=self.branch_agnostic
@@ -375,7 +378,11 @@ class IPPrefixSubnetFetchFree(Query):
         OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
         WHERE ns_rel.name = "ip_namespace__ip_prefix"
             AND av.binary_address STARTS WITH $prefix_binary
-            AND av.prefixlen > $maxprefixlen
+            AND av.prefixlen >= $maxprefixlen
+            // Exclude the pool-resource prefix node itself: it appears in the DB at the same
+            // address as the parent, so without this filter it would be counted as occupied
+            // space and prevent allocating a prefix of the same length as the resource.
+            AND pfx.uuid <> $exclude_uuid
             AND av.version = $ip_version
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
         WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
@@ -460,11 +467,13 @@ class IPv6PrefixSubnetFetchFree(Query):
         obj: IPNetworkType,
         target_prefixlen: int,
         namespace: Node | str | None = None,
+        parent_uuid: str | None = None,
         **kwargs,
     ) -> None:
         self.obj = obj
         self.target_prefixlen = target_prefixlen
         self.namespace_id = _get_namespace_id(namespace)
+        self.parent_uuid = parent_uuid
 
         super().__init__(**kwargs)
 
@@ -479,6 +488,7 @@ class IPv6PrefixSubnetFetchFree(Query):
         # Binary representation of parent network and broadcast addresses
         self.params["parent_start_bin"] = convert_ip_to_binary_str(self.obj)
         self.params["parent_end_bin"] = format(int(self.obj.broadcast_address), "0128b")
+        self.params["exclude_uuid"] = self.parent_uuid or ""
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at.to_string(), branch_agnostic=self.branch_agnostic
@@ -503,7 +513,11 @@ class IPv6PrefixSubnetFetchFree(Query):
         OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
         WHERE ns_rel.name = "ip_namespace__ip_prefix"
             AND av.binary_address STARTS WITH $prefix_binary
-            AND av.prefixlen > $maxprefixlen
+            AND av.prefixlen >= $maxprefixlen
+            // Exclude the pool-resource prefix node itself: it appears in the DB at the same
+            // address as the parent, so without this filter it would be counted as occupied
+            // space and prevent allocating a prefix of the same length as the resource.
+            AND pfx.uuid <> $exclude_uuid
             AND av.version = $ip_version
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
         WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw

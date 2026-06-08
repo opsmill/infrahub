@@ -62,6 +62,19 @@ class ProposedChangeRepository(BaseModel):
         return False
 
     @property
+    def has_file_diff(self) -> bool:
+        """Indicates a file diff can be computed for this repository, managed or read-only.
+
+        Unlike has_diff this is not restricted to managed repositories and does not depend on the
+        source branch's sync_with_git flag: read-only repositories diff their per-branch pinned
+        commits, and a managed repository whose tracked tips did not move simply has equal commits
+        and yields an empty diff. It also requires destination_commit to be set, whereas has_diff is
+        True for a repository present only on the source branch so that merge-conflict validation
+        still runs; do not collapse the two.
+        """
+        return bool(self.source_commit and self.destination_commit and self.source_commit != self.destination_commit)
+
+    @property
     def is_staging(self) -> bool:
         """Indicates if the repository is in staging mode."""
         if self.internal_status == RepositoryInternalStatus.STAGING.value:
@@ -89,7 +102,7 @@ class ProposedChangeArtifactDefinition(BaseModel):
     definition_id: str
     definition_name: str
     artifact_name: str
-    query_name: str  # Deprecated
+    query_name: str
     query_id: str
     query_models: list[str]
     query_payload: str = Field(..., description="GraphQL query")
@@ -103,6 +116,14 @@ class ProposedChangeArtifactDefinition(BaseModel):
         default=False, description="Convert query response to InfrahubNode objects for Python based transforms"
     )
     timeout: int
+    dependencies: list[str] | None = Field(
+        default=None,
+        description="Canonical repo-relative paths the transform reads from. None means not yet computed.",
+    )
+    dependencies_complete: bool | None = Field(
+        default=None,
+        description="True when the dependency list is fully resolved. False when partial. None when not yet computed.",
+    )
 
     @property
     def transform_location(self) -> str:
@@ -116,7 +137,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
 
 class ProposedChangeBranchDiff(BaseModel):
     repositories: list[ProposedChangeRepository] = Field(default_factory=list)
-    subscribers: list[ProposedChangeSubscriber] = Field(default_factory=list)
     pipeline_id: uuid.UUID = Field(..., description="The unique ID of the execution of this pipeline")
 
     def get_repository(self, repository_id: str) -> ProposedChangeRepository:
@@ -124,9 +144,6 @@ class ProposedChangeBranchDiff(BaseModel):
             if repository_id == repository.repository_id:
                 return repository
         raise NodeNotFoundError(node_type="Repository", identifier=repository_id)
-
-    def get_subscribers_ids(self, kind: str) -> list[str]:
-        return [subscriber.subscriber_id for subscriber in self.subscribers if subscriber.kind == kind]
 
     @property
     def has_file_modifications(self) -> bool:

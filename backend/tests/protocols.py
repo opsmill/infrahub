@@ -211,6 +211,8 @@ class CoreTransformation(CoreNode):
     label: StringOptional
     description: StringOptional
     timeout: Integer
+    dependencies: ListAttributeOptional
+    dependencies_complete: BooleanOptional
     query: RelationshipManager[CoreGraphQLQuery]
     repository: RelationshipManager[CoreGenericRepository]
     tags: RelationshipManager[BuiltinTag]

@@ -14,6 +14,7 @@ export default defineConfig({
   rules: {
     "eslint/arrow-body-style": "off",
     "eslint/func-style": "off",
+    "eslint/no-magic-numbers": ["error", { ignore: [0, 1] }],
     "eslint/max-lines-per-function": "off",
     "eslint/no-ternary": "off",
     "eslint/sort-imports": "off",

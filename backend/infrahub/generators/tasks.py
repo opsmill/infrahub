@@ -160,6 +160,7 @@ async def run_generator_definition(
                 file_path=generator.file_path.value,
                 query_name=generator.query.peer.name.value,
                 query_models=generator.query.peer.models.value,
+                query_payload=generator.query.peer.query.value,
                 repository_id=generator.repository.peer.id,
                 parameters=generator.parameters.value,
                 group_id=generator.targets.peer.id,

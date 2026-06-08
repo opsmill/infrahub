@@ -1,5 +1,10 @@
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
+export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
+export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
+export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: { input: string; output: string; }
@@ -1458,6 +1463,8 @@ export type CoreAccount = CoreGenericAccount & CoreNode & LineageOwner & Lineage
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Scalars['String']['output'];
+  /** True when the account is linked to an external identity provider (LDAP, OIDC, OAuth2). Local password changes are refused for such accounts. */
+  is_externally_managed: Scalars['Boolean']['output'];
   label: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
   name: Maybe<TextAttribute>;
@@ -6905,6 +6912,8 @@ export type CoreGenericAccount = {
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Maybe<Scalars['String']['output']>;
+  /** True when the account is linked to an external identity provider (LDAP, OIDC, OAuth2). Local password changes are refused for such accounts. */
+  is_externally_managed: Scalars['Boolean']['output'];
   label: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
   name: Maybe<TextAttribute>;
@@ -7309,6 +7318,16 @@ export type CoreGenericRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub */
 export type CoreGenericRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12244,6 +12263,16 @@ export type CoreReadOnlyRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub, Git-side will not be updated */
 export type CoreReadOnlyRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12704,6 +12733,16 @@ export type CoreRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub */
 export type CoreRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -14947,6 +14986,10 @@ export type CoreThreadUpdateInput = {
 /** A file rendered from a Jinja2 template */
 export type CoreTransformJinja2 = CoreNode & CoreTransformation & {
   __typename: 'CoreTransformJinja2';
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Human friendly identifier */
@@ -15063,6 +15106,10 @@ export type CoreTransformJinja2Create = {
 };
 
 export type CoreTransformJinja2CreateInput = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeCreate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
@@ -15092,6 +15139,10 @@ export type CoreTransformJinja2Update = {
 };
 
 export type CoreTransformJinja2UpdateInput = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -15116,6 +15167,10 @@ export type CoreTransformJinja2Upsert = {
 };
 
 export type CoreTransformJinja2UpsertInput = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -15139,6 +15194,10 @@ export type CoreTransformPython = CoreNode & CoreTransformation & {
   class_name: Maybe<TextAttribute>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response: Maybe<CheckboxAttribute>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Path to the Python file in the repository (required) */
@@ -15259,6 +15318,10 @@ export type CoreTransformPythonCreateInput = {
   class_name?: InputMaybe<TextAttributeCreate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeCreate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeCreate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeCreate>;
@@ -15292,6 +15355,10 @@ export type CoreTransformPythonUpdateInput = {
   class_name?: InputMaybe<TextAttributeUpdate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeUpdate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeUpdate>;
@@ -15320,6 +15387,10 @@ export type CoreTransformPythonUpsertInput = {
   class_name?: InputMaybe<TextAttributeUpdate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeUpdate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeUpdate>;
@@ -15338,6 +15409,10 @@ export type CoreTransformPythonUpsertInput = {
 
 /** Generic Transformation Object. */
 export type CoreTransformation = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Human friendly identifier */
@@ -15452,6 +15527,10 @@ export type CoreTransformationUpdate = {
 };
 
 export type CoreTransformationUpdateInput = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -18692,6 +18771,18 @@ export type MacAddress = AttributeInterface & {
   updated_by: Maybe<CoreGenericAccount>;
   value: Maybe<Scalars['String']['output']>;
   version: Maybe<Scalars['Int']['output']>;
+};
+
+/**
+ * Order input restricted to node metadata fields.
+ *
+ * Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+ * surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
+ * string grammar or a `disable` toggle.
+ */
+export type MetadataOrderInput = {
+  /** Order settings for branch metadata */
+  node_metadata?: InputMaybe<InfrahubNodeMetadataOrder>;
 };
 
 export type Mutation = {
@@ -22802,6 +22893,8 @@ export type OrderInput = {
   disable?: InputMaybe<Scalars['Boolean']['input']>;
   /** Order settings for branch metadata */
   node_metadata?: InputMaybe<InfrahubNodeMetadataOrder>;
+  /** Ordering overrides support attributes (`name__value__desc`), relationship attributes (`owner__name__value`), or node metadata (`node_metadata__created_at__desc`). The trailing `__asc`/`__desc` is optional (default is ascending). When provided, fully replaces the schema's `order_by`. Cannot be combined with `node_metadata` in the same input. */
+  order_by?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 /** IPv4 or IPv6 address */
@@ -23628,7 +23721,7 @@ export type PathTraversalInput = {
   destination_id: Scalars['String']['input'];
   /** Specific node kinds to exclude from traversal paths. */
   excluded_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Namespaces to exclude from traversal. Pass empty list to include all. */
+  /** Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input. */
   excluded_namespaces?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Filter to only traverse through nodes of these kinds */
   kind_filter?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -26381,6 +26474,16 @@ export type QueryCoreArtifactDefinitionArgs = {
   targets__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   targets__name__value?: InputMaybe<Scalars['String']['input']>;
   targets__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformation__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformation__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformation__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformation__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27705,6 +27808,16 @@ export type QueryCoreCustomWebhookArgs = {
   transformation__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  transformation__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformation__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformation__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformation__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29927,6 +30040,16 @@ export type QueryCoreGenericRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33205,6 +33328,16 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33522,6 +33655,16 @@ export type QueryCoreRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34964,6 +35107,18 @@ export type QueryCoreTransformJinja2Args = {
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35155,6 +35310,18 @@ export type QueryCoreTransformPythonArgs = {
   convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35334,6 +35501,18 @@ export type QueryCoreTransformationArgs = {
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36231,7 +36410,7 @@ export type QueryInfrahubBranchArgs = {
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
-  order?: InputMaybe<OrderInput>;
+  order?: InputMaybe<MetadataOrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   status__value?: InputMaybe<BranchStatus>;
 };
@@ -37065,7 +37244,9 @@ export type ReachableNodeType = {
 export type ReachableNodesInput = {
   /** Maximum traversal depth (default: 5, max: 20) */
   max_depth?: InputMaybe<Scalars['Int']['input']>;
-  /** Maximum results (default: 50, max: 200) */
+  /** Maximum total paths returned across all discovered terminals (default: 500, max: 5000) */
+  max_paths?: InputMaybe<Scalars['Int']['input']>;
+  /** Maximum number of distinct terminal nodes to discover (default: 50, max: 200) */
   max_results?: InputMaybe<Scalars['Int']['input']>;
   /** UUID of the source node */
   source_id: Scalars['String']['input'];
