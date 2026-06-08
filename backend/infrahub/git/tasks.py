@@ -86,7 +86,7 @@ def format_check_log_entry(entry: dict[str, Any]) -> str:
     flow_run_name="Adding repository {model.repository_name} in branch {model.infrahub_branch_name}",
 )
 async def add_git_repository(model: GitRepositoryAdd, importer: RepositoryImporter | None = None) -> None:
-    importer = importer or RepositoryFileImporter()
+    effective_importer = importer or RepositoryFileImporter()
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
@@ -102,7 +102,7 @@ async def add_git_repository(model: GitRepositoryAdd, importer: RepositoryImport
         default_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
         repo.create_commit_worktree(commit=default_commit)
 
-    await importer.import_branch(
+    await effective_importer.import_branch(
         repo,
         PendingObjectImport(
             infrahub_branch_name=model.infrahub_branch_name,
@@ -112,7 +112,7 @@ async def add_git_repository(model: GitRepositoryAdd, importer: RepositoryImport
     )
 
     if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
-        await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
+        await RepositorySyncer(lock_registry=lock.registry, importer=effective_importer).sync(repo)
 
         try:
             pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
