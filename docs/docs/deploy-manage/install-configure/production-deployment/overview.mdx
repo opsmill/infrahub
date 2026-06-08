@@ -156,6 +156,7 @@ The task manager stores its state in PostgreSQL and runs its own schema migratio
 CREATE ROLE prefect WITH LOGIN PASSWORD '<strong-task-manager-db-password>';
 ALTER DATABASE prefect OWNER TO prefect;
 ALTER SCHEMA public OWNER TO prefect;
+GRANT ALL ON SCHEMA public TO prefect;
 ```
 
 Then point the task manager's database connection string at this role instead of a superuser.
