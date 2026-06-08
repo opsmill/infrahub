@@ -265,8 +265,6 @@ async def sync_remote_repositories() -> None:
 
         infrahub_branch = staging_branch or registry.default_branch
 
-        # Hold the repository lock only for the local git initialization, so a slow import no longer keeps the lock
-        # reserved.
         default_import_git_branch: str | None = None
         async with lock.registry.get(name=repo_name, namespace="repository"):
             init_failed = False
