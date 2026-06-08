@@ -1,4 +1,4 @@
-import { BreadcrumbItem } from "@/shared/components/aria/breadcrumbs";
+import { BreadcrumbItem } from "@infrahub/ui";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

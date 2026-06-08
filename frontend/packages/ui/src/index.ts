@@ -1,4 +1,14 @@
 export {
+  Breadcrumb,
+  type BreadcrumbProps,
+  BreadcrumbItem,
+  BreadcrumbItemError,
+  BreadcrumbItemLoading,
+  type BreadcrumbItemProps,
+  Breadcrumbs,
+  type BreadcrumbsProps,
+} from "./components/breadcrumbs/breadcrumbs";
+export {
   Button,
   type ButtonProps,
   buttonVariants,

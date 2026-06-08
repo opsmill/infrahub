@@ -1,17 +1,17 @@
-import { Button } from "@infrahub/ui";
-import { ChevronsUpDownIcon } from "lucide-react";
-import { ListLayout, Virtualizer } from "react-aria-components";
-import { Link, useParams } from "react-router";
-
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbItemError,
   BreadcrumbItemLoading,
   Breadcrumbs,
-} from "@/shared/components/aria/breadcrumbs";
+  Button,
+} from "@infrahub/ui";
+import { ChevronsUpDownIcon } from "lucide-react";
+import { ListLayout, Virtualizer } from "react-aria-components";
+import { Link, useParams } from "react-router";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
