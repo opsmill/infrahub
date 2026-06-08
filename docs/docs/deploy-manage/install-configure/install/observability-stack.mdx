@@ -15,13 +15,48 @@ Infrahub ships an observability stack that runs alongside Infrahub:
 - **Grafana** — dashboards and visualization
 - **Prefect exporter** — task-manager metrics
 
-With Docker Compose the stack is bundled into the deployment (see the [Enterprise install guide](./enterprise)). On Kubernetes it is the `infrahub-observability` Helm chart, which you can deploy either bundled with your Infrahub release or as a standalone release.
-
-The chart wraps the upstream Grafana and Prometheus community charts, and provisions Grafana with pre-built dashboards and data sources for Infrahub, Neo4j, RabbitMQ, and Prefect.
+You can deploy it with **Docker Compose** (Infrahub Enterprise) or on **Kubernetes** with the `infrahub-observability` Helm chart. Grafana comes provisioned with pre-built dashboards and data sources for Infrahub, Neo4j, RabbitMQ, and Prefect.
 
 <ReferenceLink title="infrahub-observability Helm chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub-observability" openInNewTab />
 
-## Prerequisites
+## Docker Compose
+
+The Infrahub Enterprise Docker Compose deployment can include the observability stack. Add the `?observability=true` query parameter when you fetch the compose file:
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+It combines with other parameters such as a sizing preset:
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > docker-compose.yml
+```
+
+Once running, Grafana is available at [http://localhost:3500](http://localhost:3500) with the default credentials `admin` / `admin`.
+
+:::tip Enable request tracing
+
+Infrahub can export OpenTelemetry traces so you can follow a single request as it moves across the API server, task workers, and the database. Traces are sent to the bundled Tempo instance and surfaced in Grafana under the Tempo data source. To enable it, add the following to a `.env` file alongside the compose file:
+
+```bash
+INFRAHUB_TRACE_ENABLE=true
+INFRAHUB_TRACE_EXPORTER_TYPE=otlp
+INFRAHUB_TRACE_EXPORTER_PROTOCOL=grpc
+INFRAHUB_TRACE_EXPORTER_ENDPOINT=http://infrahub-tempo:4317
+INFRAHUB_TRACE_INSECURE=true
+```
+
+:::
+
+For the full Infrahub Enterprise Compose install, see the [Enterprise install guide](./enterprise).
+
+## Kubernetes with Helm
+
+On Kubernetes the stack is the `infrahub-observability` Helm chart, which wraps the upstream Grafana and Prometheus community charts. Deploy it bundled with your Infrahub release or as a standalone release.
+
+### Prerequisites
 
 - A Kubernetes cluster (version 1.24 or later)
 - [Helm](https://helm.sh/docs/intro/install/) (version 3 or later) installed on your system
@@ -29,11 +64,11 @@ The chart wraps the upstream Grafana and Prometheus community charts, and provis
 
 The stack installs and runs on its own. To collect Infrahub's own metrics and Prefect task data, install it in the same namespace as an Infrahub or Infrahub Enterprise release (or set `global.infrahubReleaseName` when the release name differs). Without a reachable Infrahub, the stack still starts, but the Prefect exporter stays unhealthy and the Infrahub scrape targets report no data.
 
-## Deploy the stack
+### Deploy
 
 Deploy the stack either bundled with your Infrahub release or as its own release.
 
-### Bundled with Infrahub
+#### Bundled with Infrahub
 
 The `infrahub` and `infrahub-enterprise` charts package the observability stack as a subchart, gated by `infrahub-observability.enabled` (default `false`). Enable it in your Infrahub values to deploy the stack as part of the same release and namespace — no separate install.
 
@@ -56,7 +91,7 @@ infrahub:
 
 Apply the change with `helm upgrade` on your Infrahub release. Enabling the bundled stack also turns tracing on automatically: Infrahub emits traces to the bundled Tempo at `<release>-tempo:4317` (where `<release>` is your Infrahub release name) with no further configuration.
 
-### Standalone release
+#### Standalone release
 
 To manage the stack on its own release lifecycle — for example, to add it next to an existing Infrahub release without changing that release — install the chart directly. The `--create-namespace` flag creates the target namespace if it does not already exist; drop it when installing into the namespace where Infrahub already runs:
 
@@ -78,7 +113,7 @@ global:
     insecure: true
 ```
 
-## Services and access
+### Services and access
 
 Every component is exposed through a `ClusterIP` service, reachable only from inside the cluster:
 
@@ -111,7 +146,7 @@ Change the default Grafana credentials before exposing it outside the cluster. S
 
 :::
 
-## Configure the stack
+### Configure the stack
 
 The component values below set the size, retention, and exposure of each part of the stack:
 
@@ -177,7 +212,7 @@ For the complete list of values, see the chart's `values.yaml`.
 
 <ReferenceLink title="infrahub-observability values.yaml" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-observability/values.yaml" openInNewTab />
 
-## Verify the deployment
+### Verify the deployment
 
 Check that the stack's pods are running:
 
