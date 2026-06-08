@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.protocols import CoreTransformPython
-from prefect import flow
+from prefect import flow, task
+from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
@@ -36,6 +38,18 @@ from .models import (
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
 
+
+def get_prefect_max_related_resources() -> int:
+    max_related_resources = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500"))
+    if max_related_resources <= 0:
+        max_related_resources = 500
+    return max_related_resources
+
+
+def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
+    return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
+
+
 UPDATE_ATTRIBUTE = """
 mutation UpdateAttribute(
     $id: String!,
@@ -54,6 +68,63 @@ mutation UpdateAttribute(
 """
 
 
+@task(name="computed-attribute-process-transform-for-node", cache_policy=NONE)
+async def process_transform_for_node(
+    branch_name: str,
+    object_id: str,
+    node_kind: str,
+    attribute_name: str,
+    query_id: str,
+    transform_timeout: int,
+    repository_id: str,
+    repository_name: str,
+    repository_kind: str,
+    commit: str,
+    file_path: str,
+    class_name: str,
+    convert_query_response: bool,
+    context: InfrahubContext,
+) -> None:
+    client = get_client()
+
+    repo = await get_initialized_repo(
+        client=client,
+        repository_id=repository_id,
+        name=repository_name,
+        repository_kind=repository_kind,
+        commit=commit,
+    )
+
+    data = await client.query_gql_query(
+        name=query_id,
+        branch_name=branch_name,
+        variables={"id": object_id},
+        update_group=True,
+        subscribers=[object_id],
+    )
+
+    transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform_timeout)(
+        client=client,
+        branch_name=branch_name,
+        commit=commit,
+        location=f"{file_path}::{class_name}",
+        data=data,
+        convert_query_response=convert_query_response,
+    )  # type: ignore[call-overload]
+
+    await client.execute_graphql(
+        query=UPDATE_ATTRIBUTE,
+        variables={
+            "id": object_id,
+            "kind": node_kind,
+            "attribute": attribute_name,
+            "value": transformed_data,
+            "context_account_id": context.account.account_id,
+        },
+        branch_name=branch_name,
+    )
+
+
 @flow(
     name="computed_attribute_process_transform",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
@@ -61,13 +132,15 @@ mutation UpdateAttribute(
 async def process_transform(
     branch_name: str,
     node_kind: str,
-    object_id: str,
     computed_attribute_name: str,  # noqa: ARG001
     computed_attribute_kind: str,  # noqa: ARG001
     context: InfrahubContext,
+    object_id: str | None = None,
+    object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
-    await add_tags(branches=[branch_name], nodes=[object_id])
+    all_ids = list({*([object_id] if object_id else []), *(object_ids or [])})
+    await add_tags(branches=[branch_name], nodes=all_ids)
     client = get_client()
 
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
@@ -99,42 +172,26 @@ async def process_transform(
             raise_when_missing=True,
         )
 
-        repo = await get_initialized_repo(
-            client=client,
-            repository_id=transform.repository.peer.id,
-            name=transform.repository.peer.name.value,
-            repository_kind=str(transform.repository.peer.typename),
-            commit=repo_node.commit.value,
-        )
-
-        data = await client.query_gql_query(
-            name=transform.query.id,
-            branch_name=branch_name,
-            variables={"id": object_id},
-            update_group=True,
-            subscribers=[object_id],
-        )
-
-        transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout.value)(
-            client=client,
-            branch_name=branch_name,
-            commit=repo_node.commit.value,
-            location=f"{transform.file_path.value}::{transform.class_name.value}",
-            data=data,
-            convert_query_response=transform.convert_query_response.value,
-        )  # type: ignore[call-overload]
-
-        await client.execute_graphql(
-            query=UPDATE_ATTRIBUTE,
-            variables={
-                "id": object_id,
-                "kind": node_kind,
-                "attribute": attribute_name,
-                "value": transformed_data,
-                "context_account_id": context.account.account_id,
-            },
-            branch_name=branch_name,
-        )
+        batch = await client.create_batch()
+        for oid in all_ids:
+            batch.add(
+                task=process_transform_for_node,
+                branch_name=branch_name,
+                object_id=oid,
+                node_kind=node_kind,
+                attribute_name=attribute_name,
+                query_id=transform.query.id,
+                transform_timeout=transform.timeout.value,
+                repository_id=transform.repository.peer.id,
+                repository_name=transform.repository.peer.name.value,
+                repository_kind=str(transform.repository.peer.typename),
+                commit=repo_node.commit.value,
+                file_path=transform.file_path.value,
+                class_name=transform.class_name.value,
+                convert_query_response=transform.convert_query_response.value,
+                context=context,
+            )
+        _ = [r async for _, r in batch.execute()]
 
 
 @flow(
@@ -150,15 +207,20 @@ async def trigger_update_python_computed_attributes(
     await add_tags(branches=[branch_name])
 
     nodes = await get_client().all(kind=computed_attribute_kind, branch=branch_name)
+    object_ids = [node.id for node in nodes]
 
-    for node in nodes:
+    if not object_ids:
+        return
+
+    chunk_size = get_prefect_max_related_resources() // 2
+    for chunk in _chunk_ids(object_ids, chunk_size):
         await get_workflow().submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
             context=context,
             parameters={
                 "branch_name": branch_name,
                 "node_kind": computed_attribute_kind,
-                "object_id": node.id,
+                "object_ids": chunk,
                 "computed_attribute_name": computed_attribute_name,
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
@@ -483,21 +545,30 @@ async def query_transform_targets(
             )
 
     nodes_with_computed_attributes = schema_branch.computed_attributes.get_python_attributes_per_node()
+
+    # Group by (kind, attribute_name) so each attribute gets one batch workflow submission
+    batches: dict[tuple[str, str], list[str]] = {}
     for subscriber in subscribers:
         if subscriber.kind in nodes_with_computed_attributes:
             for computed_attribute in nodes_with_computed_attributes[subscriber.kind]:
-                await get_workflow().submit_workflow(
-                    workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
-                    context=context,
-                    parameters={
-                        "branch_name": branch_name,
-                        "node_kind": subscriber.kind,
-                        "object_id": subscriber.object_id,
-                        "computed_attribute_name": computed_attribute.name,
-                        "computed_attribute_kind": subscriber.kind,
-                        "context": context,
-                    },
-                )
+                key = (subscriber.kind, computed_attribute.name)
+                batches.setdefault(key, []).append(subscriber.object_id)
+
+    chunk_size = get_prefect_max_related_resources() // 2
+    for (kind, attribute_name), batch_object_ids in batches.items():
+        for chunk in _chunk_ids(batch_object_ids, chunk_size):
+            await get_workflow().submit_workflow(
+                workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "node_kind": kind,
+                    "object_ids": chunk,
+                    "computed_attribute_name": attribute_name,
+                    "computed_attribute_kind": kind,
+                    "context": context,
+                },
+            )
 
 
 GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
