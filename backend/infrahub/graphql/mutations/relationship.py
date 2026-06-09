@@ -193,7 +193,7 @@ class RelationshipAdd(Mutation):
         )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
-        _validate_cardinality_add(rel_schema=rel_schema, existing_peers=existing_peers)
+        _validate_cardinality_add(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
 
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
@@ -523,9 +523,17 @@ async def _collect_current_peers(
     return {str(peer.peer_id): peer for peer in query.get_peers()}
 
 
-def _validate_cardinality_add(rel_schema: RelationshipSchema, existing_peers: dict[str, RelationshipPeerData]) -> None:
-    if rel_schema.cardinality == RelationshipCardinality.ONE and existing_peers:
+def _validate_cardinality_add(
+    data: RelationshipNodesInput, rel_schema: RelationshipSchema, existing_peers: dict[str, RelationshipPeerData]
+) -> None:
+    if rel_schema.cardinality != RelationshipCardinality.ONE:
+        return
+    if existing_peers:
         raise ValidationError(f"'{rel_schema.name}' is a cardinality-one relationship and already has a peer")
+    if len(data.get("nodes")) > 1:
+        raise ValidationError(
+            f"'{rel_schema.name}' is a cardinality-one relationship and cannot be assigned more than one peer"
+        )
 
 
 def _validate_optional_remove(

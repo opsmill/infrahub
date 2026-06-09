@@ -116,7 +116,7 @@
     "@biomejs/biome": "^2.4.16",
     "@graphql-codegen/cli": "^7.1.2",
     "@graphql-codegen/typescript": "^6.0.2",
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.60.0",
     "@types/apollo-upload-client": "18.0.1",
     "@types/dagre": "^0.7.54",
     "@types/node": "^25.9.1",
@@ -143,8 +143,8 @@
       "playwright-core"
     ],
     "overrides": {
-      "playwright": "1.56.1",
-      "playwright-core": "1.56.1"
+      "playwright": "1.60.0",
+      "playwright-core": "1.60.0"
     },
     "peerDependencyRules": {
       "allowedVersions": {
