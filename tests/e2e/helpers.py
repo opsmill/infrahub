@@ -15,12 +15,17 @@ from playwright.sync_api import expect
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClientSync
-    from playwright.sync_api import Page
+    from playwright.sync_api import Locator, Page
 
 
 def generate_random_branch_name(prefix: str = "") -> str:
     """Port of generateRandomBranchName: a random suffix to avoid collisions."""
     return f"{prefix}{uuid.uuid4().hex[:12]}"
+
+
+def get_data_table_row(page: Page, name: str) -> Locator:
+    """Port of getDataTableRow: the data-table row containing a link with the exact name."""
+    return page.get_by_test_id("data-table-row").filter(has=page.get_by_role("link", name=name, exact=True))
 
 
 def login(page: Page, username: str, password: str) -> None:

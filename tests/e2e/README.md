@@ -42,6 +42,23 @@ fixture, so each `pytest-xdist` worker would boot its own container. The legacy
 TS suite ran 4 workers against one shared server; the equivalent here is one
 process driving one stack.
 
+### Local verification note
+
+A freshly built `:local` image from current `stable` can crash the Prefect
+`task-manager` on boot with a free-threaded-Python `PyMutex_Unlock` SIGABRT, so
+the stack fails to come up locally. Until that is fixed, smoke-run locally
+against the last released image instead:
+
+```bash
+INFRAHUB_TESTING_IMAGE_VER=1.9.7 INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest -c tests/e2e/pytest.ini tests/e2e/<domain>
+```
+
+Caveat: an older released image can differ from `stable` in newer UI/routes and
+default objects, so a few HEAD-targeted tests may not pass against it (they are
+faithful 1:1 ports and run in CI against the `stable` image). CI always builds
+and uses `:local`.
+
 ## Architecture
 
 ```
@@ -155,6 +172,12 @@ Done:
   filters, IPAM tree, pool allocations, and the serial namespace flow. One test
   (`ip-prefix-create`'s second pool allocation) is `@pytest.mark.skip` — see
   "response-delay" below.
+- **`role-management` (5/5 specs)** — account, role, group, global-permission
+  and object-permission CRUD on throwaway branches. The `roles` and
+  `object-permissions` specs depend on `infrastructure_data` (the `Administrator`
+  role and the `object:*:*:any:allow_all` permission are created by the demo
+  data, not bootstrap); the other three use bootstrap RBAC objects only.
+  Verified 5/5 against a stable image.
 - **`objects/list/object-list` (1)** and **`login` (1 of the 4 root specs)** —
   the original pilot.
 
@@ -164,7 +187,7 @@ the no-data and full-data fixture paths.
 
 Remaining domains to port (counts from the legacy suite, 80 specs total):
 `objects` 26 (list 6 — 1 done, hierarchy 4, profiles 3, convert/file-upload/CoreGraphQLQuery 1 each, 8 top-level),
-`role-management` 5, `docs-regression-check` 5,
+`docs-regression-check` 5,
 `object-template` 4, root-level 4 (1 done: login; remaining: search, search-parent-prefixes, breadcrumb),
 `proposed-changes` 3, `activities` 3, `schema` 2, `resource-manager` 2,
 `profile` 2, `groups` 2, `form` 2, `webhook` 1, `triggers` 1, `tasks` 1,
