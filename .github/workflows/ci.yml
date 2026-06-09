@@ -1251,6 +1251,81 @@ jobs:
         if: always()
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
 
+  # ----------------------------- E2E pytest-playwright (infrahub-testcontainers) -----------------------------
+  # New Python e2e suite. Runs ALONGSIDE E2E-testing-playwright (the TS suite)
+  # until parity is confirmed, then the TS job can be removed. Instead of
+  # `invoke dev.start dev.load-infra-*`, infrahub-testcontainers spins up the
+  # stack and pytest fixtures load the dataset (see tests/e2e/).
+  E2E-testing-pytest-playwright:
+    needs:
+      - prepare-environment
+      - files-changed
+      - yaml-lint
+      - python-lint
+      - infrahub-testcontainers-check
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.e2e == 'true'
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 60
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      PYTEST_XDIST_WORKER_COUNT: 1
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+      - name: Install tini
+        run: apt-get update && apt-get install -y tini
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+      # Build the local image and point infrahub-testcontainers at it.
+      - name: "Set environment variables"
+        run: |
+          echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_IMAGE=opsmill/infrahub >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_PULL=false >> $GITHUB_ENV
+      - name: Build Demo
+        run: |
+          echo "::group::Build infrahub container"
+          uv run invoke dev.build
+          echo "::endgroup::"
+      # tini reaps zombies and propagates cancellation so testcontainers tear down.
+      - name: Run Playwright tests
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e
+      - name: playwright-report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: E2E-testing-pytest-playwright
+          path: |
+            test-results/
+            playwright-junit.xml
+      - name: Containers after tests
+        if: always()
+        run: docker ps -a
+
   # ------------------------------------------ E2E invoke demo ------------------------------------------------
   E2E-testing-invoke-demo-start:
     needs:
