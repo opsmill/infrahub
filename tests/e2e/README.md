@@ -194,25 +194,38 @@ Done:
 - **root-level `search` + `search-parent-prefixes` (9/9 tests)** — the
   search-anywhere modal (open/close/shortcut, menu/node/IPAM results, UUID
   lookup) and the parent-prefix lookup. Verified against a stable image.
-- **`objects/list/object-list` (1)** and **`login` (1 of the 4 root specs)** —
-  the original pilot.
+- **`objects`** — top-level (`object-details`, `object-details-delete`,
+  `object-update`, `object-dropdown-creation`, `object-filters`, `object-groups`,
+  `object-metadata`, `object-relationships`, `object-list`), `list/*` (bulk
+  delete/edit, select-range, search), `hierarchy/*` (crud, navigation, tree-list,
+  relationship-input), `profiles/*` (multi/on-generic/profiles), `convert`,
+  `file-upload`. ~64 tests. `convert` is skipped (home-nav race, see
+  "response-delay") and `CoreGraphQLQuery` is skipped (needs the demo-edge repo).
+- **`activities` (9), `resource-manager` (9), `profile` (6), `form` (4),
+  `webhook` (3), `triggers` (3), `events` (1)** — verified against a stable
+  image. `events` (active test `fixme`), `triggers` ("update the matches"
+  `fixme`) and `form/select-2-steps` "kind/parent selects" are skipped.
+- **`groups` · `schema` · `menu` · `tasks`**, **`search` · `search-parent-prefixes`**,
+  **`role-management`**, **`object-template`**, **`ipam`**, **`branches`**, and the
+  **pilot** (login, object-list, merge-branch) — see above.
 
-These prove auth, the full branch lifecycle (create/merge/delete/serial),
-CRUD, navigation, route mocking, merged-branch read-only enforcement, and both
-the no-data and full-data fixture paths.
+These prove auth, the full branch lifecycle, CRUD, navigation, route mocking,
+merged-branch read-only enforcement, RBAC, IPAM, templates/pools/profiles,
+schema visualizer, search, activities, and both the no-data and full-data
+fixture paths.
 
-Remaining domains to port (counts from the legacy suite, 80 specs total):
-`objects` 26 (list 6 — 1 done, hierarchy 4, profiles 3, convert/file-upload/CoreGraphQLQuery 1 each, 8 top-level),
-`docs-regression-check` 5,
-root-level 4 (3 done: login, search, search-parent-prefixes; remaining: breadcrumb),
-`proposed-changes` 3, `activities` 3, `resource-manager` 2,
-`profile` 2, `form` 2, `webhook` 1, `triggers` 1,
-`repository` 1, `events` 1.
+Remaining to port: `docs-regression-check` (5, serial screenshots; has
+`fixme`), root-level `breadcrumb` (1), `proposed-changes` (3, validators/checks;
+has `fixme`), `repository` (1), and the repo/artifact-dependent specs
+(`objects/artifact*`, `objects/CoreGraphQLQuery`) — all of which need the
+`demo_edge_repo` fixture exercised (Git repo import + artifact/generator runs).
 
-Carry over the legacy suite's skips as `@pytest.mark.skip` so coverage maps
-1:1: `tasks/tasks-view`, `docs-regression-check/guides/resource_manager_guide`,
-`events/events-rules-actions`, `triggers` "update the matches",
-`proposed-changes` comment/merge sub-tests (all `fixme` today).
+Skips preserved/added (each with a reason in-code): `tasks/tasks-view`,
+`events/events-rules-actions`, `triggers` "update the matches" (legacy `fixme`);
+`ipam/ip-prefix-create` 2nd allocation + `objects/convert` (home-nav races, see
+"response-delay"); `objects/CoreGraphQLQuery` (needs demo-edge repo);
+`form/select-2-steps` kind/parent selects (empty Kind combobox in the
+testcontainer env).
 
 ### Not yet ported from the harness
 
