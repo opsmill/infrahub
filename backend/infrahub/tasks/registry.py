@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import asyncio
+import threading
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, AsyncIterator
 
 from infrahub import lock
 from infrahub.core import registry
@@ -15,6 +18,35 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
+
+# Serializes schema-registry refreshes across the worker THREADS that share a
+# single process under the embedded free-threaded backend. The schema registry
+# (core.registry.schema / .branch and the GraphQL registry) is process-global, but
+# each worker thread runs its own event loop and its own message-bus consumer, so a
+# single broadcast refresh event is delivered to every thread. Without this lock
+# they all reload the schema from the database and mutate the shared registry at the
+# same time — redundant database loads and an unsafe concurrent write. The per-loop
+# local_schema_lock cannot coordinate across threads since each loop owns a distinct
+# instance, so the serialization must use a process-wide threading primitive.
+_PROCESS_SCHEMA_REFRESH_LOCK = threading.Lock()
+
+
+@asynccontextmanager
+async def serialize_process_schema_refresh() -> AsyncIterator[None]:
+    """Hold the process-wide schema-refresh lock for the duration of the block.
+
+    The blocking acquire runs in a worker thread so it never freezes the event loop:
+    while another worker thread in this process is refreshing the shared registry,
+    this loop stays responsive and resumes once the lock is released. By then the
+    shared registry is already current, so the caller's reload becomes a cheap no-op
+    (the branch hash matches) and only one database load happens per process.
+    Uncontended under the subprocess backend, where there is one worker per process.
+    """
+    await asyncio.to_thread(_PROCESS_SCHEMA_REFRESH_LOCK.acquire)
+    try:
+        yield
+    finally:
+        _PROCESS_SCHEMA_REFRESH_LOCK.release()
 
 
 def update_graphql_schema(branch: Branch, schema_branch: SchemaBranch) -> None:
@@ -87,7 +119,7 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
     If a branch is already present with a different value for the hash
     We pull the new schema from the database and we update the registry.
     """
-    async with lock.registry.local_schema_lock():
+    async with serialize_process_schema_refresh(), lock.registry.local_schema_lock():
         active_branches = await registry.branch_object.get_list(db=db)
         for active_branch in active_branches:
             if active_branch.name == GLOBAL_BRANCH_NAME:
