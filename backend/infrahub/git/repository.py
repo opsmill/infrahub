@@ -138,7 +138,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         "Failed to prepare branch for import, skipping it.",
                         repository=self.name,
                         branch=branch_name,
-                        error=str(exc),
+                        exc_info=exc,
                     )
                     continue
 
@@ -160,7 +160,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         "Failed to pull branch for import, skipping it.",
                         repository=self.name,
                         branch=branch_name,
-                        error=str(exc),
+                        exc_info=exc,
                     )
                     continue
 
