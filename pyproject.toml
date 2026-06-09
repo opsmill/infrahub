@@ -16,8 +16,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "neo4j==6.0.3",
-    "neo4j-rust-ext==6.0.3.0",
+    "neo4j==6.2.0",
+    "neo4j-rust-ext==6.2.0.0",
     "pydantic>=2.12,<2.13",
     "pydantic-settings>=2.8,<2.9",
     "pytest>=9.0,<9.1",
@@ -137,15 +137,7 @@ infrahubctl = "infrahub_sdk.ctl.cli:app"
 "infrahubasync" = "infrahub.workers.infrahub_async"
 
 [tool.coverage.run]
-# Use coverage.py's fast sys.monitoring core (PEP 669) instead of the default C tracer,
-# which removes ~40% (~6-7 min) of the backend test suite runtime.
-core = "sysmon"
-# Branch coverage is temporarily disabled because on Python < 3.14 sys.monitoring cannot
-# measure branches and silently falls back to the much slower C tracer. With line-only
-# coverage + sysmon the overhead is ~0%.
-# TODO: re-enable `branch = true` once CI runs on Python 3.14+, where sys.monitoring
-# measures branches at near-zero overhead (benchmarked at +2.6% vs +43% with the C tracer).
-branch = false
+branch = true
 
 [tool.coverage.report]
 exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]

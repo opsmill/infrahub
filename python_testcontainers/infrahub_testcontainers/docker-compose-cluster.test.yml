@@ -67,7 +67,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
-    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2025.10.1-enterprise}"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2026.05.0-enterprise}"
     restart: unless-stopped
     environment:
       <<: *neo4j-config-common
@@ -99,7 +99,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
-    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2025.10.1-enterprise}"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2026.05.0-enterprise}"
     environment:
       <<: *neo4j-config-common
       NEO4J_metrics_prometheus_endpoint: 0.0.0.0:2005
@@ -133,7 +133,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
-    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2025.10.1-enterprise}"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2026.05.0-enterprise}"
     environment:
       <<: *neo4j-config-common
       NEO4J_metrics_prometheus_endpoint: 0.0.0.0:2006
