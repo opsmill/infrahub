@@ -114,6 +114,17 @@ A test depends only on the fixtures it needs:
    `test(...)`. Keep `test.step` blocks as inline comments.
 6. Run `uv run ruff check tests/e2e && uv run ruff format tests/e2e`, then the spec.
 
+### Gotcha: serial specs (`test.describe.configure({ mode: "serial" })`)
+
+pytest **reorders** tests by fixture usage, so it does not preserve the
+top-to-bottom order a serial `describe` relies on (a test that uses fewer
+session fixtures than its siblings gets pulled away). Do **not** depend on one
+test's side effects in another. Make each test self-contained: create the
+branches/objects it needs in its own fixture (or inline via `branch_api`) and
+clean them up in a `finally`/fixture teardown. This keeps the same coverage
+while being order-robust. A legacy setup-only "test" (no assertions, just
+`createBranchAPI`) becomes inline setup rather than a separate test.
+
 ## Data-dependency taxonomy (from the legacy suite)
 
 - **(a) Self-contained** — create+delete their own branch and objects
@@ -136,17 +147,24 @@ A test depends only on the fixtures it needs:
 
 ## Migration status
 
-Pilot complete (this PR): `login`, `branches/merge-branch`,
-`objects/list/object-list` — proving auth, the branch lifecycle, CRUD,
-navigation, route mocking, and both no-data and full-data fixture paths.
+Done:
+
+- **`branches` (5/5)** — `merge-branch`, `branch-details`, `branch-selector`,
+  `branches` (create/delete), `merged-branch-permissions`.
+- **`objects/list/object-list` (1)** and **`login` (1 of the 4 root specs)** —
+  the original pilot.
+
+These prove auth, the full branch lifecycle (create/merge/delete/serial),
+CRUD, navigation, route mocking, merged-branch read-only enforcement, and both
+the no-data and full-data fixture paths.
 
 Remaining domains to port (counts from the legacy suite, 80 specs total):
-`objects` 26 (list 6, hierarchy 4, profiles 3, convert/file-upload/CoreGraphQLQuery 1 each, 8 top-level),
-`ipam` 9, `role-management` 5, `docs-regression-check` 5, `branches` 5 (1 done),
-`object-template` 4, root-level 4 (1 done: login), `proposed-changes` 3,
-`activities` 3, `schema` 2, `resource-manager` 2, `profile` 2, `groups` 2,
-`form` 2, `webhook` 1, `triggers` 1, `tasks` 1, `repository` 1, `menu` 1,
-`events` 1.
+`objects` 26 (list 6 — 1 done, hierarchy 4, profiles 3, convert/file-upload/CoreGraphQLQuery 1 each, 8 top-level),
+`ipam` 9, `role-management` 5, `docs-regression-check` 5,
+`object-template` 4, root-level 4 (1 done: login; remaining: search, search-parent-prefixes, breadcrumb),
+`proposed-changes` 3, `activities` 3, `schema` 2, `resource-manager` 2,
+`profile` 2, `groups` 2, `form` 2, `webhook` 1, `triggers` 1, `tasks` 1,
+`repository` 1, `menu` 1, `events` 1.
 
 Carry over the legacy suite's skips as `@pytest.mark.skip` so coverage maps
 1:1: `tasks/tasks-view`, `docs-regression-check/guides/resource_manager_guide`,
