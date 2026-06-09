@@ -603,7 +603,7 @@ def extract_sso_groups(
     source: str,
 ) -> list[str]:
     if claim_key not in payload:
-        log.warning(
+        log.debug(
             "sso groups claim miss",
             provider=provider_name,
             source=source,
@@ -615,7 +615,7 @@ def extract_sso_groups(
 
     value = payload[claim_key]
     if not isinstance(value, list):
-        log.warning(
+        log.debug(
             "sso groups claim miss",
             provider=provider_name,
             source=source,
@@ -626,7 +626,7 @@ def extract_sso_groups(
         return []
 
     if not all(isinstance(item, str) for item in value):
-        log.warning(
+        log.debug(
             "sso groups claim miss",
             provider=provider_name,
             source=source,

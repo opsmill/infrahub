@@ -131,7 +131,7 @@ def test_extract_sso_groups_miss_returns_empty_and_warns(case: MissCase) -> None
     warnings = [r for r in records if r.get("event") == "sso groups claim miss"]
     assert len(warnings) == 1
     warning = warnings[0]
-    assert warning["log_level"] == "warning"
+    assert warning["log_level"] == "debug"
     assert warning["provider"] == "provider1"
     assert warning["source"] == "oidc_userinfo"
     assert warning["configured_claim"] == case.claim_key
