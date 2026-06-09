@@ -44,7 +44,7 @@
     "@headlessui/react": "^2.2.10",
     "@iconify-icon/react": "^3.0.3",
     "@iconify-json/mdi": "^1.2.3",
-    "@infrahub/ui": "file:../packages/ui",
+    "@infrahub/ui": "workspace:*",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.8",
@@ -133,26 +133,6 @@
     "ultracite": "^7.8.1",
     "vitest": "^4.1.8",
     "vitest-browser-react": "^2.2.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "core-js",
-      "esbuild",
-      "msgpackr-extract",
-      "playwright",
-      "playwright-core"
-    ],
-    "overrides": {
-      "playwright": "1.56.1",
-      "playwright-core": "1.56.1"
-    },
-    "peerDependencyRules": {
-      "allowedVersions": {
-        "graphiql-explorer>graphql": "^16.0.0",
-        "graphiql-explorer>react": "^19.0.0",
-        "graphiql-explorer>react-dom": "^19.0.0"
-      }
-    }
   },
   "engines": {
     "node": ">=24.0"

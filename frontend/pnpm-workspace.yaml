@@ -1,0 +1,6 @@
+# pnpm workspace for the in-repo frontend packages.
+# The schema-visualizer is a git submodule (its own repo) and is intentionally NOT a
+# workspace member — it stays a file: dependency so it keeps building standalone.
+packages:
+  - app
+  - packages/ui
