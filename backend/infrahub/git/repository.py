@@ -76,7 +76,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
 
         Raises:
-            GraphQLError: When creating a branch in the graph fails for a reason other than the branch already existing.
+            GraphQLError: When a branch or commit update against the database fails.
 
         """
         for pending in await self.collect_pending_imports(staging_branch=staging_branch):
@@ -87,13 +87,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             )
 
     async def collect_pending_imports(self, staging_branch: str | None = None) -> list[PendingObjectImport]:
-        """Run the git working-copy side of a sync and return the imports it produced.
+        """Run the git and branch-setup side of a sync and return the imports it produced.
 
-        Performs the on-disk git mutations (fetch, branch creation, pull, commit-worktree pinning)
-        and returns one entry per branch whose objects must be imported.
+        Brings the local clone in line with the remote and records the affected branches and their
+        commits in the database, pinning a per-commit worktree for each. Returns one entry per branch
+        whose objects still need importing into the graph. A per-branch git failure is logged and skipped so the
+        other branches' imports are still returned.
 
         Raises:
-            GraphQLError: When creating a branch in the graph fails for a reason other than the branch already existing.
+            GraphQLError: When a branch or commit update against the database fails.
 
         """
         log.info("Starting the synchronization.", repository=self.name)
