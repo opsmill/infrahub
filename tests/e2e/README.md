@@ -184,6 +184,11 @@ Done:
   role and the `object:*:*:any:allow_all` permission are created by the demo
   data, not bootstrap); the other three use bootstrap RBAC objects only.
   Verified 5/5 against a stable image.
+- **`schema` (2/2 specs, 8/8 tests)** — schema visualizer (redirect, help menu,
+  filter, graph view, NumberPool attribute) and the attribute/relationship
+  shortcut modal. **`menu` (1/1)** — open the Location menu (+ 500-response
+  guard). **`tasks` (1, skipped)** — `test.describe.fixme` in the source,
+  preserved as skipped.
 - **`groups` (2/2 specs, 3/3 tests)** — Standard Group create + add Builtin Tag
   members, and the internal-groups filter toggle. Verified against a stable image.
 - **root-level `search` + `search-parent-prefixes` (9/9 tests)** — the
@@ -200,9 +205,9 @@ Remaining domains to port (counts from the legacy suite, 80 specs total):
 `objects` 26 (list 6 — 1 done, hierarchy 4, profiles 3, convert/file-upload/CoreGraphQLQuery 1 each, 8 top-level),
 `docs-regression-check` 5,
 root-level 4 (3 done: login, search, search-parent-prefixes; remaining: breadcrumb),
-`proposed-changes` 3, `activities` 3, `schema` 2, `resource-manager` 2,
-`profile` 2, `form` 2, `webhook` 1, `triggers` 1, `tasks` 1,
-`repository` 1, `menu` 1, `events` 1.
+`proposed-changes` 3, `activities` 3, `resource-manager` 2,
+`profile` 2, `form` 2, `webhook` 1, `triggers` 1,
+`repository` 1, `events` 1.
 
 Carry over the legacy suite's skips as `@pytest.mark.skip` so coverage maps
 1:1: `tasks/tasks-view`, `docs-regression-check/guides/resource_manager_guide`,
