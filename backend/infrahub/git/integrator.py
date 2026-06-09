@@ -242,6 +242,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if error:
             raise error
 
+        if self.reinitialized:
+            return
+
         infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
         event_context = InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context()
         event_service = await get_event_service()
