@@ -121,6 +121,7 @@ When a user attempts to access Infrahub, the following authentication flow occur
    :::
 2. Upon successful authentication:
    - For local users: Credentials are verified against the local user store
+   - For LDAP users: Credentials are verified against the directory through a service-account lookup and a credential bind
    - For SSO users: The user is redirected to the identity provider, authenticated there, and returned to Infrahub
 3. A user session is created after successful authentication
 4. For first-time SSO users, a corresponding local user record is automatically created

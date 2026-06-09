@@ -20,7 +20,7 @@ With group resolution enabled, Infrahub looks up the groups a user belongs to an
 export INFRAHUB_LDAP_GROUP_ENABLED=true
 export INFRAHUB_LDAP_GROUP_BASE_DN="OU=Groups,DC=corp,DC=example,DC=com"
 
-# Attribute read as the group name and matched against local group names
+# Group-name attribute, matched against local group names
 export INFRAHUB_LDAP_GROUP_NAME_ATTRIBUTE="cn"
 ```
 
@@ -32,7 +32,7 @@ export INFRAHUB_LDAP_GROUP_NAME_ATTRIBUTE="cn"
 group_enabled = true
 group_base_dn = "OU=Groups,DC=corp,DC=example,DC=com"
 
-# Attribute read as the group name and matched against local group names
+# Group-name attribute, matched against local group names
 group_name_attribute = "cn"
 ```
 

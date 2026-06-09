@@ -118,7 +118,7 @@ Map directory attributes to the Infrahub account fields. The defaults match Acti
 export INFRAHUB_LDAP_ATTRIBUTE_USERNAME="sAMAccountName"
 export INFRAHUB_LDAP_ATTRIBUTE_DISPLAY_NAME="displayName"
 
-# Skip the disabled-account check on directories without an equivalent attribute by leaving this empty
+# AD's disabled-account flag; leave empty on directories without an equivalent attribute to skip the check
 export INFRAHUB_LDAP_ATTRIBUTE_DISABLED="userAccountControl"
 ```
 
@@ -131,7 +131,7 @@ export INFRAHUB_LDAP_ATTRIBUTE_DISABLED="userAccountControl"
 attribute_username = "sAMAccountName"
 attribute_display_name = "displayName"
 
-# Skip the disabled-account check on directories without an equivalent attribute by leaving this empty
+# AD's disabled-account flag; leave empty on directories without an equivalent attribute to skip the check
 attribute_disabled = "userAccountControl"
 ```
 
