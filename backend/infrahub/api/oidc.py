@@ -202,7 +202,6 @@ async def token(
             service=service,
             payload=payload,
             provider_settings=provider,
-            claim_key=provider.groups_claim,
             provider_name=provider_name,
         )
         or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
@@ -273,7 +272,6 @@ async def _get_id_token_groups(
     payload: dict[str, Any],
     provider_settings: config.SecurityOIDCSettings,
     *,
-    claim_key: str,
     provider_name: str,
 ) -> list[str]:
     id_token = payload.get("id_token")
@@ -309,7 +307,7 @@ async def _get_id_token_groups(
 
     return extract_sso_groups(
         payload=decoded_token,
-        claim_key=claim_key,
+        claim_key=provider_settings.groups_claim,
         provider_name=provider_name,
         source="oidc_id_token",
     )

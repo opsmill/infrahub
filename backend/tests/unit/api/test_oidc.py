@@ -21,11 +21,12 @@ from tests.adapters.http import MemoryHTTP
 CLIENT_ID = "testing-oicd-1234"
 
 
-def _make_provider(verify_signature: bool = True) -> SecurityOIDCSettings:
+def _make_provider(verify_signature: bool = True, groups_claim: str = "groups") -> SecurityOIDCSettings:
     return SecurityOIDCSettings(
         client_id=CLIENT_ID,
         discovery_url="https://oidc.example.com/.well-known/openid-configuration",
         id_token_verify_signature=verify_signature,
+        groups_claim=groups_claim,
     )
 
 
@@ -84,6 +85,7 @@ async def test_get_id_token_groups_for_oidc(
         service=service,
         payload=_token_response(helper),
         provider_settings=_make_provider(),
+        provider_name="provider1",
     )
 
     assert groups == ["operators"]
@@ -102,6 +104,7 @@ async def test_get_id_token_groups_rejects_invalid_issuer_by_default(
             service=service,
             payload=_token_response(helper),
             provider_settings=_make_provider(),
+            provider_name="provider1",
         )
 
 
@@ -115,6 +118,7 @@ async def test_get_id_token_groups_rejects_invalid_audience_by_default(
             service=service,
             payload=_token_response(helper, client_id="some-other-client"),
             provider_settings=_make_provider(),
+            provider_name="provider1",
         )
 
 
@@ -130,6 +134,7 @@ async def test_get_id_token_groups_accepts_invalid_issuer_when_verification_disa
         service=service,
         payload=_token_response(helper),
         provider_settings=_make_provider(verify_signature=False),
+        provider_name="provider1",
     )
 
     assert groups == ["operators"]
@@ -147,6 +152,7 @@ async def test_get_id_token_groups_rejects_forged_signature(
             service=service,
             payload=_token_response(helper),
             provider_settings=_make_provider(),
+            provider_name="provider1",
         )
 
 
@@ -159,6 +165,7 @@ async def test_get_id_token_groups_accepts_invalid_audience_when_verification_di
         service=service,
         payload=_token_response(helper, client_id="some-other-client"),
         provider_settings=_make_provider(verify_signature=False),
+        provider_name="provider1",
     )
 
     assert groups == ["operators"]
@@ -175,6 +182,7 @@ async def test_get_id_token_groups_accepts_forged_signature_when_verification_di
         service=service,
         payload=_token_response(helper),
         provider_settings=_make_provider(verify_signature=False),
+        provider_name="provider1",
     )
 
     assert groups == ["operators"]
@@ -199,6 +207,7 @@ async def test_get_id_token_groups_empty_jwks_raises_authorization_error(
             service=service,
             payload=_token_response(helper),
             provider_settings=_make_provider(verify_signature=verify_signature),
+            provider_name="provider1",
         )
 
 
@@ -218,6 +227,7 @@ async def test_get_id_token_groups_non_json_jwks_raises_http_server_error(
             service=service,
             payload=_token_response(helper),
             provider_settings=_make_provider(verify_signature=verify_signature),
+            provider_name="provider1",
         )
 
     assert exc_info.value.message == f"OIDC provider returned a non-JSON JWKS response from {OIDC_CONFIG.jwks_uri}"
@@ -237,6 +247,7 @@ async def test_get_id_token_groups_malformed_id_token_raises_authorization_error
             service=service,
             payload=token_response,
             provider_settings=_make_provider(verify_signature=verify_signature),
+            provider_name="provider1",
         )
 
 
@@ -249,6 +260,7 @@ async def test_get_id_token_groups_for_oidc_no_id_token(service: InfrahubService
         service=service,
         payload=token_response,
         provider_settings=_make_provider(),
+        provider_name="provider1",
     )
 
     assert groups == []
@@ -342,62 +354,40 @@ OIDC_CONFIG = OIDCDiscoveryConfig(
 )
 
 
-async def test_get_id_token_groups_with_custom_claim_key() -> None:
-    memory_http = MemoryHTTP()
-    service = await InfrahubServices.new(http=memory_http)
-    client_id = "testing-oidc-roles"
-
-    helper = OIDCTestHelper()
+async def test_get_id_token_groups_with_custom_claim_key(
+    service: InfrahubServices, helper: OIDCTestHelper, publish_jwks: None
+) -> None:
     token_response = helper.generate_token_response(
         username="testuser",
         groups=["network-engineering"],
-        client_id=client_id,
+        client_id=CLIENT_ID,
         issuer=str(OIDC_CONFIG.issuer),
         claim_key="roles",
-    )
-
-    memory_http.add_get_response(
-        url=str(OIDC_CONFIG.jwks_uri),
-        response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
     )
 
     groups = await _get_id_token_groups(
         oidc_config=OIDC_CONFIG,
         service=service,
         payload=token_response,
-        client_id=client_id,
-        claim_key="roles",
+        provider_settings=_make_provider(groups_claim="roles"),
         provider_name="provider1",
     )
 
     assert groups == ["network-engineering"]
 
 
-async def test_get_id_token_groups_with_custom_claim_key_miss_emits_warning() -> None:
-    memory_http = MemoryHTTP()
-    service = await InfrahubServices.new(http=memory_http)
-    client_id = "testing-oidc-miss"
-
-    helper = OIDCTestHelper()
-    token_response = helper.generate_token_response(
-        username="testuser",
-        groups=["operators"],
-        client_id=client_id,
-        issuer=str(OIDC_CONFIG.issuer),
-    )
-
-    memory_http.add_get_response(
-        url=str(OIDC_CONFIG.jwks_uri),
-        response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
-    )
+async def test_get_id_token_groups_with_custom_claim_key_miss_emits_warning(
+    service: InfrahubServices, helper: OIDCTestHelper, publish_jwks: None
+) -> None:
+    # token emits groups under the default "groups" key, but the provider is configured to read "roles"
+    token_response = _token_response(helper)
 
     with capture_logs() as records:
         groups = await _get_id_token_groups(
             oidc_config=OIDC_CONFIG,
             service=service,
             payload=token_response,
-            client_id=client_id,
-            claim_key="roles",
+            provider_settings=_make_provider(groups_claim="roles"),
             provider_name="provider1",
         )
 
@@ -410,74 +400,53 @@ async def test_get_id_token_groups_with_custom_claim_key_miss_emits_warning() ->
     assert warnings[0]["provider"] == "provider1"
 
 
-async def test_default_claim_key_preserves_existing_behavior() -> None:
-    memory_http = MemoryHTTP()
-    service = await InfrahubServices.new(http=memory_http)
-    client_id = "testing-oidc-default"
-
-    helper = OIDCTestHelper()
-    token_response = helper.generate_token_response(
-        username="testuser",
-        groups=["operators"],
-        client_id=client_id,
-        issuer=str(OIDC_CONFIG.issuer),
-    )
-
-    memory_http.add_get_response(
-        url=str(OIDC_CONFIG.jwks_uri),
-        response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
-    )
+async def test_default_claim_key_preserves_existing_behavior(
+    service: InfrahubServices, helper: OIDCTestHelper, publish_jwks: None
+) -> None:
+    token_response = _token_response(helper)
 
     with capture_logs() as records:
         groups = await _get_id_token_groups(
             oidc_config=OIDC_CONFIG,
             service=service,
             payload=token_response,
-            client_id=client_id,
+            provider_settings=_make_provider(),
+            provider_name="provider1",
         )
 
     assert groups == ["operators"]
     assert not any(r.get("event") == "sso groups claim miss" for r in records)
 
 
-async def test_two_providers_use_independent_claim_keys() -> None:
-    memory_http = MemoryHTTP()
-    service = await InfrahubServices.new(http=memory_http)
-    client_id_1 = "testing-oidc-p1"
-    client_id_2 = "testing-oidc-p2"
-
-    helper = OIDCTestHelper()
+async def test_two_providers_use_independent_claim_keys(
+    service: InfrahubServices, helper: OIDCTestHelper, publish_jwks: None
+) -> None:
     token_response_provider1 = helper.generate_token_response(
         username="alice",
         groups=["ops"],
-        client_id=client_id_1,
+        client_id=CLIENT_ID,
         issuer=str(OIDC_CONFIG.issuer),
         claim_key="roles",
     )
     token_response_provider2 = helper.generate_token_response(
         username="bob",
         groups=["dev"],
-        client_id=client_id_2,
+        client_id=CLIENT_ID,
         issuer=str(OIDC_CONFIG.issuer),
-    )
-
-    memory_http.add_get_response(
-        url=str(OIDC_CONFIG.jwks_uri),
-        response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
     )
 
     groups_p2 = await _get_id_token_groups(
         oidc_config=OIDC_CONFIG,
         service=service,
         payload=token_response_provider2,
-        client_id=client_id_2,
+        provider_settings=_make_provider(),
+        provider_name="provider2",
     )
     groups_p1 = await _get_id_token_groups(
         oidc_config=OIDC_CONFIG,
         service=service,
         payload=token_response_provider1,
-        client_id=client_id_1,
-        claim_key="roles",
+        provider_settings=_make_provider(groups_claim="roles"),
         provider_name="provider1",
     )
 
