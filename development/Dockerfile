@@ -40,19 +40,21 @@ ENV CI=$CI_ARG
 
 RUN corepack enable && corepack prepare pnpm@10 --activate
 
-# Create directory structure that matches the relative paths in package.json
-# App is at /frontend/app, packages at /frontend/packages
+# Create the pnpm workspace layout.
+# Workspace root is /frontend (members: app, packages/ui); schema-visualizer is a file: dep.
 RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer /frontend/packages/ui
 
-# Copy local packages (app imports them via file: protocol)
+# Copy local packages (workspace member ui + the file: schema-visualizer)
 COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
 COPY frontend/packages/ui/ /frontend/packages/ui/
 
-# Copy the app package.json and install dependencies (pnpm file: protocol handles schema-visualizer deps)
-COPY frontend/app/package.json frontend/app/pnpm-lock.yaml /frontend/app/
-WORKDIR /frontend/app
+# Copy the workspace manifests + app manifest, then install from the workspace root
+COPY frontend/package.json frontend/pnpm-workspace.yaml frontend/pnpm-lock.yaml /frontend/
+COPY frontend/app/package.json /frontend/app/
+WORKDIR /frontend
 RUN pnpm install --frozen-lockfile --prod
 COPY frontend/app/ /frontend/app/
+WORKDIR /frontend/app
 RUN pnpm build && pnpm store prune
 
 # ****************************************************************
