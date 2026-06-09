@@ -113,7 +113,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -146,7 +146,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -189,7 +189,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -230,7 +230,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -811,7 +811,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
@@ -1117,7 +1117,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
