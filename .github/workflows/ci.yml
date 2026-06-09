@@ -1312,8 +1312,12 @@ jobs:
           uv run invoke dev.build
           echo "::endgroup::"
       # tini reaps zombies and propagates cancellation so testcontainers tear down.
+      # docs-regression-check runs as a SEPARATE invocation (its own stack) because
+      # the tutorial flow merges a branch into main and would pollute the others.
       - name: Run Playwright tests
-        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/docs-regression-check
+      - name: Run docs-regression Playwright tests
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/docs-regression-check
       - name: playwright-report
         if: always()
         uses: actions/upload-artifact@v7

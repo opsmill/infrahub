@@ -220,8 +220,16 @@ merged-branch read-only enforcement, RBAC, IPAM, templates/pools/profiles,
 schema visualizer, search, activities, and both the no-data and full-data
 fixture paths.
 
-Remaining to port: only `docs-regression-check` (5 specs, serial screenshots
-gated on `UPDATE_DOCS_SCREENSHOTS`; some `fixme`). Everything else is ported.
+- **`docs-regression-check` (5 specs, 8 tests + 3 skipped)** — getting-started
+  tutorials (object/branch create-update-diff-merge, data lineage/metadata,
+  schema, Git integration) and the resource-manager guide (`fixme`-skipped).
+  Runs as a SEPARATE CI step / pytest invocation (its own stack) because
+  tutorial-1 merges a branch into main and would pollute the other tests.
+
+**All legacy e2e specs are now ported.** Run the main suite and docs-regression
+separately: `pytest -c tests/e2e/pytest.ini tests/e2e
+--ignore=tests/e2e/docs-regression-check` then `pytest -c tests/e2e/pytest.ini
+tests/e2e/docs-regression-check`.
 
 Skips preserved/added (each with a reason in-code): `tasks/tasks-view`,
 `events/events-rules-actions`, `triggers` "update the matches",
