@@ -38,6 +38,7 @@ import yaml
 from infrahub_sdk import Config, InfrahubClientSync
 from infrahub_testcontainers import __version__ as infrahub_testcontainers_version
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES, InfrahubDockerCompose
+from playwright.sync_api import expect
 
 # Make `constants`/`helpers` importable from test modules in any subdirectory.
 sys.path.insert(0, str(Path(__file__).parent))
@@ -62,6 +63,12 @@ DEMO_EDGE_REPO_FIXTURE = REPO_ROOT / "backend/tests/fixtures/repos/infrahub-demo
 
 # How long the demo-data generator (models/infrastructure_edge.py) may run.
 INFRASTRUCTURE_DATA_TIMEOUT = 30 * 60
+
+# pytest-playwright defaults the `expect` assertion timeout to 5s. The legacy TS
+# suite ran with a 60s (local) / 180s (CI) expect timeout, so async UI updates
+# (toasts, table refreshes, branch/task settling) had ample time. Match that
+# spirit with a generous default; individual assertions can still override.
+expect.set_options(timeout=30_000)
 
 
 # --------------------------------------------------------------------------- #
