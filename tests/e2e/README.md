@@ -184,6 +184,8 @@ Done:
   role and the `object:*:*:any:allow_all` permission are created by the demo
   data, not bootstrap); the other three use bootstrap RBAC objects only.
   Verified 5/5 against a stable image.
+- **`groups` (2/2 specs, 3/3 tests)** — Standard Group create + add Builtin Tag
+  members, and the internal-groups filter toggle. Verified against a stable image.
 - **root-level `search` + `search-parent-prefixes` (9/9 tests)** — the
   search-anywhere modal (open/close/shortcut, menu/node/IPAM results, UUID
   lookup) and the parent-prefix lookup. Verified against a stable image.
@@ -199,7 +201,7 @@ Remaining domains to port (counts from the legacy suite, 80 specs total):
 `docs-regression-check` 5,
 root-level 4 (3 done: login, search, search-parent-prefixes; remaining: breadcrumb),
 `proposed-changes` 3, `activities` 3, `schema` 2, `resource-manager` 2,
-`profile` 2, `groups` 2, `form` 2, `webhook` 1, `triggers` 1, `tasks` 1,
+`profile` 2, `form` 2, `webhook` 1, `triggers` 1, `tasks` 1,
 `repository` 1, `menu` 1, `events` 1.
 
 Carry over the legacy suite's skips as `@pytest.mark.skip` so coverage maps
