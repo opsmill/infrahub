@@ -1,1 +1,0 @@
-Fixed overriding a node relationship that was set by a profile. Peers also provided by the profile are no longer removed when overriding the relationship; they are kept and become node-defined values.
