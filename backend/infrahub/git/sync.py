@@ -32,11 +32,12 @@ class RepositoryFileImporter(RepositoryImporter):
 
 
 class RepositoryAdder:
-    """Adds a new repository, holding the repository lock only for the git working-copy mutations.
+    """Adds a new repository, holding the repository lock across the clone and the recording of its pinned commit.
 
-    The lock serializes the clone and worktree creation. The default-branch object import runs after
-    the lock is released; it reads from the per-commit worktree pinned during the locked phase, so it
-    does not need the lock.
+    The locked phase covers the clone, the default-branch worktree creation, and writing the pinned
+    commit back to the graph, which must stay consistent with each other. The default-branch object
+    import runs after the lock is released; it reads from the per-commit worktree pinned during the
+    locked phase, so it does not need the lock.
     """
 
     def __init__(
