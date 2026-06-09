@@ -1,5 +1,4 @@
-import { Button } from "@infrahub/ui";
-import { Card } from "@infrahub/ui/card";
+import { Button, Card } from "@infrahub/ui";
 import { useState } from "react";
 import { toast } from "react-toastify";
 

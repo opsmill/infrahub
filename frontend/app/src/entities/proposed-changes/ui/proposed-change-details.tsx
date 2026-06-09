@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Card, CardContent, CardHeader } from "@infrahub/ui/card";
+import { Card, CardContent, CardHeader } from "@infrahub/ui";
 import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 

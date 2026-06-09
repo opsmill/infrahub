@@ -6,14 +6,9 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./card": "./src/components/card/card.tsx",
-    "./checkbox-card": "./src/components/checkbox-card/checkbox-card.tsx",
-    "./modal": "./src/components/modal/modal.tsx",
-    "./tooltip": "./src/components/tooltip/tooltip.tsx",
     "./styles.css": "./src/index.css"
   },
   "scripts": {
-    "build": "tsc -b && vite build",
     "build-storybook": "storybook build",
     "chromatic": "chromatic",
     "dev": "vite",
@@ -21,7 +16,6 @@
     "format:check": "oxfmt --check",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "preview": "vite preview",
     "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
@@ -51,10 +45,5 @@
     "storybook": "^10.4.2",
     "typescript": "~6.0.3",
     "vite": "^8.0.16"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
   }
 }
