@@ -28,7 +28,7 @@ async def test_oauth2_userinfo_extracts_groups_from_custom_claim_key() -> None:
     userinfo_body = {
         "sub": "u1",
         "name": "Otto",
-        "email": "o@x.com",
+        "email": "o@example.com",
         "roles": ["network-engineering"],
     }
     memory_http.add_get_response(
@@ -57,7 +57,7 @@ async def test_oauth2_userinfo_custom_claim_key_does_not_read_groups_key() -> No
     userinfo_body = {
         "sub": "u1",
         "name": "Otto",
-        "email": "o@x.com",
+        "email": "o@example.com",
         "groups": ["legacy-group"],
     }
     memory_http.add_get_response(
@@ -93,7 +93,7 @@ async def test_default_claim_key_preserves_existing_behavior() -> None:
     userinfo_body = {
         "sub": "u",
         "name": "Otto",
-        "email": "o@x.com",
+        "email": "o@example.com",
         "groups": ["admin-otter"],
     }
     memory_http.add_get_response(
@@ -121,7 +121,7 @@ async def test_oauth2_and_oidc_with_different_claim_keys_coexist() -> None:
     oauth2_payload = {
         "sub": "u1",
         "name": "Otto",
-        "email": "o@x.com",
+        "email": "o@example.com",
         "memberships": ["membership-a"],
     }
     oauth2_groups = extract_sso_groups(
@@ -134,7 +134,7 @@ async def test_oauth2_and_oidc_with_different_claim_keys_coexist() -> None:
     oidc_payload = {
         "sub": "u2",
         "name": "Otto",
-        "email": "o@x.com",
+        "email": "o@example.com",
         "roles": ["role-x"],
     }
     oidc_groups = extract_sso_groups(
