@@ -23,13 +23,7 @@ export function TableIdentifierCell({
   const { isAuthenticated } = useAuth();
   return (
     <StickyLeftCell data-testid="identifier-cell">
-      {isAuthenticated && (
-        <Checkbox
-          isSelected={isSelected}
-          onPress={onClickCheckbox}
-          data-testid="identifier-checkbox-cell"
-        />
-      )}
+      {isAuthenticated && <Checkbox isSelected={isSelected} onPress={onClickCheckbox} />}
 
       <LinkButton
         variant="ghost"
