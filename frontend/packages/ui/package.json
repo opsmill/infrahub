@@ -9,6 +9,7 @@
     "./card": "./src/components/card/card.tsx",
     "./checkbox-card": "./src/components/checkbox-card/checkbox-card.tsx",
     "./modal": "./src/components/modal/modal.tsx",
+    "./tooltip": "./src/components/tooltip/tooltip.tsx",
     "./styles.css": "./src/index.css"
   },
   "scripts": {
