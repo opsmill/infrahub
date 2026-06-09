@@ -7,6 +7,7 @@ from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
+from infrahub.core.query.ipam import IPPrefixUtilization
 from infrahub.database import InfrahubDatabase
 
 
@@ -101,6 +102,70 @@ async def test_graphql_utilization_branch_deletion(
     assert isinstance(main_prefix, BuiltinIPPrefix)
     main_response = await main_prefix.to_graphql(db=db, fields={"utilization": None})
     assert main_response["utilization"] == {"value": 3}
+
+
+async def test_utilization_query_pagination_is_stable(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
+    """offset/limit pages must be ordered by IP and never skip or duplicate children."""
+    net140 = ip_dataset_01["net140"]
+    ns1 = ip_dataset_01["ns1"]
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+
+    # Map each direct child of net140 to its node id, keyed by IP address.
+    id_by_ip: dict[str, str] = {
+        "10.10.0.0": ip_dataset_01["address10"].id,
+        "10.10.1.0": ip_dataset_01["net142"].id,
+        "10.10.2.0": ip_dataset_01["net144"].id,
+        "10.10.3.0": ip_dataset_01["net145"].id,
+    }
+
+    # Add more addresses in an order unrelated to their IP, so the database's natural
+    # scan order diverges from the IP-sorted order the query must return.
+    for addr in ["10.10.0.250", "10.10.0.5"]:
+        node = await Node.init(db=db, schema=address_schema)
+        await node.new(db=db, address=addr, ip_prefix=net140, ip_namespace=ns1)
+        await node.save(db=db)
+        id_by_ip[addr] = node.id
+
+    # Expected pagination order, written out explicitly in ascending IP order.
+    expected_order = [
+        id_by_ip["10.10.0.0"],
+        id_by_ip["10.10.0.5"],
+        id_by_ip["10.10.0.250"],
+        id_by_ip["10.10.1.0"],
+        id_by_ip["10.10.2.0"],
+        id_by_ip["10.10.3.0"],
+    ]
+
+    async def fetch(offset: int | None = None, limit: int | None = None) -> list[str]:
+        query = await IPPrefixUtilization.init(
+            db=db,
+            branch=default_branch,
+            ip_prefixes=[net140],
+            allocated_kinds=[InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS],
+            offset=offset,
+            limit=limit,
+        )
+        await query.execute(db=db)
+        return [item.child_uuid for item in query.get_data()]
+
+    # Full result set comes back deterministically ordered by IP.
+    assert await fetch() == expected_order
+
+    # Paging through with limit/offset covers every child exactly once, same order.
+    page_size = 2
+    paged: list[str] = []
+    for offset in range(0, len(expected_order), page_size):
+        paged.extend(await fetch(offset=offset, limit=page_size))
+    assert paged == expected_order
+
+    # limit alone returns the deterministic prefix of the ordering.
+    assert await fetch(limit=1) == expected_order[:1]
+    assert await fetch(limit=3) == expected_order[:3]
+
+    # offset alone skips the deterministic prefix.
+    assert await fetch(offset=1) == expected_order[1:]
 
 
 async def test_graphql_utilization_main_addition_after_branch_creation(
