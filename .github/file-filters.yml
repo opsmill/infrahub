@@ -22,7 +22,7 @@ backend_files: &backend_files
 sdk_files: &sdk_files
   - "python_sdk" # Catch updates to the submodule commit
 
-testcontainers_files:
+testcontainers_files: &testcontainers_files
   - "python_testcontainers/**"
 
 infrahub_uv_files: &infrahub_uv_files
@@ -135,3 +135,5 @@ e2e_all:
   - *infrahub_uv_files
   - *sdk_files
   - *e2e_pytest_test_files
+  # The pytest e2e suite boots its stack with infrahub-testcontainers.
+  - *testcontainers_files

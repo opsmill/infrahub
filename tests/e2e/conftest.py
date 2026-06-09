@@ -377,6 +377,24 @@ def branch_api(infrahub_client: InfrahubClientSync) -> BranchAPI:
 # Playwright integration: base URL + per-role authenticated pages
 # --------------------------------------------------------------------------- #
 @pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args: dict) -> dict:
+    """Inject the no-netlink LD_PRELOAD shim into the browser process (CI only).
+
+    Chromium's AddressTrackerLinux listens to netlink, and Docker/veth churn on
+    CI runners floods it, causing ERR_NETWORK_CHANGED mid-navigation. The shim
+    (tests/e2e/fixtures/no_netlink.c, compiled by the CI job into NO_NETLINK_SO)
+    fails NETLINK_ROUTE sockets so Chromium takes its "assume always online"
+    path. Scoped to the browser process via the launch env — the same pattern
+    the legacy playwright.config.ts used — and a no-op locally where
+    NO_NETLINK_SO is unset.
+    """
+    shim = os.environ.get("NO_NETLINK_SO")
+    if not shim:
+        return browser_type_launch_args
+    return {**browser_type_launch_args, "env": {**os.environ, "LD_PRELOAD": shim}}
+
+
+@pytest.fixture(scope="session")
 def base_url(infrahub_address: str) -> str:
     """Override pytest-playwright's base_url.
 

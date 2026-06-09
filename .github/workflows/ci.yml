@@ -1300,34 +1300,34 @@ jobs:
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
-      # Build the local image and point infrahub-testcontainers at it.
       - name: "Set environment variables"
         run: |
+          RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
+          echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME}/_temp" >> $GITHUB_ENV
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_DOCKER_IMAGE=opsmill/infrahub >> $GITHUB_ENV
           echo INFRAHUB_TESTING_DOCKER_PULL=false >> $GITHUB_ENV
+          echo NEO4J_DOCKER_IMAGE=neo4j:2025.10.1-enterprise >> $GITHUB_ENV
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
       - name: Build Demo
         run: |
           echo "::group::Build infrahub container"
           uv run invoke dev.build
           echo "::endgroup::"
-      # tini reaps zombies and propagates cancellation so testcontainers tear down.
-      # docs-regression-check runs as a SEPARATE invocation (its own stack) because
-      # the tutorial flow merges a branch into main and would pollute the others.
       - name: Run Playwright tests
         env:
-          # On PRs that touch the e2e specs, slow the backend by 1s/GraphQL request to surface
-          # UI loading-state races (parity with the TS E2E-testing-playwright job). The conftest
-          # loads the dataset first, then recreates the server with this delay (a boot-time delay
-          # would slow the demo-data load). Off (0) on all other PRs. Not applied to the
-          # docs-regression step below, which provisions its own stack/data.
-          # NB: this is the INFRAHUB_TESTING_ signal read by the conftest — NOT the backend's
-          # INFRAHUB_MISC_RESPONSE_DELAY, which would slow the data load if set at boot.
           INFRAHUB_TESTING_RESPONSE_DELAY: ${{ needs.files-changed.outputs.e2e_pytest_tests == 'true' && '1' || '0' }}
         run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/docs-regression-check
       - name: Run docs-regression Playwright tests
-        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/docs-regression-check
+        run: >
+          exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/docs-regression-check
+          --output test-results-docs --junitxml playwright-junit-docs.xml
       - name: playwright-report
         if: always()
         uses: actions/upload-artifact@v7
@@ -1335,7 +1335,9 @@ jobs:
           name: E2E-testing-pytest-playwright
           path: |
             test-results/
+            test-results-docs/
             playwright-junit.xml
+            playwright-junit-docs.xml
       - name: Containers after tests
         if: always()
         run: docker ps -a
