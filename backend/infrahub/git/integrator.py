@@ -204,13 +204,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             await self.import_all_graphql_query(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )  # type: ignore[call-overload]
+            # Transforms must be registered before objects so that an object referencing a transform
+            # defined in the same repository resolves during import.
+            await self.import_python_transforms(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
+            await self.import_jinja2_transforms(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
             await self.import_objects(
                 branch_name=infrahub_branch_name,
                 commit=commit,
                 config_file=config_file,
             )  # type: ignore[call-overload]
-            await self.import_all_python_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
-            await self.import_jinja2_transforms(
+            # Checks, generators and artifact definitions are imported after objects because their
+            # targets reference groups that are defined as objects in the repository.
+            await self.import_python_check_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
+            await self.import_generator_definitions(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )  # type: ignore[call-overload]
             await self.import_artifact_definitions(
@@ -1220,16 +1232,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         ):
             return False
         return True
-
-    @flow(name="import-python-files", flow_run_name="Import Python file")
-    async def import_all_python_files(
-        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
-    ) -> None:
-        await add_tags(branches=[branch_name], nodes=[str(self.id)])
-
-        await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
-        await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
-        await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
     @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
