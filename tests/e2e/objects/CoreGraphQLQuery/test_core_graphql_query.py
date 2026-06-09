@@ -6,8 +6,9 @@ a GraphQL query, then access / edit it (description + metadata), then delete it.
 Serial handling: all three tests share one branch (a class-scoped fixture) and
 the `test-graphql-query` the first test creates. Every test depends on the SAME
 class-scoped `branch` fixture, so pytest preserves their definition order. The
-list view shows the demo `check_backbone_link_redundancy` query, hence the
-infrastructure_data dependency.
+list view shows the `check_backbone_link_redundancy` query defined in the
+demo-edge Git repository, hence the `demo_edge_repo` dependency (which itself
+pulls in `infrastructure_data`).
 """
 
 from __future__ import annotations
@@ -26,17 +27,12 @@ if TYPE_CHECKING:
     from playwright.sync_api import Page
 
 
-@pytest.mark.skip(
-    reason="Depends on GraphQL queries defined in the demo-edge Git repository "
-    "(e.g. check_backbone_link_redundancy), which requires the demo_edge_repo fixture. Deferred to the "
-    "repository/artifact batch where the Git repo is imported and synced (see tests/e2e/README.md)."
-)
 class TestCoreGraphQLQueryDetails:
     @pytest.fixture(scope="class")
     def branch(
         self,
         infrahub_client: InfrahubClientSync,
-        infrastructure_data: None,
+        demo_edge_repo: None,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("core-graphql-query")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

@@ -244,37 +244,49 @@ def infrastructure_data(
 
 @pytest.fixture(scope="session")
 def demo_edge_repo(
-    infrahub_address: str,
+    infrahub_client: InfrahubClientSync,
     infrahub_compose_dir: Path,
     infrastructure_data: None,
     infrahub_provisioned_externally: bool,
 ) -> None:
-    """Register and sync the `demo-edge` external Git repository.
+    """Register and sync the `demo-edge` external Git repository (synchronous).
 
     Equivalent to `invoke dev.infra-git-import dev.infra-git-create`. Required by
-    repository / artifact / proposed-change specs. Reuses the SDK testing GitRepo
-    helper (a CoreRepositoryCreate mutation + sync polling); the repository is
-    copied into the compose `repos` directory which is mounted at /remote.
+    repository-derived specs (artifacts, the repo's GraphQL queries, generators,
+    proposed-change checks). The fixture repo is copied into the compose `repos`
+    directory (mounted at /remote) via the SDK GitRepo helper (its sync init does
+    the copy + git init/commit), registered with a CoreRepositoryCreate mutation,
+    then polled until in-sync. Synchronous on purpose — the suite has no running
+    asyncio loop to host the SDK's async GitRepo helper.
     """
     if infrahub_provisioned_externally:
         return
 
-    import asyncio
+    import time
 
-    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.graphql import Mutation
     from infrahub_sdk.testing.repository import GitRepo
 
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
+    # GitRepo.__post_init__ runs a synchronous copy + git init/commit of the fixture repo.
+    GitRepo(name="demo-edge", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir)
 
-    async def _add() -> None:
-        client = InfrahubClient(config=Config(address=infrahub_address, api_token=ADMIN_API_TOKEN))
-        repo = GitRepo(name="demo-edge", src_directory=DEMO_EDGE_REPO_FIXTURE, dst_directory=remote_dir)
-        await repo.add_to_infrahub(client=client)
-        in_sync = await repo.wait_for_sync_to_complete(client=client, interval=5, retries=24)
-        if not in_sync:
-            raise RuntimeError("The demo-edge repository did not reach the in-sync state")
+    mutation = Mutation(
+        mutation="CoreRepositoryCreate",
+        input_data={"data": {"name": {"value": "demo-edge"}, "location": {"value": "/remote/demo-edge"}}},
+        query={"ok": None},
+    )
+    infrahub_client.execute_graphql(query=mutation.render(), tracker="mutation-repository-create")
 
-    asyncio.run(_add())
+    for _ in range(30):
+        repo = infrahub_client.get(kind="CoreRepository", name__value="demo-edge")
+        status = repo.sync_status.value
+        if status == "in-sync":
+            return
+        if status == "error-import":
+            raise RuntimeError("The demo-edge repository import errored")
+        time.sleep(5)
+    raise RuntimeError("The demo-edge repository did not reach the in-sync state")
 
 
 @pytest.fixture
