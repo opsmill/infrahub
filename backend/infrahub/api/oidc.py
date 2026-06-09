@@ -273,8 +273,8 @@ async def _get_id_token_groups(
     payload: dict[str, Any],
     provider_settings: config.SecurityOIDCSettings,
     *,
-    claim_key: str = "groups",
-    provider_name: str = "",
+    claim_key: str,
+    provider_name: str,
 ) -> list[str]:
     id_token = payload.get("id_token")
     if not id_token:
