@@ -42,22 +42,18 @@ fixture, so each `pytest-xdist` worker would boot its own container. The legacy
 TS suite ran 4 workers against one shared server; the equivalent here is one
 process driving one stack.
 
-### Local verification note
+### Local verification
 
-A freshly built `:local` image from current `stable` can crash the Prefect
-`task-manager` on boot with a free-threaded-Python `PyMutex_Unlock` SIGABRT, so
-the stack fails to come up locally. Until that is fixed, smoke-run locally
-against the last released image instead:
+Build the image under a custom tag (so it can't clash with other local work that
+uses the default `:local` tag) and point the suite at it:
 
 ```bash
-INFRAHUB_TESTING_IMAGE_VER=1.9.7 INFRAHUB_TESTING_DOCKER_PULL=false \
+INFRAHUB_IMAGE_VER=e2e-pytest uv run invoke dev.build
+INFRAHUB_TESTING_IMAGE_VER=e2e-pytest INFRAHUB_TESTING_DOCKER_PULL=false \
   uv run pytest -c tests/e2e/pytest.ini tests/e2e/<domain>
 ```
 
-Caveat: an older released image can differ from `stable` in newer UI/routes and
-default objects, so a few HEAD-targeted tests may not pass against it (they are
-faithful 1:1 ports and run in CI against the `stable` image). CI always builds
-and uses `:local`.
+CI builds and uses its own `local-<runner>-<sha>` tag.
 
 ## Architecture
 
@@ -168,6 +164,9 @@ Done:
 
 - **`branches` (5/5)** — `merge-branch`, `branch-details`, `branch-selector`,
   `branches` (create/delete), `merged-branch-permissions`.
+- **`object-template` (4/4 specs, 10/10 tests)** — create instance from a
+  template (with profile), and templates allocating from an IP pool, a number
+  pool, and a profile. Verified against a stable image.
 - **`ipam` (9/9 specs, 24/25 tests; 1 skipped)** — prefix/address lists,
   filters, IPAM tree, pool allocations, and the serial namespace flow. One test
   (`ip-prefix-create`'s second pool allocation) is `@pytest.mark.skip` — see
@@ -188,7 +187,7 @@ the no-data and full-data fixture paths.
 Remaining domains to port (counts from the legacy suite, 80 specs total):
 `objects` 26 (list 6 — 1 done, hierarchy 4, profiles 3, convert/file-upload/CoreGraphQLQuery 1 each, 8 top-level),
 `docs-regression-check` 5,
-`object-template` 4, root-level 4 (1 done: login; remaining: search, search-parent-prefixes, breadcrumb),
+root-level 4 (1 done: login; remaining: search, search-parent-prefixes, breadcrumb),
 `proposed-changes` 3, `activities` 3, `schema` 2, `resource-manager` 2,
 `profile` 2, `groups` 2, `form` 2, `webhook` 1, `triggers` 1, `tasks` 1,
 `repository` 1, `menu` 1, `events` 1.

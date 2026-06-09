@@ -32,8 +32,8 @@ class TestAllocateIpPrefix:
 
     @pytest.mark.skip(
         reason="The final step (a second pool allocation via create-object-button) reproducibly "
-        "navigates the page back to home against the full-speed testcontainer backend, so the "
-        "success toast never appears. The legacy TS suite runs this flow with "
+        "navigates the page back to home before the success toast renders (confirmed against a clean "
+        "stable image, not a tag/version artifact). The legacy TS suite runs this flow with "
         "INFRAHUB_MISC_RESPONSE_DELAY=1 (a deliberately slowed backend that avoids such loading-state "
         "races). Re-enable once the response-delay backend mode is wired into the e2e stack (see "
         "tests/e2e/README.md)."
