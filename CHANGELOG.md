@@ -15,7 +15,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ### Changed
 
-- Performance improvements for transform based computed attributes
+- Performance improvements for transform-based computed attributes
 
 ### Fixed
 
