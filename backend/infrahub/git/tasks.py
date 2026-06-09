@@ -234,9 +234,124 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         raise
 
 
-@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
-async def sync_remote_repositories() -> None:  # noqa: PLR0915
+async def bootstrap_local_repository(
+    repo_name: str,
+    repository: CoreRepository,
+    active_internal_status: str,
+    infrahub_branch: str,
+    client: InfrahubClient,
+) -> InfrahubRepository | None:
+    """Ensure this worker has a usable local clone and seed the graph for a freshly created repo.
+
+    The repository lock covers the git working-copy mutations.
+    Returns None when the clone or the default-branch import fails and the repository should be
+    skipped.
+    """
     log = get_run_logger()
+    default_import_git_branch: str | None = None
+    pinned_import_commit: str | None = None
+    async with lock.registry.get(name=repo_name, namespace="repository"):
+        init_failed = False
+        try:
+            repo = await InfrahubRepository.init(
+                id=repository.id,
+                name=repository.name.value,
+                location=repository.location.value,
+                client=client,
+                internal_status=active_internal_status,
+                default_branch_name=repository.default_branch.value,
+            )
+        except RepositoryError as exc:
+            get_logger().error(str(exc))
+            init_failed = True
+
+        if init_failed:
+            try:
+                repo = await InfrahubRepository.new(
+                    id=repository.id,
+                    name=repository.name.value,
+                    location=repository.location.value,
+                    client=client,
+                    internal_status=active_internal_status,
+                    default_branch_name=repository.default_branch.value,
+                )
+            except RepositoryError as exc:
+                log.info(exc.message)
+                return None
+            default_import_git_branch = registry.default_branch
+
+        if repo.reinitialized:
+            default_import_git_branch = repo.default_branch
+
+        if default_import_git_branch is not None:
+            # Pin the commit while the lock is held so the import below reads an immutable
+            # worktree even though it runs after the lock is released.
+            pinned_import_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
+
+    if default_import_git_branch is not None:
+        try:
+            await repo.import_objects_from_files(  # type: ignore[call-overload]
+                git_branch_name=default_import_git_branch,
+                infrahub_branch_name=infrahub_branch,
+                commit=pinned_import_commit,
+            )
+        except RepositoryError as exc:
+            log.info(exc.message)
+            return None
+
+    return repo
+
+
+async def sync_repository_from_origin(
+    repository: CoreRepository,
+    repo: InfrahubRepository,
+    active_internal_status: str,
+    staging_branch: str | None,
+    infrahub_branch: str,
+    infrahub_branch_id: str,
+    client: InfrahubClient,
+) -> None:
+    """Sync the repository from its origin and notify the worker pool of the resulting commit."""
+    log = get_run_logger()
+    try:
+        await sync_git_repo_with_origin_and_tag_on_failure(
+            client=client,
+            repository_id=repository.id,
+            repository_name=repository.name.value,
+            repository_location=repository.location.value,
+            internal_status=active_internal_status,
+            default_branch_name=repository.default_branch.value,
+            operational_status=repository.operational_status.value,
+            staging_branch=staging_branch,
+            infrahub_branch=infrahub_branch,
+        )
+        try:
+            pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
+        except (ValueError, InvalidGitRepositoryError) as exc:
+            log.debug(
+                f"Could not resolve pinned commit for {repository.name.value}, workers will fall back to pull: {exc}"
+            )
+            pinned_commit = None
+        # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
+        # pool converges on the same commit even if upstream advances during fan-out.
+        message = messages.RefreshGitFetch(
+            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+            location=repository.location.value,
+            repository_id=repository.id,
+            repository_name=repository.name.value,
+            repository_kind=repository.get_kind(),
+            infrahub_branch_name=infrahub_branch,
+            infrahub_branch_id=infrahub_branch_id,
+            commit=pinned_commit,
+        )
+        message_bus = await get_message_bus()
+        await message_bus.send(message=message)
+    except RepositoryError as exc:
+        log.info(exc.message)
+
+
+@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
+async def sync_remote_repositories() -> None:
     db = await get_database()
 
     client = get_client()
@@ -257,90 +372,25 @@ async def sync_remote_repositories() -> None:  # noqa: PLR0915
 
         infrahub_branch = staging_branch or registry.default_branch
 
-        default_import_git_branch: str | None = None
-        pinned_import_commit: str | None = None
-        async with lock.registry.get(name=repo_name, namespace="repository"):
-            init_failed = False
-            try:
-                repo = await InfrahubRepository.init(
-                    id=repository.id,
-                    name=repository.name.value,
-                    location=repository.location.value,
-                    client=client,
-                    internal_status=active_internal_status,
-                    default_branch_name=repository.default_branch.value,
-                )
-            except RepositoryError as exc:
-                get_logger().error(str(exc))
-                init_failed = True
+        repo = await bootstrap_local_repository(
+            repo_name=repo_name,
+            repository=repository,
+            active_internal_status=active_internal_status,
+            infrahub_branch=infrahub_branch,
+            client=client,
+        )
+        if repo is None:
+            continue
 
-            if init_failed:
-                try:
-                    repo = await InfrahubRepository.new(
-                        id=repository.id,
-                        name=repository.name.value,
-                        location=repository.location.value,
-                        client=client,
-                        internal_status=active_internal_status,
-                        default_branch_name=repository.default_branch.value,
-                    )
-                except RepositoryError as exc:
-                    log.info(exc.message)
-                    continue
-                default_import_git_branch = registry.default_branch
-
-            if repo.reinitialized:
-                default_import_git_branch = repo.default_branch
-
-            if default_import_git_branch is not None:
-                # Pin the commit while the lock is held so the import below reads an immutable
-                # worktree even though it runs after the lock is released.
-                pinned_import_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
-
-        if default_import_git_branch is not None:
-            try:
-                await repo.import_objects_from_files(  # type: ignore[call-overload]
-                    git_branch_name=default_import_git_branch,
-                    infrahub_branch_name=infrahub_branch,
-                    commit=pinned_import_commit,
-                )
-            except RepositoryError as exc:
-                log.info(exc.message)
-                continue
-
-        try:
-            await sync_git_repo_with_origin_and_tag_on_failure(
-                client=client,
-                repository_id=repository.id,
-                repository_name=repository.name.value,
-                repository_location=repository.location.value,
-                internal_status=active_internal_status,
-                default_branch_name=repository.default_branch.value,
-                operational_status=repository.operational_status.value,
-                staging_branch=staging_branch,
-                infrahub_branch=infrahub_branch,
-            )
-            try:
-                pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
-            except (ValueError, InvalidGitRepositoryError) as exc:
-                log.debug(f"Could not resolve pinned commit for {repo_name}, workers will fall back to pull: {exc}")
-                pinned_commit = None
-            # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
-            # pool converges on the same commit even if upstream advances during fan-out.
-            message = messages.RefreshGitFetch(
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-                location=repository.location.value,
-                repository_id=repository.id,
-                repository_name=repository.name.value,
-                repository_kind=repository.get_kind(),
-                infrahub_branch_name=infrahub_branch,
-                infrahub_branch_id=branches[infrahub_branch].id,
-                commit=pinned_commit,
-            )
-            message_bus = await get_message_bus()
-            await message_bus.send(message=message)
-        except RepositoryError as exc:
-            log.info(exc.message)
+        await sync_repository_from_origin(
+            repository=repository,
+            repo=repo,
+            active_internal_status=active_internal_status,
+            staging_branch=staging_branch,
+            infrahub_branch=infrahub_branch,
+            infrahub_branch_id=branches[infrahub_branch].id,
+            client=client,
+        )
 
 
 @task(  # type: ignore[arg-type]
