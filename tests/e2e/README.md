@@ -138,6 +138,13 @@ clean them up in a `finally`/fixture teardown. This keeps the same coverage
 while being order-robust. A legacy setup-only "test" (no assertions, just
 `createBranchAPI`) becomes inline setup rather than a separate test.
 
+### Gotcha: regex locators (`get_by_role(name=re.compile(...))`)
+
+Playwright serializes a regex name matcher into a `/.../`-delimited selector, so
+a literal `/` in the pattern must be escaped as `\/` — otherwise it ends the
+regex early (`InvalidSelectorError`). The TS source already writes `\/`; keep it
+when porting, e.g. `re.compile(r"10\.0\.0\.0\/16.*IP Prefix")`.
+
 ## Data-dependency taxonomy (from the legacy suite)
 
 - **(a) Self-contained** — create+delete their own branch and objects
@@ -177,6 +184,9 @@ Done:
   role and the `object:*:*:any:allow_all` permission are created by the demo
   data, not bootstrap); the other three use bootstrap RBAC objects only.
   Verified 5/5 against a stable image.
+- **root-level `search` + `search-parent-prefixes` (9/9 tests)** — the
+  search-anywhere modal (open/close/shortcut, menu/node/IPAM results, UUID
+  lookup) and the parent-prefix lookup. Verified against a stable image.
 - **`objects/list/object-list` (1)** and **`login` (1 of the 4 root specs)** —
   the original pilot.
 
@@ -187,7 +197,7 @@ the no-data and full-data fixture paths.
 Remaining domains to port (counts from the legacy suite, 80 specs total):
 `objects` 26 (list 6 — 1 done, hierarchy 4, profiles 3, convert/file-upload/CoreGraphQLQuery 1 each, 8 top-level),
 `docs-regression-check` 5,
-root-level 4 (1 done: login; remaining: search, search-parent-prefixes, breadcrumb),
+root-level 4 (3 done: login, search, search-parent-prefixes; remaining: breadcrumb),
 `proposed-changes` 3, `activities` 3, `schema` 2, `resource-manager` 2,
 `profile` 2, `groups` 2, `form` 2, `webhook` 1, `triggers` 1, `tasks` 1,
 `repository` 1, `menu` 1, `events` 1.
