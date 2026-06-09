@@ -199,8 +199,14 @@ Done:
   `object-metadata`, `object-relationships`, `object-list`), `list/*` (bulk
   delete/edit, select-range, search), `hierarchy/*` (crud, navigation, tree-list,
   relationship-input), `profiles/*` (multi/on-generic/profiles), `convert`,
-  `file-upload`. ~64 tests. `convert` is skipped (home-nav race, see
-  "response-delay") and `CoreGraphQLQuery` is skipped (needs the demo-edge repo).
+  `file-upload`, `CoreGraphQLQuery`. ~67 tests. `convert` is skipped (home-nav
+  race, see "response-delay").
+- **Repo-dependent group (via `demo_edge_repo`)** — `objects/artifact` +
+  `artifact-definition` (3, async artifact generation), `proposed-changes` (3
+  specs, 12 tests — validators/checks/diff; 2 `fixme` sub-tests skipped),
+  `repository/repository-objects` (2, registers a GitHub repo — needs network
+  egress), root `breadcrumb` (19), and `objects/CoreGraphQLQuery` (3). Verified
+  against a stable image.
 - **`activities` (9), `resource-manager` (9), `profile` (6), `form` (4),
   `webhook` (3), `triggers` (3), `events` (1)** — verified against a stable
   image. `events` (active test `fixme`), `triggers` ("update the matches"
@@ -214,18 +220,15 @@ merged-branch read-only enforcement, RBAC, IPAM, templates/pools/profiles,
 schema visualizer, search, activities, and both the no-data and full-data
 fixture paths.
 
-Remaining to port: `docs-regression-check` (5, serial screenshots; has
-`fixme`), root-level `breadcrumb` (1), `proposed-changes` (3, validators/checks;
-has `fixme`), `repository` (1), and the repo/artifact-dependent specs
-(`objects/artifact*`, `objects/CoreGraphQLQuery`) — all of which need the
-`demo_edge_repo` fixture exercised (Git repo import + artifact/generator runs).
+Remaining to port: only `docs-regression-check` (5 specs, serial screenshots
+gated on `UPDATE_DOCS_SCREENSHOTS`; some `fixme`). Everything else is ported.
 
 Skips preserved/added (each with a reason in-code): `tasks/tasks-view`,
-`events/events-rules-actions`, `triggers` "update the matches" (legacy `fixme`);
+`events/events-rules-actions`, `triggers` "update the matches",
+`proposed-changes` comment + merge/delete (legacy `fixme`);
 `ipam/ip-prefix-create` 2nd allocation + `objects/convert` (home-nav races, see
-"response-delay"); `objects/CoreGraphQLQuery` (needs demo-edge repo);
-`form/select-2-steps` kind/parent selects (empty Kind combobox in the
-testcontainer env).
+"response-delay"); `form/select-2-steps` kind/parent selects (empty Kind combobox
+in the testcontainer env).
 
 ### Not yet ported from the harness
 
