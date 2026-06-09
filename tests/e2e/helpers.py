@@ -7,7 +7,9 @@ TypeScript suite.
 
 from __future__ import annotations
 
+import os
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from constants import AUTHENTICATED_MENU_TRIGGER
@@ -17,10 +19,24 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Locator, Page
 
+# docs/docs/media relative to the repo root (helpers.py is tests/e2e/helpers.py).
+_DOCS_MEDIA_DIR = Path(__file__).resolve().parents[2] / "docs" / "docs" / "media"
+
 
 def generate_random_branch_name(prefix: str = "") -> str:
     """Port of generateRandomBranchName: a random suffix to avoid collisions."""
     return f"{prefix}{uuid.uuid4().hex[:12]}"
+
+
+def save_screenshot_for_docs(page: Page, filename: str) -> None:
+    """Port of saveScreenshotForDocs: capture a docs screenshot.
+
+    No-op unless UPDATE_DOCS_SCREENSHOTS is set (matching the TS helper).
+    """
+    if not os.environ.get("UPDATE_DOCS_SCREENSHOTS"):
+        return
+    page.wait_for_load_state("networkidle")
+    page.screenshot(path=str(_DOCS_MEDIA_DIR / f"{filename}.png"), animations="disabled")
 
 
 def get_data_table_row(page: Page, name: str) -> Locator:
