@@ -221,6 +221,7 @@ subqueries
 subschema
 subschemas
 substring
+subtree
 subtyping
 supernet
 template_path
@@ -241,6 +242,7 @@ updated_by
 upsert
 upserting
 Upserting
+URIs
 userinfo
 Userinfo
 username

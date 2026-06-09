@@ -448,6 +448,16 @@ const sidebars: SidebarsConfig = {
                 { type: 'doc', id: 'deploy-manage/user-management/sso/advanced-sso', label: 'Advanced SSO configuration' },
               ],
             },
+            // LDAP hub + spokes
+            {
+              type: 'category',
+              label: 'LDAP',
+              link: { type: 'doc', id: 'deploy-manage/user-management/ldap/overview' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/user-management/ldap/configure-ldap', label: 'Configure LDAP authentication' },
+                { type: 'doc', id: 'deploy-manage/user-management/ldap/advanced-ldap', label: 'Advanced LDAP configuration' },
+              ],
+            },
             // Permissions & Roles hub + spoke (PR 13)
             {
               type: 'category',
@@ -582,6 +592,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'reference/sso', label: 'SSO Reference' },
+            { type: 'doc', id: 'reference/ldap', label: 'LDAP Reference' },
           ],
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },

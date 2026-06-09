@@ -1,0 +1,59 @@
+---
+title: LDAP authentication
+---
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+import ReferenceLink from "../../../../src/components/Card";
+
+# LDAP authentication <EnterpriseBadge />
+
+With LDAP authentication, users sign in to Infrahub with the credentials from your existing directory — Active Directory, OpenLDAP, or any RFC 4510-compliant LDAP server. Use it when your organization manages identities in a central directory and does not run an OIDC or OAuth2 identity provider.
+
+:::info Enterprise Edition
+
+LDAP authentication is available exclusively in the Enterprise Edition. The Community Edition includes the configuration model but rejects LDAP sign-ins with an enterprise-required error. See [Community vs enterprise](../../../overview/community-vs-enterprise.mdx) for details.
+
+:::
+
+## When to use LDAP
+
+Infrahub already supports single sign-on through OIDC and OAuth2. OIDC remains the recommended path when an identity provider is available, because it standardizes identity information and supports modern security features such as PKCE.
+
+LDAP authentication covers the case where deploying an identity provider is not practical:
+
+- Identities and group memberships live in Active Directory or another LDAP directory.
+- No OIDC or OAuth2 identity provider is deployed, and standing one up is constrained by organizational, budget, or timeline factors.
+- Users should authenticate against the directory directly, without maintaining a parallel set of local Infrahub accounts.
+
+## How LDAP fits with other authentication methods
+
+LDAP runs alongside local accounts and SSO — all configured methods stay active at the same time. When LDAP is enabled, the login page shows an LDAP sign-in button next to the local login form and any SSO buttons.
+
+A successful LDAP sign-in produces the same session as a local or SSO login, so downstream behavior — tokens, permissions, and the activity log — is identical regardless of how the user authenticated.
+
+## How authentication works
+
+On each LDAP sign-in, Infrahub:
+
+1. Binds to the directory with a configured service account and searches the user subtree for the entry matching the sign-in name.
+2. Re-binds as the located user with the supplied password to verify the credentials.
+3. Creates a local account on first sign-in (auto-provisioning), mapping directory attributes to the account's name and display label.
+4. Resolves the user's directory groups and maps them to local groups by name, when group resolution is enabled.
+5. Issues a session.
+
+Multiple directory servers can be configured for high availability, and connections can be encrypted with LDAPS or STARTTLS.
+
+## Supported directories
+
+The implementation works against any RFC 4510-compliant LDAP server. The attribute defaults are tuned for Active Directory (`sAMAccountName` for the sign-in name, `userAccountControl` for disabled-account detection), and every attribute is configurable for directories such as OpenLDAP that use different conventions (`uid`, `posixGroup`).
+
+## LDAP guides
+
+- [Configure LDAP authentication](./configure-ldap.mdx) — connect Infrahub to your directory and validate sign-in
+- [Advanced LDAP configuration](./advanced-ldap.mdx) — group resolution, nested groups, failover, and TLS hardening
+
+## Related resources
+
+- [Authentication](../authentication.mdx)
+- [Single sign-on (SSO)](../sso/overview.mdx)
+- [LDAP reference](../../../reference/ldap.mdx)
+- [Permissions and roles](../permissions-roles/overview.mdx)
