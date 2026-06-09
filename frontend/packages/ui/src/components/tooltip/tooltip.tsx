@@ -27,8 +27,15 @@ const tooltipStyles = tv({
 });
 
 /** Accessible tooltip. Wraps a trigger child and shows `message` on hover/focus. */
-export function Tooltip({ children, message, isOpen, onOpenChange, ...props }: TooltipProps) {
-  if (!message) {
+export function Tooltip({
+  children,
+  message,
+  isOpen,
+  onOpenChange,
+  className,
+  ...props
+}: TooltipProps) {
+  if (message == null) {
     return children;
   }
 
@@ -44,10 +51,10 @@ export function Tooltip({ children, message, isOpen, onOpenChange, ...props }: T
 
       <AriaTooltip
         offset={10}
-        className={composeRenderProps(props.className, (className, renderProps) =>
-          tooltipStyles({ ...renderProps, className }),
-        )}
         {...props}
+        className={composeRenderProps(className, (resolvedClassName, renderProps) =>
+          tooltipStyles({ ...renderProps, className: resolvedClassName }),
+        )}
       >
         <OverlayArrow>
           <svg
