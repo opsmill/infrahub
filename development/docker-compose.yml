@@ -164,6 +164,7 @@ services:
     build:
       context: ../
       args:
+        CI_ARG: ${CI:-0}
         UV_VER: ${UV_VERSION:-0.9.9}
       dockerfile: development/Dockerfile
       target: backend
@@ -220,6 +221,7 @@ services:
     build:
       context: ../
       args:
+        CI_ARG: ${CI:-0}
         UV_VER: ${UV_VERSION:-0.9.9}
       dockerfile: development/Dockerfile
       target: backend
