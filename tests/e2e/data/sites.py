@@ -43,7 +43,7 @@ Deviations:
   of the SAME seed string with the same final format so reruns produce
   identical ids; vendor ids keep the script's non-deterministic
   ``infrahub_sdk.uuidt.UUIDT().short()``.
-* sync SDK with kind STRINGS instead of generated protocol classes; the
+* async SDK with kind STRINGS instead of generated protocol classes; the
   script's ``client.store`` keys and ``INTERFACE_OBJS`` module global become
   module-local dicts and the returned ``SitesHandle``.
 * ``branch="main"`` is passed explicitly where the script relied on the
@@ -68,9 +68,9 @@ from data.handles import SitesHandle
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from infrahub_sdk import InfrahubClientSync
-    from infrahub_sdk.batch import InfrahubBatchSync
-    from infrahub_sdk.node import InfrahubNodeSync
+    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.batch import InfrahubBatch
+    from infrahub_sdk.node import InfrahubNode
 
     from data.handles import IpamPoolsHandle, LocationsHandle, OrgRegistryHandle, RbacHandle
 
@@ -304,7 +304,7 @@ def _deterministic_circuit_id_unique(seed: str) -> str:
 class _SiteContext:
     """Cross-site nodes and metadata ids generate_site read from ``client.store``."""
 
-    client: InfrahubClientSync
+    client: InfrahubClient
     account_pop_id: str
     account_crm_id: str
     group_eng_id: str
@@ -316,10 +316,10 @@ class _SiteContext:
     tags: dict[str, str]
     platforms: dict[str, str]
     countries: dict[str, str]
-    interconnection_pool: InfrahubNodeSync
-    loopback_pool: InfrahubNodeSync
-    management_pool: InfrahubNodeSync
-    external_pool: InfrahubNodeSync
+    interconnection_pool: InfrahubNode
+    loopback_pool: InfrahubNode
+    management_pool: InfrahubNode
+    external_pool: InfrahubNode
 
 
 @dataclass
@@ -327,26 +327,26 @@ class _SiteState:
     """Per-site working state (the script's ``client.store`` keys for one site)."""
 
     site_name: str
-    site_obj: InfrahubNodeSync
-    vlans: dict[str, InfrahubNodeSync] = field(default_factory=dict)
+    site_obj: InfrahubNode
+    vlans: dict[str, InfrahubNode] = field(default_factory=dict)
     peer_network_hosts: dict[int, dict[int, Iterator[Any]]] = field(default_factory=dict)
-    device_nodes: dict[str, InfrahubNodeSync] = field(default_factory=dict)
-    l3_interfaces: dict[str, InfrahubNodeSync] = field(default_factory=dict)  # "<device>-l3-<idx>"
-    l2_interfaces: dict[str, InfrahubNodeSync] = field(default_factory=dict)  # "<device>-l2-<name>"
-    lag_interfaces: dict[str, InfrahubNodeSync] = field(default_factory=dict)  # "<device>-lagl2-<name>"
-    mlag_domains: dict[str, InfrahubNodeSync] = field(default_factory=dict)
+    device_nodes: dict[str, InfrahubNode] = field(default_factory=dict)
+    l3_interfaces: dict[str, InfrahubNode] = field(default_factory=dict)  # "<device>-l3-<idx>"
+    l2_interfaces: dict[str, InfrahubNode] = field(default_factory=dict)  # "<device>-l2-<name>"
+    lag_interfaces: dict[str, InfrahubNode] = field(default_factory=dict)  # "<device>-lagl2-<name>"
+    mlag_domains: dict[str, InfrahubNode] = field(default_factory=dict)
     loopback_ips: dict[str, str] = field(default_factory=dict)  # device name -> address VALUE
     # The script's INTERFACE_OBJS: NODE OBJECTS, not ids — at append time the
     # interface is still unsaved (its id is assigned by the batched save).
-    backbone_interfaces: dict[str, list[InfrahubNodeSync]] = field(default_factory=dict)
+    backbone_interfaces: dict[str, list[InfrahubNode]] = field(default_factory=dict)
 
 
-def _generate_site_vlans(ctx: _SiteContext, state: _SiteState) -> None:
+async def _generate_site_vlans(ctx: _SiteContext, state: _SiteState) -> None:
     """Transcribes ``generate_site_vlans`` (lines 1293-1329)."""
-    vlan_batch = ctx.client.create_batch()
+    vlan_batch = await ctx.client.create_batch()
     for vlan in VLANS:
         vlan_name = f"{state.site_name}_{vlan['role']}"
-        obj = ctx.client.create(
+        obj = await ctx.client.create(
             branch=BRANCH,
             kind="InfraVLAN",
             site={"id": state.site_obj.id, "source": ctx.account_pop_id, "is_protected": True},
@@ -363,15 +363,15 @@ def _generate_site_vlans(ctx: _SiteContext, state: _SiteState) -> None:
         vlan_batch.add(task=obj.save, node=obj)
         state.vlans[vlan_name] = obj
 
-    for _ in vlan_batch.execute():
+    async for _ in vlan_batch.execute():
         pass
 
 
-def _allocate_peer_networks(ctx: _SiteContext, state: _SiteState) -> None:
+async def _allocate_peer_networks(ctx: _SiteContext, state: _SiteState) -> None:
     """Transcribes the peer-link prefix allocation of ``generate_site`` (lines 1425-1447)."""
     # Here we need as much prefix as we have edge device
-    peer_networks: list[InfrahubNodeSync] = [
-        ctx.client.allocate_next_ip_prefix(
+    peer_networks: list[InfrahubNode] = [
+        await ctx.client.allocate_next_ip_prefix(
             resource_pool=ctx.interconnection_pool,
             kind="IpamIPPrefix",  # type: ignore[call-overload]
             branch=BRANCH,
@@ -395,14 +395,14 @@ def _allocate_peer_networks(ctx: _SiteContext, state: _SiteState) -> None:
         }
 
 
-def _create_devices(ctx: _SiteContext, state: _SiteState, devices: list[dict[str, Any]]) -> None:
+async def _create_devices(ctx: _SiteContext, state: _SiteState, devices: list[dict[str, Any]]) -> None:
     """Transcribes the device creation batch of ``generate_site`` (lines 1456-1489)."""
-    device_batch = ctx.client.create_batch()
+    device_batch = await ctx.client.create_batch()
     for device in devices:
         device_name = f"{state.site_name}-{device['name']}"
         platform_id = ctx.platforms[device["platform"]]
 
-        obj = ctx.client.create(
+        obj = await ctx.client.create(
             branch=BRANCH,
             kind="InfraDevice",
             site={"id": state.site_obj.id, "source": ctx.account_pop_id, "is_protected": True},
@@ -427,17 +427,17 @@ def _create_devices(ctx: _SiteContext, state: _SiteState, devices: list[dict[str
         device_batch.add(task=obj.save, node=obj)
         state.device_nodes[device_name] = obj
 
-    for _ in device_batch.execute():
+    async for _ in device_batch.execute():
         pass
 
 
-def _create_loopback_and_management(ctx: _SiteContext, state: _SiteState, device: dict[str, Any]) -> None:
+async def _create_loopback_and_management(ctx: _SiteContext, state: _SiteState, device: dict[str, Any]) -> None:
     """Transcribes the Loopback0 + management-interface block of ``generate_site`` (lines 1499-1536)."""
     device_name = f"{state.site_name}-{device['name']}"
     obj = state.device_nodes[device_name]
 
     # Loopback Interface
-    intf = ctx.client.create(
+    intf = await ctx.client.create(
         branch=BRANCH,
         kind="InfraInterfaceL3",
         device={"id": obj.id, "is_protected": True},
@@ -447,15 +447,15 @@ def _create_loopback_and_management(ctx: _SiteContext, state: _SiteState, device
         role="loopback",
         speed=1000,
     )
-    intf.save()
+    await intf.save()
 
-    ip = ctx.client.allocate_next_ip_address(
+    ip = await ctx.client.allocate_next_ip_address(
         resource_pool=ctx.loopback_pool, identifier=device_name, data={"interface": intf.id}, branch=BRANCH
     )
     state.loopback_ips[device_name] = str(ip.address.value)
 
     # Management Interface
-    intf = ctx.client.create(
+    intf = await ctx.client.create(
         branch=BRANCH,
         kind="InfraInterfaceL3",
         device={"id": obj.id, "is_protected": True},
@@ -465,26 +465,26 @@ def _create_loopback_and_management(ctx: _SiteContext, state: _SiteState, device
         role={"value": "management", "source": ctx.account_pop_id, "is_protected": True},
         speed=1000,
     )
-    intf.save()
-    management_ip = ctx.client.allocate_next_ip_address(
+    await intf.save()
+    management_ip = await ctx.client.allocate_next_ip_address(
         resource_pool=ctx.management_pool, identifier=device_name, data={"interface": intf.id}, branch=BRANCH
     )
 
     # set the IP address of the device to the management interface IP address
     obj.primary_address = management_ip  # type: ignore[assignment]
-    obj.save()
+    await obj.save()
 
 
-def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str, Any]) -> None:  # noqa: PLR0912, PLR0914
+async def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str, Any]) -> None:  # noqa: PLR0912, PLR0914
     """Transcribes the L3 interface / IP / circuit / BGP-session loop of ``generate_site`` (lines 1538-1703)."""
     device_name = f"{state.site_name}-{device['name']}"
     obj = state.device_nodes[device_name]
 
-    l3_interface_batch = ctx.client.create_batch()
-    address_batch = ctx.client.create_batch()
-    circuit_batch = ctx.client.create_batch()
-    endpoint_batch = ctx.client.create_batch()
-    bgp_session_batch = ctx.client.create_batch()
+    l3_interface_batch = await ctx.client.create_batch()
+    address_batch = await ctx.client.create_batch()
+    circuit_batch = await ctx.client.create_batch()
+    endpoint_batch = await ctx.client.create_batch()
+    bgp_session_batch = await ctx.client.create_batch()
 
     # `provider` mirrors the script's loop-scoped variable: assigned only in the `upstream`
     # branch, deliberately STALE in the `peering` branch (see module docstring).
@@ -493,7 +493,7 @@ def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str
     for intf_idx, intf_name in enumerate(INTERFACE_L3_NAMES.get(device["type"], [])):
         intf_role = INTERFACE_L3_ROLES_MAPPING[device["role"]][intf_idx]
 
-        intf = ctx.client.create(
+        intf = await ctx.client.create(
             branch=BRANCH,
             kind="InfraInterfaceL3",
             device={"id": obj.id, "is_protected": True},
@@ -521,7 +521,7 @@ def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str
 
             if intf_role in {"upstream", "peering"}:
                 prefix_identifier = f"{intf_role}: {intf.name.value}.{device_name}"
-                subnet = ctx.client.allocate_next_ip_prefix(
+                subnet = await ctx.client.allocate_next_ip_prefix(
                     kind="IpamIPPrefix",  # type: ignore[call-overload]
                     resource_pool=ctx.external_pool,
                     identifier=prefix_identifier,
@@ -534,7 +534,7 @@ def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str
 
         ip = None
         if address:
-            ip = ctx.client.create(
+            ip = await ctx.client.create(
                 branch=BRANCH,
                 kind="IpamIPAddress",
                 interface=intf,
@@ -556,14 +556,14 @@ def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str
                 # Script line 1623 checks the provider NODE's name; the store key IS the name.
                 peer_group_name = "UPSTREAM_ARELION" if "arelion" in provider_name.lower() else "UPSTREAM_DEFAULT"
 
-                peer_ip = ctx.client.create(
+                peer_ip = await ctx.client.create(
                     branch=BRANCH,
                     kind="IpamIPAddress",
                     address=peer_address,
                 )
                 address_batch.add(task=peer_ip.save, node=peer_ip, allow_upsert=True)
                 session_description = f"external-{ip.address.value.ip}-{peer_ip.address.value.ip}"
-                bgp_session = ctx.client.create(
+                bgp_session = await ctx.client.create(
                     branch=BRANCH,
                     kind="InfraBGPSession",
                     type="EXTERNAL",
@@ -594,10 +594,10 @@ def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str
             if bgp_session:
                 circuit_data["bgp_sessions"] = [bgp_session]
 
-            circuit = ctx.client.create(branch=BRANCH, kind="InfraCircuit", data=circuit_data)
+            circuit = await ctx.client.create(branch=BRANCH, kind="InfraCircuit", data=circuit_data)
             circuit_batch.add(task=circuit.save, node=circuit)
 
-            endpoint1 = ctx.client.create(
+            endpoint1 = await ctx.client.create(
                 branch=BRANCH,
                 kind="InfraCircuitEndpoint",
                 site=state.site_obj,
@@ -609,25 +609,25 @@ def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str
             intf.description.value = f"Connected to {provider_name} via {circuit_id}"
 
     # Batch execution order mirrors lines 1692-1703 (the never-filled cable_batch is dropped).
-    for _ in l3_interface_batch.execute():
+    async for _ in l3_interface_batch.execute():
         pass
-    for _ in address_batch.execute():
+    async for _ in address_batch.execute():
         pass
-    for _ in bgp_session_batch.execute():
+    async for _ in bgp_session_batch.execute():
         pass
-    for _ in circuit_batch.execute():
+    async for _ in circuit_batch.execute():
         pass
-    for _ in endpoint_batch.execute():
+    async for _ in endpoint_batch.execute():
         pass
 
 
-def _create_l2_and_lag_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str, Any]) -> None:
+async def _create_l2_and_lag_interfaces(ctx: _SiteContext, state: _SiteState, device: dict[str, Any]) -> None:
     """Transcribes the L2 interface and LAG blocks of ``generate_site`` (lines 1705-1778)."""
     device_name = f"{state.site_name}-{device['name']}"
     obj = state.device_nodes[device_name]
 
     # L2 Interfaces
-    l2_interface_batch = ctx.client.create_batch()
+    l2_interface_batch = await ctx.client.create_batch()
 
     for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES.get(device["type"], [])):
         try:
@@ -641,7 +641,7 @@ def _create_l2_and_lag_interfaces(ctx: _SiteContext, state: _SiteState, device: 
         if l2_mode == "Access":
             untagged_vlan = state.vlans[f"{state.site_name}_server"]
 
-        intf = ctx.client.create(
+        intf = await ctx.client.create(
             branch=BRANCH,
             kind="InfraInterfaceL2",
             device={"id": obj.id, "is_protected": True},
@@ -656,7 +656,7 @@ def _create_l2_and_lag_interfaces(ctx: _SiteContext, state: _SiteState, device: 
         l2_interface_batch.add(task=intf.save, node=intf)
         state.l2_interfaces[f"{device_name}-l2-{intf_name}"] = intf
 
-    for _ in l2_interface_batch.execute():
+    async for _ in l2_interface_batch.execute():
         pass
 
     for lag_intf in LAG_INTERFACE_L2.get(device["type"], []):
@@ -673,7 +673,7 @@ def _create_l2_and_lag_interfaces(ctx: _SiteContext, state: _SiteState, device: 
         if l2_mode == "Access":
             untagged_vlan = state.vlans[f"{state.site_name}_server"]
 
-        lag = ctx.client.create(
+        lag = await ctx.client.create(
             branch=BRANCH,
             kind="InfraLagInterfaceL2",
             device={"id": obj.id, "is_protected": True},
@@ -687,14 +687,14 @@ def _create_l2_and_lag_interfaces(ctx: _SiteContext, state: _SiteState, device: 
             role={"value": intf_role, "source": ctx.account_pop_id},
             lacp=lag_intf["lacp"],
         )
-        lag.save()
+        await lag.save()
         state.lag_interfaces[f"{device_name}-lagl2-{lag_intf['name']}"] = lag
 
         members = [state.l2_interfaces[f"{device_name}-l2-{member}"].id for member in lag_intf["members"]]
-        lag.add_relationships(relation_to_update="members", related_nodes=members)
+        await lag.add_relationships(relation_to_update="members", related_nodes=members)
 
 
-def _generate_site_mlag_domain(ctx: _SiteContext, state: _SiteState) -> None:
+async def _generate_site_mlag_domain(ctx: _SiteContext, state: _SiteState) -> None:
     """Transcribes ``generate_site_mlag_domain`` (lines 1332-1381).
 
     The script passes no ``branch`` here (client default, "main" under infrahubctl);
@@ -713,7 +713,7 @@ def _generate_site_mlag_domain(ctx: _SiteContext, state: _SiteState) -> None:
             for idx, device_obj in enumerate(devices)
         ]
 
-        mlag_domain = ctx.client.create(
+        mlag_domain = await ctx.client.create(
             branch=BRANCH,
             kind="InfraMlagDomain",
             name=name,
@@ -721,7 +721,7 @@ def _generate_site_mlag_domain(ctx: _SiteContext, state: _SiteState) -> None:
             devices=devices,
             peer_interfaces=peer_interfaces,
         )
-        mlag_domain.save()
+        await mlag_domain.save()
         state.mlag_domains[f"mlag-domain-{name}"] = mlag_domain
 
     # Set up MLAG Interfaces
@@ -738,19 +738,19 @@ def _generate_site_mlag_domain(ctx: _SiteContext, state: _SiteState) -> None:
             ]
             mlag_domain = state.mlag_domains[f"mlag-domain-{state.site_name}-{role}-12"]
 
-            mlag_interface = ctx.client.create(
+            mlag_interface = await ctx.client.create(
                 branch=BRANCH,
                 kind="InfraMlagInterfaceL2",
                 mlag_domain=mlag_domain,
                 mlag_id=mlag["mlag_id"],
                 members=members,
             )
-            mlag_interface.save()
+            await mlag_interface.save()
 
 
 def _find_and_connect_interfaces(  # noqa: PLR0913, PLR0917  (mirrors the script function's signature)
-    batch: InfrahubBatchSync,
-    interfaces: dict[str, InfrahubNodeSync],
+    batch: InfrahubBatch,
+    interfaces: dict[str, InfrahubNode],
     first_device_name: str,
     first_interface_key: str,
     second_device_name: str,
@@ -772,9 +772,9 @@ def _find_and_connect_interfaces(  # noqa: PLR0913, PLR0917  (mirrors the script
     batch.add(task=second_interface.save, node=second_interface)
 
 
-def _connect_site_cabling(ctx: _SiteContext, state: _SiteState) -> None:
+async def _connect_site_cabling(ctx: _SiteContext, state: _SiteState) -> None:
     """Transcribes the edge/leaf pairing loops of ``generate_site`` (lines 1782-1842)."""
-    batch_interface = ctx.client.create_batch()
+    batch_interface = await ctx.client.create_batch()
 
     # Connect edge devices 2 by 2 (L3 Ethernet1<->Ethernet1, Ethernet2<->Ethernet2)
     for idx in range(1, NUM_EDGE_DEVICE, 2):
@@ -814,14 +814,14 @@ def _connect_site_cabling(ctx: _SiteContext, state: _SiteState) -> None:
             second_interface_key=f"{state.site_name}-leaf{idx + 1}-l2-Ethernet2",
         )
 
-    for _ in batch_interface.execute():
+    async for _ in batch_interface.execute():
         pass
 
 
-def _generate_site(ctx: _SiteContext, site: dict[str, str]) -> _SiteState:
+async def _generate_site(ctx: _SiteContext, site: dict[str, str]) -> _SiteState:
     """Transcribes ``generate_site`` (lines 1384-1879) for one site."""
     # Create the Site
-    site_obj = ctx.client.create(
+    site_obj = await ctx.client.create(
         branch=BRANCH,
         kind="LocationSite",
         name={"value": site["name"], "is_protected": True, "source": ctx.account_crm_id},
@@ -829,32 +829,32 @@ def _generate_site(ctx: _SiteContext, site: dict[str, str]) -> _SiteState:
         city={"value": site["city"], "is_protected": True, "source": ctx.account_crm_id},
         parent=ctx.countries[site["country"]],
     )
-    site_obj.save()
+    await site_obj.save()
 
     state = _SiteState(site_name=site["name"], site_obj=site_obj)
 
-    _generate_site_vlans(ctx=ctx, state=state)
-    _allocate_peer_networks(ctx=ctx, state=state)
+    await _generate_site_vlans(ctx=ctx, state=state)
+    await _allocate_peer_networks(ctx=ctx, state=state)
 
     devices = _site_devices()
-    _create_devices(ctx=ctx, state=state, devices=devices)
+    await _create_devices(ctx=ctx, state=state, devices=devices)
 
     # Create interfaces for each device, in pattern order (edge1..leaf2): the allocation
     # order across sites and devices is what the deterministic IP assertions depend on.
     for device in devices:
-        _create_loopback_and_management(ctx=ctx, state=state, device=device)
-        _create_l3_interfaces(ctx=ctx, state=state, device=device)
-        _create_l2_and_lag_interfaces(ctx=ctx, state=state, device=device)
+        await _create_loopback_and_management(ctx=ctx, state=state, device=device)
+        await _create_l3_interfaces(ctx=ctx, state=state, device=device)
+        await _create_l2_and_lag_interfaces(ctx=ctx, state=state, device=device)
 
-    _generate_site_mlag_domain(ctx=ctx, state=state)
-    _connect_site_cabling(ctx=ctx, state=state)
+    await _generate_site_mlag_domain(ctx=ctx, state=state)
+    await _connect_site_cabling(ctx=ctx, state=state)
 
     return state
 
 
 @pytest.fixture(scope="session")
-def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
-    data_client: InfrahubClientSync,
+async def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
+    data_client: InfrahubClient,
     schema_base: None,
     data_rbac: RbacHandle,
     data_locations: LocationsHandle,
@@ -881,14 +881,16 @@ def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture de
         tags=data_org_registry.tags,
         platforms=data_org_registry.platforms,
         countries=data_locations.countries,
-        interconnection_pool=data_client.get(
+        interconnection_pool=await data_client.get(
             kind="CoreIPPrefixPool", id=data_ipam_pools.pools["Interconnections pool"]
         ),
-        loopback_pool=data_client.get(kind="CoreIPAddressPool", id=data_ipam_pools.pools["Loopbacks pool"]),
-        management_pool=data_client.get(
+        loopback_pool=await data_client.get(kind="CoreIPAddressPool", id=data_ipam_pools.pools["Loopbacks pool"]),
+        management_pool=await data_client.get(
             kind="CoreIPAddressPool", id=data_ipam_pools.pools["Management addresses pool"]
         ),
-        external_pool=data_client.get(kind="CoreIPPrefixPool", id=data_ipam_pools.pools["External prefixes pool"]),
+        external_pool=await data_client.get(
+            kind="CoreIPPrefixPool", id=data_ipam_pools.pools["External prefixes pool"]
+        ),
     )
 
     sites: dict[str, str] = {}
@@ -898,7 +900,7 @@ def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture de
     vlans: dict[str, str] = {}
 
     for site in _site_generator(nbr_site=NUM_SITES):
-        state = _generate_site(ctx=ctx, site=site)
+        state = await _generate_site(ctx=ctx, site=site)
         sites[state.site_name] = state.site_obj.id
         devices.update({name: node.id for name, node in state.device_nodes.items()})
         loopback_ips.update(state.loopback_ips)

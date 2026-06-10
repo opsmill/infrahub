@@ -11,11 +11,11 @@ from typing import TYPE_CHECKING
 from helpers import save_screenshot_for_docs
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Page, Response
+    from playwright.async_api import Page, Response
 
 
 class TestMenuView:
-    def test_reach_location_menu(self, admin_page: Page, infrastructure_menu: None) -> None:
+    async def test_reach_location_menu(self, admin_page: Page, infrastructure_menu: None) -> None:
         # Regression guard: fail if any response is a 500 (mirrors the TS beforeEach).
         server_errors: list[str] = []
 
@@ -25,9 +25,9 @@ class TestMenuView:
 
         admin_page.on("response", _record_500)
 
-        admin_page.goto("/")
-        admin_page.get_by_test_id("sidebar").get_by_role("button", name="Location").click()
+        await admin_page.goto("/")
+        await admin_page.get_by_test_id("sidebar").get_by_role("button", name="Location").click()
         admin_page.get_by_role("menu", name="Location")
-        save_screenshot_for_docs(admin_page, "location_menu")
+        await save_screenshot_for_docs(admin_page, "location_menu")
 
         assert not server_errors, f"Unexpected 500 responses: {server_errors}"

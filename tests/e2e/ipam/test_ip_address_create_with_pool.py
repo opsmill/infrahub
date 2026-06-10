@@ -12,38 +12,40 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import generate_random_branch_name
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
 
     from data.handles import SitesHandle
     from helpers import BranchAPI
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 
 class TestAllocateIpAddressWithPool:
     @pytest.fixture
-    def branch(self, branch_api: BranchAPI, data_sites: SitesHandle) -> Generator[str, None, None]:
+    async def branch(self, branch_api: BranchAPI, data_sites: SitesHandle) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("ip-address-pool-")
-        branch_api.create(name)
+        await branch_api.create(name)
         yield name
         with contextlib.suppress(Exception):
-            branch_api.delete(name)
+            await branch_api.delete(name)
 
-    def test_create_an_ip_address_using_a_pool(self, admin_page: Page, branch: str) -> None:
-        admin_page.goto(f"/ipam/ip_addresses?branch={branch}")
-        admin_page.get_by_test_id("create-object-button").click()
+    async def test_create_an_ip_address_using_a_pool(self, admin_page: Page, branch: str) -> None:
+        await admin_page.goto(f"/ipam/ip_addresses?branch={branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
 
-        admin_page.get_by_test_id("select-open-pool-option-button").click()
-        admin_page.get_by_role("option", name="Management addresses pool").click()
-        expect(admin_page.get_by_label("Address *")).to_contain_text("Allocated by pool")
-        expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("Management addresses pool")
-        admin_page.get_by_label("Description").fill("address from pool")
-        admin_page.get_by_role("button", name="Save").click()
+        await admin_page.get_by_test_id("select-open-pool-option-button").click()
+        await admin_page.get_by_role("option", name="Management addresses pool").click()
+        await expect(admin_page.get_by_label("Address *")).to_contain_text("Allocated by pool")
+        await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("Management addresses pool")
+        await admin_page.get_by_label("Description").fill("address from pool")
+        await admin_page.get_by_role("button", name="Save").click()
 
-        expect(admin_page.get_by_text("IP Address 172.16.0.31/16 created")).to_be_visible()
-        admin_page.get_by_test_id("object-list-search-bar").get_by_role("searchbox", name="Search").fill(
-            "172.16.0.31/16"
+        await expect(admin_page.get_by_text("IP Address 172.16.0.31/16 created")).to_be_visible()
+        await (
+            admin_page.get_by_test_id("object-list-search-bar")
+            .get_by_role("searchbox", name="Search")
+            .fill("172.16.0.31/16")
         )
-        expect(admin_page.get_by_text("address from pool")).to_be_visible()
+        await expect(admin_page.get_by_text("address from pool")).to_be_visible()

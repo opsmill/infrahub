@@ -16,94 +16,94 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import Deadline, save_screenshot_for_docs
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
 
-    from infrahub_sdk import InfrahubClientSync
-    from playwright.sync_api import Page
+    from infrahub_sdk import InfrahubClient
+    from playwright.async_api import Page
 
 
 class TestCoreWebhook:
     # when logged in as admin account (serial)
     @pytest.fixture(scope="class")
-    def webhook(self, infrahub_client: InfrahubClientSync) -> Generator[str, None, None]:
+    async def webhook(self, infrahub_client: InfrahubClient) -> AsyncGenerator[str, None]:
         name = "Ansible EDA"
         yield name
         # Safety-net teardown: the Delete test removes the webhook, but clean up
         # any leftover if the flow aborted early.
         with contextlib.suppress(Exception):
-            existing = infrahub_client.filters(kind="CoreStandardWebhook", name__value=name)
+            existing = await infrahub_client.filters(kind="CoreStandardWebhook", name__value=name)
             for obj in existing:
-                obj.delete()
+                await obj.delete()
 
-    def test_create_a_webhook(self, admin_page: Page, webhook: str) -> None:
+    async def test_create_a_webhook(self, admin_page: Page, webhook: str) -> None:
         # load webhooks
-        admin_page.goto("/objects/CoreWebhook")
-        expect(admin_page.get_by_test_id("object-header")).to_contain_text("Webhook")
-        save_screenshot_for_docs(admin_page, "webhook_list")
+        await admin_page.goto("/objects/CoreWebhook")
+        await expect(admin_page.get_by_test_id("object-header")).to_contain_text("Webhook")
+        await save_screenshot_for_docs(admin_page, "webhook_list")
 
         # create a new webhook
-        admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_test_id("create-object-button").click()
 
-        admin_page.get_by_label("Select an object type").click()
-        admin_page.get_by_role("option", name="Standard Webhook Core").click()
+        await admin_page.get_by_label("Select an object type").click()
+        await admin_page.get_by_role("option", name="Standard Webhook Core").click()
 
-        expect(admin_page.get_by_role("button", name="Save")).to_be_visible()
-        admin_page.get_by_label("Name *").fill(webhook)
+        await expect(admin_page.get_by_role("button", name="Save")).to_be_visible()
+        await admin_page.get_by_label("Name *").fill(webhook)
 
-        admin_page.get_by_label("Branch Scope").click()
-        admin_page.get_by_role("option", name="All Branches All branches").click()
+        await admin_page.get_by_label("Branch Scope").click()
+        await admin_page.get_by_role("option", name="All Branches All branches").click()
 
-        admin_page.get_by_role("combobox", name="Node Kind").click()
-        admin_page.get_by_role("option", name="Account Core").click()
+        await admin_page.get_by_role("combobox", name="Node Kind").click()
+        await admin_page.get_by_role("option", name="Account Core").click()
 
-        admin_page.get_by_label("Description").fill("Ansible EDA Webhook Reciever")
+        await admin_page.get_by_label("Description").fill("Ansible EDA Webhook Reciever")
 
-        admin_page.get_by_label("Url *").fill("http://ansible-eda:8080")
+        await admin_page.get_by_label("Url *").fill("http://ansible-eda:8080")
 
-        admin_page.get_by_label("Shared Key *").fill("secret")
+        await admin_page.get_by_label("Shared Key *").fill("secret")
 
-        admin_page.get_by_label("Validate Certificates").uncheck()
+        await admin_page.get_by_label("Validate Certificates").uncheck()
 
-        save_screenshot_for_docs(admin_page, "webhook_create")
+        await save_screenshot_for_docs(admin_page, "webhook_create")
 
-        admin_page.get_by_role("button", name="Save").click()
-        expect(admin_page.get_by_text("Webhook created")).to_be_visible()
+        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("Webhook created")).to_be_visible()
 
-    def test_access_webhook(self, admin_page: Page, webhook: str) -> None:
+    async def test_access_webhook(self, admin_page: Page, webhook: str) -> None:
         # load webhooks
-        admin_page.goto("/objects/CoreWebhook")
-        expect(admin_page.get_by_test_id("object-header")).to_contain_text("Webhook")
+        await admin_page.goto("/objects/CoreWebhook")
+        await expect(admin_page.get_by_test_id("object-header")).to_contain_text("Webhook")
 
         # webhook detail view
         # Give time for activity log to be propagated.
-        admin_page.get_by_test_id("identifier-cell").get_by_role("link", name=webhook, exact=True).click()
+        await admin_page.get_by_test_id("identifier-cell").get_by_role("link", name=webhook, exact=True).click()
 
-        expect(admin_page.get_by_text("Activities", exact=True)).to_be_visible()
-        expect(admin_page.get_by_test_id("activities-panel").get_by_text("Loading...")).to_be_hidden()
+        await expect(admin_page.get_by_text("Activities", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_test_id("activities-panel").get_by_text("Loading...")).to_be_hidden()
 
         deadline = Deadline("the webhook activity log to be populated")
-        while admin_page.get_by_text("No activity found for this").is_visible():
-            deadline.tick()
-            admin_page.reload()
-            expect(admin_page.get_by_text("Activities", exact=True)).to_be_visible()
-            expect(admin_page.get_by_test_id("activities-panel").get_by_text("Loading...")).to_be_hidden()
-        expect(admin_page.get_by_text("NameAnsible EDA")).to_be_visible()
-        expect(admin_page.get_by_text("View all activities")).to_be_visible()
-        save_screenshot_for_docs(admin_page, "webhook_detail")
+        while await admin_page.get_by_text("No activity found for this").is_visible():
+            await deadline.tick()
+            await admin_page.reload()
+            await expect(admin_page.get_by_text("Activities", exact=True)).to_be_visible()
+            await expect(admin_page.get_by_test_id("activities-panel").get_by_text("Loading...")).to_be_hidden()
+        await expect(admin_page.get_by_text("NameAnsible EDA")).to_be_visible()
+        await expect(admin_page.get_by_text("View all activities")).to_be_visible()
+        await save_screenshot_for_docs(admin_page, "webhook_detail")
 
-    def test_delete_webhook(self, admin_page: Page, webhook: str) -> None:
+    async def test_delete_webhook(self, admin_page: Page, webhook: str) -> None:
         # load webhooks
-        admin_page.goto("/objects/CoreWebhook")
-        expect(admin_page.get_by_test_id("object-header")).to_contain_text("Webhook")
+        await admin_page.goto("/objects/CoreWebhook")
+        await expect(admin_page.get_by_test_id("object-header")).to_contain_text("Webhook")
 
         # access and delete webhook
-        admin_page.get_by_role("link", name=webhook).click()
-        expect(admin_page.get_by_test_id("object-header").get_by_text(webhook, exact=True)).to_be_visible()
-        admin_page.get_by_test_id("object-details-menu").click()
-        admin_page.get_by_role("menuitem", name="Delete").click()
-        admin_page.get_by_test_id("modal-delete-confirm").click()
-        expect(admin_page.get_by_text("Object Ansible EDA deleted")).to_be_visible()
-        admin_page.get_by_text("No Standard Webhook found").click()
+        await admin_page.get_by_role("link", name=webhook).click()
+        await expect(admin_page.get_by_test_id("object-header").get_by_text(webhook, exact=True)).to_be_visible()
+        await admin_page.get_by_test_id("object-details-menu").click()
+        await admin_page.get_by_role("menuitem", name="Delete").click()
+        await admin_page.get_by_test_id("modal-delete-confirm").click()
+        await expect(admin_page.get_by_text("Object Ansible EDA deleted")).to_be_visible()
+        await admin_page.get_by_text("No Standard Webhook found").click()

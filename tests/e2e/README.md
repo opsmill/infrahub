@@ -90,7 +90,7 @@ tests/e2e/
   conftest.py         # stack + client + data fixtures + auth + role pages
   constants.py        # credentials, admin token, base-schema file list
   helpers.py          # login(), generate_random_branch_name(), BranchAPI, Deadline
-  data/               # the demo dataset as composable sync-SDK fixtures
+  data/               # the demo dataset as composable async-SDK fixtures
                       # (one module per slice + parity dump tool, see below)
   test_login.py       # ported login.spec.ts
   branches/           # ported branches/*.spec.ts
@@ -103,15 +103,22 @@ fixtures that start an in-process backend, which we must not inherit.
 
 ### Fixture catalog
 
-The harness is fully **synchronous** (sync SDK client everywhere) so it
-coexists cleanly with pytest-playwright's synchronous `page` fixture — no
-event-loop juggling. No external script or `infrahubctl` subprocess is
-involved: the dataset is loaded by the composable slices in `tests/e2e/data/`.
+The harness is fully **async**: pytest-playwright-asyncio drives the browser,
+the async Infrahub SDK client (`InfrahubClient`) loads the data, and
+pytest-asyncio hosts everything on ONE session-scoped event loop (playwright
+objects and httpx clients are loop-bound, so fixtures and tests must share the
+loop — configured in pytest.ini). Two consequences worth knowing:
+`request.getfixturevalue` does not work for async fixtures (lazy lookups are
+expressed as direct dependencies or env-conditional fixture definitions — see
+`response_delay_enabled`), and blocking calls inside async code stall the
+loop (use `await asyncio.sleep`, never `time.sleep`). No external script or
+`infrahubctl` subprocess is involved: the dataset is loaded by the composable
+slices in `tests/e2e/data/`.
 
 | Fixture | Scope | Replaces | Notes |
 |---|---|---|---|
 | `infrahub_app` / `infrahub_address` | session | `invoke dev.start` | One stack for the whole session. Honors `INFRAHUB_ADDRESS` if set. |
-| `infrahub_client` | session | — | Admin `InfrahubClientSync`. |
+| `infrahub_client` | session | — | Admin async `InfrahubClient` (all SDK calls are awaited). |
 | `schema_base` | session | `invoke dev.load-infra-schema` (schema) | Loads all `models/base/*.yml` as one set. |
 | `infrastructure_menu` | session | `invoke dev.load-infra-schema` (menu) | Loads `models/base_menu.yml` via the SDK `MenuFile` (what `infrahubctl menu load` calls). |
 | `infrastructure_data` | session | `invoke dev.load-infra-data` | The full demo dataset (medium profile: 5 sites, 6 devices/site, BGP mesh, 3 scenario branches) via the `tests/e2e/data/` SDK slices — parity with `models/infrastructure_edge.py` proven by a structural dump diff (`data/parity.py`). |
@@ -125,7 +132,7 @@ involved: the dataset is loaded by the composable slices in `tests/e2e/data/`.
 #### Dataset slices and parity (`tests/e2e/data/`)
 
 The monolithic `models/infrastructure_edge.py` load is decomposed into
-session-scoped sync-SDK fixtures, one module per slice, wired as pytest
+session-scoped async-SDK fixtures, one module per slice, wired as pytest
 plugins from `conftest.py`. Slice DAG: `rbac` / `locations` / `org_registry` /
 `profiles_groups` / `ipam_pools` / `patch_template` (leaves) → `sites` →
 `topology` → `scenario_branches` (terminal — requesting it loads everything).
@@ -164,19 +171,20 @@ A test depends only on the fixtures it needs:
    `storageState` → the default `page`.
 3. **Translate the calls** (Playwright TS → Python):
 
-   | TypeScript | Python |
+   | TypeScript | Python (async) |
    |---|---|
    | `page.getByRole("button", { name: "x", exact: true })` | `page.get_by_role("button", name="x", exact=True)` |
    | `page.getByText("x")` / `getByLabel` / `getByTestId` | `page.get_by_text("x")` / `get_by_label` / `get_by_test_id` |
    | `page.locator("#id")` | `page.locator("#id")` |
-   | `await expect(loc).toBeVisible()` | `expect(loc).to_be_visible()` |
+   | `await page.goto(...)` / actions / value queries | `await page.goto(...)` — every action and value-returning query is awaited |
+   | `await expect(loc).toBeVisible()` | `await expect(loc).to_be_visible()` |
    | `.not.toBeVisible()` / `.toBeDisabled()` / `.toContainText()` | `.not_to_be_visible()` / `.to_be_disabled()` / `.to_contain_text()` |
-   | `loc.first()` | `loc.first` |
-   | `page.route(url, async route => …)` | `page.route(url, handler)` (sync handler) |
-   | `route.fetch()` / `route.fulfill({json})` / `route.fallback()` | `route.fetch()` / `route.fulfill(json=…)` / `route.fallback()` |
-   | `context.waitForEvent("page")` | `with context.expect_page() as info: …; info.value` |
+   | `loc.first()` | `loc.first` (builders are NOT awaited) |
+   | `page.route(url, async route => …)` | `await page.route(url, handler)` (`async def` handler) |
+   | `route.fetch()` / `route.fulfill({json})` / `route.fallback()` | `await route.fetch()` / `await route.fulfill(json=…)` / `await route.fallback()` |
+   | `context.waitForEvent("page")` | `async with context.expect_page() as info: …; await info.value` |
    | `{ timeout: 5*60*1000 }` | `to_be_visible(timeout=5 * 60 * 1000)` |
-   | `createBranchAPI(request, name)` | `branch_api.create(name)` |
+   | `createBranchAPI(request, name)` | `await branch_api.create(name)` |
 
 4. **Branch lifecycle**: replace `beforeAll`/`afterAll` branch create/delete
    with a function-scoped fixture (see `TestObjectList.branch_name`).

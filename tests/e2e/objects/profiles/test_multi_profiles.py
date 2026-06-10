@@ -15,14 +15,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Page, Response
+    from playwright.async_api import Page, Response
 
 
 class TestMultiProfiles:
-    def test_create_3_profiles_and_use_them_in_the_form(self, admin_page: Page, schema_base: None) -> None:
+    async def test_create_3_profiles_and_use_them_in_the_form(self, admin_page: Page, schema_base: None) -> None:
         # Regression guard: fail if any response is a 500 (mirrors the TS beforeEach).
         server_errors: list[str] = []
 
@@ -33,62 +33,62 @@ class TestMultiProfiles:
         admin_page.on("response", _record_500)
 
         # creates profiles
-        admin_page.goto("/objects/CoreProfile")
+        await admin_page.goto("/objects/CoreProfile")
 
         # Generic profile
-        admin_page.get_by_test_id("create-object-button").click()
-        admin_page.get_by_label("Select an object type").click()
-        admin_page.get_by_role("option", name="Interface Infra", exact=True).click()
-        admin_page.get_by_label("Profile Name *").fill("Generic profile")
-        admin_page.get_by_label("Description").fill("Desc from generic profile")
-        admin_page.get_by_role("button", name="Save").click()
-        expect(admin_page.get_by_text("InfraInterface created")).to_be_visible()
-        admin_page.get_by_test_id("close-alert").click()
-        expect(admin_page.get_by_text("InfraInterface created")).not_to_be_visible()
+        await admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_label("Select an object type").click()
+        await admin_page.get_by_role("option", name="Interface Infra", exact=True).click()
+        await admin_page.get_by_label("Profile Name *").fill("Generic profile")
+        await admin_page.get_by_label("Description").fill("Desc from generic profile")
+        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("InfraInterface created")).to_be_visible()
+        await admin_page.get_by_test_id("close-alert").click()
+        await expect(admin_page.get_by_text("InfraInterface created")).not_to_be_visible()
 
         # L2 profile v1
-        admin_page.get_by_test_id("create-object-button").click()
-        admin_page.get_by_label("Select an object type").click()
-        admin_page.get_by_role("option", name="Interface L2 Infra", exact=True).click()
-        admin_page.get_by_label("Profile Name *").fill("L2 profile v1")
-        admin_page.get_by_label("Description").fill("Desc from L2 profile v1")
-        admin_page.get_by_role("button", name="Save").click()
-        expect(admin_page.get_by_text("InfraInterfaceL2 created")).to_be_visible()
-        admin_page.get_by_test_id("close-alert").click()
-        expect(admin_page.get_by_text("InfraInterfaceL2 created")).not_to_be_visible()
+        await admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_label("Select an object type").click()
+        await admin_page.get_by_role("option", name="Interface L2 Infra", exact=True).click()
+        await admin_page.get_by_label("Profile Name *").fill("L2 profile v1")
+        await admin_page.get_by_label("Description").fill("Desc from L2 profile v1")
+        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("InfraInterfaceL2 created")).to_be_visible()
+        await admin_page.get_by_test_id("close-alert").click()
+        await expect(admin_page.get_by_text("InfraInterfaceL2 created")).not_to_be_visible()
 
         # L2 profile v2
-        admin_page.get_by_test_id("create-object-button").click()
-        admin_page.get_by_label("Select an object type").click()
-        admin_page.get_by_role("option", name="Interface L2 Infra", exact=True).click()
-        admin_page.get_by_label("Profile Name *").fill("L2 profile v2")
-        admin_page.get_by_label("Description").fill("Desc from L2 profile v2")
-        admin_page.get_by_label("Profile Priority").fill("10")
-        admin_page.get_by_role("button", name="Save").click()
-        expect(admin_page.get_by_text("InfraInterfaceL2 created")).to_be_visible()
+        await admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_label("Select an object type").click()
+        await admin_page.get_by_role("option", name="Interface L2 Infra", exact=True).click()
+        await admin_page.get_by_label("Profile Name *").fill("L2 profile v2")
+        await admin_page.get_by_label("Description").fill("Desc from L2 profile v2")
+        await admin_page.get_by_label("Profile Priority").fill("10")
+        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("InfraInterfaceL2 created")).to_be_visible()
 
         # use profiles in interface form
-        admin_page.goto("/objects/InfraInterface")
-        admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.goto("/objects/InfraInterface")
+        await admin_page.get_by_test_id("create-object-button").click()
 
-        admin_page.get_by_label("Select an object type").click()
-        admin_page.get_by_role("option", name="Interface L2 Infra", exact=True).click()
+        await admin_page.get_by_label("Select an object type").click()
+        await admin_page.get_by_role("option", name="Interface L2 Infra", exact=True).click()
 
-        admin_page.get_by_label("Select profiles optional").click()
-        admin_page.get_by_role("option", name="L2 profile v1").click()
-        expect(admin_page.get_by_label("Description")).to_have_value("Desc from L2 profile v1")
-        expect(admin_page.get_by_test_id("source-profile-badge")).to_contain_text("L2 profile v1")
+        await admin_page.get_by_label("Select profiles optional").click()
+        await admin_page.get_by_role("option", name="L2 profile v1").click()
+        await expect(admin_page.get_by_label("Description")).to_have_value("Desc from L2 profile v1")
+        await expect(admin_page.get_by_test_id("source-profile-badge")).to_contain_text("L2 profile v1")
 
-        admin_page.get_by_role("option", name="L2 profile v2").click()
-        expect(admin_page.get_by_label("Description")).to_have_value("Desc from L2 profile v2")
-        expect(admin_page.get_by_test_id("source-profile-badge")).to_contain_text("L2 profile v2")
+        await admin_page.get_by_role("option", name="L2 profile v2").click()
+        await expect(admin_page.get_by_label("Description")).to_have_value("Desc from L2 profile v2")
+        await expect(admin_page.get_by_test_id("source-profile-badge")).to_contain_text("L2 profile v2")
 
-        admin_page.get_by_role("option", name="Generic profile").click()
-        expect(admin_page.get_by_label("Description")).to_have_value("Desc from L2 profile v2")
-        expect(admin_page.get_by_test_id("source-profile-badge")).to_contain_text("L2 profile v2")
+        await admin_page.get_by_role("option", name="Generic profile").click()
+        await expect(admin_page.get_by_label("Description")).to_have_value("Desc from L2 profile v2")
+        await expect(admin_page.get_by_test_id("source-profile-badge")).to_contain_text("L2 profile v2")
 
-        admin_page.get_by_text("L2 profile v2×").get_by_test_id("remove-option").click()
-        expect(admin_page.get_by_label("Description")).to_have_value("Desc from generic profile")
-        expect(admin_page.get_by_test_id("source-profile-badge")).to_contain_text("Generic profile")
+        await admin_page.get_by_text("L2 profile v2×").get_by_test_id("remove-option").click()
+        await expect(admin_page.get_by_label("Description")).to_have_value("Desc from generic profile")
+        await expect(admin_page.get_by_test_id("source-profile-badge")).to_contain_text("Generic profile")
 
         assert not server_errors, f"Unexpected 500 responses: {server_errors}"

@@ -14,47 +14,47 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import generate_random_branch_name
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
 
     from data.handles import SitesHandle
     from helpers import BranchAPI
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 
 class TestRelationshipHierarchicalInput:
     @pytest.fixture
-    def branch(
+    async def branch(
         self,
         branch_api: BranchAPI,
         data_sites: SitesHandle,
-    ) -> Generator[str, None, None]:
+    ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("relationship-hierarchical-input")
-        branch_api.create(name)
+        await branch_api.create(name)
         yield name
         with contextlib.suppress(Exception):
-            branch_api.delete(name)
+            await branch_api.delete(name)
 
-    def test_should_select_a_site_using_the_explore_tab_of_relationship_input(
+    async def test_should_select_a_site_using_the_explore_tab_of_relationship_input(
         self, admin_page: Page, branch: str
     ) -> None:
         # navigate to InfraDevice creation page
-        admin_page.goto(f"/objects/InfraDevice?branch={branch}")
-        admin_page.get_by_test_id("create-object-button").click()
-        admin_page.get_by_role("button", name="Start from scratch").click()
+        await admin_page.goto(f"/objects/InfraDevice?branch={branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_role("button", name="Start from scratch").click()
 
         # open site selection and verify All tab
-        admin_page.get_by_label("Site").click()
-        expect(admin_page.get_by_role("tab", name="All")).to_be_visible()
-        expect(admin_page.get_by_role("option", name="atl1")).to_be_visible()
+        await admin_page.get_by_label("Site").click()
+        await expect(admin_page.get_by_role("tab", name="All")).to_be_visible()
+        await expect(admin_page.get_by_role("option", name="atl1")).to_be_visible()
 
         # navigate through hierarchy in Explore tab
-        admin_page.get_by_role("tab", name="Explore").click()
-        admin_page.get_by_role("option", name="North America Continent").click()
-        admin_page.get_by_role("option", name="United States of America").click()
-        admin_page.get_by_role("option", name="atl1 Site").click()
+        await admin_page.get_by_role("tab", name="Explore").click()
+        await admin_page.get_by_role("option", name="North America Continent").click()
+        await admin_page.get_by_role("option", name="United States of America").click()
+        await admin_page.get_by_role("option", name="atl1 Site").click()
 
         # verify selected site
-        expect(admin_page.get_by_label("Site")).to_contain_text("atl1")
+        await expect(admin_page.get_by_label("Site")).to_contain_text("atl1")

@@ -19,41 +19,41 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import Deadline
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 
 @pytest.mark.usefixtures("demo_edge_repo")
 class TestArtifactPage:
-    def test_should_generate_artifacts_successfully(self, admin_page: Page) -> None:
-        admin_page.goto('/objects/CoreArtifact?filters=[{"name":"name__value","value":"startup-config"}]')
+    async def test_should_generate_artifacts_successfully(self, admin_page: Page) -> None:
+        await admin_page.goto('/objects/CoreArtifact?filters=[{"name":"name__value","value":"startup-config"}]')
 
         # reload page until we have artifacts defined (generated asynchronously after repo sync)
         deadline = Deadline("startup-config artifacts to be generated", timeout=300)
-        while admin_page.get_by_role("link", name="startup-config").first.is_hidden():
-            deadline.tick()
-            if admin_page.get_by_text("No Artifact found").is_visible():
-                admin_page.reload()
+        while await admin_page.get_by_role("link", name="startup-config").first.is_hidden():
+            await deadline.tick()
+            if await admin_page.get_by_text("No Artifact found").is_visible():
+                await admin_page.reload()
 
-        admin_page.get_by_role("link", name="startup-config").first.click()
+        await admin_page.get_by_role("link", name="startup-config").first.click()
         deadline = Deadline("the startup-config artifact content to be available", timeout=300)
-        while admin_page.get_by_text("no aaa root").first.is_hidden():
-            deadline.tick()
-            expect(admin_page.get_by_role("heading", name="startup-config")).to_be_visible()
-            if admin_page.get_by_text("No artifact content available").is_visible():
-                admin_page.reload()
+        while await admin_page.get_by_text("no aaa root").first.is_hidden():
+            await deadline.tick()
+            await expect(admin_page.get_by_role("heading", name="startup-config")).to_be_visible()
+            if await admin_page.get_by_text("No artifact content available").is_visible():
+                await admin_page.reload()
 
-        admin_page.get_by_role("button", name="View node metadata").click()
+        await admin_page.get_by_role("button", name="View node metadata").click()
 
-        expect(admin_page.get_by_text("Created at")).to_be_visible()
-        expect(admin_page.get_by_text("Created by")).to_be_visible()
-        expect(admin_page.get_by_text("Updated at")).to_be_visible()
-        expect(admin_page.get_by_text("Updated by")).to_be_visible()
+        await expect(admin_page.get_by_text("Created at")).to_be_visible()
+        await expect(admin_page.get_by_text("Created by")).to_be_visible()
+        await expect(admin_page.get_by_text("Updated at")).to_be_visible()
+        await expect(admin_page.get_by_text("Updated by")).to_be_visible()
 
     # --- when logged in ------------------------------------------------------
-    def test_should_not_be_able_to_create_a_new_artifact(self, admin_page: Page) -> None:
-        admin_page.goto("/objects/CoreArtifact")
-        expect(admin_page.get_by_role("heading", name="Artifact")).to_be_visible()
-        expect(admin_page.get_by_test_id("create-object-button")).not_to_be_visible()
+    async def test_should_not_be_able_to_create_a_new_artifact(self, admin_page: Page) -> None:
+        await admin_page.goto("/objects/CoreArtifact")
+        await expect(admin_page.get_by_role("heading", name="Artifact")).to_be_visible()
+        await expect(admin_page.get_by_test_id("create-object-button")).not_to_be_visible()

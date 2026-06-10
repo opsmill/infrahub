@@ -72,7 +72,7 @@ Other deviations from the script:
   two dropped ones first, mirroring their batch.add positions). End state is
   equivalent, and the branch points become deterministic — in the script a
   branch could be cut before or after another scenario's main-side mutations.
-* Sync SDK with kind STRINGS instead of generated protocol classes.
+* Async SDK with kind STRINGS instead of generated protocol classes.
 * ``branch="main"`` is passed explicitly where the script relied on the
   client's default branch (infrahubctl runs with default_branch "main").
 * Log-only code is not transcribed: the ``circuit_id`` variable of
@@ -89,7 +89,7 @@ import pytest
 from data.handles import ScenarioBranchesHandle
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk import InfrahubClient
 
     from data.handles import PatchTemplateHandle, SitesHandle, TopologyHandle
 
@@ -133,7 +133,7 @@ GET_CIRCUITS_QUERY = """
     """
 
 
-def _consume_dropped_scenario_pool_allocations(client: InfrahubClientSync) -> None:
+async def _consume_dropped_scenario_pool_allocations(client: InfrahubClient) -> None:
     """Replay the dropped scenarios' pool allocations (see module docstring).
 
     * branch_scenario_add_upstream line 1910: ``allocate_next_ip_prefix(
@@ -148,13 +148,15 @@ def _consume_dropped_scenario_pool_allocations(client: InfrahubClientSync) -> No
     identifiers make the calls idempotent (PrefixPoolGetReserved returns the
     reserved prefix on re-run).
     """
-    external_pool = client.get(kind="CoreIPPrefixPool", name__value="External prefixes pool", branch=BRANCH)
-    client.allocate_next_ip_prefix(resource_pool=external_pool, identifier=DROPPED_ADD_UPSTREAM_DEVICE, branch=BRANCH)
+    external_pool = await client.get(kind="CoreIPPrefixPool", name__value="External prefixes pool", branch=BRANCH)
+    await client.allocate_next_ip_prefix(
+        resource_pool=external_pool, identifier=DROPPED_ADD_UPSTREAM_DEVICE, branch=BRANCH
+    )
 
-    interconnection_pool = client.get(kind="CoreIPPrefixPool", name__value="Interconnections pool", branch=BRANCH)
+    interconnection_pool = await client.get(kind="CoreIPPrefixPool", name__value="Interconnections pool", branch=BRANCH)
     device1_name, device2_name = DROPPED_REPLACE_IP_DEVICES
     # NB: `kind` is typing-only sugar on allocate_next_ip_prefix (unused at runtime); mirrored from the script.
-    client.allocate_next_ip_prefix(
+    await client.allocate_next_ip_prefix(
         kind="IpamIPPrefix",  # type: ignore[call-overload]
         resource_pool=interconnection_pool,
         identifier=f"{device1_name}__{device2_name}",
@@ -162,16 +164,16 @@ def _consume_dropped_scenario_pool_allocations(client: InfrahubClientSync) -> No
     )
 
 
-def _branch_scenario_remove_colt(client: InfrahubClientSync, site_name: str) -> None:
+async def _branch_scenario_remove_colt(client: InfrahubClient, site_name: str) -> None:
     """Transcribes ``branch_scenario_remove_colt`` (lines 2051-2111)."""
     new_branch_name = f"{site_name}-delete-upstream"
-    client.branch.create(
+    await client.branch.create(
         branch_name=new_branch_name,
         sync_with_git=False,
         description=f"Delete upstream circuit with colt in {site_name}",
     )
 
-    circuits = client.execute_graphql(
+    circuits = await client.execute_graphql(
         branch_name=new_branch_name, query=GET_CIRCUITS_QUERY, variables={"site_name": site_name}
     )
     colt_circuits = [
@@ -181,19 +183,21 @@ def _branch_scenario_remove_colt(client: InfrahubClientSync, site_name: str) -> 
     ]
 
     for item in colt_circuits:
-        circuit_endpoint = client.get(branch=new_branch_name, kind="InfraCircuitEndpoint", id=item["node"]["id"])
-        circuit_endpoint.delete()
+        circuit_endpoint = await client.get(branch=new_branch_name, kind="InfraCircuitEndpoint", id=item["node"]["id"])
+        await circuit_endpoint.delete()
 
-        circuit = client.get(branch=new_branch_name, kind="InfraCircuit", id=item["node"]["circuit"]["node"]["id"])
-        circuit.delete()
+        circuit = await client.get(
+            branch=new_branch_name, kind="InfraCircuit", id=item["node"]["circuit"]["node"]["id"]
+        )
+        await circuit.delete()
 
 
-def _branch_scenario_conflict_device(client: InfrahubClientSync, site_name: str) -> None:
+async def _branch_scenario_conflict_device(client: InfrahubClient, site_name: str) -> None:
     """Transcribes ``branch_scenario_conflict_device`` (lines 2114-2152)."""
     device1_name = f"{site_name}-edge1"
 
     new_branch_name = f"{site_name}-maintenance-conflict"
-    client.branch.create(
+    await client.branch.create(
         branch_name=new_branch_name,
         sync_with_git=False,
         description=f"Put {device1_name} in maintenance mode",
@@ -204,67 +208,67 @@ def _branch_scenario_conflict_device(client: InfrahubClientSync, site_name: str)
     drained_status = "drained"
 
     # Update Device 1 Status both in the Branch and in Main
-    device1_branch = client.get(branch=new_branch_name, kind="InfraDevice", name__value=device1_name)
+    device1_branch = await client.get(branch=new_branch_name, kind="InfraDevice", name__value=device1_name)
 
     device1_branch.status.value = maintenance_status
-    device1_branch.save()
+    await device1_branch.save()
 
-    intf1_branch = client.get(
+    intf1_branch = await client.get(
         branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device1_branch.id], name__value="Ethernet1"
     )
     intf1_branch.enabled.value = False
     intf1_branch.status.value = drained_status
-    intf1_branch.save()
+    await intf1_branch.save()
 
-    device1_main = client.get(branch=BRANCH, kind="InfraDevice", name__value=device1_name)
+    device1_main = await client.get(branch=BRANCH, kind="InfraDevice", name__value=device1_name)
 
     device1_main.status.value = provisioning_status
-    device1_main.save()
+    await device1_main.save()
 
     # The script looks the main-side interface up with the BRANCH device id (same node UUID).
-    intf1_main = client.get(
+    intf1_main = await client.get(
         branch=BRANCH, kind="InfraInterfaceL3", device__ids=[device1_branch.id], name__value="Ethernet1"
     )
     intf1_main.enabled.value = False
-    intf1_main.save()
+    await intf1_main.save()
 
 
-def _branch_scenario_conflict_platform(client: InfrahubClientSync) -> None:
+async def _branch_scenario_conflict_platform(client: InfrahubClient) -> None:
     """Transcribes ``branch_scenario_conflict_platform`` (lines 2155-2185)."""
     new_branch_name = "platform-conflict"
-    client.branch.create(
+    await client.branch.create(
         branch_name=new_branch_name,
         sync_with_git=False,
         description="Add new platform",
     )
 
     # Create a new Platform object with the same name, both in the branch and in main
-    platform1_branch = client.create(
+    platform1_branch = await client.create(
         branch=new_branch_name, kind="InfraPlatform", name="Cisco IOS XR", netmiko_device_type="cisco_xr"
     )
-    platform1_branch.save()
-    platform1_main = client.create(
+    await platform1_branch.save()
+    platform1_main = await client.create(
         branch=BRANCH, kind="InfraPlatform", name="Cisco IOS XR", netmiko_device_type="cisco_xr"
     )
-    platform1_main.save()
+    await platform1_main.save()
 
     # Delete an existing Platform object on both in the Branch and in Main
-    platform2_branch = client.get(branch=new_branch_name, kind="InfraPlatform", name__value="Cisco NXOS SSH")
-    platform2_branch.delete()
-    platform2_main = client.get(branch=BRANCH, kind="InfraPlatform", name__value="Cisco NXOS SSH")
-    platform2_main.delete()
+    platform2_branch = await client.get(branch=new_branch_name, kind="InfraPlatform", name__value="Cisco NXOS SSH")
+    await platform2_branch.delete()
+    platform2_main = await client.get(branch=BRANCH, kind="InfraPlatform", name__value="Cisco NXOS SSH")
+    await platform2_main.delete()
 
     # Delete an existing Platform object in the branch and update it in main
-    platform3_branch = client.get(branch=new_branch_name, kind="InfraPlatform", name__value="Juniper JunOS")
-    platform3_branch.delete()
-    platform3_main = client.get(branch=BRANCH, kind="InfraPlatform", name__value="Juniper JunOS")
+    platform3_branch = await client.get(branch=new_branch_name, kind="InfraPlatform", name__value="Juniper JunOS")
+    await platform3_branch.delete()
+    platform3_main = await client.get(branch=BRANCH, kind="InfraPlatform", name__value="Juniper JunOS")
     platform3_main.nornir_platform.value = "juniper_junos"
-    platform3_main.save()
+    await platform3_main.save()
 
 
 @pytest.fixture(scope="session")
-def data_scenario_branches(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
-    data_client: InfrahubClientSync,
+async def data_scenario_branches(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
+    data_client: InfrahubClient,
     schema_base: None,
     data_sites: SitesHandle,
     data_topology: TopologyHandle,
@@ -281,9 +285,9 @@ def data_scenario_branches(  # noqa: PLR0913, PLR0917  (each argument is a pytes
     if infrahub_provisioned_externally:
         return ScenarioBranchesHandle.external()
 
-    _consume_dropped_scenario_pool_allocations(client=data_client)
-    _branch_scenario_remove_colt(client=data_client, site_name=REMOVE_COLT_SITE)
-    _branch_scenario_conflict_device(client=data_client, site_name=CONFLICT_DEVICE_SITE)
-    _branch_scenario_conflict_platform(client=data_client)
+    await _consume_dropped_scenario_pool_allocations(client=data_client)
+    await _branch_scenario_remove_colt(client=data_client, site_name=REMOVE_COLT_SITE)
+    await _branch_scenario_conflict_device(client=data_client, site_name=CONFLICT_DEVICE_SITE)
+    await _branch_scenario_conflict_platform(client=data_client)
 
     return ScenarioBranchesHandle(branches=SCENARIO_BRANCHES)

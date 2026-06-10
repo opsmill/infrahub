@@ -13,23 +13,23 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 
 @pytest.mark.usefixtures("demo_edge_repo")
 class TestArtifactDefinitionPage:
-    def test_should_generate_artifacts_successfully(self, admin_page: Page) -> None:
-        admin_page.goto("/objects/CoreArtifactDefinition")
+    async def test_should_generate_artifacts_successfully(self, admin_page: Page) -> None:
+        await admin_page.goto("/objects/CoreArtifactDefinition")
         breadcrumb = admin_page.get_by_test_id("breadcrumb-navigation")
-        expect(breadcrumb.get_by_role("link", name="Artifact Definition")).to_be_visible()
+        await expect(breadcrumb.get_by_role("link", name="Artifact Definition")).to_be_visible()
 
-        admin_page.get_by_role("link", name="Startup Config for Edge devices").click()
-        expect(breadcrumb.get_by_role("link", name="Artifact Definition")).to_be_visible()
-        expect(breadcrumb.get_by_role("link", name="Startup Config for Edge devices")).to_be_visible()
+        await admin_page.get_by_role("link", name="Startup Config for Edge devices").click()
+        await expect(breadcrumb.get_by_role("link", name="Artifact Definition")).to_be_visible()
+        await expect(breadcrumb.get_by_role("link", name="Startup Config for Edge devices")).to_be_visible()
 
-        expect(admin_page.get_by_role("button", name="Generate")).not_to_be_disabled()
-        admin_page.get_by_role("button", name="Generate").click()
-        expect(admin_page.get_by_text("Artifacts generated")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Generate")).not_to_be_disabled()
+        await admin_page.get_by_role("button", name="Generate").click()
+        await expect(admin_page.get_by_text("Artifacts generated")).to_be_visible()

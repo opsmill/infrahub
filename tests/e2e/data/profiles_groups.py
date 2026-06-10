@@ -20,7 +20,7 @@ import pytest
 from data.handles import ProfilesGroupsHandle
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk import InfrahubClient
 
 BRANCH = "main"
 
@@ -46,8 +46,8 @@ INTERFACE_PROFILES = (
 
 
 @pytest.fixture(scope="session")
-def data_profiles_groups(
-    data_client: InfrahubClientSync,
+async def data_profiles_groups(
+    data_client: InfrahubClient,
     schema_base: None,
     infrahub_provisioned_externally: bool,
 ) -> ProfilesGroupsHandle:
@@ -55,11 +55,11 @@ def data_profiles_groups(
     if infrahub_provisioned_externally:
         return ProfilesGroupsHandle.external()
 
-    batch = data_client.create_batch()
+    batch = await data_client.create_batch()
 
     standard_groups = {}
     for group in GROUPS:
-        obj = data_client.create(branch=BRANCH, kind="CoreStandardGroup", data=dict(group))
+        obj = await data_client.create(branch=BRANCH, kind="CoreStandardGroup", data=dict(group))
         batch.add(task=obj.save, node=obj)
         standard_groups[group["name"]] = obj
 
@@ -69,11 +69,11 @@ def data_profiles_groups(
             "profile_name": {"value": intf_profile["name"]},
             "mtu": {"value": intf_profile["mtu"]},
         }
-        profile = data_client.create(branch=BRANCH, kind=f"Profile{intf_profile['kind']}", data=data_profile)
+        profile = await data_client.create(branch=BRANCH, kind=f"Profile{intf_profile['kind']}", data=data_profile)
         batch.add(task=profile.save, node=profile)
         interface_profiles[intf_profile["name"]] = profile
 
-    for _ in batch.execute():
+    async for _ in batch.execute():
         pass
 
     return ProfilesGroupsHandle(

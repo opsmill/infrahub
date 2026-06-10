@@ -99,7 +99,6 @@ dev = [
     "polyfactory==2.16.2",
     "towncrier>=24.8,<25",
     "pytest-env>=1.1.3,<2",
-    "pytest-playwright>=0.7,<0.8",
     "testcontainers==4.8.1",
     "pytest-timeout==2.3.1",
     "matplotlib==3.10.7",
@@ -113,6 +112,7 @@ dev = [
     "ty==0.0.32",
     "prek>=0.3.0",
     "coverage==7.14.1",
+    "pytest-playwright-asyncio>=0.8.0",
 ]
 
 # test-scale = [

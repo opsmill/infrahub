@@ -21,7 +21,7 @@ import pytest
 from data.handles import IpamPoolsHandle
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk import InfrahubClient
 
     from data.handles import RbacHandle
 
@@ -37,8 +37,8 @@ NETWORKS_POOL_EXTERNAL_SUPERNET = IPv4Network("203.111.0.0/16")
 
 
 @pytest.fixture(scope="session")
-def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local per created node)
-    data_client: InfrahubClientSync,
+async def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local per created node)
+    data_client: InfrahubClient,
     schema_base: None,
     data_rbac: RbacHandle,
     infrahub_provisioned_externally: bool,
@@ -55,14 +55,14 @@ def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local pe
     branch = "main"
     account_pop_id = data_rbac.accounts["pop-builder"]
 
-    default_ip_namespace = data_client.get(kind="IpamNamespace", name__value="default")
+    default_ip_namespace = await data_client.get(kind="IpamNamespace", name__value="default")
 
     # Creating IP Core Supernet and Pool
-    supernet_prefix = data_client.create(
+    supernet_prefix = await data_client.create(
         branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_SUPERNET), member_type="prefix"
     )
-    supernet_prefix.save()
-    supernet_pool = data_client.create(
+    await supernet_prefix.save()
+    supernet_pool = await data_client.create(
         kind="CoreIPPrefixPool",
         name="Internal networks pool",
         default_prefix_type="IpamIPPrefix",
@@ -72,13 +72,13 @@ def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local pe
         branch=branch,
     )
     # Using upsert for branch agnostic nodes in order to execute the script in different branches during development
-    supernet_pool.save(allow_upsert=True)
+    await supernet_pool.save(allow_upsert=True)
 
     # Creating IP Loopback Prefix and Pool
-    loopback_prefix = data_client.allocate_next_ip_prefix(
+    loopback_prefix = await data_client.allocate_next_ip_prefix(
         resource_pool=supernet_pool, member_type="address", branch=branch
     )
-    loopback_pool = data_client.create(
+    loopback_pool = await data_client.create(
         kind="CoreIPAddressPool",
         name="Loopbacks pool",
         default_address_type="IpamIPAddress",
@@ -87,16 +87,16 @@ def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local pe
         resources=[loopback_prefix],
         branch=branch,
     )
-    loopback_pool.save(allow_upsert=True)
+    await loopback_pool.save(allow_upsert=True)
 
     # Creating IP Interconnection Prefix and Pool
     # NB: `kind` is typing-only sugar on allocate_next_ip_prefix (unused at runtime); mirrored from the script.
-    interconnection_prefix = data_client.allocate_next_ip_prefix(
+    interconnection_prefix = await data_client.allocate_next_ip_prefix(
         kind="IpamIPPrefix",  # type: ignore[call-overload]
         resource_pool=supernet_pool,
         branch=branch,
     )
-    interconnection_pool = data_client.create(
+    interconnection_pool = await data_client.create(
         kind="CoreIPPrefixPool",
         name="Interconnections pool",
         default_prefix_type="IpamIPPrefix",
@@ -106,18 +106,18 @@ def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local pe
         resources=[interconnection_prefix],
         branch=branch,
     )
-    interconnection_pool.save(allow_upsert=True)
+    await interconnection_pool.save(allow_upsert=True)
 
     # Allocate an empty prefix (the script discards the return; the prefix — 10.2.0.0/16 —
     # stays in the tree, deliberately empty and unused)
-    empty_prefix = data_client.allocate_next_ip_prefix(resource_pool=supernet_pool, branch=branch)
+    empty_prefix = await data_client.allocate_next_ip_prefix(resource_pool=supernet_pool, branch=branch)
 
     # Creating IP Management Prefix and Pool
-    management_prefix = data_client.create(
+    management_prefix = await data_client.create(
         branch=branch, kind="IpamIPPrefix", prefix=str(MANAGEMENT_NETWORKS), member_type="address"
     )
-    management_prefix.save(allow_upsert=True)
-    management_pool = data_client.create(
+    await management_prefix.save(allow_upsert=True)
+    management_pool = await data_client.create(
         kind="CoreIPAddressPool",
         name="Management addresses pool",
         default_address_type="IpamIPAddress",
@@ -126,14 +126,14 @@ def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local pe
         resources=[management_prefix],
         branch=branch,
     )
-    management_pool.save(allow_upsert=True)
+    await management_pool.save(allow_upsert=True)
 
     # Creating IP External Supernet and Pool
-    external_supernet = data_client.create(
+    external_supernet = await data_client.create(
         branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_POOL_EXTERNAL_SUPERNET), member_type="prefix"
     )
-    external_supernet.save()
-    external_pool = data_client.create(
+    await external_supernet.save()
+    external_pool = await data_client.create(
         kind="CoreIPPrefixPool",
         name="External prefixes pool",
         default_prefix_type="IpamIPPrefix",
@@ -143,14 +143,14 @@ def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local pe
         resources=[external_supernet],
         branch=branch,
     )
-    external_pool.save(allow_upsert=True)
+    await external_pool.save(allow_upsert=True)
 
     # Creating IPv6 Core Supernet and Pool
-    ipv6_supernet_prefix = data_client.create(
+    ipv6_supernet_prefix = await data_client.create(
         branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_SUPERNET_IPV6), member_type="prefix"
     )
-    ipv6_supernet_prefix.save()
-    ipv6_supernet_pool = data_client.create(
+    await ipv6_supernet_prefix.save()
+    ipv6_supernet_pool = await data_client.create(
         kind="CoreIPPrefixPool",
         name="Internal networks pool (IPv6)",
         default_prefix_type="IpamIPPrefix",
@@ -160,12 +160,12 @@ def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local pe
         resources=[ipv6_supernet_prefix],
         branch=branch,
     )
-    ipv6_supernet_pool.save(allow_upsert=True)
+    await ipv6_supernet_pool.save(allow_upsert=True)
 
     # Creating pool IPv6 Prefixes and IPs: six sequential /110 allocations
     # (the script spells out six identical calls)
     ipv6_internal_networks = [
-        data_client.allocate_next_ip_prefix(
+        await data_client.allocate_next_ip_prefix(
             resource_pool=ipv6_supernet_pool,
             kind="IpamIPPrefix",  # type: ignore[call-overload]
             branch=branch,
@@ -181,13 +181,13 @@ def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one local pe
         number_of_hosts = min(multiplier * 17, len(host_list))
         ipv6_addresses.extend(host_list[:number_of_hosts])
 
-    batch = data_client.create_batch()
+    batch = await data_client.create_batch()
     for ipv6_addr in ipv6_addresses:
-        obj = data_client.create(
+        obj = await data_client.create(
             branch=branch, kind="IpamIPAddress", address={"value": ipv6_addr, "source": account_pop_id}
         )
         batch.add(task=obj.save, node=obj)
-    for _, _response in batch.execute():
+    async for _, _response in batch.execute():
         pass
 
     return IpamPoolsHandle(

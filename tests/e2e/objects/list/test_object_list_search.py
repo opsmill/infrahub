@@ -9,23 +9,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
     from data.handles import SitesHandle
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 
 class TestObjectListSearch:
-    def test_verify_the_search(self, admin_page: Page, data_sites: SitesHandle) -> None:
-        admin_page.goto("/objects/InfraDevice")
+    async def test_verify_the_search(self, admin_page: Page, data_sites: SitesHandle) -> None:
+        await admin_page.goto("/objects/InfraDevice")
 
         # initial state
-        expect(admin_page.get_by_role("link", name="atl1-core1")).to_be_visible()
-        expect(admin_page.get_by_role("link", name="atl1-edge1")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="atl1-core1")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="atl1-edge1")).to_be_visible()
 
         # should search an object and verify the total amount of results
-        admin_page.get_by_placeholder("Search Device").fill("core1")
+        await admin_page.get_by_placeholder("Search Device").fill("core1")
 
-        expect(admin_page.get_by_role("link", name="atl1-core1")).to_be_visible()
-        expect(admin_page.get_by_role("link", name="atl1-edge1")).not_to_be_visible()
+        await expect(admin_page.get_by_role("link", name="atl1-core1")).to_be_visible()
+        await expect(admin_page.get_by_role("link", name="atl1-edge1")).not_to_be_visible()
