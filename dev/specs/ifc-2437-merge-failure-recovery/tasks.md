@@ -24,6 +24,8 @@ Infrahub backend monolith: `backend/infrahub/...`; tests under `backend/tests/{u
 
 ## Phase 1: User Story 1 — Default branch protected during a merge (P1) 🎯 MVP
 
+**PRs**: **PR-1** = T005 (IPAM reorder, standalone) · **PR-2** = T001–T004, T006–T009 (write-block increment). Optional prep PR for the `BranchStatusChecker` async/`cache` change inside T003 if the caller set is wide. See **PR Plan** below.
+
 **Goal**: Block API writes to the default branch (and the source branch) for the whole merge window via a shared `merge:protected` cache key; lift automatically on success.
 
 **Independent Test**: Start (or pause) a merge into the default branch; writes to the default branch and the source branch are rejected with a transient "merge in progress, retry shortly" message, an unrelated branch is writable, a new merge/rebase is blocked, and the default-branch write succeeds once the merge completes.
@@ -43,6 +45,8 @@ Infrahub backend monolith: `backend/infrahub/...`; tests under `backend/tests/{u
 ---
 
 ## Phase 2: User Story 2 — Failed merge detected & protection held (P1)
+
+**PRs**: **PR-3** = T010, T012–T024 (+ schema regen T046) — the detection increment, incl. the enum · **PR-4** = T011 (SDK enum, [ASK-FIRST] submodule; may land with PR-8). Optional split of PR-3: *3a* detection logic (T010, T012–T016, T020–T022) / *3b* recurring scan + startup + SIGKILL test (T017–T019, T023) — note US2's independent test needs 3b. See **PR Plan** below.
 
 **Goal**: Deterministically flip a dead merge `MERGING → MERGE_FAILED` (recurring scan + startup + on-write/on-merge fast paths), hold the default-branch protection with a "contact an administrator" message, and survive restarts.
 
@@ -70,6 +74,8 @@ Infrahub backend monolith: `backend/infrahub/...`; tests under `backend/tests/{u
 
 ## Phase 3: User Story 3 — Administrator recovers with `infrahub recover` (P1)
 
+**PRs**: **PR-5** = T025–T034, T038 (+ doc T045) — recovery core (range rollback + recover component + CLI + delete block + tests) · **PR-6** = T035, T036 ([ASK-FIRST] indexes + graph migration, Jira IFC-2715) · **PR-7** = T037 ([ASK-FIRST] schema-migration `previous_*` co-write, Jira IFC-2716). T031 (delete block) only needs the `MERGE_FAILED` state and could land earlier with US2. See **PR Plan** below.
+
 **Goal**: A single operator-confirmed CLI command reverses the partial merge (graph + in-window schema migrations, incl. per-node metadata), resets the branch and any proposed change to `OPEN`, and lifts the protection — idempotently.
 
 **Independent Test**: Produce a failed merge, run `infrahub recover` (confirm or `--yes`); the default branch equals its pre-merge snapshot (graph diff empty, node metadata restored), the branch and PC are `OPEN`, default-branch writes succeed again, and a re-run reports nothing to recover.
@@ -95,6 +101,8 @@ Infrahub backend monolith: `backend/infrahub/...`; tests under `backend/tests/{u
 
 ## Phase 4: User Story 4 — Visibility into failed & recovered merges (P2)
 
+**PRs**: **PR-8** = T039–T043 (visibility & logging). Alternatively fold T039 into PR-3 and T040 into PR-5 (log where the code lives) and ship only the visibility tests + changelog here. T041 depends on PR-4 (SDK enum). See **PR Plan** below.
+
 **Goal**: Operators can see `MERGE_FAILED` on a branch and find structured log entries for both detection and recovery.
 
 **Independent Test**: Force a failed merge then recover it; the `MERGE_FAILED` state is visible via branch inspection, and the failure and the recovery each produce a locatable structured log entry.
@@ -110,6 +118,8 @@ Infrahub backend monolith: `backend/infrahub/...`; tests under `backend/tests/{u
 ---
 
 ## Phase 5: Polish & Cross-Cutting Concerns
+
+**PRs**: these distribute rather than forming one PR — T046 regen rides with **PR-3** (the enum); T044 audit rides with **PR-2** or a small follow-up hardening PR; T045 dev/knowledge note rides with **PR-5**; T047 test runs are per-PR CI; T048 `.spec-context` rides with the final PR.
 
 - [ ] T044 Audit that **every** mutating API path funnels through `BranchStatusChecker.check` (GraphQL mutations, REST writes incl. `api/schema.py`, `api/artifact.py`); add coverage for any path that bypasses it (FR-001/009).
 - [ ] T045 [P] Add a `dev/knowledge/backend/` note documenting recovery's dependency on the merge architecture (lock lifetime, bulk-merge `$at`, `previous_*` snapshots, IPAM reorder) so future merge-architecture changes re-evaluate it (contracts §10).
@@ -141,6 +151,25 @@ Story chain: **US1 → US2 → US3 → US4**.
 - **Increment 2 = US2**: deterministic detection + held protection.
 - **Increment 3 = US3**: the `infrahub recover` path (gated by the **[ASK-FIRST]** approvals).
 - **Increment 4 = US4**: observability.
+
+## PR Plan
+
+Each PR is sized to be independently reviewable, to leave the system in a working state, and to ship with its own tests + changelog. The three **[ASK-FIRST]** items are isolated into their own PRs so the DB/SDK approvals don't block feature review.
+
+| PR | Tasks | Scope | Depends on | Notes |
+|----|-------|-------|-----------|-------|
+| **PR-1** | T005 | IPAM reorder (defer submit until after `MERGED`) | — | Standalone; safe to land first (no observable change for a successful merge). |
+| **PR-2** | T001–T004, T006–T009 | US1 write-block: `merge_started_at` + `merge:protected` key + async cache-aware gate + merge/rebase block + tests + changelog | — | Pieces are inert apart — ship together. *Optional prep PR*: isolate the `BranchStatusChecker` async + `cache` injection (mechanical) if the caller set is wide. |
+| **PR-3** | T010, T012–T024 (+ regen T046) | US2 detection: enum, predicate, `MergeFailureRecovery.detect_and_mark`, recurring merge-watcher, startup hook, fast paths, recovery message, tests, changelog | PR-2 | Includes the GraphQL schema regen for the enum ([ASK-FIRST] additive value). *Optional split* 3a/3b (see Phase 2); US2's idle-SIGKILL independent test needs 3b. |
+| **PR-4** | T011 | SDK `MERGE_FAILED` enum mirror | PR-3 | **[ASK-FIRST]** submodule bump (Jira IFC-2717). May land with PR-8. |
+| **PR-5** | T025–T034, T038 (+ doc T045) | US3 recovery: range `RollbackQuery` + metadata restore + recover component + CLI + delete-block + tests + changelog | PR-3 | T031 (delete block) needs only `MERGE_FAILED` and could land earlier with US2. |
+| **PR-6** | T035, T036 | Range-rollback edge `from`/`to` + node `updated_at` indexes + graph migration | pairs with PR-5 | **[ASK-FIRST]** DB change (Jira IFC-2715). Rollback works without it, just slower. |
+| **PR-7** | T037 | Schema-migration queries co-write `previous_*` | pairs with PR-5 | **[ASK-FIRST]** migration change (Jira IFC-2716). Enables the SC-008 migration-collateral metadata restore. |
+| **PR-8** | T039–T043 | US4 visibility & logging (+ tests) | PR-3, PR-5 | Small; or fold T039→PR-3 and T040→PR-5. T041 depends on PR-4 (SDK). |
+
+**Merge order**: PR-1 (anytime) → PR-2 → PR-3 → PR-5 → PR-8; **PR-4 / PR-6 / PR-7** ([ASK-FIRST]) land in parallel once approved (PR-6/PR-7 alongside PR-5, PR-4 alongside PR-3 or PR-8).
+
+**Per-PR changelog**: PR-1 (optional one-liner; no-op for successful merges), PR-2 (T009 write-protection), PR-3 (T024 detection), PR-5 (T038 recover), PR-8 (T043 visibility).
 
 ## Jira cross-reference — epic IFC-2559
 
