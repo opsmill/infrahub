@@ -55,7 +55,15 @@ from helpers import BranchAPI, login
 
 # Composable demo-dataset slices built on the sync SDK (tests/e2e/data/),
 # progressively replacing the script-based infrastructure_data fixture.
-pytest_plugins = ["data.common"]
+pytest_plugins = [
+    "data.common",
+    "data.rbac",
+    "data.locations",
+    "data.org_registry",
+    "data.profiles_groups",
+    "data.ipam_pools",
+    "data.patch_template",
+]
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
