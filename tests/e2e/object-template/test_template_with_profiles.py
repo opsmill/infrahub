@@ -104,7 +104,8 @@ class TestTemplateWithProfiles:
         admin_page.get_by_role("button", name="Save").click()
 
         # navigate to object details
-        expect(admin_page.locator("#alert-success-Device-created")).to_contain_text("Device created")
+        # The toast id carries the created node's uuid suffix, so prefix-match it.
+        expect(admin_page.locator('[id^="alert-success-Device-created"]')).to_contain_text("Device created")
         admin_page.get_by_role("link", name="spine-router-01").click()
 
         # verify inherited profile values
