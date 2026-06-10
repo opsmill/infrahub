@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'frontend/packages/ui/**'
+      - 'frontend/packages/graph/**'
   push:
     branches:
       - develop
@@ -13,16 +14,26 @@ on:
       - release-*
     paths:
       - 'frontend/packages/ui/**'
+      - 'frontend/packages/graph/**'
 
 permissions:
   contents: read
 
 jobs:
   chromatic:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Each Storybook maps to its own Chromatic project, hence one token per package.
+          - package: ui
+            token-secret: CHROMATIC_PROJECT_TOKEN
+          - package: graph
+            token-secret: CHROMATIC_GRAPH_PROJECT_TOKEN
     defaults:
       run:
-        working-directory: ./frontend/packages/ui
-    name: Run Chromatic
+        working-directory: ./frontend/packages/${{ matrix.package }}
+    name: Run Chromatic (${{ matrix.package }})
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -43,8 +54,8 @@ jobs:
         id: chromatic
         uses: chromaui/action@latest
         with:
-          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          workingDir: ./frontend/packages/ui
+          projectToken: ${{ secrets[matrix.token-secret] }}
+          workingDir: ./frontend/packages/${{ matrix.package }}
       - name: Outputs Storybook URL
         run: |
           echo "Storybook URL: ${{ steps.chromatic.outputs.storybookUrl }}"
