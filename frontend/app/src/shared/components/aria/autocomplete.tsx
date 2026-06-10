@@ -49,7 +49,7 @@ interface SearchInputProps extends AriaSearchFieldProps {
 function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
   return (
     <AriaSearchField
-      className={classNames("group flex items-center text-sm", className)}
+      className={classNames("group flex items-center overflow-hidden text-sm", className)}
       aria-label="Search"
       autoFocus
       {...props}
