@@ -67,8 +67,9 @@ class PrefixUtilizationGetter:
         if ip_prefixes is None:
             ip_prefixes = self.ip_prefixes
         result: list[PrefixChildDetails] = []
-        for prefix in ip_prefixes:
-            for child in self._results_by_prefix_id.get(prefix.get_id(), []):
+        prefix_ids = {prefix.get_id() for prefix in ip_prefixes}
+        for prefix_id in prefix_ids:
+            for child in self._results_by_prefix_id.get(prefix_id, []):
                 if prefix_member_type and child.child_type != prefix_member_type:
                     continue
                 result.append(child)
