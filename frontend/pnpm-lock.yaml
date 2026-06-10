@@ -122,12 +122,6 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.2.8
         version: 1.2.9(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@rolldown/plugin-babel':
-        specifier: ^0.2.3
-        version: 0.2.3(@babel/core@7.29.7)(@babel/runtime@7.29.7)(rolldown@1.0.3)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
-      '@tailwindcss/vite':
-        specifier: 'catalog:'
-        version: 4.3.0(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
       '@tanstack/react-query':
         specifier: ^5.100.14
         version: 5.101.0(react@19.2.7)
@@ -140,18 +134,12 @@ importers:
       '@uiw/react-color':
         specifier: ^2.10.3
         version: 2.10.3(@babel/runtime@7.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@vitejs/plugin-react':
-        specifier: 'catalog:'
-        version: 6.0.2(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7)(@babel/runtime@7.29.7)(rolldown@1.0.3)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
       '@xyflow/react':
         specifier: ^12.10.2
         version: 12.11.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       apollo-upload-client:
         specifier: 18.0.1
         version: 18.0.1(@apollo/client@3.13.8(@types/react@19.2.17)(graphql-ws@6.0.8(graphql@16.14.2)(ws@8.21.0))(graphql@16.14.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(graphql@16.14.2)
-      babel-plugin-react-compiler:
-        specifier: 'catalog:'
-        version: 1.0.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -269,24 +257,12 @@ importers:
       tailwind-merge:
         specifier: 'catalog:'
         version: 3.6.0
-      tailwindcss:
-        specifier: 'catalog:'
-        version: 4.3.0
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.3.0)
       unidiff:
         specifier: ^1.0.4
         version: 1.0.4
-      vite:
-        specifier: 'catalog:'
-        version: 8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0)
-      vite-plugin-monaco-editor-esm:
-        specifier: ^2.0.2
-        version: 2.0.2(monaco-editor@0.52.2)
-      vite-plugin-svgr:
-        specifier: ^5.2.0
-        version: 5.2.0(typescript@5.9.3)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -309,6 +285,12 @@ importers:
       '@playwright/test':
         specifier: 1.56.1
         version: 1.56.1
+      '@rolldown/plugin-babel':
+        specifier: ^0.2.3
+        version: 0.2.3(@babel/core@7.29.7)(@babel/runtime@7.29.7)(rolldown@1.0.3)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
+      '@tailwindcss/vite':
+        specifier: 'catalog:'
+        version: 4.3.0(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
       '@types/apollo-upload-client':
         specifier: 18.0.1
         version: 18.0.1(@types/react@19.2.17)(graphql-ws@6.0.8(graphql@16.14.2)(ws@8.21.0))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -333,24 +315,42 @@ importers:
       '@types/sha1':
         specifier: ^1.1.5
         version: 1.1.5
+      '@vitejs/plugin-react':
+        specifier: 'catalog:'
+        version: 6.0.2(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7)(@babel/runtime@7.29.7)(rolldown@1.0.3)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
       '@vitest/browser-playwright':
         specifier: ^4.1.8
         version: 4.1.8(playwright@1.56.1)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))(vitest@4.1.8)
       '@vitest/coverage-v8':
         specifier: ^4.1.8
         version: 4.1.8(@vitest/browser@4.1.8)(vitest@4.1.8)
+      babel-plugin-react-compiler:
+        specifier: 'catalog:'
+        version: 1.0.0
       knip:
         specifier: ^6.15.0
         version: 6.16.1
       openapi-typescript:
         specifier: ^7.13.0
         version: 7.13.0(typescript@5.9.3)
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.3.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
       ultracite:
         specifier: ^7.8.1
         version: 7.8.2(oxfmt@0.54.0)(oxlint@1.69.0)
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0)
+      vite-plugin-monaco-editor-esm:
+        specifier: ^2.0.2
+        version: 2.0.2(monaco-editor@0.52.2)
+      vite-plugin-svgr:
+        specifier: ^5.2.0
+        version: 5.2.0(typescript@5.9.3)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.8
         version: 4.1.8(@opentelemetry/api@1.9.1)(@types/node@25.9.2)(@vitest/browser-playwright@4.1.8)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(yaml@2.9.0))

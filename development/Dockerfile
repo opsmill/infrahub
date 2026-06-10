@@ -52,7 +52,7 @@ COPY frontend/packages/ui/ /frontend/packages/ui/
 COPY frontend/package.json frontend/pnpm-workspace.yaml frontend/pnpm-lock.yaml /frontend/
 COPY frontend/app/package.json /frontend/app/
 WORKDIR /frontend
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile
 COPY frontend/app/ /frontend/app/
 WORKDIR /frontend/app
 RUN pnpm build && pnpm store prune
