@@ -1,14 +1,17 @@
 import { Icon } from "@iconify-icon/react";
-import { ExportMenu, GraphControls, Toolbar } from "@infrahub/graph";
+import {
+  type ExportFormat,
+  ExportMenu,
+  GraphControls,
+  type LayoutDirection,
+  Toolbar,
+} from "@infrahub/graph";
 import { Button, Tooltip } from "@infrahub/ui";
 import { Panel } from "@xyflow/react";
 
 import { classNames } from "@/shared/utils/common";
 
 import type { EdgeStyle } from "./path-edge";
-
-export type LayoutDirection = "TB" | "LR";
-export type ExportFormat = "png" | "svg";
 
 export type BottomToolbarProps = {
   onParametersClick: () => void;

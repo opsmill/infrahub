@@ -12,11 +12,13 @@ import { exportGraph } from "infrahub-schema-visualizer";
 import { type ReactNode, useState } from "react";
 import "@xyflow/react/dist/style.css";
 
+import type { LayoutDirection } from "@infrahub/graph";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 import type { PathResult } from "../domain/path-traversal.types";
-import { BottomToolbar, type LayoutDirection } from "./bottom-toolbar";
+import { BottomToolbar } from "./bottom-toolbar";
 import { InfraNode, type InfraNodeData } from "./infra-node";
 import { type EdgeStyle, PathEdge } from "./path-edge";
 
