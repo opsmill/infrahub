@@ -2,6 +2,7 @@
 # STAGE : Base Python Image
 # ****************************************************************
 ARG PYTHON_VER=3.13.11
+ARG NODE_VER=24.15.0
 ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
@@ -32,48 +33,65 @@ RUN apt-get update && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
 # ****************************************************************
-# STAGE : Frontend
+# STAGE : Node base (shared by the frontend and docs builds)
 # ****************************************************************
-FROM docker.io/node:24-slim AS frontend
-ARG CI_ARG
-ENV CI=$CI_ARG
+FROM docker.io/node:${NODE_VER}-slim AS node-base
 
-RUN corepack enable && corepack prepare pnpm@10 --activate
+# Keep the pnpm version in sync with "packageManager" in frontend/package.json
+RUN npm install -g pnpm@10.33.2
 
-# Create the pnpm workspace layout.
-# Workspace root is /frontend (members: app, packages/ui); schema-visualizer is a file: dep.
-RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer /frontend/packages/ui
+# ****************************************************************
+# STAGE : Frontend dependencies
+#   pnpm fetch keys on the lockfile alone; the install keys on manifests only.
+#   schema-visualizer is a file: dependency, so its full sources must be
+#   present at install time (pnpm copies file: deps into the store).
+# ****************************************************************
+FROM node-base AS frontend-deps
 
-# Copy local packages (workspace member ui + the file: schema-visualizer)
-COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
-COPY frontend/packages/ui/ /frontend/packages/ui/
-
-# Copy the workspace manifests + app manifest, then install from the workspace root
-COPY frontend/package.json frontend/pnpm-workspace.yaml frontend/pnpm-lock.yaml /frontend/
-COPY frontend/app/package.json /frontend/app/
 WORKDIR /frontend
-RUN pnpm install --frozen-lockfile
+
+COPY frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml /frontend/
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --store-dir /pnpm/store
+
+COPY frontend/package.json /frontend/
+COPY frontend/app/package.json /frontend/app/
+COPY frontend/packages/ui/package.json /frontend/packages/ui/
+COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --offline --store-dir /pnpm/store
+
+# ****************************************************************
+# STAGE : Frontend build
+# ****************************************************************
+FROM frontend-deps AS frontend-build
+
+COPY frontend/packages/ui/ /frontend/packages/ui/
 COPY frontend/app/ /frontend/app/
 WORKDIR /frontend/app
-RUN pnpm build && pnpm store prune
+RUN pnpm build
 
 # ****************************************************************
-# STAGE : Documentation
+# STAGE : Documentation dependencies
 # ****************************************************************
+FROM node-base AS docs-deps
+
 ENV DOCS_IN_APP=1
 
-RUN mkdir /docs
-
-COPY docs/package.json  docs/package-lock.json /docs/
-COPY backend/infrahub/config.py /backend/infrahub/
-COPY models/ /models/
-COPY python_sdk/docs/docs/python-sdk/examples/  /python_sdk/examples/
-COPY development/ /development/
 WORKDIR /docs
+COPY docs/package.json docs/package-lock.json /docs/
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
-RUN npm install --omit=dev
+# ****************************************************************
+# STAGE : Documentation build
+#   models/, deploy.tf and k8s/ are raw-loaded by docs .mdx pages at build time
+# ****************************************************************
+FROM docs-deps AS docs
+
+COPY models/ /models/
+COPY development/deploy.tf /development/deploy.tf
+COPY development/k8s/ /development/k8s/
 COPY docs/ /docs/
-RUN npm run build && npm cache clean --force
+RUN npm run build
 
 # ****************************************************************
 # STAGE : Backend
@@ -99,22 +117,19 @@ ENV PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_FLOWS_HEARTBEAT_FREQUENCY=30
 
 # --------------------------------------------
-# Import Frontend Build
-# --------------------------------------------
-COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
-
-# --------------------------------------------
-# Import Documentation Build
-# --------------------------------------------
-COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
-
-# --------------------------------------------
 # Install Dependencies
 #   Copy in only pyproject.toml/uv.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
 ENV UV_PROJECT_ENVIRONMENT="/.venv"
 COPY uv.lock pyproject.toml python_sdk/pyproject.toml python_testcontainers/pyproject.toml python_testcontainers/uv.lock /source/
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project --no-install-workspace
+
+# --------------------------------------------
+# Import Frontend & Documentation Builds
+#   After the dependency layer so frontend/docs edits don't re-run uv sync
+# --------------------------------------------
+COPY --from=frontend-build /frontend/app/dist/ /opt/infrahub/frontend/app/dist
+COPY --from=docs /docs/build/ /opt/infrahub/docs/build
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
