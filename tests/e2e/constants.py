@@ -6,6 +6,8 @@ same credentials, tokens and dataset definition as the legacy TypeScript suite.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 # Seeded accounts (admin is the bootstrap admin; the others are created by
 # models/infrastructure_edge.py and therefore require the `infrastructure_data`
 # fixture before they can be used to authenticate).
@@ -24,12 +26,8 @@ AUTHENTICATED_MENU_TRIGGER = "authenticated-menu-trigger"
 
 # The base schema files loaded as one set. Cross-domain references (e.g. dcim
 # references LocationSite / IpamIPAddress) mean the whole directory must be
-# applied together, exactly like `infrahubctl schema load models/base`.
-BASE_SCHEMA_FILES = (
-    "organization.yml",
-    "location.yml",
-    "dcim.yml",
-    "ipam.yml",
-    "routing.yml",
-    "service.yml",
-)
+# applied together, exactly like `infrahubctl schema load models/base` — which
+# loads the whole directory, so glob it rather than hardcoding a listing that
+# silently drifts when a file is added to models/base/.
+_MODELS_BASE_DIR = Path(__file__).resolve().parents[2] / "models" / "base"
+BASE_SCHEMA_FILES = tuple(sorted(path.name for path in _MODELS_BASE_DIR.glob("*.yml")))
