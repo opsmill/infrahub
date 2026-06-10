@@ -48,7 +48,8 @@ class TestTutorial1ObjectAndBranch:
         admin_page.get_by_role("button", name="Save").click()
 
         # confirm creation
-        expect(admin_page.locator("#alert-success-Tenant-created")).to_contain_text("Tenant created")
+        # The toast id carries the created node's uuid suffix, so prefix-match it.
+        expect(admin_page.locator('[id^="alert-success-Tenant-created"]')).to_contain_text("Tenant created")
         expect(admin_page.get_by_role("link", name="my-first-tenant")).to_be_visible()
         expect(admin_page.get_by_text("Testing Infrahub")).to_be_visible()
 

@@ -59,7 +59,8 @@ class TestProfiles:
 
         # Verify profile creation success
         expect(
-            admin_page.locator("#alert-success-BuiltinTag-created").get_by_text("BuiltinTag created")
+            # The toast id carries the created node's uuid suffix, so prefix-match it.
+            admin_page.locator('[id^="alert-success-BuiltinTag-created"]').get_by_text("BuiltinTag created")
         ).to_be_visible()
         expect(admin_page.get_by_role("link", name="profile test tag")).to_be_visible()
 
@@ -108,7 +109,7 @@ class TestProfiles:
         admin_page.get_by_role("button", name="Save").click()
 
         # Verify object creation
-        expect(admin_page.locator("#alert-success-Tag-created")).to_contain_text("Tag created")
+        expect(admin_page.locator('[id^="alert-success-Tag-created"]')).to_contain_text("Tag created")
         admin_page.get_by_role("link", name="tag with profile").click()
 
         # Verify profile metadata
