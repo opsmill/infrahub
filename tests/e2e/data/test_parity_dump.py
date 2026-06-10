@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 # mode -> the session fixture that loads the dataset that way.
 MODES = {
-    "monolith": "infrastructure_data",  # infrahubctl run models/infrastructure_edge.py
-    "fixtures": "infrastructure_data_sdk",  # the data/ package slices
+    "monolith": "infrastructure_data_monolith",  # infrahubctl run models/infrastructure_edge.py
+    "fixtures": "infrastructure_data",  # the data/ package slices (the suite's default)
 }
 
 

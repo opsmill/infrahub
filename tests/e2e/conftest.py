@@ -63,6 +63,9 @@ pytest_plugins = [
     "data.profiles_groups",
     "data.ipam_pools",
     "data.patch_template",
+    "data.sites",
+    "data.topology",
+    "data.scenario_branches",
 ]
 
 if TYPE_CHECKING:
@@ -241,24 +244,57 @@ def infrastructure_menu(
     schema_base: None,
     infrahub_provisioned_externally: bool,
 ) -> None:
-    """Load the navigation menu. Equivalent to `infrahubctl menu load models/base_menu.yml`."""
+    """Load the navigation menu (models/base_menu.yml) via the SDK menu spec.
+
+    Equivalent to `infrahubctl menu load models/base_menu.yml`: MenuFile's
+    validate_format + process are exactly what the CLI command calls. The menu
+    helpers are async-only, so the coroutine runs in a private asyncio.run() —
+    safe here because the sync suite never holds a running event loop.
+    """
     if infrahub_provisioned_externally:
         return
-    _run_infrahubctl(["menu", "load", str(MODELS_DIR / "base_menu.yml")], infrahub_address)
+
+    import asyncio
+
+    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.spec.menu import MenuFile
+
+    async def _load_menu() -> None:
+        client = InfrahubClient(config=Config(address=infrahub_address, api_token=ADMIN_API_TOKEN))
+        for file in MenuFile.load_file_from_disk(path=MODELS_DIR / "base_menu.yml"):
+            await file.validate_format(client=client)
+            await file.process(client=client)
+
+    asyncio.run(_load_menu())
 
 
 @pytest.fixture(scope="session")
-def infrastructure_data(
+def infrastructure_data(request: pytest.FixtureRequest, infrahub_provisioned_externally: bool) -> None:
+    """Load the full demo dataset through the tests/e2e/data/ SDK slices.
+
+    Script-free replacement for `infrahubctl run models/infrastructure_edge.py`:
+    the slice DAG reproduces the script's medium-profile dataset (5 sites, 6
+    devices/site, BGP mesh, scenario branches), proven by a structural parity
+    diff against a script-loaded stack (see tests/e2e/data/parity.py). Kept
+    under the legacy fixture name so tests keep their declared dependency;
+    narrowing individual domains to specific slices is incremental follow-up.
+    """
+    if infrahub_provisioned_externally:
+        return
+    request.getfixturevalue("infrastructure_data_sdk")
+
+
+@pytest.fixture(scope="session")
+def infrastructure_data_monolith(
     infrahub_address: str,
     schema_base: None,
     infrahub_provisioned_externally: bool,
 ) -> None:
-    """Load the full demo dataset by running models/infrastructure_edge.py.
+    """Load the demo dataset by running models/infrastructure_edge.py (legacy path).
 
-    Equivalent to `infrahubctl run models/infrastructure_edge.py`. This runs the
-    exact same generator the legacy suite used (default "medium" profile: 5
-    sites, 6 devices/site, BGP mesh and the 5 branch scenarios), so the dataset
-    is byte-faithful to the current CI dataset rather than a reimplementation.
+    Kept ONLY as the reference loader for the parity dump
+    (INFRAHUB_E2E_PARITY=monolith); the suite itself loads through the SDK
+    slices. Equivalent to `infrahubctl run models/infrastructure_edge.py`.
     """
     if infrahub_provisioned_externally:
         return
@@ -268,6 +304,20 @@ def infrastructure_data(
         cwd=REPO_ROOT,
         timeout=INFRASTRUCTURE_DATA_TIMEOUT,
     )
+
+
+@pytest.fixture(scope="session")
+def infrastructure_data_sdk(request: pytest.FixtureRequest) -> None:
+    """The full demo dataset via the tests/e2e/data/ SDK slices — no external script.
+
+    data_scenario_branches is the terminal node of the slice DAG: it pulls
+    data_topology (which pulls data_sites, which pulls rbac/locations/
+    org_registry/ipam_pools) and data_patch_template, so requesting it loads
+    everything the monolithic models/infrastructure_edge.py run produced —
+    minus the two scenario branches no test references (their pool consumption
+    is replayed; see data/scenario_branches.py).
+    """
+    request.getfixturevalue("data_scenario_branches")
 
 
 @pytest.fixture(scope="session")
@@ -416,13 +466,18 @@ def admin_storage_state(browser: Browser, base_url: str, storage_state_dir: Path
 
 
 @pytest.fixture(scope="session")
-def read_write_storage_state(
+def read_write_storage_state(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
     browser: Browser,
     base_url: str,
     storage_state_dir: Path,
-    infrastructure_data: None,
+    request: pytest.FixtureRequest,
+    infrahub_provisioned_externally: bool,
     response_delay_enabled: None,
 ) -> str:
+    # The cobrian account comes from the RBAC slice — pulling the whole dataset
+    # just to authenticate would force the full load on every read-write test.
+    if not infrahub_provisioned_externally:
+        request.getfixturevalue("data_rbac")
     return _build_storage_state(
         browser,
         base_url,
@@ -433,13 +488,17 @@ def read_write_storage_state(
 
 
 @pytest.fixture(scope="session")
-def read_only_storage_state(
+def read_only_storage_state(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
     browser: Browser,
     base_url: str,
     storage_state_dir: Path,
-    infrastructure_data: None,
+    request: pytest.FixtureRequest,
+    infrahub_provisioned_externally: bool,
     response_delay_enabled: None,
 ) -> str:
+    # The jbauer account comes from the RBAC slice (see read_write_storage_state).
+    if not infrahub_provisioned_externally:
+        request.getfixturevalue("data_rbac")
     return _build_storage_state(
         browser,
         base_url,

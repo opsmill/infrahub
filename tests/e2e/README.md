@@ -89,7 +89,9 @@ tests/e2e/
   pytest.ini          # dedicated config (browser, artifacts, junit, maxfail)
   conftest.py         # stack + client + data fixtures + auth + role pages
   constants.py        # credentials, admin token, base-schema file list
-  helpers.py          # login(), generate_random_branch_name(), BranchAPI
+  helpers.py          # login(), generate_random_branch_name(), BranchAPI, Deadline
+  data/               # the demo dataset as composable sync-SDK fixtures
+                      # (one module per slice + parity dump tool, see below)
   test_login.py       # ported login.spec.ts
   branches/           # ported branches/*.spec.ts
   objects/            # ported objects/**/*.spec.ts
@@ -101,21 +103,49 @@ fixtures that start an in-process backend, which we must not inherit.
 
 ### Fixture catalog
 
-The harness is fully **synchronous** (sync SDK client + sync `infrahubctl`
-subprocesses) so it coexists cleanly with pytest-playwright's synchronous
-`page` fixture — no event-loop juggling.
+The harness is fully **synchronous** (sync SDK client everywhere) so it
+coexists cleanly with pytest-playwright's synchronous `page` fixture — no
+event-loop juggling. No external script or `infrahubctl` subprocess is
+involved: the dataset is loaded by the composable slices in `tests/e2e/data/`.
 
 | Fixture | Scope | Replaces | Notes |
 |---|---|---|---|
 | `infrahub_app` / `infrahub_address` | session | `invoke dev.start` | One stack for the whole session. Honors `INFRAHUB_ADDRESS` if set. |
 | `infrahub_client` | session | — | Admin `InfrahubClientSync`. |
 | `schema_base` | session | `invoke dev.load-infra-schema` (schema) | Loads all `models/base/*.yml` as one set. |
-| `infrastructure_menu` | session | `invoke dev.load-infra-schema` (menu) | `infrahubctl menu load models/base_menu.yml`. |
-| `infrastructure_data` | session | `invoke dev.load-infra-data` | Runs the real `models/infrastructure_edge.py` (medium profile: 5 sites, 6 devices/site, BGP mesh, 5 branch scenarios) — byte-faithful to today's dataset, not a reimplementation. |
+| `infrastructure_menu` | session | `invoke dev.load-infra-schema` (menu) | Loads `models/base_menu.yml` via the SDK `MenuFile` (what `infrahubctl menu load` calls). |
+| `infrastructure_data` | session | `invoke dev.load-infra-data` | The full demo dataset (medium profile: 5 sites, 6 devices/site, BGP mesh, 3 scenario branches) via the `tests/e2e/data/` SDK slices — parity with `models/infrastructure_edge.py` proven by a structural dump diff (`data/parity.py`). |
+| `data_rbac` / `data_locations` / `data_org_registry` / `data_profiles_groups` / `data_ipam_pools` / `data_patch_template` / `data_sites` / `data_topology` / `data_scenario_branches` | session | — | The individual dataset slices (each returns a typed handle, see `data/handles.py`); tests can depend on just the slice they need. |
+| `infrastructure_data_monolith` | session | — | The legacy `infrahubctl run models/infrastructure_edge.py` loader, kept ONLY as the reference for the parity dump (`INFRAHUB_E2E_PARITY=monolith`). |
 | `demo_edge_repo` | session | `invoke dev.infra-git-import dev.infra-git-create` | Registers + syncs the `demo-edge` repo via the SDK `GitRepo` helper. |
 | `branch_api` | function | `tests/e2e/utils/graphql.ts` | Create/merge/delete throwaway branches via the API. |
 | `page` | function | anonymous Playwright page | Unauthenticated; base URL points at the stack. |
-| `admin_page` / `read_write_page` / `read_only_page` | function | `test.use({ storageState })` | Logged-in pages; storage states are built once per role by `login()` (port of `auth.setup.ts`). |
+| `admin_page` / `read_write_page` / `read_only_page` | function | `test.use({ storageState })` | Logged-in pages; storage states are built once per role by `login()` (port of `auth.setup.ts`). The read-write/read-only roles need only the `data_rbac` slice (their accounts), not the full dataset. |
+
+#### Dataset slices and parity (`tests/e2e/data/`)
+
+The monolithic `models/infrastructure_edge.py` load is decomposed into
+session-scoped sync-SDK fixtures, one module per slice, wired as pytest
+plugins from `conftest.py`. Slice DAG: `rbac` / `locations` / `org_registry` /
+`profiles_groups` / `ipam_pools` / `patch_template` (leaves) → `sites` →
+`topology` → `scenario_branches` (terminal — requesting it loads everything).
+Each fixture returns a frozen handle of name→id maps replacing the script's
+in-process `client.store` state; every slice is idempotent and no-ops in
+pre-provisioned (`INFRAHUB_ADDRESS`) mode.
+
+Known, deliberate deviations from the script (all parity-diff verified):
+
+- the `ord1-add-upstream` and `jfk1-update-edge-ips` scenario branches are
+  dropped (no test references them); their resource-pool consumption is
+  replayed on main so deterministic allocations (e.g. `203.111.0.248/29`)
+  hold — the two ballast prefixes are visible on main,
+- circuit ids are deterministic (md5 of the script's seed string) instead of
+  `PYTHONHASHSEED`-salted `hash()`.
+
+To re-check parity after changing a slice (or the script), dump both modes
+and diff (see `data/parity.py` for the exact commands):
+`INFRAHUB_E2E_PARITY=monolith|fixtures uv run pytest -c tests/e2e/pytest.ini
+tests/e2e/data/test_parity_dump.py`.
 
 A test depends only on the fixtures it needs:
 
