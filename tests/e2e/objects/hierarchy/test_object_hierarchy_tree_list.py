@@ -13,7 +13,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import Deadline, generate_random_branch_name
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
@@ -117,4 +117,21 @@ class TestObjectHierarchyTreeLite:
         # After deleting the current node, should fall back to full tree (not show error)
         expect(object_hierarchy_tree).to_be_visible()
         expect(object_hierarchy_tree_lite).not_to_be_visible()
-        expect(admin_page.get_by_role("link", name="Country 1")).not_to_be_visible()
+        # The tree refetch triggered by the delete can hit a load-balanced replica
+        # that has not seen the write yet and cache the stale answer (the legacy
+        # suite ran against a single server and never had this window), so allow
+        # bounded reloads until the deleted node is gone from the tree. Rows
+        # render asynchronously after the tree container appears: anchor on a
+        # row that always exists before concluding absence, otherwise a check
+        # against a half-rendered tree exits the loop while the stale answer is
+        # still on its way in.
+        deadline = Deadline("the deleted Country 1 to disappear from the tree")
+        while True:
+            expect(object_hierarchy_tree).to_be_visible()
+            expect(object_hierarchy_tree.get_by_text("North America")).to_be_visible()
+            try:
+                expect(admin_page.get_by_role("link", name="Country 1")).not_to_be_visible(timeout=3_000)
+                break
+            except AssertionError:
+                deadline.tick()
+                admin_page.reload()
