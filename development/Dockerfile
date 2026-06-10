@@ -37,33 +37,29 @@ RUN apt-get update && \
 # ****************************************************************
 FROM docker.io/node:${NODE_VER}-slim AS node-base
 
-# Keep the pnpm version in sync with "packageManager" in frontend/package.json
-RUN npm install -g pnpm@10.33.2
-
 # ****************************************************************
-# STAGE : Frontend dependencies
+# STAGE : Frontend
+#   pnpm comes via corepack, resolving the version from "packageManager"
+#   in frontend/package.json (the single source of truth).
 #   pnpm fetch keys on the lockfile alone; the install keys on manifests only.
 #   schema-visualizer is a file: dependency, so its full sources must be
 #   present at install time (pnpm copies file: deps into the store).
 # ****************************************************************
-FROM node-base AS frontend-deps
+FROM node-base AS frontend
+
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
 
 WORKDIR /frontend
 
-COPY frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml /frontend/
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml /frontend/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --store-dir /pnpm/store
 
-COPY frontend/package.json /frontend/
 COPY frontend/app/package.json /frontend/app/
 COPY frontend/packages/ui/package.json /frontend/packages/ui/
 COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --offline --store-dir /pnpm/store
-
-# ****************************************************************
-# STAGE : Frontend build
-# ****************************************************************
-FROM frontend-deps AS frontend-build
 
 COPY frontend/packages/ui/ /frontend/packages/ui/
 COPY frontend/app/ /frontend/app/
@@ -74,8 +70,6 @@ RUN pnpm build
 # STAGE : Documentation dependencies
 # ****************************************************************
 FROM node-base AS docs-deps
-
-ENV DOCS_IN_APP=1
 
 WORKDIR /docs
 COPY docs/package.json docs/package-lock.json /docs/
@@ -128,7 +122,7 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-ins
 # Import Frontend & Documentation Builds
 #   After the dependency layer so frontend/docs edits don't re-run uv sync
 # --------------------------------------------
-COPY --from=frontend-build /frontend/app/dist/ /opt/infrahub/frontend/app/dist
+COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
 COPY --from=docs /docs/build/ /opt/infrahub/docs/build
 
 # --------------------------------------------
