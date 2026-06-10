@@ -228,8 +228,8 @@ importers:
         specifier: ^6.1.2
         version: 6.1.2(react@19.2.7)
       react-hook-form:
-        specifier: ^7.73.1
-        version: 7.78.0(react@19.2.7)
+        specifier: 7.73.1
+        version: 7.73.1(react@19.2.7)
       react-markdown:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@19.2.17)(react@19.2.7)
@@ -5670,8 +5670,8 @@ packages:
       vite-plus:
         optional: true
 
-  oxlint-plugin-react-doctor@0.5.0:
-    resolution: {integrity: sha512-2oXQZKc3N2XPGmKQ0+GtZ4TSlNb4Jm1DKDrxhBE1zBK01PIjz9lXSUQm0hFCXFmlGmjVF7/GE11U9p2Oe0o9Nw==}
+  oxlint-plugin-react-doctor@0.5.1:
+    resolution: {integrity: sha512-gGx0NCPA7s8z8UYCulfhX4CiXwBI4QdQve7zaVXglakWzzdgcXMZv6pedmbKUtefegzlfzkKDcYO4lOg8vqnJw==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
   oxlint@1.69.0:
@@ -5881,8 +5881,8 @@ packages:
     resolution: {integrity: sha512-aEZ9qP+/M+58x2qgfSFEWH1BxLyHe5+qkLNJOZQb5iGS017jpbRnoKhNRrXPeA6RfBrZO5wZrT9DMC1UqE1f1w==}
     engines: {node: ^20.9.0 || >=22}
 
-  react-doctor@0.5.0:
-    resolution: {integrity: sha512-MEx7RgRv2kXp6HoPMzc7fFz5Mm3vCqS3Z7clkjmDbsPamjCz7TrDDWQarfaPr7woWA6FOAaWHt1bGhQ88cfEEw==}
+  react-doctor@0.5.1:
+    resolution: {integrity: sha512-2LSJ/iYtUugr9xj01XTyU2tRtfjmGjiwyDotrnxL0raP+q4Uhp10VaiY7BqfDhBpj4HtCsC+//G1xVupTTBDoA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
@@ -5905,8 +5905,8 @@ packages:
       react:
         optional: true
 
-  react-hook-form@7.78.0:
-    resolution: {integrity: sha512-EEZqc+N23moyzTlz61Pj+JvcXo76ICkpfOZo8JZw+sM4+wLQGh6nI2Ms+PdMOYNluFu0ghlM7B8mCzhRYtJCnA==}
+  react-hook-form@7.73.1:
+    resolution: {integrity: sha512-VAfVYOPcx3piiEVQy95vyFmBwbVUsP/AUIN+mpFG8h11yshDd444nn0VyfaGWSRnhOLVgiDu7HIuBtAIzxn9dA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -12195,7 +12195,7 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.54.0
       '@oxfmt/binding-win32-x64-msvc': 0.54.0
 
-  oxlint-plugin-react-doctor@0.5.0:
+  oxlint-plugin-react-doctor@0.5.1:
     dependencies:
       '@typescript-eslint/types': 8.61.0
       eslint-scope: 9.1.2
@@ -12427,7 +12427,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  react-doctor@0.5.0(eslint@10.4.1(jiti@2.7.0)):
+  react-doctor@0.5.1(eslint@10.4.1(jiti@2.7.0)):
     dependencies:
       '@babel/code-frame': 7.29.7
       '@effect/platform-node-shared': 4.0.0-beta.70(effect@4.0.0-beta.70)
@@ -12441,7 +12441,7 @@ snapshots:
       jiti: 2.7.0
       magicast: 0.5.3
       oxlint: 1.69.0
-      oxlint-plugin-react-doctor: 0.5.0
+      oxlint-plugin-react-doctor: 0.5.1
       prompts: 2.4.2
       typescript: 6.0.3
       vscode-languageserver: 9.0.1
@@ -12472,7 +12472,7 @@ snapshots:
     optionalDependencies:
       react: 19.2.7
 
-  react-hook-form@7.78.0(react@19.2.7):
+  react-hook-form@7.73.1(react@19.2.7):
     dependencies:
       react: 19.2.7
 
@@ -12556,7 +12556,7 @@ snapshots:
       preact: 10.29.2
       prompts: 2.4.2
       react: 19.2.7
-      react-doctor: 0.5.0(eslint@10.4.1(jiti@2.7.0))
+      react-doctor: 0.5.1(eslint@10.4.1(jiti@2.7.0))
       react-dom: 19.2.7(react@19.2.7)
       react-grab: 0.1.44(react@19.2.7)
     optionalDependencies:
