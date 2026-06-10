@@ -43,14 +43,21 @@ If you are unsure about the options, accept the default values for all prompts b
 cd infrahub-automation
 ```
 
-3. Open the project in your IDE. If you have Visual Studio Code installed, you can run:
+:::success Verification
+Run `ls` in the project directory. You should see files including `pyproject.toml`, `tasks.py`, and a `schemas/` folder.
+:::
 
+## Install infrahubctl
+
+1. We will set up a virtual environment and install infrahubctl to it
 ```bash
-code .
+python3 -m venv .venv
+source .venv/bin/activate
+pip install 'infrahub-sdk[ctl]'
 ```
 
 :::success Verification
-Run `ls` in the project directory. You should see files including `pyproject.toml`, `tasks.py`, and a `schemas/` folder.
+Run the `infrahubctl version` and you should see the same version of python3 listed as you would get from running `python3 -V`
 :::
 
 ## Start Infrahub
@@ -76,6 +83,35 @@ The first run takes a few minutes while Docker downloads the container images.
 You should see the Infrahub web interface with a navigation menu on the left side.
 :::
 
+### Set up infrahubctl auth
+
+1. Click Admin in the bottom-left corner then Account settings
+
+2. Open the Tokens tab
+
+3. Add account token
+
+    - Add a name: `infrahubctl`
+    - Add a expiration if desired or leave blank
+
+4. Click Save
+
+5. Copy the token value
+
+6. Create a file in your current directory named `infrahubctl.toml`
+
+    - Substitute your token value on line 2.
+
+```bash
+server_address="http://localhost:8000"
+api_token="06438eb2-8019-4776-878c-0941b1f1d1ec"
+```
+
+
+:::success Verification
+`infrahubctl schema list` should show a list of schema that already exist. If you see an error, you may need to check the token value.
+:::
+
 ## Load a schema
 
 A schema defines the structure of your infrastructure data in Infrahub — the types of objects, their attributes, and how they relate to each other. [Learn more about schemas](../schema/overview).
@@ -97,113 +133,101 @@ infrahubctl schema load schemas/
 ```
 
 :::success Verification
-Go back to [http://localhost:8000](http://localhost:8000) and refresh the page. The left-hand menu should now display new items including location types like **Country** and **Site**.
+Go back to [http://localhost:8000](http://localhost:8000) and refresh the page. The left-hand menu should now display new items including location types like **Organization** and **Location**.
 :::
 
 ## Create your first data
 
 There are multiple ways to create data in Infrahub — the WebUI, APIs, Python SDK, and more. For development purposes, it's often easiest to create YAML files and load them with `infrahubctl`.
 
-1. Create a file called `countries.yml` in the `objects/` folder with the following content:
+1. Here we have an example already downloaded as `objects/example.yml`
 
 ```yaml
 ---
 apiVersion: infrahub.app/v1
 kind: Object
 spec:
-  kind: LocationCountry
+  kind: BuiltinTag
   data:
-    - name: United States
-      shortname: US
-      description: US operations
-      children:
-        kind: LocationMetro
-        data:
-          - name: Denver
-            shortname: DEN
-    - name: France
-      shortname: FR
-      description: EU operations
-      children:
-        kind: LocationMetro
-        data:
-          - name: Paris
-            shortname: PAR
+    - name: Yellow
+      description: A bright color often associated with happiness and energy.
 ```
 
 2. Load the data into Infrahub:
 
 ```bash
-uv run infrahubctl object load objects/countries.yml
+infrahubctl object load objects/example.yml
 ```
 
 :::success Verification
-Go to [http://localhost:8000](http://localhost:8000) and navigate to the **Country** list in the left-hand menu. You should see **United States** and **France**. Click on **United States** to view its details.
+Go to [http://localhost:8000](http://localhost:8000) and navigate to the **Other** -> **Tags** list in the left-hand menu. You should see the new tag **Yellow**
 :::
 
 ## Explore branching
 
 Branches in Infrahub work like Git branches — they let you stage changes in isolation without affecting the main dataset. This is one of Infrahub's most powerful features: you can propose, review, and test data changes before merging them. [Learn more about branching](../branches/overview).
 
-1. Create a branch called `add-locations`:
+1. Create a branch called `rfc-1918`:
 
 <Tabs groupId="branching-method">
   <TabItem value="infrahubctl" label="infrahubctl CLI" default>
 
   ```bash
-  uv run infrahubctl branch create add-locations
+  infrahubctl branch create rfc-1918
   ```
 
   </TabItem>
   <TabItem value="WebUI" label="WebUI">
-  Create an `add-locations` branch using the branch selector in the top-left corner of the WebUI.
+  Create an `rfc-1918` branch using the branch selector in the top-left corner of the WebUI.
   </TabItem>
 </Tabs>
 
-2. Add sites in the `add-locations` branch:
+2. Add prefixes in the `rfc-1918` branch:
 
 <Tabs groupId="branching-method">
   <TabItem value="infrahubctl" label="infrahubctl CLI" default>
 
-  3. Create a file called `sites.yml` in the `objects/` folder:
+  3. Create a file called `1918.yml` in the `objects/` folder:
 
   ```yaml
-  ---
-  apiVersion: infrahub.app/v1
-  kind: Object
-  spec:
-    kind: LocationSite
-    data:
-      - name: Denver DC1
-        shortname: DEN1
-        description: Primary US data center
-        parent: DEN
-      - name: Paris DC1
-        shortname: PAR1
-        description: Primary EU data center
-        parent: PAR
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: IpamPrefix
+  data:
+    - prefix: 10.0.0.0/8
+      description: RFC 1918 Class A
+      status: reserved
+    - prefix: 172.16.0.0/12
+      description: RFC 1918 Class B
+      status: reserved
+    - prefix: 192.168.0.0/16
+      description: RFC 1918 Class C
+      status: reserved
+
   ```
 
-  4. Load the sites into the `add-locations` branch:
+  4. Load the prefixes into the `rfc-1918` branch:
 
   ```bash
-  uv run infrahubctl object load objects/sites.yml --branch add-locations
+  infrahubctl object load objects/1918.yml --branch rfc-1918
   ```
 
   Notice the `--branch` flag — this targets the branch instead of main.
 
   </TabItem>
   <TabItem value="WebUI" label="WebUI">
-  - Switch to the `add-locations` branch in the WebUI.
-  - Using the left-hand menu, navigate to the **Site** list and click the "Create Site" button.
-  - Create new **Site** objects for **Denver DC1** and **Paris DC1** using the UI forms.
+  - Switch to the `rfc-1918` branch in the WebUI.
+  - Using the left-hand menu, navigate to the **IPAM** list and click the **IP Prefixes** button.
+  - Create new **IP Prefix** objects for **10.0.0.0/8**, **172.16.0.0/12**, and **192.168.0.0/16** using the UI forms.
   </TabItem>
 </Tabs>
 
 :::success Verification
-Go to [http://localhost:8000](http://localhost:8000). In the top-left corner, use the branch selector to switch to the **add-locations** branch. Navigate to the **Site** list in the left-hand menu. You should see **Denver DC1** and **Paris DC1**.
+Go to [http://localhost:8000](http://localhost:8000). In the top-left corner, use the branch selector to switch to the **rfc-1918** branch. Navigate to the **IPAM** - **IP Prefixes** list in the left-hand menu. You should see **10.0.0.0/8**, **172.16.0.0/12**, and **192.168.0.0/16**.
 
-Switch back to the **main** branch. The sites are not visible because they only exist in the `add-locations` branch.
+Switch back to the **main** branch. The prefixes are not visible because they only exist in the `rfc-1918` branch.
 :::
 
 ## Next steps
