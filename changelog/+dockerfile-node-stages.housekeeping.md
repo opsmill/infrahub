@@ -1,1 +1,0 @@
-Restructured the node side of `development/Dockerfile` into independent, pinned build stages (shared node base, frontend, docs) with BuildKit cache mounts, enabling parallel frontend/docs builds and far better layer-cache reuse. Build toolchain packages (vite and plugins, tailwindcss) moved from `dependencies` to `devDependencies` in `frontend/app/package.json`.
