@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 from uuid import uuid4
 
 from prefect import flow, get_run_logger
@@ -64,6 +64,8 @@ if TYPE_CHECKING:
     from infrahub.core.changelog.models import NodeChangelog
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
+    from infrahub.workflows.models import WorkflowDefinition
 
 
 @flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
@@ -364,6 +366,24 @@ async def _rollback_merge(
     return True
 
 
+async def _submit_post_merge_workflow(
+    workflow: InfrahubWorkflow,
+    log: Logger | LoggerAdapter,
+    context: InfrahubContext,
+    workflow_definition: WorkflowDefinition,
+    parameters: dict[str, Any],
+) -> None:
+    """Enqueue a post-merge follow-up workflow.
+
+    The merge is already committed by the time these run, so a failure to enqueue must not
+    abort the remaining follow-ups or surface as a merge failure: the error is logged and skipped.
+    """
+    try:
+        await workflow.submit_workflow(workflow=workflow_definition, context=context, parameters=parameters)
+    except Exception:
+        log.exception("Failed to enqueue post-merge workflow '%s'", workflow_definition.name)
+
+
 async def _do_merge_branch(
     db: InfrahubDatabase,
     log: Logger | LoggerAdapter,
@@ -476,40 +496,47 @@ async def _do_merge_branch(
     registry.branch[branch.name] = branch
 
     # -------------------------------------------------------------
-    # Trigger the reconciliation of IPAM data now that the graph merge
-    # is complete.
+    # Post-merge follow-ups. The merge is already committed (MERGED, above),
+    # so a follow-up failing to enqueue must not abort the remaining ones or
+    # surface as a merge failure: each submission is logged and skipped on error.
     # -------------------------------------------------------------
+
+    # Trigger the reconciliation of IPAM data now that the graph merge is complete.
     if ipam_node_details:
-        await workflow.submit_workflow(
-            workflow=IPAM_RECONCILIATION,
+        await _submit_post_merge_workflow(
+            workflow=workflow,
+            log=log,
             context=context,
+            workflow_definition=IPAM_RECONCILIATION,
             parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
         )
 
-    # -------------------------------------------------------------
-    # Cancel any remaining open proposed changes for this merged branch
-    # -------------------------------------------------------------
-    await workflow.submit_workflow(
-        workflow=BRANCH_CANCEL_PROPOSED_CHANGES,
+    # Cancel any remaining open proposed changes for this merged branch.
+    await _submit_post_merge_workflow(
+        workflow=workflow,
+        log=log,
         context=context,
+        workflow_definition=BRANCH_CANCEL_PROPOSED_CHANGES,
         parameters={"branch_name": branch.name},
     )
 
     if config.SETTINGS.main.delete_branch_after_merge and not branch.is_default:
-        await get_workflow().submit_workflow(
-            workflow=BRANCH_DELETE,
+        await _submit_post_merge_workflow(
+            workflow=workflow,
+            log=log,
             context=context,
+            workflow_definition=BRANCH_DELETE,
             parameters={"branch": branch.name, "proposed_change_id": proposed_change_id},
         )
 
-    # -------------------------------------------------------------
-    # Generate an event to indicate that a branch has been merged
+    # Generate an event to indicate that a branch has been merged.
     # NOTE: we still need to convert this event and potentially pull
-    #   some tasks currently executed based on the event into this workflow
-    # -------------------------------------------------------------
-    await workflow.submit_workflow(
-        workflow=BRANCH_MERGE_POST_PROCESS,
+    #   some tasks currently executed based on the event into this workflow.
+    await _submit_post_merge_workflow(
+        workflow=workflow,
+        log=log,
         context=context,
+        workflow_definition=BRANCH_MERGE_POST_PROCESS,
         parameters={"source_branch": branch.name, "target_branch": registry.default_branch},
     )
 
