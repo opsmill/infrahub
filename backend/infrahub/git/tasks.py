@@ -25,7 +25,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
-from infrahub.exceptions import CheckError, RepositoryError
+from infrahub.exceptions import CheckError, CommitNotFoundError, RepositoryError
 from infrahub.message_bus import Meta, messages
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
@@ -224,7 +224,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     syncer = RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter())
     try:
         await syncer.sync(repo, staging_branch=staging_branch)
-    except RepositoryError:
+    except (RepositoryError, CommitNotFoundError):
         if operational_status == RepositoryOperationalStatus.ONLINE.value:
             params: dict[str, Any] = {
                 "branches": [infrahub_branch] if infrahub_branch else [],
@@ -295,7 +295,7 @@ async def bootstrap_local_repository(
                 infrahub_branch_name=infrahub_branch,
                 commit=pinned_import_commit,
             )
-        except RepositoryError as exc:
+        except (RepositoryError, CommitNotFoundError) as exc:
             log.info(exc.message)
             return None
 
@@ -346,7 +346,7 @@ async def sync_repository_from_origin(
         )
         message_bus = await get_message_bus()
         await message_bus.send(message=message)
-    except RepositoryError as exc:
+    except (RepositoryError, CommitNotFoundError) as exc:
         log.info(exc.message)
 
 

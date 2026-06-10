@@ -14,7 +14,7 @@ from pydantic import Field
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import CommitNotFoundError, RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
 
@@ -131,7 +131,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     commit = self.get_commit_value(branch_name=branch_name, remote=False)
                     self.create_commit_worktree(commit=commit)
                     await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
-                except (RepositoryError, GitCommandError, ValueError) as exc:
+                except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so imports already collected for the other
                     # branches are still returned and applied.
                     log.warning(
@@ -153,7 +153,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 try:
                     commit_after = await self.pull(branch_name=branch_name)
-                except (RepositoryError, GitCommandError, ValueError) as exc:
+                except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so imports already collected for the other
                     # branches are still returned and applied; graph errors are left to propagate.
                     log.warning(
