@@ -8,7 +8,8 @@ the kind/parent selects when editing an existing L3 interface.
 Serial handling: the source describe is `mode: "serial"` and the three tests
 share one created branch (no object is read across tests). The branch is a
 class-scoped fixture created via `infrahub_client`; every test depends on the
-SAME fixtures (admin_page + select_branch) so pytest preserves definition order.
+SAME fixtures (admin_page + select_branch) and the chain relies on pytest's
+default definition-order collection (see the README's serial-specs gotcha).
 Relies on the demo data (atl1 site, atl1-core1 device, MGMT gateway, the
 atl1-edge2 device and its Ethernet1 interface).
 """

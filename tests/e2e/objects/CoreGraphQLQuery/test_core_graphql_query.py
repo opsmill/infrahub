@@ -5,7 +5,8 @@ a GraphQL query, then access / edit it (description + metadata), then delete it.
 
 Serial handling: all three tests share one branch (a class-scoped fixture) and
 the `test-graphql-query` the first test creates. Every test depends on the SAME
-class-scoped `branch` fixture, so pytest preserves their definition order. The
+class-scoped `branch` fixture and the chain relies on pytest's default
+definition-order collection (see the README's serial-specs gotcha). The
 list view shows the `check_backbone_link_redundancy` query defined in the
 demo-edge Git repository, hence the `demo_edge_repo` dependency (which itself
 pulls in `infrastructure_data`).

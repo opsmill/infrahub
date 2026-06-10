@@ -8,7 +8,8 @@ object form.
 
 Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 the two profiles it creates across tests. Every test depends on the SAME
-fixtures (admin_page + branch), so pytest preserves their definition order. The
+fixtures (admin_page + branch) and the chain relies on pytest's default
+definition-order collection (see the README's serial-specs gotcha). The
 branch is cut from main, which carries the demo dataset (the `backbone_profile`,
 the `Ethernet1` interface), hence the infrastructure_data dependency.
 """

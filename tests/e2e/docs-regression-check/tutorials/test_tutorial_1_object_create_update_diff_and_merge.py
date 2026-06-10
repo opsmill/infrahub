@@ -6,7 +6,8 @@ main, then browse historical data. Mutates main (the merge), so this docs-
 regression group should run as its own step (see tests/e2e/README.md).
 
 All tests share the same fixtures (admin_page + infrastructure_data +
-date_before) so pytest preserves the serial order. `date_before` is captured
+date_before) and rely on pytest's default definition-order collection (see the
+README's serial-specs gotcha). `date_before` is captured
 before the Tenant is created, for the historical-data step.
 """
 

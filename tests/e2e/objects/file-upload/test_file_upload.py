@@ -7,7 +7,8 @@ file-type flows, and the Read-Only create-disabled / edit-disabled enforcement.
 Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 the CONTRACT-UPLOAD contract the first Admin test creates, which the Read-Only
 "cannot edit" test later opens. Every test depends on the SAME class-scoped
-`branch` fixture, so pytest preserves their definition order. The branch is cut
+`branch` fixture and the chain relies on pytest's default definition-order
+collection (see the README's serial-specs gotcha). The branch is cut
 from main; the Read-Only page authenticates as the demo `jbauer` account, hence
 the infrastructure_data dependency.
 
@@ -27,7 +28,7 @@ from helpers import generate_random_branch_name
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page, Response
@@ -38,14 +39,25 @@ CONTRACT_UPLOAD = "CONTRACT-UPLOAD"
 CONTRACT_UPDATE = "CONTRACT-UPDATE"
 
 
-def _install_500_guard(page: Page) -> None:
-    """Mirror the source `beforeEach`: assert no response comes back with a 500."""
+@pytest.fixture
+def install_500_guard() -> Generator[Callable[[Page], None], None, None]:
+    """Mirror the source `beforeEach`: fail if any response comes back with a 500.
 
-    def _assert_not_500(response: Response) -> None:
-        if response.status == 500:
-            assert response.url == "This URL responded with a 500 status"
+    Collect-then-assert: Playwright's sync API swallows exceptions raised inside
+    a response handler, so an inline assert there can never fail the test (the
+    TS source had the same flaw). The recorded URLs are asserted at teardown.
+    """
+    server_errors: list[str] = []
 
-    page.on("response", _assert_not_500)
+    def _install(page: Page) -> None:
+        def _record_500(response: Response) -> None:
+            if response.status == 500:
+                server_errors.append(response.url)
+
+        page.on("response", _record_500)
+
+    yield _install
+    assert not server_errors, f"Unexpected 500 responses: {server_errors}"
 
 
 class TestFileUploadCircuitContract:
@@ -62,15 +74,19 @@ class TestFileUploadCircuitContract:
             infrahub_client.branch.delete(branch_name=name)
 
     # --- when not logged in --------------------------------------------------
-    def test_should_not_be_able_to_create_file_object(self, page: Page, branch: str) -> None:
-        _install_500_guard(page)
+    def test_should_not_be_able_to_create_file_object(
+        self, page: Page, branch: str, install_500_guard: Callable[[Page], None]
+    ) -> None:
+        install_500_guard(page)
         page.goto(f"/objects/InfraCircuitContract?branch={branch}")
 
         expect(page.get_by_test_id("create-object-button")).to_be_disabled()
 
     # --- when logged in as Admin --------------------------------------------
-    def test_should_successfully_upload_a_file(self, admin_page: Page, branch: str) -> None:
-        _install_500_guard(admin_page)
+    def test_should_successfully_upload_a_file(
+        self, admin_page: Page, branch: str, install_500_guard: Callable[[Page], None]
+    ) -> None:
+        install_500_guard(admin_page)
         admin_page.goto(f"/objects/InfraCircuitContract?branch={branch}")
 
         # click create button
@@ -105,8 +121,10 @@ class TestFileUploadCircuitContract:
         admin_page.goto(f"/objects/InfraCircuitContract?branch={branch}")
         expect(admin_page.get_by_role("link", name=CONTRACT_UPLOAD)).to_be_visible()
 
-    def test_should_validate_required_file_field(self, admin_page: Page, branch: str) -> None:
-        _install_500_guard(admin_page)
+    def test_should_validate_required_file_field(
+        self, admin_page: Page, branch: str, install_500_guard: Callable[[Page], None]
+    ) -> None:
+        install_500_guard(admin_page)
         admin_page.goto(f"/objects/InfraCircuitContract?branch={branch}")
         admin_page.get_by_test_id("create-object-button").click()
 
@@ -127,8 +145,10 @@ class TestFileUploadCircuitContract:
         # Error should be cleared or file should be visible
         expect(admin_page.get_by_text("valid-contract.pdf")).to_be_visible()
 
-    def test_should_update_existing_file(self, admin_page: Page, branch: str) -> None:
-        _install_500_guard(admin_page)
+    def test_should_update_existing_file(
+        self, admin_page: Page, branch: str, install_500_guard: Callable[[Page], None]
+    ) -> None:
+        install_500_guard(admin_page)
         initial_file_name = "initial-contract.pdf"
         updated_file_name = "updated-contract.pdf"
 
@@ -176,8 +196,10 @@ class TestFileUploadCircuitContract:
         expect(admin_page.get_by_text(re.compile(r"updated", re.IGNORECASE))).to_be_visible()
         expect(admin_page.get_by_text(updated_file_name)).to_be_visible()
 
-    def test_should_handle_different_file_types(self, admin_page: Page, branch: str) -> None:
-        _install_500_guard(admin_page)
+    def test_should_handle_different_file_types(
+        self, admin_page: Page, branch: str, install_500_guard: Callable[[Page], None]
+    ) -> None:
+        install_500_guard(admin_page)
         test_files = [
             {"name": "contract.json", "mime_type": "application/json", "content": '{"contract": "data"}'},
             {"name": "contract.yaml", "mime_type": "application/x-yaml", "content": "contract: data\nstatus: active\n"},
@@ -204,14 +226,18 @@ class TestFileUploadCircuitContract:
             expect(admin_page.get_by_text(re.compile(r"created", re.IGNORECASE))).to_be_visible()
 
     # --- when logged in as Read-Only ----------------------------------------
-    def test_should_not_be_able_to_upload_files(self, read_only_page: Page, branch: str) -> None:
-        _install_500_guard(read_only_page)
+    def test_should_not_be_able_to_upload_files(
+        self, read_only_page: Page, branch: str, install_500_guard: Callable[[Page], None]
+    ) -> None:
+        install_500_guard(read_only_page)
         read_only_page.goto(f"/objects/InfraCircuitContract?branch={branch}")
 
         expect(read_only_page.get_by_test_id("create-object-button")).to_be_disabled()
 
-    def test_should_not_be_able_to_edit_existing_file(self, read_only_page: Page, branch: str) -> None:
-        _install_500_guard(read_only_page)
+    def test_should_not_be_able_to_edit_existing_file(
+        self, read_only_page: Page, branch: str, install_500_guard: Callable[[Page], None]
+    ) -> None:
+        install_500_guard(read_only_page)
         # navigate to an existing file object
         read_only_page.goto(f"/objects/InfraCircuitContract?branch={branch}")
 

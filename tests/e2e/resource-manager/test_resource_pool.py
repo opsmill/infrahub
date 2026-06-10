@@ -7,8 +7,9 @@ Serial handling: the source mutates main (no branch) and shares the
 UI-created "test prefix pool" across the three tests (create -> edit -> delete).
 A class-scoped `resource_pool_data` marker fixture pulls in `infrastructure_data`
 (the seeded "External prefixes pool" and the 10.x IP prefixes the pool allocates
-from); every test depends on the SAME fixtures (admin_page + resource_pool_data),
-so pytest preserves their definition order. The suite runs single-process.
+from); every test depends on the SAME fixtures (admin_page + resource_pool_data)
+and the chain relies on pytest's default definition-order collection (see the
+README's serial-specs gotcha). The suite runs single-process.
 """
 
 from __future__ import annotations
