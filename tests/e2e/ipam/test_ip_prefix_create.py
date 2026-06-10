@@ -30,14 +30,6 @@ class TestAllocateIpPrefix:
         with contextlib.suppress(Exception):
             branch_api.delete(name)
 
-    @pytest.mark.skip(
-        reason="The final step (a second pool allocation via create-object-button) reproducibly "
-        "navigates the page back to home before the success toast renders (confirmed against a clean "
-        "stable image, not a tag/version artifact). The legacy TS suite runs this flow with "
-        "INFRAHUB_MISC_RESPONSE_DELAY=1 (a deliberately slowed backend that avoids such loading-state "
-        "races). Re-enable once the response-delay backend mode is wired into the e2e stack (see "
-        "tests/e2e/README.md)."
-    )
     def test_create_prefix_allocate_child_and_addresses(self, admin_page: Page, branch: str) -> None:
         # Navigate to IPAM root and open create prefix form
         admin_page.goto(f"/ipam?branch={branch}")

@@ -51,6 +51,7 @@ jobs:
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       version_upgrade_workflow: ${{ steps.changes.outputs.version_upgrade_workflow }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
+      e2e_pytest_tests: ${{ steps.changes.outputs.e2e_pytest_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
       graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
@@ -1315,6 +1316,15 @@ jobs:
       # docs-regression-check runs as a SEPARATE invocation (its own stack) because
       # the tutorial flow merges a branch into main and would pollute the others.
       - name: Run Playwright tests
+        env:
+          # On PRs that touch the e2e specs, slow the backend by 1s/GraphQL request to surface
+          # UI loading-state races (parity with the TS E2E-testing-playwright job). The conftest
+          # loads the dataset first, then recreates the server with this delay (a boot-time delay
+          # would slow the demo-data load). Off (0) on all other PRs. Not applied to the
+          # docs-regression step below, which provisions its own stack/data.
+          # NB: this is the INFRAHUB_TESTING_ signal read by the conftest — NOT the backend's
+          # INFRAHUB_MISC_RESPONSE_DELAY, which would slow the data load if set at boot.
+          INFRAHUB_TESTING_RESPONSE_DELAY: ${{ needs.files-changed.outputs.e2e_pytest_tests == 'true' && '1' || '0' }}
         run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/docs-regression-check
       - name: Run docs-regression Playwright tests
         run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/docs-regression-check

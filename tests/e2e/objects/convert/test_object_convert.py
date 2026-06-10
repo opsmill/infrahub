@@ -37,12 +37,6 @@ class TestObjectDetailsConvert:
         with contextlib.suppress(Exception):
             branch_api.delete(name)
 
-    @pytest.mark.skip(
-        reason="The conversion mapping step navigates the page back to home before the field-mapping "
-        "comboboxes render against the full-speed testcontainer backend (a loading-state race). The "
-        "legacy TS suite runs with INFRAHUB_MISC_RESPONSE_DELAY=1; re-enable once the response-delay "
-        "backend mode is wired into the e2e stack (see tests/e2e/README.md)."
-    )
     def test_should_convert_an_interface_l3_to_an_interface_l2(self, admin_page: Page, branch: str) -> None:
         # access object details and convert page
         admin_page.goto(f"/objects/InfraInterface?branch={branch}")

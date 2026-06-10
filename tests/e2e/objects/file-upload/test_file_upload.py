@@ -22,7 +22,7 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from file_upload_helpers import fill_circuit_contract_fields, upload_file
+from file_upload_helpers import create_minimal_pdf_buffer, fill_circuit_contract_fields, upload_file
 from helpers import generate_random_branch_name
 from playwright.sync_api import expect
 
@@ -81,7 +81,12 @@ class TestFileUploadCircuitContract:
         expect(admin_page.get_by_text("Max file size: 10MB")).to_be_visible()
 
         # upload a file
-        upload_file(admin_page, name=TEST_FILE_NAME, mime_type="application/pdf", content=TEST_FILE_CONTENT)
+        upload_file(
+            admin_page,
+            name=TEST_FILE_NAME,
+            mime_type="application/pdf",
+            buffer=create_minimal_pdf_buffer(TEST_FILE_CONTENT),
+        )
 
         # Verify file info card is displayed
         expect(admin_page.get_by_text(TEST_FILE_NAME)).to_be_visible()
@@ -113,7 +118,10 @@ class TestFileUploadCircuitContract:
 
         # upload file to clear error
         upload_file(
-            admin_page, name="valid-contract.pdf", mime_type="application/pdf", content="Valid contract content"
+            admin_page,
+            name="valid-contract.pdf",
+            mime_type="application/pdf",
+            buffer=create_minimal_pdf_buffer("Valid contract content"),
         )
 
         # Error should be cleared or file should be visible
@@ -128,7 +136,12 @@ class TestFileUploadCircuitContract:
         admin_page.goto(f"/objects/InfraCircuitContract?branch={branch}")
         admin_page.get_by_test_id("create-object-button").click()
 
-        upload_file(admin_page, name=initial_file_name, mime_type="application/pdf", content="Initial contract content")
+        upload_file(
+            admin_page,
+            name=initial_file_name,
+            mime_type="application/pdf",
+            buffer=create_minimal_pdf_buffer("Initial contract content"),
+        )
 
         fill_circuit_contract_fields(admin_page, contract_number=CONTRACT_UPDATE)
 
@@ -149,7 +162,12 @@ class TestFileUploadCircuitContract:
         expect(admin_page.get_by_text(initial_file_name).first).to_be_visible()
 
         # upload new file
-        upload_file(admin_page, name=updated_file_name, mime_type="application/pdf", content="Updated contract content")
+        upload_file(
+            admin_page,
+            name=updated_file_name,
+            mime_type="application/pdf",
+            buffer=create_minimal_pdf_buffer("Updated contract content"),
+        )
 
         expect(admin_page.get_by_text(updated_file_name)).to_be_visible()
 

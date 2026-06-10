@@ -38,6 +38,40 @@ def upload_file(
     file_input.set_input_files(files={"name": name, "mimeType": mime_type, "buffer": payload})
 
 
+def create_minimal_pdf_buffer(text: str = "Mock PDF content for E2E testing") -> bytes:
+    """Build a valid, minimal single-page PDF (port of createMinimalPdfBuffer).
+
+    The browser's PDF viewer (PDFium) validates the document structure when a saved file is
+    previewed in an ``<iframe src="data:application/pdf;...">``. Uploading plain text with an
+    ``application/pdf`` mime type makes the viewer fail with "Failed to load PDF document", so
+    PDF upload tests must use real PDF bytes. Byte offsets in the xref table are computed from
+    the encoded body, mirroring the TS helper's ``Buffer.byteLength``.
+    """
+    escaped = text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    stream = f"BT /F1 18 Tf 36 100 Td ({escaped}) Tj ET"
+    objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] /Resources "
+        "<< /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents 4 0 R >>",
+        f"<< /Length {len(stream.encode())} >>\nstream\n{stream}\nendstream",
+    ]
+
+    body = "%PDF-1.4\n"
+    offsets: list[int] = []
+    for index, obj in enumerate(objects):
+        offsets.append(len(body.encode()))
+        body += f"{index + 1} 0 obj\n{obj}\nendobj\n"
+
+    xref_offset = len(body.encode())
+    xref = f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n"
+    for offset in offsets:
+        xref += f"{offset:010d} 00000 n \n"
+    trailer = f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n"
+
+    return (body + xref + trailer).encode()
+
+
 def generate_test_file_content(size: str = "small") -> str:
     """Generate a test file with repeated content (port of generateTestFileContent)."""
     sizes = {

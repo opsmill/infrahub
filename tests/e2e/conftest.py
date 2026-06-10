@@ -29,6 +29,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -53,9 +54,9 @@ from constants import (
 from helpers import BranchAPI, login
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
-    from playwright.sync_api import Browser, Page
+    from playwright.sync_api import Browser, BrowserContext, Page
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODELS_DIR = REPO_ROOT / "models"
@@ -68,7 +69,15 @@ INFRASTRUCTURE_DATA_TIMEOUT = 30 * 60
 # suite ran with a 60s (local) / 180s (CI) expect timeout, so async UI updates
 # (toasts, table refreshes, branch/task settling) had ample time. Match that
 # spirit with a generous default; individual assertions can still override.
-expect.set_options(timeout=30_000)
+#
+# When the backend response delay is requested (INFRAHUB_TESTING_RESPONSE_DELAY), every
+# GraphQL request is slowed once the delay is enabled, so widen the timeout — mirrors
+# playwright.config.ts, which bumps the CI expect timeout from 3min to 6min for such runs.
+# NB: the signal is INFRAHUB_TESTING_RESPONSE_DELAY, NOT the backend's INFRAHUB_MISC_RESPONSE_DELAY
+# — setting the latter in the environment would slow the demo-data load at boot (see
+# response_delay_enabled / InfrahubDockerCompose.set_server_response_delay).
+_RESPONSE_DELAY = int(os.environ.get("INFRAHUB_TESTING_RESPONSE_DELAY") or "0")
+expect.set_options(timeout=60_000 if _RESPONSE_DELAY else 30_000)
 
 
 # --------------------------------------------------------------------------- #
@@ -113,12 +122,13 @@ def infrahub_app(
     request: pytest.FixtureRequest,
     infrahub_compose_dir: Path,
     infrahub_version: str,
-) -> Generator[dict[str, int], None, None]:
-    """Boot one Infrahub stack for the whole session and expose service ports.
+) -> Generator[InfrahubDockerCompose, None, None]:
+    """Boot one Infrahub stack for the whole session and expose the compose handle.
 
     Mirrors infrahub_testcontainers.helpers.TestInfrahubDocker.infrahub_app but
     at session scope so the entire e2e suite shares a single instance (as the
-    legacy TS suite did).
+    legacy TS suite did). Yields the compose object so dependents can read mapped
+    ports (get_services_port) and toggle runtime settings (set_server_response_delay).
     """
     compose = InfrahubDockerCompose.init(directory=infrahub_compose_dir, version=infrahub_version)
     try:
@@ -127,7 +137,7 @@ def infrahub_app(
         stdout, stderr = compose.get_logs()
         raise RuntimeError(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
 
-    yield compose.get_services_port()
+    yield compose
 
     if request.session.testsfailed:
         stdout, stderr = compose.get_logs("infrahub-server", "task-worker")
@@ -145,7 +155,8 @@ def infrahub_address(request: pytest.FixtureRequest, infrahub_provisioned_extern
     """
     if infrahub_provisioned_externally:
         return os.environ["INFRAHUB_ADDRESS"].rstrip("/")
-    port = request.getfixturevalue("infrahub_app")["server"]
+    compose = request.getfixturevalue("infrahub_app")
+    port = compose.get_services_port()["server"]
     return f"http://localhost:{port}"
 
 
@@ -172,6 +183,11 @@ def _run_infrahubctl(args: list[str], address: str, *, cwd: Path = REPO_ROOT, ti
     env = os.environ.copy()
     env["INFRAHUB_ADDRESS"] = address
     env["INFRAHUB_API_TOKEN"] = ADMIN_API_TOKEN
+    # Serialize generator execution. Higher concurrency races the demo generator against the
+    # load-balanced multi-replica server and fails the load with read-after-write errors
+    # ("Unable to find the node <id> / InfraDevice in the database"). Keep this at 1; do NOT
+    # raise it to work around data not persisting (e.g. symmetric relationships) — fix the
+    # generator instead (see find_and_connect_interfaces in models/infrastructure_edge.py).
     env["INFRAHUB_MAX_CONCURRENT_EXECUTION"] = "1"
     binary = shutil.which("infrahubctl") or "infrahubctl"
     result = subprocess.run(  # noqa: S603
@@ -308,6 +324,54 @@ def base_url(infrahub_address: str) -> str:
 
 
 @pytest.fixture(scope="session")
+def response_delay_enabled(
+    request: pytest.FixtureRequest,
+    infrahub_app: InfrahubDockerCompose,
+    infrahub_client: InfrahubClientSync,
+    infrahub_provisioned_externally: bool,
+) -> None:
+    """Slow the backend for the browser-test phase when INFRAHUB_TESTING_RESPONSE_DELAY is set.
+
+    Mirrors the TS e2e CI job (which loads data, then restarts the server with the delay):
+    the full dataset is provisioned first — fast, since the demo-data load makes thousands of
+    serialized GraphQL calls — and only then is the infrahub-server recreated with the
+    per-request delay so browser flows exercise realistic loading states. No-op when the delay
+    is unset or when running against an externally provisioned Infrahub. The per-role page
+    fixtures depend on this so the delay is in effect before any browser interaction.
+
+    The signal is INFRAHUB_TESTING_RESPONSE_DELAY (the package convention), deliberately NOT the
+    backend's INFRAHUB_MISC_RESPONSE_DELAY: the latter is read at server startup, so putting it in
+    the boot environment would slow the demo-data load. set_server_response_delay writes the
+    backend var into the compose .env only after data is loaded, then recreates the server.
+    """
+    delay = int(os.environ.get("INFRAHUB_TESTING_RESPONSE_DELAY") or "0")
+    if not delay or infrahub_provisioned_externally:
+        return
+
+    # Provision the heavy datasets BEFORE slowing the server: the demo-data load makes
+    # thousands of serialized GraphQL mutations, so a boot-time delay would blow the CI
+    # budget. (demo_edge_repo is intentionally not forced here — it is needed only by repo
+    # specs, its registration is a handful of calls, and forcing it would couple every
+    # delay-mode run to the Git fixture; it loads lazily when a repo spec requires it.)
+    for fixture_name in ("schema_base", "infrastructure_menu", "infrastructure_data"):
+        request.getfixturevalue(fixture_name)
+
+    infrahub_app.set_server_response_delay(delay)
+
+    # The server replicas were force-recreated; wait until the LB routes to a responsive
+    # instance again (each probe now also carries the delay).
+    last_exc: Exception | None = None
+    for _ in range(30):
+        try:
+            infrahub_client.branch.all()
+            return
+        except Exception as exc:  # transient during recreate; re-raised below if it never recovers
+            last_exc = exc
+            time.sleep(2)
+    raise RuntimeError(f"infrahub-server did not recover after enabling the response delay: {last_exc}")
+
+
+@pytest.fixture(scope="session")
 def storage_state_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return tmp_path_factory.mktemp("e2e-auth")
 
@@ -325,7 +389,7 @@ def _build_storage_state(browser: Browser, base_url: str, path: Path, username: 
 
 
 @pytest.fixture(scope="session")
-def admin_storage_state(browser: Browser, base_url: str, storage_state_dir: Path) -> str:
+def admin_storage_state(browser: Browser, base_url: str, storage_state_dir: Path, response_delay_enabled: None) -> str:
     return _build_storage_state(
         browser,
         base_url,
@@ -341,6 +405,7 @@ def read_write_storage_state(
     base_url: str,
     storage_state_dir: Path,
     infrastructure_data: None,
+    response_delay_enabled: None,
 ) -> str:
     return _build_storage_state(
         browser,
@@ -357,6 +422,7 @@ def read_only_storage_state(
     base_url: str,
     storage_state_dir: Path,
     infrastructure_data: None,
+    response_delay_enabled: None,
 ) -> str:
     return _build_storage_state(
         browser,
@@ -367,25 +433,26 @@ def read_only_storage_state(
     )
 
 
-def _role_page(browser: Browser, base_url: str, storage_state: str) -> Generator[Page, None, None]:
-    context = browser.new_context(base_url=base_url, storage_state=storage_state)
-    page = context.new_page()
-    try:
-        yield page
-    finally:
-        context.close()
+def _role_page(new_context: Callable[..., BrowserContext], storage_state: str) -> Page:
+    # Use pytest-playwright's `new_context` factory (NOT browser.new_context) so the context is
+    # registered with the artifacts recorder: failures of authenticated tests then produce a
+    # trace/video/screenshot under --output (retain-on-failure). base_url and record_video_dir
+    # come from browser_context_args; the factory closes the context and saves artifacts at
+    # test teardown, so no manual close is needed here.
+    context = new_context(storage_state=storage_state)
+    return context.new_page()
 
 
 @pytest.fixture
-def admin_page(browser: Browser, base_url: str, admin_storage_state: str) -> Generator[Page, None, None]:
-    yield from _role_page(browser, base_url, admin_storage_state)
+def admin_page(new_context: Callable[..., BrowserContext], admin_storage_state: str) -> Page:
+    return _role_page(new_context, admin_storage_state)
 
 
 @pytest.fixture
-def read_write_page(browser: Browser, base_url: str, read_write_storage_state: str) -> Generator[Page, None, None]:
-    yield from _role_page(browser, base_url, read_write_storage_state)
+def read_write_page(new_context: Callable[..., BrowserContext], read_write_storage_state: str) -> Page:
+    return _role_page(new_context, read_write_storage_state)
 
 
 @pytest.fixture
-def read_only_page(browser: Browser, base_url: str, read_only_storage_state: str) -> Generator[Page, None, None]:
-    yield from _role_page(browser, base_url, read_only_storage_state)
+def read_only_page(new_context: Callable[..., BrowserContext], read_only_storage_state: str) -> Page:
+    return _role_page(new_context, read_only_storage_state)
