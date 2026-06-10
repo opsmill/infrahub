@@ -25,12 +25,19 @@ if TYPE_CHECKING:
 
 class TestObjectDropdownCreation:
     @pytest.fixture(autouse=True)
-    def fail_on_500(self, admin_page: Page) -> None:
+    def fail_on_500(self, admin_page: Page) -> Generator[None, None, None]:
+        # Collect-then-assert: Playwright's sync API swallows exceptions raised
+        # inside a response handler, so an inline assert there can never fail
+        # the test (the TS source had the same flaw).
+        server_errors: list[str] = []
+
         def _handler(response: Response) -> None:
             if response.status == 500:
-                assert response.url == "This URL responded with a 500 status"
+                server_errors.append(response.url)
 
         admin_page.on("response", _handler)
+        yield
+        assert not server_errors, f"Unexpected 500 responses: {server_errors}"
 
     @pytest.fixture
     def branch(
