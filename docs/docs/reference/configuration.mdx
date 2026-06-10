@@ -213,6 +213,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_GOOGLE_ICON` | None | string | mdi:google |
 | `INFRAHUB_OAUTH2_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_GOOGLE_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_GOOGLE_AUTHORIZATION_URL` | None | string | https://accounts.google.com/o/oauth2/auth |
@@ -225,6 +226,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_PROVIDER1_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OAUTH2_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_PROVIDER1_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_AUTHORIZATION_URL` | None | string | None |
@@ -235,6 +237,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_PROVIDER2_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OAUTH2_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_PROVIDER2_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_AUTHORIZATION_URL` | None | string | None |
@@ -252,6 +255,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_GOOGLE_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_GOOGLE_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_GOOGLE_DISCOVERY_URL` | None | string | https://accounts.google.com/.well-known/openid-configuration |
@@ -263,6 +267,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER1_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER1_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
@@ -272,6 +277,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER2_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER2_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER2_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |

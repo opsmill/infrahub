@@ -609,6 +609,14 @@ class SecurityOIDCBaseSettings(BaseSettings):
         default=True,
         description="Verify the cryptographic signature, audience and issuer of the OIDC id_token.",
     )
+    groups_claim: str = Field(
+        default="groups",
+        description=(
+            "Top-level key in the IdP claim payload from which the user's groups are read. "
+            "Defaults to `groups`. Set per provider when your IdP emits group memberships "
+            "under a different claim name (e.g., `roles`)."
+        ),
+    )
 
     @model_validator(mode="after")
     def warn_when_signature_verification_disabled(self) -> Self:
@@ -618,6 +626,13 @@ class SecurityOIDCBaseSettings(BaseSettings):
                 provider=self.__class__.__name__,
             )
         return self
+
+    @field_validator("groups_claim")
+    @classmethod
+    def _validate_groups_claim(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("groups_claim must not be empty or whitespace-only")
+        return value
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -673,6 +688,21 @@ class SecurityOAuth2BaseSettings(BaseSettings):
     pkce_enabled: bool = Field(
         default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
     )
+    groups_claim: str = Field(
+        default="groups",
+        description=(
+            "Top-level key in the IdP claim payload from which the user's groups are read. "
+            "Defaults to `groups`. Set per provider when your IdP emits group memberships "
+            "under a different claim name (e.g., `roles`)."
+        ),
+    )
+
+    @field_validator("groups_claim")
+    @classmethod
+    def _validate_groups_claim(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("groups_claim must not be empty or whitespace-only")
+        return value
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
