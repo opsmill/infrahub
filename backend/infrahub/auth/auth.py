@@ -196,6 +196,7 @@ async def signin_sso_account(
     event_service: InfrahubEventService | None = None,
 ) -> AuthResult:
     existing_identity = await _find_existing_identity(db=db, external_identity=external_identity)
+    is_first_login = existing_identity is None
     if existing_identity is not None:
         account = await _account_from_existing_identity(
             db=db, identity_node=existing_identity, external_identity=external_identity
@@ -208,6 +209,7 @@ async def signin_sso_account(
         account=account,
         external_identity=external_identity,
         sso_groups=sso_groups,
+        is_first_login=is_first_login,
         event_service=event_service,
     )
     return await _build_signin_result(db=db, account=account)
@@ -369,6 +371,7 @@ async def _assign_group_memberships(
     account: CoreAccount,
     external_identity: ExternalIdentity,
     sso_groups: list[str],
+    is_first_login: bool,
     event_service: InfrahubEventService | None = None,
 ) -> None:
     """Attach the account to local groups derived from the external claims.
@@ -379,7 +382,9 @@ async def _assign_group_memberships(
          match are silently skipped.
       2. If auto-create produced no memberships (filter inactive, or active but no claim
          matched), and `sso_user_default_group` is configured, add the account to that default
-         group.
+         group. This fallback only runs on the account's first login (`is_first_login`), so that
+         an administrator removing the account from the default group afterwards is not undone on
+         every subsequent login.
       3. Otherwise, the legacy exact-name lookup runs against the raw `sso_groups`.
     """
     effective_groups = sso_groups
@@ -407,6 +412,8 @@ async def _assign_group_memberships(
         effective_groups = []
 
     if not effective_groups:
+        if not is_first_login:
+            return
         default_name = config.SETTINGS.security.sso_user_default_group
         if not default_name:
             return
