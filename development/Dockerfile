@@ -39,12 +39,11 @@ FROM docker.io/node:${NODE_VER}-slim AS node-base
 
 # ****************************************************************
 # STAGE : Frontend
-#   pnpm fetch keys on the lockfile alone; the install keys on manifests only.
-#   schema-visualizer is a file: dependency, so its full sources must be present at install time (pnpm copies file: deps into the store).
 # ****************************************************************
 FROM node-base AS frontend
 
-RUN corepack enable # pnpm comes via corepack, resolving the version from "packageManager" in frontend/package.json
+# pnpm comes via corepack, resolving the version from "packageManager" in frontend/package.json
+RUN corepack enable
 
 WORKDIR /frontend
 
@@ -117,10 +116,7 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-ins
 COPY . ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 
-# --------------------------------------------
-# Import Frontend & Documentation Builds
-#   Last so frontend/docs edits don't invalidate any uv sync layer
-# --------------------------------------------
+# Import Frontend & Documentation builds last so frontend/docs edits don't invalidate any uv sync layer
 COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
 COPY --from=docs /docs/build/ /opt/infrahub/docs/build
 
