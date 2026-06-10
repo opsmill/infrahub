@@ -7,8 +7,8 @@ the pool and verify the pool assignment.
 
 Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 the number pools it creates on that branch. Every test depends on the SAME
-fixtures (admin_page + number_pool_branch), so pytest preserves their definition
-order. Depends on the demo data (the InterfaceL3 schema, the atl1-core1 device
+fixtures (admin_page + number_pool_branch) and the chain relies on pytest's
+default definition-order collection (see the README's serial-specs gotcha). Depends on the demo data (the InterfaceL3 schema, the atl1-core1 device
 and the InfraService node).
 """
 

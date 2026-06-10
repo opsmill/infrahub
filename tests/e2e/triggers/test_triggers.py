@@ -6,8 +6,9 @@ relationship match to it.
 
 Serial handling: the flow shares one branch (a class-scoped fixture) and the
 trigger rule it creates in the first test. Every test depends on the SAME
-fixtures (admin_page + branch), so pytest preserves their definition order. The
-suite runs single-process.
+fixtures (admin_page + branch) and the chain relies on pytest's default
+definition-order collection (see the README's serial-specs gotcha). The suite
+runs single-process.
 
 Data dependency: the relationship-match step references the `atl1` site and the
 skipped update step references the `AS174` ASN, both seeded by the demo data, so

@@ -6,7 +6,8 @@ checks summary lists every check category, then delete the proposed change.
 
 Serial handling: both tests share the `pc-checks` proposed change the first one
 creates. They live in one class and every method depends on the SAME
-`demo_edge_repo` fixture, so pytest preserves their definition order. The checks
+`demo_edge_repo` fixture and the chain relies on pytest's default
+definition-order collection (see the README's serial-specs gotcha). The checks
 (repository / data / schema / artifact / generator / user validators) and the
 `atl1-delete-upstream` source branch come from the demo-edge repository and the
 demo dataset behind it, hence the `demo_edge_repo` dependency.

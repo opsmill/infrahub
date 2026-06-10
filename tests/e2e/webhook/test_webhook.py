@@ -2,8 +2,9 @@
 
 Serial: create a Standard Webhook ("Ansible EDA"), view its detail/activities,
 then delete it. The flow runs on main and shares the created webhook across the
-three tests, so they use one class-scoped fixture (and pytest preserves their
-definition order). The webhook form's "Node Kind" / "Account Core" option and
+three tests, so they use one class-scoped fixture; the chain relies on
+pytest's default definition-order collection (see the README's serial-specs
+gotcha). The webhook form's "Node Kind" / "Account Core" option and
 "Standard Webhook Core" use only core (bootstrap) kinds, so no demo data is
 required.
 """

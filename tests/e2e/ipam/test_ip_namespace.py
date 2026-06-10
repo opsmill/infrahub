@@ -5,8 +5,9 @@ search, namespace-aware redirects, prefix CRUD inside it, and finally delete it.
 
 Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 the `test-namespace` it creates in the second test. Every test depends on the
-SAME fixtures (admin_page + namespace_branch), so pytest preserves their
-definition order. The suite runs single-process.
+SAME fixtures (admin_page + namespace_branch) and the chain relies on pytest's
+default definition-order collection (see the README's serial-specs gotcha). The
+suite runs single-process.
 """
 
 from __future__ import annotations

@@ -8,8 +8,9 @@ page.
 
 Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 relies on prior tests' side effects (the Cisco IOS platform's device count goes
-10 -> 9 -> 10). Every test depends on the SAME `branch` fixture so pytest
-preserves their definition order. The suite runs single-process. The first and
+10 -> 9 -> 10). Every test depends on the SAME `branch` fixture and the chain
+relies on pytest's default definition-order collection (see the README's
+serial-specs gotcha). The suite runs single-process. The first and
 last tests run unauthenticated (default `page`); the middle tests run as Admin
 (`admin_page`).
 """

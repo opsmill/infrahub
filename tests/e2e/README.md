@@ -29,7 +29,10 @@ INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false \
 
 # Against an already-running, already-provisioned Infrahub (e.g. one started
 # the old way with `invoke dev.start dev.load-infra-*`). The container is NOT
-# booted and the data fixtures become no-ops.
+# booted and the data fixtures become no-ops. The repo-dependent specs
+# (artifacts, proposed-changes, CoreGraphQLQuery, breadcrumb) additionally
+# require `invoke dev.infra-git-import dev.infra-git-create`, since the no-op
+# demo_edge_repo fixture will not register the repository for you.
 INFRAHUB_ADDRESS=http://localhost:8000 \
   uv run pytest -c tests/e2e/pytest.ini tests/e2e
 ```
@@ -104,7 +107,7 @@ subprocesses) so it coexists cleanly with pytest-playwright's synchronous
 
 | Fixture | Scope | Replaces | Notes |
 |---|---|---|---|
-| `infrahub_app` / `infrahub_port` / `infrahub_address` | session | `invoke dev.start` | One stack for the whole session. Honors `INFRAHUB_ADDRESS` if set. |
+| `infrahub_app` / `infrahub_address` | session | `invoke dev.start` | One stack for the whole session. Honors `INFRAHUB_ADDRESS` if set. |
 | `infrahub_client` | session | — | Admin `InfrahubClientSync`. |
 | `schema_base` | session | `invoke dev.load-infra-schema` (schema) | Loads all `models/base/*.yml` as one set. |
 | `infrastructure_menu` | session | `invoke dev.load-infra-schema` (menu) | `infrahubctl menu load models/base_menu.yml`. |
@@ -153,14 +156,17 @@ A test depends only on the fixtures it needs:
 
 ### Gotcha: serial specs (`test.describe.configure({ mode: "serial" })`)
 
-pytest **reorders** tests by fixture usage, so it does not preserve the
-top-to-bottom order a serial `describe` relies on (a test that uses fewer
-session fixtures than its siblings gets pulled away). Do **not** depend on one
-test's side effects in another. Make each test self-contained: create the
-branches/objects it needs in its own fixture (or inline via `branch_api`) and
-clean them up in a `finally`/fixture teardown. This keeps the same coverage
-while being order-robust. A legacy setup-only "test" (no assertions, just
-`createBranchAPI`) becomes inline setup rather than a separate test.
+pytest's default collection runs tests in definition order, but that order is
+**not contractual**: parametrized higher-scope fixtures regroup tests (e.g. a
+second `--browser` option parametrizes the session-scoped `browser_name` and
+reshuffles every class), and pytest-randomly / pytest-xdist break it outright.
+So prefer not to depend on one test's side effects in another. Make each test
+self-contained: create the branches/objects it needs in its own fixture (or
+inline via `branch_api`) and clean them up in a `finally`/fixture teardown. A
+legacy setup-only "test" (no assertions, just `createBranchAPI`) becomes inline
+setup rather than a separate test. Where a port keeps a legacy serial chain
+(documented per-file), it relies on definition-order collection: the suite must
+run single-process, single-browser, without random ordering.
 
 ### Gotcha: regex locators (`get_by_role(name=re.compile(...))`)
 
@@ -233,10 +239,6 @@ Done:
   `webhook` (3), `triggers` (3), `events` (1)** — verified against a stable
   image. `events` (active test `fixme`) and `triggers` ("update the matches"
   `fixme`) are skipped.
-- **`groups` · `schema` · `menu` · `tasks`**, **`search` · `search-parent-prefixes`**,
-  **`role-management`**, **`object-template`**, **`ipam`**, **`branches`**, and the
-  **pilot** (login, object-list, merge-branch) — see above.
-
 These prove auth, the full branch lifecycle, CRUD, navigation, route mocking,
 merged-branch read-only enforcement, RBAC, IPAM, templates/pools/profiles,
 schema visualizer, search, activities, and both the no-data and full-data
@@ -273,13 +275,6 @@ all three are now fixed and enabled:
   Fixed by setting both sides of the relationship in `models/infrastructure_edge.py`.
   `select-2-steps` additionally now reads the hydrated Kind combobox via
   `get_by_label("Kind")` (its accessible name becomes its value once populated).
-
-### Not yet ported from the harness
-
-- **`docs-regression-check`** ran as a serial, single-worker Playwright project
-  after the main suite, gated on `UPDATE_DOCS_SCREENSHOTS`. Port as a separately
-  marked, serial group with a `save_screenshot_for_docs` helper writing to
-  `docs/docs/media/`.
 
 Trace/video capture for authenticated tests is wired: the `admin_page` /
 `read_*_page` fixtures build their context via pytest-playwright's `new_context`

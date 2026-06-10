@@ -8,7 +8,8 @@ against a throwaway copy of main.
 Serial handling: the create/edit/merge sub-flow shares one source branch and
 the generated proposed-change names (pc / pc-edit). Those tests live in their
 own class whose every method depends on the SAME class-scoped fixtures (the
-shared `pc_branch` + `pc_names`), so pytest preserves their definition order.
+shared `pc_branch` + `pc_names`) and the chain relies on pytest's default
+definition-order collection (see the README's serial-specs gotcha).
 The standalone "not logged in" / "as Admin" tests are independent.
 
 The proposed-change form's source-branch selector and the checks/validators

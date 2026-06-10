@@ -7,7 +7,8 @@ delete the proposed change.
 
 Serial handling: all three tests share the `conflict-test` proposed change the
 first one creates. They live in one class and every method depends on the SAME
-`demo_edge_repo` fixture, so pytest preserves their definition order. The
+`demo_edge_repo` fixture and the chain relies on pytest's default
+definition-order collection (see the README's serial-specs gotcha). The
 `den1-maintenance-conflict` source branch and its data diff come from the demo
 dataset / demo-edge repository, hence the `demo_edge_repo` dependency.
 """

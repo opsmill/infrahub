@@ -15,8 +15,9 @@ network egress to github.com.
 Serial handling: the source `describe.configure({ mode: "serial" })` shares a
 single branch created in beforeAll and deleted in afterAll (only used as
 setup/teardown; the test bodies navigate on main). Both tests depend on the
-SAME class-scoped `branch` fixture so pytest preserves their definition order.
-The suite runs single-process.
+SAME class-scoped `branch` fixture and the chain relies on pytest's default
+definition-order collection (see the README's serial-specs gotcha). The suite
+runs single-process.
 """
 
 from __future__ import annotations
