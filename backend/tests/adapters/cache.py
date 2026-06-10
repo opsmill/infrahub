@@ -26,3 +26,24 @@ class MemoryCache(InfrahubCache):
         return True
 
     async def close_connection(self) -> None: ...
+
+
+class UnreachableCache(InfrahubCache):
+    """Simulates an unreachable cache backend by raising on every operation."""
+
+    async def delete(self, key: str) -> None:
+        raise ConnectionError("cache unreachable")
+
+    async def get(self, key: str) -> str | None:
+        raise ConnectionError("cache unreachable")
+
+    async def get_values(self, keys: list[str]) -> list[str | None]:
+        raise ConnectionError("cache unreachable")
+
+    async def list_keys(self, filter_pattern: str) -> list[str]:
+        raise ConnectionError("cache unreachable")
+
+    async def set(self, key: str, value: str, expires: int | None = None, not_exists: bool = False) -> bool | None:
+        raise ConnectionError("cache unreachable")
+
+    async def close_connection(self) -> None: ...

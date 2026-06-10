@@ -104,7 +104,7 @@ Operators need to see that a merge failed and, after recovery, that it was resol
 #### Write and operation protection during a merge
 
 - **FR-001**: While a merge into the default branch is in progress, the system MUST reject API write operations targeting the default branch.
-- **FR-002**: A write rejected because of an in-progress (healthy) merge MUST return a transient error indicating a merge is in progress and that the client should retry shortly. This message MUST be distinct from the failed-merge message (FR-009).
+- **FR-002**: A write to the **default (target) branch** rejected because of an in-progress (healthy) merge MUST return a transient error indicating a merge is in progress and that the client should retry shortly (the default branch becomes writable again once the merge completes). A write to the **branch being merged** MUST instead be rejected as read-only (the same class of message a merged branch gets — it is heading to `MERGED` and only returns to `OPEN` on a failed-merge rollback). Both MUST be distinct from the failed-merge message (FR-009).
 - **FR-003**: Writes to branches other than the default branch and the branch being merged MUST continue to succeed during a merge.
 - **FR-004**: While any merge into the default branch is in progress (`MERGING`) or has failed (`MERGE_FAILED`), the system MUST block new merge and rebase operations — including proposed-change merges — until the in-progress merge completes or the failure is recovered.
 - **FR-005**: When a merge completes successfully, the write protection on the default branch and the block on merge/rebase operations MUST be lifted automatically.
