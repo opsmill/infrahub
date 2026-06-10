@@ -307,7 +307,7 @@ class SchemaUpdateCoordinator:
                 context=context,
                 expected_return=list[str],
                 parameters={"message": apply_migration_data},
-                pickup_timeout_seconds=config.SETTINGS.workflow.schema_load_pickup_timeout,
+                pickup_timeout=config.SETTINGS.workflow.schema_load_pickup_timeout,
             )
         except Exception as exc:
             exception = exc

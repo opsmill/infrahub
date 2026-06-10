@@ -34,5 +34,5 @@ async def test_execute_workflow_raises_when_no_worker_available(
         await service.execute_workflow(
             workflow=DUMMY_FLOW,
             parameters={"data": DummyInput(firstname="Test", lastname="User")},
-            pickup_timeout_seconds=1.0,
+            pickup_timeout=1.0,
         )
