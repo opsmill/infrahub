@@ -33,22 +33,18 @@ RUN apt-get update && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
 # ****************************************************************
-# STAGE : Node base (shared by the frontend and docs builds)
+# STAGE : Base Node Image
 # ****************************************************************
 FROM docker.io/node:${NODE_VER}-slim AS node-base
 
 # ****************************************************************
 # STAGE : Frontend
-#   pnpm comes via corepack, resolving the version from "packageManager"
-#   in frontend/package.json (the single source of truth).
 #   pnpm fetch keys on the lockfile alone; the install keys on manifests only.
-#   schema-visualizer is a file: dependency, so its full sources must be
-#   present at install time (pnpm copies file: deps into the store).
+#   schema-visualizer is a file: dependency, so its full sources must be present at install time (pnpm copies file: deps into the store).
 # ****************************************************************
 FROM node-base AS frontend
 
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
+RUN corepack enable # pnpm comes via corepack, resolving the version from "packageManager" in frontend/package.json
 
 WORKDIR /frontend
 
@@ -58,8 +54,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --store-dir /pnpm/s
 COPY frontend/app/package.json /frontend/app/
 COPY frontend/packages/ui/package.json /frontend/packages/ui/
 COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --offline --store-dir /pnpm/store
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline --store-dir /pnpm/store
 
 COPY frontend/packages/ui/ /frontend/packages/ui/
 COPY frontend/app/ /frontend/app/
@@ -68,7 +63,6 @@ RUN pnpm build
 
 # ****************************************************************
 # STAGE : Documentation
-#   models/, deploy.tf and k8s/ are raw-loaded by docs .mdx pages at build time
 # ****************************************************************
 FROM node-base AS docs
 
@@ -79,7 +73,8 @@ WORKDIR /docs
 COPY docs/package.json docs/package-lock.json /docs/
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
-COPY models/ /models/
+COPY models/base/ /models/base/
+COPY models/examples/extension_rack.yml /models/examples/
 COPY development/deploy.tf /development/deploy.tf
 COPY development/k8s/ /development/k8s/
 COPY docs/ /docs/
