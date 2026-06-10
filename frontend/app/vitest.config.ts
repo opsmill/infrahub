@@ -6,12 +6,13 @@ import viteConfig from "./vite.config";
 export default mergeConfig(
   viteConfig,
   defineConfig({
-    // @infrahub/ui and @infrahub/graph are workspace packages consumed as SOURCE (live
-    // symlinks), so Vite treats their imports as source and would otherwise discover the
-    // transitive deps below mid-run, triggering a re-optimization reload that resets vi.mock
-    // and flakes the browser tests. Pre-bundle them up front. (These are @infrahub/ui's deps
-    // that the app does not import directly; graph's deps — @xyflow/react, @iconify-icon/react,
-    // lucide-react — are already optimized via the app's own usage.)
+    // Deps discovered mid-run trigger a re-optimization reload that resets vi.mock and
+    // flakes the browser tests, so anything not seen by Vite's initial scan must be
+    // pre-bundled here. Two groups below:
+    // - deps of @infrahub/ui and @infrahub/graph, which are workspace packages consumed
+    //   as SOURCE (live symlinks), so Vite treats their imports as app source;
+    // - the app's own lazily-imported deps (React.lazy / dynamic import), which the
+    //   initial scan cannot see and CI's cold cache discovers mid-run.
     optimizeDeps: {
       include: [
         "react-aria-components",
@@ -20,6 +21,14 @@ export default mergeConfig(
         "tailwind-merge",
         "@radix-ui/react-scroll-area",
         "react-resizable-panels",
+        "@graphiql/plugin-explorer",
+        "@tanstack/react-query-devtools",
+        "graphiql",
+        "graphql",
+        "jotai/utils",
+        "react-dom/client",
+        "react-error-boundary",
+        "react-scan",
       ],
     },
     test: {
