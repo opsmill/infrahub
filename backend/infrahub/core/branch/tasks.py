@@ -439,19 +439,16 @@ async def _do_merge_branch(
             )
             log.info("Migrations completed")
         # -------------------------------------------------------------
-        # Trigger the reconciliation of IPAM data after the merge
+        # Compute the IPAM reconciliation details while the diff is still
+        # live. Submission is deferred until after the MERGED transition
+        # b/c recovery cannot completely roll back the changes made during
+        # reconciliation
         # -------------------------------------------------------------
         diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=branch)
         ipam_node_details = await diff_parser.get_changed_ipam_node_details(
             source_branch_name=branch.name,
             target_branch_name=registry.default_branch,
         )
-        if ipam_node_details:
-            await workflow.submit_workflow(
-                workflow=IPAM_RECONCILIATION,
-                context=context,
-                parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
-            )
     except BaseException as exc:
         log.error("Merge failed, beginning rollback", extra={"error": str(exc)})
         await _rollback_merge(
@@ -477,6 +474,17 @@ async def _do_merge_branch(
     branch.status = BranchStatus.MERGED
     await branch.save(db=db, user_id=user_id)
     registry.branch[branch.name] = branch
+
+    # -------------------------------------------------------------
+    # Trigger the reconciliation of IPAM data now that the graph merge
+    # is complete.
+    # -------------------------------------------------------------
+    if ipam_node_details:
+        await workflow.submit_workflow(
+            workflow=IPAM_RECONCILIATION,
+            context=context,
+            parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
+        )
 
     # -------------------------------------------------------------
     # Cancel any remaining open proposed changes for this merged branch
