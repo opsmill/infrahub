@@ -1,0 +1,23 @@
+---
+# An object references a Python transform defined in this repository, and a generator definition
+# targets a group defined as an object in this repository.
+queries:
+  - name: tags_query
+    file_path: "tags_query.gql"
+
+python_transforms:
+  - name: TagsTransform
+    class_name: TagsTransform
+    file_path: "transforms/tags_transform.py"
+
+generator_definitions:
+  - name: tags_generator
+    file_path: "generators/tags_generator.py"
+    targets: repo_defined_group
+    query: tags_query
+    execute_in_proposed_change: false
+    execute_after_merge: false
+
+objects:
+  - objects/groups.yml
+  - objects/webhooks.yml

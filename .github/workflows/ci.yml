@@ -63,7 +63,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: opsmill/paths-filter@v3.0.2
+        uses: dorny/paths-filter@v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -1191,13 +1191,16 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm exec playwright install chromium --no-shell
 
-      # Make chromium ignore netlink messages by returning ReadMessages early
-      - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(pnpm exec playwright install chromium --no-shell --dry-run | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
-      - name: Chrome func offset
-        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
-      - name: Patch chromium
-        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+      # Make chromium ignore netlink messages so AddressTrackerLinux takes its "assume always
+      # online" path. The LD_PRELOAD shim fails NETLINK_ROUTE sockets at the libc level, which
+      # is robust across Playwright/Chromium versions (unlike patching the chrome binary). The
+      # shim is injected into the browser process via playwright.config.ts (NO_NETLINK_SO).
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
 
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'

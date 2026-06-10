@@ -10,6 +10,10 @@ from infrahub.config import (
     SETTINGS,
     GitSettings,
     MainSettings,
+    SecurityOAuth2Provider1,
+    SecurityOAuth2Provider2,
+    SecurityOIDCProvider1,
+    SecurityOIDCProvider2,
     SecurityOIDCSettings,
     Settings,
     StorageSettings,
@@ -97,3 +101,72 @@ def test_oidc_default_signature_verification_is_silent(caplog: pytest.LogCapture
 
     assert provider.id_token_verify_signature is True
     assert not [record for record in caplog.records if "OIDC id_token verification is disabled" in record.message]
+
+
+def _build_oauth2_provider(groups_claim: str = "groups") -> SecurityOAuth2Provider1:
+    return SecurityOAuth2Provider1(
+        client_id="infrahub-client",
+        client_secret="secret",
+        authorization_url="https://idp.example.com/auth",
+        token_url="https://idp.example.com/token",
+        userinfo_url="https://idp.example.com/userinfo",
+        groups_claim=groups_claim,
+    )
+
+
+def _build_oauth2_provider_2(groups_claim: str = "groups") -> SecurityOAuth2Provider2:
+    return SecurityOAuth2Provider2(
+        client_id="infrahub-client",
+        client_secret="secret",
+        authorization_url="https://idp.example.com/auth",
+        token_url="https://idp.example.com/token",
+        userinfo_url="https://idp.example.com/userinfo",
+        groups_claim=groups_claim,
+    )
+
+
+def _build_oidc_provider(groups_claim: str = "groups") -> SecurityOIDCProvider1:
+    return SecurityOIDCProvider1(
+        client_id="infrahub-client",
+        client_secret="secret",
+        discovery_url="https://idp.example.com/.well-known/openid-configuration",
+        groups_claim=groups_claim,
+    )
+
+
+def _build_oidc_provider_2(groups_claim: str = "groups") -> SecurityOIDCProvider2:
+    return SecurityOIDCProvider2(
+        client_id="infrahub-client",
+        client_secret="secret",
+        discovery_url="https://idp.example.com/.well-known/openid-configuration",
+        groups_claim=groups_claim,
+    )
+
+
+def test_groups_claim_default_is_groups() -> None:
+    assert _build_oauth2_provider().groups_claim == "groups"
+    assert _build_oauth2_provider_2().groups_claim == "groups"
+    assert _build_oidc_provider().groups_claim == "groups"
+    assert _build_oidc_provider_2().groups_claim == "groups"
+
+
+@pytest.mark.parametrize("empty_value", ["", " ", "\t", "\n", "  \t\n  "])
+def test_groups_claim_empty_string_is_rejected_at_startup_oauth2(empty_value: str) -> None:
+    with pytest.raises(ValidationError, match=r"groups_claim must not be empty or whitespace-only"):
+        _build_oauth2_provider(groups_claim=empty_value)
+
+
+@pytest.mark.parametrize("empty_value", ["", " ", "\t", "\n", "  \t\n  "])
+def test_groups_claim_empty_string_is_rejected_at_startup_oidc(empty_value: str) -> None:
+    with pytest.raises(ValidationError, match=r"groups_claim must not be empty or whitespace-only"):
+        _build_oidc_provider(groups_claim=empty_value)
+
+
+def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper) -> None:
+    config_file = str(helper.get_fixtures_dir() / "config_files" / "sso_config_methods.toml")
+    config = load(config_file_name=config_file)
+
+    assert config.security.get_oauth2_provider("provider1").groups_claim == "roles"
+    assert config.security.get_oauth2_provider("provider2").groups_claim == "groups"
+    assert config.security.get_oidc_provider("provider1").groups_claim == "roles"
+    assert config.security.get_oidc_provider("provider2").groups_claim == "groups"

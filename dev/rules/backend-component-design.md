@@ -43,6 +43,8 @@ in-memory version of a component typically backed by the database).
 
 Constructor-injected long-lived dependencies plus method-passed transient entities is the boundary that lets components be reused across requests/operations and mocked with adapter implementations instead of `unittest.mock`. The [testing rule](./testing-python.md) requires adapter/protocol patterns for tests — that requirement is only practical when production code follows this design.
 
+Use this as a design driver, not just a constraint: the no-mock rule is the forcing function for this structure. When you make a component's decision logic testable without patching — collaborators injected through the constructor, a single entry point that is pure and operates only on its arguments — dependency inversion and single responsibility fall out as the path of least resistance rather than discipline you have to summon. The corollary is a useful smell test: if a component is hard to test without a mock, that is the signal it needs splitting or its dependencies injected, not that it needs a mock.
+
 ## Existing code
 
 If existing nearby code violates this pattern, do not refactor it as part of an unrelated change. Raise it as a separate discussion — drive-by refactors balloon scope and make reviews harder.
