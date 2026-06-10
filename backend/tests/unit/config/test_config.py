@@ -80,6 +80,34 @@ def test_storage_max_file_size_environment_variable() -> None:
     assert isinstance(SETTINGS.storage.max_file_size, int)
 
 
+def test_database_address_single_member() -> None:
+    settings = DatabaseSettings(address="localhost")
+    assert settings.address_members == ["localhost"]
+    assert settings.database_uri == "bolt://localhost:7687"
+
+
+def test_database_address_multiple_members() -> None:
+    settings = DatabaseSettings(address="member1, member2:7777,member3")
+    assert settings.address_members == ["member1", "member2:7777", "member3"]
+    assert settings.database_uri == "bolt://member1:7687"
+
+
+def test_database_address_first_member_with_port() -> None:
+    settings = DatabaseSettings(address="member1:9999,member2")
+    assert settings.database_uri == "bolt://member1:9999"
+
+
+def test_database_address_ipv6_member() -> None:
+    settings = DatabaseSettings(address="[::1]:9999,member2")
+    assert settings.address_members == ["[::1]:9999", "member2"]
+    assert settings.database_uri == "bolt://[::1]:9999"
+
+
+def test_database_uri_with_policy() -> None:
+    settings = DatabaseSettings(address="member1,member2", policy="europe")
+    assert settings.database_uri == "bolt://member1:7687?policy=europe"
+
+
 def _make_oidc_provider(verify_signature: bool) -> SecurityOIDCSettings:
     return SecurityOIDCSettings(
         client_id="testing-client",

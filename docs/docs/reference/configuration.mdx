@@ -90,7 +90,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_PROTOCOL` | None | string | bolt |
 | `INFRAHUB_DB_USERNAME` | None | string | neo4j |
 | `INFRAHUB_DB_PASSWORD` | None | string | admin |
-| `INFRAHUB_DB_ADDRESS` | None | string | localhost |
+| `INFRAHUB_DB_ADDRESS` | Database host, or a comma-separated list of cluster members in 'host[:port]' format. Members without an explicit port use the value of the port setting. | string | localhost |
 | `INFRAHUB_DB_PORT` | None | integer | 7687 |
 | `INFRAHUB_DB_DATABASE` | Name of the database | None | None |
 | `INFRAHUB_DB_POLICY` | Routing policy for database connections | None | None |
