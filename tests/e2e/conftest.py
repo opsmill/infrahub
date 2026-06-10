@@ -326,7 +326,6 @@ def base_url(infrahub_address: str) -> str:
 @pytest.fixture(scope="session")
 def response_delay_enabled(
     request: pytest.FixtureRequest,
-    infrahub_app: InfrahubDockerCompose,
     infrahub_client: InfrahubClientSync,
     infrahub_provisioned_externally: bool,
 ) -> None:
@@ -343,6 +342,10 @@ def response_delay_enabled(
     backend's INFRAHUB_MISC_RESPONSE_DELAY: the latter is read at server startup, so putting it in
     the boot environment would slow the demo-data load. set_server_response_delay writes the
     backend var into the compose .env only after data is loaded, then recreates the server.
+
+    infrahub_app is resolved lazily (request.getfixturevalue) AFTER the early return: a direct
+    parameter would be instantiated eagerly and boot the testcontainers stack even in the
+    pre-provisioned INFRAHUB_ADDRESS mode, where no container must ever start.
     """
     delay = int(os.environ.get("INFRAHUB_TESTING_RESPONSE_DELAY") or "0")
     if not delay or infrahub_provisioned_externally:
@@ -356,6 +359,7 @@ def response_delay_enabled(
     for fixture_name in ("schema_base", "infrastructure_menu", "infrastructure_data"):
         request.getfixturevalue(fixture_name)
 
+    infrahub_app: InfrahubDockerCompose = request.getfixturevalue("infrahub_app")
     infrahub_app.set_server_response_delay(delay)
 
     # The server replicas were force-recreated; wait until the LB routes to a responsive
