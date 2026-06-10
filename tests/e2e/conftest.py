@@ -212,12 +212,11 @@ def _run_infrahubctl(args: list[str], address: str, *, cwd: Path = REPO_ROOT, ti
     env = os.environ.copy()
     env["INFRAHUB_ADDRESS"] = address
     env["INFRAHUB_API_TOKEN"] = ADMIN_API_TOKEN
-    # Serialize generator execution. Higher concurrency races the demo generator against the
-    # load-balanced multi-replica server and fails the load with read-after-write errors
-    # ("Unable to find the node <id> / InfraDevice in the database"). Keep this at 1; do NOT
-    # raise it to work around data not persisting (e.g. symmetric relationships) — fix the
-    # generator instead (see find_and_connect_interfaces in models/infrastructure_edge.py).
-    env["INFRAHUB_MAX_CONCURRENT_EXECUTION"] = "1"
+    # Runs at the SDK's default batch concurrency, like the legacy CI job. The historical
+    # INFRAHUB_MAX_CONCURRENT_EXECUTION=1 serialization is no longer needed: the symmetric-pair
+    # save race is fixed in the generator (save_connected_interfaces in
+    # models/infrastructure_edge.py) and the backend retries creates on the transient
+    # read anomaly hit when concurrent creates reference the same peer node.
     binary = shutil.which("infrahubctl") or "infrahubctl"
     result = subprocess.run(  # noqa: S603
         [binary, *args],
