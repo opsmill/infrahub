@@ -47,7 +47,6 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         expected_return: type[Return],
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = ...,
-        tags: list[str] | None = ...,
         pickup_timeout: float | None = ...,
     ) -> Return: ...
 
@@ -58,7 +57,6 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         expected_return: None = ...,
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
-        tags: list[str] | None = ...,
         pickup_timeout: float | None = ...,
     ) -> Any: ...
 
@@ -69,7 +67,6 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         expected_return: type[Return] | None = None,  # noqa: ARG002
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
         pickup_timeout: float | None = None,
     ) -> Any:
         flow_func = workflow.load_function()
@@ -77,7 +74,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
         response: FlowRun = await run_deployment(
-            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags, timeout=pickup_timeout
+            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, timeout=pickup_timeout
         )  # type: ignore[return-value, misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")

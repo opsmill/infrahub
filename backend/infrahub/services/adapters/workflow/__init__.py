@@ -21,7 +21,6 @@ class InfrahubWorkflow(ABC):
         expected_return: type[Return],
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
-        tags: list[str] | None = ...,
         pickup_timeout: float | None = ...,
     ) -> Return: ...
 
@@ -32,7 +31,6 @@ class InfrahubWorkflow(ABC):
         expected_return: None = ...,
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
-        tags: list[str] | None = ...,
         pickup_timeout: float | None = ...,
     ) -> Any: ...
 
@@ -43,7 +41,6 @@ class InfrahubWorkflow(ABC):
         expected_return: type[Return] | None = None,
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
         pickup_timeout: float | None = None,
     ) -> Any:
         raise NotImplementedError()

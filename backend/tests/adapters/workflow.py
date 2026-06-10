@@ -18,13 +18,12 @@ class WorkflowRecorder(InfrahubWorkflow):
         self.execute_calls: list[dict[str, Any]] = []
         self.submit_calls: list[dict[str, Any]] = []
 
-    async def execute_workflow(  # noqa: PLR0913, PLR0917
+    async def execute_workflow(
         self,
         workflow: WorkflowDefinition,
         expected_return: type | None = None,
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
         pickup_timeout: float | None = None,
     ) -> Any:
         self.execute_calls.append({"workflow": workflow, "parameters": parameters or {}})

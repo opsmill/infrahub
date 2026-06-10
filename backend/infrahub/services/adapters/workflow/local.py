@@ -21,7 +21,6 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         expected_return: type[Return] | None = None,  # noqa: ARG002
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,  # noqa: ARG002
         pickup_timeout: float | None = None,  # noqa: ARG002
     ) -> Any:
         flow_func = workflow.load_function()
