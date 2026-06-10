@@ -81,6 +81,9 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 # ****************************************************************
 FROM docs-deps AS docs
 
+# Read by docusaurus.config.ts: sets url/baseUrl for serving inside the app at /docs
+ENV DOCS_IN_APP=1
+
 COPY models/ /models/
 COPY development/deploy.tf /development/deploy.tf
 COPY development/k8s/ /development/k8s/
@@ -119,17 +122,17 @@ COPY uv.lock pyproject.toml python_sdk/pyproject.toml python_testcontainers/pypr
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project --no-install-workspace
 
 # --------------------------------------------
-# Import Frontend & Documentation Builds
-#   After the dependency layer so frontend/docs edits don't re-run uv sync
-# --------------------------------------------
-COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
-COPY --from=docs /docs/build/ /opt/infrahub/docs/build
-
-# --------------------------------------------
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
 COPY . ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
+
+# --------------------------------------------
+# Import Frontend & Documentation Builds
+#   Last so frontend/docs edits don't invalidate any uv sync layer
+# --------------------------------------------
+COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
+COPY --from=docs /docs/build/ /opt/infrahub/docs/build
 
 ENV PATH="/.venv/bin:$PATH"
 ENTRYPOINT ["tini", "-g", "--"]
