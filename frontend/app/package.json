@@ -69,7 +69,7 @@
     "gql.tada": "^1.9.2",
     "graphiql": "^5.2.3",
     "graphql": "^16.14.1",
-    "infrahub-schema-visualizer": "file:../packages/schema-visualizer",
+    "infrahub-schema-visualizer": "workspace:*",
     "jotai": "^2.20.0",
     "json-to-graphql-query": "^2.3.0",
     "lucide-react": "catalog:",

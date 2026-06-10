@@ -1,0 +1,1 @@
+Made the `infrahub-schema-visualizer` git submodule a pnpm workspace member (previously a `file:` dependency), so local edits to it are live-symlinked into the app without re-installing, and Docker builds only re-run `pnpm install` when its manifest changes. It must keep building standalone from its own repo: no `catalog:`/`workspace:` refs inside the submodule.

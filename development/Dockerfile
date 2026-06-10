@@ -52,9 +52,10 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --store-dir /pnpm/s
 
 COPY frontend/app/package.json /frontend/app/
 COPY frontend/packages/ui/package.json /frontend/packages/ui/
-COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
+COPY frontend/packages/schema-visualizer/package.json /frontend/packages/schema-visualizer/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline --store-dir /pnpm/store
 
+COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
 COPY frontend/packages/ui/ /frontend/packages/ui/
 COPY frontend/app/ /frontend/app/
 WORKDIR /frontend/app
