@@ -154,7 +154,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL` | Log level applied to all extra loggers. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | INFO |
 | `INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL` | Specify how often the worker should poll the server for tasks (sec) | integer | 2 |
 | `INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD` | Threshold for caching flow run counts (0 to always cache, higher values to disable) | integer | 100000 |
-| `INFRAHUB_WORKFLOW_SCHEMA_LOAD_TIMEOUT` | Maximum time (sec) the API will wait for a task worker to pick up the schema validation and migration workflows during a schema load. Bounds how long the schema lock can be held when no worker is available; once a worker starts the run it is allowed to finish without this limit. | integer | 60 |
+| `INFRAHUB_WORKFLOW_SCHEMA_LOAD_PICKUP_TIMEOUT` | Maximum time (sec) the API will wait for a task worker to pick up the schema validation and migration workflows during a schema load. Bounds how long the schema lock can be held when no worker is available; once a worker starts the run it is allowed to finish without this limit. | integer | 60 |
 
 ## Miscellaneous
 

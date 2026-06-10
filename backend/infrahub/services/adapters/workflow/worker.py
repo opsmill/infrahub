@@ -48,7 +48,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
-        timeout_seconds: float | None = ...,
+        pickup_timeout_seconds: float | None = ...,
     ) -> Return: ...
 
     @overload
@@ -59,7 +59,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
-        timeout_seconds: float | None = ...,
+        pickup_timeout_seconds: float | None = ...,
     ) -> Any: ...
 
     # TODO Make expected_return mandatory and remove above overloads.
@@ -70,24 +70,24 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
-        timeout_seconds: float | None = None,
+        pickup_timeout_seconds: float | None = None,
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
         response: FlowRun = await run_deployment(
-            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags, timeout=timeout_seconds
+            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags, timeout=pickup_timeout_seconds
         )  # type: ignore[return-value, misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
-        # When a timeout is set and the run has still not been claimed by a worker, treat the worker
-        # as unreachable instead of holding the caller (and any lock it owns) indefinitely. A run that
-        # a worker has already started is left to finish on its own schedule.
-        if timeout_seconds is not None and response.state.type in (StateType.SCHEDULED, StateType.PENDING):
+        # If a pickup deadline was set and the run is still queued (no worker has claimed it), treat the
+        # worker as unreachable rather than holding the caller (and any lock it owns) indefinitely. The
+        # deadline only covers being picked up: a run a worker has already started is left to finish.
+        if pickup_timeout_seconds is not None and response.state.type in (StateType.SCHEDULED, StateType.PENDING):
             raise ServiceUnavailableError(
-                f"Workflow {workflow.full_name} was not picked up by a worker within {timeout_seconds} seconds"
+                f"Workflow {workflow.full_name} was not picked up by a worker within {pickup_timeout_seconds} seconds"
             )
 
         if not response.state.is_final():

@@ -25,7 +25,7 @@ class WorkflowRecorder(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
-        timeout_seconds: float | None = None,
+        pickup_timeout_seconds: float | None = None,
     ) -> Any:
         self.execute_calls.append({"workflow": workflow, "parameters": parameters or {}})
         if expected_return is ValidatorConclusion:

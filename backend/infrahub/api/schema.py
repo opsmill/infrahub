@@ -313,7 +313,7 @@ async def _validate_migrations(
         context=context,
         expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
-        timeout_seconds=config.SETTINGS.workflow.schema_load_timeout,
+        pickup_timeout_seconds=config.SETTINGS.workflow.schema_load_pickup_timeout,
     )
     error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
@@ -463,7 +463,7 @@ async def check_schema(
         context=context,
         expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
-        timeout_seconds=config.SETTINGS.workflow.schema_load_timeout,
+        pickup_timeout_seconds=config.SETTINGS.workflow.schema_load_pickup_timeout,
     )
     error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
