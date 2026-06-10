@@ -11,7 +11,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 # Common file types for testing (port of TEST_FILE_TYPES).
 TEST_FILE_TYPES = {
@@ -25,7 +25,7 @@ TEST_FILE_TYPES = {
 }
 
 
-def upload_file(
+async def upload_file(
     page: Page, *, name: str, mime_type: str, content: str | None = None, buffer: bytes | None = None
 ) -> None:
     """Upload a file using Playwright's set_input_files.
@@ -35,7 +35,7 @@ def upload_file(
     """
     file_input = page.locator('input[type="file"]')
     payload = buffer if buffer is not None else (content or "").encode()
-    file_input.set_input_files(files={"name": name, "mimeType": mime_type, "buffer": payload})
+    await file_input.set_input_files(files={"name": name, "mimeType": mime_type, "buffer": payload})
 
 
 def create_minimal_pdf_buffer(text: str = "Mock PDF content for E2E testing") -> bytes:
@@ -100,7 +100,7 @@ def create_test_file(
     }
 
 
-def fill_circuit_contract_fields(
+async def fill_circuit_contract_fields(
     page: Page,
     *,
     contract_number: str | None = None,
@@ -119,9 +119,9 @@ def fill_circuit_contract_fields(
     form = page.get_by_test_id("side-panel-container")
 
     # Wait for form to be ready
-    form.get_by_label("Contract Number").wait_for(state="visible")
+    await form.get_by_label("Contract Number").wait_for(state="visible")
 
-    form.get_by_label("Contract Number").fill(defaults["contract_number"])
-    form.get_by_label("Vendor").fill(defaults["vendor"])
-    form.get_by_label("Start Date").fill(defaults["start_date"])
-    form.get_by_label("End Date").fill(defaults["end_date"])
+    await form.get_by_label("Contract Number").fill(defaults["contract_number"])
+    await form.get_by_label("Vendor").fill(defaults["vendor"])
+    await form.get_by_label("Start Date").fill(defaults["start_date"])
+    await form.get_by_label("End Date").fill(defaults["end_date"])

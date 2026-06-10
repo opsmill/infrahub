@@ -14,21 +14,23 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import generate_random_branch_name
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
 
     from helpers import BranchAPI
-    from playwright.sync_api import Page, Response
+    from playwright.async_api import Page, Response
 
 
 class TestObjectDropdownCreation:
     @pytest.fixture(autouse=True)
-    def fail_on_500(self, admin_page: Page) -> Generator[None, None, None]:
-        # Collect-then-assert: Playwright's sync API swallows exceptions raised
-        # inside a response handler, so an inline assert there can never fail
-        # the test (the TS source had the same flaw).
+    async def fail_on_500(self, admin_page: Page) -> AsyncGenerator[None, None]:
+        # Collect-then-assert: Playwright swallows exceptions raised inside a
+        # response handler, so an inline assert there can never fail the test
+        # (the TS source had the same flaw). The fixture must be async — even
+        # the .on() registration goes through the playwright connection, which
+        # requires the running session loop. The handler itself stays sync.
         server_errors: list[str] = []
 
         def _handler(response: Response) -> None:
@@ -40,51 +42,51 @@ class TestObjectDropdownCreation:
         assert not server_errors, f"Unexpected 500 responses: {server_errors}"
 
     @pytest.fixture
-    def branch(
+    async def branch(
         self,
         branch_api: BranchAPI,
         schema_base: None,
-    ) -> Generator[str, None, None]:
+    ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name()
-        branch_api.create(name)
+        await branch_api.create(name)
         yield name
         with contextlib.suppress(Exception):
-            branch_api.delete(name)
+            await branch_api.delete(name)
 
-    def test_should_open_the_creation_form_and_open_the_tag_option_creation_form(
+    async def test_should_open_the_creation_form_and_open_the_tag_option_creation_form(
         self, admin_page: Page, branch: str
     ) -> None:
-        admin_page.goto(f"/objects/InfraDevice?branch={branch}")
+        await admin_page.goto(f"/objects/InfraDevice?branch={branch}")
 
         # Open creation form
-        admin_page.get_by_test_id("create-object-button").click()
-        admin_page.get_by_role("button", name="Start from scratch").click()
+        await admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_role("button", name="Start from scratch").click()
 
         # Open tags options
-        admin_page.get_by_label("Tags").click()
+        await admin_page.get_by_label("Tags").click()
 
         # Add new option
-        admin_page.get_by_role("button", name="+ Add new Tag").click()
+        await admin_page.get_by_role("button", name="+ Add new Tag").click()
 
         # Assert form content is visible
-        expect(admin_page.get_by_text("Create Tag")).to_be_visible()
-        expect(admin_page.get_by_role("button", name="Save")).to_be_visible()
+        await expect(admin_page.get_by_text("Create Tag")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Save")).to_be_visible()
 
         # Create a new tag
-        admin_page.get_by_test_id("new-object-form").get_by_label("Name").fill("new-tag")
-        admin_page.get_by_test_id("new-object-form").get_by_label("Description").fill("New tag description")
+        await admin_page.get_by_test_id("new-object-form").get_by_label("Name").fill("new-tag")
+        await admin_page.get_by_test_id("new-object-form").get_by_label("Description").fill("New tag description")
 
         # Submit
-        admin_page.get_by_role("button", name="Save").click()
-        expect(admin_page.get_by_text("Tag created")).to_be_visible()
+        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("Tag created")).to_be_visible()
 
         # Closes the form
-        admin_page.get_by_role("button", name="Cancel").click()
+        await admin_page.get_by_role("button", name="Cancel").click()
 
-    def test_should_not_be_able_to_create_a_new_option_for_dropdown(self, admin_page: Page, branch: str) -> None:
-        admin_page.goto(f"/objects/CoreWebhook?branch={branch}")
-        admin_page.get_by_test_id("create-object-button").click()
-        admin_page.get_by_role("combobox", name="Select an object type").click()
-        admin_page.get_by_role("option", name="Custom Webhook Core").click()
-        admin_page.get_by_role("combobox", name="Branch Scope").click()
-        expect(admin_page.get_by_test_id("add-option-button")).to_be_hidden()
+    async def test_should_not_be_able_to_create_a_new_option_for_dropdown(self, admin_page: Page, branch: str) -> None:
+        await admin_page.goto(f"/objects/CoreWebhook?branch={branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_role("combobox", name="Select an object type").click()
+        await admin_page.get_by_role("option", name="Custom Webhook Core").click()
+        await admin_page.get_by_role("combobox", name="Branch Scope").click()
+        await expect(admin_page.get_by_test_id("add-option-button")).to_be_hidden()

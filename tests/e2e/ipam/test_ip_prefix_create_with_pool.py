@@ -13,40 +13,42 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import generate_random_branch_name
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
 
     from data.handles import ScenarioBranchesHandle
     from helpers import BranchAPI
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 
 class TestAllocateIpPrefixWithPool:
     @pytest.fixture
-    def branch(
+    async def branch(
         self, branch_api: BranchAPI, data_scenario_branches: ScenarioBranchesHandle
-    ) -> Generator[str, None, None]:
+    ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("ip-prefix-pool-")
-        branch_api.create(name)
+        await branch_api.create(name)
         yield name
         with contextlib.suppress(Exception):
-            branch_api.delete(name)
+            await branch_api.delete(name)
 
-    def test_create_an_ip_prefix_using_a_pool(self, admin_page: Page, branch: str) -> None:
-        admin_page.goto(f"/ipam?branch={branch}")
-        admin_page.get_by_test_id("create-object-button").click()
+    async def test_create_an_ip_prefix_using_a_pool(self, admin_page: Page, branch: str) -> None:
+        await admin_page.goto(f"/ipam?branch={branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
 
-        admin_page.get_by_test_id("select-open-pool-option-button").click()
-        admin_page.get_by_role("option", name="External prefixes pool").click()
-        expect(admin_page.get_by_label("Prefix *")).to_contain_text("Allocated by pool")
-        expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("External prefixes pool")
-        admin_page.get_by_role("textbox", name="Description").fill("prefix from pool")
-        admin_page.get_by_role("button", name="Save").click()
+        await admin_page.get_by_test_id("select-open-pool-option-button").click()
+        await admin_page.get_by_role("option", name="External prefixes pool").click()
+        await expect(admin_page.get_by_label("Prefix *")).to_contain_text("Allocated by pool")
+        await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("External prefixes pool")
+        await admin_page.get_by_role("textbox", name="Description").fill("prefix from pool")
+        await admin_page.get_by_role("button", name="Save").click()
 
-        expect(admin_page.get_by_text("IP Prefix 203.111.0.248/29 created")).to_be_visible()
-        admin_page.get_by_test_id("object-list-search-bar").get_by_role("searchbox", name="Search").fill(
-            "203.111.0.248/29"
+        await expect(admin_page.get_by_text("IP Prefix 203.111.0.248/29 created")).to_be_visible()
+        await (
+            admin_page.get_by_test_id("object-list-search-bar")
+            .get_by_role("searchbox", name="Search")
+            .fill("203.111.0.248/29")
         )
-        expect(admin_page.get_by_text("prefix from pool")).to_be_visible()
+        await expect(admin_page.get_by_text("prefix from pool")).to_be_visible()

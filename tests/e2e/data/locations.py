@@ -18,7 +18,7 @@ import pytest
 from data.handles import LocationsHandle
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk import InfrahubClient
 
 BRANCH = "main"
 
@@ -34,8 +34,8 @@ CONTINENT_COUNTRIES = {
 
 
 @pytest.fixture(scope="session")
-def data_locations(
-    data_client: InfrahubClientSync,
+async def data_locations(
+    data_client: InfrahubClient,
     schema_base: None,
     infrahub_provisioned_externally: bool,
 ) -> LocationsHandle:
@@ -43,24 +43,26 @@ def data_locations(
     if infrahub_provisioned_externally:
         return LocationsHandle.external()
 
-    continent_batch = data_client.create_batch()
-    country_batch = data_client.create_batch()
+    continent_batch = await data_client.create_batch()
+    country_batch = await data_client.create_batch()
 
     continents = {}
     countries = {}
     for continent, continent_countries in CONTINENT_COUNTRIES.items():
-        continent_obj = data_client.create(branch=BRANCH, kind="LocationContinent", name=continent)
+        continent_obj = await data_client.create(branch=BRANCH, kind="LocationContinent", name=continent)
         continent_batch.add(task=continent_obj.save, node=continent_obj)
         continents[continent] = continent_obj
 
         for country in continent_countries:
-            country_obj = data_client.create(branch=BRANCH, kind="LocationCountry", name=country, parent=continent_obj)
+            country_obj = await data_client.create(
+                branch=BRANCH, kind="LocationCountry", name=country, parent=continent_obj
+            )
             country_batch.add(task=country_obj.save, node=country_obj)
             countries[country] = country_obj
 
-    for _ in continent_batch.execute():
+    async for _ in continent_batch.execute():
         pass
-    for _ in country_batch.execute():
+    async for _ in country_batch.execute():
         pass
 
     return LocationsHandle(

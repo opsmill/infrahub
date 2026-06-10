@@ -29,9 +29,9 @@ import pytest
 from data.handles import OrgRegistryHandle
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClientSync
-    from infrahub_sdk.batch import InfrahubBatchSync
-    from infrahub_sdk.node import InfrahubNodeSync
+    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.batch import InfrahubBatch
+    from infrahub_sdk.node import InfrahubNode
 
     from data.handles import RbacHandle
 
@@ -162,39 +162,39 @@ BGP_PEER_GROUPS = (
 )
 
 
-def _prepare_platforms(client: InfrahubClientSync, batch: InfrahubBatchSync) -> dict[str, InfrahubNodeSync]:
+async def _prepare_platforms(client: InfrahubClient, batch: InfrahubBatch) -> dict[str, InfrahubNode]:
     """Transcribes ``prepare_platforms`` (lines 2463-2471)."""
-    platforms: dict[str, InfrahubNodeSync] = {}
+    platforms: dict[str, InfrahubNode] = {}
     for platform in PLATFORMS:
-        obj = client.create(branch=BRANCH, kind="InfraPlatform", data=dict(platform))
+        obj = await client.create(branch=BRANCH, kind="InfraPlatform", data=dict(platform))
         batch.add(task=obj.save, node=obj)
         platforms[platform["name"]] = obj
     return platforms
 
 
-def _prepare_organizations(client: InfrahubClientSync, batch: InfrahubBatchSync) -> dict[str, InfrahubNodeSync]:
+async def _prepare_organizations(client: InfrahubClient, batch: InfrahubBatch) -> dict[str, InfrahubNode]:
     """Transcribes ``prepare_organizations`` (lines 2453-2460)."""
-    organizations: dict[str, InfrahubNodeSync] = {}
+    organizations: dict[str, InfrahubNode] = {}
     for org in ORGANIZATIONS:
         data_org = {
             "name": {"value": org["name"], "is_protected": True},
         }
-        obj = client.create(branch=BRANCH, kind=f"Organization{org['type'].title()}", data=data_org)
+        obj = await client.create(branch=BRANCH, kind=f"Organization{org['type'].title()}", data=data_org)
         batch.add(task=obj.save, node=obj)
         organizations[org["name"]] = obj
     return organizations
 
 
-def _prepare_asns(
-    client: InfrahubClientSync,
-    batch: InfrahubBatchSync,
-    organizations: dict[str, InfrahubNodeSync],
+async def _prepare_asns(
+    client: InfrahubClient,
+    batch: InfrahubBatch,
+    organizations: dict[str, InfrahubNode],
     crm_sync_id: str,
     cobrian_id: str,
-) -> dict[str, InfrahubNodeSync]:
+) -> dict[str, InfrahubNode]:
     """Transcribes ``prepare_asns`` (lines 2359-2390); ASNs are keyed by organization name."""
     organizations_dict = {org["name"]: org["type"] for org in ORGANIZATIONS}
-    asns: dict[str, InfrahubNodeSync] = {}
+    asns: dict[str, InfrahubNode] = {}
     for asn in ASNS:
         organization_type = organizations_dict.get(asn["organization"])
         asn_name = f"AS{asn['asn']}"
@@ -214,32 +214,30 @@ def _prepare_asns(
             }
         else:
             data_asn["description"] = {"value": asn_name, "source": crm_sync_id, "owner": cobrian_id}
-        obj = client.create(branch=BRANCH, kind="InfraAutonomousSystem", data=data_asn)
+        obj = await client.create(branch=BRANCH, kind="InfraAutonomousSystem", data=data_asn)
         batch.add(task=obj.save, node=obj)
         asns[asn["organization"]] = obj
     return asns
 
 
-def _prepare_tags(
-    client: InfrahubClientSync, batch: InfrahubBatchSync, pop_builder_id: str
-) -> dict[str, InfrahubNodeSync]:
+async def _prepare_tags(client: InfrahubClient, batch: InfrahubBatch, pop_builder_id: str) -> dict[str, InfrahubNode]:
     """Transcribes ``prepare_tags`` (lines 2474-2484)."""
-    tags: dict[str, InfrahubNodeSync] = {}
+    tags: dict[str, InfrahubNode] = {}
     for tag in TAGS:
-        obj = client.create(branch=BRANCH, kind="BuiltinTag", name={"value": tag, "source": pop_builder_id})
+        obj = await client.create(branch=BRANCH, kind="BuiltinTag", name={"value": tag, "source": pop_builder_id})
         batch.add(task=obj.save, node=obj)
         tags[tag] = obj
     return tags
 
 
-def _prepare_bgp_peer_groups(
-    client: InfrahubClientSync,
-    batch: InfrahubBatchSync,
-    asns: dict[str, InfrahubNodeSync],
+async def _prepare_bgp_peer_groups(
+    client: InfrahubClient,
+    batch: InfrahubBatch,
+    asns: dict[str, InfrahubNode],
     pop_builder_id: str,
-) -> dict[str, InfrahubNodeSync]:
+) -> dict[str, InfrahubNode]:
     """Transcribes ``prepare_bgp_peer_groups`` (lines 2393-2426)."""
-    peer_groups: dict[str, InfrahubNodeSync] = {}
+    peer_groups: dict[str, InfrahubNode] = {}
     for peer_group in BGP_PEER_GROUPS:
         remote_as_id = None
         local_as_id = None
@@ -250,7 +248,7 @@ def _prepare_bgp_peer_groups(
         if local_as:
             local_as_id = local_as.id
 
-        obj = client.create(
+        obj = await client.create(
             branch=BRANCH,
             kind="InfraBGPPeerGroup",
             name={"value": peer_group["name"], "source": pop_builder_id},
@@ -265,8 +263,8 @@ def _prepare_bgp_peer_groups(
 
 
 @pytest.fixture(scope="session")
-def data_org_registry(
-    data_client: InfrahubClientSync,
+async def data_org_registry(
+    data_client: InfrahubClient,
     schema_base: None,
     data_rbac: RbacHandle,
     infrahub_provisioned_externally: bool,
@@ -275,32 +273,32 @@ def data_org_registry(
     if infrahub_provisioned_externally:
         return OrgRegistryHandle.external()
 
-    batch = data_client.create_batch()
-    platforms = _prepare_platforms(client=data_client, batch=batch)
-    organizations = _prepare_organizations(client=data_client, batch=batch)
-    for _ in batch.execute():
+    batch = await data_client.create_batch()
+    platforms = await _prepare_platforms(client=data_client, batch=batch)
+    organizations = await _prepare_organizations(client=data_client, batch=batch)
+    async for _ in batch.execute():
         pass
 
-    batch = data_client.create_batch()
-    asns = _prepare_asns(
+    batch = await data_client.create_batch()
+    asns = await _prepare_asns(
         client=data_client,
         batch=batch,
         organizations=organizations,
         crm_sync_id=data_rbac.accounts["crm-sync"],
         cobrian_id=data_rbac.accounts["cobrian"],
     )
-    tags = _prepare_tags(client=data_client, batch=batch, pop_builder_id=data_rbac.accounts["pop-builder"])
-    for _ in batch.execute():
+    tags = await _prepare_tags(client=data_client, batch=batch, pop_builder_id=data_rbac.accounts["pop-builder"])
+    async for _ in batch.execute():
         pass
 
-    batch = data_client.create_batch()
-    peer_groups = _prepare_bgp_peer_groups(
+    batch = await data_client.create_batch()
+    peer_groups = await _prepare_bgp_peer_groups(
         client=data_client,
         batch=batch,
         asns=asns,
         pop_builder_id=data_rbac.accounts["pop-builder"],
     )
-    for _ in batch.execute():
+    async for _ in batch.execute():
         pass
 
     return OrgRegistryHandle(

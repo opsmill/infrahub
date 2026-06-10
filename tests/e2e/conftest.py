@@ -1,13 +1,20 @@
-"""Pytest fixtures for the Infrahub pytest-playwright e2e suite.
+"""Pytest fixtures for the Infrahub pytest-playwright e2e suite (fully async).
 
 This replaces the legacy CI bring-up (`invoke dev.start dev.load-infra-schema
 dev.load-infra-data dev.infra-git-import dev.infra-git-create`) with:
 
 * a single session-scoped Infrahub stack started via infrahub-testcontainers, and
 * composable, per-domain data fixtures that load the EXACT same dataset
-  (the base schema, the navigation menu, the `infrastructure_edge.py` demo data
-  and the `demo-edge` Git repository) so each test declares precisely what it
-  needs.
+  (the base schema, the navigation menu, the demo dataset slices and the
+  `demo-edge` Git repository) so each test declares precisely what it needs.
+
+The whole suite is async: pytest-playwright-asyncio drives the browser, the
+async Infrahub SDK client loads the data, and pytest-asyncio hosts everything
+on ONE session-scoped event loop (playwright objects and httpx clients are
+loop-bound, so fixtures and tests must share the loop — see pytest.ini).
+pytest-asyncio does NOT support ``request.getfixturevalue`` for async
+fixtures, so lazy lookups are expressed as direct dependencies and
+env-conditional fixture definitions instead.
 
 Bring-up modes
 --------------
@@ -25,21 +32,22 @@ inherit ``backend/tests/conftest.py`` (which spins up an in-process backend).
 
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
 import subprocess
 import sys
-import time
 import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 import yaml
-from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.spec.menu import MenuFile
 from infrahub_testcontainers import __version__ as infrahub_testcontainers_version
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES, InfrahubDockerCompose
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 # Make `constants`/`helpers` importable from test modules in any subdirectory.
 sys.path.insert(0, str(Path(__file__).parent))
@@ -53,8 +61,7 @@ from constants import (
 )
 from helpers import BranchAPI, login
 
-# Composable demo-dataset slices built on the sync SDK (tests/e2e/data/),
-# progressively replacing the script-based infrastructure_data fixture.
+# Composable demo-dataset slices built on the async SDK (tests/e2e/data/).
 pytest_plugins = [
     "data.common",
     "data.rbac",
@@ -69,9 +76,11 @@ pytest_plugins = [
 ]
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Generator
 
-    from playwright.sync_api import Browser, BrowserContext, Page
+    from data.handles import RbacHandle, ScenarioBranchesHandle
+    from playwright.async_api import Browser, Page
+    from pytest_playwright_asyncio import CreateContextCallback
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODELS_DIR = REPO_ROOT / "models"
@@ -79,6 +88,11 @@ DEMO_EDGE_REPO_FIXTURE = REPO_ROOT / "backend/tests/fixtures/repos/infrahub-demo
 
 # How long the demo-data generator (models/infrastructure_edge.py) may run.
 INFRASTRUCTURE_DATA_TIMEOUT = 30 * 60
+
+# Module-level env signals: used to define fixtures conditionally, because the
+# lazy `request.getfixturevalue` alternative does not work with async fixtures.
+_RESPONSE_DELAY = int(os.environ.get("INFRAHUB_TESTING_RESPONSE_DELAY") or "0")
+_PROVISIONED_EXTERNALLY = bool(os.environ.get("INFRAHUB_ADDRESS"))
 
 # pytest-playwright defaults the `expect` assertion timeout to 5s. The legacy TS
 # suite ran with a 60s (local) / 180s (CI) expect timeout, so async UI updates
@@ -91,7 +105,6 @@ INFRASTRUCTURE_DATA_TIMEOUT = 30 * 60
 # NB: the signal is INFRAHUB_TESTING_RESPONSE_DELAY, NOT the backend's INFRAHUB_MISC_RESPONSE_DELAY
 # — setting the latter in the environment would slow the demo-data load at boot (see
 # response_delay_enabled / InfrahubDockerCompose.set_server_response_delay).
-_RESPONSE_DELAY = int(os.environ.get("INFRAHUB_TESTING_RESPONSE_DELAY") or "0")
 expect.set_options(timeout=60_000 if _RESPONSE_DELAY else 30_000)
 
 
@@ -104,7 +117,7 @@ def infrahub_provisioned_externally() -> bool:
 
     In that mode we neither boot a container nor (re)load data.
     """
-    return bool(os.environ.get("INFRAHUB_ADDRESS"))
+    return _PROVISIONED_EXTERNALLY
 
 
 @pytest.fixture(scope="session")
@@ -144,6 +157,7 @@ def infrahub_app(
     at session scope so the entire e2e suite shares a single instance (as the
     legacy TS suite did). Yields the compose object so dependents can read mapped
     ports (get_services_port) and toggle runtime settings (set_server_response_delay).
+    Stays synchronous: compose operations are blocking subprocess calls.
     """
     compose = InfrahubDockerCompose.init(directory=infrahub_compose_dir, version=infrahub_version)
     try:
@@ -166,7 +180,8 @@ def infrahub_address(request: pytest.FixtureRequest, infrahub_provisioned_extern
 
     Prefers an externally supplied INFRAHUB_ADDRESS; otherwise lazily boots the
     testcontainers stack (via the `infrahub_app` fixture) and derives the mapped
-    host port of the load-balanced server.
+    host port of the load-balanced server. (`infrahub_app` is a sync fixture, so
+    the lazy getfixturevalue is supported.)
     """
     if infrahub_provisioned_externally:
         return os.environ["INFRAHUB_ADDRESS"].rstrip("/")
@@ -176,13 +191,13 @@ def infrahub_address(request: pytest.FixtureRequest, infrahub_provisioned_extern
 
 
 @pytest.fixture(scope="session")
-def infrahub_client(infrahub_address: str) -> InfrahubClientSync:
-    """Admin SDK (sync) client.
+def infrahub_client(infrahub_address: str) -> InfrahubClient:
+    """Admin async SDK client.
 
-    Sync on purpose, to coexist cleanly with the synchronous pytest-playwright
-    `page` fixture (no event-loop juggling).
+    Construction is synchronous (no I/O); all requests run on the shared
+    session event loop, so the underlying httpx client binds to it.
     """
-    return InfrahubClientSync(config=Config(address=infrahub_address, api_token=ADMIN_API_TOKEN))
+    return InfrahubClient(config=Config(address=infrahub_address, api_token=ADMIN_API_TOKEN))
 
 
 # --------------------------------------------------------------------------- #
@@ -191,9 +206,8 @@ def infrahub_client(infrahub_address: str) -> InfrahubClientSync:
 def _run_infrahubctl(args: list[str], address: str, *, cwd: Path = REPO_ROOT, timeout: int = 600) -> str:
     """Run an ``infrahubctl`` command against ``address`` with the admin token.
 
-    Used for operations without a first-class sync SDK entry point (loading the
-    menu and running the demo-data generator script), exactly as the legacy
-    ``invoke`` tasks did via ``infrahubctl menu load`` / ``infrahubctl run``.
+    Used ONLY by the parity reference loader (infrastructure_data_monolith);
+    the suite itself loads everything through the SDK.
     """
     env = os.environ.copy()
     env["INFRAHUB_ADDRESS"] = address
@@ -223,7 +237,7 @@ def _run_infrahubctl(args: list[str], address: str, *, cwd: Path = REPO_ROOT, ti
 
 
 @pytest.fixture(scope="session")
-def schema_base(infrahub_client: InfrahubClientSync, infrahub_provisioned_externally: bool) -> None:
+async def schema_base(infrahub_client: InfrahubClient, infrahub_provisioned_externally: bool) -> None:
     """Load the full base schema (models/base/*.yml) as one set.
 
     Equivalent to `infrahubctl schema load models/base`.
@@ -233,55 +247,44 @@ def schema_base(infrahub_client: InfrahubClientSync, infrahub_provisioned_extern
     schemas = [
         yaml.safe_load((MODELS_DIR / "base" / filename).read_text(encoding="utf-8")) for filename in BASE_SCHEMA_FILES
     ]
-    response = infrahub_client.schema.load(schemas=schemas, wait_until_converged=True)
+    response = await infrahub_client.schema.load(schemas=schemas, wait_until_converged=True)
     if response.errors:
         raise RuntimeError(f"Base schema failed to load: {response.errors}")
 
 
 @pytest.fixture(scope="session")
-def infrastructure_menu(
-    infrahub_address: str,
+async def infrastructure_menu(
+    infrahub_client: InfrahubClient,
     schema_base: None,
     infrahub_provisioned_externally: bool,
 ) -> None:
     """Load the navigation menu (models/base_menu.yml) via the SDK menu spec.
 
     Equivalent to `infrahubctl menu load models/base_menu.yml`: MenuFile's
-    validate_format + process are exactly what the CLI command calls. The menu
-    helpers are async-only, so the coroutine runs in a private asyncio.run() —
-    safe here because the sync suite never holds a running event loop.
+    validate_format + process are exactly what the CLI command calls — natively
+    async now that the whole suite runs on one event loop.
     """
     if infrahub_provisioned_externally:
         return
 
-    import asyncio
-
-    from infrahub_sdk import InfrahubClient
-    from infrahub_sdk.spec.menu import MenuFile
-
-    async def _load_menu() -> None:
-        client = InfrahubClient(config=Config(address=infrahub_address, api_token=ADMIN_API_TOKEN))
-        for file in MenuFile.load_file_from_disk(path=MODELS_DIR / "base_menu.yml"):
-            await file.validate_format(client=client)
-            await file.process(client=client)
-
-    asyncio.run(_load_menu())
+    for file in MenuFile.load_file_from_disk(path=MODELS_DIR / "base_menu.yml"):
+        await file.validate_format(client=infrahub_client)
+        await file.process(client=infrahub_client)
 
 
 @pytest.fixture(scope="session")
-def infrastructure_data(request: pytest.FixtureRequest, infrahub_provisioned_externally: bool) -> None:
+async def infrastructure_data(data_scenario_branches: ScenarioBranchesHandle) -> None:
     """Load the full demo dataset through the tests/e2e/data/ SDK slices.
 
     Script-free replacement for `infrahubctl run models/infrastructure_edge.py`:
-    the slice DAG reproduces the script's medium-profile dataset (5 sites, 6
-    devices/site, BGP mesh, scenario branches), proven by a structural parity
-    diff against a script-loaded stack (see tests/e2e/data/parity.py). Kept
-    under the legacy fixture name so tests keep their declared dependency;
-    narrowing individual domains to specific slices is incremental follow-up.
+    data_scenario_branches is the terminal node of the slice DAG (it pulls
+    data_topology -> data_sites -> rbac/locations/org_registry/ipam_pools, and
+    data_patch_template), so this loads everything the monolithic script run
+    produced — minus the two scenario branches no test references (their pool
+    consumption is replayed; see data/scenario_branches.py). Parity proven by a
+    structural dump diff (tests/e2e/data/parity.py). Kept under the legacy
+    fixture name for specs that genuinely need the whole dataset.
     """
-    if infrahub_provisioned_externally:
-        return
-    request.getfixturevalue("infrastructure_data_sdk")
 
 
 @pytest.fixture(scope="session")
@@ -307,40 +310,23 @@ def infrastructure_data_monolith(
 
 
 @pytest.fixture(scope="session")
-def infrastructure_data_sdk(request: pytest.FixtureRequest) -> None:
-    """The full demo dataset via the tests/e2e/data/ SDK slices — no external script.
-
-    data_scenario_branches is the terminal node of the slice DAG: it pulls
-    data_topology (which pulls data_sites, which pulls rbac/locations/
-    org_registry/ipam_pools) and data_patch_template, so requesting it loads
-    everything the monolithic models/infrastructure_edge.py run produced —
-    minus the two scenario branches no test references (their pool consumption
-    is replayed; see data/scenario_branches.py).
-    """
-    request.getfixturevalue("data_scenario_branches")
-
-
-@pytest.fixture(scope="session")
-def demo_edge_repo(
-    infrahub_client: InfrahubClientSync,
+async def demo_edge_repo(
+    infrahub_client: InfrahubClient,
     infrahub_compose_dir: Path,
     infrastructure_data: None,
     infrahub_provisioned_externally: bool,
 ) -> None:
-    """Register and sync the `demo-edge` external Git repository (synchronous).
+    """Register and sync the `demo-edge` external Git repository.
 
     Equivalent to `invoke dev.infra-git-import dev.infra-git-create`. Required by
     repository-derived specs (artifacts, the repo's GraphQL queries, generators,
     proposed-change checks). The fixture repo is copied into the compose `repos`
-    directory (mounted at /remote) via the SDK GitRepo helper (its sync init does
-    the copy + git init/commit), registered with a CoreRepositoryCreate mutation,
-    then polled until in-sync. Synchronous on purpose — the suite has no running
-    asyncio loop to host the SDK's async GitRepo helper.
+    directory (mounted at /remote) via the SDK GitRepo helper (its init does the
+    copy + git init/commit), registered with a CoreRepositoryCreate mutation,
+    then polled until in-sync.
     """
     if infrahub_provisioned_externally:
         return
-
-    import time
 
     from infrahub_sdk.graphql import Mutation
     from infrahub_sdk.testing.repository import GitRepo
@@ -354,21 +340,21 @@ def demo_edge_repo(
         input_data={"data": {"name": {"value": "demo-edge"}, "location": {"value": "/remote/demo-edge"}}},
         query={"ok": None},
     )
-    infrahub_client.execute_graphql(query=mutation.render(), tracker="mutation-repository-create")
+    await infrahub_client.execute_graphql(query=mutation.render(), tracker="mutation-repository-create")
 
     for _ in range(30):
-        repo = infrahub_client.get(kind="CoreRepository", name__value="demo-edge")
+        repo = await infrahub_client.get(kind="CoreRepository", name__value="demo-edge")
         status = repo.sync_status.value
         if status == "in-sync":
             return
         if status == "error-import":
             raise RuntimeError("The demo-edge repository import errored")
-        time.sleep(5)
+        await asyncio.sleep(5)
     raise RuntimeError("The demo-edge repository did not reach the in-sync state")
 
 
 @pytest.fixture
-def branch_api(infrahub_client: InfrahubClientSync) -> BranchAPI:
+def branch_api(infrahub_client: InfrahubClient) -> BranchAPI:
     """Create/merge/delete throwaway branches via the API (port of graphql.ts)."""
     return BranchAPI(infrahub_client)
 
@@ -403,56 +389,49 @@ def base_url(infrahub_address: str) -> str:
     return infrahub_address
 
 
-@pytest.fixture(scope="session")
-def response_delay_enabled(
-    request: pytest.FixtureRequest,
-    infrahub_client: InfrahubClientSync,
-    infrahub_provisioned_externally: bool,
-) -> None:
-    """Slow the backend for the browser-test phase when INFRAHUB_TESTING_RESPONSE_DELAY is set.
+if _RESPONSE_DELAY and not _PROVISIONED_EXTERNALLY:
 
-    Mirrors the TS e2e CI job (which loads data, then restarts the server with the delay):
-    the full dataset is provisioned first — fast, since the demo-data load makes thousands of
-    serialized GraphQL calls — and only then is the infrahub-server recreated with the
-    per-request delay so browser flows exercise realistic loading states. No-op when the delay
-    is unset or when running against an externally provisioned Infrahub. The per-role page
-    fixtures depend on this so the delay is in effect before any browser interaction.
+    @pytest.fixture(scope="session")
+    async def response_delay_enabled(
+        infrahub_app: InfrahubDockerCompose,
+        infrahub_client: InfrahubClient,
+        infrastructure_menu: None,
+        infrastructure_data: None,
+    ) -> None:
+        """Slow the backend for the browser-test phase (INFRAHUB_TESTING_RESPONSE_DELAY set).
 
-    The signal is INFRAHUB_TESTING_RESPONSE_DELAY (the package convention), deliberately NOT the
-    backend's INFRAHUB_MISC_RESPONSE_DELAY: the latter is read at server startup, so putting it in
-    the boot environment would slow the demo-data load. set_server_response_delay writes the
-    backend var into the compose .env only after data is loaded, then recreates the server.
+        Mirrors the TS e2e CI job (which loads data, then restarts the server with
+        the delay): the direct dependencies provision the full dataset FIRST — the
+        load makes thousands of serialized GraphQL mutations, so a boot-time delay
+        would blow the CI budget — and only then is the infrahub-server recreated
+        with the per-request delay so browser flows exercise realistic loading
+        states. The per-role page fixtures depend on this so the delay is in
+        effect before any browser interaction. (demo_edge_repo is intentionally
+        not forced here: it is needed only by repo specs and loads lazily.)
 
-    infrahub_app is resolved lazily (request.getfixturevalue) AFTER the early return: a direct
-    parameter would be instantiated eagerly and boot the testcontainers stack even in the
-    pre-provisioned INFRAHUB_ADDRESS mode, where no container must ever start.
-    """
-    delay = int(os.environ.get("INFRAHUB_TESTING_RESPONSE_DELAY") or "0")
-    if not delay or infrahub_provisioned_externally:
-        return
+        Defined conditionally on the env because async fixtures cannot be resolved
+        lazily via request.getfixturevalue; the no-delay/no-op variant below
+        carries no data dependencies at all.
+        """
+        infrahub_app.set_server_response_delay(_RESPONSE_DELAY)
 
-    # Provision the heavy datasets BEFORE slowing the server: the demo-data load makes
-    # thousands of serialized GraphQL mutations, so a boot-time delay would blow the CI
-    # budget. (demo_edge_repo is intentionally not forced here — it is needed only by repo
-    # specs, its registration is a handful of calls, and forcing it would couple every
-    # delay-mode run to the Git fixture; it loads lazily when a repo spec requires it.)
-    for fixture_name in ("schema_base", "infrastructure_menu", "infrastructure_data"):
-        request.getfixturevalue(fixture_name)
+        # The server replicas were force-recreated; wait until the LB routes to a
+        # responsive instance again (each probe now also carries the delay).
+        last_exc: Exception | None = None
+        for _ in range(30):
+            try:
+                await infrahub_client.branch.all()
+                return
+            except Exception as exc:  # transient during recreate; re-raised below if it never recovers
+                last_exc = exc
+                await asyncio.sleep(2)
+        raise RuntimeError(f"infrahub-server did not recover after enabling the response delay: {last_exc}")
 
-    infrahub_app: InfrahubDockerCompose = request.getfixturevalue("infrahub_app")
-    infrahub_app.set_server_response_delay(delay)
+else:
 
-    # The server replicas were force-recreated; wait until the LB routes to a responsive
-    # instance again (each probe now also carries the delay).
-    last_exc: Exception | None = None
-    for _ in range(30):
-        try:
-            infrahub_client.branch.all()
-            return
-        except Exception as exc:  # transient during recreate; re-raised below if it never recovers
-            last_exc = exc
-            time.sleep(2)
-    raise RuntimeError(f"infrahub-server did not recover after enabling the response delay: {last_exc}")
+    @pytest.fixture(scope="session")
+    def response_delay_enabled() -> None:
+        """No-op: the response delay is unset (or the stack is externally provisioned)."""
 
 
 @pytest.fixture(scope="session")
@@ -460,21 +439,23 @@ def storage_state_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return tmp_path_factory.mktemp("e2e-auth")
 
 
-def _build_storage_state(browser: Browser, base_url: str, path: Path, username: str, password: str) -> str:
+async def _build_storage_state(browser: Browser, base_url: str, path: Path, username: str, password: str) -> str:
     """Log in once via the UI and persist the session, mirroring auth.setup.ts."""
-    context = browser.new_context(base_url=base_url)
-    page = context.new_page()
+    context = await browser.new_context(base_url=base_url)
+    page = await context.new_page()
     try:
-        login(page, username, password)
-        context.storage_state(path=path)
+        await login(page, username, password)
+        await context.storage_state(path=path)
     finally:
-        context.close()
+        await context.close()
     return str(path)
 
 
 @pytest.fixture(scope="session")
-def admin_storage_state(browser: Browser, base_url: str, storage_state_dir: Path, response_delay_enabled: None) -> str:
-    return _build_storage_state(
+async def admin_storage_state(
+    browser: Browser, base_url: str, storage_state_dir: Path, response_delay_enabled: None
+) -> str:
+    return await _build_storage_state(
         browser,
         base_url,
         storage_state_dir / "admin.json",
@@ -484,19 +465,17 @@ def admin_storage_state(browser: Browser, base_url: str, storage_state_dir: Path
 
 
 @pytest.fixture(scope="session")
-def read_write_storage_state(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
+async def read_write_storage_state(
     browser: Browser,
     base_url: str,
     storage_state_dir: Path,
-    request: pytest.FixtureRequest,
-    infrahub_provisioned_externally: bool,
+    data_rbac: RbacHandle,
     response_delay_enabled: None,
 ) -> str:
-    # The cobrian account comes from the RBAC slice — pulling the whole dataset
-    # just to authenticate would force the full load on every read-write test.
-    if not infrahub_provisioned_externally:
-        request.getfixturevalue("data_rbac")
-    return _build_storage_state(
+    # The cobrian account comes from the RBAC slice (which no-ops in external
+    # mode) — pulling the whole dataset just to authenticate would force the
+    # full load on every read-write test.
+    return await _build_storage_state(
         browser,
         base_url,
         storage_state_dir / "read-write.json",
@@ -506,18 +485,15 @@ def read_write_storage_state(  # noqa: PLR0913, PLR0917  (each argument is a pyt
 
 
 @pytest.fixture(scope="session")
-def read_only_storage_state(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
+async def read_only_storage_state(
     browser: Browser,
     base_url: str,
     storage_state_dir: Path,
-    request: pytest.FixtureRequest,
-    infrahub_provisioned_externally: bool,
+    data_rbac: RbacHandle,
     response_delay_enabled: None,
 ) -> str:
     # The jbauer account comes from the RBAC slice (see read_write_storage_state).
-    if not infrahub_provisioned_externally:
-        request.getfixturevalue("data_rbac")
-    return _build_storage_state(
+    return await _build_storage_state(
         browser,
         base_url,
         storage_state_dir / "read-only.json",
@@ -526,26 +502,26 @@ def read_only_storage_state(  # noqa: PLR0913, PLR0917  (each argument is a pyte
     )
 
 
-def _role_page(new_context: Callable[..., BrowserContext], storage_state: str) -> Page:
+async def _role_page(new_context: CreateContextCallback, storage_state: str) -> Page:
     # Use pytest-playwright's `new_context` factory (NOT browser.new_context) so the context is
     # registered with the artifacts recorder: failures of authenticated tests then produce a
     # trace/video/screenshot under --output (retain-on-failure). base_url and record_video_dir
     # come from browser_context_args; the factory closes the context and saves artifacts at
     # test teardown, so no manual close is needed here.
-    context = new_context(storage_state=storage_state)
-    return context.new_page()
+    context = await new_context(storage_state=storage_state)
+    return await context.new_page()
 
 
 @pytest.fixture
-def admin_page(new_context: Callable[..., BrowserContext], admin_storage_state: str) -> Page:
-    return _role_page(new_context, admin_storage_state)
+async def admin_page(new_context: CreateContextCallback, admin_storage_state: str) -> Page:
+    return await _role_page(new_context, admin_storage_state)
 
 
 @pytest.fixture
-def read_write_page(new_context: Callable[..., BrowserContext], read_write_storage_state: str) -> Page:
-    return _role_page(new_context, read_write_storage_state)
+async def read_write_page(new_context: CreateContextCallback, read_write_storage_state: str) -> Page:
+    return await _role_page(new_context, read_write_storage_state)
 
 
 @pytest.fixture
-def read_only_page(new_context: Callable[..., BrowserContext], read_only_storage_state: str) -> Page:
-    return _role_page(new_context, read_only_storage_state)
+async def read_only_page(new_context: CreateContextCallback, read_only_storage_state: str) -> Page:
+    return await _role_page(new_context, read_only_storage_state)

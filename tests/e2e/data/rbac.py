@@ -29,9 +29,9 @@ from infrahub_sdk.exceptions import NodeNotFoundError
 from data.handles import RbacHandle
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClientSync
-    from infrahub_sdk.batch import InfrahubBatchSync
-    from infrahub_sdk.node import InfrahubNodeSync
+    from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.batch import InfrahubBatch
+    from infrahub_sdk.node import InfrahubNode
 
 BRANCH = "main"
 
@@ -106,11 +106,11 @@ ACCOUNT_GROUPS = {
 }
 
 
-def _prepare_permissions(client: InfrahubClientSync, batch: InfrahubBatchSync) -> dict[str, InfrahubNodeSync]:
+async def _prepare_permissions(client: InfrahubClient, batch: InfrahubBatch) -> dict[str, InfrahubNode]:
     """Transcribes ``prepare_permissions`` (lines 2211-2228)."""
-    permissions: dict[str, InfrahubNodeSync] = {}
+    permissions: dict[str, InfrahubNode] = {}
     for perm in GLOBAL_PERMISSIONS:
-        obj = client.get(
+        obj = await client.get(
             branch=BRANCH,
             kind="CoreGlobalPermission",
             hfid=[perm["action"], str(perm["decision"])],
@@ -119,50 +119,50 @@ def _prepare_permissions(client: InfrahubClientSync, batch: InfrahubBatchSync) -
 
     for key, perm in OBJECT_PERMISSIONS.items():
         try:
-            obj = client.get(
+            obj = await client.get(
                 branch=BRANCH,
                 kind="CoreObjectPermission",
                 hfid=[perm["namespace"], perm["name"], perm["action"], str(perm["decision"])],
             )
         except NodeNotFoundError:
-            obj = client.create(branch=BRANCH, kind="CoreObjectPermission", data=dict(perm))
+            obj = await client.create(branch=BRANCH, kind="CoreObjectPermission", data=dict(perm))
             batch.add(task=obj.save, node=obj)
         permissions[key] = obj
     return permissions
 
 
-def _prepare_account_roles(client: InfrahubClientSync, batch: InfrahubBatchSync) -> dict[str, InfrahubNodeSync]:
+async def _prepare_account_roles(client: InfrahubClient, batch: InfrahubBatch) -> dict[str, InfrahubNode]:
     """Transcribes ``prepare_account_roles`` (lines 2231-2239)."""
-    roles: dict[str, InfrahubNodeSync] = {}
+    roles: dict[str, InfrahubNode] = {}
     for role in ACCOUNT_ROLES:
-        obj = client.create(branch=BRANCH, kind="CoreAccountRole", data={"name": role["name"]})
+        obj = await client.create(branch=BRANCH, kind="CoreAccountRole", data={"name": role["name"]})
         batch.add(task=obj.save, node=obj)
         roles[role["name"]] = obj
     return roles
 
 
-def _prepare_accounts(
-    client: InfrahubClientSync, batch: InfrahubBatchSync
-) -> tuple[dict[str, InfrahubNodeSync], dict[str, InfrahubNodeSync]]:
+async def _prepare_accounts(
+    client: InfrahubClient, batch: InfrahubBatch
+) -> tuple[dict[str, InfrahubNode], dict[str, InfrahubNode]]:
     """Transcribes ``prepare_accounts`` (lines 2242-2253): accounts then account groups."""
-    accounts: dict[str, InfrahubNodeSync] = {}
+    accounts: dict[str, InfrahubNode] = {}
     for account in ACCOUNTS:
-        obj = client.create(branch=BRANCH, kind="CoreAccount", data=dict(account))
+        obj = await client.create(branch=BRANCH, kind="CoreAccount", data=dict(account))
         batch.add(task=obj.save, allow_upsert=True, node=obj)
         accounts[account["name"]] = obj
 
-    groups: dict[str, InfrahubNodeSync] = {}
+    groups: dict[str, InfrahubNode] = {}
     for key, group in ACCOUNT_GROUPS.items():
-        obj = client.create(branch=BRANCH, kind="CoreAccountGroup", data={"name": group["name"]})
+        obj = await client.create(branch=BRANCH, kind="CoreAccountGroup", data={"name": group["name"]})
         batch.add(task=obj.save, allow_upsert=True, node=obj)
         groups[key] = obj
     return accounts, groups
 
 
-def _map_permissions_to_roles(
-    roles: dict[str, InfrahubNodeSync],
-    permissions: dict[str, InfrahubNodeSync],
-    batch: InfrahubBatchSync,
+async def _map_permissions_to_roles(
+    roles: dict[str, InfrahubNode],
+    permissions: dict[str, InfrahubNode],
+    batch: InfrahubBatch,
 ) -> None:
     """Transcribes ``map_permissions_to_roles`` (lines 2256-2314)."""
     for role in ACCOUNT_ROLES:
@@ -170,9 +170,9 @@ def _map_permissions_to_roles(
             continue
 
         obj = roles[role["name"]]
-        obj.permissions.fetch()
+        await obj.permissions.fetch()
 
-        role_permissions: list[InfrahubNodeSync] = []
+        role_permissions: list[InfrahubNode] = []
         if role["global_permissions"]:
             if role["global_permissions"] == "__all__":
                 role_permissions.extend(permissions[perm["action"]] for perm in GLOBAL_PERMISSIONS)
@@ -185,11 +185,11 @@ def _map_permissions_to_roles(
         batch.add(task=obj.save, node=obj)
 
 
-def _map_user_and_roles_to_groups(
-    groups: dict[str, InfrahubNodeSync],
-    roles: dict[str, InfrahubNodeSync],
-    accounts: dict[str, InfrahubNodeSync],
-    batch: InfrahubBatchSync,
+async def _map_user_and_roles_to_groups(
+    groups: dict[str, InfrahubNode],
+    roles: dict[str, InfrahubNode],
+    accounts: dict[str, InfrahubNode],
+    batch: InfrahubBatch,
 ) -> None:
     """Transcribes ``map_user_and_roles_to_groups`` (lines 2317-2356)."""
     for group_key, group in ACCOUNT_GROUPS.items():
@@ -197,11 +197,11 @@ def _map_user_and_roles_to_groups(
         obj = groups[group_key]
 
         if group["roles"]:
-            obj.roles.fetch()
+            await obj.roles.fetch()
             obj.roles.extend(data=[roles[role] for role in group["roles"]])
             updated = True
         if group["members"]:
-            obj.members.fetch()
+            await obj.members.fetch()
             obj.members.extend(data=[accounts[member] for member in group["members"]])
             updated = True
 
@@ -210,8 +210,8 @@ def _map_user_and_roles_to_groups(
 
 
 @pytest.fixture(scope="session")
-def data_rbac(
-    data_client: InfrahubClientSync,
+async def data_rbac(
+    data_client: InfrahubClient,
     schema_base: None,
     infrahub_provisioned_externally: bool,
 ) -> RbacHandle:
@@ -219,25 +219,25 @@ def data_rbac(
     if infrahub_provisioned_externally:
         return RbacHandle.external()
 
-    batch = data_client.create_batch()
-    permissions = _prepare_permissions(client=data_client, batch=batch)
-    roles = _prepare_account_roles(client=data_client, batch=batch)
-    for _ in batch.execute():
+    batch = await data_client.create_batch()
+    permissions = await _prepare_permissions(client=data_client, batch=batch)
+    roles = await _prepare_account_roles(client=data_client, batch=batch)
+    async for _ in batch.execute():
         pass
 
-    batch = data_client.create_batch()
-    accounts, groups = _prepare_accounts(client=data_client, batch=batch)
-    for _ in batch.execute():
+    batch = await data_client.create_batch()
+    accounts, groups = await _prepare_accounts(client=data_client, batch=batch)
+    async for _ in batch.execute():
         pass
 
-    batch = data_client.create_batch()
-    _map_permissions_to_roles(roles=roles, permissions=permissions, batch=batch)
-    for _ in batch.execute():
+    batch = await data_client.create_batch()
+    await _map_permissions_to_roles(roles=roles, permissions=permissions, batch=batch)
+    async for _ in batch.execute():
         pass
 
-    batch = data_client.create_batch()
-    _map_user_and_roles_to_groups(groups=groups, roles=roles, accounts=accounts, batch=batch)
-    for _ in batch.execute():
+    batch = await data_client.create_batch()
+    await _map_user_and_roles_to_groups(groups=groups, roles=roles, accounts=accounts, batch=batch)
+    async for _ in batch.execute():
         pass
 
     return RbacHandle(

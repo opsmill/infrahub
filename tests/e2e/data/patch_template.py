@@ -19,7 +19,7 @@ import pytest
 from data.handles import PatchTemplateHandle
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk import InfrahubClient
 
     from data.handles import OrgRegistryHandle
 
@@ -78,8 +78,8 @@ TEMPLATES: list[dict[str, Any]] = [
 
 
 @pytest.fixture(scope="session")
-def data_patch_template(
-    data_client: InfrahubClientSync,
+async def data_patch_template(
+    data_client: InfrahubClient,
     schema_base: None,
     data_org_registry: OrgRegistryHandle,
     infrahub_provisioned_externally: bool,
@@ -96,23 +96,23 @@ def data_patch_template(
     branch = "main"
     templates: dict[str, str] = {}
 
-    batch = data_client.create_batch()
+    batch = await data_client.create_batch()
 
     # Create Patch Panel Template
     for template in TEMPLATES:
         data = deepcopy(template)
         data["tags"] = [data_org_registry.tags[tag] for tag in template["tags"]]
-        patch_template = data_client.create(branch=branch, kind="TemplateInfraPatchPanel", data=data)
-        patch_template.save(allow_upsert=True)
+        patch_template = await data_client.create(branch=branch, kind="TemplateInfraPatchPanel", data=data)
+        await patch_template.save(allow_upsert=True)
         templates[data["template_name"]] = patch_template.id
 
         # and corresponding interfaces
         for interface in data["interfaces"]:
             interface["patch_panel"] = {"id": patch_template.id}
-            obj = data_client.create(branch=branch, kind="TemplateInfraFrontPatchPanelInterface", data=interface)
+            obj = await data_client.create(branch=branch, kind="TemplateInfraFrontPatchPanelInterface", data=interface)
             batch.add(task=obj.save, node=obj)
 
-    for node, _response in batch.execute():
+    async for node, _response in batch.execute():
         templates[node.template_name.value] = node.id
 
     return PatchTemplateHandle(templates=templates)

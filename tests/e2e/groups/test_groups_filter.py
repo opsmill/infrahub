@@ -11,27 +11,27 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
     from data.handles import SitesHandle
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 
 class TestCoreGroupFiltering:
-    def test_toggles_visibility_of_internal_groups(self, page: Page, data_sites: SitesHandle) -> None:
-        page.goto("/objects/CoreGroup")
+    async def test_toggles_visibility_of_internal_groups(self, page: Page, data_sites: SitesHandle) -> None:
+        await page.goto("/objects/CoreGroup")
 
         show_internal_groups_filter = page.get_by_role("row", name="internal groups is hidden")
         hide_internal_groups_filter = page.get_by_role("row", name="Hide internal groups")
         engineering_team_link = page.get_by_test_id("object-items").get_by_role("link", name="Engineering Team")
         computed_group_link = page.get_by_test_id("object-items").get_by_role("link", name="computed_").first
 
-        expect(show_internal_groups_filter).to_be_visible()
-        expect(engineering_team_link).to_be_visible()
-        expect(computed_group_link).to_be_hidden()
+        await expect(show_internal_groups_filter).to_be_visible()
+        await expect(engineering_team_link).to_be_visible()
+        await expect(computed_group_link).to_be_hidden()
 
-        show_internal_groups_filter.click()
+        await show_internal_groups_filter.click()
 
-        expect(hide_internal_groups_filter).to_be_visible()
-        expect(engineering_team_link).to_be_visible()
+        await expect(hide_internal_groups_filter).to_be_visible()
+        await expect(engineering_team_link).to_be_visible()

@@ -12,38 +12,38 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import generate_random_branch_name
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
 
     from helpers import BranchAPI
-    from playwright.sync_api import Page
+    from playwright.async_api import Page
 
 
 class TestBranchMergeAction:
     @pytest.fixture
-    def branch_name(self, branch_api: BranchAPI) -> Generator[str, None, None]:
+    async def branch_name(self, branch_api: BranchAPI) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("merge-branch")
-        branch_api.create(name)
+        await branch_api.create(name)
         yield name
         # afterAll: the test merges the branch; deletion may already be moot.
         with contextlib.suppress(Exception):
-            branch_api.delete(name)
+            await branch_api.delete(name)
 
-    def test_disable_merge_button_during_merge_and_reenable_when_complete(
+    async def test_disable_merge_button_during_merge_and_reenable_when_complete(
         self, admin_page: Page, branch_name: str
     ) -> None:
         # access the branch details page
-        admin_page.goto(f"/branches/{branch_name}")
-        admin_page.get_by_text("Tasks").click()
-        expect(admin_page.get_by_text("Loading...Loading...")).to_be_visible()
-        expect(admin_page.get_by_text("Loading...Loading...")).not_to_be_visible()
-        expect(admin_page.get_by_text("No task")).to_be_visible()
+        await admin_page.goto(f"/branches/{branch_name}")
+        await admin_page.get_by_text("Tasks").click()
+        await expect(admin_page.get_by_text("Loading...Loading...")).to_be_visible()
+        await expect(admin_page.get_by_text("Loading...Loading...")).not_to_be_visible()
+        await expect(admin_page.get_by_text("No task")).to_be_visible()
 
         # Merge the branch and verify button state
-        admin_page.get_by_role("button", name="Merge", exact=True).click()
-        expect(admin_page.get_by_text("Branch merge requested!")).to_be_visible()
-        expect(admin_page.get_by_role("button", name="Merge", exact=True)).to_be_disabled()
-        expect(admin_page.get_by_text("COMPLETEDMerge branch graphQL")).to_be_visible(timeout=5 * 60 * 1000)
-        expect(admin_page.get_by_role("button", name="Merge", exact=True)).to_be_disabled()
+        await admin_page.get_by_role("button", name="Merge", exact=True).click()
+        await expect(admin_page.get_by_text("Branch merge requested!")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Merge", exact=True)).to_be_disabled()
+        await expect(admin_page.get_by_text("COMPLETEDMerge branch graphQL")).to_be_visible(timeout=5 * 60 * 1000)
+        await expect(admin_page.get_by_role("button", name="Merge", exact=True)).to_be_disabled()

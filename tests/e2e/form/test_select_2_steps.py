@@ -21,76 +21,80 @@ from typing import TYPE_CHECKING
 
 import pytest
 from helpers import generate_random_branch_name
-from playwright.sync_api import expect
+from playwright.async_api import expect
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
 
     from data.handles import SitesHandle
-    from infrahub_sdk import InfrahubClientSync
-    from playwright.sync_api import Page
+    from infrahub_sdk import InfrahubClient
+    from playwright.async_api import Page
 
 
 class TestVerifiesObjectCreation:
     @pytest.fixture(scope="class")
-    def select_branch(self, infrahub_client: InfrahubClientSync, data_sites: SitesHandle) -> Generator[str, None, None]:
+    async def select_branch(
+        self, infrahub_client: InfrahubClient, data_sites: SitesHandle
+    ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("select-2-steps")
-        infrahub_client.branch.create(branch_name=name, sync_with_git=False)
+        await infrahub_client.branch.create(branch_name=name, sync_with_git=False)
         yield name
         with contextlib.suppress(Exception):
-            infrahub_client.branch.delete(branch_name=name)
+            await infrahub_client.branch.delete(branch_name=name)
 
-    def test_creates_and_verifies_the_nodes_values(self, admin_page: Page, select_branch: str) -> None:
+    async def test_creates_and_verifies_the_nodes_values(self, admin_page: Page, select_branch: str) -> None:
         # create the object
-        admin_page.goto(f"/objects/InfraVLAN?branch={select_branch}")
-        admin_page.get_by_test_id("create-object-button").click()
-        admin_page.get_by_role("combobox", name="Site").click()
-        admin_page.get_by_role("option", name="atl1").click()
-        admin_page.get_by_role("textbox", name="Name *").fill("vlan-test")
-        admin_page.get_by_role("spinbutton", name="Vlan Id *").fill("600")
-        admin_page.get_by_role("combobox", name="Device").click()
-        admin_page.get_by_role("option", name="atl1-core1").click()
-        admin_page.get_by_role("combobox", name="L3 Gateway").click()
-        admin_page.get_by_role("option", name="MGMT").click()
-        admin_page.get_by_role("button", name="Save").click()
-        expect(admin_page.get_by_text("VLAN created")).to_be_visible()
+        await admin_page.goto(f"/objects/InfraVLAN?branch={select_branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_role("combobox", name="Site").click()
+        await admin_page.get_by_role("option", name="atl1").click()
+        await admin_page.get_by_role("textbox", name="Name *").fill("vlan-test")
+        await admin_page.get_by_role("spinbutton", name="Vlan Id *").fill("600")
+        await admin_page.get_by_role("combobox", name="Device").click()
+        await admin_page.get_by_role("option", name="atl1-core1").click()
+        await admin_page.get_by_role("combobox", name="L3 Gateway").click()
+        await admin_page.get_by_role("option", name="MGMT").click()
+        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("VLAN created")).to_be_visible()
 
         # verify object details
-        admin_page.get_by_role("link", name="vlan-test").click()
-        expect(admin_page.get_by_text("Namevlan-test")).to_be_visible()
-        expect(admin_page.get_by_text("Vlan Id600")).to_be_visible()
-        expect(admin_page.get_by_text("L3 GatewayMGMT")).to_be_visible()
+        await admin_page.get_by_role("link", name="vlan-test").click()
+        await expect(admin_page.get_by_text("Namevlan-test")).to_be_visible()
+        await expect(admin_page.get_by_text("Vlan Id600")).to_be_visible()
+        await expect(admin_page.get_by_text("L3 GatewayMGMT")).to_be_visible()
 
         # verify initial values
-        admin_page.get_by_test_id("edit-button").click()
-        expect(admin_page.get_by_role("combobox", name="Device")).to_be_visible()
-        expect(admin_page.get_by_role("combobox", name="L3 Gateway")).to_be_visible()
+        await admin_page.get_by_test_id("edit-button").click()
+        await expect(admin_page.get_by_role("combobox", name="Device")).to_be_visible()
+        await expect(admin_page.get_by_role("combobox", name="L3 Gateway")).to_be_visible()
 
-    def test_verifies_empty_values_after_kind_select(self, admin_page: Page, select_branch: str) -> None:
-        admin_page.goto(f"/objects/CoreGraphQLQuery?branch={select_branch}")
-        admin_page.get_by_test_id("create-object-button").click()
-        admin_page.get_by_role("combobox", name="Kind").click()
-        admin_page.get_by_role("option", name="Repository Core", exact=True).click()
-        admin_page.get_by_label("Repository").click()
-        expect(admin_page.get_by_text("Read-Only Repository", exact=True)).not_to_be_visible()
+    async def test_verifies_empty_values_after_kind_select(self, admin_page: Page, select_branch: str) -> None:
+        await admin_page.goto(f"/objects/CoreGraphQLQuery?branch={select_branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
+        await admin_page.get_by_role("combobox", name="Kind").click()
+        await admin_page.get_by_role("option", name="Repository Core", exact=True).click()
+        await admin_page.get_by_label("Repository").click()
+        await expect(admin_page.get_by_text("Read-Only Repository", exact=True)).not_to_be_visible()
 
-    def test_verifies_values_in_kind_and_parent_selects(self, admin_page: Page, select_branch: str) -> None:
+    async def test_verifies_values_in_kind_and_parent_selects(self, admin_page: Page, select_branch: str) -> None:
         # got to the edit form
-        admin_page.goto(f"/objects/InfraInterfaceL3?branch={select_branch}")
-        admin_page.get_by_test_id("identifier-cell").get_by_role("link", name="Ethernet1", exact=True).first.click()
-        admin_page.get_by_test_id("edit-button").click()
+        await admin_page.goto(f"/objects/InfraInterfaceL3?branch={select_branch}")
+        await (
+            admin_page.get_by_test_id("identifier-cell").get_by_role("link", name="Ethernet1", exact=True).first.click()
+        )
+        await admin_page.get_by_test_id("edit-button").click()
 
         # Use get_by_label (the <label for> association) rather than get_by_role(combobox,
         # name="Kind"): once the polymorphic Kind combobox is hydrated, its visible value
         # ("Interface L3") becomes its accessible name, so a role+name="Kind" query no longer
         # matches. This mirrors the TS original (select-2-steps.spec.ts uses getByLabel).
-        expect(admin_page.get_by_label("Kind")).to_contain_text("Interface L3 Infra")
-        expect(admin_page.locator('button[name="connected_endpoint_parent"]')).to_contain_text("atl1-edge2")
-        expect(admin_page.get_by_test_id("side-panel-container").get_by_label("Interface L3")).to_contain_text(
+        await expect(admin_page.get_by_label("Kind")).to_contain_text("Interface L3 Infra")
+        await expect(admin_page.locator('button[name="connected_endpoint_parent"]')).to_contain_text("atl1-edge2")
+        await expect(admin_page.get_by_test_id("side-panel-container").get_by_label("Interface L3")).to_contain_text(
             "Ethernet1"
         )
 
-        admin_page.get_by_test_id("side-panel-container").get_by_label("Interface L3").click()
-        expect(admin_page.get_by_role("option", name="Ethernet10")).to_be_visible()
-        expect(admin_page.get_by_role("option", name="Loopback0")).to_be_visible()
-        expect(admin_page.get_by_role("option", name="Management0")).to_be_visible()
+        await admin_page.get_by_test_id("side-panel-container").get_by_label("Interface L3").click()
+        await expect(admin_page.get_by_role("option", name="Ethernet10")).to_be_visible()
+        await expect(admin_page.get_by_role("option", name="Loopback0")).to_be_visible()
+        await expect(admin_page.get_by_role("option", name="Management0")).to_be_visible()
