@@ -16,7 +16,6 @@
   "scripts": {
     "build": "tsc -b && vite build",
     "build-storybook": "storybook build",
-    "chromatic": "chromatic",
     "dev": "vite",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
@@ -50,7 +49,6 @@
     "@vitest/browser-playwright": "^4.1.5",
     "@xyflow/react": "^12.10.2",
     "babel-plugin-react-compiler": "^1.0.0",
-    "chromatic": "^16.6.3",
     "globals": "^17.5.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
