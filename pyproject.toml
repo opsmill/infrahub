@@ -1275,6 +1275,22 @@ unresolved-reference = "ignore"
 unsupported-operator = "ignore"
 
 [[tool.ty.overrides]]
+include = ["tests/e2e/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The e2e suite drives the plain sync SDK client with kind strings, so node attribute access     #
+# goes through InfrahubNodeSync.__getattr__ and resolves to Attribute | RelationshipManagerSync  #
+# | RelatedNodeSync unions that cannot be narrowed statically without the generated protocol     #
+# classes (which tests/e2e deliberately does not depend on).                                     #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
 include = ["utilities/**"]
 
 [tool.ty.overrides.rules]
