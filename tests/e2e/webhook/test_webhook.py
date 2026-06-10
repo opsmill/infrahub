@@ -14,7 +14,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import save_screenshot_for_docs
+from helpers import Deadline, save_screenshot_for_docs
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
@@ -83,7 +83,9 @@ class TestCoreWebhook:
         expect(admin_page.get_by_text("Activities", exact=True)).to_be_visible()
         expect(admin_page.get_by_test_id("activities-panel").get_by_text("Loading...")).to_be_hidden()
 
+        deadline = Deadline("the webhook activity log to be populated")
         while admin_page.get_by_text("No activity found for this").is_visible():
+            deadline.tick()
             admin_page.reload()
             expect(admin_page.get_by_text("Activities", exact=True)).to_be_visible()
             expect(admin_page.get_by_test_id("activities-panel").get_by_text("Loading...")).to_be_hidden()

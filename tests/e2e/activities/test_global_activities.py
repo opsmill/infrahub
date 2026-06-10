@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from helpers import save_screenshot_for_docs
+from helpers import Deadline, save_screenshot_for_docs
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
@@ -54,7 +54,9 @@ class TestGlobalActivities:
         # Open event details and verify children are displayed
         admin_page.get_by_role("link", name="View details").first.click()
 
+        deadline = Deadline("the event details activity log to be populated")
         while admin_page.get_by_text("No activity found for this object.").is_visible():
+            deadline.tick()
             admin_page.reload()
             expect(admin_page.get_by_test_id("activities-container").get_by_text("Loading...")).to_be_hidden()
         # Check that at least one "View more." button is present in the details page

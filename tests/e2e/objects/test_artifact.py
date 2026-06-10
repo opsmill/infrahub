@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from helpers import Deadline
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
@@ -29,13 +30,17 @@ class TestArtifactPage:
     def test_should_generate_artifacts_successfully(self, admin_page: Page) -> None:
         admin_page.goto('/objects/CoreArtifact?filters=[{"name":"name__value","value":"startup-config"}]')
 
-        # reload page until we have artifacts defined
+        # reload page until we have artifacts defined (generated asynchronously after repo sync)
+        deadline = Deadline("startup-config artifacts to be generated", timeout=300)
         while admin_page.get_by_role("link", name="startup-config").first.is_hidden():
+            deadline.tick()
             if admin_page.get_by_text("No Artifact found").is_visible():
                 admin_page.reload()
 
         admin_page.get_by_role("link", name="startup-config").first.click()
+        deadline = Deadline("the startup-config artifact content to be available", timeout=300)
         while admin_page.get_by_text("no aaa root").first.is_hidden():
+            deadline.tick()
             expect(admin_page.get_by_role("heading", name="startup-config")).to_be_visible()
             if admin_page.get_by_text("No artifact content available").is_visible():
                 admin_page.reload()

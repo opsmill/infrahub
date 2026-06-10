@@ -8,6 +8,7 @@ TypeScript suite.
 from __future__ import annotations
 
 import os
+import time
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,6 +22,33 @@ if TYPE_CHECKING:
 
 # docs/docs/media relative to the repo root (helpers.py is tests/e2e/helpers.py).
 _DOCS_MEDIA_DIR = Path(__file__).resolve().parents[2] / "docs" / "docs" / "media"
+
+_RESPONSE_DELAY = int(os.environ.get("INFRAHUB_TESTING_RESPONSE_DELAY") or "0")
+
+
+class Deadline:
+    """Bound a reload-until-condition poll loop.
+
+    The legacy TS suite relied on Playwright's per-test timeout (3 min in CI) to
+    bound its ``while (...) reload()`` loops; this suite deliberately runs without
+    a per-test timeout, so an async effect that never materializes (artifact
+    generation, activity-log propagation, profile refresh) would otherwise spin
+    until the CI job ceiling and take the whole run down with it. Call ``tick()``
+    on every iteration: it pauses briefly (the loop conditions are
+    immediate-return locator checks) and fails the test once the deadline
+    expires. The budget doubles in response-delay mode, mirroring the widened
+    ``expect`` timeout.
+    """
+
+    def __init__(self, waiting_for: str, timeout: float = 180.0) -> None:
+        self._waiting_for = waiting_for
+        self._timeout = timeout * (2 if _RESPONSE_DELAY else 1)
+        self._expires_at = time.monotonic() + self._timeout
+
+    def tick(self, pause: float = 0.5) -> None:
+        if time.monotonic() >= self._expires_at:
+            raise AssertionError(f"Timed out after {self._timeout:.0f}s waiting for {self._waiting_for}")
+        time.sleep(pause)
 
 
 def generate_random_branch_name(prefix: str = "") -> str:

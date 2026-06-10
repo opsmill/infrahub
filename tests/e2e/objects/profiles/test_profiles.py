@@ -20,7 +20,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import Deadline, generate_random_branch_name
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
@@ -145,7 +145,9 @@ class TestProfiles:
         expect(admin_page.get_by_role("heading", name="tag with profile")).to_be_visible()
 
         # Refresh profile is an async task
+        deadline = Deadline("the edited profile description to propagate to the tag")
         while admin_page.get_by_text("DescriptionA profile for E2E test edited").is_hidden():
+            deadline.tick()
             admin_page.reload()
             expect(admin_page.get_by_text("DescriptionA profile for E2E test")).to_be_visible()
 
