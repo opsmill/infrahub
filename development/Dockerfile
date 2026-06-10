@@ -59,8 +59,8 @@ COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
 COPY frontend/packages/ui/ /frontend/packages/ui/
 COPY frontend/app/ /frontend/app/
 WORKDIR /frontend/app
-# CI=true disables tailwind animations at build time (app tailwind.config.js) to avoid flaky e2e.
-# Declared just before the build so toggling it only re-runs this layer.
+
+# CI is used to customize config, like disabling animations at build time to avoid flaky e2e.
 ARG CI_ARG
 ENV CI=$CI_ARG
 RUN pnpm build
