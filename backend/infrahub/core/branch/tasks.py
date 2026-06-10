@@ -414,6 +414,7 @@ async def _do_merge_branch(
         async with lock.registry.global_graph_lock():
             # Set to MERGING to lock the branch while merge proceeds
             branch.status = BranchStatus.MERGING
+            branch.merge_started_at = merge_at.to_string()
             await branch.save(db=db, user_id=user_id)
             registry.branch[branch.name] = branch
             await merger.merge(at=merge_at)

@@ -32,7 +32,7 @@ class Branch(StandardNode):
     status: BranchStatus = BranchStatus.OPEN
     description: str = ""
     origin_branch: str = "main"
-    branched_from: Optional[str] = Field(default=None, validate_default=True)
+    branched_from: str | None = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
     is_default: bool = False
     is_global: bool = False
@@ -42,9 +42,10 @@ class Branch(StandardNode):
         description="Indicate if the branch should be extended to Git and if Infrahub should merge the branch in Git as part of a proposed change",
     )
     is_isolated: bool = True
-    schema_changed_at: Optional[str] = None
-    schema_hash: Optional[SchemaBranchHash] = None
+    schema_changed_at: str | None = None
+    schema_hash: SchemaBranchHash | None = None
     graph_version: int | None = None
+    merge_started_at: str | None = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
@@ -82,6 +83,13 @@ class Branch(StandardNode):
     @field_validator("branched_from", mode="before")
     @classmethod
     def set_branched_from(cls, value: str) -> str:
+        return Timestamp(value).to_string()
+
+    @field_validator("merge_started_at", mode="before")
+    @classmethod
+    def set_merge_started_at(cls, value: Timestamp | str | None) -> str | None:
+        if value is None:
+            return None
         return Timestamp(value).to_string()
 
     def get_branched_from(self) -> str:

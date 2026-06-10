@@ -5,6 +5,7 @@ from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -452,6 +453,24 @@ async def test_create_branch(db: InfrahubDatabase, empty_database: None) -> None
     branch = await Branch.get_by_name(name=branch_name, db=db)
     assert branch.name == branch_name
     assert branch.description == description
+
+
+async def test_branch_merge_started_at_round_trip(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """merge_started_at persists on the :Branch node and is read back unchanged."""
+    branch_name = "merge-started-at-branch"
+    branch = Branch(name=branch_name, status=BranchStatus.OPEN, branched_from=Timestamp().to_string())
+    await branch.save(db=db)
+
+    # Defaults to None and round-trips as None.
+    reloaded = await Branch.get_by_name(name=branch_name, db=db)
+    assert reloaded.merge_started_at is None
+
+    merge_at = Timestamp()
+    branch.merge_started_at = merge_at.to_string()
+    await branch.save(db=db)
+
+    reloaded = await Branch.get_by_name(name=branch_name, db=db)
+    assert reloaded.merge_started_at == merge_at.to_string()
 
 
 async def test_get_list_with_offset(db: InfrahubDatabase, default_branch: Branch) -> None:
