@@ -97,7 +97,9 @@ class TestLoginNotLoggedIn:
         # The initial page targets the `atl1-delete-upstream` branch created by
         # the demo-data branch scenarios, hence the infrastructure_data dependency.
         _disable_sso(page)
-        date = datetime.now(UTC).isoformat()
+        # Match JS toISOString(): a trailing Z, not +00:00 (whose + decodes to a
+        # space in the query string, making the `at` timestamp invalid).
+        date = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         initial_page = f"/objects/BuiltinTag?at={date}&branch=atl1-delete-upstream"
         page.goto(initial_page)
 
