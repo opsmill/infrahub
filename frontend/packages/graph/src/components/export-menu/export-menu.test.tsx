@@ -24,6 +24,36 @@ describe("ExportMenu", () => {
     expect(onExport).toHaveBeenCalledExactlyOnceWith("png");
   });
 
+  test("exposes expanded state and moves focus into the menu on open", async () => {
+    // GIVEN
+    const component = await render(<ExportMenu onExport={vi.fn()} />);
+    const trigger = component.getByRole("button", { name: "Export diagram" });
+
+    // THEN the collapsed state is exposed
+    await expect.element(trigger).toHaveAttribute("aria-expanded", "false");
+
+    // WHEN the menu is opened
+    await trigger.click();
+
+    // THEN the expanded state is exposed and focus lands on the first option
+    await expect.element(trigger).toHaveAttribute("aria-expanded", "true");
+    await expect.element(component.getByRole("button", { name: "PNG" })).toHaveFocus();
+  });
+
+  test("returns focus to the trigger when the menu is dismissed with Escape", async () => {
+    // GIVEN an open menu
+    const component = await render(<ExportMenu onExport={vi.fn()} />);
+    const trigger = component.getByRole("button", { name: "Export diagram" });
+    await trigger.click();
+    await expect.element(component.getByRole("button", { name: "PNG" })).toBeVisible();
+
+    // WHEN pressing Escape
+    await userEvent.keyboard("{Escape}");
+
+    // THEN focus moves back to the trigger
+    await expect.element(trigger).toHaveFocus();
+  });
+
   test("closes on Escape without exporting", async () => {
     // GIVEN an open menu
     const onExport = vi.fn();

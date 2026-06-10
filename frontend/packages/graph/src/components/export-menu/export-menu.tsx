@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { cn } from "tailwind-variants";
 
 import { useDismiss } from "../../hooks/use-dismiss";
@@ -18,7 +18,19 @@ export interface ExportMenuProps {
 export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useDismiss(ref, () => setOpen(false), open);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+  useDismiss(
+    ref,
+    (event) => {
+      setOpen(false);
+      // Escape returns focus to the trigger; outside clicks leave focus where the user pointed.
+      if (event instanceof KeyboardEvent) {
+        triggerRef.current?.focus();
+      }
+    },
+    open,
+  );
 
   const handleExport = (format: ExportFormat) => {
     // Always close the menu, even if the consumer's onExport throws — otherwise the
@@ -27,6 +39,7 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
       onExport(format);
     } finally {
       setOpen(false);
+      triggerRef.current?.focus();
     }
   };
 
@@ -34,10 +47,13 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
     <div className="relative" ref={ref}>
       <Tooltip message={label}>
         <Button
+          ref={triggerRef}
           variant="ghost"
           size="sm"
           shape="square"
           aria-label={label}
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
           onPress={() => setOpen(!open)}
           className={cn(
             open ? "bg-indigo-500 text-white data-hovered:bg-indigo-600" : "text-gray-600",
@@ -47,8 +63,12 @@ export function ExportMenu({ onExport, label = "Export diagram" }: ExportMenuPro
         </Button>
       </Tooltip>
       {open && (
-        <div className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+        <div
+          id={menuId}
+          className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+        >
           <Button
+            autoFocus
             variant="ghost"
             size="sm"
             onPress={() => handleExport("png")}
