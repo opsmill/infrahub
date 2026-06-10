@@ -88,13 +88,15 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
 
         if not response.state.is_final():
             response = await wait_for_flow_run(flow_run_id=response.id, timeout=None, poll_interval=1)
-            if not response.state:
-                raise RuntimeError("Unable to read state from the response")
 
-        if response.state.type == StateType.CRASHED:
-            raise RuntimeError(response.state.message)
+        state = response.state
+        if not state:
+            raise RuntimeError("Unable to read state from the response")
 
-        return await response.state.result(raise_on_failure=True)
+        if state.type == StateType.CRASHED:
+            raise RuntimeError(state.message)
+
+        return await state.result(raise_on_failure=True)
 
     async def submit_workflow(
         self,
