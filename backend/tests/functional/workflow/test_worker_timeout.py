@@ -30,7 +30,7 @@ async def test_execute_workflow_raises_when_no_worker_available(
     """A synchronous workflow must fail fast when no worker picks up the run within the timeout."""
     service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
 
-    with pytest.raises(ServiceUnavailableError, match=r"did not complete within 1.0 seconds"):
+    with pytest.raises(ServiceUnavailableError, match=r"was not picked up by a worker within 1.0 seconds"):
         await service.execute_workflow(
             workflow=DUMMY_FLOW,
             parameters={"data": DummyInput(firstname="Test", lastname="User")},

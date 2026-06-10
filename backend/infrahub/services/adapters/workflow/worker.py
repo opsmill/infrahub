@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, overload
 from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
-from prefect.exceptions import FlowRunWaitTimeout
+from prefect.flow_runs import wait_for_flow_run
 
 from infrahub import config, lock
 from infrahub.exceptions import ServiceUnavailableError
@@ -76,22 +76,24 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         parameters = dict(parameters) if parameters is not None else {}
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
-        try:
-            response: FlowRun = await run_deployment(
-                name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags, timeout=timeout_seconds
-            )  # type: ignore[return-value, misc]
-        except FlowRunWaitTimeout as exc:
-            raise ServiceUnavailableError(
-                f"Workflow {workflow.full_name} did not complete within {timeout_seconds} seconds"
-            ) from exc
-
+        response: FlowRun = await run_deployment(
+            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags, timeout=timeout_seconds
+        )  # type: ignore[return-value, misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
-        if timeout_seconds is not None and not response.state.is_final():
+        # When a timeout is set and the run has still not been claimed by a worker, treat the worker
+        # as unreachable instead of holding the caller (and any lock it owns) indefinitely. A run that
+        # a worker has already started is left to finish on its own schedule.
+        if timeout_seconds is not None and response.state.type in (StateType.SCHEDULED, StateType.PENDING):
             raise ServiceUnavailableError(
-                f"Workflow {workflow.full_name} did not complete within {timeout_seconds} seconds"
+                f"Workflow {workflow.full_name} was not picked up by a worker within {timeout_seconds} seconds"
             )
+
+        if not response.state.is_final():
+            response = await wait_for_flow_run(flow_run_id=response.id, timeout=None, poll_interval=1)
+            if not response.state:
+                raise RuntimeError("Unable to read state from the response")
 
         if response.state.type == StateType.CRASHED:
             raise RuntimeError(response.state.message)

@@ -447,12 +447,12 @@ class WorkflowSettings(BaseSettings):
         description="Threshold for caching flow run counts (0 to always cache, higher values to disable)",
     )
     schema_load_timeout: int = Field(
-        default=600,
+        default=60,
         ge=1,
         description=(
-            "Maximum time (sec) the API will wait for schema validation and migration workflows to complete "
-            "during a schema load before aborting. Bounds how long the schema lock can be held when the task "
-            "worker is unreachable."
+            "Maximum time (sec) the API will wait for a task worker to pick up the schema validation and "
+            "migration workflows during a schema load. Bounds how long the schema lock can be held when no "
+            "worker is available; once a worker starts the run it is allowed to finish without this limit."
         ),
     )
 
