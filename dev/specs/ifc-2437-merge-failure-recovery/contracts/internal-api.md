@@ -1,14 +1,16 @@
 # Internal Contracts: Merge Failure Recovery
 
-**Spec**: `../spec.md` | **Plan**: `../plan.md` | **Revised** for new bulk-merge architecture and review feedback
+**Spec**: `../spec.md` | **Plan**: `../plan.md` | **Research**: `../research.md` | **Date**: 2026-06-04
 
-This feature exposes no new external (REST/GraphQL) endpoints. The contracts below are the internal Python interfaces added or modified.
+This feature exposes **no new external REST/GraphQL endpoint**. The only client-visible change is a
+new value in the auto-generated `BranchStatus` GraphQL enum. The contracts below are the internal
+Python interfaces added or modified.
 
 ## 1. BranchStatus and Branch model
 
 **File**: `backend/infrahub/core/branch/enums.py`
 
-Add two new transient statuses:
+Add one durable status (do **not** add it to `TERMINAL_BRANCH_STATUSES`):
 
 ```python
 class BranchStatus(InfrahubStringEnum):
@@ -16,230 +18,397 @@ class BranchStatus(InfrahubStringEnum):
     NEED_REBASE = "NEED_REBASE"
     NEED_UPGRADE_REBASE = "NEED_UPGRADE_REBASE"
     DELETING = "DELETING"
-    MERGING = "MERGING"          # NEW — set for the full _do_merge_branch window
-                                  # (covers migrations and repo merges); blocks writes
-                                  # but is NOT scanned by recovery
-    MERGING_GRAPH = "MERGING_GRAPH"  # NEW — set only inside DiffMerger.merge_graph;
-                                      # scanned by recovery on startup
+    MERGING = "MERGING"
+    MERGE_FAILED = "MERGE_FAILED"   # NEW — set by the detector; cleared only by recovery
     MERGED = "MERGED"
 ```
 
-The two statuses serve distinct purposes:
-
-| Status          | Window                                              | Scanned by recovery | Blocks writes |
-|-----------------|-----------------------------------------------------|---------------------|---------------|
-| `MERGING_GRAPH` | inside `DiffMerger.merge_graph` only                | yes                 | yes           |
-| `MERGING`       | rest of `_do_merge_branch` (migrations, repo merges)| no                  | yes           |
-
-Lifecycle: `OPEN → MERGING → MERGING_GRAPH → MERGING → MERGED` on success; `→ OPEN` on failure (after rollback or after migration error handling).
-
-Recovery only acts on `MERGING_GRAPH` because only graph-merge crashes leave a partial graph state. A crash during `MERGING` (post-graph-merge work) is a different failure mode (out of scope per research R6) and `DiffMergeRollbackQuery` would do the wrong thing if applied there — it would un-merge correctly-merged data.
+**File**: `python_sdk/infrahub_sdk/branch.py` (submodule) — mirror the value into the SDK enum so
+clients can read and reason about it.
 
 **File**: `backend/infrahub/core/branch/models.py`
-
-One supplementary field on `Branch`:
 
 ```python
 class Branch(StandardNode):
     # ... existing fields ...
-
     merge_started_at: Timestamp | None = None
 ```
 
-**Persistence contract**: `merge_started_at` persists on the `:Branch` Neo4j node alongside existing branch attributes. It is set when entering `MERGING_GRAPH` and cleared when exiting it: `status == MERGING_GRAPH` iff `merge_started_at is not None`. (It is *not* set during the broader `MERGING` state — it is only meaningful for rollback, which is only relevant during `MERGING_GRAPH`.) Writes go through the helpers in §2.
+**Persistence contract**: `merge_started_at` persists on the `:Branch` node via the existing
+`StandardNode.save()` path. It is **(over)written when entering `MERGING`** and then **left in
+place** — it records when the most recent merge started. It is **not** cleared on `MERGED`/`OPEN`:
+nothing keys off its presence (detection reads it only when `status == MERGING`, recovery only when
+`MERGE_FAILED`, and the write block is the cache key), so a residual value on an `OPEN`/`MERGED`
+branch is inert and is overwritten by the next merge. The merge target is always
+`registry.default_branch` and is not persisted.
 
-The merge target is always `registry.default_branch` and is therefore not persisted on the marker. If a future feature lifts that restriction (non-default merge targets), this contract must add a `merge_target_branch` field.
+## 2. Merge orchestration changes (persist the timestamp)
 
-## 2. BranchMerger marker helpers
+**File**: `backend/infrahub/core/branch/tasks.py`
 
-**File**: `backend/infrahub/core/merge/branch_merger.py`
+Minimal edits to the existing flow — no signature changes:
 
-Two pairs of helpers, each governing one of the two transient statuses. `BranchMerger` owns these because setting/clearing them is a merge-orchestration concern. `Branch` is the data carrier; the merger drives the transitions.
+- `_do_merge_branch`, at the `OPEN → MERGING` transition (currently line 396-397): also set
+  `branch.merge_started_at = merge_at` before `branch.save(...)`. (`merge_at` already exists at
+  line 376.) This is the **only** write to `merge_started_at` — it is not cleared on `MERGED`,
+  `OPEN`, or recovery (it is overwritten by the next merge); see the persistence contract in §1.
+- **Set the `merge:protected` cache key** on the `OPEN → MERGING` transition (value
+  `"{branch}::MERGING"`), as the first step of the merge — right after acquiring the global merge
+  lock and before any graph write — and **delete it** at the `MERGED` transition and in
+  `_rollback_merge`. This is the immediately-consistent signal every worker reads on the write path
+  (research R11). No `RefreshRegistryBranches` broadcast is added at the merge-status transitions.
+- **Reorder post-graph follow-on after the point of no return — MANDATORY** (research R12): the
+  `IPAM_RECONCILIATION` submission (currently lines 444-454, *before* `MERGED`) MUST move to *after*
+  the `branch.status = MERGED` save (after line 479). Compute `ipam_node_details` where it is today
+  (a read, before `freeze_diffs`) but defer the `submit_workflow(IPAM_RECONCILIATION, ...)` call
+  until after `MERGED`. This is **load-bearing for the metadata restore (§3)**: the IPAM reconciler
+  does not write `previous_*` snapshots, so if IPAM ran for a failed merge its collateral vertices
+  could not be metadata-restored. Reordering guarantees a `MERGE_FAILED` branch (never `MERGED`)
+  never ran IPAM — no IPAM collateral, and no IPAM run racing/following recovery. `/speckit-tasks`
+  audits for any other pre-`MERGED` follow-on that writes the default branch without snapshotting
+  `previous_*` (schema migrations are handled by co-writing `previous_*`, §3).
+
+> The global `MergeLocker` lock at line 297 is already held for the entire `_do_merge_branch` call,
+> so its `timestamp::worker_id` token is present throughout the `MERGING` window and is the signal
+> the detector reads. No lock change is required.
+
+## 3. Range-based rollback query
+
+**Files**: `backend/infrahub/core/query/rollback.py`, `backend/infrahub/core/diff/merger/merger.py`,
+`backend/infrahub/core/graph/index.py`.
+
+Recovery reverses a failed merge with a **single range query** keyed on `merge_started_at`
+(research R8). Every step is **scoped to the default branch** — `WHERE r.branch = <default branch>`
+(the only merge target; `merge` writes nowhere else). The source branch and all other branches are
+untouched. The query:
+
+1. **Reopens** every default-branch edge with `to >= $merge_at` (set `to = NULL`, `to_user_id = NULL`).
+2. **Deletes** every default-branch edge with `from >= $merge_at`.
+3. **Deletes orphaned vertices** left with no remaining edges (batched `IN TRANSACTIONS OF 500`).
+4. **Restores `previous_updated_at/by`** for the vertices connected to the reverted edges **where
+   `updated_at >= $merge_at`** (optionally clearing `previous_*` after — not required, see below).
+
+This reverses graph merge **and** schema migrations uniformly (IPAM never ran for a failed merge —
+§2 reorder). **No `get_affected_node_uuids` list is needed for either the structural revert or the
+metadata restore** — steps 1-3 are scoped by `branch` + timestamp; step 4 is scoped to the
+already-collected reverted-edge vertices filtered by `updated_at >= $merge_at`. So recovery needs
+only `(default branch, merge_started_at)` and works post-restart with no in-memory state.
+
+The step-4 filter (`updated_at >= $merge_at`) selects exactly the vertices this merge bumped: the
+global vertex `updated_at` is written only by default-branch ops, and the merge is the sole
+default-branch writer in the write-blocked window. It is **robust to partial failure** — a vertex's
+`updated_at` is bumped only by `DiffMergeMetadataQuery` (or a migration), which run *after* the
+bulk-merge edge queries; so if the merge crashed before that step the vertex still holds its correct
+pre-merge `updated_at` (`< merge_at`), the filter skips it, and nothing needs restoring. For this to
+cover migration collateral, **schema migration queries MUST co-write `previous_*`** when they bump
+`updated_at/by` (the same `SET previous_* = current` the merge query does). Clearing `previous_*` on
+restore is **optional**: a re-run is excluded by the same timestamp filter (the restored `updated_at`
+is `< merge_at`) and the next merge overwrites `previous_*` anyway.
+
+**Correctness rests on the write-block invariant**: while the branch is `MERGING`/`MERGE_FAILED`, the
+default branch is closed to client writes via the target gate (§5, R11), so every target-branch edge
+with `from`/`to >= merge_at` belongs to this merge. The block is **immediately consistent** — the gate
+reads the shared `merge:protected` cache key, set before any graph write — so no stray write can
+interleave on the default branch after `merge_at`. The range rollback enforces the invariant rather
+than depending on per-timestamp accounting.
+
+**Index-aware shape (required)**: Neo4j relationship indexes are per-type, so steps 1-2 MUST be
+written as **per-edge-type subqueries** — one `MATCH ()-[r:<TYPE> {branch:$target_branch}]->()
+WHERE r.from >= $merge_at` (and the `to` variant) for each `DatabaseEdgeType` (`IS_PART_OF`,
+`HAS_ATTRIBUTE`, `IS_RELATED`, `HAS_VALUE`, `IS_PROTECTED`, `HAS_OWNER`, `HAS_SOURCE`,
+`IS_RESERVED`) — not a single label-less match (which uses no index).
+
+**New indexes (Ask First)**: today `core/graph/index.py` indexes `branch` on 7 edge types and `from`
+on `HAS_ATTRIBUTE`/`HAS_VALUE` only; `to` is unindexed everywhere. Add RANGE indexes on `from` and
+`to` for the relevant edge types. **Additionally, an index on `updated_at`** (a node index on the
+`Node`/`Attribute`/`Relationship` vertex labels) **may be needed** for the step-4 metadata selection,
+depending on how it is written. All of this is a **database index change** (AGENTS.md "Ask First")
+and ships as a new graph migration plus `IndexItem` entries — requires approval before
+implementation.
+
+**Migration co-write (`previous_*`)**: schema migration queries that bump vertex `updated_at/by`
+(e.g. `core/migrations/schema/attribute_kind_update.py`, `core/migrations/query/attribute_add.py`,
+`node_duplicate.py`, `node_remove.py`, …) MUST first `SET previous_updated_at = updated_at,
+previous_updated_by = updated_by` — mirroring `DiffMergeMetadataQuery` — so migration-collateral
+vertices can be metadata-restored on recovery. `/speckit-tasks` enumerates the exact set.
+
+**Range rollback vs the in-process rollback**: recovery uses this range query, which needs no
+node-UUID list (so recovery does **not** call `get_affected_node_uuids`). The existing in-process
+rollback (the merge's own caught-exception path, which runs *before* migrations and has its
+in-memory `_affected_node_uuids` + snapshots) may keep its current UUID-scoped restore — it only has
+to undo the graph merge, and migration collateral does not exist yet at that point. `/speckit-tasks`
+decides whether to unify both paths on the range query. Idempotent — re-running after a partial
+rollback is a no-op (no edges match `>= merge_at` once deleted/reopened; the `updated_at >= merge_at`
+filter excludes already-restored vertices).
+
+## 4. Detection + recovery component
+
+**New file**: `backend/infrahub/core/merge/failure_recovery.py`
+
+A DI component (constructor-injected collaborators) with two entry points:
 
 ```python
-class BranchMerger:
-    # ... existing methods ...
+class MergeFailureRecovery:
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        diff_merger: DiffMerger,       # owns the range rollback query (no get_affected_node_uuids needed)
+        cache: InfrahubCache,          # merge:protected key set/update/delete; read the lock-holder token
+        component: InfrahubComponent,  # list_workers() -> active-worker set for the liveness predicate
+        merge_locker: MergeLocker,     # read-side helper: current merge-lock holder worker_id (or None)
+    ) -> None: ...
 
-    async def _enter_merging(self) -> None:
-        """Transition self.source_branch from OPEN to MERGING.
+    async def detect_and_mark(self) -> str | None:
+        """Evaluate the failed-merge predicate and, if matched, transition the
+        branch MERGING -> MERGE_FAILED (preserving merge_started_at) and update
+        the merge:protected cache key to '{branch}::MERGE_FAILED'.
+        Idempotent. Returns the branch name marked failed, or None.
 
-        Raises ValidationError if source_branch.status is not OPEN — a merge
-        cannot begin on a branch that is already merging, merged, deleting,
-        or needs rebase.
+        Predicate: status == MERGING AND the MergeLocker 'all_branches' lock is
+        PRESENT AND its token worker_id is not in the active-worker set AND
+        (now - merge_started_at) > grace_period. The lock must be present (a dead
+        worker cannot release it, so a real failure leaves it present); an ABSENT
+        lock is not auto-flagged, because absence is ambiguous (a cache flush
+        during a live merge would otherwise false-positive). A branch whose lock
+        holder is active, or whose merge is younger than the grace period, is
+        healthy in-progress and left untouched. The grace period (small,
+        configurable, default ~2-3 min) absorbs a transient heartbeat-write blip.
         """
 
-    async def _exit_merging_to_open(self) -> None:
-        """Restore self.source_branch.status from MERGING to OPEN.
-        Used on failure paths. Idempotent: no-op if not in MERGING.
+    async def recover(self, *, confirmed: bool) -> RecoveryReport:
+        """Find the failed merge and (when confirmed) recover it.
 
-        Note: the success path is handled by existing code in branch/tasks.py
-        which transitions the branch to MERGED at the end of _do_merge_branch.
-        """
+        Detection covers BOTH (FR-016): (i) a branch recorded MERGE_FAILED, and
+        (ii) a branch stuck in MERGING whose merge-lock holder is not a live
+        worker (the ambiguous case detect_and_mark deliberately does not flag).
+        The human confirmation is what makes acting on (ii) safe. Then:
 
-    async def _enter_merging_graph(self, at: Timestamp) -> None:
-        """Transition self.source_branch from MERGING to MERGING_GRAPH and
-        persist merge_started_at.
+          1. Run the range rollback (§3) over the default branch: reopen edges
+             with to >= merge_started_at, delete edges with from >= merge_started_at,
+             clean orphaned vertices, restore previous_* metadata for reverted-edge
+             vertices where updated_at >= merge_started_at. Reverses graph merge
+             and schema migrations (IPAM never ran — §2 reorder).
+          2. Reset the source branch status to OPEN (merge_started_at is left as
+             the record of the failed merge; it is overwritten by the next merge).
+          3. Reset the associated proposed change (if any) to OPEN.
+          4. Delete the merge:protected cache key so the write block lifts.
 
-        Raises ValidationError if status is not MERGING.
-        """
-
-    async def _exit_merging_graph(self) -> None:
-        """Transition self.source_branch from MERGING_GRAPH back to MERGING and
-        clear merge_started_at. Idempotent: no-op if not in MERGING_GRAPH.
+        No-op + report when nothing to recover. Idempotent. Clears an orphaned
+        marker (branch removed out-of-band) without raising.
         """
 ```
 
-`BranchMerger.merge` is modified to:
-
-1. Call `await self._enter_merging()` at entry (after the early `default_branch` validation, before any other work).
-2. Call `await self._enter_merging_graph(at=Timestamp(at))` immediately before `await self.diff_merger.merge_graph(...)`, inside the diff lock.
-3. Call `await self._exit_merging_graph()` immediately after `merge_graph` returns successfully, *before* `merge_repositories()` runs.
-4. On caught exception during graph merge: in-process rollback runs, then `_exit_merging_graph()`, then `_exit_merging_to_open()`.
-5. After `merge_repositories()` returns: leave `MERGING` in place; existing `_do_merge_branch` code transitions to `MERGED`.
-<!-- TODO I am not so sure about this, perhaps the failure states of the post-merge steps require some more thought -->
-6. On exception during `merge_repositories()` (or any other post-graph-merge step inside `merge`): `_exit_merging_to_open()` runs.
-
-Public signature of `BranchMerger.merge` is unchanged (`-> None` since the recent rewrite).
-
-> **Note**: the broad `MERGING` state's transition to `MERGED` is owned by existing code in `branch/tasks.py:_do_merge_branch` (which already sets `BranchStatus.MERGED` after `BranchMerger.merge` and migrations succeed). That code does not need to change. It does, however, need an audit to confirm it transitions `MERGING → OPEN` (not just leaves the branch in `MERGING`) when its own post-merge work fails — see tasks.
-
-## 3. DiffMerger rollback overload
-
-**File**: `backend/infrahub/core/diff/merger/merger.py`
-
-The existing `rollback` is extended to accept a pre-computed `node_uuids` so it can be called by recovery without relying on `self._affected_node_uuids`:
-
 ```python
-async def rollback(
-    self,
-    *,
-    at: Timestamp,
-    node_uuids: list[str] | None = None,
-) -> None:
-    """Roll back a merge.
-
-    If node_uuids is None, falls back to self._affected_node_uuids (in-process path).
-    Recovery callers pass an explicit node_uuids list obtained from
-    DiffRepository.get_affected_node_uuids(...), so rollback works after a
-    process restart with no in-memory state.
-
-    Idempotent. Safe to re-run after a partial rollback.
-    """
-```
-
-The rollback Cypher (`DiffMergeRollbackQuery`) is unchanged — it already operates on `from=$at` / `to=$at` globally on the target branch, so completeness depends only on `$at` being correct, which the persisted `merge_started_at` provides.
-
-## 4. Recovery entry point
-
-**New module**: `backend/infrahub/core/merge/recovery.py`
-
-```python
-async def recover_partial_merges(*, db: InfrahubDatabase) -> RecoveryReport:
-    """Scan all branches for status=MERGING_GRAPH and roll back any partial
-    graph merges.
-
-    The scan deliberately ignores status=MERGING. A crash during MERGING means
-    the graph merge succeeded but post-graph-merge work (migrations, repo
-    merges) failed — that is not a partial graph merge and DiffMergeRollbackQuery
-    must NOT be applied. Operator intervention or a separate recovery flow
-    handles MERGING-state crashes (out of scope for this feature; see research
-    R6).
-
-    For each detected branch (status=MERGING_GRAPH):
-      1. Try to acquire recovery.merge.{branch.name} lock; skip if held by
-         another worker.
-        #  TODO it would be cleaner to move the rollback logic to its own component: DiffMergerRollbackHandler, or something
-      2. Build a DiffMerger from source_branch and
-         target_branch = registry.default_branch.
-      3. Call DiffRepository.get_affected_node_uuids(...) using
-         BranchTrackingId(name=branch.name) to obtain the UUID list.
-      4. Call DiffMerger.rollback(at=branch.merge_started_at, node_uuids=...).
-      5. Call BranchMerger._exit_merging_graph() and then
-         _exit_merging_to_open() to restore status=OPEN and clear
-         merge_started_at.
-      6. Emit structured log events (see §7).
-
-    Raises:
-      RecoveryFailedError: if any branch's rollback fails. Lifespan startup MUST
-        treat this as fatal.
-    """
-
+class RecoveryOutcome(Enum):
+    NOTHING_TO_RECOVER = "nothing_to_recover"  # no failed merge found
+    DECLINED = "declined"                      # failure found; operator answered no
+    RECOVERED = "recovered"                    # rolled back + reset to OPEN
+    ORPHANED_CLEARED = "orphaned_cleared"      # branch gone out-of-band; stale marker cleared
+    FAILED = "failed"                          # rollback raised
 
 @dataclass(frozen=True)
 class RecoveryReport:
-    detected: list[str]   # branch names with MERGING_GRAPH status
-    recovered: list[str]  # branch names successfully rolled back
-    skipped: list[str]    # branch names another worker is handling
-    failed: list[str]     # branch names whose rollback raised
+    outcome: RecoveryOutcome
+    branch: str | None
+    proposed_change: str | None
+    merge_started_at: str | None
 ```
 
-**Caller**: `backend/infrahub/core/initialization.py` — invoked after `initialize_registry()` and before `validate_graph_version()`.
+The `outcome` enum (not a free-text `note`) lets the CLI format its own human-readable message and
+lets tests assert on a structured value; the remaining fields carry what to report (branch name, the
+persisted merge timestamp, the associated proposed change if any).
 
-Note: step 5 reuses `BranchMerger._exit_merging_graph` and `_exit_merging_to_open` rather than duplicating the transition logic; recovery instantiates a `BranchMerger` (or extracts the helpers to module-level functions) so the same code path that the in-process merge uses also clears recovered markers.
+The failed-merge **predicate** is a pure helper (unit-testable without DB), taking
+`(status, lock_token: str | None, active_worker_ids: set[str], merge_started_at: Timestamp | None,
+now: Timestamp, grace_period: Duration)` → `bool`. Both `detect_and_mark` and the on-write/on-merge
+fast paths call it.
 
-## 5. Write-block via existing BranchStatusChecker
+**Detection callers**:
+
+- Recurring scan flow (new) — see §8.
+- `backend/infrahub/core/initialization.py`, after `initialize_registry()` (runs on both API server
+  and git-agent startup).
+- Write gate (§5) when a default-branch write finds a branch in `MERGING`.
+- Merge/rebase gate (§5) before starting a new operation.
+
+**Recovery caller**: the `infrahub recover` CLI command (§7).
+
+## 5. Write / merge / delete blocking via BranchStatusChecker
 
 **File**: `backend/infrahub/branch/status_checker.py`
 
-The existing `BranchStatusChecker` already gates writes on `BranchStatus.MERGED` and `NEED_REBASE`. Extend it for `MERGING`:
+Extend the existing checker (which already raises on `MERGED`/`MERGING`/`NEED_REBASE`):
 
 ```python
 class BranchStatusChecker:
+    def __init__(self, cache: InfrahubCache) -> None: ...   # NEW: gate reads the merge:protected key
     # ... existing methods ...
 
-    def check_merging_status(self, branch: Branch) -> None:
-        """Raise BranchStatusError if:
-          - branch.status is MERGING or MERGING_GRAPH (this branch is the
-            source of an in-flight merge, in either the broad or narrow
-            window), OR
-          - branch is the default branch and any other branch has
-            status=MERGING or MERGING_GRAPH (this branch is the implicit
-            merge target).
+    async def check_merging_status(self, branch: Branch) -> None:   # async: awaits cache.get
+        """Read the shared merge:protected cache key and raise if this branch is
+        blocked by a merge:
+          - key present and its branch == branch.name (source gate), OR
+          - branch is the default branch and the key is present (target gate).
+        The key's state selects the message:
+          MERGING -> transient 'merge in progress, retry shortly'.
+          MERGE_FAILED -> 'a merge failed; contact an administrator to run
+          infrahub recover'.
+        On cache error: fail closed for the default branch; fall back to the
+        in-memory branch.status for other branches.
         """
 
-    def check(self, branch: Branch) -> None:
+    async def check(self, branch: Branch) -> None:
         self.check_needs_rebase_status(branch)
         self.check_merge_status(branch)
-        self.check_merging_status(branch)   # NEW
+        await self.check_merging_status(branch)   # NEW (async)
 ```
 
-Both `MERGING` and `MERGING_GRAPH` block writes — the entire merge window is read-only on source and target. This satisfies FR-003. It is the same pattern the codebase already uses for read-only branches; no new helper or chokepoint is introduced.
+**New `cache` dependency + async**: because the gate reads the `merge:protected` cache key,
+`BranchStatusChecker` gains a `cache: InfrahubCache` constructor arg and `check`/`check_merging_status`
+become `async`. The call sites already run in async contexts and have a cache handle — the GraphQL
+mutation middleware (`info.context.service.cache`) and REST handlers (`request.app.state.service.cache`)
+construct `BranchStatusChecker(cache=...)` and `await` the check.
 
-The "any other branch has status=MERGING/MERGING_GRAPH" check (relevant only when the branch under check is the default branch) is implemented as a Cypher lookup against `:Branch` nodes — not an in-memory scan of `registry.branch` — so the gate is correct even if the local registry is stale relative to another worker that just transitioned a branch.
+- **FR-002 vs FR-009 messaging**: the two messages MUST be distinct. `MERGING` is transient/retry;
+  `MERGE_FAILED` names `infrahub recover` and the administrator.
+- **FR-012 fast path**: the gate decides from the `merge:protected` cache key value — its state
+  (`MERGING` vs `MERGE_FAILED`) is already set by the detector, so the steady-state write path needs
+  no lock inspection, just one cache `GET`.
+- **FR-011b escalation (optional)**: when the key still says `MERGING` on a default-branch write, the
+  gate MAY run the detector predicate (§4, lock + worker-set + grace) to escalate a dead merge to the
+  `MERGE_FAILED` message and update the key immediately, rather than waiting for the next scan. The
+  block itself does not depend on this — the key blocks the write either way.
+- **Merge/rebase block (FR-004)**: the merge/rebase entry points reject when the key is present
+  (any branch `MERGING`/`MERGE_FAILED`).
+- **Cross-worker coherence (research R11)**: both gates read the **shared `merge:protected` cache
+  key** — one cache `GET`, no per-write database read and no status broadcast. Because every worker
+  reads the same shared value, the block is **immediately consistent** (no propagation window), so
+  SC-001 is a literal 100% and the range rollback (§3) never clobbers an interleaved write. The
+  durable DB status is the source of truth (reloaded at startup, reconciled by the recurring scan),
+  so the key survives restarts/flush. `BranchStatusChecker` must therefore be given a cache handle
+  (reachable in the GraphQL middleware and REST handlers). Cache-error fail-mode: fail closed on the
+  default branch, fall back to `registry.branch` elsewhere.
 
-`BranchStatusError` (existing) is the raised exception — no new error type for this case.
+**Delete prevention (FR-014) at the mutation gate, not in `Branch.delete()`**: the `MERGE_FAILED`
+delete block lives where branch-status mutation gating already lives — the GraphQL branch-status
+mutation middleware (`graphql/middleware.py`), which today *allows* certain mutations per status
+(e.g. `BranchDelete` on a `MERGED` branch). `MERGE_FAILED` is granted **no** mutation exception —
+including `BranchDelete` — so deletion is refused until recovery returns the branch to `OPEN`.
+`Branch.delete()` stays a low-level operation with no new status logic. (Internal post-merge
+auto-delete of a successfully `MERGED` branch is unaffected — it is never `MERGE_FAILED`.)
 
-## 6. New errors
+Existing write call sites funnel through `BranchStatusChecker.check` (GraphQL mutation middleware
+`graphql/middleware.py`; REST `api/schema.py`, `api/artifact.py`). `/speckit-tasks` includes an
+audit task to confirm no mutating path bypasses the checker.
 
-Added to `backend/infrahub/exceptions.py`:
+## 6. Errors / messages
 
-- `RecoveryFailedError`: raised by `recover_partial_merges` to abort lifespan startup. No GraphQL/REST exposure (recovery runs before the API serves traffic).
+**File**: `backend/infrahub/exceptions.py`
 
-No `BranchWriteBlockedError` is needed — the existing `BranchStatusError` covers it.
+- The `MERGING` (transient) and `MERGE_FAILED` (recovery) rejections both surface through
+  `BranchStatusError`/`BranchAlreadyMergedError` with distinct messages. Add a dedicated message
+  constant (or a thin `MergeFailedError(BranchStatusError)`) for the `MERGE_FAILED` case so the
+  recovery instruction is consistent across GraphQL and REST. Messages MUST NOT leak internal
+  details (constitution VI) — they name `infrahub recover` and "contact an administrator" only.
 
-## 7. Logging events
+## 7. `infrahub recover` CLI command
 
-| Event | Where | Fields |
+**File**: `backend/infrahub/cli/recover.py` (new); registered in `backend/infrahub/cli/__init__.py`.
+
+Mirrors the `reset-deployment-id` admin pattern in `backend/infrahub/cli/db.py`:
+
+```python
+@app.command(name="recover")
+async def recover_cmd(
+    ctx: typer.Context,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Recover a failed branch merge: roll back the partial graph merge and reset
+    the branch (and any associated proposed change) to OPEN."""
+```
+
+Flow: `config.load_and_exit(config_file)` → `context.init_db(retry=1)` →
+`initialize_registry(db=db)` → build `MergeFailureRecovery` → `report = await recovery.recover(...)`
+with confirmation via `typer.confirm(...)` unless `--yes`; print a `rich.Console` summary; close the
+DB in `finally`. Auto-detect (FR-016), no-failure (FR-023), orphaned state (FR-024), and idempotence
+(FR-022) are handled inside `recover()`. Decline path: report `confirmed=False`, exit without
+changes (FR-016 acceptance #3).
+
+## 8. Recurring detector workflow
+
+**File**: `backend/infrahub/tasks/merge_watcher.py` (new) — the Prefect flow:
+
+```python
+@flow(name="merge-watcher", flow_run_name="Detect failed merges")
+async def detect_failed_merges(service: InfrahubServices) -> None: ...
+```
+
+**File**: `backend/infrahub/workflows/catalogue.py` — add to the `WORKFLOWS` list:
+
+```python
+MERGE_WATCHER = WorkflowDefinition(
+    name="merge-watcher",
+    type=WorkflowType.INTERNAL,
+    cron="* * * * *",
+    module="infrahub.tasks.merge_watcher",
+    function="detect_failed_merges",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+)
+```
+
+`setup_deployments()` (`backend/infrahub/workflows/initialization.py`) iterates `get_workflows()`
+and creates the cron deployment automatically once `MERGE_WATCHER` is in `WORKFLOWS`. The flow calls
+`MergeFailureRecovery.detect_and_mark()`. `concurrency_limit=1` + `CANCEL_NEW` single-flights it
+across workers (same guarantee as `clean-up-deadlocks`).
+
+## 9. Logging events
+
+These are **structured log entries** (e.g. `structlog` / the standard logger), **not** message-bus
+`InfrahubEvent`s. That distinction matters for recovery: `infrahub recover` runs standalone with only
+a database connection — the message bus and task workers are typically not available to it — so the
+`merge.recovery.*` observability MUST be plain structured logs the CLI writes directly, never bus
+events it would have to publish. This satisfies the spec (FR-026/027, SC-011 require a "structured
+log entry"). The detector runs inside a task worker and could *additionally* emit a bus event for
+downstream automation, but that is out of scope here and recovery must not depend on it.
+
+| Log event | Where | Fields |
 |-------|-------|--------|
-| `merge.graph.start` | `BranchMerger._enter_merging_graph` | `branch`, `target`, `started_at` |
-| `merge.graph.complete` | `BranchMerger._exit_merging_graph` (success path) | `branch`, `started_at`, `duration_ms` |
-| `merge.recovery.detected` | `recover_partial_merges` | `branch`, `started_at`, `worker_id` |
-| `merge.recovery.rollback_started` | `recover_partial_merges` | `branch`, `started_at` |
-| `merge.recovery.rollback_complete` | `recover_partial_merges` | `branch`, `started_at`, `duration_ms` |
-| `merge.recovery.rollback_failed` | `recover_partial_merges` | `branch`, `started_at`, `error` |
+| `merge.failure.detected` | `MergeFailureRecovery.detect_and_mark` (task worker) | `branch`, `merge_started_at`, `proposed_change`, `worker_id`, `source` |
+| `merge.recovery.started` | `MergeFailureRecovery.recover` (CLI) | `branch`, `merge_started_at`, `proposed_change` |
+| `merge.recovery.completed` | `MergeFailureRecovery.recover` (CLI) | `branch`, `proposed_change`, `duration_ms` |
+| `merge.recovery.failed` | `MergeFailureRecovery.recover` (CLI) | `branch`, `error` |
 
-`(branch, started_at)` correlates the lifecycle events for a given attempt — sufficient now that `merge_attempt_id` is dropped (branch names are unique while branches exist; `started_at` distinguishes consecutive attempts on the same branch).
+`(branch, merge_started_at)` correlates the detection and recovery of a single failure.
 
-## 8. Dependencies on the new merge architecture
+## 10. Dependencies on the merge architecture
 
-The recovery design relies on the following properties of the post-rewrite merge code, all confirmed by inspection:
+Recovery relies on these confirmed properties of the current merge code; if any change in future
+merge work, this design must be re-evaluated (add a note under `dev/knowledge/backend/`):
 
-- All five bulk-merge queries (`BulkMergeNodeExistenceQuery`, `BulkMergeRelationshipEdgesQuery`, `BulkMergeCardinalityOneResolutionQuery`, `BulkMergeAttributePropertyEdgesQuery`, `BulkMergeRelationshipPropertyEdgesQuery`) write only to `branch=$target_branch` and stamp every created/closed edge with the same `$at`.
-- `DiffRepository.get_affected_node_uuids(source_branch, target_branch, at, tracking_id)` is a stateless query against the diff graph — works post-restart.
-- `DiffMergeRollbackQuery` deletes edges with `from=$at, branch=$target_branch` globally and reopens edges with `to=$at, branch=$target_branch` globally; metadata vertex restoration is the only step scoped to a UUID list.
+- The `MergeLocker` "all_branches" global lock is held for the entire `_do_merge_branch` window
+  (`backend/infrahub/core/branch/tasks.py:297`), so its token is the failure signal for the whole
+  `MERGING` state.
+- All five bulk-merge queries write only to `branch=$target_branch` and stamp every edge with the
+  same `$at`, and write **no** vertex `updated_at`/`previous_*` (confirmed) — only
+  `DiffMergeMetadataQuery` does (`bulk_merge.py`, `diff/query/merge.py`). This is what makes the
+  step-4 `updated_at >= merge_at` filter robust to partial failure.
+- The default-branch write-block (shared `merge:protected` cache key read by every worker, §5/R11)
+  means that from `merge_at` until recovery the target-branch writes are this merge's own — the
+  invariant that makes the range rollback (delete/reopen everything `>= merge_at`) correct. The block
+  is **immediately consistent** (one shared key, set before any graph write), so no stray write
+  interleaves. The recurring scan reconciles the key with the durable DB status; the DB status is
+  reloaded at startup.
+- The merge window's default-branch writers are the graph merge and schema migrations (both at
+  `$at`); IPAM is reordered after `MERGED` (§2) so it never runs for a failed merge. The range
+  rollback reverses graph + migration edges by timestamp, and the metadata restore covers their
+  vertices via `previous_*` (migrations co-write it, §3) — so recovery never enumerates which step
+  wrote what, and needs no `get_affected_node_uuids` list.
+- Repository (git) merges remain out of scope — they are not graph edges on the target branch and
+  are not reversed by the rollback (research R8 scope note).
 
-If any of those properties change in future merge-architecture work, this design must be re-evaluated. Add a CODEOWNERS / review checklist note in `dev/knowledge/backend/` to flag this dependency.
+## 11. Tasks
 
-## 9. Tasks
-
-The detailed task breakdown for implementing these contracts is generated by the `/speckit-tasks` command and lives at `dev/specs/ifc-2437-merge-failure-recovery/tasks.md` after that step runs. It does not exist yet at planning time.
+The dependency-ordered task breakdown is generated by `/speckit-tasks` into
+`dev/specs/ifc-2437-merge-failure-recovery/tasks.md`. It does not exist at planning time.
