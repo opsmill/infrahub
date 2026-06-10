@@ -74,19 +74,17 @@ class TestVerifiesObjectCreation:
         admin_page.get_by_label("Repository").click()
         expect(admin_page.get_by_text("Read-Only Repository", exact=True)).not_to_be_visible()
 
-    @pytest.mark.skip(
-        reason="The L3-interface edit form's polymorphic Kind combobox renders empty in the "
-        "testcontainer env (no text content after 30s), so the pre-filled-value assertions can't be "
-        "checked here. The other two tests in this spec pass; revisit against a CI/stable run."
-    )
     def test_verifies_values_in_kind_and_parent_selects(self, admin_page: Page, select_branch: str) -> None:
         # got to the edit form
         admin_page.goto(f"/objects/InfraInterfaceL3?branch={select_branch}")
         admin_page.get_by_test_id("identifier-cell").get_by_role("link", name="Ethernet1", exact=True).first.click()
         admin_page.get_by_test_id("edit-button").click()
 
-        # check inputs values ("Kind" label also matches a disabled placeholder input -> use the combobox)
-        expect(admin_page.get_by_role("combobox", name="Kind")).to_contain_text("Interface L3 Infra")
+        # Use get_by_label (the <label for> association) rather than get_by_role(combobox,
+        # name="Kind"): once the polymorphic Kind combobox is hydrated, its visible value
+        # ("Interface L3") becomes its accessible name, so a role+name="Kind" query no longer
+        # matches. This mirrors the TS original (select-2-steps.spec.ts uses getByLabel).
+        expect(admin_page.get_by_label("Kind")).to_contain_text("Interface L3 Infra")
         expect(admin_page.locator('button[name="connected_endpoint_parent"]')).to_contain_text("atl1-edge2")
         expect(admin_page.get_by_test_id("side-panel-container").get_by_label("Interface L3")).to_contain_text(
             "Ethernet1"

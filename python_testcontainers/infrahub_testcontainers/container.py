@@ -63,6 +63,12 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_SCHEMA_STRICT_MODE": "true",
     "INFRAHUB_TESTING_TASKMGR_API_WORKERS": "1",
     "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "0",
+    # Per-GraphQL-request server delay; the backend reads it as miscellaneous.response_delay.
+    # Baseline 0 so the stack always boots fast (a boot-time delay would slow the demo-data
+    # load); set_server_response_delay rewrites this in the .env and recreates the server to
+    # turn it on AFTER data is loaded. Don't set INFRAHUB_MISC_RESPONSE_DELAY in the boot env —
+    # use the INFRAHUB_TESTING_RESPONSE_DELAY signal instead (see tests/e2e/README.md).
+    "INFRAHUB_MISC_RESPONSE_DELAY": "0",
 }
 
 
@@ -192,6 +198,29 @@ class InfrahubDockerCompose(DockerCompose):
 
         if self.services:
             cmd.extend(self.services)
+        self._run_command(cmd=cmd)
+
+    def set_server_response_delay(self, delay: int) -> None:
+        """Enable a per-GraphQL-request delay on the running infrahub-server.
+
+        The backend reads ``miscellaneous.response_delay`` only at startup, so the value is
+        written into the compose ``.env`` and the ``infrahub-server`` service is force-recreated
+        to pick it up. The HAProxy LB re-resolves the new replicas via Docker DNS
+        (``server-template ... resolvers docker``), so it keeps routing without a restart.
+
+        Intended to be called AFTER the dataset is loaded: a boot-time delay would slow the
+        demo-data load (thousands of serialized GraphQL mutations). Mirrors the TS e2e CI job,
+        which loads data first and only then restarts the server with the delay.
+        """
+        key = "INFRAHUB_MISC_RESPONSE_DELAY"
+        env_file = Path(self.context) / ".env"
+        lines = [line for line in env_file.read_text(encoding="utf-8").splitlines() if not line.startswith(f"{key}=")]
+        lines.append(f"{key}={delay}")
+        env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        self.env_vars[key] = str(delay)
+
+        cmd = self.compose_command_property[:]
+        cmd += ["up", "-d", "--force-recreate", "--no-deps", "--wait", "infrahub-server"]
         self._run_command(cmd=cmd)
 
     def start_container(self, service_name: str | list[str]) -> None:

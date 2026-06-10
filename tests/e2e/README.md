@@ -55,6 +55,30 @@ INFRAHUB_TESTING_IMAGE_VER=e2e-pytest INFRAHUB_TESTING_DOCKER_PULL=false \
 
 CI builds and uses its own `local-<runner>-<sha>` tag.
 
+### Response-delay mode
+
+Set `INFRAHUB_TESTING_RESPONSE_DELAY=1` to add a deliberate 1s delay to every
+GraphQL request, surfacing UI loading-state races — parity with the TS
+`E2E-testing-playwright` job. In CI it is applied to the main pytest run only on
+PRs that touch `tests/e2e/**` (gated on the `e2e_pytest_tests` files-changed
+output); locally:
+
+```bash
+INFRAHUB_TESTING_IMAGE_VER=e2e-pytest INFRAHUB_TESTING_DOCKER_PULL=false \
+  INFRAHUB_TESTING_RESPONSE_DELAY=1 \
+  uv run pytest -c tests/e2e/pytest.ini tests/e2e
+```
+
+The backend reads its delay (`INFRAHUB_MISC_RESPONSE_DELAY`) only at startup, and
+applying it at boot would slow the demo-data load (thousands of serialized
+mutations) past the CI budget. So the suite uses a separate signal,
+`INFRAHUB_TESTING_RESPONSE_DELAY`, and the `response_delay_enabled` fixture mirrors
+the TS job: it loads the full dataset first, then recreates the `infrahub-server`
+service with `INFRAHUB_MISC_RESPONSE_DELAY` written into the compose `.env`
+(`InfrahubDockerCompose.set_server_response_delay`; the HAProxy LB re-resolves the
+new replicas). Do **not** set `INFRAHUB_MISC_RESPONSE_DELAY` directly — that slows
+the boot-time data load. The `expect` timeout also widens to 60s for delay runs.
+
 ## Architecture
 
 ```
@@ -174,10 +198,9 @@ Done:
 - **`object-template` (4/4 specs, 10/10 tests)** — create instance from a
   template (with profile), and templates allocating from an IP pool, a number
   pool, and a profile. Verified against a stable image.
-- **`ipam` (9/9 specs, 24/25 tests; 1 skipped)** — prefix/address lists,
-  filters, IPAM tree, pool allocations, and the serial namespace flow. One test
-  (`ip-prefix-create`'s second pool allocation) is `@pytest.mark.skip` — see
-  "response-delay" below.
+- **`ipam` (9/9 specs)** — prefix/address lists, filters, IPAM tree, pool
+  allocations (incl. `ip-prefix-create`'s full create→child→address flow), and
+  the serial namespace flow.
 - **`role-management` (5/5 specs)** — account, role, group, global-permission
   and object-permission CRUD on throwaway branches. The `roles` and
   `object-permissions` specs depend on `infrastructure_data` (the `Administrator`
@@ -199,8 +222,7 @@ Done:
   `object-metadata`, `object-relationships`, `object-list`), `list/*` (bulk
   delete/edit, select-range, search), `hierarchy/*` (crud, navigation, tree-list,
   relationship-input), `profiles/*` (multi/on-generic/profiles), `convert`,
-  `file-upload`, `CoreGraphQLQuery`. ~67 tests. `convert` is skipped (home-nav
-  race, see "response-delay").
+  `file-upload`, `CoreGraphQLQuery`. ~67 tests.
 - **Repo-dependent group (via `demo_edge_repo`)** — `objects/artifact` +
   `artifact-definition` (3, async artifact generation), `proposed-changes` (3
   specs, 12 tests — validators/checks/diff; 2 `fixme` sub-tests skipped),
@@ -209,8 +231,8 @@ Done:
   against a stable image.
 - **`activities` (9), `resource-manager` (9), `profile` (6), `form` (4),
   `webhook` (3), `triggers` (3), `events` (1)** — verified against a stable
-  image. `events` (active test `fixme`), `triggers` ("update the matches"
-  `fixme`) and `form/select-2-steps` "kind/parent selects" are skipped.
+  image. `events` (active test `fixme`) and `triggers` ("update the matches"
+  `fixme`) are skipped.
 - **`groups` · `schema` · `menu` · `tasks`**, **`search` · `search-parent-prefixes`**,
   **`role-management`**, **`object-template`**, **`ipam`**, **`branches`**, and the
   **pilot** (login, object-list, merge-branch) — see above.
@@ -231,12 +253,26 @@ separately: `pytest -c tests/e2e/pytest.ini tests/e2e
 --ignore=tests/e2e/docs-regression-check` then `pytest -c tests/e2e/pytest.ini
 tests/e2e/docs-regression-check`.
 
-Skips preserved/added (each with a reason in-code): `tasks/tasks-view`,
+Skips preserved (each with a reason in-code): `tasks/tasks-view`,
 `events/events-rules-actions`, `triggers` "update the matches",
-`proposed-changes` comment + merge/delete (legacy `fixme`);
-`ipam/ip-prefix-create` 2nd allocation + `objects/convert` (home-nav races, see
-"response-delay"); `form/select-2-steps` kind/parent selects (empty Kind combobox
-in the testcontainer env).
+`proposed-changes` comment + merge/delete (legacy `fixme`).
+
+`ipam/ip-prefix-create` (2nd allocation), `objects/convert` and
+`form/select-2-steps` (kind/parent selects) were previously skipped under a
+"home-nav race / response-delay" rationale that turned out to be a misdiagnosis;
+all three are now fixed and enabled:
+
+- `ipam/ip-prefix-create` — react-toastify deduped the per-kind success toast
+  (`alert-success-<kind>-created`) when two same-kind objects were created within
+  the 5s autoClose window. Fixed by making the IPAM creation toast id per-node
+  (`ipam-creation-form.tsx`), so each create renders its own confirmation.
+- `objects/convert` and `form/select-2-steps` — `connected_endpoint` was
+  unpopulated in the dataset: `find_and_connect_interfaces` (a SYMMETRIC peer
+  relationship) relied on save ordering, which serialized loads
+  (`INFRAHUB_MAX_CONCURRENT_EXECUTION=1`, required for load stability) broke.
+  Fixed by setting both sides of the relationship in `models/infrastructure_edge.py`.
+  `select-2-steps` additionally now reads the hydrated Kind combobox via
+  `get_by_label("Kind")` (its accessible name becomes its value once populated).
 
 ### Not yet ported from the harness
 
@@ -244,17 +280,8 @@ in the testcontainer env).
   after the main suite, gated on `UPDATE_DOCS_SCREENSHOTS`. Port as a separately
   marked, serial group with a `save_screenshot_for_docs` helper writing to
   `docs/docs/media/`.
-- **Response-delay mode** (`INFRAHUB_MISC_RESPONSE_DELAY=1`): the legacy CI runs
-  the main suite against a backend with a deliberate 1s/GraphQL-request delay —
-  added to avoid loading-state/race bugs. The e2e stack here runs full-speed, so
-  rapid create→save→create sequences can hit races the TS suite never sees. This
-  is why `ipam/test_ip_prefix_create`'s final step is skipped (it navigates home
-  before the success toast renders). Wiring the response-delay env into the
-  testcontainer stack (and widening the expect timeout while active, as the
-  conftest already does to 30s) is the planned fix; then re-enable that test.
-- **Trace/video capture for authenticated tests**: the `admin_page` /
-  `read_*_page` fixtures build their context via `browser.new_context`, which
-  bypasses pytest-playwright's artifact recorder, so failures of authenticated
-  tests don't produce a trace/video. Switching them to pytest-playwright's
-  `new_context` factory fixture restores capture — to be done as its own
-  verified change.
+
+Trace/video capture for authenticated tests is wired: the `admin_page` /
+`read_*_page` fixtures build their context via pytest-playwright's `new_context`
+factory (not `browser.new_context`), so failures produce a trace/video/screenshot
+under `--output` (`test-results/`).
