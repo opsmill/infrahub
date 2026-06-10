@@ -1,7 +1,6 @@
-import { ScrollArea } from "@infrahub/ui";
-import { Card } from "@infrahub/ui/card";
+import { Card, ScrollArea } from "@infrahub/ui";
 
-import BranchSelector from "@/entities/branches/ui/branch-selector";
+import { BranchSelector } from "@/entities/branches/ui/branch-selector";
 import { BreadcrumbNavigation } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-navigation";
 import { TimeFrameSelector } from "@/entities/navigation/ui/time-selector";
 import { TaskStatus } from "@/entities/tasks/ui/task-status";

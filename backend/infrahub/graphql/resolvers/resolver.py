@@ -51,6 +51,27 @@ async def account_resolver(
         )
 
 
+@trace.get_tracer(__name__).start_as_current_span("is_externally_managed_resolver")
+@retry_db_transaction(name="is_externally_managed_resolver")
+async def is_externally_managed_resolver(parent: dict, info: GraphQLResolveInfo) -> bool:
+    """Return True when the parent account has at least one linked external identity."""
+    account_id = parent.get("id")
+    if not account_id:
+        return False
+    graphql_context: GraphqlContext = info.context
+    async with graphql_context.db.start_session(read_only=True) as db:
+        identities = await NodeManager.query(
+            schema=InfrahubKind.EXTERNALIDENTITY,
+            filters={"account__ids": [account_id]},
+            db=db,
+            at=graphql_context.at,
+            branch=graphql_context.branch,
+            branch_agnostic=True,
+            limit=1,
+        )
+    return bool(identities)
+
+
 @trace.get_tracer(__name__).start_as_current_span("default_resolver")
 @retry_db_transaction(name="default_resolver")
 async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
@@ -352,12 +373,15 @@ async def hierarchy_resolver(
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     offset = kwargs.pop("offset", None)
     limit = kwargs.pop("limit", None)
+    order = kwargs.pop("order", None)
 
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
         if ("__" in key and value) or key in ["id", "ids"]
     }
+
+    order_model = deserialize_order_input(input_data=order)
 
     response: dict[str, Any] = {"edges": [], "count": None}
 
@@ -387,6 +411,7 @@ async def hierarchy_resolver(
             limit=limit,
             at=graphql_context.at,
             branch=graphql_context.branch,
+            order=order_model,
         )
 
         if not objs:

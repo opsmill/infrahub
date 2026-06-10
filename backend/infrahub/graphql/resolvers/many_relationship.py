@@ -9,6 +9,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
+from infrahub.core.order import OrderModel
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema.node_schema import NodeSchema
@@ -19,6 +20,7 @@ from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
 
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
+from ..order import deserialize_order_input
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
 if TYPE_CHECKING:
@@ -99,6 +101,7 @@ class ManyRelationshipResolver:
         include_descendants: bool = False,
         offset: int | None = None,
         limit: int | None = None,
+        order: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Resolver for relationships of cardinality=one for Edged responses.
@@ -174,6 +177,8 @@ class ManyRelationshipResolver:
         # Add relationship properties metadata to relationship_level
         include_metadata |= MetadataQueryOptions(relationship_level=get_metadata_options_from_fields(property_fields))
 
+        order_model = deserialize_order_input(input_data=order)
+
         if offset or limit:
             relationships = await self._get_entities_simple(
                 db=graphql_context.db,
@@ -187,6 +192,7 @@ class ManyRelationshipResolver:
                 include_metadata=include_metadata,
                 offset=offset,
                 limit=limit,
+                order=order_model,
             )
         else:
             relationships = await self._get_entities_with_data_loader(
@@ -199,6 +205,7 @@ class ManyRelationshipResolver:
                 filters=filters,
                 node_fields=node_fields,
                 include_metadata=include_metadata,
+                order=order_model,
             )
 
         if not relationships:
@@ -248,6 +255,7 @@ class ManyRelationshipResolver:
         include_metadata: MetadataQueryOptions,
         offset: int | None = None,
         limit: int | None = None,
+        order: OrderModel | None = None,
     ) -> list[Relationship] | None:
         async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
@@ -264,6 +272,7 @@ class ManyRelationshipResolver:
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
                 fetch_peers=True,
                 include_metadata=include_metadata,
+                order=order,
             )
             if not objs:
                 return None
@@ -280,6 +289,7 @@ class ManyRelationshipResolver:
         filters: dict[str, Any],
         node_fields: dict[str, Any],
         include_metadata: MetadataQueryOptions,
+        order: OrderModel | None = None,
     ) -> list[Relationship] | None:
         if node_fields and "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
@@ -293,6 +303,7 @@ class ManyRelationshipResolver:
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
             include_metadata=include_metadata,
+            order=order,
         )
         if query_params in self._data_loader_instances:
             loader = self._data_loader_instances[query_params]

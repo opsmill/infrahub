@@ -584,6 +584,7 @@ const sidebars: SidebarsConfig = {
           ],
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
+        { type: 'doc', id: 'reference/error-catalogue', label: 'Error Catalogue' },
       ],
     },
 
@@ -640,6 +641,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 { type: 'doc', id: 'release-notes/infrahub/docs-restructure', label: 'Documentation restructure' },
+                'release-notes/infrahub/release-1_9_7',
                 'release-notes/infrahub/release-1_9_6',
                 'release-notes/infrahub/release-1_9_5',
                 'release-notes/infrahub/release-1_9_4',

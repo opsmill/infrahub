@@ -73,11 +73,13 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
       <CheckboxField name="sync_with_git" label="Sync with Git" rules={{ required: true }} />
 
       <Row className="justify-end">
-        <Button variant="outline" onPress={onCancel}>
+        <Button variant="outline" size="sm" onPress={onCancel}>
           Cancel
         </Button>
 
-        <FormSubmit data-testid="submit-create-new-branch">Create a new branch</FormSubmit>
+        <FormSubmit size="sm" data-testid="submit-create-new-branch">
+          Create a new branch
+        </FormSubmit>
       </Row>
     </Form>
   );

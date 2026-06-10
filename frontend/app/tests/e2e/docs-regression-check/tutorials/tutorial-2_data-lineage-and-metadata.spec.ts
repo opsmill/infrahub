@@ -25,7 +25,11 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await page.getByRole("option", { name: "Account" }).first().click();
       await page.getByLabel("Account").click();
       await page.getByRole("option", { name: "Admin" }).click();
-      await page.getByLabel("is protected *").check();
+      await page
+        .getByRole("group", { name: "is protected" })
+        .locator("label")
+        .filter({ hasText: "True" })
+        .click();
       await saveScreenshotForDocs(page, "tutorial_4_metadata_edit");
       await page.getByRole("button", { name: "Save" }).click();
 

@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@infrahub/ui/card";
+import { Card, CardContent } from "@infrahub/ui";
 import {
   BoxIcon,
   CheckIcon,

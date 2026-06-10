@@ -31,6 +31,18 @@ core_transform = GenericSchema(
         Attr(name="label", kind="Text", optional=True),
         Attr(name="description", kind="Text", optional=True),
         Attr(name="timeout", kind="Number", description="Maximum execution time in seconds", default_value=60),
+        Attr(
+            name="dependencies",
+            kind="List",
+            description="Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies_complete",
+            kind="Boolean",
+            description="True when the dependency closure can be trusted. False when auto-detection found unresolved references.",
+            optional=True,
+        ),
     ],
     relationships=[
         Rel(

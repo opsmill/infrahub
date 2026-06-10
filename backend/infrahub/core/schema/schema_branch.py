@@ -77,6 +77,12 @@ from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER, RESOURCE_POOL_REL_SUFFIX
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .node_inheritance_handler import NodeInheritanceHandler
+from .order_by import (
+    ParsedAttributeOrderBy,
+    ParsedRelationshipAttributeOrderBy,
+    parse_order_by_entry,
+    strip_order_direction_suffix,
+)
 from .schema_branch_computed import ComputedAttributes
 from .schema_branch_display import DisplayLabels
 from .schema_branch_hfid import HFIDs
@@ -988,21 +994,37 @@ class SchemaBranch:
                     )
 
     def validate_order_by(self) -> None:
+        allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.order_by:
                 continue
 
-            allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
-            for order_by_path in node_schema.order_by:
-                element_name = "order_by"
-                self.validate_schema_path(
-                    node_schema=node_schema,
-                    path=order_by_path,
-                    allowed_path_types=allowed_types,
-                    element_name=element_name,
-                )
+            seen_targets: dict[tuple[str, ...], str] = {}
+            for order_by_entry in node_schema.order_by:
+                try:
+                    parsed = parse_order_by_entry(entry=order_by_entry, node_schema=node_schema)
+                except ValidationError as exc:
+                    raise ValueError(f"{node_schema.kind}.order_by: {exc.message}") from exc
+
+                if isinstance(parsed, (ParsedAttributeOrderBy, ParsedRelationshipAttributeOrderBy)):
+                    self.validate_schema_path(
+                        node_schema=node_schema,
+                        path=strip_order_direction_suffix(order_by_entry),
+                        allowed_path_types=allowed_types,
+                        element_name="order_by",
+                    )
+
+                # ensure targets are not duplicated. ie. [name__value__asc, name__value__desc]
+                if parsed.target_key in seen_targets:
+                    previous = seen_targets[parsed.target_key]
+                    target_label = ".".join(parsed.target_key[1:])
+                    raise ValueError(
+                        f"{node_schema.kind}.order_by: target {target_label!r} appears in order_by more than once "
+                        f"(entries: {previous!r}, {parsed.raw!r}). Each target may appear at most once."
+                    )
+                seen_targets[parsed.target_key] = parsed.raw
 
     def validate_default_filters(self) -> None:
         for name in self.all_names:
@@ -1200,7 +1222,10 @@ class SchemaBranch:
                 if attr.name in RESERVED_ATTR_REL_NAMES or (
                     isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
                 ):
-                    raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
+                    raise ValueError(
+                        f"{node.kind}: {attr.name!r} is a reserved name (attribute: {attr.name!r}). "
+                        "Rename this attribute or relationship."
+                    )
                 if "__" in attr.name:
                     raise ValueError(
                         f"{node.kind}: '{attr.name}' cannot be used as an attribute name because"
@@ -1210,7 +1235,10 @@ class SchemaBranch:
                 if rel.name in RESERVED_ATTR_REL_NAMES or (
                     isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
-                    raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+                    raise ValueError(
+                        f"{node.kind}: {rel.name!r} is a reserved name (relationship: {rel.name!r}). "
+                        "Rename this attribute or relationship."
+                    )
                 if "__" in rel.name:
                     raise ValueError(
                         f"{node.kind}: '{rel.name}' cannot be used as a relationship name"
@@ -2192,7 +2220,10 @@ class SchemaBranch:
                     relationships_to_delete.append(item_name)
 
             # If there is either an attribute or a relationship to delete
-            # We clone the node and we set the attribute / relationship as ABSENT
+            # We clone the node and we set the attribute / relationship as ABSENT,
+            # then strip the deleted field names from the schema-path properties
+            # (uniqueness_constraints, human_friendly_id, display_labels, order_by)
+            # so the node's inherited paths stay consistent with its inherited fields.
             if attributes_to_delete or relationships_to_delete:
                 node_copy = self.get_node(name=name, duplicate=True)
                 for item_name in attributes_to_delete:
@@ -2201,6 +2232,11 @@ class SchemaBranch:
                 for item_name in relationships_to_delete:
                     rel = node_copy.get_relationship(name=item_name)
                     rel.state = HashableModelState.ABSENT
+                # Expects that field renames are handled elsewhere
+                node_copy.apply_schema_path_updates(
+                    deleted_field_names=set(attributes_to_delete) | set(relationships_to_delete),
+                    renamed_field_name_map={},
+                )
                 self.set(name=name, schema=node_copy)
 
     def add_groups(self) -> None:

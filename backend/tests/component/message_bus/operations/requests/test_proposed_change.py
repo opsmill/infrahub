@@ -45,7 +45,6 @@ def branch_diff_01() -> ProposedChangeBranchDiff:
     return ProposedChangeBranchDiff(
         pipeline_id=uuid4(),
         repositories=[],
-        subscribers=[],
     )
 
 

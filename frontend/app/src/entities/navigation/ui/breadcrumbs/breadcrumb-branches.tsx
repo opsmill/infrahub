@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Breadcrumb, BreadcrumbItem, Breadcrumbs } from "@infrahub/ui";
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { Breadcrumb, BreadcrumbItem, Breadcrumbs } from "@/shared/components/aria/breadcrumbs";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";

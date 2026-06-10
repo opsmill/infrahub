@@ -1,8 +1,7 @@
-import { Button } from "@infrahub/ui";
+import { Button, Tree } from "@infrahub/ui";
 import { ArrowLeftIcon } from "lucide-react";
 import React from "react";
 
-import { Tree } from "@/shared/components/aria/tree";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import {

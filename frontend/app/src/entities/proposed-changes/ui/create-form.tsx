@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { LinkButton, Spinner } from "@infrahub/ui";
-import { Card, CardContent } from "@infrahub/ui/card";
+import { Card, CardContent, LinkButton, Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useState } from "react";

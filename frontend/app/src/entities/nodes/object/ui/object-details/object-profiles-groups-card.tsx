@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
-import { Card, CardHeader } from "@infrahub/ui/card";
+import { Button, Card, CardHeader } from "@infrahub/ui";
 import { ChevronDownIcon, ChevronUpIcon, PenLineIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";

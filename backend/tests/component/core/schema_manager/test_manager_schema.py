@@ -1085,7 +1085,9 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                 }
             ]
         },
-        expected_error="TestCriticality: save isn't allowed as a relationship name.",
+        expected_error=(
+            "TestCriticality: 'save' is a reserved name (relationship: 'save'). Rename this attribute or relationship."
+        ),
     ),
     SchemaBranchValidateNamesTestCaseData(
         name="attribute-reserved-names-test",
@@ -1105,7 +1107,53 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                 }
             ]
         },
-        expected_error="TestCriticality: save isn't allowed as an attribute name.",
+        expected_error=(
+            "TestCriticality: 'save' is a reserved name (attribute: 'save'). Rename this attribute or relationship."
+        ),
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="attribute-node-metadata-reserved",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text"},
+                        {"name": "node_metadata", "kind": "Text"},
+                    ],
+                }
+            ]
+        },
+        expected_error=(
+            "TestCriticality: 'node_metadata' is a reserved name (attribute: 'node_metadata'). "
+            "Rename this attribute or relationship."
+        ),
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="relationship-node-metadata-reserved",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text"},
+                    ],
+                    "relationships": [
+                        {"name": "node_metadata", "peer": "Criticality", "cardinality": "one"},
+                    ],
+                }
+            ]
+        },
+        expected_error=(
+            "TestCriticality: 'node_metadata' is a reserved name (relationship: 'node_metadata'). "
+            "Rename this attribute or relationship."
+        ),
     ),
 ]
 
@@ -1990,6 +2038,17 @@ async def test_validate_display_label_error(
         ["my_generic_name__value"],
         ["primary_tag__name__value"],
         ["status__name__value", "mybool__value"],
+        ["my_generic_name__value__asc"],
+        ["my_generic_name__value__desc"],
+        ["primary_tag__name__value__asc"],
+        ["primary_tag__name__value__desc"],
+        ["node_metadata__created_at"],
+        ["node_metadata__created_at__asc"],
+        ["node_metadata__created_at__desc"],
+        ["node_metadata__updated_at"],
+        ["node_metadata__updated_at__desc"],
+        ["my_generic_name__value__desc", "mybool__value"],
+        ["node_metadata__created_at__desc", "mybool__value"],
     ],
 )
 async def test_validate_order_by_success(schema_all_in_one: dict[str, Any], order_by: list[str]) -> None:
@@ -2007,27 +2066,98 @@ async def test_validate_order_by_success(schema_all_in_one: dict[str, Any], orde
     [
         (
             ["mybool__value", "notanattribute__value"],
-            "InfraGenericInterface.order_by: notanattribute__value is invalid on schema InfraGenericInterface",
+            "InfraGenericInterface.order_by: attribute 'notanattribute' not defined on this schema "
+            "(entry: 'notanattribute__value').",
         ),
         (
             ["my_generic_name__something"],
             "InfraGenericInterface.order_by: something is not a valid property of my_generic_name",
         ),
-        (["status__value"], "InfraGenericInterface.order_by: value is not a valid attribute of TestingStatus"),
-        (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
         (
-            ["badges"],
-            "InfraGenericInterface.order_by: cannot use badges relationship, relationship must be of cardinality one",
+            ["status__value"],
+            "InfraGenericInterface.order_by: invalid relationship path (entry: 'status__value'). "
+            "Expected '<relationship>__<attribute>__<property>' with an optional direction suffix.",
         ),
+        (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
         (["status__name__nothing"], "InfraGenericInterface.order_by: nothing is not a valid property of name"),
         (
             ["my_generic_name"],
-            "InfraGenericInterface.order_by: invalid attribute, it must end "
-            "with one of the following properties: value. (`my_generic_name`)",
+            "InfraGenericInterface.order_by: invalid attribute path (entry: 'my_generic_name'). "
+            "Expected '<attribute>__<property>' with an optional direction suffix.",
+        ),
+        (
+            ["badges"],
+            "InfraGenericInterface.order_by: invalid relationship path (entry: 'badges'). "
+            "Expected '<relationship>__<attribute>__<property>' with an optional direction suffix.",
+        ),
+        (
+            ["node_metadata__created_by"],
+            "InfraGenericInterface.order_by: unknown metadata field (entry: 'node_metadata__created_by'). "
+            "Supported metadata fields: created_at, updated_at.",
+        ),
+        (
+            ["node_metadata__deleted_at"],
+            "InfraGenericInterface.order_by: unknown metadata field (entry: 'node_metadata__deleted_at'). "
+            "Supported metadata fields: created_at, updated_at.",
+        ),
+        (
+            ["my_generic_name__value__descending"],
+            "InfraGenericInterface.order_by: invalid direction (entry: 'my_generic_name__value__descending'). "
+            "Direction must be 'asc' or 'desc'.",
+        ),
+        (
+            ["my_generic_name__value__ASC"],
+            "InfraGenericInterface.order_by: invalid direction (entry: 'my_generic_name__value__ASC'). "
+            "Direction must be 'asc' or 'desc'.",
+        ),
+        (
+            ["my_generic_name__value__"],
+            "InfraGenericInterface.order_by: invalid entry (entry: 'my_generic_name__value__'). "
+            "Entry segments must be non-empty.",
+        ),
+        (
+            [""],
+            "InfraGenericInterface.order_by: order_by entries must be non-empty strings (entry: '').",
         ),
     ],
 )
 async def test_validate_order_by_error(
+    schema_all_in_one: dict[str, Any], order_by: list[str], expected_error: str
+) -> None:
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["order_by"] = order_by
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        schema.validate_order_by()
+
+
+@pytest.mark.parametrize(
+    "order_by,expected_error",
+    [
+        (
+            ["my_generic_name__value", "my_generic_name__value__asc"],
+            "InfraGenericInterface.order_by: target 'my_generic_name.value' appears in order_by more than once "
+            "(entries: 'my_generic_name__value', 'my_generic_name__value__asc'). "
+            "Each target may appear at most once.",
+        ),
+        (
+            ["my_generic_name__value__asc", "my_generic_name__value__desc"],
+            "InfraGenericInterface.order_by: target 'my_generic_name.value' appears in order_by more than once "
+            "(entries: 'my_generic_name__value__asc', 'my_generic_name__value__desc'). "
+            "Each target may appear at most once.",
+        ),
+        (
+            ["node_metadata__created_at", "node_metadata__created_at__desc"],
+            "InfraGenericInterface.order_by: target 'created_at' appears in order_by more than once "
+            "(entries: 'node_metadata__created_at', 'node_metadata__created_at__desc'). "
+            "Each target may appear at most once.",
+        ),
+    ],
+)
+async def test_validate_order_by_duplicate_target(
     schema_all_in_one: dict[str, Any], order_by: list[str], expected_error: str
 ) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")

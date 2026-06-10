@@ -64,7 +64,11 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await page.getByLabel("Profile Name *").fill(PROFILE_NAME);
       await page.getByLabel("Profile Priority").fill("2000");
       await page.getByLabel("MTU").fill("256");
-      await page.getByLabel("Enabled").check();
+      await page
+        .getByRole("group", { name: "Enabled" })
+        .locator("label")
+        .filter({ hasText: "True" })
+        .click();
       await page.getByLabel("Status").click();
       await page.getByText("Provisioning").click();
       await page.getByRole("button", { name: "Save" }).click();

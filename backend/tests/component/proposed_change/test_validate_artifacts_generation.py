@@ -21,7 +21,7 @@ from infrahub.message_bus.types import (
 )
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestArtifactDefinitionCheck
-from infrahub.proposed_change.tasks import _get_subscribers_from_diff, validate_artifacts_generation
+from infrahub.proposed_change.tasks import validate_artifacts_generation
 from infrahub.server import app
 from infrahub.workers.dependencies import build_client, build_workflow
 from tests.adapters.workflow import WorkflowRecorder
@@ -508,8 +508,6 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         self,
         dataset: dict[str, Any],
         pipeline_id: uuid.UUID,
-        diff_summary: list[dict],
-        client: InfrahubClient,
         files_changed: list[str] | None = None,
     ) -> ProposedChangeBranchDiff:
         repository = dataset["repository"]
@@ -525,11 +523,9 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
                 destination_commit=repository.destination_commit,
                 files_changed=files_changed,
             )
-        subscribers = await _get_subscribers_from_diff(diff_summary=diff_summary, branch=SOURCE_BRANCH, client=client)
         return ProposedChangeBranchDiff(
             pipeline_id=pipeline_id,
             repositories=[repository],
-            subscribers=subscribers,
         )
 
     async def _run(
@@ -566,9 +562,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
             make_node_diff(artifact_dataset["dev2_id"], "TestNetworkDevice", SOURCE_BRANCH, ["description"]),
             make_node_diff(artifact_dataset["dev3_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
         ]
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id)
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_full"],
@@ -605,9 +599,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
             make_node_diff(artifact_dataset["dev3_id"], "TestNetworkDevice", SOURCE_BRANCH, ["description"]),
             make_node_diff(artifact_dataset["dev4_id"], "TestNetworkDevice", SOURCE_BRANCH, ["description"]),
         ]
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id)
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_full"],
@@ -643,9 +635,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
             make_node_diff(artifact_dataset["dev3_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
             make_node_diff(artifact_dataset["dev4_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
         ]
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id)
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_full"],
@@ -685,9 +675,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         diff_summary = [
             make_node_diff(artifact_dataset["dev3_id"], "TestNetworkDevice", SOURCE_BRANCH, ["description"]),
         ]
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id)
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_partial"],
@@ -723,9 +711,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
             make_node_diff(artifact_dataset["dev1_id"], "TestNetworkDevice", SOURCE_BRANCH, ["description"]),
             make_node_diff(artifact_dataset["dev2_id"], "TestNetworkDevice", SOURCE_BRANCH, ["description"]),
         ]
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id)
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_full_non_unique"],
@@ -758,9 +744,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         diff_summary = [
             make_node_diff(artifact_dataset["dev2_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
         ]
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id)
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_full_non_unique"],
@@ -801,13 +785,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         diff_summary = [
             make_node_diff(artifact_dataset["dev1_id"], "TestNetworkDevice", SOURCE_BRANCH, ["description"]),
         ]
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset,
-            pipeline_id,
-            diff_summary=diff_summary,
-            client=client,
-            files_changed=["templates/device.j2"],
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id, files_changed=["templates/device.j2"])
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_full"],
@@ -847,9 +825,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary: list[dict] = []
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id)
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_orphan"],
@@ -885,9 +861,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         diff_summary = [
             make_node_diff(artifact_dataset["dev1_id"], "TestNetworkDevice", SOURCE_BRANCH, ["name"]),
         ]
-        branch_diff = await self._make_branch_diff(
-            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
-        )
+        branch_diff = await self._make_branch_diff(artifact_dataset, pipeline_id)
 
         model = RequestArtifactDefinitionCheck(
             artifact_definition=artifact_dataset["artdef_full"],
