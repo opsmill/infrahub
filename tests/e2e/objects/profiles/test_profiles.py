@@ -10,9 +10,9 @@ Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 the `profile test tag` / `tag with profile` objects it creates across tests.
 Every test depends on the SAME fixtures (admin_page + branch) and the chain
 relies on pytest's default definition-order collection (see the README's
-serial-specs gotcha). The branch is cut from main, which carries
-the demo dataset (the `upstream_profile`, the `blue` tag), hence the
-infrastructure_data dependency.
+serial-specs gotcha). The branch is cut from main; data_profiles_groups
+provides the `upstream_profile` list anchor and data_org_registry the `blue`
+tag.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import OrgRegistryHandle, ProfilesGroupsHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
@@ -36,7 +37,8 @@ class TestProfiles:
     def branch(
         self,
         infrahub_client: InfrahubClientSync,
-        infrastructure_data: None,
+        data_profiles_groups: ProfilesGroupsHandle,
+        data_org_registry: OrgRegistryHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("profiles")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

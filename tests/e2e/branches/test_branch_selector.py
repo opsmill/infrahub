@@ -2,7 +2,8 @@
 
 The branch selector dropdown: create-disabled when anonymous, branch search and
 switching, quick-create form, and the redirect-to-main fallback for an unknown
-branch. Searching/switching to `atl1-delete-upstream` needs the demo data.
+branch. Searching/switching to `atl1-delete-upstream` needs data_scenario_branches
+(searching "atl1" must yield exactly that one scenario branch).
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import ScenarioBranchesHandle
     from playwright.sync_api import Page
 
 
@@ -35,7 +37,7 @@ class TestBranchSelectorNotLoggedIn:
         expect(page.get_by_text("No branch found")).to_be_visible()
         expect(page.get_by_role("option", name=f"Create branch {non_existent_branch_name}")).not_to_be_visible()
 
-    def test_search_and_switch_branch(self, page: Page, infrastructure_data: None) -> None:
+    def test_search_and_switch_branch(self, page: Page, data_scenario_branches: ScenarioBranchesHandle) -> None:
         page.goto("/")
         expect(page.get_by_test_id("branch-selector-trigger")).to_contain_text("main")
         page.get_by_test_id("branch-selector-trigger").click()

@@ -27,6 +27,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
@@ -36,7 +37,7 @@ class TestObjectRelationships:
     def branch(
         self,
         infrahub_client: InfrahubClientSync,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-relationships")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

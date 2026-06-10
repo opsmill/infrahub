@@ -4,8 +4,8 @@
 backward, from the first row, extend/shrink a range, deselect forward/backward,
 anchor reset after select-all, and last-click-as-anchor. Each test is
 self-contained, navigating and selecting independently, so it gets its own
-throwaway branch cut from main, which carries the demo devices (atl1-*) and tags,
-hence the infrastructure_data dependency.
+throwaway branch cut from main, hence the data_sites dependency (at least 7
+device rows; exactly 3 tags via the transitive org-registry slice).
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -29,7 +30,7 @@ class TestSelectRange:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("select-range")
         branch_api.create(name)

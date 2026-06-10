@@ -11,11 +11,12 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestIpAddressList:
-    def test_view_address_list_and_summary(self, page: Page, infrastructure_data: None) -> None:
+    def test_view_address_list_and_summary(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam/ip_addresses")
 
         page.get_by_test_id("identifier-cell").get_by_role("link", name="10.0.0.16/32").click()
@@ -29,7 +30,7 @@ class TestIpAddressList:
         expect(page.get_by_role("heading", name="Groups")).to_be_visible()
         expect(page.get_by_role("heading", name="Activities")).to_be_visible()
 
-    def test_view_all_addresses_under_a_prefix(self, page: Page, infrastructure_data: None) -> None:
+    def test_view_all_addresses_under_a_prefix(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam")
 
         # select a prefix to view all ip addresses

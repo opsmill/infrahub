@@ -3,8 +3,8 @@
 Create a related object inline from a relationship dropdown (a Tag from the
 InfraDevice creation form), and assert a dropdown attribute (CoreWebhook) does
 not expose the inline add-option button. A 500-response guard is registered on
-every test. Operates on the demo dataset on a throwaway branch, hence the
-infrastructure_data dependency.
+every test. The device/webhook forms need only the schema (the test creates its
+own tag inline), hence the schema_base dependency on the throwaway branch.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ class TestObjectDropdownCreation:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        schema_base: None,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name()
         branch_api.create(name)

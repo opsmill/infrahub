@@ -3,8 +3,9 @@
 Object groups manager: create a BuiltinTag, open its Groups manager, add two
 demo groups (arista_devices / backbone_interfaces), filter the list, leave a
 group and confirm the add-form retains the remaining default. Runs on a
-throwaway branch cut from main; the demo groups come from the dataset, hence the
-infrastructure_data dependency on the branch fixture.
+throwaway branch cut from main; the arista_devices / backbone_interfaces group
+memberships are populated by the topology stage, hence the data_topology
+dependency on the branch fixture.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import TopologyHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -28,7 +30,7 @@ class TestObjectGroupsUpdate:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_topology: TopologyHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-groups")
         branch_api.create(name)

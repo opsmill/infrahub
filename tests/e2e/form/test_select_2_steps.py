@@ -10,8 +10,8 @@ share one created branch (no object is read across tests). The branch is a
 class-scoped fixture created via `infrahub_client`; every test depends on the
 SAME fixtures (admin_page + select_branch) and the chain relies on pytest's
 default definition-order collection (see the README's serial-specs gotcha).
-Relies on the demo data (atl1 site, atl1-core1 device, MGMT gateway, the
-atl1-edge2 device and its Ethernet1 interface).
+Relies on data_sites (atl1 site, atl1-core1 device, MGMT gateway, and
+Ethernet1's connected endpoint from the per-site edge1<->edge2 cabling).
 """
 
 from __future__ import annotations
@@ -26,15 +26,14 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
 
 class TestVerifiesObjectCreation:
     @pytest.fixture(scope="class")
-    def select_branch(
-        self, infrahub_client: InfrahubClientSync, infrastructure_data: None
-    ) -> Generator[str, None, None]:
+    def select_branch(self, infrahub_client: InfrahubClientSync, data_sites: SitesHandle) -> Generator[str, None, None]:
         name = generate_random_branch_name("select-2-steps")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)
         yield name

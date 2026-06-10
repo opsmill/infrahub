@@ -15,12 +15,13 @@ from helpers import save_screenshot_for_docs
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 @pytest.mark.skip(reason="`test.describe.fixme` in the source (Guide - Resources Manager); preserved as skipped.")
 class TestResourcesManagerGuide:
-    def test_ip_address_pool(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_ip_address_pool(self, admin_page: Page, data_sites: SitesHandle) -> None:
         # create prefix 10.100.0.0/24
         admin_page.goto("/ipam")
         admin_page.get_by_test_id("create-object-button").click()
@@ -60,7 +61,7 @@ class TestResourcesManagerGuide:
         save_screenshot_for_docs(admin_page, "guides/resources-manager/resource_manager_pool_device_after")
         admin_page.get_by_role("button", name="Save").click()
 
-    def test_ip_prefix_pool(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_ip_prefix_pool(self, admin_page: Page, data_sites: SitesHandle) -> None:
         # create prefix 10.100.1.0/24
         admin_page.goto("/ipam")
         admin_page.get_by_test_id("create-object-button").click()
@@ -87,7 +88,7 @@ class TestResourcesManagerGuide:
         save_screenshot_for_docs(admin_page, "guides/resources-manager/resource_manager_pool_prefix")
         admin_page.get_by_role("button", name="Save").click()
 
-    def test_number_pool(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_number_pool(self, admin_page: Page, data_sites: SitesHandle) -> None:
         # create number pool - VLAN ID
         admin_page.goto("/resource-manager")
         admin_page.get_by_test_id("create-object-button").click()

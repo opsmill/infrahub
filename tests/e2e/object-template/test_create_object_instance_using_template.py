@@ -2,7 +2,8 @@
 
 Create a profile, then a template using that profile, then a node from the
 template — verifying template + profile values are inherited. Runs on a
-throwaway branch; depends on the demo data (upstream_profile, Regular_Patch_Panel).
+throwaway branch; depends on data_profiles_groups (upstream_profile) and
+data_patch_template (Regular_Patch_Panel).
 """
 
 from __future__ import annotations
@@ -17,13 +18,19 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import PatchTemplateHandle, ProfilesGroupsHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
 
 class TestCreateObjectInstanceUsingTemplate:
     @pytest.fixture
-    def branch(self, branch_api: BranchAPI, infrastructure_data: None) -> Generator[str, None, None]:
+    def branch(
+        self,
+        branch_api: BranchAPI,
+        data_profiles_groups: ProfilesGroupsHandle,
+        data_patch_template: PatchTemplateHandle,
+    ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-template-")
         branch_api.create(name)
         yield name

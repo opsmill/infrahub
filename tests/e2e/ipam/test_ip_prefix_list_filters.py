@@ -10,11 +10,12 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import IpamPoolsHandle
     from playwright.sync_api import Page
 
 
 class TestIpPrefixListFiltering:
-    def test_filter_by_search_text_and_column(self, page: Page, infrastructure_data: None) -> None:
+    def test_filter_by_search_text_and_column(self, page: Page, data_ipam_pools: IpamPoolsHandle) -> None:
         page.goto("/ipam")
         identifier_cell = page.get_by_test_id("identifier-cell")
 

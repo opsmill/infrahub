@@ -1,8 +1,8 @@
 """Port of frontend/app/tests/e2e/schema/schema-shortcut.spec.ts.
 
 Schema shortcut modal opened from an object's attribute / relationship-one /
-relationship-many labels. Uses the demo device atl1-edge1, so it needs the
-demo data.
+relationship-many labels. Uses the demo device atl1-edge1 (its detail page),
+so it needs data_sites.
 """
 
 from __future__ import annotations
@@ -12,11 +12,12 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestSchemaShortcut:
-    def test_open_schema_modal_from_attribute_label(self, page: Page, infrastructure_data: None) -> None:
+    def test_open_schema_modal_from_attribute_label(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/objects/InfraDevice")
         page.get_by_role("link", name="atl1-edge1").click()
 
@@ -32,7 +33,7 @@ class TestSchemaShortcut:
         page.get_by_role("button", name="Close schema viewer").click()
         expect(page.get_by_role("dialog")).not_to_be_visible()
 
-    def test_open_schema_modal_from_relationship_one_label(self, page: Page, infrastructure_data: None) -> None:
+    def test_open_schema_modal_from_relationship_one_label(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/objects/InfraDevice")
         page.get_by_role("link", name="atl1-edge1").click()
 
@@ -45,7 +46,7 @@ class TestSchemaShortcut:
         page.keyboard.press("Escape")
         expect(page.get_by_role("dialog")).not_to_be_visible()
 
-    def test_open_schema_modal_from_relationship_many_label(self, page: Page, infrastructure_data: None) -> None:
+    def test_open_schema_modal_from_relationship_many_label(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/objects/InfraDevice")
         page.get_by_role("link", name="atl1-edge1").click()
 

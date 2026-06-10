@@ -2,7 +2,8 @@
 
 Search-anywhere "Parent Prefixes" section: containing prefixes for an IP,
 absent for non-IP queries, empty state for an unmatched IP, and navigation to a
-prefix detail page. Depends on the demo IP data (10.0.0.0/8, 10.0.0.0/16).
+prefix detail page. Depends on data_sites' IP data (10.0.0.0/8, 10.0.0.0/16,
+and 10.0.0.2 — the second loopback).
 """
 
 from __future__ import annotations
@@ -13,11 +14,12 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestSearchParentPrefixes:
-    def test_display_parent_prefixes_for_ip_address(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_display_parent_prefixes_for_ip_address(self, admin_page: Page, data_sites: SitesHandle) -> None:
         admin_page.goto("/")
         admin_page.get_by_test_id("search-anywhere-trigger").click()
         expect(admin_page.get_by_test_id("search-anywhere")).to_be_visible()
@@ -31,7 +33,7 @@ class TestSearchParentPrefixes:
         # the existing IP address appears in the Objects section
         expect(search_dialog.get_by_text("Objects")).to_be_visible()
 
-    def test_no_parent_prefixes_for_non_ip_search(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_no_parent_prefixes_for_non_ip_search(self, admin_page: Page, data_sites: SitesHandle) -> None:
         admin_page.goto("/")
         admin_page.get_by_test_id("search-anywhere-trigger").click()
         admin_page.get_by_test_id("search-anywhere-input").fill("atl1")
@@ -40,7 +42,7 @@ class TestSearchParentPrefixes:
         expect(search_dialog.get_by_text("Objects")).to_be_visible()
         expect(search_dialog.get_by_text("Parent Prefixes")).not_to_be_visible()
 
-    def test_empty_parent_prefixes_state_for_unmatched_ip(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_empty_parent_prefixes_state_for_unmatched_ip(self, admin_page: Page, data_sites: SitesHandle) -> None:
         admin_page.goto("/")
         admin_page.get_by_test_id("search-anywhere-trigger").click()
         admin_page.get_by_test_id("search-anywhere-input").fill("203.0.113.5")
@@ -49,7 +51,7 @@ class TestSearchParentPrefixes:
         expect(search_dialog.get_by_text("Parent Prefixes")).to_be_visible()
         expect(search_dialog.get_by_text("No containing prefixes found")).to_be_visible()
 
-    def test_navigate_to_prefix_detail_from_parent_prefix(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_navigate_to_prefix_detail_from_parent_prefix(self, admin_page: Page, data_sites: SitesHandle) -> None:
         admin_page.goto("/")
         admin_page.get_by_test_id("search-anywhere-trigger").click()
         admin_page.get_by_test_id("search-anywhere-input").fill("10.0.0.2")

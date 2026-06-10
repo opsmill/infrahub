@@ -3,8 +3,8 @@
 /objects/:objectKind - Bulk edit some rows: select three InfraDevice rows and
 apply a single set of changes (site, description, type, status, role, loopback
 pool) to all of them at once. Runs as Admin on a throwaway branch cut from main,
-which carries the demo devices (atl1-*), site den1, statuses/roles, and the
-Loopbacks pool, hence the infrastructure_data dependency.
+hence the data_sites dependency (the first 3 device rows atl1-core1/core2/edge1,
+the den1 site option, and — transitively — the "Loopbacks pool").
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -28,7 +29,7 @@ class TestBulkEditSomeRows:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("bulk-edit-some-rows")
         branch_api.create(name)

@@ -18,6 +18,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import IpamPoolsHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 class TestTemplateWithNumberPool:
     @pytest.fixture(scope="class")
     def template_branch(
-        self, infrahub_client: InfrahubClientSync, infrastructure_data: None
+        self, infrahub_client: InfrahubClientSync, data_ipam_pools: IpamPoolsHandle
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("template-number-pool-")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

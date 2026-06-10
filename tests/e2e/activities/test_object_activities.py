@@ -1,8 +1,8 @@
 """Port of frontend/app/tests/e2e/activities/object-activities.spec.ts.
 
 Object activity log: open atl1-edge1's activity timeline (reloading until the
-activity appears) and the per-event "View more" popover. Reads the
-demo-data-populated activity log, so depends on infrastructure_data.
+activity appears) and the per-event "View more" popover. Reads the activity
+timeline populated by the data_sites load itself, so depends on data_sites.
 """
 
 from __future__ import annotations
@@ -13,11 +13,12 @@ from helpers import Deadline, save_screenshot_for_docs
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestObjectActivities:
-    def test_display_activity_log_details_for_atl1_edge1(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_display_activity_log_details_for_atl1_edge1(self, admin_page: Page, data_sites: SitesHandle) -> None:
         # Navigate to InfraDevice page
         admin_page.goto("/objects/InfraDevice")
         admin_page.get_by_role("link", name="atl1-edge1").click()

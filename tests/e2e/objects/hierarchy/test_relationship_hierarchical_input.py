@@ -3,7 +3,8 @@
 Selecting a Site through the Explore tab of a hierarchical relationship input on
 the InfraDevice creation form: drilling North America -> United States of America
 -> atl1. Relies on the demo hierarchy and the atl1 site on a throwaway branch cut
-from main, hence the infrastructure_data dependency.
+from main, hence the data_sites dependency (the atl1 site option and the Explore
+drill-down to atl1).
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -27,7 +29,7 @@ class TestRelationshipHierarchicalInput:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("relationship-hierarchical-input")
         branch_api.create(name)

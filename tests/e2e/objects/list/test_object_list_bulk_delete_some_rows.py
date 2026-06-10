@@ -2,9 +2,9 @@
 
 /objects/BuiltinTag - Bulk delete some rows: select the blue and green tag rows,
 delete them, and assert only red remains. Runs as Admin on a throwaway branch
-cut from main, which carries the demo tags (blue/green/red), hence the
-infrastructure_data dependency. The source describe is serial but has a single
-self-contained test, so order is irrelevant.
+cut from main, hence the data_org_registry dependency (the seeded blue/green/red
+tags). The source describe is serial but has a single self-contained test, so
+order is irrelevant.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import OrgRegistryHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -28,7 +29,7 @@ class TestBulkDeleteSomeRows:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_org_registry: OrgRegistryHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("bulk-delete-some-rows")
         branch_api.create(name)

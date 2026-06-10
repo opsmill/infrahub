@@ -2,8 +2,8 @@
 
 Global activity log: navigate from the sidebar, filter by a primary node tag
 (blue) and by has-children, then open event details (reloading until the
-activity appears). Reads the demo-data-populated activity log, so depends on
-infrastructure_data.
+activity appears). Reads the activity log populated by the data_sites load
+itself (the blue tag comes transitively), so depends on data_sites.
 """
 
 from __future__ import annotations
@@ -14,18 +14,19 @@ from helpers import Deadline, save_screenshot_for_docs
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestGlobalActivities:
-    def test_navigate_to_global_activity_log_from_sidebar(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_navigate_to_global_activity_log_from_sidebar(self, admin_page: Page, data_sites: SitesHandle) -> None:
         admin_page.goto("/")
 
         admin_page.get_by_test_id("sidebar").get_by_role("button", name="Activity").click()
         admin_page.get_by_role("menuitem", name="Activities").click()
         expect(admin_page.get_by_role("heading", name="Activities")).to_be_visible()
 
-    def test_filter_activities_by_primary_node_tag(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_filter_activities_by_primary_node_tag(self, admin_page: Page, data_sites: SitesHandle) -> None:
         # Navigate to activity log page
         admin_page.goto("/activities")
 
@@ -39,7 +40,7 @@ class TestGlobalActivities:
         expect(admin_page.get_by_role("button", name="Primary Node blue")).to_be_visible()
         save_screenshot_for_docs(admin_page, "topics/activity-logs/activity_log_global_filters_primary")
 
-    def test_filter_by_has_children_and_view_event_details(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_filter_by_has_children_and_view_event_details(self, admin_page: Page, data_sites: SitesHandle) -> None:
         # Navigate to activity log page
         admin_page.goto("/activities")
         expect(admin_page.get_by_role("heading", name="Activities")).to_be_visible()

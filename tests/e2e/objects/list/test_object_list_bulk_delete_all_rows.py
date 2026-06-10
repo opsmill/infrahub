@@ -1,8 +1,8 @@
 """Port of frontend/app/tests/e2e/objects/list/object-list-bulk-delete-all-rows.spec.ts.
 
 /objects/BuiltinTag - Bulk delete all rows: select every tag row and delete
-them all at once. Runs as Admin on a throwaway branch cut from main, which
-carries the demo tags (blue/green/red), hence the infrastructure_data dependency.
+them all at once. Runs as Admin on a throwaway branch cut from main, hence the
+data_org_registry dependency (exactly the 3 seeded tags blue/green/red).
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import OrgRegistryHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -26,7 +27,7 @@ class TestBulkDeleteAllRows:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_org_registry: OrgRegistryHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("bulk-delete-all-rows")
         branch_api.create(name)

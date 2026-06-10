@@ -10,9 +10,9 @@ fixtures (admin_page + branch) and the chain relies on pytest's default
 definition-order collection (see the README's serial-specs gotcha). The suite
 runs single-process.
 
-Data dependency: the relationship-match step references the `atl1` site and the
-skipped update step references the `AS174` ASN, both seeded by the demo data, so
-the branch fixture depends on `infrastructure_data`.
+Data dependency: the relationship-match step references the `atl1` site (seeded
+by data_sites) and the skipped update step references the `AS174` ASN (seeded
+via its org_registry dependency), so the branch fixture depends on `data_sites`.
 
 The legacy spec navigated with a `?brach=` (sic) query param, so its objects —
 including an ACTIVE node trigger wired to a group action — silently landed on
@@ -32,6 +32,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
@@ -41,7 +42,7 @@ class TestNodeTrigger:
     def branch(
         self,
         infrahub_client: InfrahubClientSync,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("triggers-")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

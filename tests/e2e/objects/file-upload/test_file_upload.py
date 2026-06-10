@@ -10,7 +10,8 @@ the CONTRACT-UPLOAD contract the first Admin test creates, which the Read-Only
 `branch` fixture and the chain relies on pytest's default definition-order
 collection (see the README's serial-specs gotcha). The branch is cut
 from main; the Read-Only page authenticates as the demo `jbauer` account, hence
-the infrastructure_data dependency.
+the data_rbac dependency (the InfraCircuitContract kind comes from the schema,
+which data_rbac pulls).
 
 Local helpers (upload_file / fill_circuit_contract_fields) live in the sibling
 file_upload_helpers module (this directory is on sys.path at runtime).
@@ -30,6 +31,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
+    from data.handles import RbacHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page, Response
 
@@ -65,7 +67,7 @@ class TestFileUploadCircuitContract:
     def branch(
         self,
         infrahub_client: InfrahubClientSync,
-        infrastructure_data: None,
+        data_rbac: RbacHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("file-upload")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

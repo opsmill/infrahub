@@ -15,6 +15,7 @@ from constants import ADMIN_CREDENTIALS
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import ScenarioBranchesHandle
     from playwright.sync_api import Page, Route
 
 
@@ -93,9 +94,11 @@ class TestLoginNotLoggedIn:
 
         expect(page.locator("#alert-error-sign-in")).to_contain_text("Invalid username or password")
 
-    def test_redirect_to_initial_page_after_login(self, page: Page, infrastructure_data: None) -> None:
-        # The initial page targets the `atl1-delete-upstream` branch created by
-        # the demo-data branch scenarios, hence the infrastructure_data dependency.
+    def test_redirect_to_initial_page_after_login(
+        self, page: Page, data_scenario_branches: ScenarioBranchesHandle
+    ) -> None:
+        # The initial page targets the `atl1-delete-upstream` branch, hence the
+        # data_scenario_branches dependency.
         _disable_sso(page)
         # Match JS toISOString(): a trailing Z, not +00:00 (whose + decodes to a
         # space in the query string, making the `at` timestamp invalid).
@@ -128,8 +131,10 @@ class TestLoginLoggedIn:
 
         expect(admin_page.get_by_text("Open Proposed changes", exact=True)).to_be_visible()
 
-    def test_refresh_access_token_and_retry(self, admin_page: Page, infrastructure_data: None) -> None:
-        # Needs the seeded BuiltinTag "blue" from the demo data.
+    def test_refresh_access_token_and_retry(
+        self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle
+    ) -> None:
+        # Needs the seeded BuiltinTag "blue", loaded transitively by data_scenario_branches.
         block_request = {"value": True}  # force a 401 on the first BuiltinTag call
 
         def handler(route: Route) -> None:

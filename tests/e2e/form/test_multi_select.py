@@ -2,8 +2,8 @@
 
 Verify multi-select behaviour: select multiple tags, remove a tag from its
 selected badge, and create a new tag directly from the multi-select. Runs on a
-throwaway branch and relies on the demo data (the Ethernet11 interface and the
-blue/green/red tags).
+throwaway branch and relies on data_sites (the Ethernet11 interface; the
+blue/green/red tags come transitively).
 """
 
 from __future__ import annotations
@@ -18,13 +18,14 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
 
 class TestVerifyMultiSelectBehaviour:
     @pytest.fixture
-    def branch(self, branch_api: BranchAPI, infrastructure_data: None) -> Generator[str, None, None]:
+    def branch(self, branch_api: BranchAPI, data_sites: SitesHandle) -> Generator[str, None, None]:
         name = generate_random_branch_name("multi-select")
         branch_api.create(name)
         yield name

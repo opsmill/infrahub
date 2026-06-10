@@ -3,8 +3,9 @@
 Edit an InfraDevice from its detail form: set/update attributes, relationships
 (status, role, ASN) and a many-relationship (tags), then assert both the view
 and the re-opened form; and a second flow that clears relationship values.
-Operates on the demo devices atl1-core1 / atl1-leaf1, ASNs and tags
-blue/green/red on a throwaway branch, hence the infrastructure_data dependency.
+Operates on the demo devices atl1-core1 / atl1-leaf1 on a throwaway branch,
+hence the data_sites dependency (the tags and ASNs come via its transitive
+slices).
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -28,7 +30,7 @@ class TestObjectUpdate:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-update")
         branch_api.create(name)

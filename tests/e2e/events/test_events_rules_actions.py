@@ -4,8 +4,9 @@ Create and configure an Event with a Group Action: a Group action targeting the
 `arista_devices` group, then a Node trigger on Device creation wired to that
 action, plus a trigger match on the `Arista EOS` platform. The active test is
 `test.fixme` in the source and is preserved as skipped; the second test was
-fully commented out in the source and is not ported. Depends on the demo data
-(the `arista_devices` group and the `Arista EOS` platform).
+fully commented out in the source and is not ported. Depends on data_topology
+(it fills the `arista_devices` group membership; the `Arista EOS` platform
+comes transitively).
 """
 
 from __future__ import annotations
@@ -20,13 +21,14 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import TopologyHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
 
 class TestEventRulesAndActions:
     @pytest.fixture
-    def branch(self, branch_api: BranchAPI, infrastructure_data: None) -> Generator[str, None, None]:
+    def branch(self, branch_api: BranchAPI, data_topology: TopologyHandle) -> Generator[str, None, None]:
         name = generate_random_branch_name("events-rules-actions")
         branch_api.create(name)
         yield name
