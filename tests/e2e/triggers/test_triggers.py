@@ -12,6 +12,11 @@ suite runs single-process.
 Data dependency: the relationship-match step references the `atl1` site and the
 skipped update step references the `AS174` ASN, both seeded by the demo data, so
 the branch fixture depends on `infrastructure_data`.
+
+The legacy spec navigated with a `?brach=` (sic) query param, so its objects —
+including an ACTIVE node trigger wired to a group action — silently landed on
+main and outlived the test. The typo is fixed here so the whole flow stays on
+the throwaway branch and is removed with it.
 """
 
 from __future__ import annotations
@@ -45,7 +50,7 @@ class TestNodeTrigger:
 
     def test_should_create_a_node_trigger(self, admin_page: Page, branch: str) -> None:
         # access form
-        admin_page.goto(f"/objects/CoreTriggerRule?brach={branch}")
+        admin_page.goto(f"/objects/CoreTriggerRule?branch={branch}")
         admin_page.get_by_test_id("create-object-button").click()
 
         # fill and validate form
@@ -78,7 +83,7 @@ class TestNodeTrigger:
 
     def test_should_create_new_matches(self, admin_page: Page, branch: str) -> None:
         # access list view
-        admin_page.goto(f"/objects/CoreTriggerRule?brach={branch}")
+        admin_page.goto(f"/objects/CoreTriggerRule?branch={branch}")
 
         # access the matches
         expect(admin_page.get_by_role("link", name="test node trigger rule")).to_be_visible()
