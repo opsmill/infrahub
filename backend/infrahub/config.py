@@ -302,7 +302,11 @@ class DatabaseSettings(BaseSettings):
     protocol: str = "bolt"
     username: str = "neo4j"
     password: str = "admin"
-    address: str = "localhost"
+    address: str = Field(
+        default="localhost",
+        description="Database host, or a comma-separated list of cluster members in 'host[:port]' format. "
+        "Members without an explicit port use the value of the port setting.",
+    )
     port: int = 7687
     database: str | None = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     policy: str | None = Field(default=None, description="Routing policy for database connections")
@@ -358,12 +362,38 @@ class DatabaseSettings(BaseSettings):
     )
 
     @property
+    def address_members(self) -> list[str]:
+        """All members defined in the address setting, in 'host[:port]' format."""
+        return [member.strip() for member in self.address.split(",") if member.strip()]
+
+    @property
     def database_uri(self) -> str:
-        """Constructs the database URI based on the configuration settings."""
-        base_uri = f"{self.protocol}://{self.address}:{self.port}"
+        """Constructs the database URI based on the configuration settings.
+
+        When multiple members are configured, only the first one is part of the URI;
+        the others are made available to the driver through a custom address resolver.
+        """
+        member = self.address_members[0] if self.address_members else self.address
+        host, member_port = self._split_member(member)
+        base_uri = f"{self.protocol}://{host}:{member_port or self.port}"
         if self.policy is not None:
             return f"{base_uri}?policy={self.policy}"
         return base_uri
+
+    @staticmethod
+    def _split_member(member: str) -> tuple[str, int | None]:
+        """Split a 'host[:port]' member into host and optional port, supporting bracketed IPv6 hosts."""
+        if member.startswith("["):
+            host, _, rest = member.partition("]")
+            host += "]"
+            if rest.startswith(":") and rest[1:].isdigit():
+                return host, int(rest[1:])
+            return host, None
+        if member.count(":") == 1:
+            host, _, port_str = member.partition(":")
+            if port_str.isdigit():
+                return host, int(port_str)
+        return member, None
 
     @property
     def database_name(self) -> str:
