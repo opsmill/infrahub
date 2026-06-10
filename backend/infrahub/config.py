@@ -452,7 +452,7 @@ class WorkflowSettings(BaseSettings):
         description=(
             "Maximum time (sec) the API will wait for a task worker to pick up the schema validation and "
             "migration workflows during a schema load. Bounds how long the schema lock can be held when no "
-            "worker is available; once a worker starts the run it is allowed to finish without this limit."
+            "worker is available."
         ),
     )
 
