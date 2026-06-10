@@ -194,6 +194,16 @@ class NodeProfilesApplier:
         await relationship_manager.delete(db=self.db)
 
     async def apply_profiles(self, node: Node) -> list[str]:
+        """Reconcile a node's profile-sourced attributes and relationships with its assigned profiles.
+
+        For each attribute and relationship that supports profiles, the highest-priority profile value
+        is applied, or a previously profile-sourced value is reset when no assigned profile supplies
+        one. Values the user has set directly are left untouched and take precedence over profiles.
+
+        Returns the names of the attributes and relationships that this method modified. Fields the
+        caller changed before calling this method are not reported unless applying profiles changed
+        them further; an empty list means nothing was modified here.
+        """
         profile_ids = await self._get_profile_ids(node=node)
         attr_names_for_profiles = await self._get_attr_names_for_profiles(node=node)
         rel_names_for_profiles = await self._get_rel_names_for_profiles(node=node)
