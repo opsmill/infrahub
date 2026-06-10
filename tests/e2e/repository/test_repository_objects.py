@@ -5,9 +5,12 @@ CoreRepository through the UI pointing at the public GitHub demo-edge URL, view
 its (empty) repository-derived objects, then exercise the repository detail
 actions (check connectivity, import latest commit, reimport current commit).
 
-This spec creates its own repository through the UI, so it does NOT use the
-demo_edge_repo fixture. Registering the repo and the "Check connectivity" /
-"Import latest commit" actions require network egress to github.com.
+This spec creates its own repository through the UI, but the first test also
+asserts the `demo-edge` link is visible in the repository list, so the class
+depends on demo_edge_repo explicitly (relying on another domain's session
+fixture having run first would break standalone/per-domain runs). Registering
+the repo and the "Check connectivity" / "Import latest commit" actions require
+network egress to github.com.
 
 Serial handling: the source `describe.configure({ mode: "serial" })` shares a
 single branch created in beforeAll and deleted in afterAll (only used as
@@ -35,6 +38,7 @@ GIT_REPO_URL = "https://github.com/opsmill/infrahub-demo-edge.git"
 REPO_NAME = "test repository"
 
 
+@pytest.mark.usefixtures("demo_edge_repo")
 class TestRepositoryCreationAndObjectsView:
     @pytest.fixture(scope="class")
     def branch(self, infrahub_client: InfrahubClientSync) -> Generator[str, None, None]:
