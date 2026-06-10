@@ -35,7 +35,7 @@ export default defineConfig({
     "react/no-multi-comp": "off",
     "react/only-export-components": "off",
     "react/react-in-jsx-scope": "off",
-    "react_perf/jsx-no-new-function-as-prop": "off",
+    "react-perf/jsx-no-new-function-as-prop": "off",
     "typescript/explicit-function-return-type": "off",
     "typescript/explicit-module-boundary-types": "off",
     "typescript/no-empty-interface": "off",
