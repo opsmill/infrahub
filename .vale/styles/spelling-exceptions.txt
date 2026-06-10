@@ -116,6 +116,7 @@ Jotai
 json
 JSON
 JSONSchema
+Junos
 kbps
 Keycloak
 kubectl
@@ -250,8 +251,10 @@ uv
 validator
 Validator
 validators
+Viptela
 Vitest
 VLANs
+VRFs
 VSCode
 walkthrough
 walkthroughs
