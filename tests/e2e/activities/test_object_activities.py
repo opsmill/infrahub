@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from helpers import save_screenshot_for_docs
+from helpers import Deadline, save_screenshot_for_docs
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
@@ -22,7 +22,9 @@ class TestObjectActivities:
         admin_page.goto("/objects/InfraDevice")
         admin_page.get_by_role("link", name="atl1-edge1").click()
 
+        deadline = Deadline("the atl1-edge1 activity log to be populated")
         while admin_page.get_by_text("No activity found for this").is_visible():
+            deadline.tick()
             admin_page.reload()
             expect(admin_page.get_by_test_id("activities-container").get_by_text("Loading...")).to_be_hidden()
 
