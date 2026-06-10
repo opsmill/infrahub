@@ -67,22 +67,17 @@ WORKDIR /frontend/app
 RUN pnpm build
 
 # ****************************************************************
-# STAGE : Documentation dependencies
+# STAGE : Documentation
+#   models/, deploy.tf and k8s/ are raw-loaded by docs .mdx pages at build time
 # ****************************************************************
-FROM node-base AS docs-deps
+FROM node-base AS docs
+
+# Read by docusaurus.config.ts: sets url/baseUrl for serving inside the app at /docs
+ENV DOCS_IN_APP=1
 
 WORKDIR /docs
 COPY docs/package.json docs/package-lock.json /docs/
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
-
-# ****************************************************************
-# STAGE : Documentation build
-#   models/, deploy.tf and k8s/ are raw-loaded by docs .mdx pages at build time
-# ****************************************************************
-FROM docs-deps AS docs
-
-# Read by docusaurus.config.ts: sets url/baseUrl for serving inside the app at /docs
-ENV DOCS_IN_APP=1
 
 COPY models/ /models/
 COPY development/deploy.tf /development/deploy.tf
