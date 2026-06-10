@@ -2,9 +2,9 @@
 
 Object details "Convert object type": convert an InfraInterfaceL3 (Ethernet1 on
 atl1-edge1) to an InfraInterfaceL2, mapping source-object field values onto the
-target form. Runs as Admin on a throwaway branch cut from main, which carries
-the demo dataset (the device atl1-edge1 / its Ethernet1 interface), hence the
-infrastructure_data dependency.
+target form. Runs as Admin on a throwaway branch cut from main; the data_sites
+dependency provides atl1-edge1's Ethernet1 (connected to atl1-edge2 via the
+per-site cabling) with the speed/role/status values the mapping form asserts.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -29,7 +30,7 @@ class TestObjectDetailsConvert:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-convert")
         branch_api.create(name)

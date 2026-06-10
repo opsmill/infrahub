@@ -10,8 +10,9 @@ Serial handling: the whole flow shares one branch (a class-scoped fixture) and
 the two profiles it creates across tests. Every test depends on the SAME
 fixtures (admin_page + branch) and the chain relies on pytest's default
 definition-order collection (see the README's serial-specs gotcha). The
-branch is cut from main, which carries the demo dataset (the `backbone_profile`,
-the `Ethernet1` interface), hence the infrastructure_data dependency.
+branch is cut from main; data_profiles_groups provides the `backbone_profile`
+list anchor and data_sites the `Ethernet1` interfaces in the InfraInterface
+list.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import ProfilesGroupsHandle, SitesHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
@@ -39,7 +41,8 @@ class TestProfileOnGeneric:
     def branch(
         self,
         infrahub_client: InfrahubClientSync,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
+        data_profiles_groups: ProfilesGroupsHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name()
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

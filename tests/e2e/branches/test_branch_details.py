@@ -2,7 +2,7 @@
 
 Branch details view for the default branch (main) and a non-default branch
 (`atl1-delete-upstream`, created by the demo-data branch scenarios — hence the
-infrastructure_data dependency on the non-default tests).
+data_scenario_branches dependency on the non-default tests).
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import ScenarioBranchesHandle
     from playwright.sync_api import Page
 
 NON_DEFAULT_BRANCH = "atl1-delete-upstream"
@@ -48,7 +49,9 @@ class TestBranchDetailsDefaultBranch:
 
 
 class TestBranchDetailsNonDefaultBranch:
-    def test_display_branch_name_and_no_default_badge(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_display_branch_name_and_no_default_badge(
+        self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle
+    ) -> None:
         admin_page.goto(f"/branches/{NON_DEFAULT_BRANCH}")
 
         # Header
@@ -79,7 +82,7 @@ class TestBranchDetailsNonDefaultBranch:
         expect(admin_page.get_by_role("button", name="Delete", exact=True)).to_be_visible()
         expect(admin_page.get_by_test_id("tasks-accordion")).to_be_visible()
 
-    def test_navigate_between_tabs(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_navigate_between_tabs(self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle) -> None:
         admin_page.goto(f"/branches/{NON_DEFAULT_BRANCH}")
 
         tabs_nav = admin_page.get_by_role("navigation", name="Tabs")
@@ -99,7 +102,7 @@ class TestBranchDetailsNonDefaultBranch:
         tabs_nav.get_by_text("Details").click()
         expect(admin_page).not_to_have_url(re.compile(r".*branch_tab=details"))
 
-    def test_display_node_metadata(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_display_node_metadata(self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle) -> None:
         admin_page.goto(f"/branches/{NON_DEFAULT_BRANCH}")
 
         admin_page.get_by_role("button", name="View node metadata").click()

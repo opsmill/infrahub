@@ -17,14 +17,15 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import RbacHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
 
 class TestRolesCrud:
     @pytest.fixture
-    def branch(self, branch_api: BranchAPI, infrastructure_data: None) -> Generator[str, None, None]:
-        # The "Administrator" role is created by the demo data, not bootstrap.
+    def branch(self, branch_api: BranchAPI, data_rbac: RbacHandle) -> Generator[str, None, None]:
+        # The "Administrator" role is created by the rbac slice, not bootstrap.
         name = generate_random_branch_name("role-crud-")
         branch_api.create(name)
         yield name

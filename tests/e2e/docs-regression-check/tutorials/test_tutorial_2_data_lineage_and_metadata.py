@@ -2,7 +2,7 @@
 
 Explore and update object metadata (make a device's Description protected, owned
 by the Admin account) as a read-write user. Operates on the demo device
-atl1-core2, so it needs infrastructure_data; uses the read-write role.
+atl1-core2, so it needs data_sites; uses the read-write role.
 """
 
 from __future__ import annotations
@@ -13,11 +13,12 @@ from helpers import save_screenshot_for_docs
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestTutorial2Metadata:
-    def test_explore_and_update_object_metadata(self, read_write_page: Page, infrastructure_data: None) -> None:
+    def test_explore_and_update_object_metadata(self, read_write_page: Page, data_sites: SitesHandle) -> None:
         # go to the detailed page of a device
         read_write_page.goto("/objects/InfraDevice")
         read_write_page.get_by_role("link", name="atl1-core2").click()

@@ -1,7 +1,8 @@
 """Port of frontend/app/tests/e2e/ipam/ip-address-create-with-pool.spec.ts.
 
-Allocate an IP address from the seeded "Management addresses pool". The first
-allocation off a fresh branch is deterministic: 172.16.0.31/16.
+Allocate an IP address from the seeded "Management addresses pool". Depends on
+data_sites: the asserted next-free address (172.16.0.31/16) assumes exactly the
+30 device management addresses are already consumed.
 """
 
 from __future__ import annotations
@@ -16,13 +17,14 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
 
 class TestAllocateIpAddressWithPool:
     @pytest.fixture
-    def branch(self, branch_api: BranchAPI, infrastructure_data: None) -> Generator[str, None, None]:
+    def branch(self, branch_api: BranchAPI, data_sites: SitesHandle) -> Generator[str, None, None]:
         name = generate_random_branch_name("ip-address-pool-")
         branch_api.create(name)
         yield name

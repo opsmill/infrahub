@@ -21,6 +21,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import ScenarioBranchesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -124,7 +125,7 @@ class TestBranchesCreationDeletion:
             with contextlib.suppress(Exception):
                 branch_api.delete(branch)
 
-    def test_search_for_a_branch(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_search_for_a_branch(self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle) -> None:
         admin_page.goto("/branches")
         expect(admin_page.get_by_role("link", name="main", exact=True)).to_be_visible()
         expect(admin_page.get_by_role("link", name="den1-maintenance-conflict")).to_be_visible()

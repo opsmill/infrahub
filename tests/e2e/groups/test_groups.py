@@ -1,8 +1,9 @@
 """Port of frontend/app/tests/e2e/groups/groups.spec.ts.
 
 Serial: create a Standard Group, then add Builtin Tag members (blue, red) to it.
-Shares one branch + the created group; depends on the demo data (arista_devices
-group, blue/red tags).
+Shares one branch + the created group; depends on data_profiles_groups (the
+arista_devices group shown in the list) and data_org_registry (the blue/red tags
+added as members).
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import OrgRegistryHandle, ProfilesGroupsHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
@@ -24,7 +26,10 @@ if TYPE_CHECKING:
 class TestCoreGroup:
     @pytest.fixture(scope="class")
     def groups_branch(
-        self, infrahub_client: InfrahubClientSync, infrastructure_data: None
+        self,
+        infrahub_client: InfrahubClientSync,
+        data_profiles_groups: ProfilesGroupsHandle,
+        data_org_registry: OrgRegistryHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("groups-")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

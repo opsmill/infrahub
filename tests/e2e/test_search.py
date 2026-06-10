@@ -2,7 +2,8 @@
 
 Search-anywhere modal: open/close (click, Esc, Ctrl/Cmd+K), the Device menu
 link, the no-results message, node + IPAM results, and lookup by UUID. Runs
-anonymously; the result tests rely on the demo data / menu.
+anonymously; the result tests rely on data_sites (the atl1 site, the 10.x
+prefix/loopback tree, and AS174 transitively via org_registry) and the menu.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
@@ -54,7 +56,7 @@ class TestSearchAnywhere:
             )
         ).to_be_visible()
 
-    def test_display_results_on_search_nodes(self, page: Page, infrastructure_data: None) -> None:
+    def test_display_results_on_search_nodes(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/")
         page.get_by_test_id("search-anywhere-trigger").click()
         expect(page.get_by_test_id("search-anywhere")).to_be_visible()
@@ -70,7 +72,7 @@ class TestSearchAnywhere:
         expect(page.get_by_text("IP Namespacedefault").first).to_be_visible()
         expect(page.get_by_text("IP NamespacedefaultAddress10.0.0.2/32Description-")).to_be_visible()
 
-    def test_display_result_when_searching_by_uuid(self, page: Page, infrastructure_data: None) -> None:
+    def test_display_result_when_searching_by_uuid(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/objects/InfraAutonomousSystem")
 
         page.get_by_role("link", name="AS174 174").click()

@@ -3,8 +3,9 @@
 A merged branch is read-only: create + create/edit/delete and add-relationship
 actions are disabled with an explanatory tooltip. The branch is created and
 merged once for the whole class (beforeAll/afterAll -> class-scoped fixture).
-Operates on demo objects (BuiltinTag blue, InfraPlatform Cisco IOS), so it
-depends on infrastructure_data.
+Operates on demo objects (BuiltinTag blue and InfraPlatform Cisco IOS come
+transitively via org_registry; the platform's 10 devices are the site leaves),
+so it depends on data_sites.
 
 The TS spec marked this `test.slow()`; Playwright's own action/expect timeouts
 cover the extra latency here.
@@ -22,6 +23,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
@@ -33,7 +35,7 @@ class TestMergedBranchDisabledActions:
     def merged_branch(
         self,
         infrahub_client: InfrahubClientSync,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("merged-branch")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

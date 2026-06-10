@@ -4,7 +4,8 @@ Navigation in the hierarchical Location tree: expanding nodes via the chevron
 without redirecting, navigating via the tree without re-expanding, and keeping
 the tree state stable when navigating from the right panel. Relies on the demo
 hierarchy (North America, United States of America, Canada) on a throwaway
-branch cut from main, hence the infrastructure_data dependency.
+branch cut from main, hence the data_sites dependency (the asserted USA
+"Children5" are the five sites).
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import SitesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -28,7 +30,7 @@ class TestObjectHierarchyNavigation:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_sites: SitesHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-hierarchy-navigation")
         branch_api.create(name)

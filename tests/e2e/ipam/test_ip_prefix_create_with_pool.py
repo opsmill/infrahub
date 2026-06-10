@@ -1,7 +1,9 @@
 """Port of frontend/app/tests/e2e/ipam/ip-prefix-create-with-pool.spec.ts.
 
-Allocate an IP prefix from the seeded "External prefixes pool". The first
-allocation off a fresh branch is deterministic: 203.111.0.248/29.
+Allocate an IP prefix from the seeded "External prefixes pool". Depends on
+data_scenario_branches (the full dataset): the asserted next-free prefix
+(203.111.0.248/29) assumes the 30 site /29s plus the dropped-scenario ballast
+/29 that slice replays — with sites alone the next-free would be .240/29.
 """
 
 from __future__ import annotations
@@ -16,13 +18,16 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import ScenarioBranchesHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
 
 class TestAllocateIpPrefixWithPool:
     @pytest.fixture
-    def branch(self, branch_api: BranchAPI, infrastructure_data: None) -> Generator[str, None, None]:
+    def branch(
+        self, branch_api: BranchAPI, data_scenario_branches: ScenarioBranchesHandle
+    ) -> Generator[str, None, None]:
         name = generate_random_branch_name("ip-prefix-pool-")
         branch_api.create(name)
         yield name

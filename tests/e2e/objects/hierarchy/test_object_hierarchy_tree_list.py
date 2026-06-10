@@ -3,8 +3,8 @@
 Focused "lite" tree view: it appears on initial load for a child node, refreshes
 on sibling add/delete, supports navigation, and falls back to the full tree on
 Back or when the current node is deleted. Relies on the demo hierarchy (North
-America, United States of America, Canada, Australia) on a throwaway branch cut
-from main, hence the infrastructure_data dependency.
+America, United States of America, Canada, Australia in the country list) on a
+throwaway branch cut from main, hence the data_locations dependency.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import LocationsHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -28,7 +29,7 @@ class TestObjectHierarchyTreeLite:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_locations: LocationsHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-hierarchy-tree-lite")
         branch_api.create(name)

@@ -2,9 +2,10 @@
 
 /objects/:objectKind/:objectId detail view: unauthenticated cannot edit, admin
 can edit, relationship rendering, the two-step select, and the node metadata
-popover. All work happens on a throwaway branch cut from main, which carries the
-demo dataset (InfraBGPSession 203.111.0.2/29, InfraDevice atl1-edge1), hence the
-infrastructure_data dependency.
+popover. All work happens on a throwaway branch cut from main, hence the
+data_topology dependency: Ethernet4's connected endpoint is a backbone Circuit
+Endpoint built by the topology stage (the 203.111.0.2/29 BGP session label and
+atl1-edge1's "Interfaces15" come via the transitive sites slice).
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import TopologyHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -28,7 +30,7 @@ class TestObjectDetails:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_topology: TopologyHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-details")
         branch_api.create(name)

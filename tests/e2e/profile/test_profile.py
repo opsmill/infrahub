@@ -3,8 +3,8 @@
 Profile page (Account settings): the unauthenticated header state, and the
 account details shown for the admin, read-write (Chloe O'Brian) and read-only
 (Jack Bauer) accounts. Each test mirrors the source `beforeEach` 500-response
-guard. The read-write / read-only cases use demo accounts, so they need the
-`infrastructure_data` fixture.
+guard. The read-write / read-only cases use demo accounts, which the
+`read_write_page` / `read_only_page` fixtures already seed via data_rbac.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class TestProfileAdmin:
 
 
 class TestProfileReadWrite:
-    def test_should_access_the_profile_page(self, read_write_page: Page, infrastructure_data: None) -> None:
+    def test_should_access_the_profile_page(self, read_write_page: Page) -> None:
         server_errors = _install_500_guard(read_write_page)
 
         # go to profile page
@@ -75,7 +75,7 @@ class TestProfileReadWrite:
 
 
 class TestProfileReadOnly:
-    def test_should_access_the_profile_page(self, read_only_page: Page, infrastructure_data: None) -> None:
+    def test_should_access_the_profile_page(self, read_only_page: Page) -> None:
         server_errors = _install_500_guard(read_only_page)
 
         # go to profile page

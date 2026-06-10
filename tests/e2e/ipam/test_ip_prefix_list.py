@@ -1,8 +1,9 @@
 """Port of frontend/app/tests/e2e/ipam/ip-prefix-list.spec.ts.
 
 /ipam/ip_prefixes prefix list: summary view, sub-prefix navigation, error pages
-for unknown schema/id, and text search. Runs anonymously against the demo IP
-tree (10.0.0.0/8, 203.111.0.0/16, 2001:db8::/100 ...).
+for unknown schema/id, and text search. Runs anonymously against the IP tree
+seeded by data_sites (the 203.111.0.0/16 utilization; 10.0.0.0/8 and the
+2001:db8::/100 IPv6 tree via its ipam_pools dependency).
 """
 
 from __future__ import annotations
@@ -12,11 +13,12 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestIpPrefixList:
-    def test_view_prefix_list_and_summary(self, page: Page, infrastructure_data: None) -> None:
+    def test_view_prefix_list_and_summary(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam")
         page.get_by_test_id("ip-prefix-table").get_by_test_id("identifier-cell").get_by_role(
             "link", name="203.111.0.0/16"
@@ -31,7 +33,7 @@ class TestIpPrefixList:
         expect(page.get_by_role("heading", name="Groups")).to_be_visible()
         expect(page.get_by_role("heading", name="Activities")).to_be_visible()
 
-    def test_view_all_sub_prefixes(self, page: Page, infrastructure_data: None) -> None:
+    def test_view_all_sub_prefixes(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam")
 
         # select a prefix to view all sub prefixes
@@ -56,7 +58,7 @@ class TestIpPrefixList:
         page.goto("/ipam/XXX/YYY")
         expect(page.get_by_text("Schema for XXX not found.")).to_be_visible()
 
-    def test_search_prefixes_using_text_search(self, page: Page, infrastructure_data: None) -> None:
+    def test_search_prefixes_using_text_search(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam")
         expect(page.get_by_test_id("ip-prefix-table")).to_contain_text("10.0.0.0/8")
 

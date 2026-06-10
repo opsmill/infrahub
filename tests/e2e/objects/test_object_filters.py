@@ -4,8 +4,9 @@
 filters (attribute / relationship / metadata date / metadata user, with the
 contains / is any of / is empty / is not empty conditions), filtering from a
 kind (Interface L2/L3), and enum-value filtering on BGP sessions. All flows are
-read-only over the demo dataset on main (devices atl1-*/den1-*, sites, tags),
-hence the infrastructure_data dependency; no branch is needed.
+read-only on main; the data_topology dependency is needed because the Type
+filter asserts both EXTERNAL and INTERNAL (mesh) BGP sessions, and brings the
+devices atl1-*/den1-*, sites and tags transitively. No branch is needed.
 """
 
 from __future__ import annotations
@@ -16,12 +17,13 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import TopologyHandle
     from playwright.sync_api import Page
 
 
 class TestObjectFiltersFilterPicker:
     def test_filter_by_attribute_relationship_and_node_metadata(
-        self, admin_page: Page, infrastructure_data: None
+        self, admin_page: Page, data_topology: TopologyHandle
     ) -> None:
         # navigate and verify initial state
         admin_page.goto("/objects/InfraDevice")
@@ -178,7 +180,7 @@ class TestObjectFiltersFilterPicker:
 
 
 class TestObjectFiltersColumnHeader:
-    def test_filter_by_attribute_and_relationship(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_filter_by_attribute_and_relationship(self, admin_page: Page, data_topology: TopologyHandle) -> None:
         # navigate and verify initial state
         admin_page.goto("/objects/InfraDevice")
         expect(admin_page.get_by_role("heading", name="Device")).to_be_visible()
@@ -292,7 +294,7 @@ class TestObjectFiltersColumnHeader:
 
 
 class TestObjectFilters:
-    def test_filter_from_a_kind(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_filter_from_a_kind(self, admin_page: Page, data_topology: TopologyHandle) -> None:
         admin_page.goto("/objects/InfraInterface")
         expect(admin_page.get_by_test_id("object-items")).to_contain_text("Interface L2")
         expect(admin_page.get_by_test_id("object-items")).to_contain_text("Interface L3")
@@ -322,7 +324,7 @@ class TestObjectFilters:
         expect(admin_page.get_by_test_id("object-items")).to_contain_text("Interface L2")
         expect(admin_page.get_by_test_id("object-items")).to_contain_text("Interface L3")
 
-    def test_filter_using_enum_value(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_filter_using_enum_value(self, admin_page: Page, data_topology: TopologyHandle) -> None:
         admin_page.goto("/objects/InfraBGPSession")
         expect(admin_page.get_by_test_id("object-items")).to_contain_text("EXTERNAL")
         expect(admin_page.get_by_test_id("object-items")).to_contain_text("INTERNAL")

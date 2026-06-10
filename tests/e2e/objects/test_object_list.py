@@ -3,9 +3,9 @@
 /objects/:objectKind list view: unauthenticated vs admin behaviour, generic
 "kind" column, relationship navigation, open-in-new-tab, and a full
 create/edit/delete cycle on BuiltinTag. All work happens on a throwaway branch
-created via the API; the branch is cut from main, which carries the demo
-dataset (tags blue/green, the arista_devices group, a Juniper-platform device),
-hence the infrastructure_data dependency.
+created via the API; the branch is cut from main, hence the data_topology
+dependency: the arista_devices Members tab content is populated by the topology
+stage (tags blue/green and the Juniper-platform device come transitively).
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import TopologyHandle
     from helpers import BranchAPI
     from playwright.sync_api import BrowserContext, Page
 
@@ -29,7 +30,7 @@ class TestObjectList:
     def branch_name(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_topology: TopologyHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-list")
         branch_api.create(name)

@@ -3,8 +3,8 @@
 Object attribute metadata: open the metadata tooltip on a device attribute,
 edit it (set the protected flag and an owner), and verify the change persists;
 plus that a read-only (computed) attribute has no metadata edit button. Operates
-on the demo device atl1-core2 (with its MX204 type and the Architecture Team
-account group) on main, hence the infrastructure_data dependency. The source
+on the demo device atl1-core2 on main, hence the data_sites dependency (the
+Architecture Team owner option comes via the transitive rbac slice). The source
 runs directly on main without a branch.
 """
 
@@ -15,11 +15,12 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestObjectMetadata:
-    def test_contain_initial_values_and_update_them(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_contain_initial_values_and_update_them(self, admin_page: Page, data_sites: SitesHandle) -> None:
         admin_page.goto("/objects/InfraDevice")
 
         # Access device details
@@ -72,7 +73,7 @@ class TestObjectMetadata:
         expect(admin_page.get_by_label("is protected *")).to_be_checked()
 
     def test_read_only_attribute_should_not_have_metadata_edit_button(
-        self, admin_page: Page, infrastructure_data: None
+        self, admin_page: Page, data_sites: SitesHandle
     ) -> None:
         admin_page.goto("/objects/InfraDevice")
         admin_page.get_by_role("link", name="atl1-core2").click()

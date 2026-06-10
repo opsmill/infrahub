@@ -1,9 +1,8 @@
 """Port of frontend/app/tests/e2e/objects/list/object-list-search.spec.ts.
 
 Object list search: type in the per-kind search box on the InfraDevice list and
-verify the result set narrows. Runs as Admin against main (no branch), which
-carries the demo devices (atl1-core1/atl1-edge1), hence the infrastructure_data
-dependency.
+verify the result set narrows. Runs as Admin against main (no branch), hence the
+data_sites dependency (the demo devices atl1-core1/atl1-edge1).
 """
 
 from __future__ import annotations
@@ -13,11 +12,12 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestObjectListSearch:
-    def test_verify_the_search(self, admin_page: Page, infrastructure_data: None) -> None:
+    def test_verify_the_search(self, admin_page: Page, data_sites: SitesHandle) -> None:
         admin_page.goto("/objects/InfraDevice")
 
         # initial state

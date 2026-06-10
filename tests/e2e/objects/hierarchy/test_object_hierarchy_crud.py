@@ -1,9 +1,9 @@
 """Port of frontend/app/tests/e2e/objects/hierarchy/object-hierarchy-crud.spec.ts.
 
 CRUD operations on hierarchical Location objects (Continent/Country) shown in the
-tree + list views. All work happens on a throwaway branch cut from main, which
-carries the demo dataset (the hierarchical LocationGeneric model), hence the
-infrastructure_data dependency.
+tree + list views. All work happens on a throwaway branch cut from main. The test
+creates its own continents/countries, so it needs only the location hierarchy
+pages, hence the data_locations dependency.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import LocationsHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -27,7 +28,7 @@ class TestObjectHierarchyCrud:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_locations: LocationsHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("object-hierarchy-crud")
         branch_api.create(name)

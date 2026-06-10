@@ -17,13 +17,14 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import IpamPoolsHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
 
 class TestAllocateIpPrefix:
     @pytest.fixture
-    def branch(self, branch_api: BranchAPI, infrastructure_data: None) -> Generator[str, None, None]:
+    def branch(self, branch_api: BranchAPI, data_ipam_pools: IpamPoolsHandle) -> Generator[str, None, None]:
         name = generate_random_branch_name("ip-prefix-create-")
         branch_api.create(name)
         yield name

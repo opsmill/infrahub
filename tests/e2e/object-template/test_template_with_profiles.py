@@ -2,8 +2,10 @@
 
 Serial: create a device profile, a device template that uses it, then a device
 from the template — verifying the profile values are inherited (via metadata).
-Shares one branch + the created profile/template; depends on the demo data
-(upstream_profile, Regular_Patch_Panel, atl1-core1, Cisco IOS).
+Shares one branch + the created profile/template; depends on data_sites
+(atl1-core1 in the device list; Cisco IOS via its org_registry dependency),
+data_profiles_groups (upstream_profile) and data_patch_template
+(Regular_Patch_Panel).
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import PatchTemplateHandle, ProfilesGroupsHandle, SitesHandle
     from infrahub_sdk import InfrahubClientSync
     from playwright.sync_api import Page
 
@@ -25,7 +28,11 @@ if TYPE_CHECKING:
 class TestTemplateWithProfiles:
     @pytest.fixture(scope="class")
     def template_branch(
-        self, infrahub_client: InfrahubClientSync, infrastructure_data: None
+        self,
+        infrahub_client: InfrahubClientSync,
+        data_sites: SitesHandle,
+        data_profiles_groups: ProfilesGroupsHandle,
+        data_patch_template: PatchTemplateHandle,
     ) -> Generator[str, None, None]:
         name = generate_random_branch_name("template-with-profiles-")
         infrahub_client.branch.create(branch_name=name, sync_with_git=False)

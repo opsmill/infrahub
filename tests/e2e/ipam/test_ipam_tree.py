@@ -11,11 +11,12 @@ from typing import TYPE_CHECKING
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import SitesHandle
     from playwright.sync_api import Page
 
 
 class TestIpamTree:
-    def test_load_child_tree_item_on_expand(self, page: Page, infrastructure_data: None) -> None:
+    def test_load_child_tree_item_on_expand(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam")
         ipam_tree = page.get_by_role("treegrid", name="IPAM tree")
 
@@ -44,12 +45,12 @@ class TestIpamTree:
         expect(ipam_tree.get_by_text("10.1.0.12/31")).to_be_visible()
         expect(ipam_tree.get_by_role("row", name="10.1.0.12/31")).to_contain_class("bg-neutral-100")
 
-    def test_go_to_prefix_summary_on_click(self, page: Page, infrastructure_data: None) -> None:
+    def test_go_to_prefix_summary_on_click(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam")
         page.get_by_label("IPAM tree").get_by_text("10.0.0.0/8").click()
         expect(page.get_by_role("heading", name="10.0.0.0/8")).to_be_visible()
 
-    def test_search_an_ip_prefix(self, page: Page, infrastructure_data: None) -> None:
+    def test_search_an_ip_prefix(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam")
         ipam_tree = page.get_by_role("treegrid", name="IPAM tree")
 
@@ -69,7 +70,7 @@ class TestIpamTree:
         page.get_by_role("searchbox", name="IPAM Tree search").fill("")
         expect(ipam_tree.get_by_text("10.0.0.0/8")).to_be_visible()
 
-    def test_collapse_ipam_tree(self, page: Page, infrastructure_data: None) -> None:
+    def test_collapse_ipam_tree(self, page: Page, data_sites: SitesHandle) -> None:
         page.goto("/ipam")
         ipam_tree = page.get_by_role("treegrid", name="IPAM tree")
 

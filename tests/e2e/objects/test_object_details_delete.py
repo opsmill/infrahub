@@ -1,10 +1,10 @@
 """Port of frontend/app/tests/e2e/objects/object-details-delete.spec.ts.
 
 Delete an object from its detail view and confirm the user stays on the same
-branch afterwards. Operates on the demo `blue` tag on a throwaway branch; the
-branch keeps the literal name `object-details-delete` because the test asserts
-the branch selector contains that name, hence the infrastructure_data
-dependency.
+branch afterwards. Operates on the seeded `blue` tag (the data_org_registry
+dependency) on a throwaway branch; the branch keeps the literal name
+`object-details-delete` because the test asserts the branch selector contains
+that name.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from playwright.sync_api import expect
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from data.handles import OrgRegistryHandle
     from helpers import BranchAPI
     from playwright.sync_api import Page
 
@@ -27,7 +28,7 @@ class TestObjectDetailsDelete:
     def branch(
         self,
         branch_api: BranchAPI,
-        infrastructure_data: None,
+        data_org_registry: OrgRegistryHandle,
     ) -> Generator[str, None, None]:
         name = "object-details-delete"
         branch_api.create(name)

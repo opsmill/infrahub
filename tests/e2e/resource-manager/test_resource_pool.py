@@ -5,7 +5,7 @@ delete it.
 
 Serial handling: the source mutates main (no branch) and shares the
 UI-created "test prefix pool" across the three tests (create -> edit -> delete).
-A class-scoped `resource_pool_data` marker fixture pulls in `infrastructure_data`
+A class-scoped `resource_pool_data` marker fixture pulls in `data_ipam_pools`
 (the seeded "External prefixes pool" and the 10.x IP prefixes the pool allocates
 from); every test depends on the SAME fixtures (admin_page + resource_pool_data)
 and the chain relies on pytest's default definition-order collection (see the
@@ -20,12 +20,13 @@ import pytest
 from playwright.sync_api import expect
 
 if TYPE_CHECKING:
+    from data.handles import IpamPoolsHandle
     from playwright.sync_api import Page
 
 
 class TestResourceManager:
     @pytest.fixture(scope="class")
-    def resource_pool_data(self, infrastructure_data: None) -> None:
+    def resource_pool_data(self, data_ipam_pools: IpamPoolsHandle) -> None:
         return None
 
     def test_create_a_new_pool(self, admin_page: Page, resource_pool_data: None) -> None:
