@@ -8,6 +8,7 @@ from prefect.deployments import run_deployment
 from prefect.exceptions import FlowRunWaitTimeout
 
 from infrahub import config, lock
+from infrahub.exceptions import ServiceUnavailableError
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
 from infrahub.workflows.models import WorkflowInfo
@@ -47,7 +48,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
-        timeout: float | None = ...,  # noqa: ASYNC109
+        timeout_seconds: float | None = ...,
     ) -> Return: ...
 
     @overload
@@ -58,7 +59,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
-        timeout: float | None = ...,  # noqa: ASYNC109
+        timeout_seconds: float | None = ...,
     ) -> Any: ...
 
     # TODO Make expected_return mandatory and remove above overloads.
@@ -69,20 +70,28 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
-        timeout: float | None = None,  # noqa: ASYNC109
+        timeout_seconds: float | None = None,
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
-        response: FlowRun = await run_deployment(
-            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags, timeout=timeout
-        )  # type: ignore[return-value, misc]
+        try:
+            response: FlowRun = await run_deployment(
+                name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags, timeout=timeout_seconds
+            )  # type: ignore[return-value, misc]
+        except FlowRunWaitTimeout as exc:
+            raise ServiceUnavailableError(
+                f"Workflow {workflow.full_name} did not complete within {timeout_seconds} seconds"
+            ) from exc
+
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
-        if timeout is not None and not response.state.is_final():
-            raise FlowRunWaitTimeout(f"Flow run with ID {response.id} exceeded wait timeout of {timeout} seconds")
+        if timeout_seconds is not None and not response.state.is_final():
+            raise ServiceUnavailableError(
+                f"Workflow {workflow.full_name} did not complete within {timeout_seconds} seconds"
+            )
 
         if response.state.type == StateType.CRASHED:
             raise RuntimeError(response.state.message)

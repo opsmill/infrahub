@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.actions import WorkPoolCreate
-from prefect.exceptions import FlowRunWaitTimeout
 
+from infrahub.exceptions import ServiceUnavailableError
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
 from infrahub.tls.registry import TlsContextRegistry
@@ -27,12 +27,12 @@ async def work_pool_and_deployment(prefect_test_fixture: None) -> None:
 async def test_execute_workflow_raises_when_no_worker_available(
     work_pool_and_deployment: None,
 ) -> None:
-    """execute_workflow must raise when no worker picks up the submitted flow run within the timeout."""
+    """A synchronous workflow must fail fast when no worker picks up the run within the timeout."""
     service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
 
-    with pytest.raises(FlowRunWaitTimeout):
+    with pytest.raises(ServiceUnavailableError, match=r"did not complete within 1.0 seconds"):
         await service.execute_workflow(
             workflow=DUMMY_FLOW,
             parameters={"data": DummyInput(firstname="Test", lastname="User")},
-            timeout=1.0,
+            timeout_seconds=1.0,
         )

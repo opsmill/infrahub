@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Literal, NoReturn, overload
 
+from infrahub import config
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
@@ -306,6 +307,7 @@ class SchemaUpdateCoordinator:
                 context=context,
                 expected_return=list[str],
                 parameters={"message": apply_migration_data},
+                timeout_seconds=config.SETTINGS.workflow.schema_load_timeout,
             )
         except Exception as exc:
             exception = exc

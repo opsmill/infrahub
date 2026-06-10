@@ -446,6 +446,15 @@ class WorkflowSettings(BaseSettings):
         ge=0,
         description="Threshold for caching flow run counts (0 to always cache, higher values to disable)",
     )
+    schema_load_timeout: int = Field(
+        default=600,
+        ge=1,
+        description=(
+            "Maximum time (sec) the API will wait for schema validation and migration workflows to complete "
+            "during a schema load before aborting. Bounds how long the schema lock can be held when the task "
+            "worker is unreachable."
+        ),
+    )
 
     @property
     def api_endpoint(self) -> str:

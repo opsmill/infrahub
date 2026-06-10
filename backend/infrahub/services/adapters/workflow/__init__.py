@@ -22,7 +22,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
-        timeout: float | None = ...,  # noqa: ASYNC109
+        timeout_seconds: float | None = ...,
     ) -> Return: ...
 
     @overload
@@ -33,7 +33,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
-        timeout: float | None = ...,  # noqa: ASYNC109
+        timeout_seconds: float | None = ...,
     ) -> Any: ...
 
     @abstractmethod
@@ -44,7 +44,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
-        timeout: float | None = None,  # noqa: ASYNC109
+        timeout_seconds: float | None = None,
     ) -> Any:
         raise NotImplementedError()
 

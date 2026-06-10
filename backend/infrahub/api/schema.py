@@ -12,7 +12,7 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.branch.status_checker import BranchStatusChecker
@@ -313,6 +313,7 @@ async def _validate_migrations(
         context=context,
         expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
+        timeout_seconds=config.SETTINGS.workflow.schema_load_timeout,
     )
     error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
@@ -462,6 +463,7 @@ async def check_schema(
         context=context,
         expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
+        timeout_seconds=config.SETTINGS.workflow.schema_load_timeout,
     )
     error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
