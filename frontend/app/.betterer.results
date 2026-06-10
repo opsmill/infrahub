@@ -47,7 +47,7 @@ exports[`fix ts error`] = {
       [49, 22, 17, "tsc: Property \'diff_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'diff_branch_value\'?", "1869793242"],
       [83, 29, 12, "tsc: Cannot find name \'DataConflict\'.", "3642611779"]
     ],
-    "src/entities/diff/ui/node-diff/node.tsx:2539989523": [
+    "src/entities/diff/ui/node-diff/node.tsx:3682051336": [
       [89, 21, 13, "tsc: Binding element \'property_type\' implicitly has an \'any\' type.", "324947141"],
       [97, 20, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
       [101, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"],
@@ -142,7 +142,7 @@ exports[`fix ts error`] = {
     "src/entities/proposed-changes/ui/action-button/pc-review-button.tsx:2712035776": [
       [39, 22, 5, "tsc: Type \'NoInfer<Record<string, ActionAvailability>> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
     ],
-    "src/entities/proposed-changes/ui/proposed-change-details.tsx:3884295807": [
+    "src/entities/proposed-changes/ui/proposed-change-details.tsx:885910980": [
       [68, 59, 5, "tsc: Argument of type \'null | string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "195031250"],
       [200, 18, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
@@ -267,10 +267,10 @@ exports[`fix ts error`] = {
     "src/pages/ipam/ipam-layout.tsx:1869906965": [
       [39, 71, 5, "tsc: \'error\' is of type \'unknown\'.", "165548477"]
     ],
-    "src/pages/resource-manager/resource-allocation-details.tsx:2550256922": [
-      [79, 35, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
+    "src/pages/resource-manager/resource-allocation-details.tsx:4242828623": [
+      [78, 35, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
     ],
-    "src/pages/resource-manager/resource-pool-details.tsx:2798533623": [
+    "src/pages/resource-manager/resource-pool-details.tsx:31123244": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
     "src/shared/components/display/badge-circle.tsx:698452183": [

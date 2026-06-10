@@ -2,6 +2,7 @@
 # STAGE : Base Python Image
 # ****************************************************************
 ARG PYTHON_VER=3.13.11
+ARG NODE_VER=24.15.0
 ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
@@ -32,48 +33,56 @@ RUN apt-get update && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
 # ****************************************************************
+# STAGE : Base Node Image
+# ****************************************************************
+FROM docker.io/node:${NODE_VER}-slim AS node-base
+
+# ****************************************************************
 # STAGE : Frontend
 # ****************************************************************
-FROM docker.io/node:24-slim AS frontend
-ARG CI_ARG
-ENV CI=$CI_ARG
+FROM node-base AS frontend
 
-RUN corepack enable && corepack prepare pnpm@10 --activate
+# pnpm comes via corepack, resolving the version from "packageManager" in frontend/package.json
+RUN corepack enable
 
-# Create the pnpm workspace layout.
-# Workspace root is /frontend (members: app, packages/ui); schema-visualizer is a file: dep.
-RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer /frontend/packages/ui
+WORKDIR /frontend
 
-# Copy local packages (workspace member ui + the file: schema-visualizer)
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml /frontend/
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --store-dir /pnpm/store
+
+COPY frontend/app/package.json /frontend/app/
+COPY frontend/packages/ui/package.json /frontend/packages/ui/
+COPY frontend/packages/schema-visualizer/package.json /frontend/packages/schema-visualizer/
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline --store-dir /pnpm/store
+
 COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
 COPY frontend/packages/ui/ /frontend/packages/ui/
-
-# Copy the workspace manifests + app manifest, then install from the workspace root
-COPY frontend/package.json frontend/pnpm-workspace.yaml frontend/pnpm-lock.yaml /frontend/
-COPY frontend/app/package.json /frontend/app/
-WORKDIR /frontend
-RUN pnpm install --frozen-lockfile --prod
 COPY frontend/app/ /frontend/app/
 WORKDIR /frontend/app
-RUN pnpm build && pnpm store prune
+
+# CI is used to customize config, like disabling animations at build time to avoid flaky e2e.
+ARG CI_ARG
+ENV CI=$CI_ARG
+RUN pnpm build
 
 # ****************************************************************
 # STAGE : Documentation
 # ****************************************************************
+FROM node-base AS docs
+
+# Read by docusaurus.config.ts: sets url/baseUrl for serving inside the app at /docs
 ENV DOCS_IN_APP=1
 
-RUN mkdir /docs
-
-COPY docs/package.json  docs/package-lock.json /docs/
-COPY backend/infrahub/config.py /backend/infrahub/
-COPY models/ /models/
-COPY python_sdk/docs/docs/python-sdk/examples/  /python_sdk/examples/
-COPY development/ /development/
 WORKDIR /docs
+COPY docs/package.json docs/package-lock.json /docs/
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
-RUN npm install --omit=dev
+COPY models/base/ /models/base/
+COPY models/examples/extension_rack.yml /models/examples/
+COPY development/deploy.tf /development/deploy.tf
+COPY development/k8s/ /development/k8s/
 COPY docs/ /docs/
-RUN npm run build && npm cache clean --force
+RUN npm run build
 
 # ****************************************************************
 # STAGE : Backend
@@ -99,16 +108,6 @@ ENV PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_FLOWS_HEARTBEAT_FREQUENCY=30
 
 # --------------------------------------------
-# Import Frontend Build
-# --------------------------------------------
-COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
-
-# --------------------------------------------
-# Import Documentation Build
-# --------------------------------------------
-COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
-
-# --------------------------------------------
 # Install Dependencies
 #   Copy in only pyproject.toml/uv.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
@@ -121,6 +120,10 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-ins
 # --------------------------------------------
 COPY . ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
+
+# Import Frontend & Documentation builds last so frontend/docs edits don't invalidate any uv sync layer
+COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
+COPY --from=docs /docs/build/ /opt/infrahub/docs/build
 
 ENV PATH="/.venv/bin:$PATH"
 ENTRYPOINT ["tini", "-g", "--"]
