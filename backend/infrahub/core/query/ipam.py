@@ -1091,6 +1091,8 @@ class IPPrefixUtilization(Query):
             "address_label": ADDRESS_ATTRIBUTE_LABEL,
         }
         self.return_labels = ["pfx", "child", "av"]
+        # deterministic ordering so pagination is stable
+        self.order_by = ["av.binary_address", "av.prefixlen", "child.uuid"]
         self.add_to_query(query)
 
     def get_data(self) -> list[IPPrefixUtilizationResult]:
