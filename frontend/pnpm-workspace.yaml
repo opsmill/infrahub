@@ -3,6 +3,12 @@ packages:
   - packages/schema-visualizer
   - packages/ui
 
+# We disallow this to avoid the security risk of running third-party code on install.
+allowBuilds:
+  core-js: false
+  esbuild: false
+  msgpackr-extract: false
+
 # Single source of truth for cross-workspace versions. Reference from package.json
 # with `"<dep>": "catalog:"`. Add a dep here only if it's used by more than one workspace member.
 catalog:
