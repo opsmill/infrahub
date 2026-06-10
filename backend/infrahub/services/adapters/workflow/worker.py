@@ -82,9 +82,8 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
-        # If a pickup deadline was set and the run is still queued (no worker has claimed it), treat the
-        # worker as unreachable rather than holding the caller (and any lock it owns) indefinitely. The
-        # deadline only covers being picked up: a run a worker has already started is left to finish.
+        # If a pickup deadline was set and the run is still queued, treat the worker as unreachable rather than
+        # holding the caller (and any lock it owns) indefinitely. The deadline only covers being picked up.
         if pickup_timeout is not None and response.state.type in (StateType.SCHEDULED, StateType.PENDING):
             raise ServiceUnavailableError(
                 f"Workflow {workflow.full_name} was not picked up by a worker within {pickup_timeout} seconds"
