@@ -5,7 +5,7 @@ import { userEvent } from "vitest/browser";
 
 import { useDismiss } from "./use-dismiss";
 
-function Harness({ onDismiss, active }: { onDismiss: () => void; active?: boolean }) {
+function Harness({ onDismiss, active }: { onDismiss: (event: Event) => void; active?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, onDismiss, active);
   return (
@@ -18,7 +18,7 @@ function Harness({ onDismiss, active }: { onDismiss: () => void; active?: boolea
   );
 }
 
-function HarnessWithTrigger({ onDismiss }: { onDismiss: () => void }) {
+function HarnessWithTrigger({ onDismiss }: { onDismiss: (event: Event) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   useDismiss(ref, onDismiss, true, { ignoreRef: triggerRef });
@@ -38,7 +38,7 @@ function HarnessWithTrigger({ onDismiss }: { onDismiss: () => void }) {
 describe("useDismiss", () => {
   test("calls onDismiss when clicking outside the ref", async () => {
     // GIVEN
-    const onDismiss = vi.fn();
+    const onDismiss = vi.fn<(event: Event) => void>();
     const component = await render(<Harness onDismiss={onDismiss} active />);
 
     // WHEN clicking outside
@@ -50,7 +50,7 @@ describe("useDismiss", () => {
 
   test("does not call onDismiss when clicking inside the ref", async () => {
     // GIVEN
-    const onDismiss = vi.fn();
+    const onDismiss = vi.fn<(event: Event) => void>();
     const component = await render(<Harness onDismiss={onDismiss} active />);
 
     // WHEN clicking inside
@@ -62,7 +62,7 @@ describe("useDismiss", () => {
 
   test("calls onDismiss when pressing Escape", async () => {
     // GIVEN
-    const onDismiss = vi.fn();
+    const onDismiss = vi.fn<(event: Event) => void>();
     await render(<Harness onDismiss={onDismiss} active />);
 
     // WHEN pressing Escape
@@ -74,7 +74,7 @@ describe("useDismiss", () => {
 
   test("does not call onDismiss when pressing down on the ignored trigger", async () => {
     // GIVEN a panel whose external trigger is registered via ignoreRef
-    const onDismiss = vi.fn();
+    const onDismiss = vi.fn<(event: Event) => void>();
     const component = await render(<HarnessWithTrigger onDismiss={onDismiss} />);
 
     // WHEN pressing the trigger (would otherwise read as an outside click)
@@ -86,7 +86,7 @@ describe("useDismiss", () => {
 
   test("still calls onDismiss when clicking outside both the ref and the ignored trigger", async () => {
     // GIVEN
-    const onDismiss = vi.fn();
+    const onDismiss = vi.fn<(event: Event) => void>();
     const component = await render(<HarnessWithTrigger onDismiss={onDismiss} />);
 
     // WHEN clicking elsewhere outside
@@ -98,7 +98,7 @@ describe("useDismiss", () => {
 
   test("passes the triggering event to onDismiss", async () => {
     // GIVEN
-    const onDismiss = vi.fn();
+    const onDismiss = vi.fn<(event: Event) => void>();
     await render(<Harness onDismiss={onDismiss} active />);
 
     // WHEN
@@ -110,7 +110,7 @@ describe("useDismiss", () => {
 
   test("does nothing when active is false", async () => {
     // GIVEN
-    const onDismiss = vi.fn();
+    const onDismiss = vi.fn<(event: Event) => void>();
     const component = await render(<Harness onDismiss={onDismiss} active={false} />);
 
     // WHEN clicking outside and pressing Escape

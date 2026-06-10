@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { fn } from "storybook/test";
+
 import { ExportMenu } from "./export-menu";
 
 const meta: Meta<typeof ExportMenu> = {
@@ -12,6 +14,6 @@ type Story = StoryObj<typeof ExportMenu>;
 
 export const Default: Story = {
   args: {
-    onExport: (format) => console.log("export", format),
+    onExport: fn(),
   },
 };

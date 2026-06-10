@@ -34,7 +34,7 @@ describe("FloatingPanel", () => {
 
   test("calls onClose when the close button is pressed", async () => {
     // GIVEN
-    const onClose = vi.fn();
+    const onClose = vi.fn<() => void>();
     const component = await render(
       <FloatingPanel title="Filters" onClose={onClose}>
         <p>Body</p>
@@ -50,7 +50,7 @@ describe("FloatingPanel", () => {
 
   test("when dismissable, Escape calls onClose", async () => {
     // GIVEN
-    const onClose = vi.fn();
+    const onClose = vi.fn<() => void>();
     await render(
       <FloatingPanel title="Filters" onClose={onClose} dismissable>
         <p>Body</p>
@@ -66,7 +66,7 @@ describe("FloatingPanel", () => {
 
   test("when NOT dismissable, Escape does not call onClose", async () => {
     // GIVEN
-    const onClose = vi.fn();
+    const onClose = vi.fn<() => void>();
     await render(
       <FloatingPanel title="Filters" onClose={onClose}>
         <p>Body</p>

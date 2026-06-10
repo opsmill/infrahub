@@ -2,12 +2,14 @@ import { describe, expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { userEvent } from "vitest/browser";
 
-import { ExportMenu } from "./export-menu";
+import { type ExportFormat, ExportMenu } from "./export-menu";
+
+const onExportMock = () => vi.fn<(format: ExportFormat) => void>();
 
 describe("ExportMenu", () => {
   test("toggles the menu and exports the chosen format", async () => {
     // GIVEN
-    const onExport = vi.fn();
+    const onExport = onExportMock();
     const component = await render(<ExportMenu onExport={onExport} />);
 
     // WHEN the menu is opened
@@ -26,7 +28,7 @@ describe("ExportMenu", () => {
 
   test("exposes expanded state and moves focus into the menu on open", async () => {
     // GIVEN
-    const component = await render(<ExportMenu onExport={vi.fn()} />);
+    const component = await render(<ExportMenu onExport={onExportMock()} />);
     const trigger = component.getByRole("button", { name: "Export diagram" });
 
     // THEN the collapsed state is exposed
@@ -42,7 +44,7 @@ describe("ExportMenu", () => {
 
   test("returns focus to the trigger when the menu is dismissed with Escape", async () => {
     // GIVEN an open menu
-    const component = await render(<ExportMenu onExport={vi.fn()} />);
+    const component = await render(<ExportMenu onExport={onExportMock()} />);
     const trigger = component.getByRole("button", { name: "Export diagram" });
     await trigger.click();
     await expect.element(component.getByRole("button", { name: "PNG" })).toBeVisible();
@@ -56,7 +58,7 @@ describe("ExportMenu", () => {
 
   test("closes on Escape without exporting", async () => {
     // GIVEN an open menu
-    const onExport = vi.fn();
+    const onExport = onExportMock();
     const component = await render(<ExportMenu onExport={onExport} />);
     await component.getByRole("button", { name: "Export diagram" }).click();
     await expect.element(component.getByRole("button", { name: "SVG" })).toBeVisible();
