@@ -192,3 +192,16 @@ async def test_graphql_utilization_main_addition_after_branch_creation(
     assert isinstance(branch_prefix, BuiltinIPPrefix)
     branch_response = await branch_prefix.to_graphql(db=db, fields={"utilization": None})
     assert branch_response["utilization"] == {"value": 3}
+
+
+async def test_get_children_deduplicates_repeated_prefixes(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
+    net143 = ip_dataset_01["net143"]
+    utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[net143], branch=default_branch)
+
+    single = await utilization.get_children(ip_prefixes=[net143])
+    duplicated = await utilization.get_children(ip_prefixes=[net143, net143])
+
+    assert len(single) > 0
+    assert len(duplicated) == len(single)
