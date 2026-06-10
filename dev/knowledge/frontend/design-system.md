@@ -34,7 +34,7 @@ Source of truth: `frontend/packages/ui/src/index.ts`.
 
 | Component | Exports | Notes |
 |---|---|---|
-| `Toolbar` | `Toolbar`, `Toolbar.Divider`, `ToolbarProps`, `ToolbarDividerProps` | Floating toolbar container (`role="toolbar"`, `aria-label` required) + vertical divider. |
+| `Toolbar` | `Toolbar`, `Toolbar.Divider`, `ToolbarProps`, `ToolbarDividerProps` | Floating toolbar container built on react-aria's `Toolbar` (`aria-label` required): one tab stop, arrow keys move between controls. + vertical divider. |
 | `FloatingPanel` | `FloatingPanel`, `FloatingPanelProps` | Floating overlay built on `Card` + a ghost square `Button`: header (title/description/close) + scroll body; optional `dismissable` (outside-click + Escape). |
 | `ExportMenu` | `ExportMenu`, `ExportFormat`, `ExportMenuProps` | PNG/SVG export popover. |
 | `GraphControls` | `GraphControls`, `GraphControlsProps`, `EdgeStyle`, `LayoutDirection` | Zoom / fit / edge-style / layout controls; uses `useReactFlow` from `@xyflow/react`. |

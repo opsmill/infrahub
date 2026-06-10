@@ -33,6 +33,7 @@
     "@tailwindcss/vite": "^4.2.4",
     "lucide-react": "^1.17.0",
     "react": "^19.2.5",
+    "react-aria-components": "^1.18.0",
     "react-dom": "^19.2.5",
     "tailwind-variants": "^3.2.2",
     "tailwindcss": "^4.2.4",
