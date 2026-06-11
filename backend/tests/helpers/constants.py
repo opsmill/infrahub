@@ -14,3 +14,7 @@ PORT_PREFECT = 4200
 NEO4J_COMMUNITY_IMAGE = "neo4j:2025.10.1-community"
 NEO4J_ENTERPRISE_IMAGE = "neo4j:2025.10.1-enterprise"
 NEO4J_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", NEO4J_ENTERPRISE_IMAGE)
+
+# Upper bound in seconds when polling for Prefect events and their side effects
+# (event persistence, triggered automations, computed attribute rendering).
+PREFECT_EVENT_WAIT_SECONDS = 60

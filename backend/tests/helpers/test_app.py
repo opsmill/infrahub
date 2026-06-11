@@ -41,6 +41,7 @@ from infrahub.workers.dependencies import (
 from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
 from tests.helpers.events import query_events_by_name
 
@@ -282,7 +283,7 @@ class TestInfrahubAppBase(TestInfrahub):
         await initialization(db=db)
 
     async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
-        for _ in range(10):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             events = await query_events_by_name(client=prefect_client, event_name=event_name)
             if len(events) == 1:
                 return
