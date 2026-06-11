@@ -29,6 +29,42 @@ mutation UserPreferenceUpsert($account_id: String!, $date_format: String) {
 }
 """
 
+USER_PREFERENCE_UPSERT_TIMEZONE = """
+mutation UserPreferenceUpsertTimezone($account_id: String!, $timezone: String) {
+  CoreUserPreferenceUpsert(data: {
+    account: {id: $account_id}
+    timezone: {value: $timezone}
+  }) {
+    ok
+    object {
+      id
+    }
+  }
+}
+"""
+
+USER_PREFERENCE_UPSERT_WITH_ID = """
+mutation UserPreferenceUpsertWithId($id: String!, $date_format: String) {
+  CoreUserPreferenceUpsert(data: {
+    id: $id
+    date_format: {value: $date_format}
+  }) {
+    ok
+  }
+}
+"""
+
+USER_PREFERENCE_UPDATE_ACCOUNT = """
+mutation UserPreferenceUpdateAccount($id: String!, $account_id: String!) {
+  CoreUserPreferenceUpdate(data: {
+    id: $id
+    account: {id: $account_id}
+  }) {
+    ok
+  }
+}
+"""
+
 USER_PREFERENCE_UPDATE = """
 mutation UserPreferenceUpdate($id: String!, $date_format: String) {
   CoreUserPreferenceUpdate(data: {
@@ -123,6 +159,91 @@ class TestUserPreferenceOwnerScoping:
         )
         assert len(rows) == 1
         assert rows[0].date_format.value == "dd/MM/yyyy"
+
+    async def test_owner_lazy_upsert_is_idempotent(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: None,
+        default_permission_backend: None,
+        first_account: Node,
+        session_first_account: AccountSession,
+    ) -> None:
+        default_branch.update_schema_hash()
+        for timezone in ("UTC", "Europe/Paris"):
+            result = await _run_mutation(
+                db=db,
+                branch=default_branch,
+                account_session=session_first_account,
+                query=USER_PREFERENCE_UPSERT_TIMEZONE,
+                variables={"account_id": first_account.id, "timezone": timezone},
+            )
+
+            assert result.errors is None, result.errors
+            assert result.data
+            assert result.data["CoreUserPreferenceUpsert"]["ok"] is True
+
+        rows = await NodeManager.query(
+            db=db, schema=InfrahubKind.USERPREFERENCE, filters={"account__ids": [first_account.id]}
+        )
+        assert len(rows) == 1
+        assert rows[0].timezone.value == "Europe/Paris"
+
+    async def test_non_owner_upsert_with_id_of_other_row_denied(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: None,
+        default_permission_backend: None,
+        first_account: Node,
+        second_account: Node,
+        session_first_account: AccountSession,
+    ) -> None:
+        default_branch.update_schema_hash()
+        other_row = await _create_user_preference(db=db, account=second_account, date_format="relative")
+
+        result = await _run_mutation(
+            db=db,
+            branch=default_branch,
+            account_session=session_first_account,
+            query=USER_PREFERENCE_UPSERT_WITH_ID,
+            variables={"id": other_row.id, "date_format": "yyyy-MM-dd"},
+        )
+
+        assert result.errors
+        assert any("preferences of another account" in str(error) for error in result.errors)
+
+        unchanged = await NodeManager.get_one(db=db, id=other_row.id)
+        assert unchanged.date_format.value == "relative"
+
+    async def test_owner_cannot_repoint_row_to_another_account(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: None,
+        default_permission_backend: None,
+        first_account: Node,
+        second_account: Node,
+        session_first_account: AccountSession,
+    ) -> None:
+        default_branch.update_schema_hash()
+        row = await _create_user_preference(db=db, account=first_account, date_format="relative")
+
+        result = await _run_mutation(
+            db=db,
+            branch=default_branch,
+            account_session=session_first_account,
+            query=USER_PREFERENCE_UPDATE_ACCOUNT,
+            variables={"id": row.id, "account_id": second_account.id},
+        )
+
+        assert result.errors
+        assert any("preferences of another account" in str(error) for error in result.errors)
+
+        unchanged = await NodeManager.get_one(db=db, id=row.id)
+        owner = await unchanged.account.get_peer(db=db)
+        assert owner is not None
+        assert owner.id == first_account.id
 
     async def test_non_owner_cannot_create_for_other_account(
         self,
