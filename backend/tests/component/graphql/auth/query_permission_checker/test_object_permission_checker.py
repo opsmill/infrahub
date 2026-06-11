@@ -17,6 +17,7 @@ from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.object_permission_checker import (
     AccountManagerPermissionChecker,
+    GlobalPreferenceManagerPermissionChecker,
     ObjectPermissionChecker,
     PermissionManagerPermissionChecker,
     RepositoryManagerPermissionChecker,
@@ -204,6 +205,45 @@ mutation {
     location: {value: "/var/random"}
   }) {
     ok
+  }
+}
+"""
+
+MUTATION_GLOBAL_PREFERENCE_UPDATE = """
+mutation {
+  CoreGlobalPreferenceUpdate(data: {
+    id: "17d8cd14-915c-4a01-a17e-1f4f25d2f3de"
+    date_format: {value: "yyyy-MM-dd"}
+  }) {
+    ok
+  }
+}
+"""
+
+MUTATION_USER_PREFERENCE_UPDATE = """
+mutation {
+  CoreUserPreferenceUpdate(data: {
+    id: "17d8cd14-915c-4a01-a17e-1f4f25d2f3de"
+    date_format: {value: "yyyy-MM-dd"}
+  }) {
+    ok
+  }
+}
+"""
+
+QUERY_GLOBAL_PREFERENCE = """
+query {
+  CoreGlobalPreference {
+    edges {
+      node {
+        date_format {
+          value
+        }
+        timezone {
+          value
+        }
+      }
+    }
   }
 }
 """
@@ -797,6 +837,177 @@ class TestPermissionManagerPermissions:
                 query_parameters=gql_params,
                 branch=permissions_helper.default_branch,
             )
+
+
+class TestGlobalPreferenceManagerPermissions:
+    async def test_setup(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        register_core_models_schema: None,
+        default_branch: Branch,
+        permissions_helper: PermissionsHelper,
+        first_account: CoreAccount,
+        second_account: CoreAccount,
+    ) -> None:
+        permissions_helper._default_branch = default_branch
+
+        permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        await permission.new(
+            db=db,
+            action=GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        )
+        await permission.save(db=db)
+
+        role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+        await role.new(db=db, name="admin", permissions=[permission])
+        await role.save(db=db)
+
+        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await group.new(db=db, name="admin", roles=[role])
+        await group.save(db=db)
+
+        await group.members.add(db=db, data={"id": first_account.id})
+        await group.members.save(db=db)
+
+        # The second account only holds the wildcard object permission, like the
+        # default General Access role: it must not be enough to write global preferences.
+        wildcard_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+        await wildcard_permission.new(
+            db=db,
+            namespace="*",
+            name="*",
+            action=PermissionAction.ANY.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        )
+        await wildcard_permission.save(db=db)
+
+        wildcard_role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+        await wildcard_role.new(db=db, name="wildcard", permissions=[wildcard_permission])
+        await wildcard_role.save(db=db)
+
+        wildcard_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await wildcard_group.new(db=db, name="wildcard", roles=[wildcard_role])
+        await wildcard_group.save(db=db)
+
+        await wildcard_group.members.add(db=db, data={"id": second_account.id})
+        await wildcard_group.members.save(db=db)
+
+        permissions_helper._first = first_account
+        permissions_helper._second = second_account
+
+    async def test_account_with_permission(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+    ) -> None:
+        checker = GlobalPreferenceManagerPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=MUTATION_GLOBAL_PREFERENCE_UPDATE,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        resolution = await checker.check(
+            db=db,
+            account_session=session,
+            analyzed_query=analyzed_query,
+            query_parameters=gql_params,
+            branch=permissions_helper.default_branch,
+        )
+        assert resolution == CheckerResolution.NEXT_CHECKER
+
+    @pytest.mark.parametrize(
+        "operation,must_raise",
+        [
+            (MUTATION_GLOBAL_PREFERENCE_UPDATE, True),
+            (QUERY_GLOBAL_PREFERENCE, False),
+            (MUTATION_USER_PREFERENCE_UPDATE, False),
+            (QUERY_TAGS, False),
+        ],
+    )
+    async def test_account_without_permission(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation: str,
+        must_raise: bool,
+    ) -> None:
+        """A wildcard object permission must not allow writing global preferences; view is unaffected."""
+        checker = GlobalPreferenceManagerPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=operation,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        if not must_raise:
+            resolution = await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                query_parameters=gql_params,
+                branch=permissions_helper.default_branch,
+            )
+            assert resolution == CheckerResolution.NEXT_CHECKER
+        else:
+            with pytest.raises(PermissionDeniedError, match=r"You are not allowed to manage global preferences"):
+                await checker.check(
+                    db=db,
+                    account_session=session,
+                    analyzed_query=analyzed_query,
+                    query_parameters=gql_params,
+                    branch=permissions_helper.default_branch,
+                )
+
+    async def test_view_allowed_through_object_permission_checker(
+        self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
+    ) -> None:
+        """Viewing global preferences only requires regular object permissions."""
+        checker = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=QUERY_GLOBAL_PREFERENCE,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        await checker.check(
+            db=db,
+            account_session=session,
+            analyzed_query=analyzed_query,
+            branch=permissions_helper.default_branch,
+            query_parameters=gql_params,
+        )
 
 
 class TestRepositoryManagerPermissions:

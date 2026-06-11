@@ -23,7 +23,8 @@ from infrahub.permissions.types import define_object_permission_from_branch
         ),
         ([InfrahubKind.GLOBALPERMISSION, InfrahubKind.OBJECTPERMISSION], GlobalPermissions.MANAGE_PERMISSIONS),
         ([InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY], GlobalPermissions.MANAGE_REPOSITORIES),
-        ([InfrahubKind.TAG], None),
+        ([InfrahubKind.GLOBALPREFERENCE], GlobalPermissions.MANAGE_GLOBAL_PREFERENCES),
+        ([InfrahubKind.TAG, InfrahubKind.USERPREFERENCE], None),
     ],
 )
 def test_get_global_permission_for_kind(

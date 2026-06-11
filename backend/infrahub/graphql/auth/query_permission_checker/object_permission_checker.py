@@ -163,6 +163,35 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         return CheckerResolution.NEXT_CHECKER
 
 
+class GlobalPreferenceManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
+    """Checker that makes sure a user account can mutate organisation-wide default preferences.
+
+    This is similar to object permission checker except that we only care about mutations on global preferences.
+    """
+
+    permission_required = GlobalPermission(
+        action=GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
+
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
+
+    async def check(
+        self,
+        db: InfrahubDatabase,  # noqa: ARG002
+        account_session: AccountSession,  # noqa: ARG002
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        query_parameters: GraphqlParams,
+        branch: Branch,  # noqa: ARG002
+    ) -> CheckerResolution:
+        is_global_preference_operation = InfrahubKind.GLOBALPREFERENCE in analyzed_query.query_report.impacted_models
+
+        if is_global_preference_operation and analyzed_query.contains_mutation:
+            query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
+
+        return CheckerResolution.NEXT_CHECKER
+
+
 class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can add/edit/delete repository objects.
 

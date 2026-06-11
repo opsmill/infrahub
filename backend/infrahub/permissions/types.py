@@ -39,6 +39,7 @@ def get_global_permission_for_kind(schema: MainSchemaTypes) -> GlobalPermissions
         InfrahubKind.ACCOUNTROLE: GlobalPermissions.MANAGE_ACCOUNTS,
         InfrahubKind.BASEPERMISSION: GlobalPermissions.MANAGE_PERMISSIONS,
         InfrahubKind.GENERICREPOSITORY: GlobalPermissions.MANAGE_REPOSITORIES,
+        InfrahubKind.GLOBALPREFERENCE: GlobalPermissions.MANAGE_GLOBAL_PREFERENCES,
     }
 
     if schema.kind in kind_permission_map:
