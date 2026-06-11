@@ -26,13 +26,15 @@ if TYPE_CHECKING:
 
 
 class Branch(StandardNode):
+    # Persisted nullable fields must use `Optional[X]`` rather than `X | None` until we move to
+    # Python 3.14 b/c of how StandardNode.guess_field_type works
     name: str = Field(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
     status: BranchStatus = BranchStatus.OPEN
     description: str = ""
     origin_branch: str = "main"
-    branched_from: str | None = Field(default=None, validate_default=True)
+    branched_from: Optional[str] = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
     is_default: bool = False
     is_global: bool = False
@@ -42,14 +44,10 @@ class Branch(StandardNode):
         description="Indicate if the branch should be extended to Git and if Infrahub should merge the branch in Git as part of a proposed change",
     )
     is_isolated: bool = True
-    schema_changed_at: str | None = None
-    # Must stay Optional[...] rather than `SchemaBranchHash | None`: the StandardNode to_db
-    # serialization only unwraps typing.Union, so on Python 3.13 a PEP-604 `X | None` (a distinct
-    # types.UnionType) is not unwrapped and this BaseModel value fails to JSON-serialize. (The two
-    # union forms are unified in Python 3.14.)
+    schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
-    graph_version: int | None = None
-    merge_started_at: str | None = None
+    graph_version: Optional[int] = None
+    merge_started_at: Optional[str] = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
