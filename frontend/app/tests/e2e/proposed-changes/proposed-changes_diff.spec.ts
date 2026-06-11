@@ -51,7 +51,7 @@ test.describe("/proposed-changes diff data", () => {
         page.getByText("Choose the branch to resolve the conflict:mainden1-maintenance-conflict")
       ).toBeVisible();
       await saveScreenshotForDocs(page, "topics/proposed_change/pc_conflict_resolution");
-      await page.getByRole("checkbox", { name: "main", exact: true }).click({ force: true });
+      await page.getByTestId("conflict-resolution").getByText("main", { exact: true }).click();
       await expect(page.getByText("Conflict marked as resolved")).toBeVisible();
     });
   });
