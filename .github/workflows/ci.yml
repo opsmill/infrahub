@@ -1323,10 +1323,10 @@ jobs:
       - name: Run Playwright tests
         env:
           INFRAHUB_TESTING_RESPONSE_DELAY: ${{ needs.files-changed.outputs.e2e_pytest_tests == 'true' && '1' || '0' }}
-        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/docs-regression-check
-      - name: Run docs-regression Playwright tests
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/tutorial
+      - name: Run tutorial Playwright tests
         run: >
-          exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/docs-regression-check
+          exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
           --output test-results-docs --junitxml playwright-junit-docs.xml
       - name: playwright-report
         if: always()
