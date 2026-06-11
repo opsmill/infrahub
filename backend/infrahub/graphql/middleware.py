@@ -5,6 +5,8 @@ from infrahub.core.merge.write_blocker import MergeWriteBlocker
 
 ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH = ["BranchRebase", "BranchDelete", "BranchCreate", "ProposedChangeCreate"]
 ALLOWED_MUTATIONS_ON_MERGED_BRANCH = ["BranchDelete"]
+# BranchDelete is expected to verify that it is not deleting the merging branch
+ALLOWED_MUTATIONS_DURING_MERGE = ["BranchCreate", "BranchDelete"]
 
 
 async def raise_on_mutation_for_branch_status(next, root, info, **kwargs):  # type: ignore  # noqa
@@ -18,7 +20,8 @@ async def raise_on_mutation_for_branch_status(next, root, info, **kwargs):  # ty
             branch_status_checker.check_needs_rebase_status(branch=info.context.branch)
         if mutation_name not in ALLOWED_MUTATIONS_ON_MERGED_BRANCH:
             branch_status_checker.check_merge_status(branch=info.context.branch)
-        await branch_status_checker.check_merging_status(branch=info.context.branch)
+        if mutation_name not in ALLOWED_MUTATIONS_DURING_MERGE:
+            await branch_status_checker.check_merging_status(branch=info.context.branch)
 
     result = next(root, info, **kwargs)
     if isawaitable(result):

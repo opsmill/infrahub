@@ -73,6 +73,35 @@ class TestMergeInProgressBlock(TestInfrahubApp):
         lifted_node = await client.create(kind="TestingPerson", name="after lift", branch="main")
         await lifted_node.save()
 
+    async def test_branch_create_and_unrelated_delete_allowed_during_merge(
+        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase, service: InfrahubServices
+    ) -> None:
+        merging_name = "branch_mgmt_merging"
+        unrelated_name = "branch_mgmt_unrelated_delete"
+        await client.branch.create(branch_name=merging_name)
+        await client.branch.create(branch_name=unrelated_name)
+
+        backend_branch = registry.branch[merging_name]
+        backend_branch.status = BranchStatus.MERGING
+        await backend_branch.save(db=db)
+        merge_write_blocker = MergeWriteBlocker(cache=service.cache)
+        await merge_write_blocker.set(branch=merging_name, state=MergeProtectionState.MERGING)
+
+        try:
+            # Branch-management mutations are not blocked by the merge target gate: a new branch can be
+            # created and an unrelated branch can be deleted while a merge is in progress.
+            await client.branch.create(branch_name="branch_mgmt_created_during_merge")
+            assert await client.branch.delete(branch_name=unrelated_name)
+
+            # The branch being merged stays read-only: deleting it is rejected.
+            with pytest.raises(GraphQLError) as delete_exc:
+                await client.branch.delete(branch_name=merging_name)
+            assert delete_exc.value.errors[0]["message"] == (
+                f"Branch '{merging_name}' is being merged and is read-only. No modifications are allowed."
+            )
+        finally:
+            await merge_write_blocker.delete()
+
     async def test_successful_merge_lifts_protection(
         self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase, service: InfrahubServices
     ) -> None:
