@@ -1,0 +1,1 @@
+Added the `manage_global_preferences` global permission: writing `CoreGlobalPreference` now requires it (super admins implicitly pass), while `CoreUserPreference` writes are scoped to the owning account with an admin bypass and `CoreGlobalPreference` refuses the creation of a second row.
