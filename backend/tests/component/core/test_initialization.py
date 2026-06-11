@@ -3,13 +3,28 @@ from uuid import UUID
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import GlobalPermissions, InfrahubKind
 from infrahub.core.initialization import first_time_initialization, get_root_node, reset_deployment_id
+from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 
 
 async def test_first_time_initialization(db: InfrahubDatabase, default_branch: Branch) -> None:
     await first_time_initialization(db=db)
-    assert True
+
+    # The manage_global_preferences permission must be created
+    permissions = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.GLOBALPERMISSION,
+        filters={"action__value": GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value},
+    )
+    assert len(permissions) == 1
+
+    # Exactly one empty CoreGlobalPreference singleton must be seeded
+    preferences = await NodeManager.query(db=db, schema=InfrahubKind.GLOBALPREFERENCE)
+    assert len(preferences) == 1
+    assert preferences[0].date_format.value is None
+    assert preferences[0].timezone.value is None
 
 
 async def test_reset_deployment_id_generates_new_uuid(db: InfrahubDatabase, default_branch: Branch) -> None:

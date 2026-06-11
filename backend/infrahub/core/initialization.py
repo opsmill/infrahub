@@ -346,6 +346,16 @@ async def create_account(
     return obj
 
 
+async def create_global_preference(db: InfrahubDatabase) -> Node:
+    """Seed the empty CoreGlobalPreference singleton; application code treats this node as 0..1."""
+    obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPREFERENCE)
+    await obj.new(db=db)
+    await obj.save(db=db)
+    log.info("Created the Global Preferences singleton")
+
+    return obj
+
+
 async def create_ipam_namespace(
     db: InfrahubDatabase,
     name: str = DEFAULT_IP_NAMESPACE,
@@ -411,6 +421,7 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
     for permission_action in (
         GlobalPermissions.EDIT_DEFAULT_BRANCH,
         GlobalPermissions.MANAGE_ACCOUNTS,
+        GlobalPermissions.MANAGE_GLOBAL_PREFERENCES,
         GlobalPermissions.MANAGE_PERMISSIONS,
         GlobalPermissions.MERGE_BRANCH,
         GlobalPermissions.REBASE_BRANCH,
@@ -602,6 +613,11 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
 
     if config.SETTINGS.main.allow_anonymous_access:
         await create_anonymous_role(db=db)
+
+    # --------------------------------------------------
+    # Create the Global Preferences singleton
+    # --------------------------------------------------
+    await create_global_preference(db=db)
 
     # --------------------------------------------------
     # Create Default IPAM Namespace
