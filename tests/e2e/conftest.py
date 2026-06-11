@@ -103,8 +103,9 @@ _PROVISIONED_EXTERNALLY = bool(os.environ.get("INFRAHUB_ADDRESS"))
 # GraphQL request is slowed once the delay is enabled, so widen the timeout — mirrors
 # playwright.config.ts, which bumps the CI expect timeout from 3min to 6min for such runs.
 # NB: the signal is INFRAHUB_TESTING_RESPONSE_DELAY, NOT the backend's INFRAHUB_MISC_RESPONSE_DELAY
-# — setting the latter in the environment would slow the demo-data load at boot (see
-# response_delay_enabled / InfrahubDockerCompose.set_server_response_delay).
+# — setting the latter in the environment would slow the demo-data load (see
+# response_delay_enabled / InfrahubDockerCompose.set_server_response_delay, which
+# enables the delay at runtime only after the dataset is loaded).
 expect.set_options(timeout=60_000 if _RESPONSE_DELAY else 30_000)
 
 
@@ -391,40 +392,28 @@ def base_url(infrahub_address: str) -> str:
 if _RESPONSE_DELAY and not _PROVISIONED_EXTERNALLY:
 
     @pytest.fixture(scope="session")
-    async def response_delay_enabled(
+    def response_delay_enabled(
         infrahub_app: InfrahubDockerCompose,
-        infrahub_client: InfrahubClient,
         infrastructure_menu: None,
         infrastructure_data: None,
     ) -> None:
         """Slow the backend for the browser-test phase (INFRAHUB_TESTING_RESPONSE_DELAY set).
 
-        Mirrors the TS e2e CI job (which loads data, then restarts the server with
-        the delay): the direct dependencies provision the full dataset FIRST — the
-        load makes thousands of serialized GraphQL mutations, so a boot-time delay
-        would blow the CI budget — and only then is the infrahub-server recreated
-        with the per-request delay so browser flows exercise realistic loading
-        states. The per-role page fixtures depend on this so the delay is in
-        effect before any browser interaction. (demo_edge_repo is intentionally
-        not forced here: it is needed only by repo specs and loads lazily.)
+        The direct dependencies provision the full dataset FIRST — the load makes
+        thousands of GraphQL mutations, so a delay active during the load would
+        blow the CI budget — and only then is the per-request delay enabled at
+        runtime (set_server_response_delay POSTs to /api/response-delay, which
+        broadcasts the value to every API worker process and verifies it took
+        effect) so browser flows exercise realistic loading states. The per-role
+        page fixtures depend on this so the delay is in effect before any browser
+        interaction. (demo_edge_repo is intentionally not forced here: it is
+        needed only by repo specs and loads lazily.)
 
         Defined conditionally on the env because async fixtures cannot be resolved
         lazily via request.getfixturevalue; the no-delay/no-op variant below
         carries no data dependencies at all.
         """
         infrahub_app.set_server_response_delay(_RESPONSE_DELAY)
-
-        # The server replicas were force-recreated; wait until the LB routes to a
-        # responsive instance again (each probe now also carries the delay).
-        last_exc: Exception | None = None
-        for _ in range(30):
-            try:
-                await infrahub_client.branch.all()
-                return
-            except Exception as exc:  # transient during recreate; re-raised below if it never recovers
-                last_exc = exc
-                await asyncio.sleep(2)
-        raise RuntimeError(f"infrahub-server did not recover after enabling the response delay: {last_exc}")
 
 else:
 

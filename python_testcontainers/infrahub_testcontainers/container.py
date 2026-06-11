@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import time
+import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from functools import cached_property
+from http import HTTPStatus
 from pathlib import Path
 
 from testcontainers.compose import DockerCompose
@@ -67,12 +70,6 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_SCHEMA_STRICT_MODE": "true",
     "INFRAHUB_TESTING_TASKMGR_API_WORKERS": "1",
     "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "0",
-    # Per-GraphQL-request server delay; the backend reads it as miscellaneous.response_delay.
-    # Baseline 0 so the stack always boots fast (a boot-time delay would slow the demo-data
-    # load); set_server_response_delay rewrites this in the .env and recreates the server to
-    # turn it on AFTER data is loaded. Don't set INFRAHUB_MISC_RESPONSE_DELAY in the boot env —
-    # use the INFRAHUB_TESTING_RESPONSE_DELAY signal instead (see tests/e2e/README.md).
-    "INFRAHUB_MISC_RESPONSE_DELAY": "0",
 }
 
 
@@ -207,25 +204,46 @@ class InfrahubDockerCompose(DockerCompose):
     def set_server_response_delay(self, delay: int) -> None:
         """Enable a per-GraphQL-request delay on the running infrahub-server.
 
-        The backend reads ``miscellaneous.response_delay`` only at startup, so the value is
-        written into the compose ``.env`` and the ``infrahub-server`` service is force-recreated
-        to pick it up. The HAProxy LB re-resolves the new replicas via Docker DNS
-        (``server-template ... resolvers docker``), so it keeps routing without a restart.
+        POSTs to the ``/api/response-delay`` endpoint, which broadcasts the new value over the
+        message bus so every API worker process across all server replicas applies it at
+        runtime — no restart involved. Each worker consumes the broadcast asynchronously, so
+        the change is then verified by timing GraphQL probes until consecutive responses
+        observe the delay.
 
         Intended to be called AFTER the dataset is loaded: a boot-time delay would slow the
-        demo-data load (thousands of serialized GraphQL mutations). Mirrors the TS e2e CI job,
-        which loads data first and only then restarts the server with the delay.
+        demo-data load (thousands of GraphQL mutations).
         """
-        key = "INFRAHUB_MISC_RESPONSE_DELAY"
-        env_file = Path(self.context) / ".env"
-        lines = [line for line in env_file.read_text(encoding="utf-8").splitlines() if not line.startswith(f"{key}=")]
-        lines.append(f"{key}={delay}")
-        env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        self.env_vars[key] = str(delay)
+        address = f"http://localhost:{self.get_services_port()['server']}"
+        token = self.get_env_var("INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN")
+        request = urllib.request.Request(  # noqa: S310 (fixed localhost URL)
+            url=f"{address}/api/response-delay",
+            data=json.dumps({"response_delay": delay}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "X-INFRAHUB-KEY": token},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 (fixed localhost URL)
+            if response.status != HTTPStatus.OK:
+                raise RuntimeError(f"Failed to set the response delay: HTTP {response.status}")
 
-        cmd = self.compose_command_property[:]
-        cmd += ["up", "-d", "--force-recreate", "--no-deps", "--wait", "infrahub-server"]
-        self._run_command(cmd=cmd)
+        if not delay:
+            return
+
+        required_delayed_probes = 5
+        consecutive_delayed = 0
+        deadline = time.monotonic() + 60
+        while consecutive_delayed < required_delayed_probes:
+            if time.monotonic() > deadline:
+                raise RuntimeError("The response delay did not become active on the server within 60s")
+            probe = urllib.request.Request(  # noqa: S310 (fixed localhost URL)
+                url=f"{address}/graphql",
+                data=json.dumps({"query": "query { __typename }"}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "X-INFRAHUB-KEY": token},
+                method="POST",
+            )
+            start = time.monotonic()
+            with urllib.request.urlopen(probe, timeout=30 + delay):  # noqa: S310 (fixed localhost URL)
+                pass
+            consecutive_delayed = consecutive_delayed + 1 if time.monotonic() - start >= delay else 0
 
     def start_container(self, service_name: str | list[str]) -> None:
         """

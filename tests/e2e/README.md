@@ -72,15 +72,15 @@ INFRAHUB_TESTING_IMAGE_VER=e2e-pytest INFRAHUB_TESTING_DOCKER_PULL=false \
   uv run pytest -c tests/e2e/pytest.ini tests/e2e
 ```
 
-The backend reads its delay (`INFRAHUB_MISC_RESPONSE_DELAY`) only at startup, and
-applying it at boot would slow the demo-data load (thousands of serialized
-mutations) past the CI budget. So the suite uses a separate signal,
-`INFRAHUB_TESTING_RESPONSE_DELAY`, and the `response_delay_enabled` fixture mirrors
-the TS job: it loads the full dataset first, then recreates the `infrahub-server`
-service with `INFRAHUB_MISC_RESPONSE_DELAY` written into the compose `.env`
-(`InfrahubDockerCompose.set_server_response_delay`; the HAProxy LB re-resolves the
-new replicas). Do **not** set `INFRAHUB_MISC_RESPONSE_DELAY` directly — that slows
-the boot-time data load. The `expect` timeout also widens to 60s for delay runs.
+A delay active during the demo-data load (thousands of mutations) would blow the
+CI budget. So the suite uses a separate signal, `INFRAHUB_TESTING_RESPONSE_DELAY`,
+and the `response_delay_enabled` fixture loads the full dataset first, then enables
+the delay at runtime: `InfrahubDockerCompose.set_server_response_delay` POSTs to
+the `/api/response-delay` endpoint, which broadcasts the value over the message bus
+to every API worker process across the server replicas (no restart), and then
+verifies with timed GraphQL probes that the delay is active. Do **not** set
+`INFRAHUB_MISC_RESPONSE_DELAY` directly — that slows the boot-time data load. The
+`expect` timeout also widens to 60s for delay runs.
 
 ## Architecture
 
