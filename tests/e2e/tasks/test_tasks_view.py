@@ -12,6 +12,8 @@ import pytest
 from helpers import save_screenshot_for_docs
 from playwright.async_api import expect
 
+pytestmark = pytest.mark.shard_foundation
+
 if TYPE_CHECKING:
     from playwright.async_api import Page
 

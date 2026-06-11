@@ -28,6 +28,8 @@ from file_upload_helpers import create_minimal_pdf_buffer, fill_circuit_contract
 from helpers import generate_random_branch_name
 from playwright.async_api import expect
 
+pytestmark = pytest.mark.shard_branches_repo
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Generator
 

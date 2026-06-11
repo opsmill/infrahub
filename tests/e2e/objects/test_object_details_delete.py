@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.async_api import expect
 
+pytestmark = pytest.mark.shard_foundation
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 

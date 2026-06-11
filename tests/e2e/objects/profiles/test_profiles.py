@@ -24,6 +24,8 @@ import pytest
 from helpers import Deadline, generate_random_branch_name
 from playwright.async_api import expect
 
+pytestmark = pytest.mark.shard_foundation
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 

@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from helpers import save_screenshot_for_docs
+
+pytestmark = pytest.mark.shard_foundation
 
 if TYPE_CHECKING:
     from playwright.async_api import Page, Response

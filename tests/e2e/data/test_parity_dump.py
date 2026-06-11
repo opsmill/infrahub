@@ -18,6 +18,8 @@ import pytest
 
 from data.parity import build_parity_dump
 
+pytestmark = pytest.mark.shard_branches_repo
+
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 

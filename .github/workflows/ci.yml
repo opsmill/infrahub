@@ -1272,6 +1272,10 @@ jobs:
     runs-on:
       group: huge-runners
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [foundation, sites_a, sites_b, branches_repo, tutorial]
     env:
       INFRAHUB_DB_TYPE: neo4j
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
@@ -1321,23 +1325,21 @@ jobs:
           uv run invoke dev.build
           echo "::endgroup::"
       - name: Run Playwright tests
+        if: matrix.shard != 'tutorial'
         env:
           INFRAHUB_TESTING_RESPONSE_DELAY: ${{ needs.files-changed.outputs.e2e_pytest_tests == 'true' && '1' || '0' }}
-        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/tutorial
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/tutorial -m shard_${{ matrix.shard }}
       - name: Run tutorial Playwright tests
-        run: >
-          exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
-          --output test-results-docs --junitxml playwright-junit-docs.xml
+        if: matrix.shard == 'tutorial'
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
       - name: playwright-report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: E2E-testing-pytest-playwright
+          name: E2E-testing-pytest-playwright-${{ matrix.shard }}
           path: |
             test-results/
-            test-results-docs/
             playwright-junit.xml
-            playwright-junit-docs.xml
       - name: Containers after tests
         if: always()
         run: docker ps -a
