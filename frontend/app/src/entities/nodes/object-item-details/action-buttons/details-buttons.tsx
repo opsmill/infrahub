@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, LinkButton, Tooltip } from "@infrahub/ui";
+import { Button, LinkButton, Sheet, Tooltip } from "@infrahub/ui";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { classNames } from "@/shared/utils/common";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
@@ -88,18 +88,13 @@ export function DetailsButtons({
         </LinkButton>
       </div>
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={nodeLabel}
-            title={`Edit ${nodeLabel}`}
-            subtitle={schema.description}
-          />
-        }
-        open={isEditModalOpen}
-        setOpen={setIsEditModalOpen}
-      >
+      <Sheet isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={nodeLabel}
+          title={`Edit ${nodeLabel}`}
+          subtitle={schema.description}
+        />
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
@@ -109,7 +104,7 @@ export function DetailsButtons({
           objectId={objectDetailsData.id!}
           objectname={schema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }

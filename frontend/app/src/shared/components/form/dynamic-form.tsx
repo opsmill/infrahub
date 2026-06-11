@@ -29,7 +29,6 @@ import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-sc
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   isBulkUpdate?: boolean;
   fields: Array<DynamicFieldProps>;
-  onCancel?: () => void;
   submitLabel?: string;
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
   ref?: React.Ref<FormRef>;
@@ -49,7 +48,7 @@ const DynamicForm = ({
   );
 
   return (
-    <Form ref={ref} {...props} defaultValues={formDefaultValues}>
+    <Form ref={ref} {...props} onCancel={onCancel} defaultValues={formDefaultValues}>
       {fields.map((field) => (
         <DynamicField key={`${field.type}_${field.name}`} {...field} />
       ))}
