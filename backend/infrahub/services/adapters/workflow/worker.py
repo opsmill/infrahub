@@ -16,16 +16,34 @@ from infrahub.workflows.models import WorkflowInfo
 from . import InfrahubWorkflow, Return
 
 if TYPE_CHECKING:
-    from prefect.client.schemas.objects import FlowRun
+    from prefect.client.schemas.objects import FlowRun, State
 
     from infrahub.context import InfrahubContext
     from infrahub.tls.registry import TlsContextRegistry
     from infrahub.workflows.models import WorkflowDefinition
 
 
+class FlowRunPickupChecker:
+    """Decides whether a flow run was picked up by a worker within its pickup deadline."""
+
+    def check(self, response: FlowRun, workflow_full_name: str, pickup_timeout: float | None) -> State:
+        if not response.state:
+            raise RuntimeError("Unable to read state from the response")
+
+        # If a pickup deadline was set and the run is still queued, treat the worker as unreachable rather than
+        # holding the caller (and any lock it owns) indefinitely. The deadline only covers being picked up.
+        if pickup_timeout is not None and response.state.type in (StateType.SCHEDULED, StateType.PENDING):
+            raise ServiceUnavailableError(
+                f"Workflow {workflow_full_name} was not picked up by a worker within {pickup_timeout} seconds"
+            )
+
+        return response.state
+
+
 class WorkflowWorkerExecution(InfrahubWorkflow):
-    def __init__(self, tls_registry: TlsContextRegistry) -> None:
+    def __init__(self, tls_registry: TlsContextRegistry, pickup_checker: FlowRunPickupChecker | None = None) -> None:
         self._tls_registry = tls_registry
+        self._pickup_checker = pickup_checker or FlowRunPickupChecker()
 
     @staticmethod
     async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
@@ -76,22 +94,15 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         response: FlowRun = await run_deployment(
             name=workflow.full_name, poll_interval=1, parameters=parameters or {}, timeout=pickup_timeout
         )  # type: ignore[return-value, misc]
-        if not response.state:
-            raise RuntimeError("Unable to read state from the response")
+        state = self._pickup_checker.check(
+            response=response, workflow_full_name=workflow.full_name, pickup_timeout=pickup_timeout
+        )
 
-        # If a pickup deadline was set and the run is still queued, treat the worker as unreachable rather than
-        # holding the caller (and any lock it owns) indefinitely. The deadline only covers being picked up.
-        if pickup_timeout is not None and response.state.type in (StateType.SCHEDULED, StateType.PENDING):
-            raise ServiceUnavailableError(
-                f"Workflow {workflow.full_name} was not picked up by a worker within {pickup_timeout} seconds"
-            )
-
-        if not response.state.is_final():
+        if not state.is_final():
             response = await wait_for_flow_run(flow_run_id=response.id, timeout=None, poll_interval=1)
-
-        state = response.state
-        if not state:
-            raise RuntimeError("Unable to read state from the response")
+            state = response.state
+            if not state:
+                raise RuntimeError("Unable to read state from the response")
 
         if state.type == StateType.CRASHED:
             raise RuntimeError(state.message)
