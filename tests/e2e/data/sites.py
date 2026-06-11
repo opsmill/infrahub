@@ -756,20 +756,34 @@ def _find_and_connect_interfaces(  # noqa: PLR0913, PLR0917  (mirrors the script
     second_device_name: str,
     second_interface_key: str,
 ) -> None:
-    """Transcribes ``find_and_connect_interfaces`` (lines 848-877): set BOTH symmetric sides."""
+    """Transcribes ``find_and_connect_interfaces``: set BOTH symmetric sides, save the pair sequentially."""
     first_interface = interfaces[first_interface_key]
     second_interface = interfaces[second_interface_key]
 
     first_interface.description.value = f"Connected to {second_device_name}::{second_interface.name.value}"
     first_interface.connected_endpoint = second_interface  # type: ignore[assignment]
-    batch.add(task=first_interface.save, node=first_interface)
 
     # `connected_endpoint` is a SYMMETRIC peer relationship: set it explicitly on this side
     # too, otherwise saving the second interface with an unset peer clears the link the first
     # save just established (serialized loads, max_concurrent_execution=1).
     second_interface.description.value = f"Connected to {first_device_name}::{first_interface.name.value}"
     second_interface.connected_endpoint = first_interface  # type: ignore[assignment]
-    batch.add(task=second_interface.save, node=second_interface)
+
+    # One batch task saves both sides SEQUENTIALLY: saved concurrently (batch
+    # concurrency > 1), each side's transaction misses the other's edge and the
+    # node ends up with 2 peers, failing the card-one validation. Harmless at
+    # this loader's concurrency of 1, but mirrors the script's fixed semantics.
+    batch.add(
+        task=_save_connected_pair,
+        node=first_interface,
+        first_interface=first_interface,
+        second_interface=second_interface,
+    )
+
+
+async def _save_connected_pair(first_interface: InfrahubNode, second_interface: InfrahubNode) -> None:
+    await first_interface.save()
+    await second_interface.save()
 
 
 async def _connect_site_cabling(ctx: _SiteContext, state: _SiteState) -> None:
