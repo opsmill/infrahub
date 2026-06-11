@@ -69,7 +69,9 @@ test.describe("Verifies the object creation", () => {
     });
 
     await test.step("check inputs values", async () => {
-      await expect(page.getByLabel("Kind")).toContainText("Interface L3 Infra");
+      await expect(page.getByRole("combobox", { name: "Kind" })).toContainText(
+        "Interface L3 Infra"
+      );
       await expect(page.locator('button[name="connected_endpoint_parent"]')).toContainText(
         "atl1-edge2"
       );
