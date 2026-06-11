@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from typing import Any, AsyncGenerator
 from uuid import UUID
 
@@ -93,9 +94,25 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
         git_global_config_env_setting: Any,
     ) -> AsyncGenerator[InfrahubWorkerAsync, None]:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
+        ready: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        stop = asyncio.Event()
 
-        await worker.setup(client=client, metric_port=0)
-        await worker.sync_with_backend()
+        # The worker exit stack holds an anyio cancel scope and settings context variables
+        # that must be exited from the task and context that created them. Fixture setup and
+        # teardown run in different tasks, so the whole worker lifecycle runs in one task.
+        async def lifecycle() -> None:
+            try:
+                await worker.setup(client=client, metric_port=0)
+                await worker.sync_with_backend()
+            except BaseException as exc:
+                ready.set_exception(exc)
+                return
+            ready.set_result(None)
+            await stop.wait()
+            await worker.teardown(None, None, None)
+
+        lifecycle_task = asyncio.create_task(lifecycle())
+        await ready
 
         # Validate that the worker has properly registered with the server
         active_workers = await prefect_client.read_workers_for_work_pool(work_pool_name=work_pool.name)
@@ -103,9 +120,13 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
 
         yield worker
 
+        stop.set()
+        await lifecycle_task
+
         # Clear local worker instances to avoid issues with multiple test classes running in the same pytest worker
-        EventsWorker.drain_all()
-        APILogWorker.drain_all()
+        for drained in (EventsWorker.drain_all(), APILogWorker.drain_all()):
+            if inspect.isawaitable(drained):
+                await drained
 
         # Clear local worker result storage cache
         _default_storages.clear()
