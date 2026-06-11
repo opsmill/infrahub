@@ -1,0 +1,1 @@
+Added an internal `/api/response-delay` endpoint (super-admin only) that updates the API response delay (`miscellaneous.response_delay`) at runtime: the new value is broadcast over the message bus so every API worker process across all server replicas applies it without restarting the API server.

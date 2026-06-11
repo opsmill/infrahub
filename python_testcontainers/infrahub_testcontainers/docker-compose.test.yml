@@ -199,7 +199,6 @@ services:
       # mirroring the TS e2e CI job. Toggled at runtime by InfrahubDockerCompose
       # .set_server_response_delay AFTER data is loaded (a boot-time delay would slow the
       # demo-data load); the value is read from the compose .env on (re)create.
-      INFRAHUB_MISC_RESPONSE_DELAY: ${INFRAHUB_MISC_RESPONSE_DELAY:-0}
       INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:
       # Tracing
       INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-false}
