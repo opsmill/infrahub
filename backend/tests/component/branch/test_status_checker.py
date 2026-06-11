@@ -13,6 +13,8 @@ from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError
 from tests.adapters.cache import MemoryCache, UnreachableCache
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -94,30 +96,32 @@ class TestBranchStatusChecker:
         checker = _checker(db, MergeWriteBlocker(cache=UnreachableCache()))
         await checker.check(branch=default_branch_scope_class)
 
-    async def test_cache_unreachable_with_merge_blocks_via_db(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch
-    ) -> None:
-        merging = Branch(
+    @pytest.fixture
+    async def persisted_merging_branch(self, db: InfrahubDatabase) -> AsyncGenerator[Branch, None]:
+        """A branch persisted in MERGING; reset to OPEN on teardown so the class-shared db stays clean."""
+        branch = Branch(
             name="status-checker-db-merging", status=BranchStatus.MERGING, branched_from=Timestamp().to_string()
         )
-        await merging.save(db=db)
+        await branch.save(db=db)
+        yield branch
+        branch.status = BranchStatus.OPEN
+        await branch.save(db=db)
+
+    async def test_cache_unreachable_with_merge_blocks_via_db(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, persisted_merging_branch: Branch
+    ) -> None:
         open_branch = Branch(
             name="status-checker-db-open", status=BranchStatus.OPEN, branched_from=Timestamp().to_string()
         )
         await open_branch.save(db=db)
-        try:
-            checker = _checker(db, MergeWriteBlocker(cache=UnreachableCache()))
+        checker = _checker(db, MergeWriteBlocker(cache=UnreachableCache()))
 
-            with pytest.raises(BranchAlreadyMergedError, match=MERGE_IN_PROGRESS_MESSAGE):
-                await checker.check(branch=default_branch_scope_class)
+        with pytest.raises(BranchAlreadyMergedError, match=MERGE_IN_PROGRESS_MESSAGE):
+            await checker.check(branch=default_branch_scope_class)
 
-            with pytest.raises(
-                BranchAlreadyMergedError, match=r"status-checker-db-merging.*is being merged and is read-only"
-            ):
-                await checker.check(branch=merging)
+        with pytest.raises(
+            BranchAlreadyMergedError, match=r"status-checker-db-merging.*is being merged and is read-only"
+        ):
+            await checker.check(branch=persisted_merging_branch)
 
-            await checker.check(branch=open_branch)
-        finally:
-            # Restore clean class state for the other tests sharing this db.
-            merging.status = BranchStatus.OPEN
-            await merging.save(db=db)
+        await checker.check(branch=open_branch)

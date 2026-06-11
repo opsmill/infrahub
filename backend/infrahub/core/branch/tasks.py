@@ -369,7 +369,10 @@ async def _rollback_merge(
         merger.destination_branch.update_schema_hash()
         await merger.destination_branch.save(db=db, user_id=user_id)
     except Exception:
+        # Hold the write protection (leave the branch MERGING + key set) rather than reopening on a
+        # partially-recovered state, so the failure is handled by recovery instead of allowing writes.
         log.exception("Registry restore failed during merge rollback")
+        return False
 
     branch.branched_from = pre_merge_branched_from
     branch.status = BranchStatus.OPEN
@@ -433,11 +436,11 @@ async def _do_merge_branch(
             # Set to MERGING to lock the branch while merge proceeds. Record when the merge started so
             # a recovery can roll back from this point, and publish the shared write-protection key
             # before any graph write so every worker rejects writes to the source and default branch.
+            await merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
             branch.status = BranchStatus.MERGING
             branch.merge_started_at = merge_at.to_string()
             await branch.save(db=db, user_id=user_id)
             registry.branch[branch.name] = branch
-            await merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
             await merger.merge(at=merge_at)
 
         log.info("Loading enriched diff for changelog collection")

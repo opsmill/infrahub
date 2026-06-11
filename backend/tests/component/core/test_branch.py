@@ -455,7 +455,7 @@ async def test_create_branch(db: InfrahubDatabase, empty_database: None) -> None
     assert branch.description == description
 
 
-async def test_branch_merge_started_at_round_trip(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_branch_merge_started_at_round_trip(db: InfrahubDatabase, empty_database: None) -> None:
     """merge_started_at persists on the :Branch node and is read back unchanged."""
     branch_name = "merge-started-at-branch"
     branch = Branch(name=branch_name, status=BranchStatus.OPEN, branched_from=Timestamp().to_string())
