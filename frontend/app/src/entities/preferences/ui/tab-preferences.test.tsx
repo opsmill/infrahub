@@ -53,6 +53,40 @@ describe("TabPreferences", () => {
       .toBeVisible();
   });
 
+  test("still renders and saves the form when the global preferences query fails", async () => {
+    vi.mocked(getGlobalPreference).mockRejectedValue(new Error("global read failed"));
+
+    const component = await render(<TabPreferences />);
+
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
+    expect(
+      component.getByText(/something went wrong when fetching your preferences/i).elements()
+    ).toHaveLength(0);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: /relative/i }).click();
+    await component.getByRole("button", { name: "Save" }).click();
+
+    await vi.waitFor(() => {
+      expect(upsertMyUserPreference).toHaveBeenCalledWith({
+        accountId: "account-1",
+        dateFormat: "relative",
+        timezone: null,
+      });
+    });
+  });
+
+  test("disables Save while the form is pristine", async () => {
+    const component = await render(<TabPreferences />);
+
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: /relative/i }).click();
+
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
   test("saving triggers the lazy upsert with the selected values", async () => {
     const component = await render(<TabPreferences />);
 

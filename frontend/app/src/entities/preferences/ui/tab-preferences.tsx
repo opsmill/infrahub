@@ -30,7 +30,7 @@ export default function TabPreferences() {
   const upsertPreferences = useUpsertMyUserPreferences();
   const resetPreferences = useResetMyUserPreferences();
 
-  if (globalQuery.error || userQuery.error) {
+  if (userQuery.error) {
     return <ErrorScreen message="Something went wrong when fetching your preferences" />;
   }
 
@@ -38,7 +38,9 @@ export default function TabPreferences() {
     return <LoadingIndicator className="h-32" />;
   }
 
-  const globalPreference = globalQuery.data;
+  // Global preferences only power the inheritance hints: if that read fails,
+  // treat the global values as unset instead of blocking the user's own form.
+  const globalPreference = globalQuery.error ? undefined : globalQuery.data;
   const userPreference = userQuery.data;
 
   return (
@@ -84,11 +86,13 @@ export default function TabPreferences() {
                 );
               }
             }}
+            isSubmitDisabled={resetPreferences.isPending}
           >
             {userPreference && (
               <Button
                 variant="outline"
                 isPending={resetPreferences.isPending}
+                isDisabled={upsertPreferences.isPending}
                 onPress={async () => {
                   try {
                     await resetPreferences.mutateAsync({ id: userPreference.id });

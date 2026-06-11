@@ -1,4 +1,5 @@
 import type React from "react";
+import { useFormState } from "react-hook-form";
 
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
@@ -13,7 +14,15 @@ export interface PreferencesFormProps {
   dateFormatHint?: string;
   timezoneHint?: string;
   onSubmit: (values: PreferenceValues) => Promise<void>;
+  isSubmitDisabled?: boolean;
   children?: React.ReactNode;
+}
+
+/** Save button disabled while the form is pristine, so an untouched form cannot be submitted. */
+function SaveButton({ isDisabled }: { isDisabled?: boolean }) {
+  const { isDirty } = useFormState();
+
+  return <FormSubmit isDisabled={isDisabled || !isDirty}>Save</FormSubmit>;
 }
 
 function toFieldValue(value: string | null): FormAttributeValue {
@@ -27,6 +36,7 @@ export function PreferencesForm({
   dateFormatHint,
   timezoneHint,
   onSubmit,
+  isSubmitDisabled,
   children,
 }: PreferencesFormProps) {
   return (
@@ -54,7 +64,7 @@ export function PreferencesForm({
 
       <div className="flex items-center justify-end gap-2">
         {children}
-        <FormSubmit>Save</FormSubmit>
+        <SaveButton isDisabled={isSubmitDisabled} />
       </div>
     </Form>
   );
