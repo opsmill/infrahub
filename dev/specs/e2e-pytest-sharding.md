@@ -78,6 +78,10 @@ Never loads `data_sites`; quietest stack, home for flake-sensitive UI tests.
 
 ### Job 2 `sites-a` — data_sites (~123s tests + ~130s stack)
 
+- ipam/test_ip_namespace.py (47.0)
+- ipam/test_ipam_tree.py (6.9)
+- role-management/test_global_permissions.py (21.9, leaf-tier; hosted here for balance)
+- objects/file-upload/test_file_upload.py (19.8, leaf-tier; hosted here for balance)
 - objects/list/test_object_list_select_range.py (55.6)
 - objects/test_object_relationships.py (21.7)
 - objects/test_object_update.py (17.2)
@@ -100,11 +104,9 @@ Remaining sites-tier files:
 - form/test_select_2_steps.py (12.1)
 - form/test_multi_select.py (10.7)
 - groups/test_groups_filter.py (1.3)
-- ipam/test_ip_namespace.py (47.0)
 - ipam/test_ip_address_create_with_pool.py (8.9)
 - ipam/test_ip_address_list.py (4.8)
 - ipam/test_ip_prefix_list.py (7.0)
-- ipam/test_ipam_tree.py (6.9)
 - object-template/test_template_with_profiles.py (14.1)
 - objects/convert/test_object_convert.py (6.7)
 - objects/hierarchy/test_object_hierarchy_navigation.py (5.9)
@@ -152,13 +154,16 @@ repo-import failure kills one shard, not the suite):
 Leaf-tier ballast moved here for balance (full load hosts them for free):
 
 - role-management/test_group_management.py (29.0)
-- role-management/test_global_permissions.py (21.9)
 - branches/test_merge_branch.py (13.9)
-- objects/file-upload/test_file_upload.py (19.8)
 
-Resulting local-equivalent walls: ~350s / ~480s / ~480s / ~440s, i.e. ~6-8 min
-per job + CI overhead, vs ~23 min + overhead today. Rebalancing dial: move
-leaf files between Job 1 and Job 4, or sites files between Jobs 2 and 3.
+Rebalanced 2026-06-11 against the first sharded CI run (run 27358443140:
+foundation 8.6m / sites_a 5.8m / sites_b 10.0m / branches_repo 9.7m /
+tutorial 6.0m of pytest-step time): sites_a had ~4m of headroom, so
+ip_namespace + ipam_tree moved over from sites_b and the global_permissions +
+file_upload leaf ballast moved over from branches_repo. Expected walls ~8.5m
+per data shard. Rebalancing dial: move leaf files anywhere, sites files
+between sites_a/sites_b, topology files between sites_b/branches_repo —
+re-measure with each shard's CI junit before moving.
 
 ## Implementation notes
 
