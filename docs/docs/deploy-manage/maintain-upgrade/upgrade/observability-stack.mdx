@@ -4,8 +4,26 @@ title: Upgrade the observability stack
 
 # Upgrade the observability stack
 
+## Docker Compose
+
 When a new compose file changes the embedded observability configuration, services backed by Docker Compose `configs` do not pick up those changes on a regular `up -d`. Use `--force-recreate` on the affected services to reload the embedded configuration content:
 
 ```bash
 docker compose -p infrahub up -d --force-recreate infrahub-alloy infrahub-loki infrahub-tempo infrahub-grafana
 ```
+
+## Kubernetes with Helm
+
+How you upgrade the stack depends on how it was deployed.
+
+If it is **bundled** with your Infrahub release (`infrahub-observability.enabled`), the observability subchart version is pinned by the Infrahub chart, so it upgrades together with Infrahub — upgrade the Infrahub release as usual.
+
+If it is a **standalone** release, upgrade it to a new chart version directly:
+
+```bash
+helm upgrade obs oci://registry.opsmill.io/opsmill/chart/infrahub-observability --version <new-version> -n infrahub
+```
+
+Pass your `values.yml` with `-f` if you customized the deployment. Persistent volumes for Loki, Prometheus, Tempo, and Grafana are retained across upgrades, so dashboards and historical data survive the upgrade.
+
+For how to deploy and configure the stack, see [Observability stack](../../install-configure/install/observability-stack).
