@@ -153,6 +153,10 @@ Workflows receive metadata tags for organization and filtering:
 4. **Execution**: Workers pick up and execute flows
 5. **Tracking**: State and logs aggregated in Prefect
 
+### Synchronous Execution
+
+Most workflows are submitted fire-and-forget and tracked in Prefect. A few CORE operations — schema validation and migration during a schema load — instead run **synchronously**: the request waits for the result while holding `global_schema_lock`. To keep an unreachable worker from holding that lock indefinitely, synchronous execution accepts a **pickup timeout**. If no worker claims the run within the window, the call raises `ServiceUnavailableError` (HTTP 503) and releases the lock; once a worker has started the run, it completes without a deadline. The window only covers being picked up, not the run itself, so a long-but-healthy migration is never aborted.
+
 ## Concurrency Control
 
 Workflows can specify concurrency limits:
