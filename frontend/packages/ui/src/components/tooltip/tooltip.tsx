@@ -35,7 +35,8 @@ export function Tooltip({
   className,
   ...props
 }: TooltipProps) {
-  if (message === null) {
+  const hasMessage = !message && message !== 0;
+  if (!hasMessage) {
     return children;
   }
 
