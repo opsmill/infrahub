@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Checkbox } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
 import type { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
@@ -13,7 +14,6 @@ import type {
   TemplateSource,
 } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { Badge } from "@/shared/components/ui/badge";
 import { FormLabel } from "@/shared/components/ui/form";
 import type { LabelProps } from "@/shared/components/ui/label";
@@ -146,35 +146,19 @@ interface ResetActionProps {
 
 export const ResetAction = ({ field, defaultValue }: ResetActionProps) => {
   return (
-    <div className="flex justify-end gap-2 text-gray-600 text-xs">
-      <label htmlFor={`reset_${field.name}`} className="flex cursor-pointer items-center gap-2">
-        <Checkbox
-          id={`reset_${field.name}`}
-          value={field.value?.source?.type === "user" && field.value?.value === null}
-          onClick={(event) => {
-            const value = event.target.checked;
-
-            if (value) {
-              return field.onChange(updateFormFieldValue(null));
-            }
-            return field.onChange(defaultValue);
-          }}
-        />
-        Set empty
-      </label>
-
-      {/* //TODO: Switch to aria component after fixing issue with scroll after checking the input
-          //TODO: Example available with Role and Remove Tags fields on Device */}
-      {/* <Checkbox
-        onChange={(value) => {
-          if (value) {
+    <div className="flex justify-end">
+      <Checkbox
+        isSelected={field.value?.source?.type === "user" && field.value?.value === null}
+        onChange={(isSelected) => {
+          if (isSelected) {
             return field.onChange(updateFormFieldValue(null));
           }
           return field.onChange(defaultValue);
         }}
+        className="font-normal text-gray-600 text-xs"
       >
         Set empty
-      </Checkbox> */}
+      </Checkbox>
     </div>
   );
 };

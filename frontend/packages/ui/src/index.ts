@@ -15,6 +15,7 @@ export {
   LinkButton,
   type LinkButtonProps,
 } from "./components/button/button";
+export { Checkbox, type CheckboxProps } from "./components/checkbox/checkbox";
 export { CheckboxCard, type CheckboxCardProps } from "./components/checkbox-card/checkbox-card";
 export {
   Card,

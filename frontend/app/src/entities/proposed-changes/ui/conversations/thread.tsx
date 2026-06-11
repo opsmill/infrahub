@@ -1,10 +1,9 @@
-import { Button, Card } from "@infrahub/ui";
+import { Button, Card, Checkbox } from "@infrahub/ui";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Tooltip } from "@/shared/components/aria/tooltip";
-import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
@@ -141,20 +140,15 @@ export const Thread = (props: tThread) => {
     })) ?? [];
 
   const isResolved = thread?.resolved?.value;
-  const idForLabel = `checkbox-resolve-thread${thread?.id}`;
 
   const MarkAsResolved = (
-    <div className="flex items-center gap-2 text-sm">
-      <Checkbox
-        id={idForLabel}
-        disabled={isResolved}
-        checked={isResolved || markAsResolved}
-        onChange={() => setConfirmModal(true)}
-      />
-      <label htmlFor={idForLabel} className={isResolved ? "cursor-default" : "cursor-pointer"}>
-        {isResolved ? "Resolved" : "Resolve thread"}
-      </label>
-    </div>
+    <Checkbox
+      isDisabled={isResolved}
+      isSelected={isResolved || markAsResolved}
+      onChange={() => setConfirmModal(true)}
+    >
+      {isResolved ? "Resolved" : "Resolve thread"}
+    </Checkbox>
   );
 
   const MarkAsResolvedWithTooltip = (

@@ -72,16 +72,8 @@ test.describe("/role-management/roles - Roles CRUD", () => {
     });
 
     await test.step("bulk edit both roles", async () => {
-      await page
-        .getByRole("link", { name: "test role updated" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
-      await page
-        .getByRole("link", { name: "test role 2" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
+      await getDataTableRow(page, "test role updated").locator("label").click();
+      await getDataTableRow(page, "test role 2").locator("label").click();
       await page.getByRole("button", { name: "Edit" }).click();
       await page.getByRole("button", { name: "Add Permissions" }).click();
       await page.getByRole("option", { name: "global:super_admin:allow_all" }).click();
