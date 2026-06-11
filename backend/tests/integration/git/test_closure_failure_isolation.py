@@ -103,6 +103,10 @@ class TestClosureFailureIsolation(TestInfrahubApp):
         broken = transforms["broken_report"]
         assert broken.dependencies_complete.value is False
 
-        # The closure-builder failure is reported against the offending transform only.
-        assert "Closure builder for transform 'broken_report'" in caplog.text
+        # The closure-builder failure is reported against the offending transform only,
+        # naming the unresolved reference and the resulting incomplete closure.
+        assert (
+            "Closure builder for transform 'broken_report' encountered unresolved reference" in caplog.text
+        )
+        assert "dependencies_complete=False" in caplog.text
         assert "Closure builder for transform 'well_formed_report'" not in caplog.text
