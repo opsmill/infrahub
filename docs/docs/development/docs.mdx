@@ -313,16 +313,16 @@ For a deeper dive into reference docs, refer to the [diátaxis reference page](h
 
 ## Application screenshots
 
-To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use the Python end-to-end (e2e) test suite. You'll find the e2e tests specifically designed for tutorials and guides located in `tests/e2e/docs-regression-check`.
+To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use the Python end-to-end (e2e) test suite. You'll find the e2e tests specifically designed for tutorials and guides located in `tests/e2e/tutorial`.
 
 ### Updating all screenshots manually
 
-#### 1. Run the docs-regression e2e tests with screenshots enabled
+#### 1. Run the tutorial e2e tests with screenshots enabled
 
 The test suite provisions its own Infrahub environment with fresh demo data on every run (using `infrahub-testcontainers`), so no manual environment preparation is needed. From the repository root, execute:
 
 ```shell
-UPDATE_DOCS_SCREENSHOTS=1 uv run pytest -c tests/e2e/pytest.ini tests/e2e/docs-regression-check
+UPDATE_DOCS_SCREENSHOTS=1 uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
 ```
 
 :::info
