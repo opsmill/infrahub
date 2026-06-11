@@ -1,9 +1,9 @@
+import { Tooltip } from "@infrahub/ui";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import {
   type IPAddressAvailableIdentifierProps,
@@ -21,11 +21,7 @@ export function IpAddressAvailableCreateFormTrigger(props: IPAddressAvailableIde
 
   return (
     <>
-      <Tooltip
-        enabled={!isCreationAllowed}
-        content={!isCreationAllowed && permission.create.message}
-        side="right"
-      >
+      <Tooltip message={!isCreationAllowed && permission.create.message} placement="right">
         <IpAddressAvailableIdentifier onClick={() => setIsCreateFormOpen(true)} {...props} />
       </Tooltip>
 

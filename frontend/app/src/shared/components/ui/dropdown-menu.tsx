@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Tooltip, type TooltipProps } from "@infrahub/ui";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import type React from "react";
 
@@ -8,7 +9,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/shared/components/ui/accordion";
-import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 export const DropdownMenu = (props: DropdownMenuPrimitive.DropdownMenuProps) => (
@@ -154,9 +154,9 @@ export const DropdownMenuAccordionContent = AccordionContent;
 
 export interface DropdownMenuItemWithTooltipProps
   extends React.ComponentProps<typeof DropdownMenuPrimitive.Item> {
-  tooltipContent?: TooltipProps["content"];
-  tooltipEnabled?: TooltipProps["enabled"];
-  side?: TooltipProps["side"];
+  tooltipContent?: TooltipProps["message"];
+  tooltipEnabled?: boolean;
+  side?: TooltipProps["placement"];
 }
 
 export const DropdownMenuItemWithTooltip = ({
@@ -169,7 +169,11 @@ export const DropdownMenuItemWithTooltip = ({
   ...props
 }: DropdownMenuItemWithTooltipProps) => {
   return (
-    <Tooltip enabled={tooltipEnabled && disabled} content={tooltipContent} side={side}>
+    <Tooltip
+      message={tooltipEnabled && disabled ? tooltipContent : undefined}
+      placement={side}
+      nonInteractiveTrigger
+    >
       <div>
         <DropdownMenuItem ref={ref} disabled={disabled} {...props}>
           {children}

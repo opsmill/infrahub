@@ -1,8 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver from "@/shared/components/display/slide-over";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import type { FormFieldValue } from "@/shared/components/form/type";

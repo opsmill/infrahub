@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 
@@ -9,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
@@ -55,9 +54,15 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
             </DropdownMenuItem>
 
             <Tooltip
-              enabled={!isDeleteAllowed}
-              content={branch.is_default ? "Cannot delete the default branch" : "Login required"}
-              side="left"
+              message={
+                isDeleteAllowed
+                  ? undefined
+                  : branch.is_default
+                    ? "Cannot delete the default branch"
+                    : "Login required"
+              }
+              placement="left"
+              nonInteractiveTrigger
             >
               <div>
                 <DropdownMenuItem

@@ -1,17 +1,24 @@
-import type { ReactNode } from "react";
+import type React from "react";
 
 import {
   Tooltip as AriaTooltip,
   type TooltipProps as AriaTooltipProps,
   composeRenderProps,
+  Focusable,
   OverlayArrow,
   TooltipTrigger,
 } from "react-aria-components";
 import { tv } from "tailwind-variants";
 
 export interface TooltipProps extends Omit<AriaTooltipProps, "children"> {
-  children: ReactNode;
-  message: ReactNode;
+  children: React.ReactNode;
+  message: React.ReactNode;
+  /**
+   * Set when the trigger is not an interactive element (span, icon, badge) so it can
+   * receive hover events without becoming a tab stop. The child must be a single
+   * element that accepts a ref and DOM props.
+   */
+  nonInteractiveTrigger?: boolean;
 }
 
 const tooltipStyles = tv({
@@ -26,13 +33,13 @@ const tooltipStyles = tv({
   },
 });
 
-/** Accessible tooltip. Wraps a trigger child and shows `message` on hover/focus. */
 export function Tooltip({
   children,
   message,
   isOpen,
   onOpenChange,
   className,
+  nonInteractiveTrigger,
   ...props
 }: TooltipProps) {
   if (!message && message !== 0) {
@@ -47,7 +54,13 @@ export function Tooltip({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
     >
-      {children}
+      {nonInteractiveTrigger ? (
+        <Focusable excludeFromTabOrder>
+          {children as React.ComponentProps<typeof Focusable>["children"]}
+        </Focusable>
+      ) : (
+        children
+      )}
 
       <AriaTooltip
         offset={10}

@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Tooltip } from "@infrahub/ui";
 
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
@@ -6,7 +7,6 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { DurationDisplay } from "@/shared/components/display/duration-display";
 import { List } from "@/shared/components/table/list";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { ValidatorDetails } from "./validator-details";
 
@@ -18,14 +18,14 @@ const getValidatorState = (state?: string, conclusion?: string) => {
   switch (state) {
     case "queued": {
       return (
-        <Tooltip content="Queued" enabled>
+        <Tooltip message="Queued" nonInteractiveTrigger>
           <Icon icon={"mdi:timer-sand-complete"} className="text-yellow-500" />
         </Tooltip>
       );
     }
     case "in_progress": {
       return (
-        <Tooltip content="In progress" enabled>
+        <Tooltip message="In progress" nonInteractiveTrigger>
           <Icon icon={"mdi:clock-time-four-outline"} className="text-yellow-500" />
         </Tooltip>
       );
@@ -33,7 +33,7 @@ const getValidatorState = (state?: string, conclusion?: string) => {
     case "completed": {
       if (conclusion === "success") {
         return (
-          <Tooltip content="Success" enabled>
+          <Tooltip message="Success" nonInteractiveTrigger>
             <Icon
               icon={"mdi:check-circle-outline"}
               className="text-green-500"
@@ -45,14 +45,14 @@ const getValidatorState = (state?: string, conclusion?: string) => {
 
       if (conclusion === "failure") {
         return (
-          <Tooltip content="Failure" enabled>
+          <Tooltip message="Failure" nonInteractiveTrigger>
             <Icon icon={"mdi:warning"} className="text-red-500" />
           </Tooltip>
         );
       }
 
       return (
-        <Tooltip content="Unknown" enabled>
+        <Tooltip message="Unknown" nonInteractiveTrigger>
           <Icon icon={"mdi:warning-circle-outline"} className="text-yellow-500" />
         </Tooltip>
       );

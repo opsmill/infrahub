@@ -1,6 +1,6 @@
+import { Tooltip } from "@infrahub/ui";
 import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { formatFullDateWithTz, isInPreviousYear } from "@/shared/utils/date";
 
@@ -35,7 +35,7 @@ export const DateDisplay = ({
 
     return (
       <span className={classNames("flex flex-wrap items-center", containerClassName)}>
-        <Tooltip enabled content={getDateDisplay(dateData)}>
+        <Tooltip message={getDateDisplay(dateData)} nonInteractiveTrigger>
           <span className={classNames("truncate font-normal text-xs", className)}>
             {format(dateData, newDateFormat)}
           </span>
@@ -46,7 +46,7 @@ export const DateDisplay = ({
 
   return (
     <span className={classNames("flex flex-wrap items-center", containerClassName)}>
-      <Tooltip enabled content={getDateDisplay(date)}>
+      <Tooltip message={getDateDisplay(date)} nonInteractiveTrigger>
         <span className={classNames("truncate font-normal text-xs", className)}>
           {formatDistanceToNow(dateData, { addSuffix: true })}
         </span>
