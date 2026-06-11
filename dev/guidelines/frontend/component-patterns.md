@@ -145,3 +145,23 @@ function CheckConnectivity() {
 - 3+ returns with same wrapper structure
 - Wrapper has styling or layout logic
 - Structure is unlikely to diverge between states
+
+## Aria Overlay Open State
+
+Always pass the boolean to `isOpen`. Don't conditionally render the overlay — it needs to stay mounted to animate closed.
+
+```tsx
+// ❌ Bad: unmounts before exit animation
+{showConfirm && (
+  <Modal isOpen={true} onOpenChange={() => setShowConfirm(false)}>
+    {/* ... */}
+  </Modal>
+)}
+
+// ✅ Good: Modal stays mounted, animates open and close
+<Modal isOpen={showConfirm} onOpenChange={() => setShowConfirm(false)}>
+  {/* ... */}
+</Modal>
+```
+
+Applies to all react-aria overlays in `src/shared/components/aria/` (`Sheet`, `Modal`, `Popover`, `Tooltip`).
