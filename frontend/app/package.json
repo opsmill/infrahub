@@ -88,7 +88,7 @@
     "react-markdown": "^10.1.0",
     "react-paginate": "^8.3.0",
     "react-resizable-panels": "^4.10.0",
-    "react-router": "^7.14.2",
+    "react-router": "^7.17.0",
     "react-scan": "^0.5.3",
     "react-simple-code-editor": "^0.14.1",
     "react-syntax-highlighter": "^16.1.1",
@@ -115,7 +115,7 @@
     "@graphql-codegen/cli": "^6.3.1",
     "@graphql-codegen/typescript": "^5.0.10",
     "@graphql-codegen/typescript-operations": "^5.1.0",
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.60.0",
     "@types/apollo-upload-client": "18.0.1",
     "@types/node": "^25.6.0",
     "@types/prismjs": "^1.26.6",
@@ -140,8 +140,8 @@
       "playwright-core"
     ],
     "overrides": {
-      "playwright": "1.56.1",
-      "playwright-core": "1.56.1"
+      "playwright": "1.60.0",
+      "playwright-core": "1.60.0"
     },
     "peerDependencyRules": {
       "allowedVersions": {

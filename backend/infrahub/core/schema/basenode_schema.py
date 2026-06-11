@@ -629,7 +629,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return updated_element_list
 
     def handle_field_renames_and_deletes(self, other: BaseNodeSchema) -> None:
-        properties_to_update = [self.uniqueness_constraints, self.human_friendly_id, self.display_labels, self.order_by]
+        properties_to_update = [
+            self.uniqueness_constraints,
+            self.human_friendly_id,
+            self.display_labels,
+            self.order_by,
+            self.default_filter,
+        ]
         if not any(p for p in properties_to_update):
             return
 
@@ -650,35 +656,58 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         # identify fields renamed from this schema to the other schema
         renamed_field_name_map = {v[0]: v[-1] for v in field_names_by_id.values() if len(v) > 1}
 
+        self.apply_schema_path_updates(deleted_field_names=deleted_names, renamed_field_name_map=renamed_field_name_map)
+
+    def apply_schema_path_updates(self, deleted_field_names: set[str], renamed_field_name_map: dict[str, str]) -> None:
+        """Strip deleted/renamed field names from schema-path properties.
+
+        Applies to `uniqueness_constraints`, `human_friendly_id`, `display_labels`, `order_by`, `default_filter`.
+        Compound constraints with at least one surviving path are kept with surviving paths only;
+        constraints that become empty are dropped. `default_filter` (single string) becomes None
+        when its path references a deleted field.
+        """
+        if not deleted_field_names and not renamed_field_name_map:
+            return
         if self.uniqueness_constraints:
-            updated_constraints = []
+            # deduplicate in case field-deletion causes duplicate entries. list instead of set preserves order
+            updated_constraints: list[list[str]] = []
             for constraint in self.uniqueness_constraints:
                 updated_constraint = self._update_schema_paths(
                     schema_paths_list=constraint,
                     field_name_update_map=renamed_field_name_map,
-                    deleted_field_names=deleted_names,
+                    deleted_field_names=deleted_field_names,
                 )
-                if updated_constraint:
-                    updated_constraints.append(updated_constraint)
+                if not updated_constraint:
+                    continue
+                if updated_constraint in updated_constraints:
+                    continue
+                updated_constraints.append(updated_constraint)
             self.uniqueness_constraints = updated_constraints
         if self.human_friendly_id:
             self.human_friendly_id = self._update_schema_paths(
                 schema_paths_list=self.human_friendly_id,
                 field_name_update_map=renamed_field_name_map,
-                deleted_field_names=deleted_names,
+                deleted_field_names=deleted_field_names,
             )
         if self.display_labels:
             self.display_labels = self._update_schema_paths(
                 schema_paths_list=self.display_labels,
                 field_name_update_map=renamed_field_name_map,
-                deleted_field_names=deleted_names,
+                deleted_field_names=deleted_field_names,
             )
         if self.order_by:
             self.order_by = self._update_schema_paths(
                 schema_paths_list=self.order_by,
                 field_name_update_map=renamed_field_name_map,
-                deleted_field_names=deleted_names,
+                deleted_field_names=deleted_field_names,
             )
+        if self.default_filter:
+            updated = self._update_schema_paths(
+                schema_paths_list=[self.default_filter],
+                field_name_update_map=renamed_field_name_map,
+                deleted_field_names=deleted_field_names,
+            )
+            self.default_filter = updated[0] if updated else None
 
     def update(self, other: HashableModel) -> Self:
         # handle renamed/deleted field updates for schema properties here

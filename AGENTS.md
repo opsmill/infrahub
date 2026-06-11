@@ -22,12 +22,12 @@ Responses must be direct and substantive. Do not use filler phrases, compliments
 
 ## Tech Stack
 
-- **Backend:** Python 3.12, FastAPI 0.121.1, Neo4j 5.28, Pydantic 2.10
+- **Backend:** Python 3.13, FastAPI 0.131.0, Neo4j 2025.10 (driver 6.0), Pydantic 2.12
 - **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.56
+- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
 - **Linting:** ruff 0.15, mypy 1.15, Biome 2.4
 - **Package Managers:** uv (Python), pnpm (Frontend)
-- **Task Runner:** Invoke 2.2.0
+- **Task Runner:** Invoke 2.2.1
 
 ## File Structure
 
@@ -90,12 +90,15 @@ cd docs && npm run build              # Build documentation
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
+- `docs/docs/reference/{infrahub-cli,schema,infrahub-events}/`, `docs/docs/reference/{dotinfrahub,message-bus-events,configuration}.mdx` – Reference docs rendered from backend source (CLI, schema, events, repository config, message-bus events, configuration)
 
 Regenerate backend (offline): `uv run invoke backend.generate`
-Export GraphQL/OpenAPI schemas (requires running instance): `infrahub dev export-graphql-schema`
+Export GraphQL schema: `uv run invoke schema.generate-graphqlschema`
+Export OpenAPI schema: `uv run invoke schema.generate-jsonschema`
 Regenerate frontend types (offline, reads local schema files): `cd frontend/app && pnpm codegen`
+Regenerate reference docs (offline): `uv run invoke docs.generate`
 
-See `dev/knowledge/backend/code-generation.md` for the full pipeline.
+CI validates that all generated files are committed — the `validate-generated-documentation` job runs `uv run invoke docs.validate` and fails when a generated doc is stale. After changing event classes, schema models, CLI commands, or config, regenerate and commit the affected files. See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
 ## Boundaries
 
@@ -105,6 +108,7 @@ See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
+- Before pushing, run `/pre-ci` (`dev/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
 
 ### Ask First
 

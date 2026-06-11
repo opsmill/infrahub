@@ -1,0 +1,209 @@
+# How to migrate off the SSO account-name fallback
+
+Infrahub 1.8.7 and 1.9.7 introduce a feature flag, `sso_account_name_fallback`, that
+gates a transitional SSO behavior: on a user's *first* SSO login, Infrahub can **adopt**
+an existing local account whose name matches the SSO display name. This is convenient when
+migrating pre-existing local accounts to SSO, but it is also the behavior behind a known
+account-takeover vulnerability.
+
+This fallback is **deprecated** and will be **removed entirely in Infrahub 1.11**. This guide
+explains why, who is affected, and the steps to link your existing accounts and then disable
+the fallback before it is removed.
+
+:::warning
+The fallback defaults to enabled (`true`), so existing SSO setups keep working after upgrade.
+You must disable it yourself once linking is complete.
+:::
+
+## Why this change exists
+
+When the account-name fallback is enabled, a *first* SSO login with no linked identity will
+claim any existing, never-linked account whose name matches the SSO `name` claim. If your
+identity provider lets users set or change their own display name, anyone who can authenticate
+through it can set their display name to **the name of a privileged Infrahub account** and, on
+first login, take that account over.
+
+This was identified as a security vulnerability and partially fixed in 1.8.6. The fix removed
+the exposure for **new** setups but, to avoid breaking **existing** SSO deployments
+mid-migration, kept the old behavior available behind this flag. Disabling the flag (and, from
+1.11, its removal) closes the exposure completely.
+
+The change is implemented in [PR #8774](https://github.com/opsmill/infrahub/pull/8774).
+
+### When you are exposed
+
+You are exposed while **all** of the following hold:
+
+- you use SSO (OIDC) for authentication, **and**
+- you have pre-existing local Infrahub accounts that have not yet been linked to an SSO
+  identity, **and**
+- you are running a version where the display-name fallback is still active, meaning anything
+  from **1.8.6 up to (but not including) 1.11**, **and**
+- your SSO provider lets end users set or change their own display name (the `name` claim), so
+  an attacker can present the display name of a privileged user.
+
+On **1.8.7+, 1.9.7+, and all 1.10.x releases** you can close the exposure by setting
+`sso_account_name_fallback = false`.
+On **1.8.6 and 1.9.0–1.9.6** the fallback exists but has no off switch, so upgrade to
+1.8.7 / 1.9.7 (or later) first, then disable it. From **1.11** the fallback is removed and the exposure no
+longer exists.
+
+New accounts and already-linked accounts are not exposed. The risk is the window in which a
+privileged-but-unlinked account can still be claimed by a matching display name.
+
+## Who is affected
+
+Administrators of Infrahub instances that:
+
+- authenticate users via SSO (OIDC), and
+- still have local accounts that need to be linked to their SSO identities.
+
+If you do not use SSO, or every account is already linked, this change does not affect you,
+but you should still disable the fallback so it is off before 1.11.
+
+## How linking works
+
+An already-linked identity always goes straight to its linked account. On a user's *first* SSO
+login, Infrahub matches by **account name == the SSO `name` claim**: if a matching account
+exists and has never been linked, the fallback adopts it (attaching the SSO identity).
+Otherwise a new, separate account is created and the SSO identity links to *that* account,
+while the pre-existing account is left untouched and unlinked. Get the name match right before
+the migration window, or users will be linked to brand-new empty accounts instead of their
+existing ones.
+
+## Migration steps
+
+The overall sequence is: **upgrade → link every account → disable the fallback**, completed
+before you reach 1.11.
+
+### Step 1: Upgrade to a supported release
+
+Upgrade Infrahub to a release that supports the flag (**1.8.7, 1.9.7, or any 1.10.x release**,
+before 1.11) if you are not already on one. Do this before the link-up window so every account
+links on the final version. The fallback is enabled by default on these releases, so linking
+continues to work after the upgrade.
+
+### Step 2: Prepare your accounts
+
+1. **Align account names with SSO display names.** For every user you want auto-linked, make
+   sure their existing Infrahub account **name** is exactly equal to the **`name` claim** their
+   identity provider sends. Rename accounts or adjust the IdP claim mapping as needed.
+   - On a mismatch, a new separate account is created and the SSO identity links to *that*
+     account; the user's original account is left untouched and unlinked.
+   - Display names must be **unique** (a pre-existing constraint of name-based adoption, not
+     new in this release): two users with the same display name cannot both adopt the same
+     account.
+2. **Keep a break-glass local admin.** Retain at least one administrator account that logs in
+   with a local password (not via SSO), so you can always get back in.
+3. **Confirm the fallback is enabled** (this is the default):
+
+   ```toml
+   [security]
+   sso_account_name_fallback = true
+   ```
+
+   ```sh
+   INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK=true
+   ```
+
+### Step 3: Open the link-up window
+
+1. Announce a migration window to your users.
+2. **Ask every user to log in once via the SSO button.** Their first SSO login adopts and
+   links their existing account automatically, with no per-user action on your side.
+3. Returning logins during this window are harmless (an already-linked account is just reused).
+
+### Step 4: Verify everyone is linked
+
+Before locking down, confirm the result in **Object management → Accounts**:
+
+- **No unexpected duplicates.** Accounts named after an **email address** indicate that
+  adoption did not match for that user, usually a name mismatch from Step 2. Fix the name and
+  have them log in again.
+- **Spot-check users (especially admins)** to confirm they land on their original account with
+  the **same groups and permissions** as before.
+- Account totals should match your expected user count (plus your break-glass local admin).
+
+Each account exposes a computed `is_externally_managed` field that is `true` once an SSO
+identity is linked to it. You can use it to check link status across all accounts at once
+instead of inspecting them one by one.
+
+<details>
+  <summary><b>GraphQL query to list accounts and their SSO-link status</b></summary>
+
+```graphql
+query {
+  CoreAccount {
+    edges {
+      node {
+        name {
+          value
+        }
+        account_type {
+          value
+        }
+        is_externally_managed
+      }
+    }
+  }
+}
+```
+
+Interpret the result:
+
+- `is_externally_managed: true` means the account is linked to an SSO identity. Your migrated
+  (adopted) accounts should all show `true` after the link-up window.
+- `is_externally_managed: false` on a `User` account means it is not linked. Expected only for
+  your break-glass local admin. Any other unlinked user is a missed or mismatched migration.
+- An account whose `name` is an **email address** with `is_externally_managed: true` is a new
+  account created by a name mismatch (the original account was left unlinked).
+
+</details>
+
+### Step 5: Disable the fallback
+
+Once all accounts are linked, turn the fallback off and restart the API:
+
+```toml
+[security]
+sso_account_name_fallback = false
+```
+
+```sh
+INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK=false
+```
+
+After this, any *new* first-time SSO login can no longer claim an existing account by display
+name. It always gets its own fresh account, and existing links are unaffected. This closes the
+account-takeover window while keeping every link you already made intact.
+
+## Re-linking a user who was missed
+
+If a user ended up with a new duplicate account instead of their original (name mismatch):
+
+1. Temporarily set `sso_account_name_fallback = true` and restart.
+2. Remove the duplicate account, ensure the original account's **name** matches the user's SSO
+   display name, and confirm the original was never linked.
+3. Have them log in again, and it will adopt the original account.
+4. Set `sso_account_name_fallback = false` again and restart.
+
+Keep this window short and prefer doing all link-ups in the single Step 3 window.
+
+## Timeline
+
+| Release | Status of the fallback |
+|---|---|
+| 1.8.6 | Vulnerability fixed for new setups; old behavior kept for existing setups. |
+| 1.8.7, 1.9.7, and all 1.10.x | Behavior placed behind the `sso_account_name_fallback` flag (default enabled). **Migrate during this window.** |
+| 1.11 | Flag and fallback behavior **removed**. A first SSO login always provisions its own account. |
+
+:::success
+Once `sso_account_name_fallback` is set to `false` and all your users log in to their correct
+accounts, your instance is ready for 1.11 and no longer exposed to display-name account
+takeover.
+:::
+
+## Related resources
+
+- [PR #8774](https://github.com/opsmill/infrahub/pull/8774)
+- [Release notes for Infrahub](https://github.com/opsmill/infrahub/releases)

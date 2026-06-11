@@ -354,6 +354,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/install/community', label: 'Community' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
+                { type: 'doc', id: 'deploy-manage/install-configure/install/observability-stack', label: 'Observability stack' },
               ],
             },
             // Production Deployment hub + HA spoke (PR 3)
@@ -640,6 +641,8 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 { type: 'doc', id: 'release-notes/infrahub/docs-restructure', label: 'Documentation restructure' },
+                'release-notes/infrahub/release-1_9_8',
+                'release-notes/infrahub/release-1_9_7',
                 'release-notes/infrahub/release-1_9_6',
                 'release-notes/infrahub/release-1_9_5',
                 'release-notes/infrahub/release-1_9_4',
@@ -754,6 +757,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'release-notes/deprecation-guides/display_labels',
+                'release-notes/deprecation-guides/sso-account-name-fallback',
               ],
             },
           ],

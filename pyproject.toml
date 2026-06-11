@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.9.6"
+version = "1.9.8"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -111,7 +111,7 @@ dev = [
     "jwcrypto==1.5.7",
     "ty==0.0.32",
     "prek>=0.3.0",
-    "coverage==7.13.5",
+    "coverage==7.14.1",
 ]
 
 # test-scale = [
@@ -134,7 +134,15 @@ infrahubctl = "infrahub_sdk.ctl.cli:app"
 "infrahubasync" = "infrahub.workers.infrahub_async"
 
 [tool.coverage.run]
-branch = true
+# Use coverage.py's fast sys.monitoring core (PEP 669) instead of the default C tracer,
+# which removes ~40% (~6-7 min) of the backend test suite runtime.
+core = "sysmon"
+# Branch coverage is temporarily disabled because on Python < 3.14 sys.monitoring cannot
+# measure branches and silently falls back to the much slower C tracer. With line-only
+# coverage + sysmon the overhead is ~0%.
+# TODO: re-enable `branch = true` once CI runs on Python 3.14+, where sys.monitoring
+# measures branches at near-zero overhead (benchmarked at +2.6% vs +43% with the C tracer).
+branch = false
 
 [tool.coverage.report]
 exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
@@ -716,6 +724,13 @@ allow-dunder-method-names = [
 ]
 
 "backend/infrahub/graphql/manager.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/graphql/mutations/relationship.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################

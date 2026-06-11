@@ -10,9 +10,13 @@ Every issue fix or new feature should include a changelog entry. The message sho
 
 ### Command
 
+Always create fragments with `towncrier create`. **Do not hand-write the file** — the command derives the location from the Towncrier config and places the fragment correctly no matter which directory you run it from.
+
 ```bash
 uv run towncrier create -c "content of changelog entry" ${ISSUE}.${TYPE}.md
 ```
+
+Fragments always live in the repo-root `changelog/` directory. They never belong under `backend/changelog/` or `frontend/changelog/` — if you find a fragment there, it was created by hand in the wrong place and must be moved to `changelog/`.
 
 ### File Naming
 
