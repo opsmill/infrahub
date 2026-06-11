@@ -16,8 +16,8 @@ const SCALE_PER_DEPTH = 0.02;
 
 export interface SheetProps
   extends
-    Pick<AriaDialogProps, "aria-label" | "children">,
-    Omit<AriaModalOverlayProps, "children"> {}
+    Pick<AriaDialogProps, "aria-label" | "children" | "className">,
+    Omit<AriaModalOverlayProps, "children" | "className"> {}
 
 export function Sheet({
   isOpen,
@@ -38,10 +38,9 @@ export function Sheet({
             {(depth) => (
               <AriaModal
                 className={cn(
-                  "no-scrollbar fixed top-2 bottom-2 w-100 overflow-auto rounded-xl bg-white p-3 outline-hidden transition-all",
+                  "fixed top-2 bottom-2 w-100 overflow-hidden rounded-xl bg-white outline-hidden transition-all",
                   "data-entering:slide-in-from-right-1/2 data-entering:animate-in data-entering:duration-200 data-entering:ease-out",
                   "data-exiting:slide-out-to-right-1/2 data-exiting:animate-out data-exiting:duration-150 data-exiting:ease-in",
-                  className,
                 )}
                 style={{
                   ...style,
@@ -50,7 +49,10 @@ export function Sheet({
                 }}
                 {...props}
               >
-                <AriaDialog aria-label={ariaLabel ?? "sheet"} className="outline-hidden">
+                <AriaDialog
+                  aria-label={ariaLabel ?? "sheet"}
+                  className={cn("outline-hidden overflow-auto h-full no-scrollbar p-3", className)}
+                >
                   {children}
                 </AriaDialog>
               </AriaModal>
