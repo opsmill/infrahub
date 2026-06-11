@@ -15,6 +15,7 @@ export interface NumberFieldProps
 
 const NumberField = ({
   defaultValue,
+  deprecation,
   description,
   label,
   name,
@@ -56,6 +57,7 @@ const NumberField = ({
               label={label}
               unique={unique}
               required={!!rules?.required}
+              deprecation={deprecation}
               description={description}
               fieldData={fieldData}
             />

@@ -38,6 +38,7 @@ export const AttributeDisplay = ({
       isUnique={attribute.unique}
       isReadOnly={attribute.read_only}
       isComputed={!!attribute.computed_attribute}
+      isDeprecated={!!attribute.deprecation}
       defaultOpen={defaultOpen}
     >
       <div>
@@ -57,6 +58,7 @@ export const AttributeDisplay = ({
         <PropertyRow title="Description" value={attribute.description} />
         <PropertyRow title="Inherited" value={attribute.inherited} />
         <PropertyRow title="Default value" value={attribute.default_value as any} />
+        <PropertyRow title="Deprecation" value={attribute.deprecation} />
       </div>
 
       <div>

@@ -14,6 +14,7 @@ export interface InputFieldProps
 const ColorField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
   attribute,
+  deprecation,
   isBulkUpdate,
   description,
   label,
@@ -39,6 +40,7 @@ const ColorField = ({
               label={label}
               unique={unique}
               required={!!rules?.required}
+              deprecation={deprecation}
               description={description}
               fieldData={fieldData}
             />

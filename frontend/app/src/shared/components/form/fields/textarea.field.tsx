@@ -9,6 +9,7 @@ import { classNames } from "@/shared/utils/common";
 
 const TextareaField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  deprecation,
   isBulkUpdate,
   attribute,
   description,
@@ -35,6 +36,7 @@ const TextareaField = ({
               label={label}
               unique={unique}
               required={!!rules?.required}
+              deprecation={deprecation}
               description={description}
               fieldData={fieldData}
               className="mb-2"

@@ -12,6 +12,7 @@ export interface EnumFieldProps
 
 const EnumField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  deprecation,
   isBulkUpdate,
   attribute,
   description,
@@ -40,6 +41,7 @@ const EnumField = ({
               label={label}
               unique={unique}
               required={!!rules?.required}
+              deprecation={deprecation}
               description={description}
               fieldData={fieldData}
             />

@@ -50,12 +50,14 @@ export const RelationshipDisplay = ({
       }
       description={relationship.description}
       isOptional={relationship.optional}
+      isDeprecated={!!relationship.deprecation}
       defaultOpen={defaultOpen}
     >
       <div>
         <PropertyRow title="ID" value={relationship.id} />
         <PropertyRow title="Label" value={relationship.label} />
         <PropertyRow title="Name" value={relationship.name} />
+        <PropertyRow title="Deprecation" value={relationship.deprecation} />
       </div>
 
       <div>

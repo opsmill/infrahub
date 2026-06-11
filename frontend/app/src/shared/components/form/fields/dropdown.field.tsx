@@ -13,6 +13,7 @@ export interface DropdownFieldProps
 const DropdownField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
   attribute,
+  deprecation,
   isBulkUpdate,
   description,
   items,
@@ -39,6 +40,7 @@ const DropdownField = ({
               label={label}
               unique={unique}
               required={!!rules?.required}
+              deprecation={deprecation}
               description={description}
               fieldData={fieldData}
             />
