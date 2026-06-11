@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 from playwright.async_api import expect
 
-pytestmark = pytest.mark.shard_sites_b
+pytestmark = pytest.mark.shard_sites_a
 
 if TYPE_CHECKING:
     from data.handles import SitesHandle
