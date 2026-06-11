@@ -1,1 +1,0 @@
-Added a Python end-to-end test suite (`tests/e2e/`) built on pytest-playwright and infrahub-testcontainers. It spins up Infrahub via testcontainers and loads the demo dataset through composable pytest fixtures, and runs in CI alongside the existing TypeScript e2e suite.
