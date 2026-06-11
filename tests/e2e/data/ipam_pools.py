@@ -13,6 +13,7 @@ empty, and the six sequential /110 IPv6 prefixes).
 
 from __future__ import annotations
 
+import asyncio
 from ipaddress import IPv4Network, IPv6Network
 from typing import TYPE_CHECKING
 
@@ -23,6 +24,7 @@ from data.handles import IpamPoolsHandle
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
+    from infrahub_sdk.node import InfrahubNode
 
     from data.handles import RbacHandle
 
@@ -75,104 +77,123 @@ async def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one lo
     # Using upsert for branch agnostic nodes in order to execute the script in different branches during development
     await supernet_pool.save(allow_upsert=True)
 
-    # Creating IP Loopback Prefix and Pool
-    loopback_prefix = await data_client.allocate_next_ip_prefix(
-        resource_pool=supernet_pool, member_type="address", branch=branch
-    )
-    loopback_pool = await data_client.create(
-        kind="CoreIPAddressPool",
-        name="Loopbacks pool",
-        default_address_type="IpamIPAddress",
-        default_prefix_length=32,
-        ip_namespace=default_ip_namespace,
-        resources=[loopback_prefix],
-        branch=branch,
-    )
-    await loopback_pool.save(allow_upsert=True)
-
-    # Creating IP Interconnection Prefix and Pool
-    # NB: `kind` is typing-only sugar on allocate_next_ip_prefix (unused at runtime); mirrored from the script.
-    interconnection_prefix = await data_client.allocate_next_ip_prefix(
-        kind="IpamIPPrefix",  # type: ignore[call-overload]
-        resource_pool=supernet_pool,
-        branch=branch,
-    )
-    interconnection_pool = await data_client.create(
-        kind="CoreIPPrefixPool",
-        name="Interconnections pool",
-        default_prefix_type="IpamIPPrefix",
-        default_prefix_length=31,
-        default_member_type="address",
-        ip_namespace=default_ip_namespace,
-        resources=[interconnection_prefix],
-        branch=branch,
-    )
-    await interconnection_pool.save(allow_upsert=True)
-
-    # Allocate an empty prefix (the script discards the return; the prefix — 10.2.0.0/16 —
-    # stays in the tree, deliberately empty and unused)
-    empty_prefix = await data_client.allocate_next_ip_prefix(resource_pool=supernet_pool, branch=branch)
-
-    # Creating IP Management Prefix and Pool
-    management_prefix = await data_client.create(
-        branch=branch, kind="IpamIPPrefix", prefix=str(MANAGEMENT_NETWORKS), member_type="address"
-    )
-    await management_prefix.save(allow_upsert=True)
-    management_pool = await data_client.create(
-        kind="CoreIPAddressPool",
-        name="Management addresses pool",
-        default_address_type="IpamIPAddress",
-        default_prefix_length=16,
-        ip_namespace=default_ip_namespace,
-        resources=[management_prefix],
-        branch=branch,
-    )
-    await management_pool.save(allow_upsert=True)
-
-    # Creating IP External Supernet and Pool
-    external_supernet = await data_client.create(
-        branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_POOL_EXTERNAL_SUPERNET), member_type="prefix"
-    )
-    await external_supernet.save()
-    external_pool = await data_client.create(
-        kind="CoreIPPrefixPool",
-        name="External prefixes pool",
-        default_prefix_type="IpamIPPrefix",
-        default_prefix_length=29,
-        default_member_type="address",
-        ip_namespace=default_ip_namespace,
-        resources=[external_supernet],
-        branch=branch,
-    )
-    await external_pool.save(allow_upsert=True)
-
-    # Creating IPv6 Core Supernet and Pool
-    ipv6_supernet_prefix = await data_client.create(
-        branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_SUPERNET_IPV6), member_type="prefix"
-    )
-    await ipv6_supernet_prefix.save()
-    ipv6_supernet_pool = await data_client.create(
-        kind="CoreIPPrefixPool",
-        name="Internal networks pool (IPv6)",
-        default_prefix_type="IpamIPPrefix",
-        default_prefix_length=110,
-        default_member_type="address",
-        ip_namespace=default_ip_namespace,
-        resources=[ipv6_supernet_prefix],
-        branch=branch,
-    )
-    await ipv6_supernet_pool.save(allow_upsert=True)
-
-    # Creating pool IPv6 Prefixes and IPs: six sequential /110 allocations
-    # (the script spells out six identical calls)
-    ipv6_internal_networks = [
-        await data_client.allocate_next_ip_prefix(
-            resource_pool=ipv6_supernet_pool,
-            kind="IpamIPPrefix",  # type: ignore[call-overload]
+    # The four blocks below are mutually independent (each allocates from its
+    # OWN pool or plain-creates its own prefixes), so they run concurrently;
+    # the allocation ORDER WITHIN each chain is what parity depends on
+    # (10.0/10.1/10.2 from the supernet, the six /110s from the IPv6 pool).
+    async def _core_chain() -> tuple[InfrahubNode, InfrahubNode, InfrahubNode, InfrahubNode, InfrahubNode]:
+        # Creating IP Loopback Prefix and Pool
+        loopback_prefix = await data_client.allocate_next_ip_prefix(
+            resource_pool=supernet_pool, member_type="address", branch=branch
+        )
+        loopback_pool = await data_client.create(
+            kind="CoreIPAddressPool",
+            name="Loopbacks pool",
+            default_address_type="IpamIPAddress",
+            default_prefix_length=32,
+            ip_namespace=default_ip_namespace,
+            resources=[loopback_prefix],
             branch=branch,
         )
-        for _ in range(6)
-    ]
+        await save_with_retry(loopback_pool, allow_upsert=True)
+
+        # Creating IP Interconnection Prefix and Pool
+        # NB: `kind` is typing-only sugar on allocate_next_ip_prefix (unused at runtime); mirrored from the script.
+        interconnection_prefix = await data_client.allocate_next_ip_prefix(
+            kind="IpamIPPrefix",  # type: ignore[call-overload]
+            resource_pool=supernet_pool,
+            branch=branch,
+        )
+        interconnection_pool = await data_client.create(
+            kind="CoreIPPrefixPool",
+            name="Interconnections pool",
+            default_prefix_type="IpamIPPrefix",
+            default_prefix_length=31,
+            default_member_type="address",
+            ip_namespace=default_ip_namespace,
+            resources=[interconnection_prefix],
+            branch=branch,
+        )
+        await save_with_retry(interconnection_pool, allow_upsert=True)
+
+        # Allocate an empty prefix (the script discards the return; the prefix — 10.2.0.0/16 —
+        # stays in the tree, deliberately empty and unused)
+        empty_prefix = await data_client.allocate_next_ip_prefix(resource_pool=supernet_pool, branch=branch)
+        return loopback_prefix, loopback_pool, interconnection_prefix, interconnection_pool, empty_prefix
+
+    async def _management_chain() -> tuple[InfrahubNode, InfrahubNode]:
+        # Creating IP Management Prefix and Pool
+        management_prefix = await data_client.create(
+            branch=branch, kind="IpamIPPrefix", prefix=str(MANAGEMENT_NETWORKS), member_type="address"
+        )
+        await save_with_retry(management_prefix, allow_upsert=True)
+        management_pool = await data_client.create(
+            kind="CoreIPAddressPool",
+            name="Management addresses pool",
+            default_address_type="IpamIPAddress",
+            default_prefix_length=16,
+            ip_namespace=default_ip_namespace,
+            resources=[management_prefix],
+            branch=branch,
+        )
+        await save_with_retry(management_pool, allow_upsert=True)
+        return management_prefix, management_pool
+
+    async def _external_chain() -> tuple[InfrahubNode, InfrahubNode]:
+        # Creating IP External Supernet and Pool
+        external_supernet = await data_client.create(
+            branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_POOL_EXTERNAL_SUPERNET), member_type="prefix"
+        )
+        await save_with_retry(external_supernet)
+        external_pool = await data_client.create(
+            kind="CoreIPPrefixPool",
+            name="External prefixes pool",
+            default_prefix_type="IpamIPPrefix",
+            default_prefix_length=29,
+            default_member_type="address",
+            ip_namespace=default_ip_namespace,
+            resources=[external_supernet],
+            branch=branch,
+        )
+        await save_with_retry(external_pool, allow_upsert=True)
+        return external_supernet, external_pool
+
+    async def _ipv6_chain() -> tuple[InfrahubNode, InfrahubNode, list[InfrahubNode]]:
+        # Creating IPv6 Core Supernet and Pool
+        ipv6_supernet_prefix = await data_client.create(
+            branch=branch, kind="IpamIPPrefix", prefix=str(NETWORKS_SUPERNET_IPV6), member_type="prefix"
+        )
+        await save_with_retry(ipv6_supernet_prefix)
+        ipv6_supernet_pool = await data_client.create(
+            kind="CoreIPPrefixPool",
+            name="Internal networks pool (IPv6)",
+            default_prefix_type="IpamIPPrefix",
+            default_prefix_length=110,
+            default_member_type="address",
+            ip_namespace=default_ip_namespace,
+            resources=[ipv6_supernet_prefix],
+            branch=branch,
+        )
+        await save_with_retry(ipv6_supernet_pool, allow_upsert=True)
+
+        # Creating pool IPv6 Prefixes and IPs: six sequential /110 allocations
+        # (the script spells out six identical calls)
+        ipv6_internal_networks = [
+            await data_client.allocate_next_ip_prefix(
+                resource_pool=ipv6_supernet_pool,
+                kind="IpamIPPrefix",  # type: ignore[call-overload]
+                branch=branch,
+            )
+            for _ in range(6)
+        ]
+        return ipv6_supernet_prefix, ipv6_supernet_pool, ipv6_internal_networks
+
+    (
+        (loopback_prefix, loopback_pool, interconnection_prefix, interconnection_pool, empty_prefix),
+        (management_prefix, management_pool),
+        (external_supernet, external_pool),
+        (ipv6_supernet_prefix, ipv6_supernet_pool, ipv6_internal_networks),
+    ) = await asyncio.gather(_core_chain(), _management_chain(), _external_chain(), _ipv6_chain())
 
     # Create IPv6 IP from IPv6 Prefix pool
     ipv6_addresses = []
