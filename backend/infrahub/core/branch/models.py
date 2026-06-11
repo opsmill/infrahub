@@ -43,7 +43,11 @@ class Branch(StandardNode):
     )
     is_isolated: bool = True
     schema_changed_at: str | None = None
-    schema_hash: SchemaBranchHash | None = None
+    # Must stay Optional[...] rather than `SchemaBranchHash | None`: the StandardNode to_db
+    # serialization only unwraps typing.Union, so on Python 3.13 a PEP-604 `X | None` (a distinct
+    # types.UnionType) is not unwrapped and this BaseModel value fails to JSON-serialize. (The two
+    # union forms are unified in Python 3.14.)
+    schema_hash: Optional[SchemaBranchHash] = None
     graph_version: int | None = None
     merge_started_at: str | None = None
 
