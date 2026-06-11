@@ -4,6 +4,7 @@ from .graphql_query_report import InfrahubGraphQLQueryReport
 from .internal import InfrahubInfo
 from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
 from .path import InfrahubPathTraversal
+from .preferences import EffectivePreferences
 from .proposed_change import ProposedChangeAvailableActions
 from .reachable import InfrahubReachableNodes
 from .relationship import Relationship
@@ -16,6 +17,7 @@ __all__ = [
     "AccountPermissions",
     "AccountToken",
     "BranchQueryList",
+    "EffectivePreferences",
     "InfrahubBranchQueryList",
     "InfrahubGraphQLQueryReport",
     "InfrahubIPAddressGetNextAvailable",
