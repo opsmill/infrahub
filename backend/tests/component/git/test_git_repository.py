@@ -974,8 +974,9 @@ async def test_calculate_diff_between_commits(
     commit_branch01 = repo.get_commit_value(branch_name=branch01.name, remote=False)
     commit_branch02 = repo.get_commit_value(branch_name=branch02.name, remote=False)
 
+    # branch02 is the base, branch01 holds the changes; first_commit is the old side, second_commit the new.
     changed, added, removed = await repo.calculate_diff_between_commits(
-        first_commit=commit_branch01, second_commit=commit_branch02
+        first_commit=commit_branch02, second_commit=commit_branch01
     )
     assert changed == ["README.md", "test_files/sports.yml"]
     assert added == ["mynewfile.txt"]
