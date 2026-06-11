@@ -35,7 +35,7 @@ export function Tooltip({
   className,
   ...props
 }: TooltipProps) {
-  if (message == null) {
+  if (!message && message !== 0) {
     return children;
   }
 

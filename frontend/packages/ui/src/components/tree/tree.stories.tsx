@@ -4,11 +4,11 @@ import { Collection } from "react-aria-components";
 
 import { Tree, TreeItem, TreeItemContent } from "./tree";
 
-type FolderNode = {
+interface FolderNode {
   id: string;
   name: string;
   children?: FolderNode[];
-};
+}
 
 const TREE_DATA: FolderNode[] = [
   {

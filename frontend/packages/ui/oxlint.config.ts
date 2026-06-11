@@ -1,23 +1,48 @@
 import { defineConfig } from "oxlint";
 
-// Bug-catching categories only (matching the app's biome philosophy): style and
-// opinionated rules are oxfmt's / code review's job, not the linter's.
+// We enable all rules and disable irrelevant ones.
 export default defineConfig({
+  ignorePatterns: ["**/.storybook/**"],
+  categories: {
+    correctness: "error",
+    nursery: "error",
+    pedantic: "error",
+    perf: "error",
+    restriction: "error",
+    style: "error",
+    suspicious: "error",
+  },
   env: {
     browser: true,
   },
-  categories: {
-    correctness: "error",
-    perf: "error",
-    suspicious: "error",
-  },
   plugins: ["oxc", "typescript", "react", "react-perf", "jsx-a11y", "vitest", "unicorn"],
   rules: {
+    "eslint/arrow-body-style": "off",
+    "eslint/func-style": "off",
+    "eslint/id-length": "off",
     "eslint/no-console": ["error", { allow: ["error"] }],
-    // The React Compiler memoizes; inline values as props are not a re-render hazard here.
-    "react-perf/jsx-no-new-array-as-prop": "off",
-    "react-perf/jsx-no-new-function-as-prop": "off",
+    "eslint/no-empty-function": "off",
+    "eslint/no-magic-numbers": ["error", { ignore: [0, 1] }],
+    "eslint/max-lines-per-function": "off",
+    "eslint/no-ternary": "off",
+    "eslint/sort-imports": "off",
+    "eslint/sort-keys": "off",
+    "oxc/no-rest-spread-properties": "off",
     "react-perf/jsx-no-new-object-as-prop": "off",
+    "react/button-has-type": "off",
+    "react/forbid-component-props": "off",
+    "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
+    "react/jsx-max-depth": "off",
+    "react/jsx-props-no-spreading": "off",
+    "react/no-multi-comp": "off",
+    "react/only-export-components": "off",
     "react/react-in-jsx-scope": "off",
+    "react_perf/jsx-no-new-array-as-prop": "off",
+    "react_perf/jsx-no-new-function-as-prop": "off",
+    "typescript/explicit-function-return-type": "off",
+    "typescript/explicit-module-boundary-types": "off",
+    "typescript/no-empty-interface": "off",
+    "typescript/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
+    "unicorn/no-null": "off",
   },
 });
