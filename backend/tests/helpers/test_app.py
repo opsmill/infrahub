@@ -37,12 +37,12 @@ from infrahub.workers.dependencies import (
     build_workflow,
     clear_singletons,
 )
-from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
 from tests.helpers.events import query_events_by_name
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
+from tests.helpers.task_manager import setup_task_manager_once
 
 from .test_client import InfrahubTestClient
 
@@ -296,7 +296,7 @@ class TestInfrahubApp(TestInfrahubAppBase):
     ) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
-        await setup_task_manager()
+        await setup_task_manager_once()
         config.OVERRIDE.workflow = workflow
         with dependency_provider.scope(build_workflow, lambda: workflow):
             yield workflow
@@ -314,7 +314,7 @@ class TestInfrahubAppWithoutLocalWorkflow(TestInfrahubAppBase):
     ) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
-        await setup_task_manager()
+        await setup_task_manager_once()
         config.OVERRIDE.workflow = workflow
         with dependency_provider.scope(build_workflow, lambda: workflow):
             yield workflow
