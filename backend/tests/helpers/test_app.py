@@ -21,7 +21,6 @@ from infrahub.core.initialization import (
     initialization,
 )
 from infrahub.core.protocols import CoreAccount
-from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
@@ -43,6 +42,7 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
 from tests.helpers.events import query_events_by_name
+from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 
 from .test_client import InfrahubTestClient
 
@@ -112,8 +112,7 @@ class TestInfrahubAppBase(TestInfrahub):
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
-        schema = SchemaRoot(**internal_schema)
-        schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        schema_branch = install_processed_internal_schema_branch(branch_name=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
         return schema_branch
@@ -122,8 +121,7 @@ class TestInfrahubAppBase(TestInfrahub):
     async def register_core_schema(
         self, db: InfrahubDatabase, default_branch: Branch, register_internal_schema: SchemaBranch
     ) -> SchemaBranch:
-        schema = SchemaRoot(**core_models)
-        schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        schema_branch = install_processed_core_schema_branch(branch_name=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
         return schema_branch

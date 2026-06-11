@@ -36,7 +36,7 @@ from infrahub.core.initialization import (
     create_root_node,
 )
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.definitions.core import (
     core_account_token,
@@ -77,6 +77,7 @@ from tests.helpers.constants import (
     PORT_REDIS,
 )
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
+from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
 ResponseClass = TypeVar("ResponseClass")
@@ -288,8 +289,7 @@ async def register_internal_models_schema_scope_class(default_branch_scope_class
 
 
 async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    schema_branch = install_processed_internal_schema_branch(branch_name=branch.name)
     branch.update_schema_hash()
     return schema_branch
 
@@ -309,8 +309,7 @@ async def register_core_models_schema_scope_class(
 
 
 async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
-    schema = SchemaRoot(**core_models)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    schema_branch = install_processed_core_schema_branch(branch_name=branch.name)
     branch.update_schema_hash()
     return schema_branch
 
