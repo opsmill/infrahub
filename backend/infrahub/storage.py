@@ -19,6 +19,23 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
+
+        access_key = str(kwargs.get("AWS_ACCESS_KEY_ID") or "").strip()
+        secret_key = str(kwargs.get("AWS_SECRET_ACCESS_KEY") or "").strip()
+        if bool(access_key) != bool(secret_key):
+            raise ValueError(
+                "S3 storage requires both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or neither. "
+                "Set both to use static credentials, or leave both unset to use the default AWS "
+                "credential provider chain (IRSA, EC2 instance profiles, ECS task roles)."
+            )
+        if not access_key:
+            # No static credentials configured. fastapi_storages.S3Storage types these as str and
+            # forwards them to boto3, which sends an empty string verbatim instead of falling back
+            # to the default AWS credential provider chain. Set them to None so boto3 resolves
+            # credentials from the environment (IRSA, EC2 instance profiles, ECS task roles).
+            self.AWS_ACCESS_KEY_ID = None  # type: ignore[assignment]
+            self.AWS_SECRET_ACCESS_KEY = None  # type: ignore[assignment]
+
         super().__init__()
 
     def open(self, name: str) -> BinaryIO:

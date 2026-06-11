@@ -707,7 +707,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Create a new worktree for a given commit.
 
         Raises:
-            RepositoryError: When the worktree cannot be created and the commit cannot be fetched from a remote.
+            CommitNotFoundError: When the commit does not exist in the local clone.
+            RepositoryError: When the worktree cannot be created for any other reason.
 
         """
         # Check of the worktree already exist
@@ -723,22 +724,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             log.debug("Commit worktree created", repository=self.name, commit=commit)
             return worktree
         except GitCommandError as exc:
-            if "invalid reference" not in exc.stderr:
-                raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
-
-            if not self.has_origin:
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"Commit {commit} not found and no remote origin configured to fetch from.",
-                ) from exc
-
-            # Commit may exist on the remote but hasn't been fetched to this worker yet
-            log.info("Commit not found locally, fetching from remote", repository=self.name, commit=commit)
-            repo.remotes.origin.fetch()
-
-            repo.git.worktree("add", directory, commit)
-            log.debug("Commit worktree created after fetch", repository=self.name, commit=commit)
-            return worktree
+            if "invalid reference" in exc.stderr:
+                raise CommitNotFoundError(identifier=self.name, commit=commit) from exc
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch.

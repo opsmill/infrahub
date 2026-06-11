@@ -39,9 +39,12 @@ export const EnumDeleteButton = ({
   ...props
 }: EnumDeleteButtonProps) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const namespace = useNamespace(schema?.namespace);
   const [removeEnum, { loading }] = useMutation(ENUM_REMOVE_MUTATION, {
     variables: { kind: schema?.kind, attribute: fieldSchema?.name, enum: value },
   });
+
+  if (!namespace?.user_editable) return null;
 
   const handleDelete = async () => {
     try {
@@ -56,6 +59,7 @@ export const EnumDeleteButton = ({
     <>
       <Button
         ref={ref}
+        aria-label="Delete option"
         tabIndex={-1}
         variant="ghost"
         size="sm"

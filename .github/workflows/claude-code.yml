@@ -10,7 +10,17 @@ name: Claude Code
     types: [submitted]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}
+  # Only genuine "@claude" comments/reviews share a cancellable group (so a newer
+  # request supersedes an older one on the same PR). Every other event — including
+  # Claude's own "Claude Code is working…" status comments and unrelated review
+  # comments — gets a unique group via github.run_id so it cancels nothing. The
+  # concurrency group is evaluated before the job `if:`, so filtering there is not
+  # enough to prevent these incidental events from cancelling a running Claude job.
+  group: >-
+    ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}-${{
+      (contains(github.event.comment.body, '@claude') || contains(github.event.review.body, '@claude'))
+      && 'claude' || github.run_id
+    }}
   cancel-in-progress: true
 
 jobs:

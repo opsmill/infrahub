@@ -7,6 +7,7 @@ const GET_ACCOUNT_PROFILE = graphql(`
     AccountProfile {
       id
       display_label
+      is_externally_managed
       name {
         value
       }
