@@ -18,12 +18,13 @@ const checkboxVariants = tv({
 
 const checkboxIndicatorVariants = tv({
   base: [
-    "flex size-4.5 shrink-0 items-center justify-center rounded-md border border-neutral-300 text-white transition-colors bg-white",
+    "flex size-4.5 shrink-0 items-center justify-center rounded-md border border-neutral-300 text-white bg-white transition-all duration-200",
+    "group-data-pressed/checkbox:scale-90",
     "group-data-focus-visible/checkbox:border-cyan-700 group-data-focus-visible/checkbox:outline-hidden group-data-focus-visible/checkbox:ring-2 group-data-focus-visible/checkbox:ring-cyan-700/25",
   ],
   variants: {
     isActive: {
-      true: "border-cyan-700 bg-cyan-700",
+      true: "border-cyan-800 bg-linear-to-b from-cyan-800 to-cyan-600 inset-shadow-[0_1px_0_rgba(255,255,255,0.4)]",
     },
   },
 });
