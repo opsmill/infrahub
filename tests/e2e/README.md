@@ -293,6 +293,15 @@ separately: `pytest -c tests/e2e/pytest.ini tests/e2e
 --ignore=tests/e2e/tutorial` then `pytest -c tests/e2e/pytest.ini
 tests/e2e/tutorial`.
 
+CI shards the main suite across 4 parallel matrix jobs grouped by the deepest
+data slice each file needs, selected with `-m shard_<name>` (design and
+measured timings in `dev/specs/e2e-pytest-sharding.md`). Every test file
+declares its shard with a module-level `pytestmark = pytest.mark.shard_<name>`
+matching its data tier; a conftest collection hook requires exactly one shard
+marker per test, so a new file without one fails every shard job instead of
+silently never running. The tutorial suite runs unmarked in its own dedicated
+shard job (a plain path invocation of `tests/e2e/tutorial`).
+
 Skips preserved (each with a reason in-code): `tasks/tasks-view`,
 `events/events-rules-actions`, `triggers` "update the matches",
 `proposed-changes` comment + merge/delete (legacy `fixme`).

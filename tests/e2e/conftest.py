@@ -38,6 +38,7 @@ import shutil
 import subprocess
 import sys
 import warnings
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -107,6 +108,59 @@ _PROVISIONED_EXTERNALLY = bool(os.environ.get("INFRAHUB_ADDRESS"))
 # response_delay_enabled / InfrahubDockerCompose.set_server_response_delay, which
 # enables the delay at runtime only after the dataset is loaded).
 expect.set_options(timeout=60_000 if _RESPONSE_DELAY else 30_000)
+
+# CI splits the main suite across parallel shard jobs selected with
+# `-m shard_<name>` (see dev/specs/e2e-pytest-sharding.md). Every test file
+# declares its shard with a module-level `pytestmark`, matching the deepest
+# data slice it needs.
+_SHARD_MARKERS = {"shard_foundation", "shard_sites_a", "shard_sites_b", "shard_branches_repo"}
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Guard the shard partition: every test needs exactly one shard marker.
+
+    Registered tryfirst so it runs BEFORE the `-m` filter deselects anything —
+    every shard job therefore validates the FULL collection, and a new test
+    file without a shard marker fails CI instead of silently never running.
+    The tutorial suite is exempt: it runs as its own pytest invocation in a
+    dedicated shard job.
+    """
+    offenders: dict[str, str] = {}
+    for item in items:
+        if "tutorial" in Path(str(item.path)).parts:
+            continue
+        found = _SHARD_MARKERS.intersection(marker.name for marker in item.iter_markers())
+        if len(found) != 1:
+            reason = "has no shard marker" if not found else f"has multiple shard markers {sorted(found)}"
+            offenders[str(item.path)] = reason
+    if offenders:
+        details = "\n".join(f"  {path}: {reason}" for path, reason in sorted(offenders.items()))
+        raise pytest.UsageError(
+            "Every e2e test file must declare exactly one CI shard via a module-level\n"
+            "`pytestmark = pytest.mark.shard_<name>` matching its data tier\n"
+            f"(see dev/specs/e2e-pytest-sharding.md):\n{details}"
+        )
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_configure(config: pytest.Config) -> None:
+    """Prefix each verbose test line with a wall-clock timestamp.
+
+    pytest has no built-in per-test timestamps; ``_locationline`` builds the
+    per-test line written when the test STARTS (the PASSED/FAILED word is
+    appended on completion), so wrapping it stamps each test's start time.
+    Private API, hence the defensive getattr.
+    """
+    reporter = config.pluginmanager.getplugin("terminalreporter")
+    original_locationline = getattr(reporter, "_locationline", None)
+    if original_locationline is None:
+        return
+
+    def locationline_with_timestamp(*args: object, **kwargs: object) -> str:
+        return f"{datetime.now().astimezone():%H:%M:%S} {original_locationline(*args, **kwargs)}"
+
+    reporter._locationline = locationline_with_timestamp
 
 
 # --------------------------------------------------------------------------- #

@@ -22,8 +22,11 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
+import pytest
 from helpers import save_screenshot_for_docs
 from playwright.async_api import expect
+
+pytestmark = pytest.mark.shard_branches_repo
 
 if TYPE_CHECKING:
     from playwright.async_api import Page

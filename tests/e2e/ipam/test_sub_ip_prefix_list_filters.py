@@ -7,7 +7,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from playwright.async_api import expect
+
+pytestmark = pytest.mark.shard_foundation
 
 if TYPE_CHECKING:
     from data.handles import IpamPoolsHandle

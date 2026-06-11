@@ -11,8 +11,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+import pytest
 from constants import ADMIN_CREDENTIALS
 from playwright.async_api import expect
+
+pytestmark = pytest.mark.shard_branches_repo
 
 if TYPE_CHECKING:
     from data.handles import ScenarioBranchesHandle
