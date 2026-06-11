@@ -404,6 +404,19 @@ async def _submit_post_merge_workflow(
         log.exception("Failed to enqueue post-merge workflow '%s'", workflow_definition.name)
 
 
+async def _merge_repositories_after_merge(merger: BranchMerger, log: Logger | LoggerAdapter) -> None:
+    """Run the repository (git) merge after the branch merge has committed.
+
+    The repository merge issues a GraphQL write to the default branch, so it must run after the write
+    block is lifted; while protected it would be rejected as a write to the merging branch. Best-effort:
+    the data merge is already committed and must not be rolled back if this fails.
+    """
+    try:
+        await merger.merge_repositories()
+    except Exception:
+        log.exception("Repository merge failed after branch merge committed")
+
+
 async def _do_merge_branch(
     db: InfrahubDatabase,
     log: Logger | LoggerAdapter,
@@ -529,6 +542,8 @@ async def _do_merge_branch(
     # so a follow-up failing to enqueue must not abort the remaining ones or
     # surface as a merge failure: each submission is logged and skipped on error.
     # -------------------------------------------------------------
+
+    await _merge_repositories_after_merge(merger=merger, log=log)
 
     # Trigger the reconciliation of IPAM data now that the graph merge is complete.
     if ipam_node_details:

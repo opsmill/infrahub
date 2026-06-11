@@ -73,6 +73,15 @@ Minimal edits to the existing flow — no signature changes:
   never ran IPAM — no IPAM collateral, and no IPAM run racing/following recovery. `/speckit-tasks`
   audits for any other pre-`MERGED` follow-on that writes the default branch without snapshotting
   `previous_*` (schema migrations are handled by co-writing `previous_*`, §3).
+- **Reorder the repository (git) merge after `MERGED` — DONE (T005a)**: `merge_repositories()` was
+  the only non-IPAM pre-`MERGED` follow-on that writes the default branch. It issues a
+  `CoreRepositoryUpdate` through the SDK/GraphQL, which the target write-gate rejects during the
+  protected window, so the merge self-blocked. It is moved out of `BranchMerger.merge()` to the
+  post-`MERGED` section (best-effort, before `BRANCH_DELETE`). Same recovery benefit as the IPAM
+  reorder: a `MERGE_FAILED` branch never ran the repository merge, so there is no repository-node
+  collateral on the default branch and the write-block invariant holds with no GraphQL write inside the
+  window. All other in-window default-branch writes (bulk graph merge, schema migrations, branch/PC
+  saves) are direct Cypher and bypass the gate. See `../repo-merge-write-block-plan.md`.
 
 > The global `MergeLocker` lock at line 297 is already held for the entire `_do_merge_branch` call,
 > so its `timestamp::worker_id` token is present throughout the `MERGING` window and is the signal

@@ -192,7 +192,6 @@ class BranchMerger:
                 log.exception("Merge failed, beginning rollback")
                 await self.rollback()
                 raise MergeFailedError(branch_name=self.source_branch.name) from exc
-        await self.merge_repositories()
 
     async def rollback(self) -> None:
         await self.diff_merger.rollback(at=self._merge_at)
