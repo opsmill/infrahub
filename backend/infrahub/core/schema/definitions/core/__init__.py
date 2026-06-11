@@ -60,6 +60,7 @@ from .permission import (
     core_global_permission,
     core_object_permission,
 )
+from .preference import core_global_preference, core_user_preference
 from .profile import core_profile_schema_definition
 from .propose_change import core_proposed_change
 from .propose_change_comment import (
@@ -200,6 +201,8 @@ core_models_mixed: CoreModelsMixedType = {
         core_object_permission,
         core_account_role,
         core_account_group,
+        core_global_preference,
+        core_user_preference,
         internal_ipam_ip_prefix_available,
         internal_ipam_ip_range_available,
         internal_external_identity,
