@@ -56,6 +56,7 @@ import pytest
 from infrahub_sdk.types import Order
 from infrahub_sdk.uuidt import UUIDT
 
+from data.common import save_with_retry
 from data.handles import TopologyHandle
 
 if TYPE_CHECKING:
@@ -296,7 +297,7 @@ async def _create_bgp_mesh(  # noqa: PLR0913, PLR0917
                         status=ACTIVE_STATUS,
                         role=BACKBONE_ROLE,
                     )
-                    batch.add(task=obj.save, node=obj)
+                    batch.add(task=save_with_retry, node=obj, obj=obj)
                     sessions += 1
 
     async for _ in batch.execute():
@@ -363,7 +364,7 @@ async def _create_backbone_connectivity(  # noqa: PLR0913, PLR0914, PLR0917  (tr
             status=ACTIVE_STATUS,
             role=BACKBONE_ROLE,
         )
-        circuit_batch.add(task=bkb_circuit.save, node=bkb_circuit)
+        circuit_batch.add(task=save_with_retry, node=bkb_circuit, obj=bkb_circuit)
 
         # Create Circuit Endpoints. NB: like the script, `site` is the site NAME — the
         # backend resolves non-UUID relationship ids through the kind's default filter.
@@ -375,7 +376,7 @@ async def _create_backbone_connectivity(  # noqa: PLR0913, PLR0914, PLR0917  (tr
             circuit=bkb_circuit,
             connected_endpoint=intf_site1_obj,
         )
-        endpoint_batch.add(task=endpoint1.save, node=endpoint1)
+        endpoint_batch.add(task=save_with_retry, node=endpoint1, obj=endpoint1)
 
         endpoint2 = await client.create(
             branch=BRANCH,
@@ -385,7 +386,7 @@ async def _create_backbone_connectivity(  # noqa: PLR0913, PLR0914, PLR0917  (tr
             circuit=bkb_circuit,
             connected_endpoint=intf_site2_obj,
         )
-        endpoint_batch.add(task=endpoint2.save, node=endpoint2)
+        endpoint_batch.add(task=save_with_retry, node=endpoint2, obj=endpoint2)
 
         # Create IP Address
         intf_site1_address = f"{next(backbone_link_ips)!s}/31"
@@ -399,7 +400,7 @@ async def _create_backbone_connectivity(  # noqa: PLR0913, PLR0914, PLR0917  (tr
             address={"value": intf_site1_address, "source": account_pop_id},
             description={"value": intf_site1_identifier, "source": account_pop_id},
         )
-        interface_ip_batch.add(task=intf_site1_ip.save, node=intf_site1_ip)
+        interface_ip_batch.add(task=save_with_retry, node=intf_site1_ip, obj=intf_site1_ip)
 
         intf_site2_ip = await client.create(
             branch=BRANCH,
@@ -408,7 +409,7 @@ async def _create_backbone_connectivity(  # noqa: PLR0913, PLR0914, PLR0917  (tr
             address={"value": intf_site2_address, "source": account_pop_id},
             description={"value": intf_site2_identifier, "source": account_pop_id},
         )
-        interface_ip_batch.add(task=intf_site2_ip.save, node=intf_site2_ip)
+        interface_ip_batch.add(task=save_with_retry, node=intf_site2_ip, obj=intf_site2_ip)
 
         # Update Interface (immediate saves, like the script)
         intf_site1_obj.description.value = f"Backbone: Connected to {site2_device} via {backbone_link['circuit']}"

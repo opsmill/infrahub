@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from data.common import save_with_retry
 from data.handles import ProfilesGroupsHandle
 
 if TYPE_CHECKING:
@@ -60,7 +61,7 @@ async def data_profiles_groups(
     standard_groups = {}
     for group in GROUPS:
         obj = await data_client.create(branch=BRANCH, kind="CoreStandardGroup", data=dict(group))
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
         standard_groups[group["name"]] = obj
 
     interface_profiles = {}
@@ -70,7 +71,7 @@ async def data_profiles_groups(
             "mtu": {"value": intf_profile["mtu"]},
         }
         profile = await data_client.create(branch=BRANCH, kind=f"Profile{intf_profile['kind']}", data=data_profile)
-        batch.add(task=profile.save, node=profile)
+        batch.add(task=save_with_retry, node=profile, obj=profile)
         interface_profiles[intf_profile["name"]] = profile
 
     async for _ in batch.execute():

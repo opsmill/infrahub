@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from data.common import save_with_retry
 from data.handles import IpamPoolsHandle
 
 if TYPE_CHECKING:
@@ -186,7 +187,7 @@ async def data_ipam_pools(  # noqa: PLR0914  (transcribed script section, one lo
         obj = await data_client.create(
             branch=branch, kind="IpamIPAddress", address={"value": ipv6_addr, "source": account_pop_id}
         )
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
     async for _, _response in batch.execute():
         pass
 

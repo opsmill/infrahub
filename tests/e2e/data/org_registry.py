@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from data.common import save_with_retry
 from data.handles import OrgRegistryHandle
 
 if TYPE_CHECKING:
@@ -167,7 +168,7 @@ async def _prepare_platforms(client: InfrahubClient, batch: InfrahubBatch) -> di
     platforms: dict[str, InfrahubNode] = {}
     for platform in PLATFORMS:
         obj = await client.create(branch=BRANCH, kind="InfraPlatform", data=dict(platform))
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
         platforms[platform["name"]] = obj
     return platforms
 
@@ -180,7 +181,7 @@ async def _prepare_organizations(client: InfrahubClient, batch: InfrahubBatch) -
             "name": {"value": org["name"], "is_protected": True},
         }
         obj = await client.create(branch=BRANCH, kind=f"Organization{org['type'].title()}", data=data_org)
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
         organizations[org["name"]] = obj
     return organizations
 
@@ -215,7 +216,7 @@ async def _prepare_asns(
         else:
             data_asn["description"] = {"value": asn_name, "source": crm_sync_id, "owner": cobrian_id}
         obj = await client.create(branch=BRANCH, kind="InfraAutonomousSystem", data=data_asn)
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
         asns[asn["organization"]] = obj
     return asns
 
@@ -225,7 +226,7 @@ async def _prepare_tags(client: InfrahubClient, batch: InfrahubBatch, pop_builde
     tags: dict[str, InfrahubNode] = {}
     for tag in TAGS:
         obj = await client.create(branch=BRANCH, kind="BuiltinTag", name={"value": tag, "source": pop_builder_id})
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
         tags[tag] = obj
     return tags
 
@@ -257,7 +258,7 @@ async def _prepare_bgp_peer_groups(
             local_as={"id": local_as_id},
             remote_as={"id": remote_as_id},
         )
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
         peer_groups[peer_group["name"]] = obj
     return peer_groups
 
