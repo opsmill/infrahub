@@ -105,8 +105,6 @@ class TestClosureFailureIsolation(TestInfrahubApp):
 
         # The closure-builder failure is reported against the offending transform only,
         # naming the unresolved reference and the resulting incomplete closure.
-        assert (
-            "Closure builder for transform 'broken_report' encountered unresolved reference" in caplog.text
-        )
+        assert "Closure builder for transform 'broken_report' encountered unresolved reference" in caplog.text
         assert "dependencies_complete=False" in caplog.text
         assert "Closure builder for transform 'well_formed_report'" not in caplog.text
