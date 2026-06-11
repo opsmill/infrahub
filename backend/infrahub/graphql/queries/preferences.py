@@ -53,12 +53,9 @@ async def resolve_effective_preferences(
 
     response: dict[str, str | None] = {}
     for attribute_name in PREFERENCE_ATTRIBUTES:
-        value: str | None = None
-        if user_preference is not None and getattr(user_preference, attribute_name).value is not None:
-            value = getattr(user_preference, attribute_name).value
-        elif global_preference is not None:
-            value = getattr(global_preference, attribute_name).value
-        response[attribute_name] = value
+        user_value: str | None = getattr(user_preference, attribute_name).value if user_preference else None
+        global_value: str | None = getattr(global_preference, attribute_name).value if global_preference else None
+        response[attribute_name] = user_value if user_value is not None else global_value
 
     return response
 

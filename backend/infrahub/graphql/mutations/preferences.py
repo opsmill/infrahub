@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Self
 
-from graphene import InputObjectType, Mutation
-
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.lock_utils import build_object_lock_name
-from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.lock import InfrahubMultiLock
 
-from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, UpsertResult
+from .main import DeleteResult, InfrahubMutation, UpsertResult
 
 if TYPE_CHECKING:
+    from graphene import InputObjectType
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
@@ -29,7 +27,7 @@ OWNERSHIP_DENIED_MESSAGE = "You are not allowed to manage the preferences of ano
 GLOBAL_PREFERENCE_SINGLETON_LOCK = build_object_lock_name(f"{InfrahubKind.GLOBALPREFERENCE}.singleton")
 
 
-class InfrahubUserPreferenceMutation(InfrahubMutationMixin, Mutation):
+class InfrahubUserPreferenceMutation(InfrahubMutation):
     """Owner-scoped mutations for CoreUserPreference.
 
     Mirrors the AccountToken mechanism: writes re-check that the target row belongs to the
@@ -37,18 +35,10 @@ class InfrahubUserPreferenceMutation(InfrahubMutationMixin, Mutation):
     Generic reads stay unfiltered in V1; enforcement is mutation-only.
     """
 
-    @classmethod
-    def __init_subclass_with_meta__(
-        cls, schema: NodeSchema, _meta: InfrahubMutationOptions | None = None, **options: dict[str, Any]
-    ) -> None:
-        if not isinstance(schema, NodeSchema):
-            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
-
-        if not _meta:
-            _meta = InfrahubMutationOptions(cls)
-        _meta.schema = schema
-
-        super().__init_subclass_with_meta__(_meta=_meta, **options)
+    class Meta:
+        # Skip the schema validation of InfrahubMutation.__init_subclass_with_meta__ for this
+        # intermediate class; the concrete per-kind subclasses are generated with a schema.
+        abstract = True
 
     @classmethod
     def _is_admin(cls, graphql_context: GraphqlContext) -> bool:
@@ -60,6 +50,7 @@ class InfrahubUserPreferenceMutation(InfrahubMutationMixin, Mutation):
 
         Raises:
             PermissionDeniedError: When the payload targets the preferences of another account.
+            ValidationError: When the account peer is not specified by id.
 
         """
         if not graphql_context.account_session:
@@ -149,9 +140,7 @@ class InfrahubUserPreferenceMutation(InfrahubMutationMixin, Mutation):
         """
         schema = cls._meta.active_schema
         if "id" in data:
-            return await NodeManager.get_one(
-                db=db, id=data["id"], kind=schema.kind, branch=branch, raise_on_error=True
-            )
+            return await NodeManager.get_one(db=db, id=data["id"], kind=schema.kind, branch=branch, raise_on_error=True)
 
         node: Node | None = None
         if not schema.human_friendly_id and schema.default_filter is not None:
@@ -247,25 +236,17 @@ class InfrahubUserPreferenceMutation(InfrahubMutationMixin, Mutation):
         return await super().mutate_delete(info=info, data=data, branch=branch)
 
 
-class InfrahubGlobalPreferenceMutation(InfrahubMutationMixin, Mutation):
+class InfrahubGlobalPreferenceMutation(InfrahubMutation):
     """Mutations for CoreGlobalPreference enforcing the 0..1 singleton invariant.
 
     The write permission itself (manage_global_preferences) is enforced by
     GlobalPreferenceManagerPermissionChecker; this class only refuses a second row.
     """
 
-    @classmethod
-    def __init_subclass_with_meta__(
-        cls, schema: NodeSchema, _meta: InfrahubMutationOptions | None = None, **options: dict[str, Any]
-    ) -> None:
-        if not isinstance(schema, NodeSchema):
-            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
-
-        if not _meta:
-            _meta = InfrahubMutationOptions(cls)
-        _meta.schema = schema
-
-        super().__init_subclass_with_meta__(_meta=_meta, **options)
+    class Meta:
+        # Skip the schema validation of InfrahubMutation.__init_subclass_with_meta__ for this
+        # intermediate class; the concrete per-kind subclasses are generated with a schema.
+        abstract = True
 
     @classmethod
     async def mutate_create(
