@@ -13,7 +13,8 @@ async def raise_on_mutation_for_branch_status(next, root, info, **kwargs):  # ty
     # Only gate at the top-level mutation field so the merge-protection cache key is read once per
     # mutation rather than once per resolved field.
     if info.operation.operation.value == "mutation" and info.path.prev is None:
-        mutation_name = info.operation.selection_set.selections[0].name.value
+        # Use .field_name to get the field being resolved in case the mutation includes top-level fields
+        mutation_name = info.field_name
         merge_write_blocker = MergeWriteBlocker(cache=info.context.active_service.cache)
         branch_status_checker = BranchStatusChecker(db=info.context.db, merge_write_blocker=merge_write_blocker)
         if mutation_name not in ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH:

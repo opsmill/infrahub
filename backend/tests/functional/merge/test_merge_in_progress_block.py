@@ -102,6 +102,36 @@ class TestMergeInProgressBlock(TestInfrahubApp):
         finally:
             await merge_write_blocker.delete()
 
+    async def test_exempt_first_field_does_not_unblock_later_data_write(
+        self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase, service: InfrahubServices
+    ) -> None:
+        """A multi-field mutation must not let an exempt first field unblock a later default-branch write.
+
+        The gate keys on the field being resolved, not on the first selection, so the trailing
+        TestingPersonCreate is still rejected even though BranchCreate precedes it.
+        """
+        merging_name = "branch_mgmt_multifield_merging"
+        await client.branch.create(branch_name=merging_name)
+
+        backend_branch = registry.branch[merging_name]
+        backend_branch.status = BranchStatus.MERGING
+        await backend_branch.save(db=db)
+        merge_write_blocker = MergeWriteBlocker(cache=service.cache)
+        await merge_write_blocker.set(branch=merging_name, state=MergeProtectionState.MERGING)
+
+        mutation = """
+        mutation {
+          BranchCreate(data: {name: "branch_mgmt_multifield_decoy"}) { ok }
+          TestingPersonCreate(data: {name: {value: "multifield_smuggled_write"}}) { ok }
+        }
+        """
+        try:
+            with pytest.raises(GraphQLError) as exc:
+                await client.execute_graphql(query=mutation, branch_name="main")
+            assert exc.value.errors[0]["message"] == MERGE_IN_PROGRESS_MESSAGE
+        finally:
+            await merge_write_blocker.delete()
+
     async def test_successful_merge_lifts_protection(
         self, initial_dataset: None, client: InfrahubClient, db: InfrahubDatabase, service: InfrahubServices
     ) -> None:
