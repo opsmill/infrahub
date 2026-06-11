@@ -21,7 +21,7 @@ def core_schema_branch() -> SchemaBranch:
 
 
 def test_global_preference_schema(core_schema_branch: SchemaBranch) -> None:
-    schema = core_schema_branch.get(name=InfrahubKind.GLOBALPREFERENCE, duplicate=False)
+    schema = core_schema_branch.get_node(name=InfrahubKind.GLOBALPREFERENCE, duplicate=False)
 
     assert schema.namespace == "Core"
     assert schema.branch == BranchSupportType.AGNOSTIC
@@ -44,7 +44,7 @@ def test_global_preference_schema(core_schema_branch: SchemaBranch) -> None:
 
 
 def test_user_preference_schema(core_schema_branch: SchemaBranch) -> None:
-    schema = core_schema_branch.get(name=InfrahubKind.USERPREFERENCE, duplicate=False)
+    schema = core_schema_branch.get_node(name=InfrahubKind.USERPREFERENCE, duplicate=False)
 
     assert schema.namespace == "Core"
     assert schema.branch == BranchSupportType.AGNOSTIC
