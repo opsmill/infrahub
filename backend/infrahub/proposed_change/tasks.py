@@ -1729,7 +1729,7 @@ async def _gather_repository_repository_diffs(
 
             if repo.destination_branch:
                 files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
-                    first_commit=repo.source_commit, second_commit=repo.destination_commit
+                    first_commit=repo.destination_commit, second_commit=repo.source_commit
                 )
             else:
                 files_added = await git_repo.list_all_files(commit=repo.source_commit)

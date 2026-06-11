@@ -751,7 +751,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     async def calculate_diff_between_commits(
         self, first_commit: str, second_commit: str
     ) -> tuple[list[str], list[str], list[str]]:
-        """TODO need to refactor this function to return more information.
+        """Return the (changed, added, removed) files going from first_commit to second_commit.
+
+        Direction follows `git diff first_commit second_commit`: first_commit is the old/base side
+        and second_commit is the new/target side. A file present only in second_commit is "added";
+        a file present only in first_commit is "removed".
+
+        TODO need to refactor this function to return more information.
 
         Like :
           - What has changed inside the files
@@ -767,12 +773,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         added_files = []
 
         for x in commit_in_branch.diff(commit_to_compare, create_patch=True):
-            if x.a_blob and not x.b_blob and x.a_blob.path not in added_files:
-                added_files.append(x.a_blob.path)
+            if x.a_blob and not x.b_blob and x.a_blob.path not in removed_files:
+                removed_files.append(x.a_blob.path)
             elif x.a_blob and x.b_blob and x.a_blob.path not in changed_files:
                 changed_files.append(x.a_blob.path)
-            elif not x.a_blob and x.b_blob and x.b_blob.path not in removed_files:
-                removed_files.append(x.b_blob.path)
+            elif not x.a_blob and x.b_blob and x.b_blob.path not in added_files:
+                added_files.append(x.b_blob.path)
 
         return changed_files, added_files, removed_files
 
