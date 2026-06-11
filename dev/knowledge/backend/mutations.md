@@ -82,6 +82,12 @@ mutate_upsert()
             -> handle file idempotency (checksum comparison)
 ```
 
+HFIDs and default_filters are only derived from single-**attribute** uniqueness constraints (`_derive_human_friendly_id` in `schema_branch.py`). A kind whose only uniqueness constraint is a relationship path (e.g. `CoreUserPreference` with `["account"]`) derives neither, so the identification list above comes up empty for id-less payloads: the upsert always takes the create path and a second call fails on the uniqueness violation instead of updating. Such kinds need a `mutate_upsert` override that resolves the existing row explicitly -- see `_resolve_existing_node` in `backend/infrahub/graphql/mutations/preferences.py`.
+
+## Kind-Specific Mutation Overrides
+
+Kind-specific mutation classes are registered in `graphql/manager.py`. An intermediate subclass of `InfrahubMutation` cannot be defined bare: graphene invokes `__init_subclass_with_meta__` at class-definition time with `schema=None`, which raises. Either hand-roll the hook (historical pattern) or declare `class Meta: abstract = True` on the intermediate (preferred -- see `InfrahubUserPreferenceMutation` in `graphql/mutations/preferences.py`).
+
 ## Relationship Resolution During Mutations
 
 ### RelationshipManager.update()

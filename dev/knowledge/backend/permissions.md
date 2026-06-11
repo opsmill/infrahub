@@ -29,6 +29,7 @@ Gate workflow actions and operational scope. Defined in `GlobalPermissions` enum
 | `MANAGE_ACCOUNTS` | Allows mutations on Account, AccountGroup, AccountRole |
 | `MANAGE_PERMISSIONS` | Allows mutations on permission objects and reading role-permission relationships |
 | `MANAGE_REPOSITORIES` | Allows mutations on Repository and ReadOnlyRepository |
+| `MANAGE_GLOBAL_PREFERENCES` | Allows mutations on GlobalPreference (organisation-wide defaults) |
 | `OVERRIDE_CONTEXT` | Allows overriding the execution context |
 | `READ_TELEMETRY` | Allows reading telemetry data |
 | `UPDATE_OBJECT_HFID_DISPLAY_LABEL` | Allows ad-hoc updates to HFIDs and display labels |
@@ -159,6 +160,6 @@ Permissions are loaded per-request with no caching.
 
 ## Helper Functions
 
-- `get_global_permission_for_kind(schema)` — Maps a schema kind to its required global permission (e.g., `AccountGroup` -> `MANAGE_ACCOUNTS`). Returns `None` for unprotected kinds. Located in `permissions/types.py`.
+- `get_global_permission_for_kind(schema)` — Maps a schema kind to its required global permission (e.g., `AccountGroup` -> `MANAGE_ACCOUNTS`). Returns `None` for unprotected kinds. Located in `permissions/types.py`. When adding a new Core kind, remember the default General Access role carries a wildcard `*/*` ObjectPermission: the new kind is writable by every standard user unless it is mapped here or scoped in its mutation overrides.
 - `define_object_permission_from_branch(schema, action, branch_name)` — Creates an `ObjectPermission` with the correct branch-relative decision for the given branch. Located in `permissions/types.py`.
 - `define_global_permission_from_branch(permission, branch_name)` — Creates a `GlobalPermission` with the correct branch-relative decision. Located in `permissions/globals.py`.
