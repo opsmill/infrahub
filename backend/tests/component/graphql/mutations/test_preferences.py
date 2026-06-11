@@ -54,6 +54,17 @@ mutation UserPreferenceUpsertWithId($id: String!, $date_format: String) {
 }
 """
 
+USER_PREFERENCE_UPSERT_ACCOUNT_BY_HFID = """
+mutation UserPreferenceUpsertAccountByHfid($account_hfid: String!, $timezone: String) {
+  CoreUserPreferenceUpsert(data: {
+    account: {hfid: [$account_hfid]}
+    timezone: {value: $timezone}
+  }) {
+    ok
+  }
+}
+"""
+
 USER_PREFERENCE_UPDATE_ACCOUNT = """
 mutation UserPreferenceUpdateAccount($id: String!, $account_id: String!) {
   CoreUserPreferenceUpdate(data: {
@@ -188,6 +199,27 @@ class TestUserPreferenceOwnerScoping:
         )
         assert len(rows) == 1
         assert rows[0].timezone.value == "Europe/Paris"
+
+    async def test_owner_upsert_account_by_hfid_rejected_with_clear_error(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: None,
+        default_permission_backend: None,
+        first_account: Node,
+        session_first_account: AccountSession,
+    ) -> None:
+        default_branch.update_schema_hash()
+        result = await _run_mutation(
+            db=db,
+            branch=default_branch,
+            account_session=session_first_account,
+            query=USER_PREFERENCE_UPSERT_ACCOUNT_BY_HFID,
+            variables={"account_hfid": first_account.name.value, "timezone": "UTC"},
+        )
+
+        assert result.errors
+        assert any("account must be specified by id" in str(error) for error in result.errors)
 
     async def test_non_owner_upsert_with_id_of_other_row_denied(
         self,

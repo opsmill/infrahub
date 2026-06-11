@@ -4,10 +4,13 @@ from typing import TYPE_CHECKING, Any, Self
 
 from graphene import InputObjectType, Mutation
 
+from infrahub import lock
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.node.lock_utils import build_object_lock_name
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import PermissionDeniedError, ValidationError
+from infrahub.lock import InfrahubMultiLock
 
 from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, UpsertResult
 
@@ -23,6 +26,7 @@ if TYPE_CHECKING:
     from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 OWNERSHIP_DENIED_MESSAGE = "You are not allowed to manage the preferences of another account"
+GLOBAL_PREFERENCE_SINGLETON_LOCK = build_object_lock_name(f"{InfrahubKind.GLOBALPREFERENCE}.singleton")
 
 
 class InfrahubUserPreferenceMutation(InfrahubMutationMixin, Mutation):
@@ -67,6 +71,9 @@ class InfrahubUserPreferenceMutation(InfrahubMutationMixin, Mutation):
             return
 
         account_id = account_data.get("id")
+        if account_id is None:
+            # Fail closed: a non-id peer spec (e.g. hfid) cannot be compared to the calling account.
+            raise ValidationError(input_value="The preference account must be specified by id")
         if account_id != graphql_context.account_session.account_id:
             raise PermissionDeniedError(message=OWNERSHIP_DENIED_MESSAGE)
 
@@ -272,14 +279,19 @@ class InfrahubGlobalPreferenceMutation(InfrahubMutationMixin, Mutation):
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
 
-        existing = await NodeManager.query(db=db, schema=InfrahubKind.GLOBALPREFERENCE, branch=branch, limit=1)
-        if existing:
-            raise ValidationError(
-                input_value=(
-                    f"{InfrahubKind.GLOBALPREFERENCE} is a singleton and a row already exists, update it instead"
+        # Serialize the existence check and the creation behind a lock to close the TOCTOU
+        # window between two concurrent creates (same mechanism as _call_mutate_update).
+        async with InfrahubMultiLock(
+            lock_registry=lock.registry, locks=[GLOBAL_PREFERENCE_SINGLETON_LOCK], metrics=False
+        ):
+            existing = await NodeManager.query(db=db, schema=InfrahubKind.GLOBALPREFERENCE, branch=branch, limit=1)
+            if existing:
+                raise ValidationError(
+                    input_value=(
+                        f"{InfrahubKind.GLOBALPREFERENCE} is a singleton and a row already exists, update it instead"
+                    )
                 )
-            )
 
-        return await super().mutate_create(
-            info=info, data=data, branch=branch, database=database, override_data=override_data
-        )
+            return await super().mutate_create(
+                info=info, data=data, branch=branch, database=database, override_data=override_data
+            )
