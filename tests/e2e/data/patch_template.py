@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from data.common import save_with_retry
 from data.handles import PatchTemplateHandle
 
 if TYPE_CHECKING:
@@ -110,7 +111,7 @@ async def data_patch_template(
         for interface in data["interfaces"]:
             interface["patch_panel"] = {"id": patch_template.id}
             obj = await data_client.create(branch=branch, kind="TemplateInfraFrontPatchPanelInterface", data=interface)
-            batch.add(task=obj.save, node=obj)
+            batch.add(task=save_with_retry, node=obj, obj=obj)
 
     async for node, _response in batch.execute():
         templates[node.template_name.value] = node.id

@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.exceptions import NodeNotFoundError
 
+from data.common import save_with_retry
 from data.handles import RbacHandle
 
 if TYPE_CHECKING:
@@ -126,7 +127,7 @@ async def _prepare_permissions(client: InfrahubClient, batch: InfrahubBatch) -> 
             )
         except NodeNotFoundError:
             obj = await client.create(branch=BRANCH, kind="CoreObjectPermission", data=dict(perm))
-            batch.add(task=obj.save, node=obj)
+            batch.add(task=save_with_retry, node=obj, obj=obj)
         permissions[key] = obj
     return permissions
 
@@ -136,7 +137,7 @@ async def _prepare_account_roles(client: InfrahubClient, batch: InfrahubBatch) -
     roles: dict[str, InfrahubNode] = {}
     for role in ACCOUNT_ROLES:
         obj = await client.create(branch=BRANCH, kind="CoreAccountRole", data={"name": role["name"]})
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
         roles[role["name"]] = obj
     return roles
 
@@ -148,13 +149,13 @@ async def _prepare_accounts(
     accounts: dict[str, InfrahubNode] = {}
     for account in ACCOUNTS:
         obj = await client.create(branch=BRANCH, kind="CoreAccount", data=dict(account))
-        batch.add(task=obj.save, allow_upsert=True, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj, allow_upsert=True)
         accounts[account["name"]] = obj
 
     groups: dict[str, InfrahubNode] = {}
     for key, group in ACCOUNT_GROUPS.items():
         obj = await client.create(branch=BRANCH, kind="CoreAccountGroup", data={"name": group["name"]})
-        batch.add(task=obj.save, allow_upsert=True, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj, allow_upsert=True)
         groups[key] = obj
     return accounts, groups
 
@@ -182,7 +183,7 @@ async def _map_permissions_to_roles(
             role_permissions.extend(permissions[name] for name in role["object_permissions"])
 
         obj.permissions.extend(role_permissions)
-        batch.add(task=obj.save, node=obj)
+        batch.add(task=save_with_retry, node=obj, obj=obj)
 
 
 async def _map_user_and_roles_to_groups(
@@ -206,7 +207,7 @@ async def _map_user_and_roles_to_groups(
             updated = True
 
         if updated:
-            batch.add(task=obj.save, node=obj)
+            batch.add(task=save_with_retry, node=obj, obj=obj)
 
 
 @pytest.fixture(scope="session")

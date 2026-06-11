@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from data.common import save_with_retry
 from data.handles import LocationsHandle
 
 if TYPE_CHECKING:
@@ -50,14 +51,14 @@ async def data_locations(
     countries = {}
     for continent, continent_countries in CONTINENT_COUNTRIES.items():
         continent_obj = await data_client.create(branch=BRANCH, kind="LocationContinent", name=continent)
-        continent_batch.add(task=continent_obj.save, node=continent_obj)
+        continent_batch.add(task=save_with_retry, node=continent_obj, obj=continent_obj)
         continents[continent] = continent_obj
 
         for country in continent_countries:
             country_obj = await data_client.create(
                 branch=BRANCH, kind="LocationCountry", name=country, parent=continent_obj
             )
-            country_batch.add(task=country_obj.save, node=country_obj)
+            country_batch.add(task=save_with_retry, node=country_obj, obj=country_obj)
             countries[country] = country_obj
 
     async for _ in continent_batch.execute():

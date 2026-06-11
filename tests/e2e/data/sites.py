@@ -63,6 +63,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
+from data.common import save_with_retry
 from data.handles import SitesHandle
 
 if TYPE_CHECKING:
@@ -360,7 +361,7 @@ async def _generate_site_vlans(ctx: _SiteContext, state: _SiteState) -> None:
             status={"value": ACTIVE_STATUS, "owner": ctx.group_ops_id},
             role={"value": vlan["role"], "source": ctx.account_pop_id, "is_protected": True, "owner": ctx.group_eng_id},
         )
-        vlan_batch.add(task=obj.save, node=obj)
+        vlan_batch.add(task=save_with_retry, node=obj, obj=obj)
         state.vlans[vlan_name] = obj
 
     async for _ in vlan_batch.execute():
@@ -424,7 +425,7 @@ async def _create_devices(ctx: _SiteContext, state: _SiteState, devices: list[di
             tags=[ctx.tags[tag_name] for tag_name in device["tags"]],
             platform={"id": platform_id, "source": ctx.account_pop_id, "is_protected": True},
         )
-        device_batch.add(task=obj.save, node=obj)
+        device_batch.add(task=save_with_retry, node=obj, obj=obj)
         state.device_nodes[device_name] = obj
 
     async for _ in device_batch.execute():
@@ -503,7 +504,7 @@ async def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: di
             status={"value": ACTIVE_STATUS, "owner": ctx.group_ops_id},
             role={"value": intf_role, "source": ctx.account_pop_id},
         )
-        l3_interface_batch.add(task=intf.save, node=intf)
+        l3_interface_batch.add(task=save_with_retry, node=intf, obj=intf)
         state.l3_interfaces[f"{device_name}-l3-{intf_idx}"] = intf
 
         interface_identifier = f"{intf.name.value.lower()}.{device_name}"
@@ -541,7 +542,7 @@ async def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: di
                 address={"value": address, "source": ctx.account_pop_id},
                 description={"value": interface_identifier, "source": ctx.account_pop_id},
             )
-            address_batch.add(task=ip.save, node=ip, allow_upsert=True)
+            address_batch.add(task=save_with_retry, node=ip, obj=ip, allow_upsert=True)
 
         # Create Circuit and BGP session for upstream and peering
         if intf_role in {"upstream", "peering"}:
@@ -561,7 +562,7 @@ async def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: di
                     kind="IpamIPAddress",
                     address=peer_address,
                 )
-                address_batch.add(task=peer_ip.save, node=peer_ip, allow_upsert=True)
+                address_batch.add(task=save_with_retry, node=peer_ip, obj=peer_ip, allow_upsert=True)
                 session_description = f"external-{ip.address.value.ip}-{peer_ip.address.value.ip}"
                 bgp_session = await ctx.client.create(
                     branch=BRANCH,
@@ -577,7 +578,7 @@ async def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: di
                     status=ACTIVE_STATUS,
                     role=intf_role,
                 )
-                bgp_session_batch.add(task=bgp_session.save, node=bgp_session)
+                bgp_session_batch.add(task=save_with_retry, node=bgp_session, obj=bgp_session)
 
             elif intf_role == "peering":
                 # SCRIPT BUG preserved (lines 1656-1657): only provider_NAME is reassigned;
@@ -595,7 +596,7 @@ async def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: di
                 circuit_data["bgp_sessions"] = [bgp_session]
 
             circuit = await ctx.client.create(branch=BRANCH, kind="InfraCircuit", data=circuit_data)
-            circuit_batch.add(task=circuit.save, node=circuit)
+            circuit_batch.add(task=save_with_retry, node=circuit, obj=circuit)
 
             endpoint1 = await ctx.client.create(
                 branch=BRANCH,
@@ -604,7 +605,7 @@ async def _create_l3_interfaces(ctx: _SiteContext, state: _SiteState, device: di
                 circuit=circuit,
                 connected_endpoint=intf,
             )
-            endpoint_batch.add(task=endpoint1.save, node=endpoint1)
+            endpoint_batch.add(task=save_with_retry, node=endpoint1, obj=endpoint1)
 
             intf.description.value = f"Connected to {provider_name} via {circuit_id}"
 
@@ -653,7 +654,7 @@ async def _create_l2_and_lag_interfaces(ctx: _SiteContext, state: _SiteState, de
             l2_mode=l2_mode,
             untagged_vlan=untagged_vlan,
         )
-        l2_interface_batch.add(task=intf.save, node=intf)
+        l2_interface_batch.add(task=save_with_retry, node=intf, obj=intf)
         state.l2_interfaces[f"{device_name}-l2-{intf_name}"] = intf
 
     async for _ in l2_interface_batch.execute():
@@ -771,8 +772,8 @@ def _find_and_connect_interfaces(  # noqa: PLR0913, PLR0917  (mirrors the script
 
     # One batch task saves both sides SEQUENTIALLY: saved concurrently (batch
     # concurrency > 1), each side's transaction misses the other's edge and the
-    # node ends up with 2 peers, failing the card-one validation. Harmless at
-    # this loader's concurrency of 1, but mirrors the script's fixed semantics.
+    # node ends up with 2 peers, failing the card-one validation. Mirrors the
+    # script's semantics (models/infrastructure_edge.py).
     batch.add(
         task=_save_connected_pair,
         node=first_interface,
@@ -782,8 +783,8 @@ def _find_and_connect_interfaces(  # noqa: PLR0913, PLR0917  (mirrors the script
 
 
 async def _save_connected_pair(first_interface: InfrahubNode, second_interface: InfrahubNode) -> None:
-    await first_interface.save()
-    await second_interface.save()
+    await save_with_retry(first_interface)
+    await save_with_retry(second_interface)
 
 
 async def _connect_site_cabling(ctx: _SiteContext, state: _SiteState) -> None:
