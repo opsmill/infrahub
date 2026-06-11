@@ -828,6 +828,9 @@ jobs:
       - name: "Run unit tests"
         working-directory: ./frontend/app
         run: "pnpm test:coverage"
+      - name: "Run unit tests (@infrahub/graph)"
+        working-directory: ./frontend/packages/graph
+        run: "pnpm test"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true

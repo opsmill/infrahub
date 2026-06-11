@@ -2,6 +2,7 @@ packages:
   - app
   - packages/schema-visualizer
   - packages/ui
+  - packages/graph
 
 # We disallow this to avoid the security risk of running third-party code on install.
 allowBuilds:
