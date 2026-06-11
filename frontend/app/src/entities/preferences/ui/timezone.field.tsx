@@ -14,6 +14,8 @@ import {
 } from "@/shared/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
+const TIMEZONES = Intl.supportedValuesOf("timeZone");
+
 export interface TimezoneFieldProps {
   name: string;
   label: string;
@@ -26,15 +28,13 @@ export function TimezoneField({
   label,
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
 }: TimezoneFieldProps) {
-  const timezones = Intl.supportedValuesOf("timeZone");
+  const [open, setOpen] = useState(false);
 
   return (
     <FormField
       name={name}
       defaultValue={defaultValue}
       render={({ field }) => {
-        const [open, setOpen] = useState(false);
-
         const fieldData: FormAttributeValue = field.value;
         const currentValue = (fieldData?.value as string | undefined) ?? null;
 
@@ -44,13 +44,15 @@ export function TimezoneField({
 
             <Combobox open={open} onOpenChange={setOpen}>
               <FormInput>
-                <ComboboxTrigger>{currentValue}</ComboboxTrigger>
+                <ComboboxTrigger>
+                  {currentValue ?? <span className="text-gray-400">Select timezone</span>}
+                </ComboboxTrigger>
               </FormInput>
 
               <ComboboxContent>
                 <ComboboxList placeholder="Search timezone...">
                   <ComboboxEmpty>No timezone found.</ComboboxEmpty>
-                  {timezones.map((timezone) => (
+                  {TIMEZONES.map((timezone) => (
                     <ComboboxItem
                       key={timezone}
                       value={timezone}
