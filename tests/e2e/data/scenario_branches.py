@@ -82,6 +82,7 @@ Other deviations from the script:
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
@@ -286,8 +287,15 @@ async def data_scenario_branches(  # noqa: PLR0913, PLR0917  (each argument is a
         return ScenarioBranchesHandle.external()
 
     await _consume_dropped_scenario_pool_allocations(client=data_client)
-    await _branch_scenario_remove_colt(client=data_client, site_name=REMOVE_COLT_SITE)
-    await _branch_scenario_conflict_device(client=data_client, site_name=CONFLICT_DEVICE_SITE)
-    await _branch_scenario_conflict_platform(client=data_client)
+    # The three scenarios are independent: each creates its OWN branch off the
+    # (already final) main and only mutates that branch, so they run
+    # concurrently. The ballast consumption above must stay FIRST — pool
+    # next-free values are branch-agnostic and the scenarios' branch contents
+    # snapshot main at creation time.
+    await asyncio.gather(
+        _branch_scenario_remove_colt(client=data_client, site_name=REMOVE_COLT_SITE),
+        _branch_scenario_conflict_device(client=data_client, site_name=CONFLICT_DEVICE_SITE),
+        _branch_scenario_conflict_platform(client=data_client),
+    )
 
     return ScenarioBranchesHandle(branches=SCENARIO_BRANCHES)
