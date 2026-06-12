@@ -52,7 +52,7 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
     return [result async for _, result in batch.execute()]
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="schema-path-validate",
     task_run_name="Validate schema path {constraint_name} in {branch.name}",
     description="Validate if a given migration is compatible with the existing data",

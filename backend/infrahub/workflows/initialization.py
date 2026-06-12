@@ -57,7 +57,7 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     return f"{scheme}://{userinfo}{cache.address}:{cache.service_port}/{cache.database}{qs}"
 
 
-@task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)
 async def setup_worker_pools(client: PrefectClient) -> None:
     log = get_run_logger()
     for worker in WORKER_POOLS:
@@ -74,7 +74,7 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             log.warning(f"Work pool {worker.name} already present ")
 
 
-@task(name="task-manager-setup-deployments", task_run_name="Setup Deployments", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="task-manager-setup-deployments", task_run_name="Setup Deployments", cache_policy=NONE)
 async def setup_deployments(client: PrefectClient) -> None:
     log = get_run_logger()
     for workflow in get_workflows():
@@ -85,7 +85,7 @@ async def setup_deployments(client: PrefectClient) -> None:
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
 
-@task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)
 async def setup_blocks() -> None:
     log = get_run_logger()
 
@@ -123,11 +123,11 @@ async def setup_task_manager_identifiers() -> None:
             triggers=display_label_triggers,
             trigger_type=TriggerType.DISPLAY_LABEL_JINJA2,
             force_update=True,
-        )  # type: ignore[misc]
+        )
         hfid_triggers = await gather_trigger_hfid()
         await setup_triggers(
             client=client,
             triggers=hfid_triggers,
             trigger_type=TriggerType.HUMAN_FRIENDLY_ID,
             force_update=True,
-        )  # type: ignore[misc]
+        )

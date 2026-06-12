@@ -344,7 +344,7 @@ async def sync_remote_repositories() -> None:
                 log.info(exc.message)
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="git-branch-create",
     task_run_name="Create branch '{branch}' in repository {repository_name}",
     cache_policy=NONE,
@@ -386,7 +386,7 @@ async def git_branch_create(
         log.debug("Sent message to all workers to fetch the latest version of the repository (RefreshGitFetch)")
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="git-branch-delete",
     task_run_name="Delete branch '{branch}' in repository {repository_name}",
     cache_policy=NONE,

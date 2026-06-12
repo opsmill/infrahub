@@ -595,7 +595,7 @@ async def test_task_query_filter_node(
             ],
             "title": flow.name,
             "updated_at": flow.updated.isoformat(),
-            "start_time": None,
+            "start_time": flow.start_time.isoformat(),
             "workflow": "dummy-flow-broken",
         }
     }
