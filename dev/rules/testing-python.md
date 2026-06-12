@@ -48,7 +48,7 @@ Make `match` cover the whole stable message (anchor with `^...$` where practical
 
 ## GraphQL error assertions
 
-Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes. This applies to any exception assertion, not just GraphQL.
+Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes. The full-message-over-fragment preference applies to any exception assertion, not just GraphQL; with `pytest.raises` express it through an anchored `match` (above) rather than `==`.
 
 ## Test file placement
 
