@@ -191,10 +191,6 @@ services:
       INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_TESTING_INITIAL_AGENT_TOKEN}
       INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_TESTING_SECURITY_SECRET_KEY}
       PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
-      # Per-GraphQL-request delay (0 = off). Set to 1 to surface UI loading-state races,
-      # mirroring the TS e2e CI job. Toggled at runtime by InfrahubDockerCompose
-      # .set_server_response_delay AFTER data is loaded (a boot-time delay would slow the
-      # demo-data load); the value is read from the compose .env on (re)create.
       INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:
       # Tracing
       INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-false}
