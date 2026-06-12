@@ -1,4 +1,4 @@
-import { Button, Card, CardContent } from "@infrahub/ui";
+import { Button, Card, CardContent, CardHeader } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -46,8 +46,8 @@ export default function TabPreferences() {
   return (
     <main className="p-2">
       <Card className="m-auto w-full max-w-md">
+        <CardHeader>Preferences</CardHeader>
         <CardContent>
-          <h3 className="mb-1 font-semibold leading-6">Preferences</h3>
           <p className="mb-4 text-gray-600 text-sm">
             Personal overrides of the organisation defaults. Empty fields inherit the
             organisation-wide value.

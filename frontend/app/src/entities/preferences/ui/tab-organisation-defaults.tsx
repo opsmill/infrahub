@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@infrahub/ui";
+import { Card, CardContent, CardHeader } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -38,8 +38,8 @@ export default function TabOrganisationDefaults() {
   return (
     <main className="p-2">
       <Card className="m-auto w-full max-w-md">
+        <CardHeader>Organisation defaults</CardHeader>
         <CardContent>
-          <h3 className="mb-1 font-semibold leading-6">Organisation defaults</h3>
           <p className="mb-4 text-gray-600 text-sm">
             Defaults applied to every user unless they set a personal override.
           </p>
