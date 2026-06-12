@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@infrahub/ui";
+import { Card, CardContent, CardHeader } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
@@ -37,8 +37,8 @@ export default function TabUpdatePassword() {
     return (
       <main className="p-2">
         <Card className="m-auto w-full max-w-md">
+          <CardHeader>Password managed externally</CardHeader>
           <CardContent>
-            <h3 className="mb-2 font-semibold leading-6">Password managed externally</h3>
             <p className="text-gray-600 text-sm">
               This account authenticates through an external directory. Change your password in the
               directory provider; local password updates are not accepted.
@@ -52,9 +52,8 @@ export default function TabUpdatePassword() {
   return (
     <main className="p-2">
       <Card className="m-auto w-full max-w-md">
+        <CardHeader>Update your password</CardHeader>
         <CardContent>
-          <h3 className="mb-4 font-semibold leading-6">Update your password</h3>
-
           <Form
             onSubmit={async (formData) => {
               const data: UpdatePasswordFormData = {
