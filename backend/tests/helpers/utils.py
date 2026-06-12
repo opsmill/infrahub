@@ -27,6 +27,13 @@ def start_neo4j_container(neo4j_image: str, extra_env: dict[str, str] | None = N
         .with_env("NEO4J_ACCEPT_LICENSE_AGREEMENT", "yes")
         .with_env("NEO4J_dbms_security_procedures_unrestricted", "apoc.*")
         .with_env("NEO4J_dbms_security_auth__minimum__password__length", "4")
+        # Tests churn data on every test, which trips Neo4j's statistics-divergence
+        # replanning and recompiles the same (complex, generated) Cypher repeatedly.
+        # On the tiny, ephemeral test dataset adaptive replanning buys nothing, so
+        # pin plans for the session. This is test-only; production must keep the
+        # defaults so plans adapt as data grows.
+        .with_env("NEO4J_dbms_cypher_statistics__divergence__threshold", "1.0")
+        .with_env("NEO4J_dbms_cypher_min__replan__interval", "1h")
         .with_exposed_ports(PORT_BOLT_NEO4J)
         .with_exposed_ports(PORT_HTTP_NEO4J)
     )
