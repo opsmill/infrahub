@@ -1203,10 +1203,8 @@ jobs:
         if: needs.files-changed.outputs.e2e_tests == 'true'
         run: pnpm exec playwright test artifact
 
-      # TEMPORARY: delay disabled to compare E2E runtime without it; restore the
-      # `needs.files-changed.outputs.e2e_tests == 'true'` condition before merging.
       - name: Add response delay if required
-        if: false
+        if: needs.files-changed.outputs.e2e_tests == 'true'
         run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && uv run invoke dev.start
         env:
           INFRAHUB_MISC_RESPONSE_DELAY: 1
