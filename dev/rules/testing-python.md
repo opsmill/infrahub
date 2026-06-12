@@ -5,6 +5,8 @@ paths:
   - "backend/tests/functional/**/*.py"
   - "backend/tests/integration/**/*.py"
   - "backend/tests/integration_docker/**/*.py"
+  - "python_testcontainers/tests/**/*.py"
+
 ---
 
 # Python Testing Rules
