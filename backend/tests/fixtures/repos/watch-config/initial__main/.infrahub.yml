@@ -1,0 +1,13 @@
+---
+queries:
+  - name: report_query
+    file_path: "queries/report.gql"
+
+jinja2_transforms:
+  - name: watched_report
+    description: "Transform declaring extra dependencies through watch.files"
+    query: "report_query"
+    template_path: "templates/report.j2"
+    watch:
+      files:
+        - "templates/partials/"
