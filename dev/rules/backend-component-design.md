@@ -1,6 +1,7 @@
 ---
 paths:
   - "backend/infrahub/**/*.py"
+  - "python_testcontainers/infrahub_testcontainers/**/*.py"
 ---
 
 # Backend Component Design (SOLID / DI)
