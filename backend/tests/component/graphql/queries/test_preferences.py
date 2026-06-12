@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.auth.session import AccountSession
+from infrahub.auth.session import AccountSession, AnonymousSession
 from infrahub.auth.types import AuthType
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -196,3 +196,24 @@ async def test_effective_preferences_rejected_without_account_session(
 
     assert result.errors
     assert any("account_session is mandatory" in str(error) for error in result.errors)
+
+
+async def test_effective_preferences_rejected_for_anonymous_session(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    default_permission_backend: None,
+) -> None:
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=AnonymousSession())
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=QUERY_EFFECTIVE_PREFERENCES,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert any("requires an authenticated account" in str(error) for error in result.errors)

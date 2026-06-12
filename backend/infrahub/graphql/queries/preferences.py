@@ -6,6 +6,7 @@ from graphene import Field, ObjectType, String
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.exceptions import PermissionDeniedError
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -35,6 +36,12 @@ async def resolve_effective_preferences(
 
     if not graphql_context.account_session:
         raise ValueError("An account_session is mandatory to execute this query")
+
+    # Account-scoped view: reject anonymous sessions, whose account_id is empty/untrusted.
+    # Unlike resolve_account_tokens this stays open to API-token sessions (their account_id is
+    # trusted); the JWT-only guard there exists to keep token management off API tokens.
+    if not graphql_context.account_session.authenticated:
+        raise PermissionDeniedError("This operation requires an authenticated account")
 
     db = graphql_context.db
     branch = graphql_context.branch
