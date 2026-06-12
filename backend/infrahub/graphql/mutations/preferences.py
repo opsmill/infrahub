@@ -152,9 +152,15 @@ class InfrahubUserPreferenceMutation(InfrahubMutation):
 
         account_data = data.get("account")
         if account_data is not None:
-            # Only an id peer spec is resolvable here; other specs (hfid) are rejected later
-            # by _validate_account_input for non-admin callers.
             target_account_id = account_data.get("id")
+            account_hfid = account_data.get("hfid")
+            if target_account_id is None and account_hfid is not None:
+                # Resolve an hfid peer spec to its id so admin upserts stay idempotent; non-admin
+                # callers are rejected later by _validate_account_input regardless.
+                account_node = await NodeManager.get_one_by_hfid(
+                    db=db, hfid=list(account_hfid), kind=InfrahubKind.GENERICACCOUNT, branch=branch
+                )
+                target_account_id = account_node.id if account_node else None
         elif graphql_context.account_session:
             target_account_id = graphql_context.account_session.account_id
         else:

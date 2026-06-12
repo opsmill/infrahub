@@ -353,6 +353,9 @@ class TestUserPreferenceOwnerScoping:
         assert result.errors
         assert any("preferences of another account" in str(error) for error in result.errors)
 
+        unchanged = await NodeManager.get_one(db=db, id=other_row.id)
+        assert unchanged is not None
+
     async def test_admin_can_write_any_row(
         self,
         db: InfrahubDatabase,
@@ -382,6 +385,35 @@ class TestUserPreferenceOwnerScoping:
 
         updated = await NodeManager.get_one(db=db, id=row.id)
         assert updated.date_format.value == "relative"
+
+    async def test_admin_upsert_account_by_hfid_is_idempotent(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: None,
+        default_permission_backend: None,
+        second_account: Node,
+        session_admin: AccountSession,
+    ) -> None:
+        default_branch.update_schema_hash()
+        for timezone in ("UTC", "Europe/Paris"):
+            result = await _run_mutation(
+                db=db,
+                branch=default_branch,
+                account_session=session_admin,
+                query=USER_PREFERENCE_UPSERT_ACCOUNT_BY_HFID,
+                variables={"account_hfid": second_account.name.value, "timezone": timezone},
+            )
+
+            assert result.errors is None, result.errors
+            assert result.data
+            assert result.data["CoreUserPreferenceUpsert"]["ok"] is True
+
+        rows = await NodeManager.query(
+            db=db, schema=InfrahubKind.USERPREFERENCE, filters={"account__ids": [second_account.id]}
+        )
+        assert len(rows) == 1
+        assert rows[0].timezone.value == "Europe/Paris"
 
 
 class TestGlobalPreferenceSingletonGuard:
