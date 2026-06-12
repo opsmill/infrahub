@@ -632,7 +632,7 @@ class SecurityOIDCBaseSettings(BaseSettings):
     def _validate_groups_claim(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("groups_claim must not be empty or whitespace-only")
-        return value
+        return value.strip()
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -702,7 +702,7 @@ class SecurityOAuth2BaseSettings(BaseSettings):
     def _validate_groups_claim(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("groups_claim must not be empty or whitespace-only")
-        return value
+        return value.strip()
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):

@@ -190,7 +190,7 @@ importers:
         version: 1.8.0(graphql@16.14.1)(monaco-editor@0.52.2)(prettier@3.8.3)
       nuqs:
         specifier: ^2.8.9
-        version: 2.8.9(react-router@7.16.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
+        version: 2.8.9(react-router@7.17.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       openapi-fetch:
         specifier: ^0.17.0
         version: 0.17.0
@@ -225,8 +225,8 @@ importers:
         specifier: ^8.3.0
         version: 8.3.0(react@19.2.7)
       react-router:
-        specifier: ^7.16.0
-        version: 7.16.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: ^7.17.0
+        version: 7.17.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-scan:
         specifier: ^0.5.7
         version: 0.5.7(esbuild@0.28.0)(eslint@10.4.1(jiti@2.7.0))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -6049,6 +6049,7 @@ packages:
   oxc-resolver@11.20.0:
     resolution: {integrity: sha512-CblytBiV/a/ZXY34dsVU2NxhIOxMXst8CvDCtyBelVITgd7PLrKzbEbA6oKLdPjvDKDzCiW48qzmzZ+mYaqn+g==}
 
+<<<<<<< HEAD:frontend/pnpm-lock.yaml
   oxfmt@0.47.0:
     resolution: {integrity: sha512-OFbkbzxKCpooQEnRmpTDnuwTX8KHXzZTQ4Df/hz85fpS67Pl+lxPEFvUtin56HIIS0B1k4X8oIzTXRZPufA2CA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -6067,6 +6068,8 @@ packages:
       vite-plus:
         optional: true
 
+=======
+>>>>>>> release-1.10:frontend/app/pnpm-lock.yaml
   oxlint-plugin-react-doctor@0.5.1:
     resolution: {integrity: sha512-gGx0NCPA7s8z8UYCulfhX4CiXwBI4QdQve7zaVXglakWzzdgcXMZv6pedmbKUtefegzlfzkKDcYO4lOg8vqnJw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -6275,6 +6278,7 @@ packages:
     peerDependencies:
       react: '>=16.14.0'
 
+<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-docgen-typescript@2.4.0:
     resolution: {integrity: sha512-ZtAp5XTO5HRzQctjPU0ybY0RRCQO19X/8fxn3w7y2VVTUbGHDKULPTL4ky3vB05euSgG5NpALhEhDPvQ56wvXg==}
     peerDependencies:
@@ -6284,6 +6288,8 @@ packages:
     resolution: {integrity: sha512-aEZ9qP+/M+58x2qgfSFEWH1BxLyHe5+qkLNJOZQb5iGS017jpbRnoKhNRrXPeA6RfBrZO5wZrT9DMC1UqE1f1w==}
     engines: {node: ^20.9.0 || >=22}
 
+=======
+>>>>>>> release-1.10:frontend/app/pnpm-lock.yaml
   react-doctor@0.5.1:
     resolution: {integrity: sha512-2LSJ/iYtUugr9xj01XTyU2tRtfjmGjiwyDotrnxL0raP+q4Uhp10VaiY7BqfDhBpj4HtCsC+//G1xVupTTBDoA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -6369,8 +6375,8 @@ packages:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  react-router@7.16.0:
-    resolution: {integrity: sha512-wArC8lVyJb3+jM9OpDyW6hLCizACWkvQR/sSGqSs+o5uEXEtGlqdZ4v8hENR3Jad6i+LRkK93q/+bQAcvl6V1A==}
+  react-router@7.17.0:
+    resolution: {integrity: sha512-FDELK7rTMlCHO5+reyXsPlmfr7N1F91lPHsWYfMEGQm/KQ+F4JFM8jGoeQDmDvdTs93Fw9aSilH+uKRb4/jXvQ==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       react: '>=18'
@@ -12579,12 +12585,12 @@ snapshots:
 
   nullthrows@1.1.1: {}
 
-  nuqs@2.8.9(react-router@7.16.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7):
+  nuqs@2.8.9(react-router@7.17.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7):
     dependencies:
       '@standard-schema/spec': 1.0.0
       react: 19.2.7
     optionalDependencies:
-      react-router: 7.16.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react-router: 7.17.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
 
   nypm@0.6.6:
     dependencies:
@@ -12747,6 +12753,7 @@ snapshots:
       '@oxc-resolver/binding-win32-arm64-msvc': 11.20.0
       '@oxc-resolver/binding-win32-x64-msvc': 11.20.0
 
+<<<<<<< HEAD:frontend/pnpm-lock.yaml
   oxfmt@0.47.0:
     dependencies:
       tinypool: 2.1.0
@@ -12795,6 +12802,8 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.54.0
       '@oxfmt/binding-win32-x64-msvc': 0.54.0
 
+=======
+>>>>>>> release-1.10:frontend/app/pnpm-lock.yaml
   oxlint-plugin-react-doctor@0.5.1:
     dependencies:
       '@typescript-eslint/types': 8.60.1
@@ -13022,6 +13031,7 @@ snapshots:
       shallow-equal: 3.1.0
       warning: 4.0.3
 
+<<<<<<< HEAD:frontend/pnpm-lock.yaml
   react-docgen-typescript@2.4.0(typescript@5.9.3):
     dependencies:
       typescript: 5.9.3
@@ -13045,6 +13055,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+=======
+>>>>>>> release-1.10:frontend/app/pnpm-lock.yaml
   react-doctor@0.5.1(eslint@10.4.1(jiti@2.7.0)):
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -13058,7 +13070,11 @@ snapshots:
       eslint-plugin-react-hooks: 7.1.1(eslint@10.4.1(jiti@2.7.0))
       jiti: 2.7.0
       magicast: 0.5.3
+<<<<<<< HEAD:frontend/pnpm-lock.yaml
       oxlint: 1.69.0
+=======
+      oxlint: 1.68.0
+>>>>>>> release-1.10:frontend/app/pnpm-lock.yaml
       oxlint-plugin-react-doctor: 0.5.1
       prompts: 2.4.2
       typescript: 6.0.3
@@ -13154,7 +13170,7 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
-  react-router@7.16.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  react-router@7.17.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       cookie: 1.1.1
       react: 19.2.7

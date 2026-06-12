@@ -213,6 +213,7 @@ async def test_message_sent(bus_simulator: BusSimulator, ...):
 
 - `MemoryCache` - In-memory cache for fast tests
 - `FakeLogger` - Captures log output for assertions
+- `RecordingLockRegistry` / `LockTimeline` - Records lock acquire/release order so tests can assert what runs inside versus outside a critical section
 
 ## Supporting Directories
 
