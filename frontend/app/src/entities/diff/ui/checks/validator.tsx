@@ -130,7 +130,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
 
       {artifactDefinition && (
-        <Tooltip content={`Open Artifact Definition: ${artifactDefinition.display_label}`} enabled>
+        <Tooltip message={`Open Artifact Definition: ${artifactDefinition.display_label}`}>
           <Link
             to={getObjectDetailsUrl("CoreArtifactDefinition", artifactDefinition.id)}
             onClick={(e) => e.stopPropagation()}
