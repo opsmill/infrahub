@@ -44,9 +44,11 @@ with pytest.raises(SomeError, match=r"expected message"):
     call_function()
 ```
 
+Make `match` cover the whole stable message (anchor with `^...$` where practical), not a short fragment of it. A fragment passes even when the rest of the wording regresses. Match only a substring when the message has a genuinely variable part (an id, a path, a count) that you cannot pin down.
+
 ## GraphQL error assertions
 
-Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes.
+Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes. This applies to any exception assertion, not just GraphQL.
 
 ## Test file placement
 
