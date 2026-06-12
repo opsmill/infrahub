@@ -19,6 +19,10 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.utils import get_models_dir
+from tests.helpers.constants import (
+    PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
+    PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+)
 from tests.helpers.file_repo import FileRepo
 
 
@@ -117,6 +121,8 @@ def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
 @pytest.fixture(scope="session", autouse=True)
 def prefect_test_fixture() -> Generator:
     os.environ["PREFECT_SERVER_API_MAX_PARAMETER_SIZE"] = "0"
+    os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
+    os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
     with prefect_test_harness(server_startup_timeout=180):
         yield

@@ -70,6 +70,10 @@ from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
 from tests.conftest import TestHelper
+from tests.helpers.constants import (
+    PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
+    PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+)
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
@@ -131,6 +135,9 @@ def prefect_test_fixture() -> Generator[None, None, None]:
                 **get_current_settings().to_environment_variables(exclude_unset=True),
             },
         )
+
+    os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
+    os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
     with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
         with prefect_test_harness(server_startup_timeout=60):

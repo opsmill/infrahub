@@ -6,7 +6,13 @@ import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
-from tests.helpers.constants import INFRAHUB_USE_TEST_CONTAINERS, PORT_BOLT_NEO4J, PORT_HTTP_NEO4J, PORT_PREFECT
+from tests.helpers.constants import (
+    INFRAHUB_USE_TEST_CONTAINERS,
+    PORT_BOLT_NEO4J,
+    PORT_HTTP_NEO4J,
+    PORT_PREFECT,
+    PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+)
 
 
 def get_exposed_port(container: DockerContainer, port: int) -> int:
@@ -54,6 +60,8 @@ def start_prefect_server_container(
         .with_env(key="PREFECT_SERVER_SERVICES_EVENT_PERSISTER_FLUSH_INTERVAL", value="1")
         .with_env(key="PREFECT_SERVER_API_MAX_PARAMETER_SIZE", value="0")
     )
+    for key, value in PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS.items():
+        container = container.with_env(key=key, value=value)
 
     def cleanup() -> None:
         container.stop()
