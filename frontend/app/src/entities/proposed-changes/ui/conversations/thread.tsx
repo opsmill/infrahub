@@ -1,9 +1,8 @@
-import { Button, Card, Checkbox } from "@infrahub/ui";
+import { Button, Card, Checkbox, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
@@ -152,7 +151,7 @@ export const Thread = (props: tThread) => {
   );
 
   const MarkAsResolvedWithTooltip = (
-    <Tooltip message={"The resolution will be done after submitting the comment"}>
+    <Tooltip message="The resolution will be done after submitting the comment">
       {MarkAsResolved}
     </Tooltip>
   );

@@ -52,7 +52,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
   };
 
   return (
-    <Row className="justify-end p-2">
+    <Row data-testid="conflict-resolution" className="justify-end p-2">
       {isPending && <Spinner />}
 
       <span className="text-xs">Choose the branch to resolve the conflict:</span>

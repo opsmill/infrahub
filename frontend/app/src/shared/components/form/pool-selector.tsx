@@ -1,15 +1,15 @@
 import { Icon } from "@iconify-icon/react";
+import { Tooltip } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
-import { Button as AriaButton } from "react-aria-components";
+import { Button as AriaButton, Focusable } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { ComboboxContent, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Popover, PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -115,13 +115,15 @@ export function PoolSelector({
 
 export function PoolPopoverTrigger({ className, ...props }: PopoverTriggerProps) {
   return (
-    <Tooltip content="select a pool" enabled>
-      <PopoverTrigger
-        className={classNames(inputStyle, "size-10 shrink-0 justify-center", className)}
-        {...props}
-      >
-        <Icon icon="mdi:view-grid-outline" className="text-gray-500" />
-      </PopoverTrigger>
+    <Tooltip message="select a pool">
+      <Focusable>
+        <PopoverTrigger
+          className={classNames(inputStyle, "size-10 shrink-0 justify-center", className)}
+          {...props}
+        >
+          <Icon icon="mdi:view-grid-outline" className="text-gray-500" />
+        </PopoverTrigger>
+      </Focusable>
     </Tooltip>
   );
 }

@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import { Checkbox } from "@infrahub/ui";
+import { Checkbox, Tooltip } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
+import { Focusable } from "react-aria-components";
 import type { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
 
@@ -17,7 +18,6 @@ import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormF
 import { Badge } from "@/shared/components/ui/badge";
 import { FormLabel } from "@/shared/components/ui/form";
 import type { LabelProps } from "@/shared/components/ui/label";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -64,8 +64,7 @@ export const LabelFormField = ({
 const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
   return (
     <Tooltip
-      enabled
-      content={
+      message={
         <div className="max-w-60" data-testid="source-profile-tooltip">
           <p>This value is set by a profile:</p>
           <Link
@@ -78,11 +77,11 @@ const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
         </div>
       }
     >
-      <button type="button" className="ml-auto" data-testid="source-profile-badge">
-        <Badge variant="green">
+      <Focusable>
+        <Badge variant="green" className="ml-auto" data-testid="source-profile-badge">
           <Icon icon="mdi:shape-plus-outline" className="mr-1" /> {source?.label}
         </Badge>
-      </button>
+      </Focusable>
     </Tooltip>
   );
 };
@@ -90,8 +89,7 @@ const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
 const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
   return (
     <Tooltip
-      enabled
-      content={
+      message={
         <div className="max-w-60">
           <p>This value is allocated from the pool:</p>
           <Link
@@ -104,11 +102,11 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
         </div>
       }
     >
-      <button type="button" className="ml-auto" data-testid="source-pool-badge">
-        <Badge variant="purple">
+      <Focusable>
+        <Badge variant="purple" className="ml-auto" data-testid="source-pool-badge">
           <Icon icon="mdi:view-grid-outline" className="mr-1" /> {source?.label}
         </Badge>
-      </button>
+      </Focusable>
     </Tooltip>
   );
 };
@@ -116,8 +114,7 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
 const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
   return (
     <Tooltip
-      enabled
-      content={
+      message={
         <div className="max-w-60">
           <p>This value is from the following template:</p>
           <Link
@@ -130,11 +127,11 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
         </div>
       }
     >
-      <button type="button" className="ml-auto" data-testid="source-template-badge">
-        <Badge variant="blue">
+      <Focusable>
+        <Badge variant="blue" className="ml-auto" data-testid="source-template-badge">
           <FileBoxIcon className="mr-1 size-3" /> {source?.label}
         </Badge>
-      </button>
+      </Focusable>
     </Tooltip>
   );
 };

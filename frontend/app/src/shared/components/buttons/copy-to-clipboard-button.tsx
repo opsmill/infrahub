@@ -1,8 +1,7 @@
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { CopyCheckIcon, CopyIcon } from "lucide-react";
 import type { ButtonProps as AriaButtonProps } from "react-aria-components";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 interface CopyToClipboardProps extends Omit<AriaButtonProps, "children" | "onPress"> {
