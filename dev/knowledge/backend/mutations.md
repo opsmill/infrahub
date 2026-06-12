@@ -82,7 +82,7 @@ mutate_upsert()
             -> handle file idempotency (checksum comparison)
 ```
 
-HFIDs and default_filters are only derived from single-**attribute** uniqueness constraints (`_derive_human_friendly_id` in `schema_branch.py`). A kind whose only uniqueness constraint is a relationship path (e.g. `CoreUserPreference` with `["account"]`) derives neither, so the identification list above comes up empty for id-less payloads: the upsert always takes the create path and a second call fails on the uniqueness violation instead of updating. Such kinds need a `mutate_upsert` override that resolves the existing row explicitly -- see `_resolve_existing_node` in `backend/infrahub/graphql/mutations/preferences.py`.
+HFIDs are only derived from single-**attribute** uniqueness constraints (`_derive_human_friendly_id` in `schema_branch.py`); `default_filter` is a static schema field, not derived. A kind whose only uniqueness constraint is a relationship path and which declares no `default_filter` (e.g. `CoreUserPreference` with `["account"]`) therefore has neither, so the identification list above comes up empty for id-less payloads: the upsert always takes the create path and a second call fails on the uniqueness violation instead of updating. Such kinds need a `mutate_upsert` override that resolves the existing row explicitly -- see `_resolve_existing_node` in `backend/infrahub/graphql/mutations/preferences.py`.
 
 ## Kind-Specific Mutation Overrides
 
