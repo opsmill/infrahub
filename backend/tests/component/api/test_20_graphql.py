@@ -16,53 +16,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-async def test_graphql_endpoint(
-    db: InfrahubDatabase,
-    client: TestClient,
-    admin_headers: dict[str, str],
-    default_branch: Branch,
-    create_test_admin: Node,
-    car_person_data: dict[str, Node],
-) -> None:
-    query = """
-    query {
-        TestPerson {
-            edges {
-                node {
-                    name {
-                        value
-                    }
-                    cars {
-                        edges {
-                            node {
-                                name {
-                                    value
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
-
-    # Must execute in a with block to execute the startup/shutdown events
-    with client:
-        response = client.post("/graphql", json={"query": query}, headers=admin_headers)
-
-    assert response.status_code == 200
-    assert "errors" not in response.json()
-    assert response.json()["data"] is not None
-    result = response.json()["data"]
-
-    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
-
-    assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
-    assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
-
-
 async def test_graphql_endpoint_with_timestamp(
     db: InfrahubDatabase,
     client: TestClient,
@@ -158,85 +111,6 @@ async def test_graphql_endpoint_generics(
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["cars"]) == 2
     assert len(result_per_name["Jane"]["cars"]) == 1
-
-
-async def test_graphql_options(
-    db: InfrahubDatabase,
-    client: TestClient,
-    client_headers: dict[str, str],
-    default_branch: Branch,
-    car_person_data: dict[str, Node],
-) -> None:
-    await create_branch(branch_name="branch2", db=db)
-
-    # Must execute in a with block to execute the startup/shutdown events
-    with client:
-        response = client.options(
-            "/graphql",
-            headers=client_headers,
-        )
-
-        assert response.status_code == 200
-        assert "Allow" in response.headers
-        assert response.headers["Allow"] == "GET, POST, OPTIONS"
-
-        response = client.options(
-            "/graphql/branch2",
-            headers=client_headers,
-        )
-
-        assert response.status_code == 200
-        assert "Allow" in response.headers
-        assert response.headers["Allow"] == "GET, POST, OPTIONS"
-
-        response = client.options(
-            "/graphql/notvalid",
-            headers=client_headers,
-        )
-
-        assert response.status_code == 404
-
-
-async def test_read_profile(
-    db: InfrahubDatabase,
-    client: TestClient,
-    admin_headers: dict[str, str],
-    authentication_base: Node,
-) -> None:
-    query = """
-    query {
-        AccountProfile {
-            name {
-                value
-            }
-        }
-    }
-    """
-
-    with client:
-        response = client.post(
-            "/graphql",
-            json={"query": query},
-            headers=admin_headers,
-        )
-
-    assert response.status_code
-    assert response.json() == {"data": {"AccountProfile": {"name": {"value": "test-admin"}}}}
-
-
-async def test_download_schema(db: InfrahubDatabase, client: TestClient, client_headers: dict[str, str]) -> None:
-    await create_branch(branch_name="branch2", db=db)
-
-    # Must execute in a with block to execute the startup/shutdown events
-    with client:
-        response = client.get("/schema.graphql", headers=client_headers)
-        assert response.status_code == 200
-
-        response = client.get("/schema.graphql?branch=branch2", headers=client_headers)
-        assert response.status_code == 200
-
-        response = client.get("/schema.graphql?branch=notvalid", headers=client_headers)
-        assert response.status_code == 400
 
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])

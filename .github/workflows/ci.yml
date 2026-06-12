@@ -518,11 +518,20 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "graphql"
+          - "core-diff"
+          - "core-schema"
+          - "other"
     runs-on:
       group: huge-runners
-    timeout-minutes: 80
+    timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
+      PYTEST_XDIST_WORKER_COUNT: 2
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -545,15 +554,18 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Unit Tests"
-        run: "uv run invoke backend.test-component"
-      - name: "Coveralls : Unit Tests"
+      - name: "Validate component test shards"
+        if: matrix.shard == 'other'
+        run: "uv run invoke backend.validate-component-shards"
+      - name: "Component Tests (${{ matrix.shard }})"
+        run: "uv run invoke backend.test-component --shard ${{ matrix.shard }}"
+      - name: "Coveralls : Component Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-component
+          flag-name: backend-component-${{ matrix.shard }}
           parallel: true
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -1476,5 +1488,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
+          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
           parallel-finished: true
