@@ -56,3 +56,17 @@ def scan(context: Context) -> None:
     with context.cd(ESCAPED_REPO_PATH):
         base_cmd = "python utilities/scan.py"
         execute_command(context=context, command=base_cmd)
+
+
+@task(name="generate-sbom")
+def generate_sbom(context: Context, output: str = "Infrahub-SBOM.md") -> None:
+    """Generate a Markdown Software Bill of Materials for the full Infrahub stack.
+
+    Args:
+        context: Invoke context used to run commands.
+        output: Destination Markdown file path (use '-' to print to stdout).
+
+    """
+    with context.cd(ESCAPED_REPO_PATH):
+        base_cmd = f"python utilities/generate_sbom.py --output {output}"
+        execute_command(context=context, command=base_cmd)
