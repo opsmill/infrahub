@@ -1,0 +1,1 @@
+Proposed change action buttons (approve, reject, close, draft, merge) now surface the actual error message returned by the backend (e.g. "You cannot review your own proposed changes") instead of a generic "An error occurred" toast that masked it.

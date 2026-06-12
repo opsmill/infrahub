@@ -26,14 +26,8 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
       });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change closed!"} />);
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occurred while closing the propsoed change"}
-        />
-      );
-    },
+    // No onError: the GraphQL errorLink already surfaces the backend message.
+    // A generic toast here would mask it and double up the notification.
   });
 
   const handleAction = () => {

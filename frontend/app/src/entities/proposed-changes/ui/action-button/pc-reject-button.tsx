@@ -33,18 +33,9 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         />
       );
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={
-            hasRejected
-              ? "An error occurred while canceling the rejection"
-              : "An error occurred while rejecting proposed change"
-          }
-        />
-      );
-    },
+    // No onError: the GraphQL errorLink already surfaces the backend message
+    // (e.g. "You cannot review your own proposed changes"). A generic toast
+    // here would mask that and double up the notification.
   });
 
   const handleAction = () => {

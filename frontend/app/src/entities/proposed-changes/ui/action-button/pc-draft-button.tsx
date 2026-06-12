@@ -32,18 +32,8 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         />
       );
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={
-            isDraft
-              ? "An error occurred while removing draft status"
-              : "An error occurred while moving to draft"
-          }
-        />
-      );
-    },
+    // No onError: the GraphQL errorLink already surfaces the backend message.
+    // A generic toast here would mask it and double up the notification.
   });
 
   const handleAction = () => {

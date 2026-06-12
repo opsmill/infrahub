@@ -42,14 +42,8 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         clearBranchIfCurrent(sourceBranch);
       }
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occurred while merging proposed change"}
-        />
-      );
-    },
+    // No onError: the GraphQL errorLink already surfaces the backend message.
+    // A generic toast here would mask it and double up the notification.
   });
 
   const handleAction = () => {
