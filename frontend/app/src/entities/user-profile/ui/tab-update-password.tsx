@@ -88,7 +88,9 @@ export default function TabUpdatePassword() {
               }}
             />
 
-            <FormSubmit>Update password</FormSubmit>
+            <div className="flex items-center justify-end gap-2">
+              <FormSubmit>Update password</FormSubmit>
+            </div>
           </Form>
         </CardContent>
       </Card>
