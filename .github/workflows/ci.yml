@@ -489,6 +489,7 @@ jobs:
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
+      PYTEST_XDIST_WORKER_COUNT: 2
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
