@@ -116,8 +116,7 @@ def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
 
 @pytest.fixture(scope="session", autouse=True)
 def prefect_test_fixture() -> Generator:
-    # The ephemeral Prefect server inherits os.environ; disable the max parameter size
-    # check so flows dispatched with large parameters are not rejected with a 422.
     os.environ["PREFECT_SERVER_API_MAX_PARAMETER_SIZE"] = "0"
-    with prefect_test_harness(server_startup_timeout=60):
+
+    with prefect_test_harness(server_startup_timeout=180):
         yield
