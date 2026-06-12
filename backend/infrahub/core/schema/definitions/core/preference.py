@@ -23,8 +23,20 @@ core_global_preference = NodeSchema(
     display_label="{{ 'Global Preferences' }}",
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
-        Attr(name="date_format", kind="Text", optional=True, order_weight=1000),
-        Attr(name="timezone", kind="Text", optional=True, order_weight=1100),
+        Attr(
+            name="date_format",
+            kind="Text",
+            optional=True,
+            order_weight=1000,
+            description='date-fns pattern string (e.g. "dd/MM/yyyy", "yyyy-MM-dd HH:mm"). Literal "relative" renders relative time.',
+        ),
+        Attr(
+            name="timezone",
+            kind="Text",
+            optional=True,
+            order_weight=1100,
+            description="IANA timezone name (e.g. Europe/Paris, UTC). Unset means the browser-resolved timezone.",
+        ),
     ],
 )
 
@@ -40,8 +52,20 @@ core_user_preference = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["account"]],
     attributes=[
-        Attr(name="date_format", kind="Text", optional=True, order_weight=1000),
-        Attr(name="timezone", kind="Text", optional=True, order_weight=1100),
+        Attr(
+            name="date_format",
+            kind="Text",
+            optional=True,
+            order_weight=1000,
+            description="User override of the global date_format. Same semantics as CoreGlobalPreference.date_format.",
+        ),
+        Attr(
+            name="timezone",
+            kind="Text",
+            optional=True,
+            order_weight=1100,
+            description="User override of the global timezone. Same semantics as CoreGlobalPreference.timezone.",
+        ),
     ],
     relationships=[
         Rel(
