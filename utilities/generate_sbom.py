@@ -38,10 +38,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
     import tomli as tomllib  # type: ignore[no-redef]
 
-try:
-    import yaml
-except ModuleNotFoundError:  # pragma: no cover - pyyaml is a core dependency
-    yaml = None  # type: ignore[assignment]
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -214,7 +211,7 @@ def parse_docker_compose(repo_root: Path) -> list[ServiceImage]:
 
     """
     compose_path = repo_root / "docker-compose.yml"
-    if not compose_path.exists() or yaml is None:
+    if not compose_path.exists():
         return []
 
     with compose_path.open(encoding="utf-8") as handle:
@@ -295,7 +292,7 @@ def parse_npm_lock(manifest_dir: Path) -> dict[str, str]:
         return _parse_package_lock(package_lock)
 
     pnpm_lock = manifest_dir / "pnpm-lock.yaml"
-    if pnpm_lock.exists() and yaml is not None:
+    if pnpm_lock.exists():
         return _parse_pnpm_lock(pnpm_lock)
 
     return {}
