@@ -42,7 +42,13 @@ class TestWorker(TestWorkerInfrahubAsync):
         # Prepare the execution of the flow, pull the information about the deployment
         assert flow.deployment_id
         deployment = await prefect_client.read_deployment(deployment_id=flow.deployment_id)
-        flow_config = await prefect_worker._get_configuration(flow_run=flow, deployment=deployment)
+        flow_config = await prefect_worker.job_configuration.resolve_for_flow_run(
+            flow,
+            client=prefect_client,
+            work_pool=prefect_worker.work_pool,
+            worker_name=prefect_worker.name,
+            deployment=deployment,
+        )
 
         assert "PREFECT_WORKER_QUERY_SECONDS" in flow_config.env
         assert flow_config.env.get("PREFECT_WORKER_QUERY_SECONDS") == WORKER_QUERY_SECONDS

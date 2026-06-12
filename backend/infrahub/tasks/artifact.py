@@ -9,7 +9,7 @@ from infrahub.git.models import RequestArtifactGenerate
 from infrahub.workers.dependencies import get_client
 
 
-@task(name="define-artifact", task_run_name="Define Artifact", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="define-artifact", task_run_name="Define Artifact", cache_policy=NONE)
 async def define_artifact(model: CheckArtifactCreate | RequestArtifactGenerate) -> tuple[InfrahubNode, bool]:
     """Return an artifact together with a flag to indicate if the artifact is created now or already existed."""
     client = get_client()

@@ -104,6 +104,7 @@ def prefect_test_fixture() -> Generator[None, None, None]:
             "PREFECT_UI_ENABLED": "0",
             "PREFECT__SERVER_EPHEMERAL": "1",
             "PREFECT__SERVER_FINAL": "1",
+            "PREFECT_SERVER_API_MAX_PARAMETER_SIZE": "0",
         }
 
         return subprocess.Popen(

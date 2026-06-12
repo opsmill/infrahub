@@ -48,7 +48,13 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
     ) -> BaseWorkerResult:
         assert flow.deployment_id
         deployment = await client.read_deployment(deployment_id=flow.deployment_id)
-        flow_config = await worker._get_configuration(flow_run=flow, deployment=deployment)
+        flow_config = await worker.job_configuration.resolve_for_flow_run(
+            flow,
+            client=client,
+            work_pool=worker.work_pool,
+            worker_name=worker.name,
+            deployment=deployment,
+        )
 
         return await worker.run(
             flow_run=flow,

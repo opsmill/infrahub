@@ -47,11 +47,12 @@ def start_prefect_server_container(
 
     prefect_base = Path(Path(__file__).parent.resolve() / "./../../infrahub/prefect_server")
     container = (
-        DockerContainer(image="prefecthq/prefect:3.6.13-python3.13")
+        DockerContainer(image="prefecthq/prefect:3.7.4-python3.13")
         .with_command("uvicorn --host 0.0.0.0 --port 4200 --factory prefect_server.app:create_infrahub_prefect")
         .with_exposed_ports(PORT_PREFECT)
         .with_volume_mapping(host=str(prefect_base), container="/opt/prefect/prefect_server", mode="ro")
         .with_env(key="PREFECT_SERVER_SERVICES_EVENT_PERSISTER_FLUSH_INTERVAL", value="1")
+        .with_env(key="PREFECT_SERVER_API_MAX_PARAMETER_SIZE", value="0")
     )
 
     def cleanup() -> None:
