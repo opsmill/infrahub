@@ -128,7 +128,7 @@ export function handleGraphQLAuthError({
               "the schema, and run `pnpm generate:error-bindings`.",
             { message: graphQLError.message, extensions: graphQLError.extensions }
           );
-          notifyUser(`[catalogue gap] ${graphQLError.message}`, operation);
+          notifyUser(graphQLError.message, operation);
           return;
         }
         notifyUser(graphQLError.message, operation);
