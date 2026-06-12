@@ -326,7 +326,7 @@ async def update_registry(
         diff = tmp_schema.diff(branch_schema)
 
         if diff.all:
-            log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
+            log.info("Schema has diff, will need to be updated", branch=branch.name, diff=diff.all)
             async with db.start_transaction() as dbt:
                 await registry.schema.update_schema_branch(
                     schema=tmp_schema, db=dbt, branch=branch.name, limit=diff.all, update_db=True, user_id=account_id

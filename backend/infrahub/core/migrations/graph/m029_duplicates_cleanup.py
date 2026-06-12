@@ -579,7 +579,7 @@ class Migration029(ArbitraryMigration):
         more_nodes_to_process = True
         try:
             while more_nodes_to_process:
-                log.info(f"Running node duplicates cleanup query {limit=},{offset=}")
+                log.info("Running node duplicates cleanup query", limit=limit, offset=offset)
                 node_cleanup_query = await CleanUpDuplicatedUuidVertices.init(
                     db=db,
                     vertex_label="Node",
@@ -621,7 +621,7 @@ class Migration029(ArbitraryMigration):
             offset = 0
             more_nodes_to_process = True
             while more_nodes_to_process:
-                log.info(f"Running relationship duplicates cleanup query {limit=},{offset=}")
+                log.info("Running relationship duplicates cleanup query", limit=limit, offset=offset)
                 relationship_cleanup_query = await CleanUpDuplicatedUuidVertices.init(
                     db=db,
                     vertex_label="Relationship",

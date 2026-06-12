@@ -108,7 +108,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         if not new_branches and not updated_branches:
             return pending_imports
 
-        log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
+        log.debug("Branch sync diff detected", repository=self.name, new_branches=new_branches, updated_branches=updated_branches)
 
         # TODO need to handle properly the situation when a branch is not valid.
         if self.internal_status == RepositoryInternalStatus.ACTIVE.value:
@@ -309,7 +309,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             except BadName:
                 ...
         if not commit:
-            log.error(f"No object found for refs {refs} on repository {self.name}")
+            log.error("No object found for refs", repository=self.name, refs=refs)
             raise ValueError(f"Ref {self.ref} not found.")
 
         return str(commit)
@@ -345,7 +345,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             try:
                 latest_commit = git_repo.git.rev_parse(self.ref)
             except GitCommandError as err:
-                log.error(f"No object found for ref {self.ref} on repository {self.name}")
+                log.error("No object found for ref", repository=self.name, ref=self.ref)
                 raise ValueError(f"Ref {self.ref} not found.") from err
         latest_commit = str(git_repo.commit(latest_commit))
         synced_from_remote = await self.sync_from_remote(commit=latest_commit)

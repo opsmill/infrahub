@@ -61,7 +61,7 @@ async def login_user(
         )
         await service.event.send(event=event)
     except Exception as ex:
-        log.warning(f"Failed to emit login event for account_id={auth_result.account_id}: {str(ex)}")
+        log.warning("Failed to emit login event", account_id=auth_result.account_id, exc_info=ex)
     return auth_result.token
 
 
@@ -114,7 +114,7 @@ async def logout(
             )
             await service.event.send(event=event)
         except Exception as ex:
-            log.warning(f"Failed to emit logout event for account_id={user_session.account_id}: {str(ex)}")
+            log.warning("Failed to emit logout event", account_id=user_session.account_id, exc_info=ex)
 
     delete_response_cookies(response=response)
 

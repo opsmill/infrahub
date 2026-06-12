@@ -78,7 +78,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
         # Retrieve the ID of all ancestors
         for kind, node_identifiers in node_map.items():
-            log.info(f"Beginning hierarchy enrichment for {kind} node, num_nodes={len(node_identifiers)}...")
+            log.info("Beginning hierarchy enrichment", kind=kind, num_nodes=len(node_identifiers))
             hierarchy_schema = self.db.schema.get(
                 name=kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
             )
@@ -131,7 +131,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
         # Query the UUID of the parent
         for kind, node_identifiers in node_map.items():
-            log.info(f"Beginning parent enrichment for {kind} node, num_nodes={len(node_identifiers)}...")
+            log.info("Beginning parent enrichment", kind=kind, num_nodes=len(node_identifiers))
             schema_node = self.db.schema.get(name=kind, branch=enriched_diff_root.diff_branch_name, duplicate=False)
 
             parent_rel = next(rel for rel in schema_node.relationships if rel.kind == RelationshipKind.PARENT)

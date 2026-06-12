@@ -406,10 +406,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         # Check if the root, commits and branches directories are already present, create them if needed
         if self.directory_root.is_dir():
             shutil.rmtree(self.directory_root)
-            log.warning(f"Found an existing directory at {self.directory_root}, deleted it", repository=self.name)
+            log.warning("Found an existing directory, deleted it", repository=self.name, path=str(self.directory_root))
         elif self.directory_root.is_file():
             self.directory_root.unlink()
-            log.warning(f"Found an existing file at {self.directory_root}, deleted it", repository=self.name)
+            log.warning("Found an existing file, deleted it", repository=self.name, path=str(self.directory_root))
 
         # Initialize directory structure
         self.directory_root.mkdir(parents=True)
@@ -621,7 +621,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 repository=self.name,
                 source=source_branch,
                 target=target_branch,
-                error=str(exc),
+                exc_info=exc,
             )
             raise
 
@@ -654,7 +654,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         # TODO need to handle the exception properly
         branch = await self.sdk.branch.create(branch_name=branch_name)
 
-        log.debug(f"Branch {branch_name} created in the Graph", repository=self.name, branch=branch_name)
+        log.debug("Branch created in the Graph", repository=self.name, branch=branch_name)
         return branch
 
     async def create_branch_in_git(self, branch_name: str, branch_id: str | None = None) -> bool:
@@ -697,7 +697,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 branch=branch_name,
             )
         else:
-            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
+            log.debug(
+                "Branch created in Git without tracking a remote branch", repository=self.name, branch=branch_name
+            )
 
         return True
 
@@ -719,7 +721,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         repo = self.get_git_repo_main()
         try:
             repo.git.worktree("add", directory, commit)
-            log.debug(f"Commit worktree created {commit}", repository=self.name)
+            log.debug("Commit worktree created", repository=self.name, commit=commit)
             return worktree
         except GitCommandError as exc:
             if "invalid reference" in exc.stderr:
@@ -743,7 +745,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         except GitCommandError as exc:
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
-        log.debug(f"Branch worktree created {branch_name}", repository=self.name)
+        log.debug("Branch worktree created", repository=self.name, branch=branch_name)
         return True
 
     async def calculate_diff_between_commits(
@@ -902,7 +904,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 "Unable to determine merge conflicts for branch",
                 branch=branch_name,
                 repository=self.name,
-                error=str(exc),
+                exc_info=exc,
             )
             return False
 

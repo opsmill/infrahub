@@ -499,7 +499,7 @@ class InfrahubMutationMixin:
                 db=dbt, branch=branch, nodes=[obj], user_id=graphql_context.assigned_user_id
             )
         deleted_str = ", ".join([f"{d.get_kind()}({d.get_id()})" for d in deleted])
-        log.info(f"nodes deleted: {deleted_str}")
+        log.info("Nodes deleted", nodes=deleted_str)
         return deleted
 
     @classmethod

@@ -58,9 +58,9 @@ class DiffCalculator:
                 limit=limit,
                 offset=offset,
             )
-            log.info(f"Beginning one diff calculation query {limit=}, {offset=}")
+            log.info("Beginning diff calculation query", limit=limit, offset=offset)
             await diff_query.execute(db=self.db)
-            log.info(f"Diff calculation query complete {limit=}, {offset=}")
+            log.info("Diff calculation query complete", limit=limit, offset=offset)
             last_result = None
             for query_result in diff_query.get_results():
                 diff_parser.read_result(query_result=query_result)
@@ -89,9 +89,9 @@ class DiffCalculator:
                 limit=limit,
                 offset=offset,
             )
-            log.info(f"Getting one batch of migrated kind nodes {limit=}, {offset=}")
+            log.info("Getting migrated kind nodes batch", limit=limit, offset=offset)
             await diff_query.execute(db=self.db)
-            log.info(f"Migrated kind nodes query complete {limit=}, {offset=}")
+            log.info("Migrated kind nodes query complete", limit=limit, offset=offset)
             last_result = None
             for migrated_kind_node in diff_query.get_migrated_kind_nodes():
                 migrated_kind_identifier = NodeIdentifier(

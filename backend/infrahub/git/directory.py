@@ -23,8 +23,8 @@ def initialize_repositories_directory() -> bool:
     if not repos_dir.exists():
         repos_dir.mkdir(parents=True)
 
-        log.debug(f"Initialized the repositories_directory at {repos_dir}")
+        log.debug("Initialized repositories directory", path=str(repos_dir))
         return True
 
-    log.debug(f"repositories_directory already present at {repos_dir}")
+    log.debug("Repositories directory already present", path=str(repos_dir))
     return False

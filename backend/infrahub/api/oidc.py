@@ -248,7 +248,7 @@ async def token(
         )
         await service.event.send(event=event)
     except Exception as ex:
-        log.warning(f"Failed to emit OIDC login event for account_id={auth_result.account_id}: {str(ex)}")
+        log.warning("Failed to emit OIDC login event", account_id=auth_result.account_id, exc_info=ex)
 
     return models.UserTokenWithUrl(
         access_token=auth_result.token.access_token,

@@ -4,7 +4,6 @@ import base64
 import hashlib
 import hmac
 import json
-import logging
 import os
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, assert_never
@@ -18,11 +17,12 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.events.utils import get_all_infrahub_node_kind_events
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+from infrahub.log import get_logger
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
-logger = logging.getLogger(__name__)
+log = get_logger()
 
 if TYPE_CHECKING:
     from httpx import Response
@@ -176,16 +176,16 @@ class Webhook(BaseModel):
         seen_keys: set[str] = set()
         for header in self.custom_headers:
             if header.key in seen_keys:
-                logger.warning(
-                    "Webhook '%s': duplicate header key '%s', later value will overwrite earlier one",
-                    self.name,
-                    header.key,
+                log.warning(
+                    "Duplicate header key, later value will overwrite earlier one",
+                    webhook=self.name,
+                    header=header.key,
                 )
             seen_keys.add(header.key)
             try:
                 self._headers[header.key] = header.resolve()
             except WebhookHeaderResolutionError as exc:
-                logger.warning("Webhook '%s': %s, skipping header '%s'", self.name, exc, header.key)
+                log.warning("Skipping header due to resolution error", webhook=self.name, header=header.key, exc_info=exc)
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"

@@ -1,11 +1,8 @@
-import logging
 from abc import ABC, abstractmethod
 
 from fast_depends import Depends, inject
 
 from infrahub.database import InfrahubDatabase
-
-log = logging.getLogger(__name__)
 
 
 class ApprovalRevoker(ABC):

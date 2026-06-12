@@ -385,14 +385,14 @@ class PrefectTask:
                         deleted_total += 1
                         batch_deleted += 1
                     except Exception as e:
-                        logger.warning(f"Failed to delete flow run {flow_run.id}: {e}")
+                        logger.warning("Failed to delete flow run", flow_run_id=flow_run.id, exc_info=e)
                         failed_deletes.append(flow_run.id)
 
                     # Rate limiting
                     if batch_deleted % 10 == 0:
                         await asyncio.sleep(0.5)
 
-                logger.info(f"Delete {batch_deleted}/{len(flow_runs)} flow runs (total: {deleted_total})")
+                logger.info("Deleted flow runs batch", batch_deleted=batch_deleted, batch_total=len(flow_runs), total_deleted=deleted_total)
 
                 # Get next batch
                 previous_flow_run_ids = [fr.id for fr in flow_runs]
@@ -409,4 +409,4 @@ class PrefectTask:
                 # Delay between batches to avoid overwhelming the API
                 await asyncio.sleep(1.0)
 
-            logger.info(f"Retention complete. Total deleted tasks: {deleted_total}")
+            logger.info("Retention complete", total_deleted=deleted_total)
