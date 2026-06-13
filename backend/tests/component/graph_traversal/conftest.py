@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 
 if TYPE_CHECKING:
@@ -20,6 +21,53 @@ async def jack_with_blue_tag(
     await person.new(db=db, firstname="Jack", lastname="Russell", primary_tag=tag_blue_main)
     await person.save(db=db)
     return person, tag_blue_main
+
+
+@pytest.fixture
+async def two_ips_in_one_namespace(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+) -> tuple[Node, Node, Node]:
+    # An IpamNamespace plus two addresses whose only data link is that namespace.
+    namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=default_branch)
+    await namespace.new(db=db, name="traversal-ns", default=False)
+    await namespace.save(db=db)
+
+    ip1 = await Node.init(db=db, schema="IpamIPAddress", branch=default_branch)
+    await ip1.new(db=db, address="192.0.2.1/32", ip_namespace=namespace)
+    await ip1.save(db=db)
+
+    ip2 = await Node.init(db=db, schema="IpamIPAddress", branch=default_branch)
+    await ip2.new(db=db, address="192.0.2.2/32", ip_namespace=namespace)
+    await ip2.save(db=db)
+
+    return namespace, ip1, ip2
+
+
+@pytest.fixture
+async def person_with_paths_at_two_depths(
+    db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
+) -> tuple[Node, Node]:
+    # person1 reaches the blue tag at depth 1 (primary_tag) and at depth 3
+    # (person1 -tags- red -tags- person2 -primary_tag- blue), so a single
+    # source/destination pair has paths at two different depths.
+    _, blue = jack_with_blue_tag
+
+    red = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await red.new(db=db, name="Red")
+    await red.save(db=db)
+
+    person1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person1.new(db=db, firstname="Ada", lastname="One", primary_tag=blue, tags=[red])
+    await person1.save(db=db)
+
+    person2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person2.new(db=db, firstname="Bea", lastname="Two", primary_tag=blue, tags=[red])
+    await person2.save(db=db)
+
+    return person1, blue
 
 
 @pytest.fixture

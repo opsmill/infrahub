@@ -23714,10 +23714,12 @@ export type PathResultType = {
 export type PathTraversalInput = {
   /** UUID of the end node */
   destination_id: Scalars['String']['input'];
-  /** Specific node kinds to exclude from traversal paths. */
+  /** Specific node kinds to exclude from traversal paths. Unioned with the default excluded kinds (BuiltinIPNamespace and all kinds inheriting it); the defaults can be re-included via included_kinds. */
   excluded_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input. */
   excluded_namespaces?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Kinds excluded by default (BuiltinIPNamespace and all kinds inheriting it) to re-include in traversal paths. Passing the generic re-includes every implementer. Has no effect on kinds passed in excluded_kinds in the same request. */
+  included_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Filter to only traverse through nodes of these kinds */
   kind_filter?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Maximum number of node hops (default: 5, max: 20) */
@@ -23736,6 +23738,8 @@ export type PathTraversalResultType = {
   count: Scalars['Int']['output'];
   /** The end node */
   destination: PathNodeType;
+  /** Concrete node kinds excluded from this traversal: the default exclusions plus the requested excluded_kinds, minus included_kinds. */
+  excluded_kinds: Array<Scalars['String']['output']>;
   /** Paths found, ordered shortest first */
   paths: Array<PathResultType>;
   /** The start node */

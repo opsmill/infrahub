@@ -2546,6 +2546,17 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 
 @pytest.fixture
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: SchemaBranch, data_schema: None) -> Node:
+    return await do_create_test_admin(db=db)
+
+
+@pytest.fixture(scope="class")
+async def create_test_admin_scope_class(
+    db: InfrahubDatabase, register_core_models_schema_scope_class: SchemaBranch, data_schema_scope_class: None
+) -> Node:
+    return await do_create_test_admin(db=db)
+
+
+async def do_create_test_admin(db: InfrahubDatabase) -> Node:
     """Create a test admin account, group and role with all global permissions."""
     permissions: list[Node] = []
     global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -2591,6 +2602,11 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: S
 @pytest.fixture
 async def session_admin(db: InfrahubDatabase, create_test_admin: Node) -> AccountSession:
     return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
+
+
+@pytest.fixture(scope="class")
+async def session_admin_scope_class(db: InfrahubDatabase, create_test_admin_scope_class: Node) -> AccountSession:
+    return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin_scope_class.id)
 
 
 @pytest.fixture
