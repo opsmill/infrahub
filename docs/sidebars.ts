@@ -472,6 +472,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
+        { type: 'doc', id: 'development-resources/sbom', label: 'Software Bill of Materials (SBOM)' },
         {
           type: 'category',
           label: 'APIs & interfaces',

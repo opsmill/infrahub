@@ -45,9 +45,13 @@ content_type
 convert_query_response
 coroutine
 coroutines
+cosign
+Cosign
 created_at
 created_by
 customizable
+cybersecurity
+CycloneDX
 Dagster
 datacenter
 dataset
@@ -86,6 +90,7 @@ Graphql
 GraphQL
 GraphQL's
 grpc
+Grype
 HAProxy
 hardcoding
 hfid
@@ -119,6 +124,7 @@ JSONSchema
 Junos
 kbps
 Keycloak
+keyless
 kubectl
 kubelet
 Kubernetes
@@ -157,6 +163,7 @@ npm
 O'Brian
 OAuth
 Observium
+OIDC
 Okta
 Onboarding
 OpenAPI
@@ -203,13 +210,18 @@ rollout
 Schema
 schema_mapping
 schema's
+SBOM
+SBOMs
 scrollbar
 SDK
 SDKs
 serializable
+Sigstore
 Slurp'it
 snapshotting
+SPDX
 Streamlit
+Syft
 string_type
 subchart
 subcommand
