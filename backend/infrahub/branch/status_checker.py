@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
-from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError
+from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError, MergeInProgressError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class BranchStatusChecker:
         a merge is genuinely in progress rather than freezing every default-branch write.
 
         Raises:
-            BranchAlreadyMergedError: if the branch is blocked by a merge in progress.
+            MergeInProgressError: if the branch is blocked by a merge in progress.
 
         """
         try:
@@ -68,28 +68,36 @@ class BranchStatusChecker:
             return
 
         if branch.name == protection.branch:
-            raise BranchAlreadyMergedError(identifier=branch.name, message=_merging_branch_message(branch.name))
+            raise MergeInProgressError(
+                identifier=branch.name,
+                message=_merging_branch_message(branch.name),
+                merging_branch=protection.branch,
+            )
 
         if branch.is_default:
-            raise BranchAlreadyMergedError(identifier=branch.name, message=MERGE_IN_PROGRESS_MESSAGE)
+            raise MergeInProgressError(
+                identifier=branch.name, message=MERGE_IN_PROGRESS_MESSAGE, merging_branch=protection.branch
+            )
 
     async def _check_merging_status_from_db(self, branch: Branch) -> None:
         """Cache-unreachable fallback: enforce the gate from the durable branch status.
 
         Raises:
-            BranchAlreadyMergedError: if the branch is blocked by a merge in progress.
+            MergeInProgressError: if the branch is blocked by a merge in progress.
 
         """
         merging = await Branch.get_list(db=self.db, branch_filters=BranchListFilters(status=BranchStatus.MERGING))
         merging_branch_names = {merging_branch.name for merging_branch in merging}
 
         if branch.name in merging_branch_names:
-            raise BranchAlreadyMergedError(
-                identifier=branch.name, message=_merging_branch_message(branch.name)
+            raise MergeInProgressError(
+                identifier=branch.name, message=_merging_branch_message(branch.name), merging_branch=branch.name
             ) from None
 
         if branch.is_default and merging_branch_names:
-            raise BranchAlreadyMergedError(identifier=branch.name, message=MERGE_IN_PROGRESS_MESSAGE) from None
+            raise MergeInProgressError(
+                identifier=branch.name, message=MERGE_IN_PROGRESS_MESSAGE, merging_branch=min(merging_branch_names)
+            ) from None
 
     async def check(self, branch: Branch) -> None:
         self.check_needs_rebase_status(branch)
