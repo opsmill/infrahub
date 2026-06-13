@@ -99,6 +99,9 @@ describe("parseCatalogueError", () => {
       422,
     ],
     ["BRANCH_NOT_FOUND", { branch_name: "feature-x" }, 400],
+    ["BRANCH_ALREADY_MERGED", { branch_name: "feature-x" }, 400],
+    ["BRANCH_NEEDS_REBASE", { branch_name: "feature-x" }, 400],
+    ["MERGE_IN_PROGRESS", { branch_name: "main", merging_branch: "feature-x" }, 423],
     ["SCHEMA_NOT_FOUND", { kind: "CoreAccount" }, 422],
   ])("narrows %s passing through http_status and data", (code, data, httpStatus) => {
     // GIVEN
@@ -228,6 +231,9 @@ describe("ErrorCode exhaustiveness", () => {
         case ERROR_CODES.ATTRIBUTE_INVALID_TYPE:
         case ERROR_CODES.ATTRIBUTE_CONSTRAINT_VIOLATION:
         case ERROR_CODES.BRANCH_NOT_FOUND:
+        case ERROR_CODES.BRANCH_ALREADY_MERGED:
+        case ERROR_CODES.BRANCH_NEEDS_REBASE:
+        case ERROR_CODES.MERGE_IN_PROGRESS:
         case ERROR_CODES.SCHEMA_NOT_FOUND:
         case ERROR_CODES.UNDEFINED_ERROR:
           return code;
