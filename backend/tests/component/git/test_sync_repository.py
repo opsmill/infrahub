@@ -30,30 +30,28 @@ class SyncScenario:
 
 
 SCENARIOS = [
-    # The git default branch matches Infrahub's, no staging: the only case where the buggy
-    # lookup happened to work, since the Infrahub branch name equals the git branch name.
+    # Git default branch matches Infrahub's default; no staging branch.
     SyncScenario(
         name="active_matching_default",
         git_default_branch="main",
         staging_branch=None,
         active_internal_status=RepositoryInternalStatus.ACTIVE.value,
     ),
-    # The git default branch differs from Infrahub's: the broadcast must resolve the git default.
+    # Git default branch differs from Infrahub's default.
     SyncScenario(
         name="active_mismatched_default",
         git_default_branch="production",
         staging_branch=None,
         active_internal_status=RepositoryInternalStatus.ACTIVE.value,
     ),
-    # Staging on an ordinary "main" repo: the Infrahub branch is the staging branch, which has no
-    # local git branch, so the commit must still resolve via the git default.
+    # Staging sync; git default branch matches Infrahub's default.
     SyncScenario(
         name="staging_matching_default",
         git_default_branch="main",
         staging_branch="staging-x",
         active_internal_status=RepositoryInternalStatus.STAGING.value,
     ),
-    # Staging combined with a mismatched git default branch.
+    # Staging sync; git default branch differs from Infrahub's default.
     SyncScenario(
         name="staging_mismatched_default",
         git_default_branch="production",
@@ -76,9 +74,9 @@ def message_bus_recorder(helper: TestHelper) -> Generator[BusRecorder, None, Non
 
 
 async def _build_repository(
-    db: InfrahubDatabase, source_dir: Path, git_default_branch: str
+    db: InfrahubDatabase, source_dir: Path, git_default_branch: str, internal_status: str
 ) -> tuple[Node, InfrahubRepository]:
-    """Seed a repository node and clone it locally, with the given git default branch."""
+    """Seed a repository node and clone it locally, with the given git default branch and status."""
     upstream = Repo.init(source_dir, initial_branch=git_default_branch)
     (source_dir / "file.txt").write_text("content")
     upstream.index.add(["file.txt"])
@@ -90,7 +88,7 @@ async def _build_repository(
         name="test-repository",
         location=str(source_dir),
         default_branch=git_default_branch,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        internal_status=internal_status,
     )
     await node.save(db=db)
 
@@ -99,6 +97,7 @@ async def _build_repository(
         name="test-repository",
         location=str(source_dir),
         default_branch_name=git_default_branch,
+        internal_status=internal_status,
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
         update_commit_value=False,
     )
@@ -115,15 +114,19 @@ async def test_sync_broadcasts_synced_commit(
     prefect_test_fixture: None,
     message_bus_recorder: BusRecorder,
 ) -> None:
-    """The commit broadcast to the worker pool must resolve to the repository's git default branch HEAD.
+    """The commit broadcast to the worker pool resolves to the repository's git default branch HEAD.
 
-    The buggy lookup used the Infrahub branch name, which only ever matches a local git branch when
-    the git default branch matches Infrahub's default and no staging branch is involved. Every other
-    setup dropped the commit to None, leaving the worker pool without a SHA to converge on.
+    Holds across matching and mismatched default branches and staging syncs, so every worker
+    converges on the same pinned commit.
     """
     source_dir = tmp_path / "source-repo"
     source_dir.mkdir()
-    node, repo = await _build_repository(db=db, source_dir=source_dir, git_default_branch=scenario.git_default_branch)
+    node, repo = await _build_repository(
+        db=db,
+        source_dir=source_dir,
+        git_default_branch=scenario.git_default_branch,
+        internal_status=scenario.active_internal_status,
+    )
 
     assert repo.client is not None
     client = repo.client
