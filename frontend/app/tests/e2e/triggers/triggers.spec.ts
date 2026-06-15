@@ -33,20 +33,22 @@ test.describe("Node Trigger", () => {
       await page.getByRole("combobox", { name: "Mutation Action *" }).click();
       await page.getByRole("option", { name: "created" }).click();
       await page.getByRole("combobox", { name: "Kind", exact: true }).click();
-      await page.getByRole("option", { name: "Group Action Core" }).click();
+      await page.getByRole("option", { name: "Group Action Core" }).first().click();
       await page.getByRole("combobox", { name: "Group Action *" }).click();
       await page.getByRole("button", { name: "+ Add new Group Action" }).click();
-      await page.getByRole("textbox", { name: "Name *" }).fill("test group action");
-      await page.getByRole("combobox", { name: "Kind" }).click();
-      await page.getByRole("option", { name: "Standard Group Core" }).click();
-      await page.getByRole("combobox", { name: "Standard Group *" }).click();
-      await page.getByRole("button", { name: "+ Add new Standard Group" }).click();
-      await page.getByRole("textbox", { name: "Name *" }).fill("test standard group");
-      await page.getByRole("button", { name: "Save" }).click();
+      const sheet2 = page.getByRole("dialog", { name: "sheet 2" });
+      await sheet2.getByLabel("Name *").first().fill("test group action");
+      await sheet2.getByTestId("new-object-form").getByRole("combobox", { name: "Kind" }).click();
+      await sheet2.getByRole("option", { name: "Standard Group Core" }).click();
+      await sheet2.getByRole("combobox", { name: "Standard Group *" }).click();
+      await sheet2.getByRole("button", { name: "+ Add new Standard Group" }).click();
+      const sheet3 = page.getByRole("dialog", { name: "sheet 3" });
+      await sheet3.getByLabel("Name *").fill("test standard group");
+      await sheet3.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("StandardGroup created")).toBeVisible();
-      await page.getByRole("button", { name: "Save" }).click();
+      await sheet2.getByRole("button", { name: "Save" }).last().click();
       await expect(page.getByText("GroupAction created")).toBeVisible();
-      await page.getByRole("button", { name: "Save" }).click();
+      await page.getByRole("button", { name: "Save" }).last().click();
     });
 
     await test.step("ensure the creation is correct", async () => {

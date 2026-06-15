@@ -46,7 +46,6 @@ export function AccountTokenCreateAction() {
         isOpen={!!newToken}
         isDismissable={false}
         onOpenChange={(isOpen) => !isOpen && setNewToken("")}
-        className="p-0"
       >
         <Col className="p-3">
           <Heading slot="title" className="flex items-center gap-2 font-semibold">

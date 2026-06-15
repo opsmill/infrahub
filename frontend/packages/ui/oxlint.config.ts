@@ -33,6 +33,7 @@ export default defineConfig({
     "react/forbid-component-props": "off",
     "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
     "react/jsx-max-depth": "off",
+    "react/jsx-no-constructed-context-values": "off",
     "react/jsx-props-no-spreading": "off",
     "react/no-multi-comp": "off",
     "react/only-export-components": "off",

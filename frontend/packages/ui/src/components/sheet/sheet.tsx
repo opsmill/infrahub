@@ -35,10 +35,11 @@ export function Sheet({
       <ModalOverlay isOpen={isOpen} onOpenChange={guardedOnOpenChange}>
         {({ state: { isOpen: isOpenOverlay } }) => (
           <Stacked group="sheet" isStacked={isOpenOverlay}>
-            {(depth) => (
+            {({ depth, totalCount }) => (
               <AriaModal
                 className={cn(
-                  "fixed top-2 bottom-2 w-100 overflow-hidden rounded-xl bg-white outline-hidden transition-all",
+                  "fixed top-2 bottom-2 w-100 overflow-hidden rounded-2xl p-1 outline-hidden transition-all",
+                  "border border-neutral-100 bg-white/25 shadow-xl backdrop-blur",
                   "data-entering:slide-in-from-right-1/2 data-entering:animate-in data-entering:duration-200 data-entering:ease-out",
                   "data-exiting:slide-out-to-right-1/2 data-exiting:animate-out data-exiting:duration-150 data-exiting:ease-in",
                 )}
@@ -50,8 +51,11 @@ export function Sheet({
                 {...props}
               >
                 <AriaDialog
-                  aria-label={ariaLabel ?? "sheet"}
-                  className={cn("outline-hidden overflow-auto h-full no-scrollbar p-3", className)}
+                  aria-label={ariaLabel ?? `sheet ${totalCount - depth}`}
+                  className={cn(
+                    "no-scrollbar h-full overflow-auto rounded-xl bg-white p-3 outline-hidden",
+                    className,
+                  )}
                 >
                   {children}
                 </AriaDialog>
