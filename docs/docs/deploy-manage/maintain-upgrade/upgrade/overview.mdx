@@ -50,13 +50,15 @@ Cleaning up spurious branch schema attribute parameters from Migration056
 Checking 2 open user branches
   Applying 068_cleanup_branch_schema_parameters... OK (0.01s)
   Applying 069_set_comment_thread_created_by_on_node... OK (0.00s)
+Normalizing MacAddress values for InfraDevice.mac_address
+  Applying 070_normalize_mac_address_values_to_colon... OK (0.02s)
 Recomputing HFID/display_label for InternalIPPrefixAvailable
   Applying 071_recompute_hfid_for_ip_attributes... OK (0.01s)
 Normalized 14 HFID value(s) to all-string format
   Applying 072_index_hfid_values... OK (0.01s)
   Rewrote CoreIPPrefixPool.resources.identifier → ippool__resource.
   Applying 073_unify_ip_pool_resource_identifier... OK (0.04s)
-Applied 6 migrations successfully in 1.42s
+Applied 6 migrations successfully in 1.44s
 
 Step 2/6: Internal schema
 Internal schema initialized
