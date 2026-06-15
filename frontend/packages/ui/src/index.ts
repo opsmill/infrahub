@@ -27,6 +27,12 @@ export {
 } from "./components/card/card";
 export { Meter, type MeterProps } from "./components/meter/meter";
 export {
+  Popover,
+  PopoverDialog,
+  type PopoverProps,
+  PopoverTrigger,
+} from "./components/popover/popover";
+export {
   Modal,
   ModalOverlay,
   type ModalOverlayProps,

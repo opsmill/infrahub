@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
@@ -7,7 +7,6 @@ import type { AnyAttribute } from "@/shared/api/graphql/generated/types";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -76,25 +75,16 @@ export default function MetaDetailsTooltip({
   ];
 
   return (
-    <Popover>
-      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button
-          size="xs"
-          shape="circle"
-          variant="ghost"
-          className="text-gray-500 focus-visible:ring-0"
-          data-cy="metadata-button"
-          data-testid="view-metadata-button"
-        >
-          <Icon icon="mdi:information-slab-circle-outline" />
-        </Button>
-      </PopoverTrigger>
+    <PopoverTrigger>
+      <Button size="xs" shape="circle" variant="ghost" data-testid="view-metadata-button">
+        <Icon icon="mdi:information-slab-circle-outline" />
+      </Button>
 
-      <PopoverContent data-testid="metadata-tooltip" data-cy="metadata-tooltip">
+      <Popover data-testid="metadata-tooltip">
         {!!header && header}
 
         <PropertyList properties={items} valueClassName="text-right" />
-      </PopoverContent>
-    </Popover>
+      </Popover>
+    </PopoverTrigger>
   );
 }

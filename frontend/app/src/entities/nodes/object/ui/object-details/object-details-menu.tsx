@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, type ButtonProps, Sheet } from "@infrahub/ui";
+import { Button, type ButtonProps, Popover, Sheet } from "@infrahub/ui";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
@@ -18,7 +18,6 @@ import {
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
-import { Popover } from "@/shared/components/aria/popover";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
