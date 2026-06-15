@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../../constants";
-import { generateRandomBranchName } from "../../../utils";
+import { generateRandomBranchName, getDataTableRow } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
 test.describe("/objects/BuiltinTag - Bulk delete some rows", () => {
@@ -22,36 +22,11 @@ test.describe("/objects/BuiltinTag - Bulk delete some rows", () => {
     await test.step("assert we have the initial values", async () => {
       await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("button", { name: "Add Tag" })).toBeVisible();
-      await expect(
-        page
-          .locator("a")
-          .filter({ hasText: "blue" })
-          .locator("..")
-          .getByTestId("identifier-checkbox-cell")
-      ).toBeVisible();
-      await expect(
-        page
-          .locator("a")
-          .filter({ hasText: "green" })
-          .locator("..")
-          .getByTestId("identifier-checkbox-cell")
-      ).toBeVisible();
     });
 
     await test.step("proceed delete", async () => {
-      await page
-        .locator("a")
-        .filter({ hasText: "blue" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
-
-      await page
-        .locator("a")
-        .filter({ hasText: "green" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
+      await getDataTableRow(page, "blue").locator("label").click();
+      await getDataTableRow(page, "green").locator("label").click();
 
       await page
         .getByTestId("object-table-toolbar")

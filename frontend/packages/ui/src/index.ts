@@ -15,6 +15,7 @@ export {
   LinkButton,
   type LinkButtonProps,
 } from "./components/button/button";
+export { Checkbox, type CheckboxProps } from "./components/checkbox/checkbox";
 export { CheckboxCard, type CheckboxCardProps } from "./components/checkbox-card/checkbox-card";
 export {
   Card,
@@ -37,6 +38,8 @@ export {
   ResizablePanelGroup,
 } from "./components/resizable/resizable";
 export { ScrollArea, type ScrollAreaProps } from "./components/scroll-area/scroll-area";
+export { Sheet, type SheetProps } from "./components/sheet/sheet";
+export { DismissGuardContext, useDismissGuard } from "./hooks/use-dissmiss-guard";
 export { Spinner, type SpinnerProps } from "./components/spinner/spinner";
 export { Tooltip, type TooltipProps } from "./components/tooltip/tooltip";
 export {

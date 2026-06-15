@@ -1,8 +1,9 @@
+import { Checkbox } from "@infrahub/ui";
+
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
 import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface CheckboxFieldProps extends FormFieldProps {}
@@ -12,12 +13,12 @@ const CheckboxField = ({
   attribute,
   isBulkUpdate,
   description,
+  disabled,
   label,
   name,
   rules,
   unique,
   shouldUnregister,
-  ...props
 }: CheckboxFieldProps) => {
   return (
     <FormField
@@ -42,12 +43,14 @@ const CheckboxField = ({
           <div className="flex gap-2 py-3">
             <FormInput>
               <Checkbox
-                {...field}
-                checked={!!fieldData?.value}
-                onChange={(event) => {
-                  field.onChange(updateFormFieldValue(event.target.checked, defaultValue));
+                name={field.name}
+                aria-label={label}
+                isSelected={!!fieldData?.value}
+                isDisabled={disabled}
+                onBlur={field.onBlur}
+                onChange={(isSelected) => {
+                  field.onChange(updateFormFieldValue(isSelected, defaultValue));
                 }}
-                {...props}
               />
             </FormInput>
 
@@ -63,7 +66,7 @@ const CheckboxField = ({
               <FormMessage className="mt-1" />
             </div>
 
-            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+            {!disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
               <ResetAction field={field} defaultValue={defaultValue} />
             )}
           </div>

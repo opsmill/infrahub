@@ -92,7 +92,6 @@ export function ModalDeleteBranch({
       isDismissable={!isLoading}
       isOpen={isOpen}
       onOpenChange={handleOpenChange}
-      className="w-full max-w-lg p-0"
       data-testid="modal-delete"
     >
       <Col className="gap-4 p-3">

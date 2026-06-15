@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, Card, CardHeader } from "@infrahub/ui";
+import { Button, Card, CardHeader, Sheet } from "@infrahub/ui";
 import { ChevronDownIcon, ChevronUpIcon, PenLineIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
@@ -7,7 +7,7 @@ import { Link } from "react-router";
 import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Badge } from "@/shared/components/ui/badge";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
@@ -158,18 +158,13 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
         content
       )}
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={objectSchema}
-            currentObjectLabel={nodeLabel}
-            title={`Edit ${nodeLabel}`}
-            subtitle={objectSchema.description}
-          />
-        }
-        open={isEditModalOpen}
-        setOpen={setIsEditModalOpen}
-      >
+      <Sheet isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <SlideOverTitle
+          schema={objectSchema}
+          currentObjectLabel={nodeLabel}
+          title={`Edit ${nodeLabel}`}
+          subtitle={objectSchema.description}
+        />
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
@@ -179,7 +174,7 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
           objectId={objectData.id}
           objectname={objectSchema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }
@@ -255,24 +250,19 @@ function GroupsList({ objectData, objectSchema, permission }: GroupsListProps) {
         content
       )}
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={objectSchema}
-            currentObjectLabel={nodeLabel}
-            title="Manage groups"
-            subtitle="Add and unassign groups"
-          />
-        }
-        open={isManageGroupsDrawerOpen}
-        setOpen={setIsManageGroupsDrawerOpen}
-      >
+      <Sheet isOpen={isManageGroupsDrawerOpen} onOpenChange={setIsManageGroupsDrawerOpen}>
+        <SlideOverTitle
+          schema={objectSchema}
+          currentObjectLabel={nodeLabel}
+          title="Manage groups"
+          subtitle="Add and unassign groups"
+        />
         <GroupsManager
           schema={objectSchema}
           objectId={objectData.id}
           className="overflow-auto p-4"
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }

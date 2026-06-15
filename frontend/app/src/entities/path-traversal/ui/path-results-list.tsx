@@ -1,7 +1,6 @@
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { Command } from "cmdk";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 

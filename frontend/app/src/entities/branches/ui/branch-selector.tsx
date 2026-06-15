@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, LinkButton } from "@infrahub/ui";
+import { Button, LinkButton, Tooltip } from "@infrahub/ui";
 import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
@@ -15,7 +15,6 @@ import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/aria/list-box";
 import { Popover, PopoverDialog, PopoverTrigger } from "@/shared/components/aria/popover";
 import { Separator } from "@/shared/components/aria/separator";
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import { QSP } from "@/shared/config/qsp";
 import { useDebounce } from "@/shared/hooks/useDebounce";

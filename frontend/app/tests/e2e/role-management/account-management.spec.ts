@@ -56,8 +56,8 @@ test.describe("/role-management - Account CRUD", () => {
     });
 
     await test.step("bulk edit both accounts", async () => {
-      await getDataTableRow(page, "Account Test").getByTestId("identifier-checkbox-cell").click();
-      await getDataTableRow(page, "Account Test 2").getByTestId("identifier-checkbox-cell").click();
+      await getDataTableRow(page, "Account Test").locator("label").click();
+      await getDataTableRow(page, "Account Test 2").locator("label").click();
       await page.getByRole("button", { name: "Edit" }).click();
       await page.getByRole("textbox", { name: "Description" }).fill("test bulk edit");
       await page.getByRole("button", { name: "Save" }).click();

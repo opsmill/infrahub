@@ -1,7 +1,7 @@
 # ****************************************************************
 # STAGE : Base Python Image
 # ****************************************************************
-ARG PYTHON_VER=3.13.11
+ARG PYTHON_VER=3.14.3
 ARG NODE_VER=24.15.0
 ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
@@ -52,11 +52,13 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --store-dir /pnpm/s
 
 COPY frontend/app/package.json /frontend/app/
 COPY frontend/packages/ui/package.json /frontend/packages/ui/
+COPY frontend/packages/graph/package.json /frontend/packages/graph/
 COPY frontend/packages/schema-visualizer/package.json /frontend/packages/schema-visualizer/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline --store-dir /pnpm/store
 
 COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
 COPY frontend/packages/ui/ /frontend/packages/ui/
+COPY frontend/packages/graph/ /frontend/packages/graph/
 COPY frontend/app/ /frontend/app/
 WORKDIR /frontend/app
 

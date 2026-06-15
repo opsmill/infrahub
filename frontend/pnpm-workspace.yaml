@@ -2,6 +2,7 @@ packages:
   - app
   - packages/schema-visualizer
   - packages/ui
+  - packages/graph
 
 # We disallow this to avoid the security risk of running third-party code on install.
 allowBuilds:
@@ -28,8 +29,8 @@ catalog:
   vite: ^8.0.16
 
 overrides:
-  playwright: 1.56.1
-  playwright-core: 1.56.1
+  playwright: 1.60.0
+  playwright-core: 1.60.0
 
 peerDependencyRules:
   allowedVersions:

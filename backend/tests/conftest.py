@@ -24,7 +24,7 @@ from prefect import settings as prefect_settings
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.config import load_and_exit
 from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
@@ -39,7 +39,7 @@ from infrahub.core.initialization import (
     create_root_node,
 )
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.definitions.core import (
     core_account_token,
@@ -65,6 +65,7 @@ from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.workers.dependencies import build_database, get_database
+from tests.adapters.lock import LockTimeline, install_recording_lock_registry
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
@@ -81,6 +82,7 @@ from tests.helpers.constants import (
 )
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
@@ -293,8 +295,7 @@ async def register_internal_models_schema_scope_class(default_branch_scope_class
 
 
 async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    schema_branch = install_processed_internal_schema_branch(branch_name=branch.name)
     branch.update_schema_hash()
     return schema_branch
 
@@ -314,8 +315,7 @@ async def register_core_models_schema_scope_class(
 
 
 async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
-    schema = SchemaRoot(**core_models)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    schema_branch = install_processed_core_schema_branch(branch_name=branch.name)
     branch.update_schema_hash()
     return schema_branch
 
@@ -1318,6 +1318,17 @@ class TestHelper:
 @pytest.fixture
 def fake_log() -> FakeLogger:
     return FakeLogger()
+
+
+@pytest.fixture
+def recording_lock_timeline() -> Generator[LockTimeline, None, None]:
+    """Swap the global lock registry for a recording one, restoring the original on teardown."""
+    original = lock.registry
+    timeline = install_recording_lock_registry()
+    try:
+        yield timeline
+    finally:
+        lock.registry = original
 
 
 @pytest.fixture

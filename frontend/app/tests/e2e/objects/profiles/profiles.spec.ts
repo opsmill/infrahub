@@ -87,7 +87,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByTestId("source-profile-badge").hover();
       await expect(page.getByTestId("source-profile-tooltip").first()).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" }).first()).toBeVisible();
-      await page.getByLabel("Name *").click(); // hide tooltip
+      await page.getByLabel("Description").click(); // hide tooltip
 
       await page.getByLabel("Name *").fill("tag with profile");
       await page.getByRole("button", { name: "Save" }).click();

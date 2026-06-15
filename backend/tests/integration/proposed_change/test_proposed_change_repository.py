@@ -69,13 +69,23 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
 
-    @pytest.mark.xfail(reason="FIXME Works locally but it's failling in GitHub Actions")
+        # Generators are dispatched per field the query reads; touch one of John's so he is
+        # reselected on this branch rather than skipped as unchanged.
+        john_on_branch = await NodeManager.get_one(db=db, id=john.id, branch=branch1.name, raise_on_error=True)
+        john_on_branch.description.value = "The famous Joe Doe, updated on branch1"  # type: ignore[attr-defined]
+        await john_on_branch.save(db=db)
+
     async def test_create_proposed_change(
         self,
         db: InfrahubDatabase,
         initial_dataset: None,
         client: InfrahubClient,
     ) -> None:
+        """Run the full pipeline for a proposed change against a branch that links a repository.
+
+        Every definition in the repository's ``.infrahub.yml`` yields exactly one validator,
+        all of them succeed, and the generators emit their tags.
+        """
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,
             data={"source_branch": "branch1", "destination_branch": "main", "name": "add repository"},
@@ -91,22 +101,24 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         validators_per_label = {peer.label.value: peer for peer in peers.values()}
 
         expected_validators = [
-            "Generator Validator: cartags",
-            "Artifact Validator: Ownership report",
-            "Generator Validator: cartags_convert_response",
             "Data Integrity",
+            "Schema Integrity",
             "Check: car_description_check",
             "Check: owner_age_check",
+            "Generator Validator: cartags",
+            "Generator Validator: cartags_convert_response",
+            "Generator Validator: cartags_title",
+            "Artifact Validator: Ownership report",
+            "Artifact Validator: Ownership report Yaml",
+            "Artifact Validator: name report",
+            "Artifact Validator: car spec markdown",
+            "Artifact Validator: converted-owner",
         ]
         assert set(expected_validators) == set(validators_per_label.keys())
 
         for validator in validators_per_label.values():
             assert validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
-        tags = await client.all(kind="BuiltinTag", branch="branch1")
-        # # The Generator defined in the repository is expected to have created this tag during the pipeline
+        tags = await client.all(kind=TestKind.TAG, branch="branch1")
         assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
         assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
-
-        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
-        await proposed_change_create.save()
