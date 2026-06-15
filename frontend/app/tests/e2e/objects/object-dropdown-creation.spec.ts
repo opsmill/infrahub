@@ -40,14 +40,16 @@ test.describe("object dropdown creation", () => {
 
     // Assert form content is visible
     await expect(page.getByText("Create Tag")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
+    await expect(
+      page.getByTestId("new-object-form").getByRole("button", { name: "Save" })
+    ).toBeVisible();
 
     // Create a new tag
     await page.getByTestId("new-object-form").getByLabel("Name").fill("new-tag");
     await page.getByTestId("new-object-form").getByLabel("Description").fill("New tag description");
 
     // Submit
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByTestId("new-object-form").getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Tag created")).toBeVisible();
 
     // Closes the form

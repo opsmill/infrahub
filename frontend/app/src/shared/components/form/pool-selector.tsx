@@ -69,7 +69,7 @@ export function PoolSelector({
         <PoolPopoverTrigger data-testid="number-pool-button" />
       </Row>
 
-      <ComboboxContent align="end" fitTriggerWidth={false} portal>
+      <ComboboxContent align="end" fitTriggerWidth={false}>
         <ComboboxList>
           {pools.map((pool) => {
             const poolLabel = getNodeLabel(pool);

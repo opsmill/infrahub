@@ -1,12 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, Modal } from "@infrahub/ui";
+import { Button, Modal, Sheet } from "@infrahub/ui";
 import { useState } from "react";
 import { Heading } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Col, Row } from "@/shared/components/container";
-import SlideOver from "@/shared/components/display/slide-over";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
@@ -23,38 +22,30 @@ export function AccountTokenCreateAction() {
         Add account token
       </Button>
 
-      <SlideOver
-        title={
-          <Col>
-            <Row>
-              <h3 className="font-semibold text-lg">Create a new token</h3>
-              <ObjectHelpButton
-                documentationUrl="/guides/managing-api-tokens"
-                className="ml-auto"
-              />
-            </Row>
-            <span className="text-gray-500 text-sm">
-              These tokens provide full access to your account. Please keep them secure.
-            </span>
-          </Col>
-        }
-        open={isFormOpen}
-        setOpen={setIsFormOpen}
-      >
+      <Sheet isOpen={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Col>
+          <Row>
+            <h3 className="font-semibold text-lg">Create a new token</h3>
+            <ObjectHelpButton documentationUrl="/guides/managing-api-tokens" className="ml-auto" />
+          </Row>
+          <span className="text-gray-500 text-sm">
+            These tokens provide full access to your account. Please keep them secure.
+          </span>
+        </Col>
         <AccountTokenCreateForm
           onSuccess={async ({ token }) => {
             setNewToken(token);
             setIsFormOpen(false);
             await queryClient.invalidateQueries(getInfrahubAccountTokenQueryOptions());
           }}
+          onCancel={() => setIsFormOpen(false)}
         />
-      </SlideOver>
+      </Sheet>
 
       <Modal
         isOpen={!!newToken}
         isDismissable={false}
         onOpenChange={(isOpen) => !isOpen && setNewToken("")}
-        className="p-0"
       >
         <Col className="p-3">
           <Heading slot="title" className="flex items-center gap-2 font-semibold">

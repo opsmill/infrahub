@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
+import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
@@ -43,18 +43,13 @@ export const ObjectCreateFormTrigger = ({
         </Button>
       </Tooltip>
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel="New"
-            title={`Create ${schema.label}`}
-            subtitle={schema.description}
-          />
-        }
-        open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}
-      >
+      <Sheet isOpen={showCreateDrawer} onOpenChange={setShowCreateDrawer}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel="New"
+          title={`Create ${schema.label}`}
+          subtitle={schema.description}
+        />
         <ObjectForm
           onSuccess={async (result: any) => {
             setShowCreateDrawer(false);
@@ -63,7 +58,7 @@ export const ObjectCreateFormTrigger = ({
           onCancel={() => setShowCreateDrawer(false)}
           kind={schema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 };

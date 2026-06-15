@@ -16,9 +16,14 @@ import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 type ProposedChangeEditFormProps = {
   initialData: Record<string, AttributeType>;
   onSuccess?: () => void;
+  onCancel?: () => void;
 };
 
-export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChangeEditFormProps) => {
+export const ProposedChangeEditForm = ({
+  initialData,
+  onSuccess,
+  onCancel,
+}: ProposedChangeEditFormProps) => {
   const nodes = useAtomValue(nodeSchemasAtom);
   const branches = useAtomValue(branchesState);
   const updateObject = useUpdateObjectMutation();
@@ -128,5 +133,12 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
     }
   }
 
-  return <DynamicForm onSubmit={onSubmit} fields={fields} className="overflow-auto p-4" />;
+  return (
+    <DynamicForm
+      onSubmit={onSubmit}
+      onCancel={onCancel}
+      fields={fields}
+      className="overflow-auto p-4"
+    />
+  );
 };

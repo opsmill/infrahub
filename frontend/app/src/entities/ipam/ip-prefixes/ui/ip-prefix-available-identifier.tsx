@@ -1,10 +1,10 @@
-import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
+import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { PlusIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
 import { classNames } from "@/shared/utils/common";
 
@@ -54,18 +54,13 @@ export function IpPrefixAvailableIdentifier({
         </Button>
       </Tooltip>
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={selectedSchema}
-            currentObjectLabel="New"
-            title={`Create ${selectedSchema.label}`}
-            subtitle={selectedSchema.description}
-          />
-        }
-        open={isCreateFormOpen}
-        setOpen={setIsCreateFormOpen}
-      >
+      <Sheet isOpen={isCreateFormOpen} onOpenChange={setIsCreateFormOpen}>
+        <SlideOverTitle
+          schema={selectedSchema}
+          currentObjectLabel="New"
+          title={`Create ${selectedSchema.label}`}
+          subtitle={selectedSchema.description}
+        />
         <ObjectForm
           onSuccess={() => {
             setIsCreateFormOpen(false);
@@ -86,7 +81,7 @@ export function IpPrefixAvailableIdentifier({
           onCancel={() => setIsCreateFormOpen(false)}
           kind={selectedSchema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }

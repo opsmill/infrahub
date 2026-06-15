@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet } from "@infrahub/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,30 +93,23 @@ export function ObjectActionsCell({
         </DropdownMenu>
       </StickyRightCell>
 
-      {showEditForm && (
-        <SlideOver
-          title={
-            <SlideOverTitle
-              schema={schema}
-              currentObjectLabel={objectLabel}
-              title={`Edit ${objectLabel}`}
-            />
-          }
-          open={true}
-          setOpen={() => setShowEditForm(false)}
-        >
-          <ObjectItemEditComponent
-            closeDrawer={() => setShowEditForm(false)}
-            onUpdateComplete={async () => {
-              await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-              setShowEditForm(false);
-            }}
-            objectId={objectId}
-            objectname={objectKind}
-            extraRelationshipNames={extraRelationshipNames}
-          />
-        </SlideOver>
-      )}
+      <Sheet isOpen={showEditForm} onOpenChange={() => setShowEditForm(false)}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={objectLabel}
+          title={`Edit ${objectLabel}`}
+        />
+        <ObjectItemEditComponent
+          closeDrawer={() => setShowEditForm(false)}
+          onUpdateComplete={async () => {
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+            setShowEditForm(false);
+          }}
+          objectId={objectId}
+          objectname={objectKind}
+          extraRelationshipNames={extraRelationshipNames}
+        />
+      </Sheet>
 
       <DeleteObjectModal
         objectKind={objectKind}

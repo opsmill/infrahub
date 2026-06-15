@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
+import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
@@ -57,18 +57,13 @@ const ObjectEditSlideOverTrigger = ({
     <>
       {editButton}
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={getNodeLabel(data)}
-            title={`Edit ${getNodeLabel(data)}`}
-            subtitle={data?.description?.value}
-          />
-        }
-        open={isEditDrawerOpen}
-        setOpen={setIsEditDrawerOpen}
-      >
+      <Sheet isOpen={isEditDrawerOpen} onOpenChange={setIsEditDrawerOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={getNodeLabel(data)}
+          title={`Edit ${getNodeLabel(data)}`}
+          subtitle={data?.description?.value}
+        />
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditDrawerOpen(false)}
           onUpdateComplete={() => {
@@ -78,7 +73,7 @@ const ObjectEditSlideOverTrigger = ({
           objectId={data.id}
           objectname={schema.kind!}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 };
