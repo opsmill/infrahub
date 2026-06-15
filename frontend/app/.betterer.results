@@ -101,7 +101,7 @@ exports[`fix ts error`] = {
       [62, 28, 24, "tsc: \'objectDetailsData.object\' is possibly \'null\' or \'undefined\'.", "865142553"],
       [62, 53, 4, "tsc: Property \'node\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/entities/nodes/object-template/object-template-form.tsx:481961693": [
+    "src/entities/nodes/object-template/object-template-form.tsx:3603566508": [
       [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
     ],
     "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:266512825": [
