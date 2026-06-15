@@ -82,7 +82,7 @@ group_bfs_max_depth = 16
 
 ## Auto-create groups from LDAP
 
-By default, only directory groups that already exist as local groups take effect. Infrahub can instead create local groups on demand from the directory group names a user belongs to, so administrators do not have to mirror every directory group by hand. The feature is opt-in and scoped by a regular-expression filter.
+By default, only directory groups that already exist as local groups take effect. Infrahub can instead create local groups on demand from the directory group names a user belongs to, so administrators do not have to mirror every directory group manually. The feature is opt-in and scoped by a regular-expression filter.
 
 The same mechanism handles SSO claims and LDAP group names. For configuration — the filter syntax, the per-login cap, the `origin` provenance attribute, and the audit events — see [Auto-create groups from identity provider claims](../sso/advanced-sso.mdx#auto-create-groups-from-identity-provider-claims).
 
