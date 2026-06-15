@@ -1,6 +1,7 @@
 ---
 paths:
   - "backend/infrahub/**/*.py"
+  - "python_testcontainers/infrahub_testcontainers/**/*.py"
 ---
 
 # Backend Component Design (SOLID / DI)
@@ -10,6 +11,12 @@ Applies when creating a new backend component or making significant changes to a
 ## Use modular components with dependency injection
 
 New logic should live in components that receive their collaborators through constructor injection rather than instantiating them internally. This keeps components composable, swappable, and testable without patching.
+
+## Required dependencies, not optional
+
+Constructor dependencies for new code are required parameters - not `collaborator: Collaborator | None = None` with an internal default. Optional injection hides that the dependency exists and lets a caller silently skip wiring it. Make every collaborator an explicit, required constructor argument - explicit is better than implicit.
+
+The single exception is editing existing code where adding a required parameter would force a large change across many call sites. There, an optional parameter is a transitional compromise to keep the change small - not the target shape for new components.
 
 ## Build components near the application entry point
 
@@ -39,9 +46,35 @@ A single implementation does not need an interface yet; introduce one when the s
 can be either a no-op version (such as in the case of an enterprise-only feature) or a testing version of a component (such as in the case of an
 in-memory version of a component typically backed by the database).
 
-## Why this matters
+## Dispatching across implementations
 
-Constructor-injected long-lived dependencies plus method-passed transient entities is the boundary that lets components be reused across requests/operations and mocked with adapter implementations instead of `unittest.mock`. The [testing rule](./testing-python.md) requires adapter/protocol patterns for tests — that requirement is only practical when production code follows this design.
+When a component must pick one of several implementations at runtime based on the input, do not branch with `isinstance` (or a `match` on the input's type) inside one class. Give each implementation a predicate on the shared interface (e.g. `supports(request) -> bool`) alongside its entry method, hold the implementations as an injected list in an aggregator component, and let the aggregator delegate to the first that supports the input:
+
+```python
+class CheckerInterface(ABC):
+    @abstractmethod
+    def supports(self, request: Request) -> bool: ...
+    @abstractmethod
+    def check(self, request: Request) -> Result: ...
+
+class AggregatedChecker:
+    def __init__(self, checkers: list[CheckerInterface]) -> None:
+        self.checkers = checkers
+
+    def run(self, request: Request) -> Result:
+        for checker in self.checkers:
+            if checker.supports(request):
+                return checker.check(request)
+        raise NoCheckerError(request)
+```
+
+The aggregator depends only on the interface; the concrete list is assembled by the factory at the wiring layer, so adding an implementation is one new class plus one line in the factory, with no edit to the dispatch logic. `AggregatedConstraintChecker` (`backend/infrahub/core/validators/`) is the canonical example in the codebase.
+
+This is for an open, extensible set of implementations. When the set is closed and fixed (an enum, a sealed union), an exhaustive `match` with `typing.assert_never` is the right tool instead.
+
+## Why this design matters
+
+Stepping back from the individual rules above: constructor-injected long-lived dependencies plus method-passed transient entities is the boundary that lets components be reused across requests/operations and mocked with adapter implementations instead of `unittest.mock`. The [testing rule](./testing-python.md) requires adapter/protocol patterns for tests — that requirement is only practical when production code follows this design.
 
 Use this as a design driver, not just a constraint: the no-mock rule is the forcing function for this structure. When you make a component's decision logic testable without patching — collaborators injected through the constructor, a single entry point that is pure and operates only on its arguments — dependency inversion and single responsibility fall out as the path of least resistance rather than discipline you have to summon. The corollary is a useful smell test: if a component is hard to test without a mock, that is the signal it needs splitting or its dependencies injected, not that it needs a mock.
 

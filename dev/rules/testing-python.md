@@ -5,6 +5,8 @@ paths:
   - "backend/tests/functional/**/*.py"
   - "backend/tests/integration/**/*.py"
   - "backend/tests/integration_docker/**/*.py"
+  - "python_testcontainers/tests/**/*.py"
+
 ---
 
 # Python Testing Rules
@@ -30,6 +32,7 @@ Acceptable exceptions only:
 
 - External HTTP APIs with no test mode: use `httpx_mock` or `responses`
 - Time-dependent behavior: `freezegun`
+- Prefect's `get_run_logger`: when calling a Prefect-decorated function via `.fn` outside a flow context, patch `get_run_logger` to return a stdlib `logging.getLogger(...)` so `caplog` can capture output. See `dev/knowledge/backend/testing.md` for the full pattern.
 
 ## Parametrized tests
 
@@ -44,9 +47,11 @@ with pytest.raises(SomeError, match=r"expected message"):
     call_function()
 ```
 
+Make `match` cover the whole stable message (anchor with `^...$` where practical), not a short fragment of it. A fragment passes even when the rest of the wording regresses. Match only a substring when the message has a genuinely variable part (an id, a path, a count) that you cannot pin down.
+
 ## GraphQL error assertions
 
-Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes.
+Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes. The full-message-over-fragment preference applies to any exception assertion, not just GraphQL; with `pytest.raises` express it through an anchored `match` (above) rather than `==`.
 
 ## Test file placement
 
