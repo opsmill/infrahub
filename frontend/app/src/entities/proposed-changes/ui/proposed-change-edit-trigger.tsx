@@ -1,10 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver from "@/shared/components/display/slide-over";
 import {
   PROPOSED_CHANGES_EDITABLE_STATE,
   PROPOSED_CHANGES_OBJECT,
@@ -51,41 +49,37 @@ export const ProposedChangeEditTrigger = ({
         </Button>
       </Tooltip>
 
-      <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex justify-between overflow-hidden">
-              <div className="flex grow items-center gap-2 truncate whitespace-nowrap text-sm">
-                <span>Proposed changes</span>
-                <Icon icon="mdi:chevron-right" />
-                <span className="truncate">
-                  {proposedChangesDetails ? getNodeLabel(proposedChangesDetails) : ""}
-                </span>
-              </div>
-
-              <ObjectHelpButton
-                kind={proposedChangeSchema?.label}
-                documentationUrl={proposedChangeSchema?.documentation}
-                className="shrink-0"
-              />
+      <Sheet isOpen={showEditDrawer} onOpenChange={setShowEditDrawer}>
+        <div className="space-y-2">
+          <div className="flex justify-between overflow-hidden">
+            <div className="flex grow items-center gap-2 truncate whitespace-nowrap text-sm">
+              <span>Proposed changes</span>
+              <Icon icon="mdi:chevron-right" />
+              <span className="truncate">
+                {proposedChangesDetails ? getNodeLabel(proposedChangesDetails) : ""}
+              </span>
             </div>
 
-            <div>
-              <h3 className="font-semibold text-lg">Edit Proposed change</h3>
-            </div>
+            <ObjectHelpButton
+              kind={proposedChangeSchema?.label}
+              documentationUrl={proposedChangeSchema?.documentation}
+              className="shrink-0"
+            />
           </div>
-        }
-        open={showEditDrawer}
-        setOpen={setShowEditDrawer}
-      >
+
+          <div>
+            <h3 className="font-semibold text-lg">Edit Proposed change</h3>
+          </div>
+        </div>
         <ProposedChangeEditForm
           initialData={proposedChangesDetails}
           onSuccess={async () => {
             setShowEditDrawer(false);
             await queryClient.invalidateQueries({ queryKey: proposedChangesQueryKeys.all });
           }}
+          onCancel={() => setShowEditDrawer(false)}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 };

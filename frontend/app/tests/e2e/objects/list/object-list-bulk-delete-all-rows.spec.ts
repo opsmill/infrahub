@@ -21,14 +21,14 @@ test.describe("/objects/BuiltinTag - Bulk delete all rows", () => {
     await test.step("assert we have the initial values", async () => {
       await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("link", { name: "green" })).toBeVisible();
-      await expect(page.getByTestId("identifier-checkbox-cell")).toHaveCount(3);
+      await expect(page.getByTestId("identifier-cell").getByRole("checkbox")).toHaveCount(3);
     });
 
     await test.step("select all rows", async () => {
       await page.getByTestId("select-all-rows").click();
-      await expect(page.getByTestId("identifier-checkbox-cell").nth(0)).toBeChecked();
-      await expect(page.getByTestId("identifier-checkbox-cell").nth(1)).toBeChecked();
-      await expect(page.getByTestId("identifier-checkbox-cell").nth(2)).toBeChecked();
+      await expect(page.getByTestId("identifier-cell").nth(0).getByRole("checkbox")).toBeChecked();
+      await expect(page.getByTestId("identifier-cell").nth(1).getByRole("checkbox")).toBeChecked();
+      await expect(page.getByTestId("identifier-cell").nth(2).getByRole("checkbox")).toBeChecked();
     });
 
     await test.step("delete all rows", async () => {

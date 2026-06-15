@@ -16,8 +16,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "neo4j==6.0.3",
-    "neo4j-rust-ext==6.0.3.0",
+    "neo4j==6.2.0",
+    "neo4j-rust-ext==6.2.0.0",
     "pydantic>=2.12,<2.13",
     "pydantic-settings>=2.8,<2.9",
     "pytest>=9.0,<9.1",
@@ -63,7 +63,7 @@ dependencies = [
     "rich>=13,<14",
     "pyarrow>=14",
     "numpy>=1.26.2",
-    "dulwich==0.24.7",
+    "dulwich==1.2.5",
     "whenever==0.9.3",
     "netutils==1.12.0",
     "ariadne-codegen==0.18.0",
@@ -114,7 +114,7 @@ dev = [
     "jwcrypto==1.5.7",
     "ty==0.0.32",
     "prek>=0.3.0",
-    "coverage==7.13.5",
+    "coverage==7.14.1",
 ]
 
 # test-scale = [

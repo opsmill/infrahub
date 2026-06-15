@@ -1,3 +1,4 @@
+import { Tooltip, type TooltipProps } from "@infrahub/ui";
 import { CopyIcon } from "lucide-react";
 import {
   Header as AriaHeader,
@@ -13,7 +14,6 @@ import {
 } from "react-aria-components";
 
 import { disabledStyle } from "@/shared/components/aria/style-rac";
-import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
@@ -72,9 +72,9 @@ export const MenuSection = <T extends object>({
 };
 
 export interface MenuItemWithTooltipProps extends Omit<MenuItemProps, "children"> {
-  tooltipContent?: TooltipProps["content"];
-  tooltipEnabled?: TooltipProps["enabled"];
-  side?: TooltipProps["side"];
+  tooltipContent?: TooltipProps["message"];
+  tooltipEnabled?: boolean;
+  side?: TooltipProps["placement"];
   children?: React.ReactNode;
 }
 
@@ -89,10 +89,10 @@ export function MenuItemWithTooltip({
   return (
     <MenuItem isDisabled={isDisabled} className="data-disabled:pointer-events-auto" {...props}>
       <Tooltip
-        enabled={tooltipEnabled && isDisabled}
-        content={tooltipContent}
-        side={side}
+        message={tooltipEnabled && isDisabled ? tooltipContent : undefined}
+        placement={side}
         className="z-100001"
+        nonInteractiveTrigger
       >
         <span className="flex w-full items-center gap-[inherit]">{children}</span>
       </Tooltip>

@@ -32,7 +32,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          package_json_file: frontend/package.json
+          version: 10
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:

@@ -192,22 +192,15 @@ class TestInfrahubClient:
         with pytest.raises(NodeNotFoundError):
             await client.get(kind=CoreGraphQLQuery, id=obj.id)
 
-    async def test_import_all_python_files(
+    async def test_import_python_definitions(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
-        for group in ["backbone_services", "maintenance_circuits", "provisioning_circuits", "upstream_interfaces"]:
-            obj = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
-            await obj.new(
-                db=db,
-                name=group,
-            )
-            await obj.save(db=db)
-
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file
 
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         check_definitions = await client.all(kind=CoreCheckDefinition)
         assert len(check_definitions) >= 1
@@ -217,7 +210,8 @@ class TestInfrahubClient:
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -259,7 +253,8 @@ class TestInfrahubClient:
         )
         await obj2.save(db=db)
 
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         modified_check0 = await client.get(kind=CoreCheckDefinition, id=check_definitions[0].id)
         assert modified_check0.timeout.value == check_timeout_value_before_change

@@ -15,6 +15,7 @@ from infrahub.api.event_builder import make_event_meta, make_login_event
 from infrahub.auth.auth import (
     ExternalIdentity,
     SSOStateCache,
+    extract_sso_groups,
     get_groups_from_provider,
     signin_sso_account,
     validate_auth_response,
@@ -145,9 +146,12 @@ async def token(
 
     validate_auth_response(response=userinfo_response, provider_type="OAuth 2.0")
     user_info = userinfo_response.json()
-    sso_groups = user_info.get("groups", []) or await get_groups_from_provider(
-        provider=provider, service=service, payload=payload, user_info=user_info
-    )
+    sso_groups = extract_sso_groups(
+        payload=user_info,
+        claim_key=provider.groups_claim,
+        provider_name=provider_name,
+        source="oauth2_userinfo",
+    ) or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
 
     log.info(
         "SSO user authenticated",

@@ -169,7 +169,7 @@ resource "helm_release" "database_ha_service" {
   name       = "database-service"
   chart      = "neo4j-headless-service"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "2025.10.1-4"
+  version    = "2026.5.0"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -190,7 +190,7 @@ resource "helm_release" "database_ha" {
   name       = "database-${count.index}"
   chart      = "neo4j"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "2025.10.1-4"
+  version    = "2026.5.0"
 
   create_namespace = true
   namespace        = local.target_namespace

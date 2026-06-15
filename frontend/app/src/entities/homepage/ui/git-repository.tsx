@@ -1,8 +1,8 @@
+import { Tooltip } from "@infrahub/ui";
 import { ListBoxItem } from "react-aria-components";
 
 import type { Dropdown } from "@/shared/api/graphql/generated/types";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
@@ -31,7 +31,7 @@ export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryDat
       {display_label}
 
       {sync_status?.label && (
-        <Tooltip enabled={!!sync_status?.description} content={sync_status?.description}>
+        <Tooltip message={sync_status?.description} nonInteractiveTrigger>
           <div
             className={classNames("rounded-full px-3 py-1.5 text-xs")}
             style={

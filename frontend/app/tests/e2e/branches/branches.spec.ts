@@ -5,6 +5,8 @@ import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI } from "../utils/graphql";
 
 test.describe("Branches creation and deletion", () => {
+  test.slow();
+
   test.describe("when logged in as Admin", () => {
     test.describe.configure({ mode: "serial" });
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });

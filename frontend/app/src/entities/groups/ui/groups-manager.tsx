@@ -54,7 +54,7 @@ export function GroupsManager({ className, schema, objectId }: GroupsManagerProp
   );
 
   return (
-    <Col className={className}>
+    <Col className={className} data-testid="group-manager">
       <Row>
         <SearchInput onChange={setQuery} placeholder="filter groups..." />
 

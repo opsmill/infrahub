@@ -92,52 +92,13 @@ sudo docker compose -p infrahub down -v
 
 ### Enable observability
 
-To deploy Infrahub with a built-in observability stack (Grafana, Prometheus, Loki, Alloy), add the `?observability=true` query parameter to the URL. This can be combined with existing parameters like `size`:
-
-<Tabs groupId="os" queryString>
-<TabItem value="macOS" default>
+Add the `?observability=true` query parameter when fetching the compose file to also deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy):
 
 ```bash
 curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
-docker compose -p infrahub up -d
 ```
 
-</TabItem>
-<TabItem value="Linux">
-
-```bash
-curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
-sudo docker compose -p infrahub up -d
-```
-
-</TabItem>
-</Tabs>
-
-Combined with a sizing preset:
-
-```bash
-curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > docker-compose.yml
-```
-
-Once running, Grafana is accessible at [http://localhost:3500](http://localhost:3500) with default credentials `admin` / `admin`.
-
-For instructions on upgrading an existing observability stack, see the [Upgrade guide](../../maintain-upgrade/upgrade/observability-stack).
-
-:::tip Enable request tracing
-
-Infrahub can export OpenTelemetry traces so you can follow a single request as it moves across the API server, task workers, and the database. Traces are sent to the bundled Tempo instance and surfaced in Grafana under the Tempo data source.
-
-To enable it, add the following to a `.env` file alongside the compose file:
-
-```bash
-INFRAHUB_TRACE_ENABLE=true
-INFRAHUB_TRACE_EXPORTER_TYPE=otlp
-INFRAHUB_TRACE_EXPORTER_PROTOCOL=grpc
-INFRAHUB_TRACE_EXPORTER_ENDPOINT=http://infrahub-tempo:4317
-INFRAHUB_TRACE_INSECURE=true
-```
-
-:::
+It combines with other parameters such as `size`. See [Observability stack](./observability-stack) for Grafana access, request tracing, and configuration.
 
 </TabItem>
 <TabItem value="Kubernetes with Helm">
@@ -331,6 +292,10 @@ kubectl get pods -l app=infrahub
 ```
 
 :::
+
+### Observability (optional)
+
+To deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy) on Kubernetes, enable it on this release or install the `infrahub-observability` Helm chart alongside it. See [Observability stack](./observability-stack).
 
 </TabItem>
 <TabItem value="Bare metal">

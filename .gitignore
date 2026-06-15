@@ -37,6 +37,7 @@ python_sdk/dist/*
 !backend/tests/unit/**/data_export/*.csv
 
 # Generated files
+/.generated/
 query_performance_results/
 sync/dist/
 helm/charts/
@@ -50,5 +51,6 @@ schema/node_modules/*
 # AI and SDD
 **/.playwright-mcp/**
 **/.worktrees/
+.claude/worktrees/
 .bug-analysis-*.md
 .specify/**/.cache/

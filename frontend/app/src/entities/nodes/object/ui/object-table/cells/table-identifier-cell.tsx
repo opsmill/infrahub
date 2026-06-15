@@ -1,7 +1,5 @@
-import { LinkButton } from "@infrahub/ui";
+import { Checkbox, LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
-
-import { Checkbox } from "@/shared/components/aria/checkbox";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -25,13 +23,7 @@ export function TableIdentifierCell({
   const { isAuthenticated } = useAuth();
   return (
     <StickyLeftCell data-testid="identifier-cell">
-      {isAuthenticated && (
-        <Checkbox
-          isSelected={isSelected}
-          onPress={onClickCheckbox}
-          data-testid="identifier-checkbox-cell"
-        />
-      )}
+      {isAuthenticated && <Checkbox isSelected={isSelected} onPress={onClickCheckbox} />}
 
       <LinkButton
         variant="ghost"
