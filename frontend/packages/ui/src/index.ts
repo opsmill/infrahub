@@ -25,6 +25,13 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./components/card/card";
+export {
+  ListBox,
+  type ListBoxProps,
+  ListBoxItem,
+  type ListBoxItemProps,
+  ListBoxLoadMoreItem,
+} from "./components/list-box/list-box";
 export { Meter, type MeterProps } from "./components/meter/meter";
 export {
   Popover,

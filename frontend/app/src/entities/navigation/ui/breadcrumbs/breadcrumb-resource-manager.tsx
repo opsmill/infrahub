@@ -5,6 +5,8 @@ import {
   BreadcrumbItemLoading,
   Breadcrumbs,
   Button,
+  ListBox,
+  ListBoxItem,
   Popover,
   PopoverDialog,
 } from "@infrahub/ui";
@@ -14,7 +16,6 @@ import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Col, Row } from "@/shared/components/container";
 
