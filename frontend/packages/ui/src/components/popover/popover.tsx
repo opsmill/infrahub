@@ -13,11 +13,17 @@ export const PopoverTrigger = AriaDialogTrigger;
 
 const popoverStyles = tv({
   base: [
-    "z-50 rounded-xl border border-neutral-300 bg-stone-100/70 shadow-md outline-hidden backdrop-blur-lg duration-50",
-    "data-entering:fade-in-0 data-entering:zoom-in-95 data-entering:animate-in",
-    "data-exiting:fade-out-0 data-exiting:zoom-out-95 data-exiting:animate-out",
-    "data-[placement=bottom]:slide-in-from-top-2 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2",
+    "z-50 rounded-xl border border-neutral-300 bg-stone-100/70 shadow-md outline-hidden backdrop-blur-lg duration-100",
+    "data-[placement=bottom]:slide-in-from-top-10 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2",
   ],
+  variants: {
+    isEntering: {
+      true: "fade-in-0 zoom-in-95 animate-in",
+    },
+    isExiting: {
+      true: "fade-out-0 zoom-out-95 animate-out",
+    },
+  },
 });
 
 const popoverDialogStyles = tv({
@@ -30,7 +36,7 @@ export function Popover({ className, ...props }: PopoverProps) {
   return (
     <AriaPopover
       offset={4}
-      className={composeAriaClassName(className, popoverStyles())}
+      className={composeAriaClassName(className, (renderProps) => popoverStyles(renderProps))}
       {...props}
     />
   );
