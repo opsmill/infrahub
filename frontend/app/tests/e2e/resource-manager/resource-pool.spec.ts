@@ -45,6 +45,7 @@ test.describe("/resource-manager - Resource Manager", () => {
     await expect(page.getByText("Created by")).toBeVisible();
     await expect(page.getByText("Updated at")).toBeVisible();
     await expect(page.getByText("Updated by")).toBeVisible();
+    await page.getByRole("button", { name: "View node metadata" }).click();
 
     await page.getByTestId("edit-button").click();
     await expect(page.getByLabel("Default Prefix Type")).toContainText("IP PrefixIpam");
