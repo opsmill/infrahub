@@ -96,10 +96,10 @@ async def test_graphql_endpoint_at_before_branch_creation(
     create_test_admin: Node,
     car_person_data: dict[str, Node],
 ) -> None:
-    """Querying with an `at` earlier than the branch's effective lifetime must produce a clear, user-facing error.
+    """Querying with an `at` earlier than the default branch's creation must produce a clear, user-facing error.
 
-    The error always references the floor branch — the default branch itself for default-branch queries, and the
-    origin branch (`main`) for user-branch queries — never the user branch's own `created_at` or `branched_from`.
+    Since every user branch is currently rooted on the default branch, the error always references the default
+    branch — directly for default-branch queries and indirectly (via the origin) for user-branch queries.
     """
     if case.query_branch_name is not None:
         user_branch = await create_branch(branch_name=case.query_branch_name, db=db)
