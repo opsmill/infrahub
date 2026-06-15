@@ -76,7 +76,9 @@ async def _build_repository_with_conflict(
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
     if not repository.has_conflicting_changes(target_branch="main", source_branch="change1"):
-        raise RuntimeError("test helper drift: main and change1 must conflict for the conflict-import tests to be meaningful")
+        raise RuntimeError(
+            "test helper drift: main and change1 must conflict for the conflict-import tests to be meaningful"
+        )
     return repository
 
 
