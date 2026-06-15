@@ -136,6 +136,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/field-visibility', label: 'Field visibility' },
             { type: 'doc', id: 'schema/display_label', label: 'Display labels' },
             { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
+            { type: 'doc', id: 'schema/default-ordering', label: 'Default ordering' },
             { type: 'doc', id: 'menu/overview', label: 'Menu customization' },
           ],
         },

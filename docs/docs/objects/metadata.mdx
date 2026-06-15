@@ -87,7 +87,7 @@ The `created_by` and `updated_by` fields return account objects, which have a `d
 
 Query results can be ordered by object-level metadata timestamps using the `order` parameter with `node_metadata`. The example above demonstrates ordering by `created_at` in descending order to show the most recently created objects first. You can also order by `updated_at` to sort by modification time.
 
-Metadata ordering can also be declared at the schema level via the node or generic `order_by` field. Entries take the form `node_metadata__<field>` or `node_metadata__<field>__<direction>`, where `<field>` is `created_at` or `updated_at` and `<direction>` is `asc` or `desc` (ascending if omitted). Regular `order_by` entries accept the same `__asc` / `__desc` suffix. For example, `name__value__desc`. A query-time `order` argument fully replaces the schema-level default rather than being layered on top, so the two never stack.
+Object metadata can also be the default sort order for a kind, declared in the schema rather than requested on every query. Set the node or generic [`order_by`](../schema/default-ordering) field to an entry like `node_metadata__created_at__desc`. A query-time `order` argument fully replaces that schema-level default rather than being layered on top, so the two never stack.
 
 ### Filtering by metadata
 
