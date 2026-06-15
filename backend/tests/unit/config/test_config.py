@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -160,6 +161,41 @@ def test_groups_claim_empty_string_is_rejected_at_startup_oauth2(empty_value: st
 def test_groups_claim_empty_string_is_rejected_at_startup_oidc(empty_value: str) -> None:
     with pytest.raises(ValidationError, match=r"groups_claim must not be empty or whitespace-only"):
         _build_oidc_provider(groups_claim=empty_value)
+
+
+@dataclass
+class GroupsClaimStripCase:
+    name: str
+    value: str
+    expected: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        GroupsClaimStripCase(name="trailing_space", value="groups ", expected="groups"),
+        GroupsClaimStripCase(name="leading_space", value=" groups", expected="groups"),
+        GroupsClaimStripCase(name="surrounding_whitespace", value="  roles\t\n", expected="roles"),
+    ],
+    ids=lambda case: case.name,
+)
+def test_groups_claim_is_stripped_oauth2(case: GroupsClaimStripCase) -> None:
+    assert _build_oauth2_provider(groups_claim=case.value).groups_claim == case.expected
+    assert _build_oauth2_provider_2(groups_claim=case.value).groups_claim == case.expected
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        GroupsClaimStripCase(name="trailing_space", value="groups ", expected="groups"),
+        GroupsClaimStripCase(name="leading_space", value=" groups", expected="groups"),
+        GroupsClaimStripCase(name="surrounding_whitespace", value="  roles\t\n", expected="roles"),
+    ],
+    ids=lambda case: case.name,
+)
+def test_groups_claim_is_stripped_oidc(case: GroupsClaimStripCase) -> None:
+    assert _build_oidc_provider(groups_claim=case.value).groups_claim == case.expected
+    assert _build_oidc_provider_2(groups_claim=case.value).groups_claim == case.expected
 
 
 def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper) -> None:

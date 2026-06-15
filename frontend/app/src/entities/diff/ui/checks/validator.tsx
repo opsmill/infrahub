@@ -6,9 +6,14 @@ import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { DurationDisplay } from "@/shared/components/display/duration-display";
 import { List } from "@/shared/components/table/list";
+import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+
 import { ValidatorDetails } from "./validator-details";
+
+const ARTIFACT_VALIDATOR_KIND = "CoreArtifactValidator";
 
 type tValidatorProps = {
   validator: any;
@@ -66,6 +71,9 @@ const getValidatorState = (state?: string, conclusion?: string) => {
 export const Validator = ({ validator }: tValidatorProps) => {
   const { id, display_label, started_at, completed_at, conclusion, state } = validator;
 
+  const artifactDefinition =
+    validator.__typename === ARTIFACT_VALIDATOR_KIND ? validator.definition?.node : null;
+
   const columns = [
     {
       name: "id",
@@ -91,6 +99,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
       name: "state",
       label: "State",
     },
+    ...(artifactDefinition ? [{ name: "definition", label: "Definition" }] : []),
   ];
 
   const row = {
@@ -101,6 +110,15 @@ export const Validator = ({ validator }: tValidatorProps) => {
       completed_at: <DateDisplay date={completed_at.value} />,
       conclusion: conclusion.value,
       state: state.value,
+      ...(artifactDefinition
+        ? {
+            definition: (
+              <Link to={getObjectDetailsUrl("CoreArtifactDefinition", artifactDefinition.id)}>
+                {artifactDefinition.display_label}
+              </Link>
+            ),
+          }
+        : {}),
     },
   };
 
@@ -110,6 +128,18 @@ export const Validator = ({ validator }: tValidatorProps) => {
       <span>{display_label}</span>
       <span className="font-normal">-</span>
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
+
+      {artifactDefinition && (
+        <Tooltip message={`Open Artifact Definition: ${artifactDefinition.display_label}`}>
+          <Link
+            to={getObjectDetailsUrl("CoreArtifactDefinition", artifactDefinition.id)}
+            onClick={(e) => e.stopPropagation()}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <Icon icon="mdi:open-in-new" />
+          </Link>
+        </Tooltip>
+      )}
 
       <div className="flex grow justify-end">
         <Popover>

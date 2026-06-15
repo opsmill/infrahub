@@ -71,7 +71,7 @@ CI runs these checks to ensure generated files are committed.
 
 ## Documentation Generation
 
-Reference documentation under `docs/docs/reference/` (and `docs/reference/configuration.mdx`) is rendered from the backend source, not written by hand:
+Reference documentation under `docs/docs/reference/` (and `docs/docs/reference/configuration.mdx`) is rendered from the backend source, not written by hand:
 
 | Source | Output |
 |--------|--------|
