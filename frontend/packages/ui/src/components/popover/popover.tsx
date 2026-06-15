@@ -13,10 +13,11 @@ export const PopoverTrigger = AriaDialogTrigger;
 
 export interface PopoverProps extends AriaPopoverProps {}
 
-export function Popover({ className, offset = 4, ...props }: PopoverProps) {
+export function Popover({ className, ...props }: PopoverProps) {
   return (
     <AriaPopover
-      offset={offset}
+      offset={4}
+      {...props}
       className={composeAriaClassName(
         className,
         cn(
@@ -26,7 +27,6 @@ export function Popover({ className, offset = 4, ...props }: PopoverProps) {
           "data-[placement=bottom]:slide-in-from-top-2 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2"
         )
       )}
-      {...props}
     />
   );
 }
