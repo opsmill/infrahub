@@ -277,14 +277,6 @@ def default_permission_backend_scope_class() -> Generator[None, Any, Any]:
         yield
 
 
-@pytest.fixture(scope="class")
-def default_permission_backend_scope_class() -> Generator[None, Any, Any]:
-    previous_backends = registry.permission_backends
-    registry.permission_backends = [LocalPermissionBackend()]
-    yield
-    registry.permission_backends = previous_backends
-
-
 @pytest.fixture
 def local_storage_dir(tmp_path: Path) -> Path:
     return do_local_storage_dir(tmp_path=tmp_path)
@@ -751,13 +743,6 @@ async def car_person_schema_unregistered(
     return do_car_person_schema_unregistered()
 
 
-@pytest.fixture(scope="class")
-async def car_person_schema_unregistered_scope_class(
-    db: InfrahubDatabase, node_group_schema_scope_class: None, data_schema_scope_class: None
-) -> SchemaRoot:
-    return do_car_person_schema_unregistered()
-
-
 @pytest.fixture
 async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> SchemaRoot:
     """Person schema with no unicity constraint set except default filter."""
@@ -791,10 +776,11 @@ async def car_person_schema(
 async def car_person_schema_scope_class(
     db: InfrahubDatabase,
     default_branch_scope_class: Branch,
-    car_person_schema_unregistered_scope_class: SchemaRoot,
+    node_group_schema_scope_class: None,
+    data_schema_scope_class: None,
 ) -> SchemaBranch:
     return registry.schema.register_schema(
-        schema=car_person_schema_unregistered_scope_class, branch=default_branch_scope_class.name
+        schema=do_car_person_schema_unregistered(), branch=default_branch_scope_class.name
     )
 
 
