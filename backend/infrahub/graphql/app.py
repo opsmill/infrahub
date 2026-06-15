@@ -36,6 +36,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
+from infrahub.branch.query_time_validator import BranchQueryTimeValidator
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
@@ -218,7 +219,7 @@ class InfrahubGraphQLApp:
             graphql_params.context.at = Timestamp()
         elif at:
             at_ts = Timestamp(at)
-            branch.validate_query_time(at_ts)
+            BranchQueryTimeValidator(registry=registry).validate(branch=branch, at=at_ts)
             if branch.schema_changed_at and Timestamp(branch.schema_changed_at) > at_ts:
                 schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=at_ts)
                 db.add_schema(name=branch.name, schema=schema_branch)
