@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 
 
 class Branch(StandardNode):
+    # Persisted nullable fields must use `Optional[X]`` rather than `X | None` until we move to
+    # Python 3.14 b/c of how StandardNode.guess_field_type works
     name: str = Field(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
@@ -44,7 +46,8 @@ class Branch(StandardNode):
     is_isolated: bool = True
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
-    graph_version: int | None = None
+    graph_version: Optional[int] = None
+    merge_started_at: Optional[str] = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
@@ -82,6 +85,13 @@ class Branch(StandardNode):
     @field_validator("branched_from", mode="before")
     @classmethod
     def set_branched_from(cls, value: str) -> str:
+        return Timestamp(value).to_string()
+
+    @field_validator("merge_started_at", mode="before")
+    @classmethod
+    def set_merge_started_at(cls, value: Timestamp | str | None) -> str | None:
+        if value is None:
+            return None
         return Timestamp(value).to_string()
 
     def get_branched_from(self) -> str:

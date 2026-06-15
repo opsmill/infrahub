@@ -20,6 +20,7 @@ from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
     SchemaDiff,
@@ -330,7 +331,9 @@ async def load_schema(
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
     try:
-        BranchStatusChecker().check(branch=branch)
+        await BranchStatusChecker(
+            db=db, merge_write_blocker=MergeWriteBlocker(cache=request.app.state.service.cache)
+        ).check(branch=branch)
     except BranchStatusError as err:
         raise ValidationError(input_value=str(err)) from err
 

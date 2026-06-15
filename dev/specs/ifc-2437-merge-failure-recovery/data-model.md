@@ -52,7 +52,7 @@ One supplementary persisted field, required by the rollback Cypher:
 
 | Field              | Type                | Required | Default | Description |
 |--------------------|---------------------|----------|---------|-------------|
-| `merge_started_at` | `Timestamp \| None`  | no       | `None`  | The `merge_at` Timestamp passed to `DiffMerger.merge_graph`. Persisted when the branch transitions `OPEN → MERGING`. `RollbackQuery` is keyed on it (`from=$at`/`to=$at` on the target branch). Without it, recovery cannot run after a worker death. |
+| `merge_started_at` | `Optional[str]` (ISO timestamp string)  | no       | `None`  | The `merge_at` timestamp passed to `DiffMerger.merge_graph`, stored as an ISO string (a `Timestamp` field does not serialize through `StandardNode` — mirrors `branched_from`). Persisted when the branch transitions `OPEN → MERGING`. `RollbackQuery` is keyed on it (`from=$at`/`to=$at` on the target branch). Without it, recovery cannot run after a worker death. |
 
 `Branch` is a `StandardNode`, persisted via `.save()` → `StandardNodeUpdateQuery`; the new field
 serializes alongside existing branch attributes on the `:Branch` node, so it survives process and
@@ -111,8 +111,9 @@ A `MERGE_FAILED` branch removed out-of-band (deleted directly in the DB) leaves 
 - Mutations to the default branch are rejected while a branch is `MERGING` or `MERGE_FAILED` (target
   gate; the target is always the default branch). The target gate blocks when the `merge:protected`
   key is present. Reading the shared key is **immediately consistent** across all workers (one cache
-  `GET`, no per-write database read, no propagation window). If the cache is unreachable, the target
-  gate fails closed.
+  `GET`, no per-write database read, no propagation window). If the cache is unreachable, the gate
+  logs and falls back to the durable DB branch status (`Branch.get_list(status=MERGING)`), blocking
+  only when a merge is genuinely in progress rather than freezing all default-branch writes.
 - A new merge/rebase is rejected while any branch is `MERGING`/`MERGE_FAILED` (FR-004).
 - Deletion of a `MERGE_FAILED` branch is rejected at the **mutation gate** (the branch-status
   mutation middleware grants `MERGE_FAILED` no exception, including `BranchDelete`) — not via a guard
@@ -154,7 +155,8 @@ R2).
 
 ### Write-block signal: `merge:protected` cache key (new)
 
-**Source**: the existing distributed cache (`service.cache`, Redis or NATS — `services/adapters/cache/`).
+**Source**: the existing distributed cache (`service.cache`, Redis or NATS — `services/adapters/cache/`),
+accessed through the `MergeWriteBlocker` component (`core/merge/write_blocker.py`: `set`/`get`/`delete`).
 
 The immediately-consistent signal every worker reads on the write path (research R11). It is **not**
 the durable source of truth — the DB-persisted branch `status` is — it is a fast-read mirror.
@@ -167,7 +169,7 @@ the durable source of truth — the DB-persisted branch `status` is — it is a 
 | Read by | `BranchStatusChecker` on every write (target gate: key present; source gate: key's branch == target branch) |
 | TTL | none (persists until deleted); the recurring scan reconciles it against the durable DB status |
 | Restart / cache flush | repopulated from the DB-persisted status at startup and by the recurring scan |
-| Cache unavailable | write gate fails **closed** on the default branch; falls back to `registry.branch` for other branches |
+| Cache unavailable | gate logs and falls back to the durable DB branch status (`Branch.get_list(status=MERGING)`); blocks only when a merge is actually in progress (does not freeze the default branch otherwise) |
 
 The DB status remains authoritative for detection, recovery, restart, and observability; the cache
 key exists solely to make the cross-worker write block immediately consistent without a per-write

@@ -25,6 +25,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge import BranchMerger
 from infrahub.core.merge.merge_locker import MergeLocker
+from infrahub.core.merge.write_blocker import MergeProtectionState, MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
@@ -44,7 +45,7 @@ from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
-from infrahub.workers.dependencies import get_component, get_database, get_event_service, get_workflow
+from infrahub.workers.dependencies import get_cache, get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_DELETE,
@@ -123,9 +124,15 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
 async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:  # noqa: PLR0915
     workflow = get_workflow()
     database = await get_database()
+    merge_write_blocker = MergeWriteBlocker(cache=await get_cache())
     async with database.start_session() as db:
         log = get_run_logger()
         await add_tags(branches=[branch])
+
+        protection = await merge_write_blocker.get()
+        if protection is not None:
+            raise ValidationError("Cannot rebase a branch while a merge is in progress.")
+
         obj = await Branch.get_by_name(db=db, name=branch)
         base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
         component_registry = get_component_registry()
@@ -280,6 +287,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
 async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id: str | None = None) -> None:
     database = await get_database()
+    merge_write_blocker = MergeWriteBlocker(cache=await get_cache())
     async with database.start_session() as db:
         log = get_run_logger()
 
@@ -302,10 +310,15 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 log.info(f"Branch '{branch}' is not open (status={obj.status}), skipping merge")
                 return
 
+            protection = await merge_write_blocker.get()
+            if protection is not None and protection.branch != obj.name:
+                raise ValidationError("Cannot merge a branch while a merge is in progress.")
+
             node_events = await _do_merge_branch(
                 db=db,
                 log=log,
                 branch=obj,
+                merge_write_blocker=merge_write_blocker,
                 context=context,
                 proposed_change_id=proposed_change_id,
             )
@@ -334,6 +347,7 @@ async def _rollback_merge(
     log: Logger | LoggerAdapter,
     merger: BranchMerger,
     branch: Branch,
+    merge_write_blocker: MergeWriteBlocker,
     pre_merge_schema: SchemaBranch,
     pre_merge_branched_from: str | None,
     user_id: str,
@@ -355,12 +369,18 @@ async def _rollback_merge(
         merger.destination_branch.update_schema_hash()
         await merger.destination_branch.save(db=db, user_id=user_id)
     except Exception:
+        # Hold the write protection (leave the branch MERGING + key set) rather than reopening on a
+        # partially-recovered state, so the failure is handled by recovery instead of allowing writes.
         log.exception("Registry restore failed during merge rollback")
+        return False
 
     branch.branched_from = pre_merge_branched_from
     branch.status = BranchStatus.OPEN
     await branch.save(db=db, user_id=user_id)
     registry.branch[branch.name] = branch
+
+    # Lift the write protection now that the merge has been cleanly rolled back.
+    await merge_write_blocker.delete()
     log.info(f"Merge rollback completed; branch '{branch.name}' returned to OPEN")
 
     return True
@@ -384,10 +404,24 @@ async def _submit_post_merge_workflow(
         log.exception("Failed to enqueue post-merge workflow '%s'", workflow_definition.name)
 
 
+async def _merge_repositories_after_merge(merger: BranchMerger, log: Logger | LoggerAdapter) -> None:
+    """Run the repository (git) merge after the branch merge has committed.
+
+    The repository merge issues a GraphQL write to the default branch, so it must run after the write
+    block is lifted; while protected it would be rejected as a write to the merging branch. Best-effort:
+    the data merge is already committed and must not be rolled back if this fails.
+    """
+    try:
+        await merger.merge_repositories()
+    except Exception:
+        log.exception("Repository merge failed after branch merge committed")
+
+
 async def _do_merge_branch(
     db: InfrahubDatabase,
     log: Logger | LoggerAdapter,
     branch: Branch,
+    merge_write_blocker: MergeWriteBlocker,
     context: InfrahubContext,
     proposed_change_id: str | None = None,
 ) -> Sequence[tuple[DiffAction, NodeChangelog]]:
@@ -412,8 +446,12 @@ async def _do_merge_branch(
     )
     try:
         async with lock.registry.global_graph_lock():
-            # Set to MERGING to lock the branch while merge proceeds
+            # Set to MERGING to lock the branch while merge proceeds. Record when the merge started so
+            # a recovery can roll back from this point, and publish the shared write-protection key
+            # before any graph write so every worker rejects writes to the source and default branch.
+            await merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
             branch.status = BranchStatus.MERGING
+            branch.merge_started_at = merge_at.to_string()
             await branch.save(db=db, user_id=user_id)
             registry.branch[branch.name] = branch
             await merger.merge(at=merge_at)
@@ -476,6 +514,7 @@ async def _do_merge_branch(
             log=log,
             merger=merger,
             branch=branch,
+            merge_write_blocker=merge_write_blocker,
             pre_merge_schema=pre_merge_schema,
             pre_merge_branched_from=pre_merge_branched_from,
             user_id=context.account.account_id,
@@ -495,11 +534,16 @@ async def _do_merge_branch(
     await branch.save(db=db, user_id=user_id)
     registry.branch[branch.name] = branch
 
+    # Lift the write protection now that the merge has fully succeeded.
+    await merge_write_blocker.delete()
+
     # -------------------------------------------------------------
     # Post-merge follow-ups. The merge is already committed (MERGED, above),
     # so a follow-up failing to enqueue must not abort the remaining ones or
     # surface as a merge failure: each submission is logged and skipped on error.
     # -------------------------------------------------------------
+
+    await _merge_repositories_after_merge(merger=merger, log=log)
 
     # Trigger the reconciliation of IPAM data now that the graph merge is complete.
     if ipam_node_details:

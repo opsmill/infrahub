@@ -36,8 +36,9 @@ proposed change) to `OPEN`.
   consistent** — no propagation window, no per-transition status broadcast — so SC-001 holds
   literally and the range rollback never clobbers an interleaved write. The durable DB status is
   reloaded at startup and the recurring scan reconciles the key against it (self-healing across a
-  restart or cache flush); the gate fails closed on the default branch if the cache is unreachable
-  (research R11).
+  restart or cache flush); if the cache is unreachable the gate logs and falls back to the durable
+  DB branch status (so a cache outage blocks writes only when a merge is genuinely in progress,
+  rather than freezing every default-branch write) (research R11).
 - Recovery reverses a failed merge with a **single range rollback** over the default branch keyed on
   the persisted `merge_started_at`: reopen edges with `to >= merge_at`, delete edges with
   `from >= merge_at`, clean orphaned vertices, and restore `previous_*` metadata for the
@@ -93,7 +94,7 @@ from `.specify/memory/constitution.md`:
 | II. Branch-Safe by Default | PASS | Recovery rollback is target-branch + timestamp scoped (`from=$at`/`to=$at` on `$target_branch`) and uses soft-delete edge semantics already present in `RollbackQuery`. The new protection is branch-aware (only default + failed source blocked; unrelated branches writable). Merge behavior is the subject of the feature and is tested incl. cross-process. |
 | III. Type Safety & Explicit Contracts | PASS | All new code typed (`str \| None`). `RecoveryReport` is a frozen dataclass. No new external GraphQL/REST contract beyond the auto-serialized enum value. |
 | IV. Test Discipline | PASS | Unit (detection predicate, status checker), component (recovery rollback against a hand-set marker, write/merge/delete blocking), functional (end-to-end recover flow + scan), integration_docker (SIGKILL mid-merge → scan marks `MERGE_FAILED` while idle → `infrahub recover` → re-merge). Reuse existing schema fixtures. |
-| V. Query Performance & Efficiency | PASS | The write gate adds **one cache `GET`** (`merge:protected`) per mutation — a single sub-ms round-trip before any transaction, no new per-write database query. Detection scan = one parameterized Cypher lookup for `status=MERGING` branches + a cache read of the merge-lock token + key reconciliation; returns only `name`, `status`, timestamp. No N+1. The range rollback is written as per-edge-type subqueries to use relationship range indexes (new `from`/`to` indexes added) and batches `IN TRANSACTIONS OF 500 ROWS`. Recovery is a rare, operator-invoked operation, not a hot path. |
+| V. Query Performance & Efficiency | PASS | The write gate adds **one cache `GET`** (`merge:protected`) per mutation — a single sub-ms round-trip before any transaction, no new per-write database query on the happy path (a branch-status query is issued only in the degraded cache-unreachable fallback). Detection scan = one parameterized Cypher lookup for `status=MERGING` branches + a cache read of the merge-lock token + key reconciliation; returns only `name`, `status`, timestamp. No N+1. The range rollback is written as per-edge-type subqueries to use relationship range indexes (new `from`/`to` indexes added) and batches `IN TRANSACTIONS OF 500 ROWS`. Recovery is a rare, operator-invoked operation, not a hot path. |
 | VI. Security & Input Boundaries | PASS | `infrahub recover` is an admin CLI requiring DB access (same trust level as `infrahub db` commands). User-facing write-rejection messages name `infrahub recover` and "contact an administrator" without leaking internals. All Cypher parameterized. No secrets. |
 | VII. Simplicity & Maintainability | PASS | Reuses: existing `MergeLocker` lock + token format, the `clean_up_deadlocks` liveness pattern, the Prefect `INTERNAL` cron-workflow pattern, `BranchStatusChecker` as the write chokepoint, the existing `RollbackQuery` (extended to a range query) + the `previous_*` snapshot mechanism, and the `AsyncTyper` CLI pattern (`cli/db.py`). One new status, one new persisted field, one new recurring workflow, one new CLI command, one new recovery component. No new dependencies. |
 
@@ -128,14 +129,15 @@ backend/infrahub/
 │   ├── merge/
 │   │   ├── branch_merger.py         # (timestamp + cache-key wiring, if not done in tasks.py)
 │   │   ├── merge_locker.py          # (read-side) helper to inspect the merge-lock holder
-│   │   └── failure_recovery.py      # NEW: detection predicate + recovery (range rollback, branch/PC reset, merge:protected key set/update/delete + scan reconcile)
+│   │   ├── write_blocker.py         # NEW (US1): MergeWriteBlocker — owns the merge:protected cache key (set/get/delete + parse)
+│   │   └── failure_recovery.py      # NEW (US2/US3): detection predicate + recovery (range rollback, branch/PC reset, key update→MERGE_FAILED via MergeWriteBlocker + scan reconcile)
 │   ├── migrations/                  # MODIFY migration queries that bump updated_at/by to co-write previous_* (restorable on recovery)
 │   ├── query/
 │   │   └── rollback.py              # MODIFY: range rollback (from/to >= merge_at) per-edge-type subqueries + metadata restore for reverted-edge vertices where updated_at >= merge_at
 │   └── graph/
 │       └── index.py                 # ADD from/to (and possibly updated_at) RANGE IndexItem entries (Ask First) + graph migration
 ├── branch/
-│   └── status_checker.py            # ADD MERGE_FAILED handling; gates read merge:protected key (gains cache dep; check becomes async)
+│   └── status_checker.py            # ADD MERGE_FAILED handling; gates read merge:protected key via MergeWriteBlocker (gains MergeWriteBlocker + db deps; check becomes async; cache-unreachable → DB fallback)
 ├── graphql/
 │   └── middleware.py                # MERGE_FAILED grants no mutation exception (incl. BranchDelete) — FR-014 at the mutation gate
 ├── locks/

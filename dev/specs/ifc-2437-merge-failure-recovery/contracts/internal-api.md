@@ -31,8 +31,14 @@ clients can read and reason about it.
 ```python
 class Branch(StandardNode):
     # ... existing fields ...
-    merge_started_at: Timestamp | None = None
+    merge_started_at: Optional[str] = None   # ISO timestamp string; normalized by a field_validator
 ```
+
+> **Type note:** stored as `Optional[str]`, not `Timestamp | None`. A `Timestamp` field cannot
+> serialize through `StandardNode` (pydantic rejects it without `arbitrary_types_allowed`, and
+> `to_db()` fails on `ujson.dumps`), so this mirrors the existing `branched_from` string pattern with
+> a `field_validator` that normalizes a `Timestamp`/`str` to an ISO string. Callers assign
+> `merge_started_at = merge_at.to_string()`.
 
 **Persistence contract**: `merge_started_at` persists on the `:Branch` node via the existing
 `StandardNode.save()` path. It is **(over)written when entering `MERGING`** and then **left in
@@ -67,6 +73,15 @@ Minimal edits to the existing flow — no signature changes:
   never ran IPAM — no IPAM collateral, and no IPAM run racing/following recovery. `/speckit-tasks`
   audits for any other pre-`MERGED` follow-on that writes the default branch without snapshotting
   `previous_*` (schema migrations are handled by co-writing `previous_*`, §3).
+- **Reorder the repository (git) merge after `MERGED` — DONE (T005a)**: `merge_repositories()` was
+  the only non-IPAM pre-`MERGED` follow-on that writes the default branch. It issues a
+  `CoreRepositoryUpdate` through the SDK/GraphQL, which the target write-gate rejects during the
+  protected window, so the merge self-blocked. It is moved out of `BranchMerger.merge()` to the
+  post-`MERGED` section (best-effort, before `BRANCH_DELETE`). Same recovery benefit as the IPAM
+  reorder: a `MERGE_FAILED` branch never ran the repository merge, so there is no repository-node
+  collateral on the default branch and the write-block invariant holds with no GraphQL write inside the
+  window. All other in-window default-branch writes (bulk graph merge, schema migrations, branch/PC
+  saves) are direct Cypher and bypass the gate. See `../repo-merge-write-block-plan.md`.
 
 > The global `MergeLocker` lock at line 297 is already held for the entire `_do_merge_branch` call,
 > so its `timestamp::worker_id` token is present throughout the `MERGING` window and is the signal
@@ -241,20 +256,19 @@ Extend the existing checker (which already raises on `MERGED`/`MERGING`/`NEED_RE
 
 ```python
 class BranchStatusChecker:
-    def __init__(self, cache: InfrahubCache) -> None: ...   # NEW: gate reads the merge:protected key
+    def __init__(self, db: InfrahubDatabase, merge_write_blocker: MergeWriteBlocker) -> None: ...   # db required, first
     # ... existing methods ...
 
-    async def check_merging_status(self, branch: Branch) -> None:   # async: awaits cache.get
-        """Read the shared merge:protected cache key and raise if this branch is
+    async def check_merging_status(self, branch: Branch) -> None:   # async: awaits the cache read
+        """Read the shared merge:protected key (via MergeWriteBlocker) and raise if this branch is
         blocked by a merge:
-          - key present and its branch == branch.name (source gate), OR
-          - branch is the default branch and the key is present (target gate).
-        The key's state selects the message:
-          MERGING -> transient 'merge in progress, retry shortly'.
-          MERGE_FAILED -> 'a merge failed; contact an administrator to run
-          infrahub recover'.
-        On cache error: fail closed for the default branch; fall back to the
-        in-memory branch.status for other branches.
+          - key present and its branch == branch.name (source gate) -> branch-specific read-only
+            message ("Branch '{name}' is being merged and is read-only…", mirroring MERGED), OR
+          - branch is the default branch and the key is present (target gate) -> transient
+            'merge in progress, retry shortly' (it becomes writable again after the merge).
+        (MERGE_FAILED message — 'contact an administrator to run infrahub recover' — is added in PR-3.)
+        On cache error: log the exception and fall back to the durable DB branch status
+        (Branch.get_list(status=MERGING)) — the source of truth.
         """
 
     async def check(self, branch: Branch) -> None:
@@ -263,13 +277,18 @@ class BranchStatusChecker:
         await self.check_merging_status(branch)   # NEW (async)
 ```
 
-**New `cache` dependency + async**: because the gate reads the `merge:protected` cache key,
-`BranchStatusChecker` gains a `cache: InfrahubCache` constructor arg and `check`/`check_merging_status`
-become `async`. The call sites already run in async contexts and have a cache handle — the GraphQL
-mutation middleware (`info.context.service.cache`) and REST handlers (`request.app.state.service.cache`)
-construct `BranchStatusChecker(cache=...)` and `await` the check.
+**New `db` (required, first) + `MergeWriteBlocker` dependencies + async**: the gate reads the
+`merge:protected` key through an injected `MergeWriteBlocker` (which owns the cache), and takes a
+required `db` handle used by the cache-unreachable fallback; `check`/`check_merging_status` become
+`async`. The call sites run in async contexts and have both handles — the GraphQL mutation middleware
+(`info.context.active_service.cache`, `info.context.db`) and REST handlers
+(`request.app.state.service.cache`, the `db` dependency) construct
+`BranchStatusChecker(db=..., merge_write_blocker=MergeWriteBlocker(cache=...))` and `await` the check.
+`check_merge_status` now raises only for `MERGED`; the `MERGING` block moved to `check_merging_status`
+(key-driven, immediately consistent across workers).
 
-- **FR-002 vs FR-009 messaging**: the two messages MUST be distinct. `MERGING` is transient/retry;
+- **FR-002 vs FR-009 messaging**: the messages MUST be distinct. The default branch during a healthy
+  merge is transient/retry; the branch being merged is read-only ("is being merged…", like `MERGED`);
   `MERGE_FAILED` names `infrahub recover` and the administrator.
 - **FR-012 fast path**: the gate decides from the `merge:protected` cache key value — its state
   (`MERGING` vs `MERGE_FAILED`) is already set by the detector, so the steady-state write path needs
@@ -285,9 +304,11 @@ construct `BranchStatusChecker(cache=...)` and `await` the check.
   reads the same shared value, the block is **immediately consistent** (no propagation window), so
   SC-001 is a literal 100% and the range rollback (§3) never clobbers an interleaved write. The
   durable DB status is the source of truth (reloaded at startup, reconciled by the recurring scan),
-  so the key survives restarts/flush. `BranchStatusChecker` must therefore be given a cache handle
-  (reachable in the GraphQL middleware and REST handlers). Cache-error fail-mode: fail closed on the
-  default branch, fall back to `registry.branch` elsewhere.
+  so the key survives restarts/flush. `BranchStatusChecker` is therefore given a `MergeWriteBlocker`
+  (owns the cache) plus a `db` handle (both reachable in the GraphQL middleware and REST handlers).
+  Cache-error fail-mode: log and fall back to the durable DB branch status
+  (`Branch.get_list(status=MERGING)`) — a cache outage blocks writes only when a merge is genuinely in
+  progress, rather than freezing all default-branch writes.
 
 **Delete prevention (FR-014) at the mutation gate, not in `Branch.delete()`**: the `MERGE_FAILED`
 delete block lives where branch-status mutation gating already lives — the GraphQL branch-status

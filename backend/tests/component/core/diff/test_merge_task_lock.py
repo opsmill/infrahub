@@ -49,6 +49,7 @@ class TestMergeTaskLock:
         db: InfrahubDatabase,
         log: Any,  # noqa: ARG004
         branch: Branch,
+        merge_write_blocker: Any,  # noqa: ARG004
         context: Any,  # noqa: ARG004
         proposed_change_id: str | None = None,  # noqa: ARG004
     ) -> list:
@@ -106,7 +107,12 @@ class TestMergeTaskLock:
         max_concurrent = 0
 
         async def tracking_mock_do_merge(
-            db: InfrahubDatabase, log: Any, branch: Branch, context: Any, proposed_change_id: str | None = None
+            db: InfrahubDatabase,
+            log: Any,
+            branch: Branch,
+            merge_write_blocker: Any,
+            context: Any,
+            proposed_change_id: str | None = None,
         ):
             nonlocal concurrent_count, max_concurrent
             concurrent_count += 1
