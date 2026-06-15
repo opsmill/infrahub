@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Tooltip } from "@infrahub/ui";
+import { Popover, PopoverTrigger, Tooltip } from "@infrahub/ui";
 
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
@@ -7,7 +7,6 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { DurationDisplay } from "@/shared/components/display/duration-display";
 import { List } from "@/shared/components/table/list";
 import { Link } from "@/shared/components/ui/link";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
@@ -141,17 +140,13 @@ export const Validator = ({ validator }: tValidatorProps) => {
         </Tooltip>
       )}
 
-      <div className="flex grow justify-end">
-        <Popover>
-          <PopoverTrigger onClick={(e) => e.stopPropagation()} asChild>
-            <InfoButton />
-          </PopoverTrigger>
+      <PopoverTrigger>
+        <InfoButton className="ml-auto" />
 
-          <PopoverContent>
-            <List columns={columns} row={row} />
-          </PopoverContent>
+        <Popover>
+          <List columns={columns} row={row} />
         </Popover>
-      </div>
+      </PopoverTrigger>
     </div>
   );
 
