@@ -278,7 +278,7 @@ async def bootstrap_local_repository(
             except RepositoryError as exc:
                 log.info(exc.message)
                 return None
-            default_import_git_branch = registry.default_branch
+            default_import_git_branch = repo.default_branch
 
         if repo.reinitialized:
             default_import_git_branch = repo.default_branch
@@ -326,7 +326,7 @@ async def sync_repository_from_origin(
             infrahub_branch=infrahub_branch,
         )
         try:
-            pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
+            pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
         except (ValueError, InvalidGitRepositoryError) as exc:
             log.debug(
                 f"Could not resolve pinned commit for {repository.name.value}, workers will fall back to pull: {exc}"
