@@ -53,6 +53,12 @@ Infrahub can automatically assign users to groups based on information from your
 By default, groups must exist in Infrahub before they can be assigned. Infrahub can also auto-create groups from provider claims when [auto-creation](#auto-create-groups-from-identity-provider-claims) is enabled.
 :::
 
+:::warning Membership is additive
+Group memberships derived from provider claims are evaluated on **every** login and are **additive**: each login adds the user to the groups their claims map to. Infrahub never removes a user from a group based on claims — if a group is dropped from the provider, or an administrator removes a user from a group, that change is **not** re-synced or reverted on the next login. Revoking group membership is a manual action in Infrahub.
+
+The [default group](#step-3-configure-default-group-assignment-optional) is the one exception: it is applied only on a user's first login, not on every login.
+:::
+
 ### Step 1: Configure group claims in your identity provider
 
 Configure your identity provider application to include group information in the authentication tokens sent to Infrahub.
@@ -103,6 +109,10 @@ If your identity provider cannot provide group information, configure a default 
 
 :::warning
 You must create this default group in Infrahub before configuring it here.
+:::
+
+:::info Applied on first login only
+The default group is assigned only on a user's **first** login, when their account is created. It is not re-applied on subsequent logins, so once an administrator removes a user from the default group — or moves them to a different group — that change sticks and the default group is not added back.
 :::
 
 <Tabs groupId="config-method" queryString>
@@ -166,7 +176,7 @@ auto_create_groups_max_per_login = 50
 With the example above, a claim `LDAP/group/network-engineering` produces a local group named `network-engineering`. A claim that does not match the filter is ignored.
 
 :::warning
-Anchor your regex (`^...$`) and scope it tightly. A permissive pattern can create unintended groups on first login.
+Anchor your regex (`^...$`) and scope it tightly. A permissive pattern can create unintended groups on any login.
 :::
 
 ### Per-login cap
