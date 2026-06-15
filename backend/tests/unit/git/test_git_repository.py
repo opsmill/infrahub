@@ -55,8 +55,9 @@ async def _build_repository_with_conflict(
 ) -> InfrahubRepository:
     """Build an `InfrahubRepository` whose remote has `main` and a divergent `change1`.
 
-    Asserts the pre-condition that the two branches actually conflict so a helper drift
-    fails loudly instead of silently making downstream assertions meaningless.
+    Raises:
+        RuntimeError: When the constructed source repo no longer produces a conflict between `main` and `change1`.
+
     """
     repos_dir = tmp_path / "repositories"
     repos_dir.mkdir()
@@ -74,7 +75,8 @@ async def _build_repository_with_conflict(
         default_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-    assert repository.has_conflicting_changes(target_branch="main", source_branch="change1")
+    if not repository.has_conflicting_changes(target_branch="main", source_branch="change1"):
+        raise RuntimeError("test helper drift: main and change1 must conflict for the conflict-import tests to be meaningful")
     return repository
 
 
