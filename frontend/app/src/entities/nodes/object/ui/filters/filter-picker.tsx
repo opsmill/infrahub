@@ -125,13 +125,7 @@ function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItem
   const label = getFilterDefinitionLabel(definition);
 
   return (
-    <ListBoxItem
-      id={name}
-      textValue={label}
-      selectionIndicator="none"
-      className={({ isSelected }) => classNames(isSelected && "bg-stone-700/10 text-stone-800")}
-      ref={ref}
-    >
+    <ListBoxItem id={name} textValue={label} selectionIndicator="highlight" ref={ref}>
       {definition.type === "relationship" ? (
         <FieldSchemaIcon fieldSchema={definition.schema} />
       ) : (

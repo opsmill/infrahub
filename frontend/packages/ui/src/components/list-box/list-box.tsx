@@ -41,13 +41,12 @@ const listBoxItemStyles = tv({
   ],
   variants: {
     isFocused: { true: "bg-stone-700/10 text-stone-800" },
-    isSelected: { true: "bg-stone-700/10" },
   },
 });
 
 export interface ListBoxItemProps<T> extends AriaListBoxItemProps<T> {
   ref?: React.Ref<HTMLDivElement>;
-  selectionIndicator?: "checkmark" | "none";
+  selectionIndicator?: "checkmark" | "highlight" | "none";
 }
 
 export function ListBoxItem<T extends object>({
@@ -63,10 +62,10 @@ export function ListBoxItem<T extends object>({
       ref={ref}
       textValue={textValue || (typeof children === "string" ? children : undefined)}
       className={composeAriaClassName(className, ({ isFocused, isSelected }) =>
-        listBoxItemStyles({
-          isFocused,
-          isSelected: isSelected && selectionIndicator === "none",
-        }),
+        cn(
+          listBoxItemStyles({ isFocused }),
+          isSelected && selectionIndicator === "highlight" && "bg-stone-700/10",
+        ),
       )}
       {...props}
     >
