@@ -308,7 +308,7 @@ async def cancel_proposed_changes_branch(branch_name: str) -> None:
         await cancel_proposed_change(proposed_change=proposed_change, client=get_client())
 
 
-@task(name="Cancel a proposed change", description="Cancel a proposed change", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="Cancel a proposed change", description="Cancel a proposed change", cache_policy=NONE)
 async def cancel_proposed_change(proposed_change: CoreProposedChange, client: InfrahubClient) -> None:
     await add_tags(nodes=[proposed_change.id])
     log = get_run_logger()
@@ -1977,7 +1977,7 @@ async def _get_proposed_change_repositories(
     name="proposed-change-validate-repository-conflicts",
     task_run_name="Validate conflicts on repository",
     cache_policy=NONE,
-)  # type: ignore[arg-type]
+)
 async def _validate_repository_merge_conflicts(
     repositories: list[ProposedChangeRepository], client: InfrahubClient
 ) -> bool:

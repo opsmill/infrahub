@@ -148,7 +148,7 @@ async def display_labels_setup_jinja2(
 
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_display_labels_jinja2, trigger_type=TriggerType.DISPLAY_LABEL_JINJA2
-        )  # type: ignore[misc]
+        )
 
         # Configure all DisplayLabelTriggerDefinitions in Prefect
         all_triggers = report.triggers_with_type(trigger_type=DisplayLabelTriggerDefinition)
