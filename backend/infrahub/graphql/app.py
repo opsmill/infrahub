@@ -38,7 +38,7 @@ from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_sc
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
@@ -218,10 +218,7 @@ class InfrahubGraphQLApp:
             graphql_params.context.at = Timestamp()
         elif at:
             at_ts = Timestamp(at)
-            try:
-                branch.validate_query_time(at_ts)
-            except ValidationError as exc:
-                return JSONResponse(exc.api_response(), status_code=exc.HTTP_CODE)
+            branch.validate_query_time(at_ts)
             if branch.schema_changed_at and Timestamp(branch.schema_changed_at) > at_ts:
                 schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=at_ts)
                 db.add_schema(name=branch.name, schema=schema_branch)
