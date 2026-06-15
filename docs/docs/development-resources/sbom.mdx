@@ -24,7 +24,7 @@ Because the SBOMs are attested against the image digest, they travel with the im
 
 To retrieve and verify an SBOM you need:
 
-- [Cosign](https://docs.sigstore.dev/system_config/installation/) installed locally.
+- [Cosign](https://docs.sigstore.dev/system_config/installation/) **v3 or later** installed locally. Cosign v2 is not compatible — it emits a different attestation envelope and the verification commands below will not work with it.
 - [`jq`](https://jqlang.github.io/jq/) to extract the SBOM document from the attestation payload.
 - Access to the registry that hosts the image you deploy, for example `registry.opsmill.io/opsmill/infrahub`.
 
@@ -39,6 +39,8 @@ Use the exact image reference you deploy. The attestation is attached to the ima
 ## Verifying and retrieving the SBOM
 
 Use `cosign verify-attestation` to confirm the signature is valid **and** return the SBOM in a single step. Because signing is keyless, you must specify the signing identity and the OIDC issuer.
+
+The `jq` selector `(.payload // .dsseEnvelope.payload)` below is format-agnostic: it reads the `payload` field from cosign's legacy output and falls back to `dsseEnvelope.payload` for the newer DSSE bundle format that cosign v3 emits.
 
 ### SPDX
 
@@ -58,7 +60,7 @@ cosign verify-attestation \
   --certificate-identity-regexp "^https://github.com/opsmill/.*" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   "$IMAGE" \
-  | jq -r '.payload' | base64 -d | jq '.predicate' > infrahub-sbom.spdx.json
+  | jq -r '(.payload // .dsseEnvelope.payload)' | base64 -d | jq '.predicate' > infrahub-sbom.spdx.json
 ```
 
 ### CycloneDX
@@ -71,7 +73,7 @@ cosign verify-attestation \
   --certificate-identity-regexp "^https://github.com/opsmill/.*" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   "$IMAGE" \
-  | jq -r '.payload' | base64 -d | jq '.predicate' > infrahub-sbom.cdx.json
+  | jq -r '(.payload // .dsseEnvelope.payload)' | base64 -d | jq '.predicate' > infrahub-sbom.cdx.json
 ```
 
 :::note
@@ -85,12 +87,12 @@ To pull the attestation without checking the signature — for example, in an en
 ```shell
 # SPDX
 cosign download attestation "$IMAGE" \
-  | jq -r 'select(.payload | @base64d | fromjson | .predicateType == "https://spdx.dev/Document") | .payload' \
+  | jq -r 'select((.payload // .dsseEnvelope.payload) | @base64d | fromjson | .predicateType == "https://spdx.dev/Document") | (.payload // .dsseEnvelope.payload)' \
   | base64 -d | jq '.predicate' > infrahub-sbom.spdx.json
 
 # CycloneDX
 cosign download attestation "$IMAGE" \
-  | jq -r 'select(.payload | @base64d | fromjson | .predicateType == "https://cyclonedx.org/bom") | .payload' \
+  | jq -r 'select((.payload // .dsseEnvelope.payload) | @base64d | fromjson | .predicateType == "https://cyclonedx.org/bom") | (.payload // .dsseEnvelope.payload)' \
   | base64 -d | jq '.predicate' > infrahub-sbom.cdx.json
 ```
 

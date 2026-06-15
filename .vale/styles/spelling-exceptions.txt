@@ -69,6 +69,7 @@ display_labels
 Dockerfile
 Docusaurus
 dropdown
+DSSE
 edit_default_branch
 enablement
 end_user
