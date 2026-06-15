@@ -1,5 +1,6 @@
-import { CheckIcon, LoaderIcon } from "lucide-react";
 import type React from "react";
+
+import { CheckIcon, LoaderIcon } from "lucide-react";
 import {
   ListBox as AriaListBox,
   ListBoxItem as AriaListBoxItem,
@@ -12,10 +13,6 @@ import { cn, tv } from "tailwind-variants";
 
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
-const listBoxStyles = tv({
-  base: "no-scrollbar max-h-[inherit] overflow-auto",
-});
-
 export interface ListBoxProps<T> extends AriaListBoxProps<T> {
   emptyMessage?: string;
 }
@@ -24,7 +21,9 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
   return (
     <AriaListBox
       shouldFocusOnHover
-      className={composeAriaClassName(className, listBoxStyles())}
+      className={composeAriaClassName(className, (resolvedClassName) =>
+        cn("no-scrollbar max-h-[inherit] overflow-auto", resolvedClassName),
+      )}
       renderEmptyState={
         emptyMessage
           ? () => <div className="px-2 py-1.5 text-neutral-600 text-sm">{emptyMessage}</div>
@@ -35,14 +34,13 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
   );
 }
 
-const listBoxItemBaseStyle =
-  "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden data-disabled:pointer-events-none data-disabled:opacity-50";
-
 const listBoxItemStyles = tv({
-  base: listBoxItemBaseStyle,
+  base: [
+    "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden",
+    "data-disabled:pointer-events-none data-disabled:opacity-50",
+  ],
   variants: {
     isFocused: { true: "bg-stone-700/10 text-stone-800" },
-    // selected AND selectionIndicator === "none"
     isSelected: { true: "bg-stone-700/10" },
   },
 });
@@ -68,7 +66,7 @@ export function ListBoxItem<T extends object>({
         listBoxItemStyles({
           isFocused,
           isSelected: isSelected && selectionIndicator === "none",
-        })
+        }),
       )}
       {...props}
     >
@@ -85,7 +83,8 @@ export function ListBoxItem<T extends object>({
 }
 
 const listBoxLoadMoreStyles = tv({
-  base: cn(listBoxItemBaseStyle, "text-stone-400"),
+  extend: listBoxItemStyles,
+  base: "text-stone-400",
 });
 
 export function ListBoxLoadMoreItem({ className, ...props }: AriaListBoxLoadMoreItemProps) {

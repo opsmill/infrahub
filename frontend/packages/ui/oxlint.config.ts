@@ -25,6 +25,7 @@ export default defineConfig({
     "eslint/no-magic-numbers": ["error", { ignore: [0, 1] }],
     "eslint/max-lines-per-function": "off",
     "eslint/no-ternary": "off",
+    "eslint/no-undefined": "off",
     "eslint/sort-imports": "off",
     "eslint/sort-keys": "off",
     "oxc/no-rest-spread-properties": "off",
