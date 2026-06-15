@@ -174,7 +174,7 @@ class InfrahubGraphQLApp:
 
         return response
 
-    async def _handle_http_request(  # noqa: PLR0915
+    async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> JSONResponse:
         if request.app.state.response_delay:
