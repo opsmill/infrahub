@@ -1,4 +1,5 @@
 _updated_at
+Agentic
 Alibaba
 anonymized
 Ansible
@@ -25,6 +26,7 @@ bool
 boolean
 booleans
 Buildkite
+cAdvisor
 Ceph
 changelog
 check_color_tags_name
@@ -114,9 +116,11 @@ Jotai
 json
 JSON
 JSONSchema
+Junos
 kbps
 Keycloak
 kubectl
+kubelet
 Kubernetes
 linter
 linting
@@ -207,6 +211,7 @@ Slurp'it
 snapshotting
 Streamlit
 string_type
+subchart
 subcommand
 submodule
 subnet
@@ -246,8 +251,10 @@ uv
 validator
 Validator
 validators
+Viptela
 Vitest
 VLANs
+VRFs
 VSCode
 walkthrough
 walkthroughs

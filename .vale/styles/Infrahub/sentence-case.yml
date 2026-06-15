@@ -17,6 +17,7 @@ exceptions:
   - Neo4j
   - GraphQL
   - RabbitMQ
+  - PostgreSQL
   - Kubernetes
   - Helm
   - Terraform

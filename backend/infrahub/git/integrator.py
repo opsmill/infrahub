@@ -45,7 +45,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
@@ -53,6 +53,7 @@ from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import (
     CheckError,
+    CommitNotFoundError,
     RepositoryConfigurationError,
     RepositoryInvalidFileSystemError,
     TransformError,
@@ -165,7 +166,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
         if commit:
-            self.get_commit_worktree(commit=commit)
+            try:
+                self.get_commit_worktree(commit=commit)
+            except CommitNotFoundError:
+                if not self.has_origin:
+                    raise
+                # The commit may exist on the remote but not yet in this worker's clone.
+                # Fetch under the repository lock, which serializes shared-clone mutations, and retry.
+                async with lock.registry.get(name=self.name, namespace="repository"):
+                    await self.fetch()
+                    self.get_commit_worktree(commit=commit)
 
         log.debug(
             f"Initiated the object on an existing directory for {self.name}",
@@ -204,13 +214,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             await self.import_all_graphql_query(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )  # type: ignore[call-overload]
+            # Transforms must be registered before objects so that an object referencing a transform
+            # defined in the same repository resolves during import.
+            await self.import_python_transforms(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
+            await self.import_jinja2_transforms(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
             await self.import_objects(
                 branch_name=infrahub_branch_name,
                 commit=commit,
                 config_file=config_file,
             )  # type: ignore[call-overload]
-            await self.import_all_python_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
-            await self.import_jinja2_transforms(
+            # Checks, generators and artifact definitions are imported after objects because their
+            # targets reference groups that are defined as objects in the repository.
+            await self.import_python_check_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[call-overload]
+            await self.import_generator_definitions(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )  # type: ignore[call-overload]
             await self.import_artifact_definitions(
@@ -225,6 +247,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if error:
             raise error
+
+        if self.reinitialized:
+            return
 
         infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
         event_service = await get_event_service()
@@ -1217,16 +1242,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         ):
             return False
         return True
-
-    @flow(name="import-python-files", flow_run_name="Import Python file")
-    async def import_all_python_files(
-        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
-    ) -> None:
-        await add_tags(branches=[branch_name], nodes=[str(self.id)])
-
-        await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
-        await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
-        await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
     @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:

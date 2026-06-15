@@ -346,3 +346,12 @@ Configuration settings for the message bus.
 | `SHUTDOWN_DRAIN_TIMEOUT` | Seconds to wait for queue drain on graceful shutdown. | integer | 10 |
 | `FORWARD_APPLICATION_LOGS` | Forward application log messages to this destination. | boolean | False |
 | `MIN_LOG_SEVERITY` | Minimum Python log severity to forward when application log forwarding is enabled. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | WARNING |
+
+## Logging
+
+These variables configure logging at process startup. They are read directly from the environment and are not part of a `.toml` configuration file.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_PRODUCTION` | Controls the logging output format. When `true`, logs are rendered as JSON with structured exception information, suitable for production log aggregation. When `false`, logs are rendered as human-readable, colorized console output with plain tracebacks, intended for local development. | boolean | True |
+| `INFRAHUB_LOG_LEVEL` | Minimum severity level of log messages emitted by Infrahub. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | INFO |

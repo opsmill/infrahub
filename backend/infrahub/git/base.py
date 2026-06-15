@@ -666,14 +666,24 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         if branch_name in local_branches:
             return False
 
-        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
-        repo.git.branch(branch_name)
+        remote_branch = None
+        if self.has_origin:
+            remote_branch = next(
+                (br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"),
+                None,
+            )
+
+        # When a matching remote branch exists, point the local branch directly at the
+        # remote tip. Branching from HEAD and then pulling would fail whenever the remote
+        # branch's history diverges from the default branch.
+        if remote_branch is not None:
+            repo.git.branch(branch_name, remote_branch.name)
+        else:
+            repo.git.branch(branch_name)
+
         self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
 
-        # If there is not remote configured, we are done
-        #  Since the branch is a match for the main branch we don't need to create a commit worktree
-        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
-        if not self.has_origin:
+        if remote_branch is None:
             log.debug(
                 f"Branch {branch_name} created in Git without tracking a remote branch.",
                 repository=self.name,
@@ -681,31 +691,22 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             )
             return True
 
-        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
-
-        if remote_branch:
-            br_repo = self.get_git_repo_worktree(identifier=branch_name)
-            br_repo.head.reference.set_tracking_branch(remote_branch[0])
-            try:
-                br_repo.remotes.origin.pull(branch_name)
-            except GitCommandError as exc:
-                await self._raise_enriched_error(error=exc, branch_name=branch_name)
-            self.create_commit_worktree(str(br_repo.head.reference.commit))
-            log.debug(
-                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
-                repository=self.name,
-                branch=branch_name,
-            )
-        else:
-            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
-
+        br_repo = self.get_git_repo_worktree(identifier=branch_name)
+        br_repo.head.reference.set_tracking_branch(remote_branch)
+        self.create_commit_worktree(str(br_repo.head.reference.commit))
+        log.debug(
+            f"Branch {branch_name} created in Git, tracking remote branch {remote_branch.name}.",
+            repository=self.name,
+            branch=branch_name,
+        )
         return True
 
     def create_commit_worktree(self, commit: str) -> bool | Worktree:
         """Create a new worktree for a given commit.
 
         Raises:
-            RepositoryError: When the worktree cannot be created and the commit cannot be fetched from a remote.
+            CommitNotFoundError: When the commit does not exist in the local clone.
+            RepositoryError: When the worktree cannot be created for any other reason.
 
         """
         # Check of the worktree already exist
@@ -721,22 +722,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             log.debug(f"Commit worktree created {commit}", repository=self.name)
             return worktree
         except GitCommandError as exc:
-            if "invalid reference" not in exc.stderr:
-                raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
-
-            if not self.has_origin:
-                raise RepositoryError(
-                    identifier=self.name,
-                    message=f"Commit {commit} not found and no remote origin configured to fetch from.",
-                ) from exc
-
-            # Commit may exist on the remote but hasn't been fetched to this worker yet
-            log.info(f"Commit {commit} not found locally, fetching from remote.", repository=self.name)
-            repo.remotes.origin.fetch()
-
-            repo.git.worktree("add", directory, commit)
-            log.debug(f"Commit worktree created {commit} after fetch", repository=self.name)
-            return worktree
+            if "invalid reference" in exc.stderr:
+                raise CommitNotFoundError(identifier=self.name, commit=commit) from exc
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch.
@@ -761,7 +749,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     async def calculate_diff_between_commits(
         self, first_commit: str, second_commit: str
     ) -> tuple[list[str], list[str], list[str]]:
-        """TODO need to refactor this function to return more information.
+        """Return the (changed, added, removed) files going from first_commit to second_commit.
+
+        Direction follows `git diff first_commit second_commit`: first_commit is the old/base side
+        and second_commit is the new/target side. A file present only in second_commit is "added";
+        a file present only in first_commit is "removed".
+
+        TODO need to refactor this function to return more information.
 
         Like :
           - What has changed inside the files
@@ -777,12 +771,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         added_files = []
 
         for x in commit_in_branch.diff(commit_to_compare, create_patch=True):
-            if x.a_blob and not x.b_blob and x.a_blob.path not in added_files:
-                added_files.append(x.a_blob.path)
+            if x.a_blob and not x.b_blob and x.a_blob.path not in removed_files:
+                removed_files.append(x.a_blob.path)
             elif x.a_blob and x.b_blob and x.a_blob.path not in changed_files:
                 changed_files.append(x.a_blob.path)
-            elif not x.a_blob and x.b_blob and x.b_blob.path not in removed_files:
-                removed_files.append(x.b_blob.path)
+            elif not x.a_blob and x.b_blob and x.b_blob.path not in added_files:
+                added_files.append(x.b_blob.path)
 
         return changed_files, added_files, removed_files
 
@@ -881,8 +875,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Process a remote branch to validate that we can use it safely.
 
         - Make sure that the branch name won't conflict with infrahub's default branch
-        - Make sure that a representation if the branch can be created in the database
-        - Make sure that there are no conflicts that would prevent it from being merged
+        - Make sure that a representation of the branch can be created in the database
+        - Warn (but do not block) when the branch would conflict with the default branch on merge
         """
         if branch_name == registry.default_branch and branch_name != self.default_branch:
             # If the default branch of Infrahub and the git repository differs we map the repository
@@ -900,7 +894,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             )
             return False
 
-        # Make sure the branch won't conflict on merge
+        # Surface a warning when the branch conflicts with the default branch so users
+        # know a future merge will be rejected, but still allow the import to proceed.
         try:
             has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
         except GitCommandError as exc:
@@ -910,17 +905,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 repository=self.name,
                 error=str(exc),
             )
-            return False
+            return True
 
         if has_conflicts:
             get_run_logger().warning(
-                f"Remote branch {branch_name} will cause conflicts, they need to be resolved before importing the branch into Infrahub"
+                f"Remote branch {branch_name} conflicts with {self.default_branch}; "
+                "the merge will be rejected until the conflict is resolved upstream"
             )
-            return False
-
-        # Find the commit on the remote branch
-        # Check out the commit in a worktree
-        # Validate
 
         return True
 

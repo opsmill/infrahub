@@ -19,7 +19,7 @@ Run all locally-executable CI checks to catch issues before pushing.
 
 **Options:**
 
-- `--fast` — Run only formatting and fast lint checks (~20s). Skips backend lint (ty/mypy), Betterer, docs lint, generated file validation, schema validation, and unit tests.
+- `--fast` — Run only formatting and fast lint checks (~20s). Skips backend lint (ty/mypy), Betterer, docs lint, generated file and doc validation, schema validation, and unit tests.
 
 ## Phase 1 — Auto-fix formatting (sequential)
 
@@ -65,7 +65,7 @@ Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports 
 
 ## Phase 3 — Slow checks (parallel)
 
-**IMPORTANT: Send ALL 6 commands below in a SINGLE message with 6 parallel Bash tool calls.** Do NOT run them one at a time.
+**IMPORTANT: Send ALL 7 commands below in a SINGLE message with 7 parallel Bash tool calls.** Do NOT run them one at a time.
 
 1. `uv run invoke backend.lint` — Run separately from main.lint to avoid `uv run invoke lint` which includes a `yamllint -s .` step that fails on vendored packages in `.venv`. If ruff reports issues, they were not auto-fixable — report them to the user.
 2. `cd frontend/app && npx betterer` — Ensures no new TypeScript errors are introduced. The issue count must stay the same or decrease. If it increases, report the new issues to the user.
@@ -73,6 +73,7 @@ Auto-fixes formatting and lint issues in TypeScript/TSX files. If Biome reports 
 4. `uv run invoke backend.validate-generated` — Ensures generated schema and protocol files are up to date. If this fails, run `uv run invoke backend.generate` and report the regenerated files.
 5. `uv run invoke schema.validate-graphqlschema` — Ensures `schema/schema.graphql` is up to date. Regenerates the file then checks for uncommitted diffs. If validation fails, the correct file is already on disk — just stage and commit it.
 6. `uv run invoke schema.validate-jsonschema` — Ensures `schema/openapi.json` is up to date. Same approach as GraphQL schema validation.
+7. `uv run invoke docs.validate` — Ensures generated reference documentation (CLI, schema, events, repository config, config) is up to date. Regenerates the docs then checks for uncommitted diffs. If validation fails, the correct files are already on disk — stage and commit them.
 
 ## Phase 4 — Unit tests
 
@@ -102,6 +103,7 @@ Summarize results in a table:
 | Generated files | ... |
 | GraphQL schema validation | ... |
 | JSON schema validation | ... |
+| Generated docs validation | ... |
 | Unit tests | ... |
 
 If `--fast` was used, show skipped checks as "skipped".

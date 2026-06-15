@@ -1,0 +1,33 @@
+---
+title: Release 1.9.8
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.9.8</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>June 9th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.9.8](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.9.8)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Changed
+
+- Performance improvements for transform based computed attributes
+
+### Fixed
+
+- Removing an attribute or relationship from a generic schema now also reconciles `uniqueness_constraints`, `human_friendly_id`, `order_by`, and `default_filter` on inheriting node schemas. Previously a node that inherited a constraint referencing the removed field could end up with an orphaned path, causing a `Requested unique constraint not found within node` exception. ([#5735](https://github.com/opsmill/infrahub/issues/5735)) and ([#8990](https://github.com/opsmill/infrahub/issues/8990))
+- Preserve `IPPrefix.utilization` on a newly created branch. The per-branch utilization resolver now considers the branch's full inheritance scope, so prefixes show the same value as their origin branch until data is modified. ([#9220](https://github.com/opsmill/infrahub/issues/9220))
+- Fixed repository import so that an object referencing a transform defined in the same repository is resolved correctly instead of failing the import. ([#9406](https://github.com/opsmill/infrahub/issues/9406))
+- Scope artifact and Generator regeneration to the changed objects when a definition's GraphQL query filters by a composite, multiple, relationship-based, or human-friendly-id uniqueness constraint. Previously only a single single-attribute uniqueness constraint (or a filter by `ids`) was recognized as targeting a unique object, so these common query shapes fell back to regenerating every target in the group during a proposed change. ([#9486](https://github.com/opsmill/infrahub/issues/9486))
+- Fixed overriding a node relationship that was set by a Profile. Peers also provided by the Profile are no longer removed when overriding the relationship; they are kept and become node-defined values.
+- Update RelationshipAdd and RelationshipRemove GraphQL mutations so that they properly remove the Profile sourcing of all peers on an updated relationship if that relationship is sourced from a Profile.
+- `RelationshipAdd` now correctly rejects requests that supply more than one peer for a cardinality-one relationship.
