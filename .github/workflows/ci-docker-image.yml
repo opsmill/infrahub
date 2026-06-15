@@ -226,14 +226,14 @@ jobs:
 
       - name: Attest SBOM (SPDX)
         run: |
-          cosign attest --yes \
+          cosign attest --yes --new-bundle-format=false --use-signing-config=false \
             --type spdxjson \
             --predicate infrahub-sbom.spdx.json \
             "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
 
       - name: Attest SBOM (CycloneDX)
         run: |
-          cosign attest --yes \
+          cosign attest --yes --new-bundle-format=false --use-signing-config=false \
             --type cyclonedx \
             --predicate infrahub-sbom.cdx.json \
             "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
