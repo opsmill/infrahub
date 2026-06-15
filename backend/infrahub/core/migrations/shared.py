@@ -31,7 +31,10 @@ def get_migration_console() -> Console:
     global _migration_console
 
     if _migration_console is None:
-        _migration_console = Console(log_time_format=MIGRATION_LOG_TIME_FORMAT)
+        _migration_console = Console(
+            log_time_format=MIGRATION_LOG_TIME_FORMAT,
+            log_path=False,
+        )
 
     return _migration_console
 
