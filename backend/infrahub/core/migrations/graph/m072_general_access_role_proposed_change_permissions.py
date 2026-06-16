@@ -6,6 +6,7 @@ from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDe
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreAccountRole, CoreObjectPermission
 from infrahub.log import get_logger
 
 from ..shared import ArbitraryMigration
@@ -27,8 +28,8 @@ PROPOSED_CHANGE_PERMISSIONS = [
 ]
 
 
-async def _existing_pc_permissions(db: InfrahubDatabase, role: Node) -> set[tuple[str, str]]:
-    peers = await role.permissions.get_peers(db=db, peer_type=Node)
+async def _existing_pc_permissions(db: InfrahubDatabase, role: CoreAccountRole) -> set[tuple[str, str]]:
+    peers = await role.permissions.get_peers(db=db, peer_type=CoreObjectPermission)
     existing: set[tuple[str, str]] = set()
     for peer in peers.values():
         if peer.get_kind() != InfrahubKind.OBJECTPERMISSION:
@@ -55,7 +56,7 @@ class Migration072(ArbitraryMigration):
         result = MigrationResult()
 
         roles = await NodeManager.query(
-            db=db, schema=InfrahubKind.ACCOUNTROLE, filters={"name__value": GENERAL_ACCESS_ROLE_NAME}
+            db=db, schema=CoreAccountRole, filters={"name__value": GENERAL_ACCESS_ROLE_NAME}
         )
         if not roles:
             console.log(
