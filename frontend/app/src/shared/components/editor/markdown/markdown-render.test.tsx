@@ -61,7 +61,7 @@ describe("MarkdownRender Component", () => {
 
     // THEN
     await expect
-      .poll(() => component.container.querySelector("svg"), { timeout: 15_000 })
+      .poll(() => component.container.querySelector("svg[id^='mermaid']"), { timeout: 15_000 })
       .toBeTruthy();
   });
 

@@ -30,7 +30,6 @@ export default mergeConfig(
         "react-error-boundary",
         "react-scan",
         "rehype-mermaid",
-        "mermaid",
         "react-zoom-pan-pinch",
       ],
     },
