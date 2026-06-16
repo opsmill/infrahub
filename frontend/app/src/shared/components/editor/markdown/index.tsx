@@ -29,9 +29,6 @@ export const MarkdownEditor = ({
   ref,
 }: MarkdownEditorProps) => {
   const [isPreviewActive, setPreviewActive] = React.useState<boolean>(false);
-  // Latches true on the first preview so the rendered markdown stays mounted
-  // afterwards. Toggling then only flips visibility, so async (mermaid) content
-  // is not re-rendered — avoiding the raw-source flash on every switch.
   const [hasRenderedPreview, setHasRenderedPreview] = React.useState<boolean>(false);
   const codeMirrorRef = React.useRef<HTMLDivElement>(null);
 
@@ -94,14 +91,13 @@ export const MarkdownEditor = ({
         {hasRenderedPreview && (
           <MarkdownRender
             markdownText={codeMirror.view?.state?.doc.toString()}
-            className={classNames("p-2", isPreviewActive ? "" : "hidden")}
+            className={classNames("p-2", !isPreviewActive && "hidden")}
           />
         )}
         <div
           ref={codeMirrorRef}
-          data-cy="codemirror-editor"
           data-testid="codemirror-editor"
-          className={isPreviewActive ? "hidden" : ""}
+          className={classNames(isPreviewActive && "hidden")}
         />
       </div>
     </>
