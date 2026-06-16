@@ -105,7 +105,7 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
             <FormField
               name="maxResults"
               rules={{
-                required: "Max results is required",
+                required: "Max targets is required",
                 min: { value: 1, message: "Must be ≥ 1" },
                 max: { value: 200, message: "Must be ≤ 200" },
               }}
