@@ -435,7 +435,7 @@ class TestDefaultGroupFallback:
         members_after = await refreshed_after.get_relationship(name="members").get_peers(
             db=db, branch_agnostic=True, peer_type=CoreAccount
         )
-        assert account_id not in members_after, "default group must not be re-applied on a returning user's login"
+        assert members_after == {}, "default group must not be re-applied on a returning user's login"
 
 
 class TestPerLoginCap:
