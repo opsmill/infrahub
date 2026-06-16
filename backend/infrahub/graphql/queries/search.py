@@ -148,12 +148,12 @@ async def search_resolver(
         if matching:
             display_label = await matching.get_display_label(db=graphql_context.db)
             kind = matching.get_kind()
-            result: dict[str, str] = {"id": matching.id, "kind": kind, "display_label": display_label}
+            node_entry: dict[str, str] = {"id": matching.id, "kind": kind, "display_label": display_label}
             # For SchemaNode/SchemaGeneric records, expose the kind of the schema they describe
             # so clients can link to that schema's page instead of the generic SchemaNode page.
             if kind in ("SchemaNode", "SchemaGeneric"):
-                result["target_kind"] = f"{matching.namespace.value}{matching.name.value}"
-            results.append(result)
+                node_entry["target_kind"] = f"{matching.namespace.value}{matching.name.value}"  # type: ignore[attr-defined]
+            results.append(node_entry)
     else:
         with contextlib.suppress(ValueError, ipaddress.AddressValueError):
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
