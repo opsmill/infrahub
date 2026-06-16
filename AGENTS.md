@@ -150,7 +150,7 @@ CI validates that all generated files are committed — the `validate-generated-
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
-- Before pushing, run `/pre-ci` (`dev/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
+- Before pushing, run `/pre-ci` (`.agents/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
 
 ### Ask First
 
@@ -176,7 +176,7 @@ CI validates that all generated files are committed — the `validate-generated-
 | Why was this decided? | `dev/adr/` |
 | What are we building? | `dev/specs/` |
 | How should I write code? | `dev/guidelines/` |
-| What commands are available? | `dev/commands/` |
+| What commands are available? | `.agents/commands/` |
 
 ## Component Maps
 
