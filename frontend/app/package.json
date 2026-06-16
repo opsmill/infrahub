@@ -73,7 +73,6 @@
     "jotai": "^2.20.0",
     "json-to-graphql-query": "^2.3.0",
     "lucide-react": "catalog:",
-    "mermaid": "^11.15.0",
     "monaco-editor": "0.52.2",
     "monaco-graphql": "^1.8.0",
     "nuqs": "^2.8.9",

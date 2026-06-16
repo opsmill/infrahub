@@ -182,9 +182,6 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 1.17.0(react@19.2.7)
-      mermaid:
-        specifier: ^11.15.0
-        version: 11.15.0
       monaco-editor:
         specifier: 0.52.2
         version: 0.52.2

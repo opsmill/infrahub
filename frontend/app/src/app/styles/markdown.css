@@ -190,12 +190,6 @@
   margin: 0;
 }
 
-.markdown svg[id^="mermaid"] {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
 .markdown .mermaid-error {
   background-color: #fef2f2;
   color: #b91c1c;
