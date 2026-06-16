@@ -81,11 +81,13 @@ async def test_search_anywhere_by_uuid_includes_schema_internal_nodes(
             {
                 "name": "Widget",
                 "namespace": "Internal",
+                "display_labels": ["name__value"],
                 "attributes": [{"name": "name", "kind": "Text"}],
             },
             {
                 "name": "Gadget",
                 "namespace": "Schema",
+                "display_labels": ["name__value"],
                 "attributes": [{"name": "name", "kind": "Text"}],
             },
         ],
@@ -118,7 +120,7 @@ async def test_search_anywhere_by_uuid_includes_schema_internal_nodes(
     node_data = result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]
     assert node_data["id"] == internal_node.id
     assert node_data["kind"] == "InternalWidget"
-    assert node_data["display_label"] is not None
+    assert node_data["display_label"] == "test-internal"
 
     # Schema namespace node should be returned with display_label
     result = await graphql(
@@ -135,7 +137,7 @@ async def test_search_anywhere_by_uuid_includes_schema_internal_nodes(
     node_data = result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]
     assert node_data["id"] == schema_node.id
     assert node_data["kind"] == "SchemaGadget"
-    assert node_data["display_label"] is not None
+    assert node_data["display_label"] == "test-schema"
 
 
 async def test_search_anywhere_by_uuid_includes_display_label(
@@ -158,9 +160,8 @@ async def test_search_anywhere_by_uuid_includes_display_label(
     assert result.errors is None
     assert result.data
     node_data = result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]
-    assert node_data["display_label"] is not None
-    assert isinstance(node_data["display_label"], str)
-    assert len(node_data["display_label"]) > 0
+    # TestCar display_labels are ["name__value", "color__value"]; accord has the default color.
+    assert node_data["display_label"] == "accord #444444"
 
 
 async def test_search_anywhere_text_excludes_schema_internal_nodes(

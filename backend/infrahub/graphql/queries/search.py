@@ -26,9 +26,8 @@ class Node(ObjectType):
         String,
         required=False,
         description=(
-            "For Schema records (SchemaNode/SchemaGeneric), the kind of the schema they "
-            "describe so clients can link to that schema's page instead of the generic "
-            "SchemaNode/SchemaGeneric page."
+            "If kind is SchemaNode/SchemaGeneric, target_kind is set to the name of the "
+            "schema the record describes (eg BuiltinTag)."
         ),
     )
 
