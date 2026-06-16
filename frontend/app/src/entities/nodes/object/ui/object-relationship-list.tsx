@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@infrahub/ui";
 import { Collection } from "react-aria-components";
 
-import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/aria/list-box";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { classNames } from "@/shared/utils/common";
 

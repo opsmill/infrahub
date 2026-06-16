@@ -508,14 +508,14 @@ async def computed_attribute_setup_python(
                 client=prefect_client,
                 triggers=triggers_python,
                 trigger_type=TriggerType.COMPUTED_ATTR_PYTHON,
-            )  # type: ignore[misc]
+            )
             log.info(f"{len(triggers_python)} Computed Attribute for Python automation configuration completed")
 
             await setup_triggers(
                 client=prefect_client,
                 triggers=triggers_python_query,
                 trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
-            )  # type: ignore[misc]
+            )
             log.info(
                 f"{len(triggers_python_query)} Computed Attribute for Python Query automation configuration completed"
             )

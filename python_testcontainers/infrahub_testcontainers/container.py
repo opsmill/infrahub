@@ -166,10 +166,7 @@ class InfrahubDockerCompose(DockerCompose):
                     "PREFECT__SERVER_WEBSERVER_ONLY": "true",
                     "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
                     "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
-                    "PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED": "false",
+                    "PREFECT_SERVER_DOCKET_URL": "redis://cache:6379/2",
                 }
             )
 

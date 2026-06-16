@@ -141,7 +141,7 @@ async def hfid_setup(context: EventContext, branch_name: str | None = None, even
 
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_hfid, trigger_type=TriggerType.HUMAN_FRIENDLY_ID
-        )  # type: ignore[misc]
+        )
 
         # Configure all DisplayLabelTriggerDefinitions in Prefect
         all_triggers = report.triggers_with_type(trigger_type=HFIDTriggerDefinition)

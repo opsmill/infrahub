@@ -15,7 +15,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT = BuiltinTriggerDefinition(
             workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                "commit": "{{ event.payload['commit'] }}",
+                "commit": "{{ event.payload['data']['commit'] }}",
                 "event_name": "{{ event.event }}",
                 "context": {
                     "__prefect_kind": "json",

@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { ListBox, ListBoxItem, ListBoxLoadMoreItem, ListBoxVirtualizer } from "@infrahub/ui";
 import React from "react";
-import { Collection, ListLayout, Virtualizer } from "react-aria-components";
+import { Collection } from "react-aria-components";
 
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/aria/list-box";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { debounce } from "@/shared/utils/common";
 
@@ -46,10 +46,7 @@ export function ObjectAutocomplete({
 
   return (
     <Autocomplete onInputChange={setSearchDebounced}>
-      <Virtualizer
-        layout={ListLayout}
-        layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
-      >
+      <ListBoxVirtualizer>
         <ListBox className={className} emptyMessage="No result found">
           <Collection items={flatData}>
             {(node) => {
@@ -72,7 +69,7 @@ export function ObjectAutocomplete({
             <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />
           )}
         </ListBox>
-      </Virtualizer>
+      </ListBoxVirtualizer>
     </Autocomplete>
   );
 }
