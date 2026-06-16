@@ -201,6 +201,43 @@ Before finalizing any generated query:
 5. **Use EXISTS for existence checks** - More efficient than counting
 6. **Profile queries** - Use PROFILE to identify bottlenecks
 
+## Planner gotcha: strip labels to keep relationship-property indexes
+
+The Neo4j planner is heavily biased toward `NodeByLabelScan` and will pick
+it over a relationship-property index whenever a node label is present in
+the pattern — even when the rel-property index is dramatically more
+selective. If your intended entry point is a relationship-property index
+(e.g. an index on `REL_TYPE.branch` matched via `{branch: $branch_name}`):
+
+- Remove **every** node label in the pattern — not just on the rel's
+  endpoints, but on all node placeholders the pattern touches.
+- Keep **only the targeted indexed property** inline on the relationship.
+  Extra inline filters (status, type combinations, etc.) can be enough to
+  push the planner away from the relationship-index seek.
+- Apply any label / non-indexed filtering **after** the entry has resolved,
+  in a follow-on `MATCH` or `WHERE`.
+
+```cypher
+// WRONG — :Node / :Attribute labels cause a NodeByLabelScan even though
+// REL_TYPE(branch) has a relationship-property index.
+MATCH (n:Node)-[:REL_TYPE {branch: $branch_name}]->(p:Attribute)
+
+// CORRECT — no node labels anywhere, only the indexed {branch} field inline.
+MATCH (n)-[:REL_TYPE {branch: $branch_name}]->()
+
+// If you need label filtering afterwards, do it in a follow-on step:
+MATCH (n)-[:REL_TYPE {branch: $branch_name}]->()
+WITH DISTINCT n
+MATCH (n:Node)-[r_node]-(...)  // labels here, after the rel-index seek
+```
+
+The same rule applies when the indexed edge sits deeper in a multi-hop
+pattern: every node placeholder along the way must be label-free, or the
+planner switches to a label scan as its entry. Always confirm with
+`EXPLAIN` / `PROFILE` that the entry operator is
+`DirectedRelationshipIndexSeek` or `UndirectedRelationshipIndexSeek`, not
+`NodeByLabelScan`.
+
 ## Modern Cypher Features
 
 ### Label Expressions
