@@ -13,20 +13,37 @@ const remarkPlugins: PluggableList = [remarkGfm, remarkBreaks];
 const rehypeMermaidOptions: RehypeMermaidOptions = {
   strategy: "inline-svg",
   mermaidConfig: { securityLevel: "strict", theme: "default" },
-  // Show the raw diagram source on failure instead of mermaid's error graphic.
-  errorFallback: (_element, diagram) => ({
-    type: "element",
-    tagName: "pre",
-    properties: {},
-    children: [
-      {
-        type: "element",
-        tagName: "code",
-        properties: {},
-        children: [{ type: "text", value: diagram }],
-      },
-    ],
-  }),
+  // On failure, show a red error banner with the message above the raw diagram
+  // source, instead of mermaid's default error graphic.
+  errorFallback: (_element, diagram, error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      type: "element",
+      tagName: "div",
+      properties: {},
+      children: [
+        {
+          type: "element",
+          tagName: "div",
+          properties: { className: ["mermaid-error"] },
+          children: [{ type: "text", value: message }],
+        },
+        {
+          type: "element",
+          tagName: "pre",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "code",
+              properties: {},
+              children: [{ type: "text", value: diagram }],
+            },
+          ],
+        },
+      ],
+    };
+  },
 };
 
 const rehypePlugins: PluggableList = [[rehypeMermaid, rehypeMermaidOptions]];
