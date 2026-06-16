@@ -54,7 +54,7 @@ By default, groups must exist in Infrahub before they can be assigned. Infrahub 
 :::
 
 :::warning Membership is additive
-Group memberships derived from provider claims are evaluated on **every** login and are **additive**: each login adds the user to the groups their claims map to. Infrahub never removes a user from a group based on claims — if a group is dropped from the provider, or an administrator removes a user from a group, that change is **not** re-synced or reverted on the next login. Revoking group membership is a manual action in Infrahub.
+Group memberships derived from provider claims are evaluated on **every** login and are **additive**: each login adds the user to the groups their claims map to. Infrahub never removes a user from a group based on claims — if a group is dropped from the provider, that removal is **not** synced automatically. If an administrator removes a user from a group that still appears in provider claims, the user is added back on the next login. Revoking group membership permanently requires updating provider claims and removing membership in Infrahub.
 
 The [default group](#step-3-configure-default-group-assignment-optional) is the one exception: it is applied only on a user's first login, not on every login.
 :::
