@@ -2,9 +2,15 @@
 # yamllint disable rule:truthy rule:truthy rule:line-length
 name: 'Chromatic Publish'
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'frontend/packages/ui/**'
   push:
     branches:
       - develop
+      - stable
+      - release-*
     paths:
       - 'frontend/packages/ui/**'
 
@@ -26,11 +32,13 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          node-version: 24
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
       - name: Install dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
       - name: Run Chromatic
         id: chromatic
         uses: chromaui/action@latest

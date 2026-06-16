@@ -1,0 +1,277 @@
+---
+title: Profiles
+---
+
+This topic explains the concept of Profiles in Infrahub, their purpose in the system architecture, and how they enable configuration consistency across your infrastructure. You'll gain a deeper understanding of Profile inheritance, priority mechanisms, and the design decisions behind this feature.
+
+## What are Profiles?
+
+Profiles in Infrahub define common attribute and relationship values that can be applied to multiple objects. They represent a fundamental approach to managing configuration at scale by separating the definition of common settings from individual object instances.
+
+Think of Profiles as reusable configuration blueprints. Like a class in object-oriented programming that defines properties for instances to inherit, Profiles define attribute values that objects inherit. This design pattern promotes consistency while maintaining flexibility for exceptions.
+
+## Why Profiles matter
+
+### The configuration consistency challenge
+
+In infrastructure management, you often have hundreds or thousands of similar components that need identical configuration. Consider these scenarios:
+
+- **Network interfaces**: All user-facing switch ports need the same VLAN, mode, and security settings
+- **BGP sessions**: Internal BGP peers share common timers, authentication, and policy settings
+- **Server configurations**: Groups of servers require identical monitoring, logging, and security settings
+
+Without Profiles, you would need to:
+
+- Manually set the same values on each node
+- Risk configuration drift when standards change
+- Lack visibility into which nodes follow which standards
+- Struggle to update configurations consistently
+
+### How Profiles solve these challenges
+
+Profiles address these issues through:
+
+1. **Centralized definition**: Define configuration once, apply everywhere
+2. **Automatic inheritance**: Objects automatically receive Profile values
+3. **Dynamic updates**: Changes to Profiles propagate to all associated objects
+4. **Override capability**: Individual objects can still have exceptions
+5. **Data lineage**: Track where each configuration value originated
+
+## Profile architecture and design
+
+### Dynamic schema generation
+
+Infrahub automatically generates Profile schemas based on your node schemas. This design decision ensures:
+
+- **Type safety**: Profiles always match their corresponding node type
+- **Schema evolution**: Profile schemas update automatically when node schemas change
+- **No manual maintenance**: You never need to define Profile schemas separately
+
+For every node type with `generate_profile: true` (the default), Infrahub creates:
+
+- A Profile schema named `Profile<Namespace><NodeName>`
+- GraphQL queries and mutations for Profile operations
+- Validation logic ensuring Profile-node compatibility
+
+### Profile components
+
+Each Profile contains:
+
+1. **Core attributes** (inherited from `CoreProfile`):
+   - `profile_name`: Unique identifier (3-32 characters)
+   - `profile_priority`: Numeric priority for inheritance order (default: 1000)
+
+2. **Node-specific attributes and relationships**: All attributes and relationships from the corresponding node schema, except:
+   - Attributes and relationships that are part of unique constraints
+   - Relationships that are not of kind Generic or Attribute
+
+For details on how Profile values are resolved when an object is created or updated, see [Priority and inheritance](./priority-and-inheritance.mdx).
+
+## Profiles vs Object Templates
+
+Profiles and [Object Templates](../object-templates/overview) are complementary features that solve different parts of the configuration management problem.
+
+|  | Profile | Object Template |
+|---|---|---|
+| **What it defines** | Common attribute and relationship **values** | Common **structure** (which components exist) |
+| **Example** | "All access ports have MTU 1500, mode access, status active" | "Every switch of model X has 24 GigE ports" |
+| **Reusable for** | Multiple existing objects of the same kind | Creating new objects with a consistent layout |
+| **Best when** | You want to update settings in bulk | You want every instance to have the same components |
+
+**Use them together.** When both `generate_profile` and `generate_template` are set on a schema node, Templates define the structure and Profiles define the values. A Template can have Profiles assigned; objects created from the Template automatically inherit those Profiles. Template-set values take precedence over Profile values when both apply.
+
+For the integration mechanics, see [Object Templates — Integration with Profiles](../object-templates/overview#integration-with-profiles).
+
+## Data lineage and metadata
+
+### Tracking value origins
+
+Every attribute in Infrahub maintains metadata about its source:
+
+```python
+attribute = {
+    "value": "active",
+    "is_from_profile": True,
+    "is_default": False,
+    "source": {
+        "id": "17d5a1b2-...",
+        "display_label": "ProfileInfraInterface:end-user-interface"
+    }
+}
+```
+
+This metadata enables:
+
+- **Audit trails**: Know exactly where each value came from
+- **Impact analysis**: Understand which nodes would be affected by Profile changes
+- **Troubleshooting**: Quickly identify why a node has specific values
+
+### Metadata properties explained
+
+- `is_from_profile`: Boolean indicating inheritance from a Profile
+- `is_default`: Boolean indicating use of schema default value
+- `source`: Reference to the specific Profile providing the value
+- `is_protected`: (Future) Will indicate if value is locked from changes
+
+## Relationships in Profiles
+
+:::info Infrahub Version
+
+Available since Infrahub 1.7!
+
+:::
+
+Starting with Infrahub 1.7, Profiles can define relationship values in addition to attributes. This enables you to set relationships that objects inherit when assigned to a Profile.
+
+### How relationship inheritance works
+
+Relationship inheritance in Profiles follows the same principles as attribute inheritance:
+
+1. **Cardinality support**: Both `one` and `many` cardinality relationships are supported:
+   - For cardinality `one` relationships, the Profile defines a single related object
+   - For cardinality `many` relationships, the Profile defines a set of related objects that the inheriting object will be connected to
+
+2. **Priority-based resolution**: When multiple Profiles define the same relationship, the Profile with the highest priority (lowest priority number) takes precedence.
+
+3. **Override capability**: Like attributes, relationship peers can be overridden on individual objects when exceptions are needed. A relationship is overridden as a whole; modifying it on an object clears the Profile-source of every peer in the relationship (see [Override specific Profile values](./override-values.mdx)).
+
+4. **Metadata tracking**: Relationship values inherited from Profiles include metadata indicating their source, enabling full data lineage tracking.
+
+### Example use cases
+
+- **VLAN assignment**: Define a Profile that sets the untagged VLAN for all end-user interfaces
+- **Default location assignment**: Set a default location or site for objects of a specific type
+
+## Profile constraints and limitations
+
+### Current constraints
+
+1. **Attribute restrictions**:
+   - Attributes that are part of a uniqueness constraint (and/or HFID) are not supported
+
+2. **Relationship restrictions**:
+   - Relationships that are part of a uniqueness constraint (and/or HFID) are not supported
+   - Only generic and attribute kind relationships are supported
+
+3. **Assignment limitations**:
+   - Static assignment only (no dynamic rules yet)
+   - No conditional logic (if X then apply Profile Y)
+   - No Profile composition (Profile extending another Profile)
+
+4. **Scope boundaries**:
+   - Profiles are node-type specific
+   - Cannot share Profiles across different node types
+   - No global or cross-schema Profiles
+
+### Design rationale for constraints
+
+These constraints exist to:
+
+- Maintain data integrity (unique constraints)
+- Ensure predictable behavior (static assignment)
+- Simplify mental model (type-specific Profiles)
+- Preserve hierarchy integrity (hierarchical relationships excluded)
+- Enable future enhancements without breaking changes
+
+## Common composition patterns
+
+A single object can be assigned multiple Profiles. When multiple Profiles define the same attribute, the `profile_priority` value (lower number = higher priority) decides which one wins. This enables layered configuration — for example:
+
+- A **base** Profile (priority 1000) that sets common defaults for all objects of a kind
+- A **specialization** Profile (priority 500) that overrides selected values for a subset
+- An optional **exception** Profile (priority 100) for high-priority cases
+
+The result: objects inherit base defaults, then specialization overrides where defined, then exception overrides where defined. Any attribute can still be set explicitly on the object to bypass all Profiles.
+
+For the mechanics of assigning multiple Profiles and verifying which one won, see [Use multiple Profiles](./use-multiple.mdx).
+
+## Mental models for Profiles
+
+### Object-oriented inheritance
+
+Profiles work like class inheritance in programming:
+
+```python
+class InterfaceProfile:
+    mtu = 1500
+    enabled = True
+    mode = "access"
+
+class UserInterface(InterfaceProfile):
+    name = "GigabitEthernet0/0/1"
+    # Inherits mtu, enabled, mode from profile
+```
+
+### CSS-like cascading
+
+Similar to CSS, Profiles cascade with priority:
+
+```css
+/* Lower priority */
+.interface { mtu: 1500; }
+
+/* Higher priority */
+.user-interface { mtu: 1500; }
+
+/* Highest priority - direct assignment */
+#interface-001 { mtu: 9000; }
+```
+
+### Policy-based configuration
+
+Profiles implement policy-based management where:
+
+- Policies (Profiles) define desired state
+- Nodes subscribe to policies
+- Changes to Profiles automatically propagate
+- Exceptions are explicitly documented
+
+## Future directions
+
+### Planned enhancements
+
+1. **Dynamic assignment**: Rules-based Profile application
+
+   ```yaml
+   if: node.location == "datacenter-1"
+   then: apply_profile("dc1-standards")
+   ```
+
+2. **Profile composition**: Profiles extending other Profiles
+
+   ```yaml
+   profile: edge-interface
+   extends: base-interface
+   overrides:
+     mtu: 9000
+   ```
+
+### Architecture evolution
+
+The Profile system is designed to evolve toward:
+
+- More sophisticated inheritance models
+- Integration with external configuration systems
+- Event-driven Profile updates
+- Multi-tenancy with Profile isolation
+
+## Conclusion
+
+Profiles in Infrahub represent a thoughtful approach to configuration management that balances consistency with flexibility. By understanding the inheritance model, priority system, and design constraints, you can effectively use Profiles to manage infrastructure at scale while maintaining clear configuration lineage and enabling controlled exceptions.
+
+The system's design anticipates future needs while providing immediate value through reduced configuration drift, improved consistency, and clear audit trails. As Infrahub evolves, Profiles will become even more powerful while maintaining backward compatibility with current usage patterns.
+
+## Related resources
+
+### Topics
+
+- [Object templates](../object-templates/overview) — How Profiles integrate with templates for powerful configuration management
+- [Schema](../schema/overview) — Deep dive into schema design and how Profiles are generated
+- [Metadata](../objects/metadata) — Learn about metadata tracking and data lineage
+- [Version control](../immutable-history/overview.mdx) — How Profiles work with branches and version control
+
+### Reference
+
+- [Node schema reference](../reference/schema/node.mdx) — Complete node schema options including Profile generation
+- [Generic schema reference](../reference/schema/generic.mdx) — How Profiles work with generic schemas
+- [Schema validation](../reference/schema-validation.mdx) — Validate schemas that generate Profiles

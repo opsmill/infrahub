@@ -37,6 +37,27 @@ describe("getRelationshipsVisibleInListView", () => {
     expect(result).toEqual([attributeOne, attributeMany, hierarchyOne, parentOne, parentMany]);
   });
 
+  it("should exclude relationships with display 'extra' even if kind is valid", () => {
+    // GIVEN
+    const visible = generateRelationshipSchema({
+      kind: "Attribute",
+      cardinality: "one",
+      display: "default",
+    });
+    const hidden = generateRelationshipSchema({
+      kind: "Attribute",
+      cardinality: "one",
+      display: "extra",
+    });
+    const alsoVisible = generateRelationshipSchema({ kind: "Parent", cardinality: "one" });
+
+    // WHEN
+    const result = getRelationshipsVisibleInListView([visible, hidden, alsoVisible]);
+
+    // THEN
+    expect(result).toEqual([visible, alsoVisible]);
+  });
+
   it("should return empty array when no relationships are provided", () => {
     // WHEN
     const result = getRelationshipsVisibleInListView([]);

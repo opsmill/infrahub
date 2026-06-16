@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, Literal, NoReturn, overload
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -66,6 +66,10 @@ class SchemaUpdateCoordinator:
             context: Infrahub context (required for WORKFLOW executor)
             migration_executor: How to execute migrations (DIRECT or WORKFLOW)
             logger: Logger to use (defaults to module logger)
+
+        Raises:
+            RuntimeError: When the WORKFLOW executor is selected but workflow or context is not provided.
+
         """
         self.db = db
         self.branch = branch
@@ -80,13 +84,23 @@ class SchemaUpdateCoordinator:
             raise RuntimeError("Workflow and context are required for WORKFLOW executor")
 
     def _get_workflow(self) -> InfrahubWorkflow:
-        """Get workflow service, raising if not available."""
+        """Get workflow service, raising if not available.
+
+        Raises:
+            RuntimeError: When the workflow service has not been provided to the coordinator.
+
+        """
         if self.workflow is None:
             raise RuntimeError("Workflow service is required but not provided")
         return self.workflow
 
     def _get_context(self) -> InfrahubContext:
-        """Get context, raising if not available."""
+        """Get context, raising if not available.
+
+        Raises:
+            RuntimeError: When the Infrahub context has not been provided to the coordinator.
+
+        """
         if self.context is None:
             raise RuntimeError("Context is required but not provided")
         return self.context
@@ -102,6 +116,7 @@ class SchemaUpdateCoordinator:
         update_db: Literal[True] = True,
         update_registry: bool = True,
         user_id: str = SYSTEM_USER_ID,
+        manage_rollback: bool = True,
     ) -> str: ...
 
     @overload
@@ -115,6 +130,7 @@ class SchemaUpdateCoordinator:
         update_db: Literal[False] = ...,
         update_registry: Literal[True] = ...,
         user_id: str = SYSTEM_USER_ID,
+        manage_rollback: bool = True,
     ) -> str: ...
 
     @overload
@@ -128,6 +144,7 @@ class SchemaUpdateCoordinator:
         update_db: Literal[False] = ...,
         update_registry: Literal[False] = ...,
         user_id: str = SYSTEM_USER_ID,
+        manage_rollback: bool = True,
     ) -> str | None: ...
 
     async def execute(
@@ -140,6 +157,7 @@ class SchemaUpdateCoordinator:
         update_db: bool = True,
         update_registry: bool = True,
         user_id: str = SYSTEM_USER_ID,
+        manage_rollback: bool = True,
     ) -> str | None:
         """Execute the schema update with migrations and rollback on failure.
 
@@ -152,6 +170,9 @@ class SchemaUpdateCoordinator:
             update_db: Whether to update the database
             update_registry: Whether to update the registry (used when DB already updated externally)
             user_id: User ID for all operations
+            manage_rollback: When True (default), this coordinator handles its own rollback on
+                failure (DB rollback + registry restore). When False, exceptions propagate without
+                triggering internal rollback.
 
         Returns:
             The updated schema hash, or None if the schema was not updated
@@ -159,20 +180,25 @@ class SchemaUpdateCoordinator:
         Raises:
             MigrationError: If migrations fail and rollback completes
             Exception: Original exception if migrations fail via exception
-        """
 
+        """
         # Step 1: Update schema in DB and/or registry
         updated_hash: str | None = None
         if update_db or update_registry:
-            updated_hash = await self._update_schema(
-                candidate_schema=candidate_schema,
-                at=at,
-                diff=diff,
-                limit=limit,
-                update_db=update_db,
-                update_registry=update_registry,
-                user_id=user_id,
-            )
+            try:
+                updated_hash = await self._update_schema(
+                    candidate_schema=candidate_schema,
+                    at=at,
+                    diff=diff,
+                    limit=limit,
+                    update_db=update_db,
+                    update_registry=update_registry,
+                    user_id=user_id,
+                )
+            except Exception as exc:
+                if manage_rollback:
+                    await self._handle_failure_and_rollback(at=at, phase="update", exception=exc, error_msgs=[])
+                raise
 
         if not migrations:
             return updated_hash
@@ -185,30 +211,16 @@ class SchemaUpdateCoordinator:
             user_id=user_id,
         )
 
-        # Step 3: Check for failures
-        if not error_msgs and exception is None:
-            return updated_hash
+        if error_msgs or exception is not None:
+            if manage_rollback:
+                await self._handle_failure_and_rollback(
+                    at=at, phase="migration", exception=exception, error_msgs=error_msgs
+                )
+            if exception:
+                raise exception
+            raise MigrationError(message=",\n".join(error_msgs))
 
-        if exception:
-            self.log.error(
-                "Schema migration failed, beginning rollback",
-                extra={"branch": self.branch.name, "error": str(exception)},
-            )
-        else:
-            self.log.error(
-                "Schema migration returned errors, beginning rollback",
-                extra={"branch": self.branch.name, "errors": error_msgs},
-            )
-
-        # Step 4: Rollback on failure
-        await self._rollback(at=at)
-        await self._restore_registry_state()
-
-        self.log.info("Schema rollback completed", extra={"branch": self.branch.name})
-
-        if exception:
-            raise exception
-        raise MigrationError(message=",\n".join(error_msgs))
+        return updated_hash
 
     async def _update_schema(
         self,
@@ -229,8 +241,10 @@ class SchemaUpdateCoordinator:
             limit: Limit to specific schema items
             update_db: If True, update DB via update_schema_branch.
             update_registry: If True, update registry via set_schema_branch.
+
         Returns:
             The updated schema hash
+
         """
         if update_db:
             await self.schema_manager.update_schema_branch(
@@ -303,7 +317,6 @@ class SchemaUpdateCoordinator:
         apply_migration_data: SchemaApplyMigrationData,
     ) -> tuple[list[str], Exception | None]:
         """Execute migrations directly (for branch tasks)."""
-
         error_msgs: list[str] = []
         exception: Exception | None = None
 
@@ -324,3 +337,40 @@ class SchemaUpdateCoordinator:
         self.schema_manager.set_schema_branch(name=self.branch.name, schema=self.origin_schema)
         self.branch.update_schema_hash()
         await self.branch.save(db=self.db)
+
+    async def _handle_failure_and_rollback(
+        self,
+        at: Timestamp,
+        phase: str,
+        exception: Exception | None,
+        error_msgs: list[str],
+    ) -> NoReturn:
+        """Log, roll back the schema update, and raise. Never returns.
+
+        Raises:
+            MigrationError: Always raised after rollback, wrapping the original exception or aggregated error messages.
+
+        """
+        if exception:
+            self.log.error(
+                f"Schema {phase} failed, beginning rollback",
+                extra={"branch": self.branch.name, "error": str(exception)},
+            )
+        elif error_msgs:
+            self.log.error(
+                f"Schema {phase} returned errors, beginning rollback",
+                extra={"branch": self.branch.name, "errors": error_msgs},
+            )
+        else:
+            self.log.error(
+                f"Schema {phase} failed with no diagnostic information, beginning rollback",
+                extra={"branch": self.branch.name},
+            )
+
+        await self._rollback(at=at)
+        await self._restore_registry_state()
+        self.log.info("Schema rollback completed", extra={"branch": self.branch.name})
+
+        if exception:
+            raise exception
+        raise MigrationError(message=",\n".join(error_msgs))

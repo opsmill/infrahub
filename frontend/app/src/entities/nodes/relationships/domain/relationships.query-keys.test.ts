@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import { relationshipsQueryKeys } from "./relationships.query-keys";
+import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
 
 describe("relationshipsQueryKeys", () => {
   it("returns query key for lists", () => {

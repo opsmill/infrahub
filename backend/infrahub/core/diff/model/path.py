@@ -6,6 +6,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Self
 
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     BranchSupportType,
     DiffAction,
     RelationshipCardinality,
@@ -86,7 +87,7 @@ def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
 
 @dataclass
 class NodeIdentifier:
-    """Uniquely identifying nodes that have had their kind or inheritance updated requires all of these fields"""
+    """Uniquely identifying nodes that have had their kind or inheritance updated requires all of these fields."""
 
     uuid: str
     kind: str
@@ -772,10 +773,11 @@ class DatabasePath:
 
     @property
     def deepest_branch(self) -> str:
-        deepest_edge = max(
-            (self.path_to_node, self.path_to_attribute, self.path_to_property),
-            key=lambda edge: int(edge.get("branch_level")),
-        )
+        # only use the global branch if every branch in the path is global
+        edges = (self.path_to_node, self.path_to_attribute, self.path_to_property)
+        non_global_edges = [edge for edge in edges if str(edge.get("branch")) != GLOBAL_BRANCH_NAME]
+        candidate_edges = non_global_edges or list(edges)
+        deepest_edge = max(candidate_edges, key=lambda edge: int(edge.get("branch_level")))
         return str(deepest_edge.get("branch"))
 
     @property

@@ -102,7 +102,8 @@ class TestDiffDeleteParentRelSchema(TestInfrahubApp):
         diff_branch: Branch,
         client: InfrahubClient,
     ) -> None:
-        """Removing a Parent relationship from the schema after data is created should
+        """Removing a Parent relationship from the schema after data is created should.
+
         produce a diff where the child node no longer has the removed relationship.
 
         1. Create TestCluster + VirtualInterface (provider=TestCluster) on branch.

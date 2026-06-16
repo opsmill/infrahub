@@ -10,9 +10,9 @@ If you completed the [Quick Start](./quickstart.mdx), you have a local Infrahub 
 
 The Quick Start used pre-built schemas from the Schema Library. For a POC, model a slice of your actual infrastructure — the devices, services, or resources that matter most to your team.
 
-Start with a focused scope. Pick one domain (for example: data center fabric, WAN sites, or firewall policies) and model it. You can always expand later. The [Schema Library](https://github.com/opsmill/schema-library) remains a good starting point to extend from.
+Start with a focused scope. Pick one domain (for example: data center fabric, WAN sites, or firewall policies) and model it. You can always expand later. The [Infrahub Marketplace](https://marketplace.infrahub.app) is a good starting point — browse it for schemas that match your domain and extend from there.
 
-<ReferenceLink title="Create a schema" url="../guides/create-schema"/>
+<ReferenceLink title="Create a schema" url="../academy/tutorials/build-your-first-schema"/>
 
 ## 2. Load real data
 
@@ -28,7 +28,7 @@ In the Quick Start, schemas and data files lived on your local machine. For a PO
 
 Push the project created during the Quick Start to a remote repository (GitHub, GitLab, Bitbucket, etc.) and connect it through the UI or CLI.
 
-<ReferenceLink title="Connect a repository to Infrahub" url="../guides/repository"/>
+<ReferenceLink title="Connect a repository to Infrahub" url="../git-integration/connect-repository"/>
 
 ## 4. Generate artifacts
 
@@ -36,7 +36,7 @@ Once you have real data and a connected repository, use Transformations to gener
 
 This is where Infrahub starts delivering tangible value: a single data change can regenerate all affected artifacts automatically.
 
-<ReferenceLink title="Generate artifacts" url="../guides/artifact"/>
+<ReferenceLink title="Generate artifacts" url="../artifacts/use"/>
 
 ## 5. Deploy to a shared environment
 
@@ -46,14 +46,14 @@ A local Docker setup works for development, but for a POC that involves your tea
 - **Kubernetes** via Helm Chart for production-grade deployments
 - **Bare metal** for Infrahub Enterprise environments where containers are not an option
 
-<ReferenceLink title="Installation guide" url="../guides/installation"/>
+<ReferenceLink title="Installation guide" url="../deploy-manage/install-configure/install/overview"/>
 
 ## Going further
 
 At this point, you have a running Infrahub instance with your own schema, real data, a connected Git repository, and generated artifacts. From here you can:
 
-- [Build Generators](../guides/generator.mdx) to automate the creation of infrastructure objects from templates and business logic.
-- [Set up events and webhooks](../guides/events-rules-actions.mdx) to trigger external systems when data changes.
+- [Build Generators](../academy/tutorials/generators/build-your-first-generator) to automate the creation of infrastructure objects from templates and business logic.
+- [Set up events and webhooks](../events/overview) to trigger external systems when data changes.
 - [Deploy artifacts with Ansible]($(base_url)ansible) or [Nornir]($(base_url)nornir) to push configurations to your infrastructure.
 
 If you need guidance on which feature to explore next or how to implement a specific use case, reach out to the community on [Discord](https://discord.gg/opsmill) or book a meeting with OpsMill.

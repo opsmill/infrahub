@@ -112,6 +112,8 @@ from .branch_diff import get_diff_summary_cache, get_modified_kinds
 from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
+    import logging
+
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
@@ -168,15 +170,14 @@ async def merge_proposed_change(
     await add_tags(nodes=[proposed_change_id])
     database = await get_database()
 
-    proposed_change = await registry.manager.get_one(
-        db=database,
-        id=proposed_change_id,
-        kind=InternalCoreProposedChange,
-        raise_on_error=True,
-        prefetch_relationships=True,
-    )
-
     async with database.start_session() as db:
+        proposed_change = await registry.manager.get_one(
+            db=db,
+            id=proposed_change_id,
+            kind=InternalCoreProposedChange,
+            raise_on_error=True,
+            prefetch_relationships=True,
+        )
         log.info("Validating if all conditions are met to merge the proposed change")
 
         try:
@@ -225,16 +226,27 @@ async def merge_proposed_change(
                         )
 
         log.info("Proposed change is eligible to be merged")
+
+        merge_succeeded = False
         try:
             await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
+            merge_succeeded = True
         except MergeFailedError as exc:
-            await _proposed_change_transition_state(
-                proposed_change=proposed_change,
-                state=ProposedChangeState.OPEN,
-                database=db,
-                user_id=context.account.account_id,
-            )
-            return Failed(message=f"Merge failure when trying to merge {exc.message}")
+            return Failed(message=exc.message)
+        except Exception as exc:
+            log.exception("Unexpected failure during proposed change merge")
+            return Failed(message=f"Merge failure when trying to merge {source_branch.name}: {exc}")
+        except BaseException as exc:
+            log.exception("Unexpected failure during proposed change merge")
+            raise exc
+        finally:
+            if not merge_succeeded:
+                await _proposed_change_transition_state(
+                    proposed_change=proposed_change,
+                    state=ProposedChangeState.OPEN,
+                    database=db,
+                    user_id=context.account.account_id,
+                )
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
@@ -721,9 +733,11 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         client=client, branch=model.source_branch, definition=artifact_definition
     )
 
-    artifacts_by_member = {}
-    for artifact in existing_artifacts:
-        artifacts_by_member[artifact.object.peer.id] = artifact.id
+    artifacts_by_member = _map_artifacts_by_member(
+        existing_artifacts=existing_artifacts,
+        definition_name=model.artifact_definition.definition_name,
+        log=log,
+    )
 
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
@@ -845,20 +859,43 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     )
 
 
+def _map_artifacts_by_member(
+    existing_artifacts: list[InfrahubNode],
+    definition_name: str,
+    log: logging.Logger | logging.LoggerAdapter,
+) -> dict[str, str]:
+    """Map each member id to its existing artifact id, skipping artifacts whose.
+
+    `object` peer cannot be resolved. Such orphan rows can appear when a target
+    node has been removed via a path that does not cascade-delete artifacts.
+
+    """
+    artifacts_by_member: dict[str, str] = {}
+    for artifact in existing_artifacts:
+        object_id = artifact.object.id
+        if object_id is None:
+            log.warning(
+                f"Skipping orphan artifact {artifact.id} for definition {definition_name}: object peer unresolvable"
+            )
+            continue
+        artifacts_by_member[object_id] = artifact.id
+    return artifacts_by_member
+
+
 def _should_render_artifact(
     artifact_id: str | None,
     managed_branch: bool,
     impacted_artifacts: list[str],
 ) -> bool:
     """Returns a boolean to indicate if an artifact should be generated or not.
+
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
         * The source branch is synced with git and has file modifications (managed_branch)
         * The artifact_id exists in the impacted_artifacts list
     Will return false if:
-        * The artifact_id exists and is not in the impacted list
+        * The artifact_id exists and is not in the impacted list.
     """
-
     if not artifact_id or managed_branch:
         return True
 
@@ -1116,13 +1153,15 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
 
 def _run_generator(instance_id: str | None, managed_branch: bool, impacted_instances: list[str]) -> bool:
-    """Returns a boolean to indicate if a generator instance needs to be executed
+    """Returns a boolean to indicate if a generator instance needs to be executed.
+
     Will return true if:
         * The instance_id wasn't set which could be that it's a new object that doesn't have a previous generator instance
         * The source branch is set to sync with Git which would indicate that it could contain updates in git to the generator
         * The instance_id exists in the impacted_instances list
     Will return false if:
-        * The source branch is a not one that syncs with git and the instance_id exists and is not in the impacted list
+        * The source branch is a not one that syncs with git and the instance_id exists and is not in the impacted list.
+
     """
     if not instance_id or managed_branch:
         return True
@@ -1527,7 +1566,7 @@ class Repository(BaseModel):
 def _parse_proposed_change_repositories(
     model: RequestProposedChangePipeline, source: list[dict], destination: list[dict]
 ) -> list[ProposedChangeRepository]:
-    """This function assumes that the repos is a list of the edges
+    """This function assumes that the repos is a list of the edges.
 
     The data should come from the queries:
     * DESTINATION_ALLREPOSITORIES
@@ -1570,7 +1609,7 @@ def _parse_proposed_change_repositories(
 
 
 def _parse_repositories(repositories: list[dict]) -> list[Repository]:
-    """This function assumes that the repos is a list of the edges
+    """This function assumes that the repos is a list of the edges.
 
     The data should come from the queries:
     * DESTINATION_ALLREPOSITORIES
@@ -1592,12 +1631,11 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
 
 
 def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeArtifactDefinition]:
-    """This function assumes that definitions is a list of the edges
+    """This function assumes that definitions is a list of the edges.
 
     The edge should be of type CoreArtifactDefinition from the query
     * GATHER_ARTIFACT_DEFINITIONS
     """
-
     parsed = []
     for definition in definitions:
         artifact_definition = ProposedChangeArtifactDefinition(
@@ -1691,7 +1729,7 @@ async def _gather_repository_repository_diffs(
 
             if repo.destination_branch:
                 files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
-                    first_commit=repo.source_commit, second_commit=repo.destination_commit
+                    first_commit=repo.destination_commit, second_commit=repo.source_commit
                 )
             else:
                 files_added = await git_repo.list_all_files(commit=repo.source_commit)

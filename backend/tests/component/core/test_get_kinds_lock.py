@@ -17,6 +17,7 @@ from infrahub.core.node.lock_utils import (
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from tests.helpers.schema.room import build_room_schema
 from tests.helpers.test_app import TestInfrahubApp
 from tests.node_creation import create_and_save
 
@@ -376,4 +377,92 @@ class TestGetKindsLock(TestInfrahubApp):
         lock_names = get_lock_names_on_object_mutation(car, schema_branch=schema_branch)
 
         expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.testcar__testperson.{car.id}"
+        assert expected_lock in lock_names
+
+
+class TestLockGenericPeerConcreteConstraint(TestInfrahubApp):
+    """Lock acquisition when the declared peer is a generic but the count constraint lives on a concrete subtype."""
+
+    async def test_lock_acquired_when_concrete_cardinality_one(
+        self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
+    ) -> None:
+        registry.schema.register_schema(schema=build_room_schema(), branch=default_branch.name)
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        single = await create_and_save(db=db, schema="TestSingleRoom", name="single")
+        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[single])
+
+        lock_names = get_lock_names_on_object_mutation(alice, schema_branch=schema_branch)
+
+        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{single.id}"
+        assert expected_lock in lock_names
+
+    async def test_lock_acquired_when_concrete_max_count(
+        self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
+    ) -> None:
+        registry.schema.register_schema(
+            schema=build_room_schema(include_dorm_subtype=True, dorm_max_count=3),
+            branch=default_branch.name,
+        )
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        dorm = await create_and_save(db=db, schema="TestDorm", name="dorm")
+        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[dorm])
+
+        lock_names = get_lock_names_on_object_mutation(alice, schema_branch=schema_branch)
+
+        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{dorm.id}"
+        assert expected_lock in lock_names
+
+    async def test_lock_acquired_when_concrete_min_count(
+        self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
+    ) -> None:
+        registry.schema.register_schema(
+            schema=build_room_schema(include_dorm_subtype=True, dorm_min_count=1),
+            branch=default_branch.name,
+        )
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        dorm = await create_and_save(db=db, schema="TestDorm", name="dorm")
+        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[dorm])
+
+        lock_names = get_lock_names_on_object_mutation(alice, schema_branch=schema_branch)
+
+        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{dorm.id}"
+        assert expected_lock in lock_names
+
+    async def test_lock_acquired_with_mixed_subtypes_one_constrained(
+        self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
+    ) -> None:
+        registry.schema.register_schema(schema=build_room_schema(include_dorm_subtype=True), branch=default_branch.name)
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        # Peer is a TestDorm whose own occupant relationship is cardinality=many.
+        # A sibling concrete subtype under the same generic declares cardinality=one
+        # for the same identifier, so the conservative lock must still fire on the
+        # peer's ID.
+        dorm = await create_and_save(db=db, schema="TestDorm", name="dorm")
+        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[dorm])
+
+        lock_names = get_lock_names_on_object_mutation(alice, schema_branch=schema_branch)
+
+        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{dorm.id}"
+        assert expected_lock in lock_names
+
+
+class TestLockGenericPeerGenericRel(TestInfrahubApp):
+    """Lock acquisition when the cardinality constraint is declared on the generic itself."""
+
+    async def test_lock_acquired_when_generic_cardinality_one(
+        self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
+    ) -> None:
+        registry.schema.register_schema(schema=build_room_schema(generic_has_rel=True), branch=default_branch.name)
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        single = await create_and_save(db=db, schema="TestSingleRoom", name="single")
+        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[single])
+
+        lock_names = get_lock_names_on_object_mutation(alice, schema_branch=schema_branch)
+
+        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{single.id}"
         assert expected_lock in lock_names

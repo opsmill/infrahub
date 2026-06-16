@@ -19,8 +19,8 @@ class Error(Exception):
 
 
 class PropagatedFromWorkerError(Error):
-    """
-    Used to re-raise server side an error that happened worker side.
+    """Used to re-raise server side an error that happened worker side.
+
     Note we might want to improve this so we raise the exact same error that happened worker side.
     """
 
@@ -246,7 +246,13 @@ class AuthorizationError(Error):
         super().__init__(self.message)
 
 
-class PermissionDeniedError(Error):
+class ForwardableError(Error):
+    """Base class for exceptions that can be forwarded to log forwarding destinations."""
+
+    log_forwarded: bool = False
+
+
+class PermissionDeniedError(ForwardableError):
     HTTP_CODE: int = 403
     message: str = "The requested operation was not authorized"
 
@@ -373,7 +379,7 @@ class DiffFromRequiredOnDefaultBranchError(DiffError): ...
 
 
 class HTTPServerError(Error):
-    """Errors raised when communicating with external HTTP servers"""
+    """Errors raised when communicating with external HTTP servers."""
 
     HTTP_CODE = 502
 

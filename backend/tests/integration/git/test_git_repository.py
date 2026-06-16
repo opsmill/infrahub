@@ -20,7 +20,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.server import app, lifespan
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
-from infrahub.workers.dependencies import build_database
+from infrahub.workers.dependencies import build_database, clear_singletons
 from infrahub.workflows.initialization import setup_task_manager
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_app import TestInfrahubApp
@@ -76,6 +76,12 @@ class TestInfrahubClient:
         async def _db(singleton: bool = True) -> InfrahubDatabase:
             return db_class
 
+        # Each class gets its own db_class with its own driver, and lifespan shutdown
+        # closes that driver. Cached singletons (notably the InfrahubComponent) hold
+        # references to the prior class's driver; drop them so the next lifespan()
+        # rebuilds them against the current db_class.
+        clear_singletons()
+
         with dependency_provider.scope(build_database, _db):
             async with lifespan(app):
                 yield InfrahubTestClient(app=app)
@@ -117,14 +123,12 @@ class TestInfrahubClient:
         await obj.save(db=db)
 
         # Initialize the repository on the file system
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=obj.id,
             name=git_repo_infrahub_demo_edge_integration.name,
             location=git_repo_infrahub_demo_edge_integration.path,
             client=client,
         )
-
-        return repo
 
     async def test_import_schema_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
@@ -188,22 +192,15 @@ class TestInfrahubClient:
         with pytest.raises(NodeNotFoundError):
             await client.get(kind=CoreGraphQLQuery, id=obj.id)
 
-    async def test_import_all_python_files(
+    async def test_import_python_definitions(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
     ) -> None:
-        for group in ["backbone_services", "maintenance_circuits", "provisioning_circuits", "upstream_interfaces"]:
-            obj = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
-            await obj.new(
-                db=db,
-                name=group,
-            )
-            await obj.save(db=db)
-
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file
 
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         check_definitions = await client.all(kind=CoreCheckDefinition)
         assert len(check_definitions) >= 1
@@ -213,7 +210,8 @@ class TestInfrahubClient:
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -255,7 +253,8 @@ class TestInfrahubClient:
         )
         await obj2.save(db=db)
 
-        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await repo.import_python_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         modified_check0 = await client.get(kind=CoreCheckDefinition, id=check_definitions[0].id)
         assert modified_check0.timeout.value == check_timeout_value_before_change

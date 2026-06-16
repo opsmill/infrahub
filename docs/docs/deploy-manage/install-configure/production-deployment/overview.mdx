@@ -1,0 +1,212 @@
+---
+title: Production deployment
+---
+
+import ReferenceLink from "../../../../src/components/Card";
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Production deployment
+
+This guide walks you through deploying Infrahub in a production environment with enhanced security, reliability, and maintainability. By following these steps, you'll set up a production-ready Infrahub instance that follows industry best practices.
+
+:::warning
+This guide is currently under development. Please use it as a reference checklist when preparing your Infrahub environment for production deployment.
+:::
+
+## Prerequisites
+
+Before beginning your production deployment, ensure you have:
+
+- Selected your deployment technology (Docker or Kubernetes)
+- Verified your system meets the [hardware requirements](../hardware-requirements.mdx)
+- Administrative access to your deployment environment
+- Decided between Community or Enterprise edition based on your support and feature needs
+- Access to your organization's identity provider (for SSO configuration)
+- A backup strategy and storage location
+
+## Step 1: Create a hardened configuration file
+
+Production environments require secure configuration settings that differ from development defaults. Create a configuration file that overwrites default values to enhance security.
+
+```shell title=".env"
+# Environment settings
+INFRAHUB_ALLOW_ANONYMOUS_ACCESS=false
+INFRAHUB_PRODUCTION=true
+INFRAHUB_LOG_LEVEL=INFO
+
+# Security keys & tokens (generate strong unique values)
+INFRAHUB_SECURITY_SECRET_KEY=<strong-random-string-at-least-32-chars>
+INFRAHUB_INITIAL_ADMIN_PASSWORD=<strong-admin-password>
+INFRAHUB_INITIAL_ADMIN_TOKEN=<generate-uuid>  # Generate with: uuidgen
+INFRAHUB_INITIAL_AGENT_TOKEN=<generate-uuid>  # Generate with: uuidgen
+
+# Database & message broker security
+INFRAHUB_BROKER_PASSWORD=<strong-broker-password>
+INFRAHUB_DB_PASSWORD=<strong-database-password>
+
+# TLS & Certificates
+INFRAHUB_DB_TLS_ENABLED=true
+INFRAHUB_DB_TLS_CA_FILE=/opt/ssl/ca.pem
+INFRAHUB_BROKER_TLS_ENABLED=true
+INFRAHUB_CACHE_TLS_ENABLED=true
+```
+
+:::warning
+Never use default passwords or tokens in production. Generate strong unique values for each environment. You can generate UUIDs using the `uuidgen` command or an online UUID generator.
+:::
+
+<ReferenceLink title="Complete configuration reference" url="/reference/configuration" />
+
+## Step 2: Install Infrahub
+
+Install Infrahub using your chosen deployment technology, applying your hardened configuration.
+
+:::info
+For high availability deployments on Kubernetes, use the HA manifest which includes proper replication and resource requests/limits.
+:::
+
+<ReferenceLink title="Detailed installation instructions" url="/deploy-manage/install-configure/install/overview" />
+
+:::success
+Navigate to `https://your-server-address` in your browser. You should see the Infrahub login page.
+:::
+
+## Step 3: Configure SSO (recommended)
+
+Connect Infrahub to your organization's identity provider to enhance security and simplify user management.
+
+<ReferenceLink title="Detailed SSO configuration guide" url="/deploy-manage/user-management/sso/overview" />
+
+## Step 4: Set up database backups
+
+Implement regular database backups to prevent data loss in case of hardware failure or other issues.
+
+<ReferenceLink title="Complete backup and restore guide" url="/deploy-manage/maintain-upgrade/database-backup/overview" />
+
+:::success
+Test your backup and restore process periodically to ensure it works as expected.
+:::
+
+## Least-privilege service credentials
+
+:::note
+This section is informational and optional. Infrahub works with administrative credentials for its backing services, but it does not require them. The privileges below let you run Infrahub with restricted users if your security policy calls for it.
+:::
+
+Infrahub does not manage users, roles, or server configuration. It primarily uses application-level privileges; only optional first-start Neo4j database bootstrap requires `CREATE DATABASE`.
+
+### Neo4j
+
+Infrahub reads and writes graph data, declares new labels, relationship types and property names, and manages its own indexes and constraints. The matching privileges are:
+
+- `ACCESS` to the database, plus read (`MATCH`) and `WRITE` on the graph
+- `NAME MANAGEMENT` to declare new labels, relationship types, and property names
+- `INDEX MANAGEMENT` and `CONSTRAINT MANAGEMENT` for the indexes and constraints it maintains
+
+:::info
+Restricting privileges per user requires Neo4j Enterprise (role-based access control). Neo4j Community supports only the built-in `neo4j` user.
+:::
+
+A dedicated role and user, created by an administrator against the `system` database:
+
+```cypher
+CREATE ROLE infrahub IF NOT EXISTS;
+
+GRANT ACCESS ON DATABASE neo4j TO infrahub;
+GRANT MATCH {*} ON GRAPH neo4j TO infrahub;
+GRANT WRITE ON GRAPH neo4j TO infrahub;
+GRANT NAME MANAGEMENT ON DATABASE neo4j TO infrahub;
+GRANT INDEX MANAGEMENT ON DATABASE neo4j TO infrahub;
+GRANT CONSTRAINT MANAGEMENT ON DATABASE neo4j TO infrahub;
+
+CREATE USER infrahub IF NOT EXISTS SET PLAINTEXT PASSWORD '<strong-database-password>' CHANGE NOT REQUIRED;
+GRANT ROLE infrahub TO infrahub;
+```
+
+Replace `neo4j` with the database name you set in `INFRAHUB_DB_DATABASE` if you use a dedicated database. Infrahub creates that database on first start if it does not exist, which requires the `CREATE DATABASE` privilege, so pre-create it as an administrator to keep the application user restricted. If you collect telemetry, also `GRANT SHOW SERVERS ON DBMS` and `GRANT EXECUTE PROCEDURE dbms.queryJmx ON DBMS`, otherwise telemetry logs a harmless permission error.
+
+### Redis
+
+Infrahub uses Redis for caching and distributed locks, and in distributed deployments the task manager also uses it for workflow coordination. The user needs read and write access to keys, the connection commands used to authenticate, the scripting commands used by the locks, and transactions (`MULTI`/`EXEC`) used by the task manager. It does not need administrative or destructive commands. With a Redis ACL file:
+
+```text title="users.acl"
+user default off
+user infrahub on ><strong-cache-password> ~* resetchannels +@read +@write +@connection +@scripting +@transaction -@dangerous
+```
+
+:::note
+`+@transaction` is only exercised when the task manager is backed by Redis (distributed or high-availability deployments). It is harmless to grant otherwise.
+:::
+
+### RabbitMQ
+
+Infrahub talks to RabbitMQ over AMQP only: it declares its own exchanges and queues and publishes and consumes messages. It does not use the management API, so the user needs `configure`, `write` and `read` on the virtual host but no administrator or management tags.
+
+```shell
+rabbitmqctl add_user infrahub '<strong-broker-password>'
+rabbitmqctl set_permissions -p / infrahub ".*" ".*" ".*"
+# Do not set any user tags: the application does not need management access.
+```
+
+### PostgreSQL
+
+The task manager stores its state in PostgreSQL and runs its own schema migrations, so its role must be able to create and change objects in its own database, but it does not need to be a cluster superuser. Create a non-superuser role that owns its database and schema:
+
+```sql
+CREATE ROLE prefect WITH LOGIN PASSWORD '<strong-task-manager-db-password>';
+ALTER DATABASE prefect OWNER TO prefect;
+ALTER SCHEMA public OWNER TO prefect;
+GRANT ALL ON SCHEMA public TO prefect;
+```
+
+Then point the task manager's database connection string at this role instead of a superuser.
+
+### Point Infrahub at the restricted users
+
+```shell title=".env"
+INFRAHUB_DB_USERNAME=infrahub
+INFRAHUB_DB_PASSWORD=<strong-database-password>
+INFRAHUB_CACHE_USERNAME=infrahub
+INFRAHUB_CACHE_PASSWORD=<strong-cache-password>
+INFRAHUB_BROKER_USERNAME=infrahub
+INFRAHUB_BROKER_PASSWORD=<strong-broker-password>
+```
+
+## Operations and maintenance
+
+### Upgrading Infrahub
+
+To upgrade to a new version of Infrahub:
+
+1. Review the release notes for breaking changes
+2. Create a full backup of your database
+3. Update the container images
+
+:::danger
+Always create a backup before upgrading to ensure you can restore if needed.
+:::
+
+<ReferenceLink title="Detailed upgrade procedures" url="/deploy-manage/maintain-upgrade/upgrade/overview" />
+
+## Support options
+
+### Community support
+
+- GitHub Issues: [github.com/opsmill/infrahub](https://github.com/opsmill/infrahub)
+- Discord Community: [discord.gg/infrahub](https://discord.gg/infrahub)
+- Documentation: [docs.infrahub.app](https://docs.infrahub.app)
+
+### Enterprise support <EnterpriseBadge />
+
+- 24/7 support with SLA guarantees
+- Dedicated support engineer
+- Professional services for deployment
+- Training and certification programs
+
+Contact [support@opsmill.com](mailto:support@opsmill.com) for enterprise support.
+
+## Related resources
+
+- [Architecture overview](../../../overview/architecture.mdx)
+- [Configuration reference](../../../reference/configuration.mdx)
+- [High availability](./high-availability.mdx)

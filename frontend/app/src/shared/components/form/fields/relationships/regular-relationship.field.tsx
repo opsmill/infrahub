@@ -15,7 +15,7 @@ import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
+import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 
 export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;

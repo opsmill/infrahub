@@ -107,6 +107,26 @@ const EVENTS_QUERY = graphql(`
             checksum_previous
             storage_id_previous
           }
+          ... on AccountLoggedInEventType {
+            account_name
+            account_type
+            auth_method
+            session_id
+            timestamp
+            client_ip
+            user_agent
+            groups
+            roles
+            identity_source
+          }
+          ... on AccountLoggedOutEventType {
+            account_name
+            logout_type
+            session_id
+            timestamp
+            client_ip
+            user_agent
+          }
         }
       }
     }

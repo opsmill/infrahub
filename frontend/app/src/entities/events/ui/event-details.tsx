@@ -1,29 +1,60 @@
+import type {
+  AccountLoggedInEventType,
+  AccountLoggedOutEventType,
+} from "@/shared/api/graphql/generated/types";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Link } from "@/shared/components/ui/link";
 import { ACCOUNT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import type { EventType } from "@/entities/events/types";
+import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
+import { EventRelationships } from "@/entities/events/ui/node-events/event-relationships";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 
-import type { EventType } from "../types";
-import { EventAttributes } from "./node-events/event-attributes";
-import { EventRelationships } from "./node-events/event-relationships";
+const AccountLoggedInEventDetails = ({ event }: { event: AccountLoggedInEventType }) => {
+  return (
+    <>
+      <PropertyRow title="Account Name" value={event.account_name} />
+      <PropertyRow title="Account Type" value={event.account_type} />
+      <PropertyRow title="Auth Method" value={event.auth_method} />
+      <PropertyRow title="Session ID" value={event.session_id} />
+      <PropertyRow title="Event Timestamp" value={<DateDisplay date={event.timestamp} />} />
+      <PropertyRow title="Client IP" value={event.client_ip} />
+      <PropertyRow title="User Agent" value={event.user_agent} />
+      <PropertyRow title="Identity Source" value={event.identity_source} />
+      <PropertyRow title="Groups" value={event.groups?.join(", ")} />
+      <PropertyRow title="Roles" value={event.roles?.join(", ")} />
+    </>
+  );
+};
 
-export const EventDetails = ({
-  id,
-  event,
-  branch,
-  occurred_at,
-  account_id,
-  primary_node,
-  related_nodes,
-  ancestors,
-  members,
-  ...props
-}: EventType) => {
+const AccountLoggedOutEventDetails = ({ event }: { event: AccountLoggedOutEventType }) => {
+  return (
+    <>
+      <PropertyRow title="Account Name" value={event.account_name} />
+      <PropertyRow title="Logout Type" value={event.logout_type} />
+      <PropertyRow title="Session ID" value={event.session_id} />
+      <PropertyRow title="Event Timestamp" value={<DateDisplay date={event.timestamp} />} />
+      <PropertyRow title="Client IP" value={event.client_ip} />
+      <PropertyRow title="User Agent" value={event.user_agent} />
+    </>
+  );
+};
+
+export const EventDetails = (props: EventType) => {
+  const { id, event, branch, occurred_at, account_id, primary_node, related_nodes } = props;
+
+  const displayedBranch =
+    branch ??
+    ("deleted_branch" in props ? props.deleted_branch : undefined) ??
+    ("created_branch" in props ? props.created_branch : undefined) ??
+    ("rebased_branch" in props ? props.rebased_branch : undefined) ??
+    ("source_branch" in props ? props.source_branch : undefined);
+
   return (
     <div className="divide-y divide-gray-200">
       <PropertyRow
@@ -37,7 +68,7 @@ export const EventDetails = ({
 
       <PropertyRow title="Event" value={event} />
 
-      <PropertyRow title="Branch" value={branch} />
+      <PropertyRow title="Branch" value={displayedBranch} />
 
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
 
@@ -93,12 +124,12 @@ export const EventDetails = ({
         />
       )}
 
-      {!!ancestors?.length && (
+      {"ancestors" in props && !!props.ancestors?.length && (
         <PropertyRow
           title="Ancestors"
           value={
             <div className="flex flex-col items-end gap-1">
-              {ancestors.map((node) => {
+              {props.ancestors.map((node) => {
                 return (
                   <Link
                     key={node.id}
@@ -115,12 +146,12 @@ export const EventDetails = ({
         />
       )}
 
-      {!!members?.length && (
+      {"members" in props && !!props.members?.length && (
         <PropertyRow
           title="Members"
           value={
             <div className="flex flex-col items-end gap-1">
-              {members.map((node) => {
+              {props.members.map((node) => {
                 return (
                   <Link
                     key={node.id}
@@ -146,6 +177,14 @@ export const EventDetails = ({
           title="Relationships"
           value={<EventRelationships relationships={props.relationships} />}
         />
+      )}
+
+      {props.__typename === "AccountLoggedInEventType" && (
+        <AccountLoggedInEventDetails event={props} />
+      )}
+
+      {props.__typename === "AccountLoggedOutEventType" && (
+        <AccountLoggedOutEventDetails event={props} />
       )}
     </div>
   );

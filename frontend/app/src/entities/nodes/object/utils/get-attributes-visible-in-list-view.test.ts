@@ -60,6 +60,26 @@ describe("getAttributesVisibleInListView", () => {
     expect(result).toEqual([]);
   });
 
+  it("should exclude attributes with display 'extra' even if kind is valid", () => {
+    // GIVEN
+    const attributes: AttributeSchema[] = [
+      generateAttributeSchema({
+        name: "visible",
+        kind: "Text",
+        label: "Visible",
+        display: "default",
+      }),
+      generateAttributeSchema({ name: "hidden", kind: "Text", label: "Hidden", display: "extra" }),
+      generateAttributeSchema({ name: "also_visible", kind: "Number", label: "Also Visible" }),
+    ];
+
+    // WHEN
+    const result = getAttributesVisibleInListView(attributes);
+
+    // THEN
+    expect(result.map((attr) => attr.name)).toEqual(["visible", "also_visible"]);
+  });
+
   it("should handle attributes with missing kind", () => {
     // GIVEN
     const attributes = [

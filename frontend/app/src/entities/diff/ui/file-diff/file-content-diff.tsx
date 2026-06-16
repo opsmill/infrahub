@@ -1,6 +1,4 @@
-import { gql, useQuery } from "@apollo/client";
-import { formatISO } from "date-fns";
-import { useAtom } from "jotai";
+import { useQuery } from "@apollo/client";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
@@ -13,13 +11,11 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetFile } from "@/entities/diff/domain/get-file.query";
 import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
-import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
+import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
+import { GET_FILE_THREADS } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
 import { Button } from "react-aria-components";
@@ -31,9 +27,10 @@ import { diffLines, formatLines } from "unidiff";
 import { Row } from "@/shared/components/container";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 
 interface FileContentDiffProps {
   repositoryId: string;
@@ -113,8 +110,7 @@ export function FileContentDiff({
   commitTo,
 }: FileContentDiffProps) {
   const { proposedChangeId } = useParams();
-  const auth = useAuth();
-  const [schemaList] = useAtom(nodeSchemasAtom);
+  const { isAuthenticated } = useAuth();
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
@@ -139,40 +135,21 @@ export function FileContentDiff({
     commit: commitTo,
   });
 
-  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_FILE_THREAD_OBJECT);
+  const { loading, error, data, refetch } = useQuery(GET_FILE_THREADS, {
+    variables: { changeIds: [proposedChangeId!] },
+    skip: !proposedChangeId,
+  });
 
-  const queryString =
-    schemaData && proposedChangeId
-      ? getProposedChangesFilesThreads({
-          id: proposedChangeId,
-          kind: schemaData.kind,
-        })
-      : ""; // Empty query to make the gql parsing work
-
-  const query = queryString
-    ? gql`
-        ${queryString}
-      `
-    : "";
-
-  const { loading, error, data, refetch } = query
-    ? useQuery(query, { skip: !schemaData })
-    : { loading: false, error: null, data: null, refetch: null };
-
-  const threads =
-    data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
-  const approverId = auth?.data?.sub;
+  const threads = data?.CoreFileThread?.edges?.map((edge) => edge.node) ?? [];
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
   };
 
   const handleSubmitComment = async ({ comment }: { comment: string }) => {
-    if (!comment || !approverId) {
+    if (!comment) {
       return;
     }
-
-    const newDate = formatISO(new Date());
 
     const lineNumber = displayAddComment.isNormal
       ? displayAddComment.side === "new"
@@ -188,12 +165,6 @@ export function FileContentDiff({
       },
       label: {
         value: label,
-      },
-      created_at: {
-        value: newDate,
-      },
-      created_by: {
-        id: approverId,
       },
       resolved: {
         value: false,
@@ -224,12 +195,6 @@ export function FileContentDiff({
           const newComment = {
             text: {
               value: comment,
-            },
-            created_by: {
-              id: approverId,
-            },
-            created_at: {
-              value: newDate,
             },
             thread: {
               id: threadId,
@@ -315,7 +280,7 @@ export function FileContentDiff({
 
     const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
-    if (thread || !auth?.isAuthenticated || !proposedChangeId) {
+    if (thread || !isAuthenticated || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }

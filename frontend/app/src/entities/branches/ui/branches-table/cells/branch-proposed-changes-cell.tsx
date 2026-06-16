@@ -13,7 +13,7 @@ import {
   PROPOSED_CHANGE_OBJECT,
   STATE_VALUES_FILTER,
 } from "@/entities/proposed-changes/constants";
-import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
+import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 

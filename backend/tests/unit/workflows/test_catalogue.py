@@ -19,14 +19,14 @@ def test_workflow_definition(workflow: WorkflowDefinition) -> None:
 
 @pytest.mark.parametrize("workflow", [pytest.param(workflow, id=workflow.name) for workflow in get_workflows()])
 def test_workflow_definition_matches(workflow: WorkflowDefinition) -> None:
-    """Validate that the name of the workflow matches the name of the flow"""
+    """Validate that the name of the workflow matches the name of the flow."""
     flow = workflow.load_function()
     assert hasattr(flow, "name")
     assert workflow.name == flow.name
 
 
 def test_workflow_definition_flow_names() -> None:
-    """Validate that each workflow has a unique name defined"""
+    """Validate that each workflow has a unique name defined."""
     flow_names = [workflow.name for workflow in get_workflows()]
     name_counter = Counter(flow_names)
     duplicates = [name for name, count in name_counter.items() if count > 1]
@@ -34,10 +34,7 @@ def test_workflow_definition_flow_names() -> None:
 
 
 def test_workflows_sorted() -> None:
-    """
-    Only test that workflows are defined in an alphabetical way for developer comfort.
-    """
-
+    """Only test that workflows are defined in an alphabetical way for developer comfort."""
     if get_installation_type() != INSTALLATION_TYPE:
         return
 

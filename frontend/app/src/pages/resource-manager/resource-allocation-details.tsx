@@ -13,7 +13,7 @@ import { QSP } from "@/shared/config/qsp";
 import usePagination from "@/shared/hooks/usePagination";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { useGetResourceAllocated } from "@/entities/resource-manager/domain/get-resource-allocated.query";
+import { useGetResourceAllocated } from "@/entities/resource-manager/ui/queries/get-resource-allocated.query";
 
 const ResourceAllocationDetailsPage = () => {
   const { resourcePoolId, resourceId } = useParams();

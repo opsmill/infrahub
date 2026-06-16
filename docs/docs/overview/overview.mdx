@@ -7,6 +7,8 @@ Infrahub is a graph-based data management platform with built-in version control
 
 Infrahub provides a single platform that unifies infrastructure data with business logic, enforces consistency, and integrates with automation tools and AI workflows. With Infrahub as the data foundation in your automation stack, you can move faster, reduce risk, and deliver infrastructure as a reliable service.
 
+Infrahub is built by [OpsMill](https://opsmill.com). To see how it maps to real-world environments, explore the [OpsMill solutions](https://opsmill.com/solutions/).
+
 ![Infrahub architecture](./../media/overview.excalidraw.svg)
 
 ## Top ways to use Infrahub
@@ -48,7 +50,7 @@ Managing infrastructure at scale often means many people, teams, workflows and o
 | **REST API** | Used for schema loading, artifact retrieval, object storage, and executing saved GraphQL queries. Endpoint: `/api` |
 | **infrahubctl** | CLI tool for day-to-day management of an Infrahub installation. Runs on any machine and communicates with a remote server. [Reference]($(base_url)infrahubctl/infrahubctl) |
 | **Python SDK** | Programmatic access to Infrahub for scripts, integrations, and automation. [Documentation]($(base_url)python-sdk/introduction) |
-| **Git** | Native integration with Git repositories. The Task worker keeps both systems in sync — changes to branches or files in a Git repository are synced to Infrahub automatically. [Guide](../guides/repository.mdx) |
+| **Git** | Native integration with Git repositories. The Task worker keeps both systems in sync — changes to branches or files in a Git repository are synced to Infrahub automatically. [Guide](../git-integration/connect-repository) |
 
 ## Data input and sync
 
@@ -56,10 +58,20 @@ Managing infrastructure at scale often means many people, teams, workflows and o
 
 Once a schema is loaded, data can be populated or synced through multiple methods: the WebUI, [infrahub-sync]($(base_url)sync) for integration with external systems (Netbox, Nautobot, IP Fabric, and more), YAML-based [object files]($(base_url)python-sdk/topics/object_file), the [Python SDK]($(base_url)python-sdk/introduction), or the GraphQL/REST APIs directly.
 
-Infrahub provides [data lineage and metadata](../topics/metadata.mdx) for tracking the origin and ownership of data, and how it changes over time. When data comes from external systems, those objects carry attributes such as their source and whether they are read-only, enabling unidirectional sync from other sources of truth.
+Infrahub provides [data lineage and metadata](../objects/metadata) for tracking the origin and ownership of data, and how it changes over time. When data comes from external systems, those objects carry attributes such as their source and whether they are read-only, enabling unidirectional sync from other sources of truth.
 
 ## Deployment
 
-While Infrahub stores data and uses Transformations to generate configuration artifacts, it does not directly deploy configurations to devices. Instead, it integrates with tools like [Ansible]($(base_url)ansible/), [Nornir]($(base_url)nornir/), or triggers external orchestration platforms via [webhooks](../topics/webhooks.mdx) for event-driven workflows.
+While Infrahub stores data and uses Transformations to generate configuration artifacts, it does not directly deploy configurations to devices. Instead, it integrates with tools like [Ansible]($(base_url)ansible/), [Nornir]($(base_url)nornir/), or triggers external orchestration platforms via [webhooks](../webhooks/overview) for event-driven workflows.
 
 These integrations transform Infrahub into a centralized source of truth for infrastructure data, leveraging existing automation tools to streamline management and ensure consistency across the infrastructure.
+
+## Solutions
+
+See how teams put Infrahub to work across different environments on the [OpsMill website](https://opsmill.com/solutions/):
+
+- [AI Data Centers](https://opsmill.com/solutions/ai-data-centers/)
+- [Edge Networks](https://opsmill.com/solutions/edge-networks/)
+- [Campus Networks](https://opsmill.com/solutions/campus-networks/)
+- [IT Service Providers](https://opsmill.com/solutions/it-service-providers/)
+- [AI and Agentic Operations](https://opsmill.com/solutions/aiops/)

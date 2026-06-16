@@ -9,7 +9,7 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
   type UseObjectRelationshipsParams,
   useObjectRelationships,
-} from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships.query";
+} from "@/entities/nodes/relationships/ui/queries/get-object-relationships.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";

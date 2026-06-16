@@ -18,10 +18,6 @@ class TestProposedChangeCheckForRevokeApprovals(TestInfrahubApp):
         """
 
         with pytest.raises(GraphQLError) as exc:
-            _ = await client.execute_graphql(
-                query=mutation,
-                variables={"data": {}},
-                raise_for_error=True,
-            )
+            _ = await client.execute_graphql(query=mutation, variables={"data": {}})
 
         assert "Revoking existing approvals based on branch changes is an enterprise feature." in exc.value.message

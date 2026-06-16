@@ -16,10 +16,7 @@ async def test_migration_019(
     db: InfrahubDatabase,
     default_branch: Branch,
 ) -> None:
-    """
-    Reproduce corrupted state introduced by migration 12, and apply the migration fixing it.
-    """
-
+    """Reproduce corrupted state introduced by migration 12, and apply the migration fixing it."""
     schema = SchemaRoot(**core_models)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
@@ -134,11 +131,11 @@ async def test_migration_019(
 async def test_incorrectly_deleted_aware_nodes_and_relationship(
     db: InfrahubDatabase, branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> None:
-    """
-    Reproduce a state where a branch aware node would have been incorrectly deleted, this node being
-    connected to another node through a branch aware relationship.
-    """
+    """Reproduce a state where a branch aware node would have been incorrectly deleted, this node being.
 
+    connected to another node through a branch aware relationship.
+
+    """
     registry.schema.register_schema(schema=car_person_schema_unregistered, branch=branch.name)
 
     john = await Node.init(schema="TestPerson", db=db, branch=branch)
@@ -174,11 +171,11 @@ async def test_incorrectly_deleted_aware_nodes_and_relationship(
 async def test_incorrectly_deleted_agnostic_node(
     db: InfrahubDatabase, branch: Branch, car_person_branch_agnostic_schema: dict[str, Any]
 ) -> None:
-    """
-    Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being
-    connected to another node through 2 relationships, both aware and agnostic.
-    """
+    """Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being.
 
+    connected to another node through 2 relationships, both aware and agnostic.
+
+    """
     # await load_schema(db, schema=CAR_SCHEMA)
     registry.schema.register_schema(schema=SchemaRoot(**car_person_branch_agnostic_schema), branch=branch.name)
 
@@ -215,12 +212,12 @@ async def test_incorrectly_deleted_agnostic_node(
 async def test_incorrectly_deleted_aware_node(
     db: InfrahubDatabase, branch: Branch, car_person_branch_agnostic_schema: dict[str, Any]
 ) -> None:
-    """
-    Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being
+    """Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being.
+
     connected to another node through 2 relationships, both aware and agnostic.
+
     Note that, after deleting an aware node, agnostic edges of this node will not be deleted.
     """
-
     registry.schema.register_schema(schema=SchemaRoot(**car_person_branch_agnostic_schema), branch=branch.name)
 
     aware_person = await Node.init(schema="TestPerson", db=db, branch=branch)

@@ -980,7 +980,6 @@ RETURN updated_at, updated_by
 
     def get_peer_ids(self) -> list[str]:
         """Return a list of UUID of nodes associated with this relationship."""
-
         return [peer.peer_id for peer in self.get_peers()]
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
@@ -1195,6 +1194,7 @@ class RelationshipCountPerNodeQuery(Query):
 
         Returns:
             List of RelationshipCountPerNodeResult containing peer count info.
+
         """
         return [RelationshipCountPerNodeResult.from_db(result) for result in self.get_results()]
 
@@ -1238,9 +1238,11 @@ class RelationshipDeleteAllQueryResult:
 
 
 class RelationshipDeleteAllQuery(Query):
-    """
-    Delete all relationships linked to a given node on a given branch at a given time. For every IS_RELATED edge:
+    """Delete all relationships linked to a given node on a given branch at a given time.
+
+    For every IS_RELATED edge:
     - Set `to` time if an active edge exist on the same branch.
+
     - Create `deleted` edge.
     - Apply above to every edges linked to any connected Relationship node.
     This query returns node uuids/kinds and corresponding relationship identifiers of deleted nodes,
@@ -1373,6 +1375,7 @@ class RelationshipDeleteAllQuery(Query):
 
         Returns:
             List of RelationshipDeleteAllQueryResult containing deleted relationship info.
+
         """
         return [RelationshipDeleteAllQueryResult.from_db(result) for result in self.get_results()]
 
@@ -1419,9 +1422,7 @@ class RelationshipDeleteAllQuery(Query):
 
 
 class GetAllPeersIds(Query):
-    """
-    Return all peers ids connected to input node. Some peers can be excluded using `exclude_identifiers`.
-    """
+    """Return all peers ids connected to input node. Some peers can be excluded using `exclude_identifiers`."""
 
     name = "get_peers_ids"
     type: QueryType = QueryType.READ

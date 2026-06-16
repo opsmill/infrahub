@@ -15,6 +15,52 @@ from .utils import ESCAPED_REPO_PATH
 MAIN_DIRECTORY = "backend"
 NAMESPACE = "BACKEND"
 
+COMPONENT_TEST_DIRECTORY = f"{MAIN_DIRECTORY}/tests/component"
+
+# Component test shards used by CI to run backend.test-component in parallel jobs.
+# Directories listed here are run by their named shard; everything else falls into the
+# "other" catch-all shard, which ignores exactly the directories assigned below so new
+# test directories are picked up automatically. The partition is verified by
+# backend.validate-component-shards. Shard contents are sized from measured durations,
+# rebalance when they drift apart.
+COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
+    "graphql": ["graphql"],
+    "core-diff": ["core/diff", "core/migrations", "core/changelog"],
+    "core-schema": [
+        "core/schema",
+        "core/schema_manager",
+        "core/constraint_validators",
+        "core/ipam",
+        "core/resource_manager",
+        "core/convert_object_type",
+        "core/profiles",
+        "core/node",
+        "core/hierarchy",
+        "core/graph",
+    ],
+}
+COMPONENT_TEST_CATCHALL_SHARD = "other"
+
+
+def _component_shard_targets(shard: str) -> str:
+    """Build the pytest path arguments for a component test shard.
+
+    The catch-all shard must be expressed with --ignore flags only: pytest drops an
+    explicit child path when an ancestor path is also passed positionally.
+
+    Raises:
+        ValueError: If the shard name is unknown.
+
+    """
+    if shard == COMPONENT_TEST_CATCHALL_SHARD:
+        ignored = [path for paths in COMPONENT_TEST_SHARDS.values() for path in paths]
+        ignore_args = " ".join(f"--ignore={COMPONENT_TEST_DIRECTORY}/{path}" for path in ignored)
+        return f"{COMPONENT_TEST_DIRECTORY} {ignore_args}"
+    if shard not in COMPONENT_TEST_SHARDS:
+        valid_shards = ", ".join([*COMPONENT_TEST_SHARDS, COMPONENT_TEST_CATCHALL_SHARD])
+        raise ValueError(f"Unknown component test shard '{shard}', expected one of: {valid_shards}")
+    return " ".join(f"{COMPONENT_TEST_DIRECTORY}/{path}" for path in COMPONENT_TEST_SHARDS[shard])
+
 
 # ----------------------------------------------------------------------------
 # Formatting tasks
@@ -23,7 +69,6 @@ NAMESPACE = "BACKEND"
 
 def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
-
     print(f" - [{NAMESPACE}] Format code with ruff")
     exec_cmd = f"uv run ruff format {MAIN_DIRECTORY} &&"
     exec_cmd += f"uv run ruff check --fix {MAIN_DIRECTORY}"
@@ -34,7 +79,6 @@ def _format_ruff(context: Context) -> None:
 @task(name="format")
 def format_all(context: Context) -> None:
     """Format all backend Python files with ruff."""
-
     _format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
@@ -46,7 +90,6 @@ def format_all(context: Context) -> None:
 @task
 def ruff(context: Context) -> None:
     """Run ruff linter against backend Python files."""
-
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY}"
 
@@ -61,7 +104,6 @@ def ruff(context: Context) -> None:
 @task
 def ty(context: Context) -> None:
     """Run ty type checker against project files."""
-
     print(f" - [{NAMESPACE}] Check code with ty")
     exec_cmd = "uv run ty check ."
 
@@ -72,7 +114,6 @@ def ty(context: Context) -> None:
 @task
 def mypy(context: Context) -> None:
     """Run mypy type checking against backend Python files."""
-
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"uv run mypy --show-error-codes {MAIN_DIRECTORY}"
 
@@ -91,14 +132,56 @@ def lint(context: Context) -> None:
 
 
 @task(optional=["database"])
-def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
-    """Run backend component tests."""
+def test_component(context: Context, database: str = INFRAHUB_DATABASE, shard: str | None = None) -> Result | None:
+    """Run backend component tests, optionally restricted to a single shard."""
+    targets = _component_shard_targets(shard) if shard else f"{MAIN_DIRECTORY}/tests/component"
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub --durations=20 {targets}"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
         return execute_command(context=context, command=f"{exec_cmd}")
+
+
+@task
+def validate_component_shards(context: Context) -> None:
+    """Verify that the component test shards cover the full component test suite exactly once.
+
+    Raises:
+        RuntimeError: If test collection fails or the shards do not partition the full suite.
+
+    """
+
+    def collect(targets: str) -> list[str]:
+        result = execute_command(
+            context=context,
+            command=f"uv run pytest --collect-only -qq -p no:cacheprovider {targets}",
+            hide=True,
+        )
+        if result is None:
+            raise RuntimeError(f"Failed to collect tests for: {targets}")
+        return [line for line in result.stdout.splitlines() if line.startswith(f"{COMPONENT_TEST_DIRECTORY}/")]
+
+    with context.cd(ESCAPED_REPO_PATH):
+        full_suite = sorted(collect(COMPONENT_TEST_DIRECTORY))
+        all_shards = [*COMPONENT_TEST_SHARDS, COMPONENT_TEST_CATCHALL_SHARD]
+        sharded = sorted(test for shard in all_shards for test in collect(_component_shard_targets(shard)))
+
+    if full_suite != sharded:
+        full_set = set(full_suite)
+        shard_set = set(sharded)
+        missing = sorted(full_set - shard_set)
+        duplicated = sorted({test for test in sharded if sharded.count(test) > 1} | (shard_set - full_set))
+        msg = f"Component test shards do not match the full suite ({len(sharded)} vs {len(full_suite)} tests)."
+        if missing:
+            msg += f"\nMissing from all shards ({len(missing)}): " + ", ".join(missing[:10])
+        if duplicated:
+            msg += f"\nCollected more than once ({len(duplicated)}): " + ", ".join(duplicated[:10])
+        raise RuntimeError(msg)
+
+    print(
+        f" - [{NAMESPACE}] Component test shards are consistent ({len(full_suite)} tests across {len(all_shards)} shards)"
+    )
 
 
 @task
@@ -206,7 +289,6 @@ def generate(context: Context) -> None:
 @task
 def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
     """Validate that generated schemas and protocols are committed to Git."""
-
     _generate_schemas(context=context)
     exec_cmd = "git diff --exit-code backend/infrahub/core/schema/generated"
     with context.cd(ESCAPED_REPO_PATH):

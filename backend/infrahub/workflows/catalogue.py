@@ -192,6 +192,14 @@ GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_REPOSITORIES_DELETE_BRANCH = WorkflowDefinition(
+    name="git-repositories-delete-branch",
+    type=WorkflowType.CORE,
+    module="infrahub.git.tasks",
+    function="delete_git_branch",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 GIT_REPOSITORY_ADD = WorkflowDefinition(
     name="git-repository-add-read-write",
     type=WorkflowType.CORE,
@@ -521,30 +529,25 @@ REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
 WEBHOOK_PROCESS = WorkflowDefinition(
     name="webhook-process",
     type=WorkflowType.USER,
-    module="infrahub.webhook.tasks",
+    module="infrahub.webhook.tasks.process",
     function="webhook_process",
 )
 
-WEBHOOK_CONFIGURE_ONE = WorkflowDefinition(
-    name="webhook-setup-automation-one",
-    type=WorkflowType.CORE,
-    module="infrahub.webhook.tasks",
-    function="configure_webhook_one",
+WEBHOOK_INVALIDATE_HEADERS = WorkflowDefinition(
+    name="webhook-invalidate-headers",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.webhook.tasks.invalidate",
+    function="invalidate_webhook_headers",
 )
 
-WEBHOOK_CONFIGURE_ALL = WorkflowDefinition(
-    name="webhook-setup-automation-all",
+WEBHOOK_CONFIGURE = WorkflowDefinition(
+    name="webhook-configure",
     type=WorkflowType.INTERNAL,
     cron=f"{random.randint(0, 59)} 3 * * *",
-    module="infrahub.webhook.tasks",
-    function="configure_webhook_all",
-)
-
-WEBHOOK_DELETE_AUTOMATION = WorkflowDefinition(
-    name="webhook-delete-automation",
-    type=WorkflowType.CORE,
-    module="infrahub.webhook.tasks",
-    function="delete_webhook_automation",
+    module="infrahub.webhook.tasks.configure",
+    function="configure_webhook",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.ENQUEUE,
 )
 
 GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
@@ -692,6 +695,7 @@ WORKFLOWS = [
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
+    GIT_REPOSITORIES_DELETE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
     GIT_REPOSITORIES_MERGE,
@@ -743,9 +747,8 @@ WORKFLOWS = [
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     VALIDATE_SCHEMA_NUMBER_POOLS,
-    WEBHOOK_CONFIGURE_ALL,
-    WEBHOOK_CONFIGURE_ONE,
-    WEBHOOK_DELETE_AUTOMATION,
+    WEBHOOK_CONFIGURE,
+    WEBHOOK_INVALIDATE_HEADERS,
     WEBHOOK_PROCESS,
 ]
 

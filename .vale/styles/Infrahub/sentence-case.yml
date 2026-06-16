@@ -17,6 +17,7 @@ exceptions:
   - Neo4j
   - GraphQL
   - RabbitMQ
+  - PostgreSQL
   - Kubernetes
   - Helm
   - Terraform
@@ -50,6 +51,12 @@ exceptions:
   - VLAN
   - WebUI
   - IDE
+  - TCP
+  - TLS
+  - UDP
+  - RFC
+  - SIEM
+  - PRI
 
   # Technical terms that should keep their case
   - Python

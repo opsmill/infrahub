@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Self
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
 
 from infrahub import lock
+from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
@@ -108,6 +109,10 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             raise ValidationError(
                 input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
             )
+        if source_branch_obj.status == BranchStatus.MERGING:
+            raise ValidationError(
+                input_value=f"Cannot create proposed change: branch '{source_branch_name}' is currently being merged"
+            )
 
         async with graphql_context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_create(
@@ -148,6 +153,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         node: Node | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
+        # The reason for doing so here is specifically that the proposed changes are of a branch agnostic kind
+        # so it would not be critical to know from which branch they are modified, however under normal circumstances we don't want to do this.
+        graphql_context.branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
 
         obj = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db,
@@ -286,11 +294,14 @@ class ProposedChangeReview(Mutation):
         info: GraphQLResolveInfo,
         data: ProposedChangeReviewInput,
     ) -> dict[str, bool]:
-        """
-        This mutation is used to approve or reject a proposed change.
-        It can also be used to undo an approval or rejection.
-        """
+        """This mutation is used to approve or reject a proposed change.
 
+        It can also be used to undo an approval or rejection.
+
+        Raises:
+            ValidationError: When the current user attempts to review a proposed change they created.
+
+        """
         graphql_context: GraphqlContext = info.context
         graphql_context.active_permissions.raise_for_permission(
             permission=GlobalPermission(
@@ -345,8 +356,12 @@ class ProposedChangeReview(Mutation):
         current_user: Node,
         context: GraphqlContext,
     ) -> InfrahubEvent | None:
-        """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
+        """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision.
 
+        Raises:
+            ValidationError: When the requested decision conflicts with the user's current approval state.
+
+        """
         approved_by = await proposed_change.approved_by.get_peers(db=db)
         rejected_by = await proposed_change.rejected_by.get_peers(db=db)
         approved_by_ids = [node.id for _, node in approved_by.items()]
@@ -450,6 +465,9 @@ class ProposedChangeMerge(Mutation):
         wait_until_completion: bool = True,
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
+        # The reason for doing so here is specifically that the proposed changes are of a branch agnostic kind
+        # so it would not be critical to know from which branch they are modified, however under normal circumstances we don't want to do this.
+        graphql_context.branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
         task: dict | None = None
 
         identifier = data.get("id", "")

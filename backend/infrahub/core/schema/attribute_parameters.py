@@ -34,6 +34,7 @@ class AttributeParameters(HashableModel):
 
         Returns:
             A new instance of the target class with compatible fields populated
+
         """
         source_data = source.model_dump()
         return cls.convert_from_dict(source_data=source_data)
@@ -47,6 +48,7 @@ class AttributeParameters(HashableModel):
 
         Returns:
             A new instance of the target class with compatible fields populated
+
         """
         target_fields = set(cls.model_fields.keys())
         filtered_data = {k: v for k, v in source_data.items() if k in target_fields}
@@ -147,8 +149,7 @@ class NumberAttributeParameters(AttributeParameters):
         if not self.excluded_values:
             return []
 
-        results = [int(value) for value in self.excluded_values.split(",") if "-" not in value]
-        return results
+        return [int(value) for value in self.excluded_values.split(",") if "-" not in value]
 
     def get_excluded_ranges(self) -> list[tuple[int, int]]:
         if not self.excluded_values:
@@ -205,7 +206,5 @@ class NumberPoolParameters(AttributeParameters):
         return self
 
     def get_pool_size(self) -> int:
-        """
-        Returns the size of the pool based on the defined ranges.
-        """
+        """Returns the size of the pool based on the defined ranges."""
         return self.end_range - self.start_range + 1

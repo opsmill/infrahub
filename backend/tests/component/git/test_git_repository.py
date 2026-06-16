@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -209,8 +210,51 @@ async def test_create_commit_worktree_wrong_commit(git_repo_01: InfrahubReposito
 
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
-    with pytest.raises(CommitNotFoundError):
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
         repo.create_commit_worktree(commit=commit)
+
+
+async def test_init_fetches_missing_commit_under_repo_lock(
+    git_repo_01: InfrahubRepository, git_upstream_repo_01: dict[str, str | Path]
+) -> None:
+    repo = git_repo_01
+
+    # Add a commit to the upstream main after the local clone exists, without fetching it locally.
+    upstream = Repo(git_upstream_repo_01["path"])
+    first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
+        await file.write("new line\n")
+    upstream.index.add([first_file])
+    new_commit = str(upstream.index.commit("Change first file"))
+
+    # The local clone has not fetched the new commit, so the local primitive cannot find it.
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {new_commit} not found with GitRepository '{repo.name}'"):
+        repo.create_commit_worktree(commit=new_commit)
+
+    # init() recovers by fetching the missing commit and materializing its worktree.
+    recovered = await InfrahubRepository.init(id=repo.id, name=repo.name, commit=new_commit, client=repo.client)
+    assert recovered.has_worktree(identifier=new_commit) is True
+
+
+async def test_init_missing_commit_without_origin_raises(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    repo.get_git_repo_main().git.remote("remove", "origin")
+
+    commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
+
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
+        await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
+
+
+async def test_init_missing_commit_absent_on_remote_raises(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+
+    commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
+
+    # The commit exists neither locally nor on the remote, so init fetches once and still raises.
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
+        await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
 
 
 async def test_get_worktrees(git_repo_01: InfrahubRepository) -> None:
@@ -395,6 +439,23 @@ async def test_pull_new_branch(git_repo_01: InfrahubRepository) -> None:
         update_commit_value=False,
     )
     assert response is True
+
+
+async def test_pull_new_branch_updates_commit_value(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    await repo.fetch()
+
+    branch_name = "branch02"
+
+    response = await repo.pull(
+        branch_name=branch_name,
+        branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
+        create_if_missing=True,
+        update_commit_value=True,
+    )
+
+    commit = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert response == commit
 
 
 async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
@@ -913,8 +974,9 @@ async def test_calculate_diff_between_commits(
     commit_branch01 = repo.get_commit_value(branch_name=branch01.name, remote=False)
     commit_branch02 = repo.get_commit_value(branch_name=branch02.name, remote=False)
 
+    # branch02 is the base, branch01 holds the changes; first_commit is the old side, second_commit the new.
     changed, added, removed = await repo.calculate_diff_between_commits(
-        first_commit=commit_branch01, second_commit=commit_branch02
+        first_commit=commit_branch02, second_commit=commit_branch01
     )
     assert changed == ["README.md", "test_files/sports.yml"]
     assert added == ["mynewfile.txt"]
@@ -1136,3 +1198,35 @@ async def test_repo_merge_use_explicit_merge_commit(
     response = await repo.merge(source_branch=branch02.name, dest_branch="main")
     commit = repo.get_git_repo_main().commit(response)
     assert commit.message.strip() == "Merged by Infrahub"
+
+
+async def test_init_reinitialized_after_missing_directory(
+    git_repo_02: InfrahubRepository, git_upstream_repo_02: dict[str, str | Path]
+) -> None:
+    """Verify that when the local clone directory is missing, re-clones from the upstream and sets the reinitialized flag."""
+    original_commit = git_repo_02.get_commit_value(branch_name="main", remote=False)
+    repo_id = git_repo_02.id
+
+    assert not git_repo_02.reinitialized
+
+    shutil.rmtree(git_repo_02.directory_root)
+    assert not git_repo_02.directory_root.exists()
+
+    recovered = await InfrahubRepository.init(
+        id=repo_id,
+        name=git_upstream_repo_02["name"],
+        location=str(git_upstream_repo_02["path"]),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    assert recovered.reinitialized
+    assert recovered.directory_root.is_dir()
+    assert recovered.directory_branches.is_dir()
+    assert recovered.directory_commits.is_dir()
+    assert recovered.has_origin
+
+    assert recovered.get_commit_value(branch_name="main", remote=False) == original_commit
+
+    new_branches, updated_branches = await recovered.compare_local_remote()
+    assert not new_branches
+    assert not updated_branches

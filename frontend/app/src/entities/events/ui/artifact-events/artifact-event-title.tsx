@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { ArtifactEvent } from "@/shared/api/graphql/generated/graphql";
+import type { ArtifactEvent } from "@/shared/api/graphql/generated/types";
 import { Link } from "@/shared/components/ui/link";
 import { ARTIFACT_DEFINITION_OBJECT, ARTIFACT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";

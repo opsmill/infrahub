@@ -35,10 +35,7 @@ async def benchmark_uniqueness_query(
     test_params_label: str,
     test_name: str,
 ) -> None:
-    """
-    Profile NodeUniqueAttributeConstraintQuery with a given query_request / configuration, using a Car generator.
-    """
-
+    """Profile NodeUniqueAttributeConstraintQuery with a given query_request / configuration, using a Car generator."""
     # Initialization
     queries_names_to_config = {
         NodeUniqueAttributeConstraintQuery.name: QueryConfig(neo4j_runtime=benchmark_config.neo4j_runtime)

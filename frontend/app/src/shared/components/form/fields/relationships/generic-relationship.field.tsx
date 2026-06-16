@@ -19,7 +19,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
+import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface GenericOption extends Node {

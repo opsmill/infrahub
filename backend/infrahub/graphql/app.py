@@ -1,6 +1,4 @@
-"""
-This code has been forked from https://github.com/ciscorn/starlette-graphene3 in order to support branch and dynamic schema.
-"""
+"""This code has been forked from https://github.com/ciscorn/starlette-graphene3 in order to support branch and dynamic schema."""
 
 from __future__ import annotations
 
@@ -38,13 +36,15 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
+from infrahub.branch.query_time_validator import BranchQueryTimeValidator
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import BranchNotFoundError, Error
+from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.log import get_logger
+from infrahub.log_forwarding.models import LogForwardingContext
 
 from .metrics import (
     GRAPHQL_DURATION_METRICS,
@@ -217,28 +217,42 @@ class InfrahubGraphQLApp:
         # if the query contains some mutation, it's not currently supported to set AT manually
         if analyzed_query.contains_mutation:
             graphql_params.context.at = Timestamp()
-        elif at and branch.schema_changed_at and Timestamp(branch.schema_changed_at) > Timestamp(at):
-            schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=Timestamp(at))
-            db.add_schema(name=branch.name, schema=schema_branch)
-            analyzed_query = InfrahubGraphQLQueryAnalyzer(
-                query=query,
-                schema_branch=schema_branch,
-                query_variables=variable_values,
-                schema=graphql_params.schema,
-                operation_name=operation_name,
-                branch=branch,
-                document=cached_parse(query),
-            )
+        elif at:
+            at_ts = Timestamp(at)
+            BranchQueryTimeValidator(registry=registry).validate(branch=branch, at=at_ts)
+            if branch.schema_changed_at and Timestamp(branch.schema_changed_at) > at_ts:
+                schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=at_ts)
+                db.add_schema(name=branch.name, schema=schema_branch)
+                analyzed_query = InfrahubGraphQLQueryAnalyzer(
+                    query=query,
+                    schema_branch=schema_branch,
+                    query_variables=variable_values,
+                    schema=graphql_params.schema,
+                    operation_name=operation_name,
+                    branch=branch,
+                    document=cached_parse(query),
+                )
         impacted_models = analyzed_query.query_report.impacted_models
 
-        await self._evaluate_permissions(
-            db=db,
-            request=request,
-            query=analyzed_query,
-            query_parameters=graphql_params,
-            account_session=account_session,
-            branch=branch,
-        )
+        try:
+            await self._evaluate_permissions(
+                db=db,
+                request=request,
+                query=analyzed_query,
+                query_parameters=graphql_params,
+                account_session=account_session,
+                branch=branch,
+            )
+        except PermissionDeniedError as exc:
+            self._forward_exception_log(
+                exception=exc,
+                account_session=account_session,
+                branch=branch,
+                analyzed_query=analyzed_query,
+                request=request,
+                graphql_params=graphql_params,
+            )
+            raise
 
         if operation_name == "IntrospectionQuery":
             nbr_object_in_schema = len(graphql_params.schema.type_map)
@@ -265,10 +279,15 @@ class InfrahubGraphQLApp:
 
         response: dict[str, Any] = {"data": result.data}
         if result.errors:
-            GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(result.errors))
-            for error in result.errors:
-                if error.original_error:
-                    self._log_error(error=error.original_error)
+            self._process_graphql_errors(
+                errors=result.errors,
+                labels=labels,
+                account_session=account_session,
+                branch=branch,
+                analyzed_query=analyzed_query,
+                request=request,
+                graphql_params=graphql_params,
+            )
             response["errors"] = [self.error_formatter(error) for error in result.errors]
 
         json_response = JSONResponse(
@@ -311,6 +330,56 @@ class InfrahubGraphQLApp:
             query_parameters=query_parameters,
             branch=branch,
         )
+
+    def _process_graphql_errors(
+        self,
+        errors: list[GraphQLError],
+        labels: dict[str, Any],
+        account_session: AccountSession,
+        branch: Branch,
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        request: Request,
+        graphql_params: GraphqlParams,
+    ) -> None:
+        GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
+        for error in errors:
+            if not error.original_error:
+                continue
+            self._log_error(error=error.original_error)
+            if not isinstance(error.original_error, PermissionDeniedError):
+                continue
+            self._forward_exception_log(
+                exception=error.original_error,
+                account_session=account_session,
+                branch=branch,
+                analyzed_query=analyzed_query,
+                request=request,
+                graphql_params=graphql_params,
+            )
+
+    def _forward_exception_log(
+        self,
+        exception: PermissionDeniedError,
+        account_session: AccountSession,
+        branch: Branch,
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        request: Request,
+        graphql_params: GraphqlParams,
+    ) -> None:
+        service = graphql_params.context.service
+        if not service or not service.log_forwarding:
+            return
+        context = LogForwardingContext(
+            account_session=account_session,
+            branch_name=branch.name,
+            ip_address=request.client.host if request.client else "",
+            request_path=request.url.path,
+            operation_name=analyzed_query.operation_name,
+            query_type="mutation" if analyzed_query.contains_mutation else "query",
+            graphql_operations=[op.name for op in analyzed_query.operations if op.name],
+        )
+        service.log_forwarding.forward_exception(exception=exception, context=context)
+        exception.log_forwarded = True
 
     def _log_error(self, error: Exception) -> None:
         if isinstance(error, Error):

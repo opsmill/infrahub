@@ -15,6 +15,12 @@ const SEARCH = graphql(`
           target_kind
         }
       }
+      parent_prefixes {
+        node {
+          id
+          kind
+        }
+      }
     }
   }
 `);

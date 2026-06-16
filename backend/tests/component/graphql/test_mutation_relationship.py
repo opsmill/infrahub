@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.auth import AccountSession, AuthType
@@ -10,14 +11,21 @@ from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog
-from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction, PermissionDecision, SchemaPathType
+from infrahub.core.constants import (
+    InfrahubKind,
+    MetadataOptions,
+    PermissionAction,
+    PermissionDecision,
+    RelationshipCardinality,
+    SchemaPathType,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
 from infrahub.database import InfrahubDatabase
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
@@ -271,61 +279,29 @@ async def test_relationship_wrong_name(
     branch: Branch,
 ) -> None:
     query = """
-    mutation {
+    mutation RelationshipAdd($id: String!, $name: String!, $node_id: String!) {
         RelationshipAdd(data: {
-            id: "%s",
-            name: "notvalid",
-            nodes: [{id: "%s"}],
+            id: $id,
+            name: $name,
+            nodes: [{id: $node_id}],
         }) {
             ok
         }
     }
-    """ % (
-        person_jack_main.id,
-        tag_blue_main.id,
-    )
+    """
 
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
+
     result = await graphql(
         schema=gql_params.schema,
         source=query,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"id": person_jack_main.id, "name": "notvalid", "node_id": tag_blue_main.id},
     )
-
     assert result.errors
     assert result.errors[0].message == "'notvalid' is not a valid relationship for 'TestPerson' at name"
-
-    # Relationship existing relationship with the wrong cardinality
-    query = """
-    mutation {
-        RelationshipAdd(data: {
-            id: "%s",
-            name: "primary_tag",
-            nodes: [{id: "%s"}],
-        }) {
-            ok
-        }
-    }
-    """ % (
-        person_jack_main.id,
-        tag_blue_main.id,
-    )
-
-    branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors
-    assert result.errors[0].message == "'primary_tag' must be a relationship of cardinality Many at name"
 
 
 async def test_relationship_wrong_node(
@@ -1603,3 +1579,247 @@ async def test_relationship_add_remove_related_nodes(
     source2_final = await person2_final.height.get_source(db=db)
     assert source2_final is not None
     assert source2_final.id == profile.id
+
+
+async def test_relationship_add_cardinality_one_rejected(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_jack_main: Node,
+    tag_blue_main: Node,
+    tag_red_main: Node,
+) -> None:
+    """RelationshipAdd on a cardinality-one relationship: first add succeeds, second add is rejected."""
+    query = """
+    mutation RelationshipAdd($id: String!, $node_id: String!) {
+        RelationshipAdd(data: {
+            id: $id,
+            name: "primary_tag",
+            nodes: [{id: $node_id}],
+        }) {
+            ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    # adding to empty relationship succeeds
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": person_jack_main.id, "node_id": tag_blue_main.id},
+    )
+    assert result.errors is None
+    refreshed = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=default_branch)
+    primary_tag = await refreshed.get_relationship("primary_tag").get_peer(db=db)
+    assert primary_tag is not None
+    assert primary_tag.id == tag_blue_main.id
+
+    # adding to cardinality-one relationship with peer is rejected
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": person_jack_main.id, "node_id": tag_red_main.id},
+    )
+    assert result.errors
+    assert result.errors[0].message == "'primary_tag' is a cardinality-one relationship and already has a peer"
+
+    refreshed = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=default_branch)
+    primary_tag = await refreshed.get_relationship("primary_tag").get_peer(db=db)
+    assert primary_tag is not None
+    assert primary_tag.id == tag_blue_main.id
+
+
+async def test_relationship_add_cardinality_one_multiple_peers_rejected(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_jack_main: Node,
+    tag_blue_main: Node,
+    tag_red_main: Node,
+) -> None:
+    """RelationshipAdd on an empty cardinality-one relationship with more than one peer in a single request is rejected."""
+    query = """
+    mutation RelationshipAdd($id: String!, $node_id_1: String!, $node_id_2: String!) {
+        RelationshipAdd(data: {
+            id: $id,
+            name: "primary_tag",
+            nodes: [{id: $node_id_1}, {id: $node_id_2}],
+        }) {
+            ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": person_jack_main.id, "node_id_1": tag_blue_main.id, "node_id_2": tag_red_main.id},
+    )
+    assert result.errors
+    assert (
+        result.errors[0].message
+        == "'primary_tag' is a cardinality-one relationship and cannot be assigned more than one peer"
+    )
+
+    refreshed = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=default_branch)
+    primary_tag = await refreshed.get_relationship("primary_tag").get_peer(db=db)
+    assert primary_tag is None
+
+
+class TestRelationshipRemoveMandatory:
+    @pytest.fixture
+    async def mandatory_schemas(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        node_group_schema: None,
+        data_schema: None,
+    ) -> SchemaBranch:
+        schema = SchemaRoot(
+            version="1.0",
+            nodes=[
+                NodeSchema(
+                    name="Label",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                ),
+                NodeSchema(
+                    name="Item",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                    relationships=[
+                        RelationshipSchema(
+                            name="labels", peer="TestLabel", cardinality=RelationshipCardinality.MANY, optional=False
+                        )
+                    ],
+                ),
+                NodeSchema(
+                    name="Category",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                ),
+                NodeSchema(
+                    name="Product",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                    relationships=[
+                        RelationshipSchema(
+                            name="categories",
+                            peer="TestCategory",
+                            cardinality=RelationshipCardinality.MANY,
+                            optional=False,
+                        )
+                    ],
+                ),
+            ],
+        )
+        return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    async def test_rejected(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        mandatory_schemas: SchemaBranch,
+    ) -> None:
+        """RelationshipRemove that would leave an optional=False relationship with zero peers must be rejected."""
+        label_schema = mandatory_schemas.get_node(name="TestLabel")
+        item_schema = mandatory_schemas.get_node(name="TestItem")
+
+        label = await Node.init(db=db, schema=label_schema, branch=default_branch)
+        await label.new(db=db, name="label-one")
+        await label.save(db=db)
+
+        node = await Node.init(db=db, schema=item_schema, branch=default_branch)
+        await node.new(db=db, name="subject-item", labels=[label])
+        await node.save(db=db)
+
+        query = """
+        mutation RelationshipRemove($id: String!, $node_id: String!) {
+            RelationshipRemove(data: {
+                id: $id,
+                name: "labels",
+                nodes: [{id: $node_id}],
+            }) {
+                ok
+            }
+        }
+        """
+
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": node.id, "node_id": label.id},
+        )
+
+        assert result.errors
+        assert result.errors[0].message == "'labels' is a mandatory relationship and cannot be fully removed at name"
+
+        refreshed = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+        remaining = await refreshed.get_relationship("labels").get_relationships(db=db)
+        assert len(remaining) == 1
+        assert remaining[0].peer_id == label.id
+
+    async def test_partial_allowed(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        mandatory_schemas: SchemaBranch,
+    ) -> None:
+        """RelationshipRemove that leaves at least one peer on an optional=False relationship must succeed."""
+        category_schema = mandatory_schemas.get_node(name="TestCategory")
+        product_schema = mandatory_schemas.get_node(name="TestProduct")
+
+        cat1 = await Node.init(db=db, schema=category_schema, branch=default_branch)
+        await cat1.new(db=db, name="category-1")
+        await cat1.save(db=db)
+
+        cat2 = await Node.init(db=db, schema=category_schema, branch=default_branch)
+        await cat2.new(db=db, name="category-2")
+        await cat2.save(db=db)
+
+        node = await Node.init(db=db, schema=product_schema, branch=default_branch)
+        await node.new(db=db, name="main-product", categories=[cat1, cat2])
+        await node.save(db=db)
+
+        query = """
+        mutation RelationshipRemove($id: String!, $node_id: String!) {
+            RelationshipRemove(data: {
+                id: $id,
+                name: "categories",
+                nodes: [{id: $node_id}],
+            }) {
+                ok
+            }
+        }
+        """
+
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": node.id, "node_id": cat1.id},
+        )
+
+        assert result.errors is None
+
+        refreshed = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+        remaining = await refreshed.get_relationship("categories").get_relationships(db=db)
+        assert len(remaining) == 1
+        assert remaining[0].peer_id == cat2.id

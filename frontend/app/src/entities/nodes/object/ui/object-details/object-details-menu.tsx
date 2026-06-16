@@ -15,10 +15,10 @@ import {
   Menu,
   MenuItem,
   MenuItemWithTooltip,
-  MenuPopover,
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
+import { Popover } from "@/shared/components/aria/popover";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
@@ -26,8 +26,8 @@ import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
@@ -73,7 +73,7 @@ export function ObjectDetailsMenu({
           </Button>
         </Pressable>
 
-        <MenuPopover placement="bottom end">
+        <Popover placement="bottom end">
           <Menu>
             <MenuSection title="Actions">
               <CopyToClipboardMenuItem textToCopy={objectData.id}>Copy ID</CopyToClipboardMenuItem>
@@ -194,7 +194,7 @@ export function ObjectDetailsMenu({
               </MenuItemWithTooltip>
             </MenuSection>
           </Menu>
-        </MenuPopover>
+        </Popover>
       </MenuTrigger>
 
       <SlideOver

@@ -22,12 +22,12 @@ Responses must be direct and substantive. Do not use filler phrases, compliments
 
 ## Tech Stack
 
-- **Backend:** Python 3.12, FastAPI 0.121.1, Neo4j 5.28, Pydantic 2.10
-- **Frontend:** TypeScript 5.9, React 19.2, Vite 7.3, Tailwind CSS 4.1
-- **Testing:** pytest 9.0, Vitest 4.0, Playwright 1.56
-- **Linting:** ruff 0.15, mypy 1.15, Biome 2.3
-- **Package Managers:** uv (Python), npm (Frontend)
-- **Task Runner:** Invoke 2.2.0
+- **Backend:** Python 3.13, FastAPI 0.131.0, Neo4j 2025.10 (driver 6.0), Pydantic 2.12
+- **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
+- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
+- **Linting:** ruff 0.15, mypy 1.15, Biome 2.4
+- **Package Managers:** uv (Python), pnpm (Frontend)
+- **Task Runner:** Invoke 2.2.1
 
 ## File Structure
 
@@ -46,7 +46,7 @@ Responses must be direct and substantive. Do not use filler phrases, compliments
 
 ```bash
 uv sync --all-groups                  # Install Python dependencies
-cd frontend/app && npm install        # Install frontend dependencies
+cd frontend/app && pnpm install       # Install frontend dependencies
 ```
 
 ### Testing
@@ -54,8 +54,8 @@ cd frontend/app && npm install        # Install frontend dependencies
 ```bash
 uv run invoke backend.test-unit       # Backend unit tests
 uv run invoke backend.test-integration # Backend integration tests
-cd frontend/app && npm run test       # Frontend unit tests
-cd frontend/app && npm run test:e2e   # Frontend E2E tests
+cd frontend/app && pnpm test          # Frontend unit tests
+cd frontend/app && pnpm test:e2e      # Frontend E2E tests
 ```
 
 ### Linting & Formatting
@@ -63,7 +63,7 @@ cd frontend/app && npm run test:e2e   # Frontend E2E tests
 ```bash
 uv run invoke format                  # Format all Python code
 uv run invoke lint                    # Lint all Python code
-cd frontend/app && npm run biome:fix  # Format/lint frontend
+cd frontend/app && pnpm biome:fix     # Format/lint frontend
 uv run invoke docs.lint               # Lint documentation
 ```
 
@@ -71,7 +71,7 @@ uv run invoke docs.lint               # Lint documentation
 
 ```bash
 uv run invoke dev.build               # Build Docker containers
-cd frontend/app && npm run build      # Build frontend
+cd frontend/app && pnpm build         # Build frontend
 cd docs && npm run build              # Build documentation
 ```
 
@@ -90,16 +90,25 @@ cd docs && npm run build              # Build documentation
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
+- `docs/docs/reference/{infrahub-cli,schema,infrahub-events}/`, `docs/docs/reference/{dotinfrahub,message-bus-events,configuration}.mdx` – Reference docs rendered from backend source (CLI, schema, events, repository config, message-bus events, configuration)
 
-Regenerate with: `uv run invoke backend.generate` or `cd frontend/app && npm run codegen`
+Regenerate backend (offline): `uv run invoke backend.generate`
+Export GraphQL schema: `uv run invoke schema.generate-graphqlschema`
+Export OpenAPI schema: `uv run invoke schema.generate-jsonschema`
+Regenerate frontend types (offline, reads local schema files): `cd frontend/app && pnpm codegen`
+Regenerate reference docs (offline): `uv run invoke docs.generate`
+
+CI validates that all generated files are committed — the `validate-generated-documentation` job runs `uv run invoke docs.validate` and fails when a generated doc is stale. After changing event classes, schema models, CLI commands, or config, regenerate and commit the affected files. See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
 ## Boundaries
 
 ### Always Do
 
-- Run formatters before committing (`uv run invoke format`, `npm run biome:fix`)
+- Before modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain
+- Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
+- Before pushing, run `/pre-ci` (`dev/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
 
 ### Ask First
 

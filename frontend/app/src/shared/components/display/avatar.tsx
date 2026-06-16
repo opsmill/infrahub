@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { forwardRef, type HTMLAttributes } from "react";
+import type React from "react";
 
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
@@ -29,14 +29,17 @@ const avatarVariants = cva("flex items-center justify-center rounded-full", {
   },
 });
 
-interface AvatarProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof avatarVariants> {
-  name?: string;
+interface AvatarProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof avatarVariants> {
+  name?: string | null;
   text?: string;
   isLoading?: boolean;
+  ref?: React.Ref<HTMLDivElement>;
 }
 
-export const Avatar = forwardRef<HTMLDivElement, AvatarProps>((props: AvatarProps, ref) => {
-  const { name, text, variant, size, className, isLoading, ...otherProps } = props;
+export const Avatar = (props: AvatarProps) => {
+  const { name, text, variant, size, className, isLoading, ref, ...otherProps } = props;
 
   if (isLoading) {
     return (
@@ -57,4 +60,4 @@ export const Avatar = forwardRef<HTMLDivElement, AvatarProps>((props: AvatarProp
       {!name && !text && "-"}
     </div>
   );
-});
+};

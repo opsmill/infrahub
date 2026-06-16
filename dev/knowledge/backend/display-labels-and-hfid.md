@@ -63,17 +63,20 @@ resolve_relationships()
 
 ### Guard Conditions
 
-In `_collect_extra_filters()`, extra filters are only computed when needed:
+In `_collect_extra_filters()`, extra filters are computed for three sources:
 
 ```python
 if not self._existing or self._human_friendly_id:
     # Fetch HFID-related peer attributes
 if not self._existing or self._display_label:
     # Fetch display-label-related peer attributes
+if self._existing:
+    # Fetch peer attributes needed by Jinja2 computed attribute templates
 ```
 
-- **New nodes** (`not self._existing`): Always need extra filters
+- **New nodes** (`not self._existing`): Always need HFID/display_label extra filters
 - **Existing nodes with HFID/display_label set**: Need extra filters for recomputation during updates
+- **Existing nodes (updates)**: Always include peer attributes needed by Jinja2 computed attribute templates (via `computed_attributes.get_registered_jinja2_node`)
 
 ## Lifecycle
 
@@ -86,13 +89,72 @@ if not self._existing or self._display_label:
 ### Update
 
 1. `Node.load()` receives `human_friendly_id` and `display_label` kwargs, wraps them in property objects
-2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label`)
+2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label` for those sources, plus always-on computed attribute extra filters via `computed_attributes.get_registered_jinja2_node`)
 3. `_update()` checks `needs_update(fields)` for each property; recomputes and persists if needed
+
+### Query-Time Resolution (`get_display_label`)
+
+`Node.get_display_label(db)` returns the display label for a node during GraphQL queries. It distinguishes between saved and virtual nodes:
+
+1. **Stored value exists** (`_display_label` set with a non-empty value): return it directly.
+2. **Stored attribute is empty** (`_display_label` set but value is null): return `""`. The async backfill workflow is responsible for populating stored values after schema changes. Computing on the fly here would cause the backfill to detect no difference and skip the update.
+3. **No `display_label` template** in schema: return `repr(self)`.
+4. **No stored attribute at all** (virtual nodes like IPAM available nodes that are never saved): compute on the fly using `DisplayLabel.compute()`.
+
+### Async Backfill After Schema Changes
+
+When a schema is updated to add or change a `display_label`, the async Prefect workflow chain updates existing nodes:
+
+```
+SchemaUpdatedEvent
+  -> display_labels_setup_jinja2 (gathers triggers, detects new/changed templates)
+  -> trigger_update_display_labels (iterates all nodes of the kind)
+  -> process_display_label (queries node via GraphQL, renders template)
+  -> display_label_jinja2_update_value (compares rendered vs stored, writes if different)
+```
+
+The trigger definitions and gathering logic live in `backend/infrahub/display_labels/`.
 
 ### Manual Override
 
 `set_display_label(value)` and `set_human_friendly_id(value)` set `manually_assigned=True`, which causes `compute()` to no-op on future calls.
 
+### Value Normalization (HFID Round-Trip)
+
+For attribute kinds whose accepted input form differs from their normalized storage form, `BaseAttribute.__init__()` calls `_normalize_value()` after `validate()` so `attr.value` always matches what `serialize_value()` writes to the DB. Without this, HFID compute (which reads `attr.value` *before* serialization) would emit the raw input while the DB stored the normalized form, breaking `get_one_by_hfid()` round-trips.
+
+| Kind | Normalized form |
+|------|-----------------|
+| `IPHost` | `ipaddress.ip_interface(value).with_prefixlen` (e.g. `192.0.2.1` → `192.0.2.1/32`) |
+| `IPNetwork` | `ipaddress.ip_network(value).with_prefixlen` (e.g. `2001:db8:0:0::/32` → `2001:db8::/32`) |
+| `MacAddress` | `netaddr.EUI(addr=value).format(dialect=netaddr.mac_unix_expanded).upper()` (e.g. `aa-bb-cc-dd-ee-ff` → `AA:BB:CC:DD:EE:FF`) |
+
+`_normalize_value()` is intentionally a separate hook from `serialize_value()`. The latter is also used by `HashedPassword` (destructive hash), `ListAttribute`/`JSONAttribute` (type-changing JSON dump), and the base class (Enum unwrap) — transforms that cannot run on `attr.value` itself. For kinds that need input-time normalization, `serialize_value()` delegates to `_normalize_value(self.value)` so the normalized form has a single source of truth per class. When adding a new kind that needs input-time normalization, override `_normalize_value()` (not `serialize_value`).
+
+
+## Hierarchical Relationships and Inline Fragments
+
+When a display label, HFID, or computed attribute template references an attribute through a hierarchical relationship (e.g., `parent__name__value`), the GraphQL query must use an **inline fragment** to access attributes that exist on the concrete peer type but not on the hierarchical generic.
+
+**Why:** A hierarchical relationship's GraphQL type resolves to the generic (e.g., `LocationGeneric`), not the concrete peer (e.g., `LocationSite`). Attributes defined only on the concrete type are not queryable directly — they require `... on LocationSite { name { value } }`.
+
+**Condition:** `relationship.hierarchical and relationship.peer != relationship.hierarchical`
+
+This logic lives in the `query_fields` property of all three GraphQL model classes:
+
+- `ComputedAttrJinja2GraphQL` in `computed_attribute/models.py`
+- `DisplayLabelJinja2GraphQL` in `display_labels/models.py`
+- `HFIDGraphQL` in `hfid/models.py`
+
+Example generated query structure:
+
+```graphql
+# Without hierarchy (peer == type):
+parent { node { name { value } } }
+
+# With hierarchy (peer != generic):
+parent { node { ... on LocationSite { name { value } } } }
+```
 
 ## Key Files
 
@@ -105,4 +167,6 @@ if not self._existing or self._display_label:
 | `core/schema/schema_branch.py` | `validate_display_label()`, `process_human_friendly_id()` |
 | `core/schema/basenode_schema.py` | `SchemaAttributePath` (parsed template variables) |
 | `display_labels/models.py` | `DisplayLabelJinja2GraphQL` (GraphQL query generation) |
+| `hfid/models.py` | `HFIDGraphQL` (GraphQL query generation) |
+| `computed_attribute/models.py` | `ComputedAttrJinja2GraphQL` (GraphQL query generation) |
 | `graphql/mutations/display_label.py` | Manual display_label override mutation |

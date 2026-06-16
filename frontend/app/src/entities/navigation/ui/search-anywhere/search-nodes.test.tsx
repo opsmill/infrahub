@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { useGetSearchAnywhere } from "@/entities/navigation/domain/search-anywhere.query";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { render } from "../../../../../tests/components/render";
@@ -9,8 +9,8 @@ import { generateNodeSchema } from "../../../../../tests/fake/schema";
 import { SearchNodes } from "./search-nodes";
 
 vi.mock("@/entities/schema/ui/hooks/useSchema");
-vi.mock("@/entities/navigation/domain/search-anywhere.query");
-vi.mock("@/entities/nodes/object/domain/get-object.query");
+vi.mock("@/entities/navigation/ui/queries/search-anywhere.query");
+vi.mock("@/entities/nodes/object/ui/queries/get-object.query");
 vi.mock("cmdk", () => ({
   Command: {
     Item: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (

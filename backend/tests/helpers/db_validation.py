@@ -9,13 +9,13 @@ from infrahub.database import InfrahubDatabase
 
 
 class ValidateNodeRelationshipQuery(Query):
-    """
-    This query will return error message if for any couple (input_node, relationship):
+    """This query will return error message if for any couple (input_node, relationship):
+
     - If relationship type is agnostic, all edges branches should be -global-
     - Else, there should not be any edge on global branch
     - Considering edges on the input branch:
         - Either 1 active edge without `to`
-        - Either 1 deleted edge, and potentially 1 active edge having `active.to` = `deleted.from`
+        - Either 1 deleted edge, and potentially 1 active edge having `active.to` = `deleted.from`.
 
     NOTE: This query currently validates a subset of all possible valid edge states as edges states are mainly
           validated on input branch. Having a validation on any branch would require more logic
@@ -94,10 +94,7 @@ class ValidateNodeRelationshipQuery(Query):
 
 
 async def validate_node_relationships(node: Node, branch: Branch, db: InfrahubDatabase) -> None:
-    """
-    Raises an error if validation conditions of the query are not met.
-    """
-
+    """Raises an error if validation conditions of the query are not met."""
     query = await ValidateNodeRelationshipQuery.init(db=db, branch=branch, node_id=node.id)
     await query.execute(db=db)
     for result in query.results:
@@ -107,7 +104,12 @@ async def validate_node_relationships(node: Node, branch: Branch, db: InfrahubDa
 
 
 async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:
-    """Verify that no duplicate paths exist at the database level"""
+    """Verify that no duplicate paths exist at the database level.
+
+    Raises:
+        ValueError: When duplicate paths are found between two nodes.
+
+    """
     query = """
 MATCH path = (p)-[e]->(q)
 WITH
@@ -148,6 +150,10 @@ async def verify_no_orphaned_active_edges(db: InfrahubDatabase) -> None:
     sub-edges (HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE, far-side IS_RELATED)
     hanging off the same Attribute/Relationship vertex on the same branch should also
     be deleted/closed.
+
+    Raises:
+        ValueError: When an active second-level edge is found under a deleted first-level edge.
+
     """
     query = """
 // ----------------
@@ -226,6 +232,10 @@ async def verify_relationship_edge_counts(db: InfrahubDatabase) -> None:
     A Relationship vertex connects two Node vertices. For any given branch, there should be
     either 0 active IS_RELATED edges (relationship not active on that branch) or exactly 2
     (one to each Node). Having 1 or 3+ is always invalid.
+
+    Raises:
+        ValueError: When a Relationship has an invalid number of active IS_RELATED edges on a branch.
+
     """
     query = """
 MATCH (rel:Relationship)
@@ -280,9 +290,7 @@ RETURN rel.name AS rel_name, rel.uuid AS rel_uuid, branch, active_count
 
 
 async def validate_no_duplicate_attributes(db: InfrahubDatabase, branch: Branch) -> list[str]:
-    """
-    Validate that no Nodes have duplicated attribute or relationship names
-    """
+    """Validate that no Nodes have duplicated attribute or relationship names."""
     branch_filter, branch_params = branch.get_query_filter_path()
 
     query = """
@@ -312,3 +320,53 @@ RETURN node_id, field_name, num_fields
         num_fields = result.get("num_fields")
         errors.append(f"Node '{node_id}' has {num_fields} duplicated attributes with {field_name=}")
     return errors
+
+
+LATEST_ATTRIBUTE_PATH_STATUS_QUERY = """
+MATCH (node:%(label)s)
+CALL (node) {
+    MATCH (node)-[r1:HAS_ATTRIBUTE]->(attr:Attribute {name: $attr_name})
+    WHERE r1.branch = $branch_name
+    RETURN r1, attr
+    ORDER BY r1.branch_level DESC, r1.from DESC
+    LIMIT 1
+}
+CALL (attr) {
+    MATCH (attr)-[r2:HAS_VALUE]->(av)
+    WHERE r2.branch = $branch_name
+    RETURN r2
+    ORDER BY r2.branch_level DESC, r2.from DESC
+    LIMIT 1
+}
+RETURN node.uuid AS node_id, r1.status AS has_attr_status, r2.status AS has_val_status
+"""
+
+
+async def assert_attribute_path_status(
+    db: InfrahubDatabase,
+    node_label: str,
+    attr_name: str,
+    branch_name: str,
+    expected_status: str,
+) -> None:
+    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
+    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
+    assert len(results) > 0, f"No {node_label} nodes found with attribute {attr_name!r}"
+    for record in results:
+        assert record["has_attr_status"] == expected_status, (
+            f"Node {record['node_id']}: HAS_ATTRIBUTE status is {record['has_attr_status']!r}, expected {expected_status!r}"
+        )
+        assert record["has_val_status"] == expected_status, (
+            f"Node {record['node_id']}: HAS_VALUE status is {record['has_val_status']!r}, expected {expected_status!r}"
+        )
+
+
+async def assert_attribute_absent(
+    db: InfrahubDatabase,
+    node_label: str,
+    attr_name: str,
+    branch_name: str,
+) -> None:
+    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
+    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
+    assert len(results) == 0, f"Expected no active/deleted {node_label}.{attr_name} edges, found {len(results)}"

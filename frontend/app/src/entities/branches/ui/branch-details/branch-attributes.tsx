@@ -8,11 +8,11 @@ import {
   XIcon,
 } from "lucide-react";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 
@@ -28,7 +28,7 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
       </BranchAttributeLabel>
       <BranchAttributeValue>{branch.name}</BranchAttributeValue>
 
-      {branch.status !== BRANCH_STATUS.OPEN && (
+      {branch.status !== BranchStatus.OPEN && (
         <>
           <BranchAttributeLabel>
             <CircleIcon className="size-3.5" /> Status

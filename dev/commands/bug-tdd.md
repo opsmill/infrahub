@@ -35,7 +35,7 @@ Read the full analysis to understand the root cause and affected files.
 
 ## Write the test
 
-Read `.github/bug-agent-pipeline/shared/test-writing.md` and follow steps **0 through 9**.
+Read `dev/bug-pipeline/test-writing.md` and follow steps **0 through 9**.
 
 **Step 10 (draft PR) is only executed if `OPEN_PR=true`.**
 If `OPEN_PR=false`, push the branch (`git push -u origin <branch>`) and stop after step 9.

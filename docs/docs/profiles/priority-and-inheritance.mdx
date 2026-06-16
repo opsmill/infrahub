@@ -1,0 +1,67 @@
+---
+title: Priority and inheritance
+---
+
+When an object has one or more Profiles assigned, Infrahub uses a deterministic process to decide which value applies to each attribute or relationship. This page explains both the inheritance flow and the priority system that resolves conflicts when multiple Profiles apply.
+
+## Inheritance mechanism
+
+Profile inheritance follows a sophisticated model:
+
+```text
+Node Creation/Update
+       ↓
+Check if Profiles assigned (If created from a template, inherit its Profiles)
+       ↓
+For each attribute/relationship:
+  - Is value explicitly set on node? → Use node value
+  - Is default value being used? → Check Profiles
+       ↓
+Check Profiles by priority (lowest number first)
+       ↓
+Use first Profile-defined value found
+       ↓
+If no Profile defines it → Use schema default
+```
+
+This mechanism ensures predictable behavior while maintaining flexibility.
+
+## Profile priority system
+
+### Understanding priority values
+
+Profile priority uses numeric values where **lower numbers have higher priority**. This might seem counterintuitive but aligns with common networking conventions (like route metrics).
+
+Example scenario:
+
+```text
+Profile A: priority = 1000 (default)
+Profile B: priority = 500  (higher priority)
+Profile C: priority = 1500 (lower priority)
+
+Inheritance order: B → A → C
+```
+
+### Priority in practice
+
+Consider a node with three Profiles defining MTU:
+
+- Base profile (priority 1000): MTU = 1500
+- Department profile (priority 500): MTU = 9000
+- Legacy profile (priority 1500): MTU = 1400
+
+The node inherits MTU = 9000 from the department profile (highest priority).
+
+### Design rationale
+
+The priority system enables:
+
+- **Hierarchical configuration**: Organization-wide → Department → Team → Special cases
+- **Controlled overrides**: Higher-priority Profiles override lower-priority ones
+- **Flexible composition**: Combine multiple Profiles without conflicts
+
+## Related
+
+- [Profiles overview](./overview.mdx) — what Profiles are and when to use them
+- [Use multiple Profiles](./use-multiple.mdx) — how to assign multiple Profiles and confirm which one wins per attribute
+- [Override specific Profile values](./override-values.mdx) — set a value explicitly on an object so the Profile is bypassed for that field

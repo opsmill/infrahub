@@ -37,6 +37,7 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_PUBLIC_URL` | Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure. | None | None |
 | `INFRAHUB_SCHEMA_STRICT_MODE` | Enable strict schema validation. When set to `False`, `human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes. | boolean | True |
 | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | When enabled, diff updates are triggered for active branches after a branch merge. | boolean | True |
+| `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` | When enabled, the Infrahub branch is automatically deleted after a successful merge. | boolean | False |
 
 ## Api
 
@@ -59,10 +60,11 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_GIT_USER_EMAIL` | Email of the git user. This will be used as the user email when Infrahub commits code to a repository | string | infrahub@opsmill.com |
 | `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` | The location of the git config file. This will be set as the system `GIT_CONFIG_GLOBAL` environment variable if the environment variable is not initially set | string | /opt/infrahub/.gitconfig |
 | `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` | Whether to allow explicit merge commits when infrahub merges branches | boolean | False |
+| `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` | When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. Requires delete_branch_after_merge to be enabled. | boolean | False |
 
 ## Dev
 
-The development settings are only relevant for local development
+The development settings are only relevant for local development.
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
@@ -194,12 +196,13 @@ Configuration settings for the message bus.
 | `INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME` | Lifetime of access token in seconds | integer | 3600 |
 | `INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME` | Lifetime of refresh token in seconds | integer | 2592000 |
 | `INFRAHUB_SECURITY_SECRET_KEY` | The secret key used to validate authentication tokens | string | None |
-| `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` | The selected OAuth2 providers | array | None |
+| `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` | The selected OAuth2 providers | array[string] | None |
 | `INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS` | None | object | Check nested parameters |
-| `INFRAHUB_SECURITY_OIDC_PROVIDERS` | The selected OIDC providers | array | None |
+| `INFRAHUB_SECURITY_OIDC_PROVIDERS` | The selected OIDC providers | array[string] | None |
 | `INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS` | None | object | Check nested parameters |
 | `INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS` | Indicates if untrusted Jinja2 filters should be disallowed for computed attributes | boolean | True |
 | `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group to which users authenticated via SSO will belong if not provided by identity provider | None | None |
+| `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` | When enabled, an SSO login that has no linked identity and matches an existing account by display name claims that account, as long as it has not already been linked to another identity. When disabled, such a login always provisions a separate account instead of reusing an existing one. | boolean | True |
 
 ### INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
 
@@ -246,6 +249,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_GOOGLE_DISPLAY_LABEL` | None | string | Google |
 | `INFRAHUB_OIDC_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OIDC_GOOGLE_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_GOOGLE_DISCOVERY_URL` | None | string | https://accounts.google.com/.well-known/openid-configuration |
@@ -256,6 +260,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL` | None | string | Single Sign on |
 | `INFRAHUB_OIDC_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER1_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
@@ -264,6 +269,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER2_DISPLAY_LABEL` | None | string | Single Sign on |
 | `INFRAHUB_OIDC_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER2_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER2_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
@@ -313,3 +319,39 @@ Configuration settings for the message bus.
 |------|-------------|------|---------|
 | `INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS` | None | boolean | False |
 | `INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX` | None | boolean | False |
+
+## Log forwarding
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_LOG_FORWARDING_HOSTNAME` | Hostname to use in syslog message headers. If not set, defaults to the system FQDN. | None | None |
+| `INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES` | Comma-separated list of destination names to load from per-destination environment variables (e.g. `INFRAHUB_LOG_FORWARDING_DESTINATION_PRIMARY_HOST` where `PRIMARY` is the destination name). Names must match `[a-z0-9_]+`. Mutually exclusive with `destinations`. | array[string] | None |
+| `INFRAHUB_LOG_FORWARDING_DESTINATIONS` | List of log forwarding destinations. (Enterprise only: not available in the community version.) | array[object] | Check nested parameters |
+
+### INFRAHUB_LOG_FORWARDING_DESTINATIONS
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `NAME` | Unique name for the destination, used in all observability output. | string | None |
+| `TYPE` | Destination type. | string (syslog) | syslog |
+| `HOST` | Destination host or IP address. | string | None |
+| `PORT` | Destination port number. Defaults to 6514 for TLS, 514 otherwise. | None | None |
+| `PROTOCOL` | Transport protocol (tcp or udp). | string (tcp, udp) | udp |
+| `FORMAT` | Syslog format standard. | string (rfc5424, rfc3164) | rfc5424 |
+| `TCP_FRAMING` | TCP framing method (newline or octet-counting). | string (newline, octet-counting) | newline |
+| `TLS_ENABLED` | Enable TLS encryption for TCP connections. | boolean | False |
+| `TLS_CA_BUNDLE` | Path or PEM string for CA bundle to validate syslog server certificate. | None | None |
+| `QUEUE_SIZE` | Maximum number of messages in the per-destination queue. | integer | 10000 |
+| `MAX_RECONNECT_INTERVAL` | Maximum reconnection backoff interval in seconds. | integer | 60 |
+| `SHUTDOWN_DRAIN_TIMEOUT` | Seconds to wait for queue drain on graceful shutdown. | integer | 10 |
+| `FORWARD_APPLICATION_LOGS` | Forward application log messages to this destination. | boolean | False |
+| `MIN_LOG_SEVERITY` | Minimum Python log severity to forward when application log forwarding is enabled. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | WARNING |
+
+## Logging
+
+These variables configure logging at process startup. They are read directly from the environment and are not part of a `.toml` configuration file.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_PRODUCTION` | Controls the logging output format. When `true`, logs are rendered as JSON with structured exception information, suitable for production log aggregation. When `false`, logs are rendered as human-readable, colorized console output with plain tracebacks, intended for local development. | boolean | True |
+| `INFRAHUB_LOG_LEVEL` | Minimum severity level of log messages emitted by Infrahub. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | INFO |

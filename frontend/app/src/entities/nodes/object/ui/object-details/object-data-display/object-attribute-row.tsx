@@ -5,6 +5,7 @@ import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltip
 import { ButtonWithTooltip } from "@/shared/components/ui/button";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
@@ -65,6 +66,8 @@ export function ObjectAttributeRow({
           />
 
           {attributeData.is_protected && <LockIcon className="size-3.5 text-gray-600" />}
+
+          {attributeSchema.display === "extra" && <ExtraFieldIndicator className="ml-auto" />}
         </>
       }
     />

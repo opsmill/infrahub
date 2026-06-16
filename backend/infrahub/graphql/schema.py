@@ -37,9 +37,8 @@ from .queries import (
     AccountPermissions,
     AccountToken,
     BranchQueryList,
-    DeprecatedIPAddressGetNextAvailable,
-    DeprecatedIPPrefixGetNextAvailable,
     InfrahubBranchQueryList,
+    InfrahubGraphQLQueryReport,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -67,6 +66,7 @@ class InfrahubBaseQuery(ObjectType):
     Relationship = Relationship
 
     InfrahubBranch = InfrahubBranchQueryList
+    InfrahubGraphQLQueryReport = InfrahubGraphQLQueryReport
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
 
@@ -78,8 +78,6 @@ class InfrahubBaseQuery(ObjectType):
 
     CoreProposedChangeAvailableActions = ProposedChangeAvailableActions
 
-    IPAddressGetNextAvailable = DeprecatedIPAddressGetNextAvailable
-    IPPrefixGetNextAvailable = DeprecatedIPPrefixGetNextAvailable
     InfrahubIPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
     InfrahubIPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
@@ -99,12 +97,6 @@ class InfrahubBaseMutation(ObjectType):
 
     InfrahubIPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
     InfrahubIPAddressPoolGetResource = IPAddressPoolGetResource.Field()
-    IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field(
-        deprecation_reason="This mutation has been renamed to 'InfrahubIPPrefixPoolGetResource'. It will be removed in the next version of Infrahub."
-    )
-    IPAddressPoolGetResource = IPAddressPoolGetResource.Field(
-        deprecation_reason="This mutation has been renamed to 'InfrahubIPAddressPoolGetResource'. It will be removed in the next version of Infrahub."
-    )
 
     BranchCreate = BranchCreate.Field()
     BranchDelete = BranchDelete.Field()

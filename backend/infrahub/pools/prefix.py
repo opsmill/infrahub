@@ -21,6 +21,7 @@ def get_next_available_prefix(
 
     Raises:
         ValueError: If there are no available subnets in the pool
+
     """
     prefix_ver_map = {4: ipaddress.IPv4Network, 6: ipaddress.IPv6Network}
 
@@ -34,7 +35,6 @@ def get_next_available_prefix(
             return cidr
 
         if cidr.prefixlen <= prefix_length:
-            next_available = ipaddress.ip_network(f"{cidr.network}/{prefix_length}")
-            return next_available
+            return ipaddress.ip_network(f"{cidr.network}/{prefix_length}")
 
     raise ValueError("No available subnets in pool")

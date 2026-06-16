@@ -50,7 +50,7 @@ ARTIFACT_SCHEMA = SchemaRoot(
             name="NetworkDevice",
             namespace="Test",
             default_filter="name__value",
-            display_labels=["name__value"],
+            display_label="name__value",
             inherit_from=["CoreArtifactTarget"],
             uniqueness_constraints=[["name__value"]],
             attributes=[
@@ -200,6 +200,25 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         )
         await artdef_partial_node.save(db=db)
 
+        # --- Group + Artifact definition used to exercise an orphan artifact ---
+        # The group contains dev1 (kept) so the dispatch loop has something to act on
+        # after we skip the orphan row.
+        orphan_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+        await orphan_group.new(db=db, name="device-targets-orphan", members=[dev1])
+        await orphan_group.save(db=db)
+
+        artdef_orphan_node = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+        await artdef_orphan_node.new(
+            db=db,
+            name="artifact-orphan",
+            targets=orphan_group,
+            transformation=transform,
+            content_type="application/json",
+            artifact_name="device-orphan-config",
+            parameters={"value": {"name": "name__value"}},
+        )
+        await artdef_orphan_node.save(db=db)
+
         # --- Create source branch AFTER all AWARE nodes are on main ---
         # This ensures the branch inherits them all via the graph branching model.
         source_branch_obj = await create_branch(branch_name=SOURCE_BRANCH, db=db)
@@ -259,6 +278,30 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
             content_type="application/json",
         )
         await art4.save(db=db)
+
+        # --- Phantom device + orphan artifact on source_branch ---
+        # The phantom device is created so an artifact can be linked to it; once the
+        # device is deleted the artifact's `object` relationship is left dangling. This
+        # mirrors production rows where a target was removed via a path the artifact
+        # cascade does not cover (branch-merge, schema reload, migration, etc.).
+        phantom_dev = await Node.init(db=db, schema="TestNetworkDevice", branch=source_branch_obj)
+        await phantom_dev.new(db=db, name="phantom", color="grey", description="To be deleted")
+        await phantom_dev.save(db=db)
+
+        art_orphan = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=source_branch_obj)
+        await art_orphan.new(
+            db=db,
+            name="device-orphan-config",
+            definition=artdef_orphan_node,
+            status="Ready",
+            object=phantom_dev,
+            storage_id=str(uuid.uuid4()),
+            checksum="oooo",
+            content_type="application/json",
+        )
+        await art_orphan.save(db=db)
+
+        await phantom_dev.delete(db=db)
 
         # --- Artifacts for artdef_partial on source_branch (only dev1 and dev2) ---
         art1_p = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=source_branch_obj)
@@ -418,6 +461,21 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
             timeout=60,
         )
 
+        artdef_orphan = ProposedChangeArtifactDefinition(
+            definition_id=artdef_orphan_node.id,
+            definition_name="artifact-orphan",
+            artifact_name="device-orphan-config",
+            query_name="GetNetworkDevice",
+            query_id=query_unique.id,
+            query_models=["TestNetworkDevice"],
+            query_payload=QUERY_UNIQUE_TARGETS,
+            repository_id=repo.id,
+            transform_kind=InfrahubKind.TRANSFORMJINJA2,
+            template_path="device.j2",
+            content_type="application/json",
+            timeout=60,
+        )
+
         return {
             "source_branch": SOURCE_BRANCH,
             "proposed_change_id": pc.id,
@@ -435,6 +493,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
             "artdef_full": artdef_full,
             "artdef_full_non_unique": artdef_full_non_unique,
             "artdef_partial": artdef_partial,
+            "artdef_orphan": artdef_orphan,
+            "art_orphan_id": art_orphan.id,
         }
 
     def _make_context(self, account: CoreAccount, default_branch: Branch) -> InfrahubContext:
@@ -495,7 +555,9 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: dev1 and dev3 change 'name' (queried), dev2 changes 'description' (not queried).
-        Only art1 and art3 should be regenerated."""
+
+        Only art1 and art3 should be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -531,7 +593,9 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: all devices change 'description' (not queried).
-        No artifacts should be regenerated."""
+
+        No artifacts should be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -567,7 +631,9 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: all 4 devices change 'name' (queried).
-        All 4 artifacts should be regenerated."""
+
+        All 4 artifacts should be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -609,8 +675,10 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query with artdef_partial: dev3 changes 'description' (not queried).
+
         dev1 and dev2 have existing artifacts that are not impacted.
-        dev3 and dev4 have no existing artifacts (artifact_id=None) → always regenerated."""
+        dev3 and dev4 have no existing artifacts (artifact_id=None) → always regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -644,8 +712,10 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Non-unique query: only 'description' (not queried) changes.
+
         Even though the query can't target specific nodes, the queried fields
-        haven't changed so no regeneration is needed."""
+        haven't changed so no regeneration is needed.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -679,7 +749,9 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Non-unique query: dev2 changes 'name' (queried).
-        Because the query cannot identify specific targets, all 4 artifacts must be regenerated."""
+
+        Because the query cannot identify specific targets, all 4 artifacts must be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -717,8 +789,11 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         admin_account: CoreAccount,
         client: InfrahubClient,
     ) -> None:
-        """When source branch is synced with git and the repository has file changes,
-        all artifacts must be regenerated regardless of which fields changed."""
+        """When source branch is synced with git and the repository has file changes,.
+
+        all artifacts must be regenerated regardless of which fields changed.
+
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         # Only description changed (not queried) — but managed_branch=True overrides this
@@ -752,6 +827,43 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
             artifact_dataset["dev4_id"],
         }
 
+    async def test_orphan_artifact_does_not_block_dispatch(
+        self,
+        artifact_dataset: dict[str, Any],
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+    ) -> None:
+        """An artifact whose `object` peer can no longer be resolved must not.
+
+        prevent the validator from dispatching artifact creation for the rest of
+        the group. dev1 is a member of the orphan group with no existing artifact
+        for that definition, so it should always be regenerated.
+
+        """
+        pipeline_id = uuid.uuid4()
+        context = self._make_context(admin_account, default_branch)
+        diff_summary: list[dict] = []
+        branch_diff = await self._make_branch_diff(
+            artifact_dataset, pipeline_id, diff_summary=diff_summary, client=client
+        )
+
+        model = RequestArtifactDefinitionCheck(
+            artifact_definition=artifact_dataset["artdef_orphan"],
+            branch_diff=branch_diff,
+            proposed_change=artifact_dataset["proposed_change_id"],
+            source_branch=SOURCE_BRANCH,
+            source_branch_sync_with_git=False,
+            destination_branch=default_branch.name,
+        )
+
+        await self._run(model=model, context=context, diff_summary=diff_summary, memory_cache=memory_cache)
+
+        triggered_ids = {c["parameters"]["model"].target_id for c in workflow_recorder.execute_calls}
+        assert triggered_ids == {artifact_dataset["dev1_id"]}
+
     async def test_managed_branch_without_file_changes_uses_field_targeting(
         self,
         artifact_dataset: dict[str, Any],
@@ -761,8 +873,11 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         admin_account: CoreAccount,
         client: InfrahubClient,
     ) -> None:
-        """When source branch is synced with git but no file changes, field-level targeting
-        still applies. Only the artifact for dev1 (name changed) should be regenerated."""
+        """When source branch is synced with git but no file changes, field-level targeting.
+
+        still applies. Only the artifact for dev1 (name changed) should be regenerated.
+
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         # No files_changed → has_file_modifications=False → managed_branch=False

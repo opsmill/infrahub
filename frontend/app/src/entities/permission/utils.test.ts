@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { BRANCH_STATUS } from "@/entities/branches/constants";
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 
 import { PERMISSION_ALLOW_ALL } from "./constants";
 import type { PermissionData } from "./types";
@@ -62,7 +62,7 @@ describe("getPermission", () => {
   describe("with branch OPEN", () => {
     test("does not override permissions when branch is OPEN", () => {
       const result = getPermission([createPermissionNode()], {
-        branch: { status: BRANCH_STATUS.OPEN },
+        branch: { status: BranchStatus.OPEN },
       });
 
       expect(result.view.isAllowed).toBe(true);
@@ -73,7 +73,7 @@ describe("getPermission", () => {
 
     test("does not override PERMISSION_ALLOW_ALL when branch is OPEN", () => {
       const result = getPermission(undefined, {
-        branch: { status: BRANCH_STATUS.OPEN },
+        branch: { status: BranchStatus.OPEN },
       });
 
       expect(result).toEqual(PERMISSION_ALLOW_ALL);
@@ -83,7 +83,7 @@ describe("getPermission", () => {
   describe("with branch MERGED", () => {
     test("denies create/update/delete on merged branch", () => {
       const result = getPermission([createPermissionNode()], {
-        branch: { status: BRANCH_STATUS.MERGED },
+        branch: { status: BranchStatus.MERGED },
       });
 
       expect(result.view.isAllowed).toBe(true);
@@ -97,7 +97,7 @@ describe("getPermission", () => {
 
     test("denies when no permission data (PERMISSION_ALLOW_ALL) on merged branch", () => {
       const result = getPermission(undefined, {
-        branch: { status: BRANCH_STATUS.MERGED },
+        branch: { status: BranchStatus.MERGED },
       });
 
       expect(result.view.isAllowed).toBe(true);
@@ -108,7 +108,7 @@ describe("getPermission", () => {
 
     test("denies when no kind provided (safe default)", () => {
       const result = getPermission(undefined, {
-        branch: { status: BRANCH_STATUS.MERGED },
+        branch: { status: BranchStatus.MERGED },
       });
 
       expect(result.view.isAllowed).toBe(true);
@@ -119,7 +119,7 @@ describe("getPermission", () => {
 
     test("merged override takes priority over ALLOW permission data", () => {
       const result = getPermission([createPermissionNode()], {
-        branch: { status: BRANCH_STATUS.MERGED },
+        branch: { status: BranchStatus.MERGED },
       });
 
       expect(result.create.isAllowed).toBe(false);
@@ -129,7 +129,7 @@ describe("getPermission", () => {
 
     test("view is never overridden even on merged branch", () => {
       const result = getPermission([createPermissionNode({ view: "ALLOW" })], {
-        branch: { status: BRANCH_STATUS.MERGED },
+        branch: { status: BranchStatus.MERGED },
       });
 
       expect(result.view.isAllowed).toBe(true);

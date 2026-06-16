@@ -62,8 +62,7 @@ async def test_query_out_default_branch(
 async def test_query_in_default_branch(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
-    """This test is a bit silly for now because there is nothing to migrate but it least we validate that the generated query is valid"""
-
+    """This test is a bit silly for now because there is nothing to migrate but it least we validate that the generated query is valid."""
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")

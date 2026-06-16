@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import ssl
-from functools import cached_property
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -11,20 +10,26 @@ from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerT
 from infrahub.log import get_logger
 from infrahub.services.adapters.http import InfrahubHTTP
 
+if TYPE_CHECKING:
+    from infrahub.tls.registry import TlsContextRegistry
+
 log = get_logger()
 
 
 class HttpxAdapter(InfrahubHTTP):
-    """The HttpxAdapter is a generic interface for InfrahubHTTP
+    """The HttpxAdapter is a generic interface for InfrahubHTTP.
 
     The class provides a way to send HTTP requests from Infrahub for example
     when sending webhooks, telemetry data or when communicating with SSO
     providers. The main purpose is to have a single location to manage
     configuration and error handling with regards to HTTP traffic and
     allow users to define configurations such as timeout, TLS options
-    and eventually proxy settings in one location."""
+    and eventually proxy settings in one location.
+    """
 
-    _settings: config.HTTPSettings | None = None
+    def __init__(self, tls_registry: TlsContextRegistry) -> None:
+        self._tls_registry = tls_registry
+        self._settings: config.HTTPSettings | None = None
 
     @property
     def settings(self) -> config.HTTPSettings:
@@ -33,24 +38,6 @@ class HttpxAdapter(InfrahubHTTP):
 
         self._settings = config.SETTINGS.http
         return self._settings
-
-    @cached_property
-    def tls_context(self) -> ssl.SSLContext:
-        """TLS context based on global HTTPSettings.
-
-        May be an unverified context if tls_insecure=True in settings.
-        """
-        return self.settings.get_tls_context()
-
-    @cached_property
-    def tls_context_verified(self) -> ssl.SSLContext:
-        """TLS context that always performs certificate validation.
-
-        Uses tls_ca_bundle from settings if configured, but ignores tls_insecure.
-        This allows callers to explicitly request certificate validation even when
-        the global setting disables it.
-        """
-        return self.settings.get_tls_context(force_verify=True)
 
     def verify_tls(self, verify: bool | None = None) -> bool | ssl.SSLContext:
         """Determine the TLS verification behavior for a request.
@@ -63,13 +50,16 @@ class HttpxAdapter(InfrahubHTTP):
 
         Returns:
             False to disable verification, or an SSLContext for verification.
+
         """
         if verify is False:
             return False
         if verify is True:
-            return self.tls_context_verified
+            return self._tls_registry.get(
+                insecure=self.settings.tls_insecure, ca_bundle=self.settings.tls_ca_bundle, force_verify=True
+            )
 
-        return self.tls_context
+        return self._tls_registry.get(insecure=self.settings.tls_insecure, ca_bundle=self.settings.tls_ca_bundle)
 
     async def _request(
         self,
@@ -80,7 +70,14 @@ class HttpxAdapter(InfrahubHTTP):
         headers: dict[str, Any] | None = None,
         verify: bool | None = None,
     ) -> httpx.Response:
-        """Returns an httpx.Response object or raises HTTPServerError or child classes."""
+        """Returns an httpx.Response object or raises HTTPServerError or child classes.
+
+        Raises:
+            HTTPServerSSLError: When TLS certificate verification fails.
+            HTTPServerTimeoutError: When the request times out before receiving a response.
+            HTTPServerError: When any other httpx request error occurs.
+
+        """
         params: dict[str, Any] = {}
         if data:
             params["data"] = data

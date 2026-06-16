@@ -1,0 +1,22 @@
+---
+title: Assign Profiles to a template
+---
+
+When both `generate_template` and `generate_profile` are configured on a schema node, you can assign Profiles to templates to enable bulk configuration updates. Objects created from templates automatically inherit the Profiles assigned to those templates, allowing you to update values in bulk by modifying the Profile.
+
+:::info Profile and template integration
+
+When a Profile is assigned to a template:
+
+- Objects created from the template automatically inherit the template's Profiles
+- Template values (when explicitly configured) take precedence over Profile values
+- Profiles provide values for attributes not explicitly set on the template
+- Multiple Profiles can be assigned to a template with proper priority handling
+- This enables consistent configuration management across templated objects
+
+:::
+
+For more information about Profiles and templates, see:
+
+- [Creating and assigning Profiles](../profiles/overview) - Guide for working with Profiles
+- [Understanding Profiles in Infrahub](../profiles/overview) - Deep dive into Profile concepts

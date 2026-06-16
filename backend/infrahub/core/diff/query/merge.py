@@ -65,14 +65,24 @@ CALL (node_diff_map, node_db_id) {
     ORDER BY n_is_part_of.branch_level DESC, n_is_part_of.from DESC, n_is_part_of.status ASC
     LIMIT 1
 }
-WITH n, node_diff_map, is_node_kind_migration
-CALL (n, node_diff_map, is_node_kind_migration) {
+// ------------------------------
+// Resolve the currently-active target-branch Node vertex for this UUID, if it exists
+// ------------------------------
+CALL (n) {
+    OPTIONAL MATCH (tgt_candidate:Node {uuid: n.uuid})-[tgt_ipo:IS_PART_OF {branch: $target_branch, status: "active"}]->(:Root)
+    WHERE tgt_ipo.to IS NULL
+    RETURN tgt_candidate
+    ORDER BY tgt_ipo.from DESC
+    LIMIT 1
+}
+WITH n, COALESCE(tgt_candidate, n) AS tgt_n, node_diff_map, is_node_kind_migration
+CALL (n, tgt_n, node_diff_map, is_node_kind_migration) {
     WITH CASE
         WHEN node_diff_map.action = "ADDED" THEN "active"
         WHEN node_diff_map.action = "REMOVED" THEN "deleted"
         ELSE NULL
     END AS node_rel_status
-    CALL (n, node_diff_map, is_node_kind_migration, node_rel_status) {
+    CALL (n, tgt_n, node_diff_map, is_node_kind_migration, node_rel_status) {
         // ------------------------------
         // only make IS_PART_OF updates if node is ADDED or REMOVED
         // ------------------------------
@@ -95,9 +105,9 @@ CALL (n, node_diff_map, is_node_kind_migration) {
         // ------------------------------
         // set IS_PART_OF.to, optionally, target branch
         // ------------------------------
-        WITH root, n, node_rel_status, source_from_user_id
-        CALL (root, n, node_rel_status, source_from_user_id) {
-            OPTIONAL MATCH (root)<-[target_r_root:IS_PART_OF {branch: $target_branch, status: "active"}]-(n)
+        WITH root, n, tgt_n, node_rel_status, source_from_user_id
+        CALL (root, tgt_n, node_rel_status, source_from_user_id) {
+            OPTIONAL MATCH (root)<-[target_r_root:IS_PART_OF {branch: $target_branch, status: "active"}]-(tgt_n)
             WHERE node_rel_status = "deleted"
             AND target_r_root.from <= $at AND target_r_root.to IS NULL
             SET target_r_root.to = $at, target_r_root.to_user_id = source_from_user_id
@@ -105,6 +115,7 @@ CALL (n, node_diff_map, is_node_kind_migration) {
         // ------------------------------
         // create new IS_PART_OF relationship on target_branch
         // also set created_at/created_by on Node vertex when adding
+        // (uses ``n``, `tgt_n` cannot exist for ADDED Nodes)
         // ------------------------------
         WITH root, n, node_rel_status, source_from_user_id
         CALL (root, n, node_rel_status, source_from_user_id) {
@@ -122,21 +133,23 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             SET n.created_at = $at, n.created_by = source_from_user_id
         }
         // ------------------------------
-        // shortcut to delete all attributes and relationships for this node if the node is deleted
+        // shortcut to delete all attributes and relationships for this node if the node is deleted.
+        // Walks from ``tgt_n`` so the cascade closes the post-migration vertex's edges when a
+        // migration happened on target.
         // ------------------------------
-        CALL (n, node_rel_status, source_from_user_id) {
-            WITH n, node_rel_status, source_from_user_id
+        CALL (tgt_n, node_rel_status, source_from_user_id) {
+            WITH tgt_n, node_rel_status, source_from_user_id
             WHERE node_rel_status = "deleted"
-            CALL (n) {
-                OPTIONAL MATCH (n)-[rel1:IS_RELATED]-(attr_rel:Relationship)-[rel2]-(p)
-                WHERE (p.uuid IS NULL OR n.uuid <> p.uuid)
+            CALL (tgt_n) {
+                OPTIONAL MATCH (tgt_n)-[rel1:IS_RELATED]-(attr_rel:Relationship)-[rel2]-(p)
+                WHERE (p.uuid IS NULL OR tgt_n.uuid <> p.uuid)
                 AND rel1.branch = $target_branch
                 AND rel2.branch = $target_branch
                 AND rel1.status = "active"
                 AND rel2.status = "active"
                 RETURN rel1, rel2, attr_rel
                 UNION
-                OPTIONAL MATCH (n)-[rel1:HAS_ATTRIBUTE]->(attr_rel:Attribute)-[rel2]->()
+                OPTIONAL MATCH (tgt_n)-[rel1:HAS_ATTRIBUTE]->(attr_rel:Attribute)-[rel2]->()
                 WHERE type(rel2) <> "HAS_ATTRIBUTE"
                 AND rel1.branch = $target_branch
                 AND rel2.branch = $target_branch
@@ -154,17 +167,17 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             // ------------------------------
             // and delete HAS_OWNER and HAS_SOURCE edges to this node if the node is deleted
             // ------------------------------
-            WITH n, source_from_user_id
-            CALL (n, source_from_user_id) {
-                CALL (n) {
-                    MATCH (n)<-[rel:HAS_OWNER]-()
+            WITH tgt_n, source_from_user_id
+            CALL (tgt_n, source_from_user_id) {
+                CALL (tgt_n) {
+                    MATCH (tgt_n)<-[rel:HAS_OWNER]-()
                     WHERE rel.branch = $target_branch
                     AND rel.status = "active"
                     AND rel.from <= $at
                     AND rel.to IS NULL
                     RETURN rel
                     UNION
-                    MATCH (n)<-[rel:HAS_SOURCE]-()
+                    MATCH (tgt_n)<-[rel:HAS_SOURCE]-()
                     WHERE rel.branch = $target_branch
                     AND rel.status = "active"
                     AND rel.from <= $at
@@ -766,7 +779,7 @@ CALL (n) {
 
 
 class DiffMergeMetadataQuery(Query):
-    """Set metadata properties on Nodes, Attributes, and Relationships included in this merge
+    """Set metadata properties on Nodes, Attributes, and Relationships included in this merge.
 
     Each Node, Attribute, and Relationship should have its current updated_at/by (if it exists) saved in the
     previous_updated_at/by properties to support a rollback.
@@ -814,32 +827,59 @@ class DiffMergeMetadataQuery(Query):
         # ruff: noqa: E501
         query = """
 // --------------------
-// Match all affected nodes, accounting for nodes with migrated kind
-// for each UUID, get the latest Node that was active on this branch
+// Match all affected Node vertices for each UUID, including post-migration
+// siblings created by a target-branch migration after the source branch was
+// forked. A UUID can map to more than one Node vertex when migrated, and the
+// merge can have touched edges on more than one of those vertices; we want
+// to refresh metadata on each. For each Node, pick its "best" IS_PART_OF
+// (latest ``from``, prefer active before deleted) to anchor the
+// updated_at/by fallback for newly-created vertices.
 // --------------------
 UNWIND $node_uuids AS node_uuid
-CALL (node_uuid) {
-    MATCH (n:Node {uuid: node_uuid})-[e:IS_PART_OF]->(:Root)
+MATCH (n:Node {uuid: node_uuid})
+// --------------------
+// Exclude Node vertices on the target branch that have previously been deleted
+// as part of a node kind/inheritance migration
+// --------------------
+WHERE NOT EXISTS {
+    MATCH (n)-[migrated_out:IS_PART_OF {branch: $target_branch, status: "deleted"}]->(:Root)
+    WHERE migrated_out.from < $at AND migrated_out.to IS NULL
+}
+CALL (n) {
+    MATCH (n)-[e:IS_PART_OF]->(:Root)
     WHERE e.branch IN [$target_branch, $global_branch]
     AND (
-        (e.branch = $target_branch AND (e.from <= $branched_from OR e.from = $at))
+        // pre-fork edge, edge created by the merge, or edge closed by the merge
+        (e.branch = $target_branch AND (e.from <= $branched_from OR e.from = $at OR e.to = $at))
         OR (e.branch = $global_branch AND e.from <= $at)
     )
-    RETURN n, e AS is_part_of_e
+    RETURN e AS is_part_of_e
     ORDER BY e.from DESC, e.status ASC
     LIMIT 1
 }
 // --------------------
-// Special handling for the new version of a migrated kind/inheritance Node
-// set updated_at/by to the time/user that created the new version of the Node
+// Node-level metadata refresh for added and deleted Node vertices
+//   - ADDED - ``updated_at``/``by`` on freshly-created Node vertices that the
+//     merge just inserted (their IS_PART_OF has ``from = $at``).
+//   - DELETED - ``updated_at``/``by`` on Node vertices whose IS_PART_OF was
+//     closed by the merge (``to = $at``). This is required to cover Nodes with
+//     their kind/inheritance migrated on the target branch then deleted in the merge
 // --------------------
 CALL (n, is_part_of_e) {
     WITH n, is_part_of_e
-    WHERE n.updated_at IS NULL
-    SET n.updated_at = is_part_of_e.from, n.updated_by = is_part_of_e.from_user_id
+    WHERE n.updated_at IS NULL OR n.updated_at <> $at
+    WITH n, is_part_of_e, CASE
+        WHEN is_part_of_e.from = $at THEN is_part_of_e.from_user_id
+        WHEN is_part_of_e.to = $at THEN is_part_of_e.to_user_id
+        ELSE NULL
+    END AS ipo_user_id
+    WHERE ipo_user_id IS NOT NULL
+    SET n.previous_updated_at = n.updated_at, n.previous_updated_by = n.updated_by
+    SET n.updated_at = $at, n.updated_by = ipo_user_id
 }
 // --------------------
-// Get all the Attributes and Relationships for this Node that were active on this branch at some point
+// Get all the Attributes and Relationships for this Node that were active on
+// this branch at some point
 // --------------------
 MATCH (n)-[e:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
 WHERE e.branch IN [$source_branch, $target_branch, $global_branch]
@@ -904,81 +944,18 @@ ORDER BY change_time DESC, is_system ASC
 WITH n, collect(change_user_id)[0] AS node_updated_by
 
 // ------------------------------------
-// Update Node metadata with latest change across all its fields
+// Update Node metadata with latest change across all its fields.
+// Skip setting ``previous_updated_at`` if the IS_PART_OF-driven refresh
+// above already moved ``updated_at`` to ``$at`` — otherwise we'd clobber
+// the real ``previous_updated_at`` it captured.
 // ------------------------------------
 WITH n, node_updated_by
 WHERE node_updated_by IS NOT NULL
-SET n.previous_updated_at = n.updated_at, n.previous_updated_by = n.updated_by
-SET n.updated_at = $at, n.updated_by = node_updated_by
-        """
-        self.add_to_query(query=query)
-
-
-class DiffMergeRollbackQuery(Query):
-    name = "diff_merge_rollback"
-    type = QueryType.WRITE
-    insert_return = False
-
-    def __init__(
-        self,
-        at: Timestamp,
-        target_branch: Branch,
-        node_uuids: list[str],
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(**kwargs)
-        self.at = at
-        self.target_branch = target_branch
-        self.source_branch_name = self.branch.name
-        self.node_uuids = node_uuids
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params = {
-            "at": self.at.to_string(),
-            "target_branch": self.target_branch.name,
-            "source_branch": self.source_branch_name,
-            "node_uuids": self.node_uuids,
-        }
-        query = """
-// ---------------------------
-// Restore updated_at/by from previous_* on affected Node vertices
-// ---------------------------
-MATCH (n:Node)
-WHERE n.uuid IN $node_uuids
 CALL (n) {
     WITH n
-    WHERE n.previous_updated_at IS NOT NULL
-    SET n.updated_at = n.previous_updated_at, n.updated_by = n.previous_updated_by
-    SET n.previous_updated_at = NULL, n.previous_updated_by = NULL
+    WHERE n.updated_at IS NULL OR n.updated_at <> $at
+    SET n.previous_updated_at = n.updated_at, n.previous_updated_by = n.updated_by
 }
-// ---------------------------
-// Restore updated_at/by from previous_* on affected Attribute/Relationship vertices
-// ---------------------------
-CALL (n) {
-    MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED {branch: $target_branch}]-(attr_rel:Attribute|Relationship)
-    WHERE attr_rel.previous_updated_at IS NOT NULL
-    WITH DISTINCT attr_rel
-    SET attr_rel.updated_at = attr_rel.previous_updated_at, attr_rel.updated_by = attr_rel.previous_updated_by
-    SET attr_rel.previous_updated_at = NULL, attr_rel.previous_updated_by = NULL
-}
-// ---------------------------
-// Limit results to 1 row
-// ---------------------------
-WITH 1 AS one
-LIMIT 1
-// ---------------------------
-// reset to times on target branch
-// ---------------------------
-CALL () {
-    OPTIONAL MATCH (v)-[r_to {to: $at, branch: $target_branch}]-()
-    SET r_to.to = NULL, r_to.to_user_id = NULL
-}
-// ---------------------------
-// reset from times on target branch
-// ---------------------------
-CALL () {
-    OPTIONAL MATCH (v)-[r_from {from: $at, branch: $target_branch}]-()
-    DELETE r_from
-}
+SET n.updated_at = $at, n.updated_by = node_updated_by
         """
         self.add_to_query(query=query)

@@ -19,7 +19,7 @@ app = AsyncTyper(name="Infrahub CLI", pretty_exceptions_enable=False)
 
 @app.callback()
 def common(ctx: typer.Context) -> None:
-    """Infrahub CLI"""
+    """Infrahub CLI."""
     ctx.obj = CliContext()
 
 
@@ -62,6 +62,7 @@ def shell() -> None:
         get_cache,
         get_component,
         get_database,
+        get_http,
         get_workflow,
         set_component_type,
     )
@@ -87,10 +88,11 @@ def shell() -> None:
             workflow=workflow,
             component=component,
             component_type=component_type,
+            http=get_http(),
         )
         initialize_lock(service=service)
 
-        async with service.database as db:
+        async with service.database.start_session() as db:
             await initialization(db=db)
         await service.component.refresh_schema_hash()
 

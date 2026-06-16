@@ -19,7 +19,7 @@ from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
 
 from infrahub.core.timestamp import Timestamp
-from infrahub.events.constants import EventSortOrder
+from infrahub.events.constants import EVENT_NAMESPACE, EventSortOrder
 
 from .constants import LOG_LEVEL_MAPPING
 
@@ -129,7 +129,10 @@ class InfrahubEventFilter(EventFilter):
             self.id = EventIDFilter(id=[uuid.UUID(id) for id in ids])
 
     def add_event_type_filter(
-        self, event_type: list[str] | None = None, event_type_filter: dict[str, Any] | None = None
+        self,
+        event_type: list[str] | None = None,
+        event_type_filter: dict[str, Any] | None = None,
+        exclude_prefixes: list[str] | None = None,
     ) -> None:
         event_type = event_type or []
         event_type_filter = event_type_filter or {}
@@ -157,6 +160,8 @@ class InfrahubEventFilter(EventFilter):
 
         if event_type:
             self.event = EventNameFilter(name=event_type)
+        elif not event_type and exclude_prefixes:
+            self.event = EventNameFilter(prefix=[f"{EVENT_NAMESPACE}."], exclude_prefix=exclude_prefixes)
 
     def add_primary_node_filter(self, primary_node__ids: list[str] | None) -> None:
         if primary_node__ids:
@@ -193,6 +198,7 @@ class InfrahubEventFilter(EventFilter):
         primary_node__ids: list[str] | None = None,
         event_type: list[str] | None = None,
         event_type_filter: dict[str, Any] | None = None,
+        exclude_prefixes: list[str] | None = None,
         branches: list[str] | None = None,
         level: int | None = None,
         has_children: bool | None = None,
@@ -219,7 +225,9 @@ class InfrahubEventFilter(EventFilter):
 
         filters.add_event_filter(level=level, has_children=has_children)
         filters.add_event_id_filter(ids=ids)
-        filters.add_event_type_filter(event_type=event_type, event_type_filter=event_type_filter)
+        filters.add_event_type_filter(
+            event_type=event_type, event_type_filter=event_type_filter, exclude_prefixes=exclude_prefixes
+        )
         filters.add_branch_filter(branches=branches)
         filters.add_account_filter(account__ids=account__ids)
         filters.add_parent_filter(parent__ids=parent__ids)

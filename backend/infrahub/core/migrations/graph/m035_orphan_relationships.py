@@ -27,9 +27,7 @@ DETACH DELETE rel
 
 
 class Migration035(GraphMigration):
-    """
-    Remove Relationship vertices that only have a single peer
-    """
+    """Remove Relationship vertices that only have a single peer."""
 
     name: str = "035_clean_up_orphaned_relationships"
     minimum_version: int = 34

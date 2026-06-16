@@ -581,13 +581,13 @@ CALL (n_uuid, vertex_element_ids) {
 
 
 class DbSnapshotterDeduplicated:
-    """
-    DOES NOT WORK QUITE RIGHT FOR SOME RELATIONSHIPS TOUCHING MULTIPLE NODES WITH THE SAME UUID
-    NEEDS INVESTIGATION BEFORE BEING USED ANYWHERE
+    """DOES NOT WORK QUITE RIGHT FOR SOME RELATIONSHIPS TOUCHING MULTIPLE NODES WITH THE SAME UUID.
+
+    NEEDS INVESTIGATION BEFORE BEING USED ANYWHERE.
 
     Captures the state of all nodes, attributes, and relationships on the database, removing duplicated edges/vertices
 
-    NOTES:
+    Notes:
     - Does not account for the IS_RESERVED edge type
     - Does not fully account for the same attribute/relationship being removed and re-added on the same branch.
       - for example, if I do the following updates
@@ -596,6 +596,7 @@ class DbSnapshotterDeduplicated:
         - (t2) n.car.name = "a"
         - (t3) n.car.name = "b"
       - then the "a" value on n.car will be recorded as active from t0 to t2 and the "b" value will be recorded as active from t1
+
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:

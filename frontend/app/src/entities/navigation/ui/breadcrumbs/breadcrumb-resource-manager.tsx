@@ -1,5 +1,5 @@
 import { ChevronsUpDownIcon } from "lucide-react";
-import { Pressable } from "react-aria-components";
+import { ListLayout, Pressable, Virtualizer } from "react-aria-components";
 import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -19,7 +19,7 @@ import { Button } from "@/shared/components/ui/button";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-pool-utilization.query";
+import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbResourceManager() {
@@ -89,21 +89,26 @@ function ResourceSelector({
             </Button>
           </Pressable>
 
-          <Popover className="bg-stone-100/50 backdrop-blur">
+          <Popover>
             <PopoverDialog>
               {({ close }) => (
                 <Autocomplete>
-                  <ListBox items={resources} onAction={close}>
-                    {(resource) => (
-                      <ListBoxItem
-                        href={constructPath(
-                          `/resource-manager/${resourcePoolId}/resources/${resource.id}`
-                        )}
-                      >
-                        {resource.display_label}
-                      </ListBoxItem>
-                    )}
-                  </ListBox>
+                  <Virtualizer
+                    layout={ListLayout}
+                    layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
+                  >
+                    <ListBox items={resources} onAction={close}>
+                      {(resource) => (
+                        <ListBoxItem
+                          href={constructPath(
+                            `/resource-manager/${resourcePoolId}/resources/${resource.id}`
+                          )}
+                        >
+                          {resource.display_label}
+                        </ListBoxItem>
+                      )}
+                    </ListBox>
+                  </Virtualizer>
                 </Autocomplete>
               )}
             </PopoverDialog>

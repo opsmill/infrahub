@@ -1,3 +1,4 @@
+import { BRANCH_DELETED_EVENT, BRANCH_MERGED_EVENT } from "@/entities/branches/constants";
 import type { StateItem } from "@/entities/proposed-changes/ui/action-button/types";
 
 export const APPROVE_DECISION = "APPROVE";
@@ -39,6 +40,8 @@ export const PROPOSED_CHANGE_EVENTS = [
   PROPOSED_CHANGE_COMMENT,
   PROPOSED_CHANGE_THREAD,
   PROPOSED_CHANGE_APPROVALS_REVOKED,
+  BRANCH_MERGED_EVENT,
+  BRANCH_DELETED_EVENT,
 ];
 
 export const pcStatesList: Record<string, StateItem> = {

@@ -1,6 +1,6 @@
 import { partition } from "remeda";
 
-import type { DiffNode, DiffStatus } from "@/entities/diff/node-diff/types";
+import type { DiffNode, DiffStatus } from "@/entities/diff/ui/node-diff/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 

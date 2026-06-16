@@ -11,7 +11,7 @@ from infrahub.types import ATTRIBUTE_TYPES
     [pytest.param(attribute_name, id=attribute_name) for attribute_name in ATTRIBUTE_TYPES],
 )
 def test_attribute_types_allowed_property_path(test_case: str) -> None:
-    """Validates that the get_allowed_property_in_path() method returns the correct fields for all types
+    """Validates that the get_allowed_property_in_path() method returns the correct fields for all types.
 
     This ensures that we can use the entries properly when evaluating the schema path for instance with the
     computed attributes
@@ -28,12 +28,11 @@ def test_attribute_types_allowed_property_path(test_case: str) -> None:
 
 
 def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field]) -> list[str]:
-    """Return list of valid property paths for the specified type"""
+    """Return list of valid property paths for the specified type."""
     excluded_fields = [
         "id",
         "is_default",
         "is_from_profile",
-        "is_inherited",
         "is_protected",
         "owner",
         "source",

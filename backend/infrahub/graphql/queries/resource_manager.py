@@ -115,6 +115,7 @@ class PoolAllocated(ObjectType):
         query = await IPPrefixUtilization.init(
             db=graphql_context.db,
             at=graphql_context.at,
+            branch=graphql_context.branch,
             ip_prefixes=[resource],
             allocated_kinds=allocated_kinds,
             offset=offset,
@@ -136,7 +137,7 @@ class PoolAllocated(ObjectType):
                         "node": {
                             "id": item.child_uuid,
                             "kind": item.child_kind,
-                            "branch": item.branch,
+                            "branch": graphql_context.branch.name,
                             "display_label": item.ip_value,
                         }
                     }
@@ -201,8 +202,17 @@ class PoolUtilization(ObjectType):
         with contextlib.suppress(SchemaNotFoundError):
             resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
 
-        utilization_getter = PrefixUtilizationGetter(
-            db=db, ip_prefixes=list(resources_map.values()), at=graphql_context.at
+        default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+        resources = list(resources_map.values())
+        branch_getter = PrefixUtilizationGetter(
+            db=db, ip_prefixes=resources, branch=graphql_context.branch, at=graphql_context.at
+        )
+        # Reuse the single-branch query when the request is already on the default branch,
+        # otherwise the two getters cache independent result sets.
+        default_branch_getter = (
+            branch_getter
+            if graphql_context.branch.name == default_branch.name
+            else PrefixUtilizationGetter(db=db, ip_prefixes=resources, branch=default_branch, at=graphql_context.at)
         )
         fields = extract_graphql_fields(info=info)
         response: dict[str, Any] = {}
@@ -211,21 +221,23 @@ class PoolUtilization(ObjectType):
         if "count" in fields:
             response["count"] = len(resources_map)
         if "utilization" in fields:
-            response["utilization"] = total_utilization = await utilization_getter.get_use_percentage()
+            response["utilization"] = total_utilization = await branch_getter.get_use_percentage()
         if "utilization_default_branch" in fields:
             response["utilization_default_branch"] = (
                 default_branch_utilization
-            ) = await utilization_getter.get_use_percentage(branch_names=[registry.default_branch])
+            ) = await default_branch_getter.get_use_percentage()
         if "utilization_branches" in fields:
             total_utilization = (
-                total_utilization if total_utilization is not None else await utilization_getter.get_use_percentage()
+                total_utilization if total_utilization is not None else await branch_getter.get_use_percentage()
             )
             default_branch_utilization = (
                 default_branch_utilization
                 if default_branch_utilization is not None
-                else await utilization_getter.get_use_percentage(branch_names=[registry.default_branch])
+                else await default_branch_getter.get_use_percentage()
             )
-            response["utilization_branches"] = total_utilization - default_branch_utilization
+            # Deletions on the branch can make its view smaller than the default branch's;
+            # this field is exposed as a non-negative percentage.
+            response["utilization_branches"] = max(0.0, total_utilization - default_branch_utilization)
         if "edges" in fields:
             response["edges"] = []
             if "node" in fields["edges"]:
@@ -243,29 +255,25 @@ class PoolUtilization(ObjectType):
                     if "weight" in node_fields:
                         node_response["weight"] = await resource_node.get_resource_weight(db=db)  # type: ignore[attr-defined]
                     if "utilization" in node_fields:
-                        node_response["utilization"] = resource_total = await utilization_getter.get_use_percentage(
+                        node_response["utilization"] = resource_total = await branch_getter.get_use_percentage(
                             ip_prefixes=[resource_node]
                         )
                     if "utilization_default_branch" in node_fields:
                         node_response["utilization_default_branch"] = (
                             default_branch_total
-                        ) = await utilization_getter.get_use_percentage(
-                            ip_prefixes=[resource_node], branch_names=[registry.default_branch]
-                        )
+                        ) = await default_branch_getter.get_use_percentage(ip_prefixes=[resource_node])
                     if "utilization_branches" in node_fields:
                         resource_total = (
                             resource_total
                             if resource_total is not None
-                            else await utilization_getter.get_use_percentage(ip_prefixes=[resource_node])
+                            else await branch_getter.get_use_percentage(ip_prefixes=[resource_node])
                         )
                         default_branch_total = (
                             default_branch_total
                             if default_branch_total is not None
-                            else await utilization_getter.get_use_percentage(
-                                ip_prefixes=[resource_node], branch_names=[registry.default_branch]
-                            )
+                            else await default_branch_getter.get_use_percentage(ip_prefixes=[resource_node])
                         )
-                        node_response["utilization_branches"] = resource_total - default_branch_total
+                        node_response["utilization_branches"] = max(0.0, resource_total - default_branch_total)
                     response["edges"].append({"node": node_response})
 
         return response
@@ -292,6 +300,7 @@ async def resolve_number_pool_allocation(
                     "kind": pool.node.value,  # type: ignore[attr-defined]
                     "branch": item.branch,
                     "display_label": item.value,
+                    "identifier": item.identifier,
                 }
             }
             edges.append(node)
@@ -303,11 +312,10 @@ async def resolve_number_pool_allocation(
 async def resolve_number_pool_utilization(
     db: InfrahubDatabase, pool: Node, at: Timestamp | str | None, branch: Branch
 ) -> dict:
-    """
-    Returns a mapping containg utilization info of a number pool.
+    """Returns a mapping containg utilization info of a number pool.
+
     The utilization is calculated as the percentage of the total number of values in the pool that are not excluded for the corresponding attribute.
     """
-
     core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind="CoreNumberPool")
     number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
     await number_pool.load_data()

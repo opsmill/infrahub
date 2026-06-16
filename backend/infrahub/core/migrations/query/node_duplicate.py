@@ -21,8 +21,8 @@ class SchemaNodeInfo(BaseModel):
 
 
 class NodeDuplicateQuery(Query):
-    """
-    Duplicates a Node to use a new kind or inheritance.
+    """Duplicates a Node to use a new kind or inheritance.
+
     Creates a copy of each affected Node and sets the new kind/inheritance.
     Adds duplicate edges to the new Node that match all the active edges on the old Node.
     Sets all the edges on the old Node to deleted.
@@ -44,7 +44,7 @@ class NodeDuplicateQuery(Query):
 
     def render_match(self) -> str:
         labels_str = ":".join(self.previous_node.labels)
-        query = """
+        return """
         // Find all the active nodes
         MATCH (node:%(labels_str)s)
         WITH DISTINCT node
@@ -64,8 +64,6 @@ class NodeDuplicateQuery(Query):
         }
         WITH node WHERE already_migrated = FALSE
         """ % {"labels_str": labels_str}
-
-        return query
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, rel_dir: GraphRelDirection) -> str:

@@ -32,14 +32,14 @@ from git import Repo
 
 
 def remove_git_worktree_branch(repository_id: str, branch_id: str) -> None:
-    """
-    Removing git worktree branches is needed after a test delete a branch, because when a new branch is then created,
+    """Removing git worktree branches is needed after a test delete a branch, because when a new branch is then created,.
+
     Neo4j might reuse branch id of the deleted one for the new one, and as worktree branch of the deleted branch
     has not been removed, we try to re-recreate a worktree branch already existing (having the id of the previously
     deleted branch), and thus is breaks.
+
     TODO A solution might be to have worktree branches written in temporary folders while testing so they are automatically deleted.
     """
-
     repo_path = get_repositories_directory() / repository_id / "main"
     worktree_path = get_repositories_directory() / repository_id / "branches" / branch_id
     repo = Repo(repo_path)
@@ -241,10 +241,7 @@ class TestBranchMutations(TestInfrahubApp):
         assert "branch has some conflicts" in exc.value.message
 
     async def test_branch_merge(self, initial_dataset: str, client: InfrahubClient) -> None:
-        """
-        Test BranchMerge graphql endpoint, not actual merge logic.
-        """
-
+        """Test BranchMerge graphql endpoint, not actual merge logic."""
         branch = await client.branch.create(branch_name="branch_to_merge_sync")
 
         query = Mutation(
@@ -258,10 +255,7 @@ class TestBranchMutations(TestInfrahubApp):
         assert result["BranchMerge"]["task"] is None
 
     async def test_branch_merge_async(self, initial_dataset: str, client: InfrahubClient) -> None:
-        """
-        Test BranchMerge graphql endpoint with asynchronous feature, not actual merge logic.
-        """
-
+        """Test BranchMerge graphql endpoint with asynchronous feature, not actual merge logic."""
         branch = await client.branch.create(branch_name="branch_to_merge")
 
         query = Mutation(

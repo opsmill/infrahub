@@ -15,6 +15,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.tasks.dummy import dummy_flow, dummy_flow_broken
+from infrahub.workers.dependencies import clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.helpers.graphql import graphql
 
@@ -120,6 +121,20 @@ query TaskQuery(
   }
 }
 """
+
+
+@pytest.fixture(autouse=True)
+def cache_singleton_with_redis_settings(redis: dict[int, int] | None) -> Generator[None, None, None]:
+    """The task queries read flow-run counts through the process-wide cache singleton.
+
+    Depending on which modules ran earlier in this process, that singleton may have been
+    built while the redis settings of this module were not applied yet, pointing it at a
+    cache that does not exist. Drop it so it is rebuilt against the active settings, and
+    drop it again afterwards so later modules do not inherit it.
+    """
+    clear_singletons()
+    yield
+    clear_singletons()
 
 
 @pytest.fixture
@@ -657,12 +672,11 @@ async def test_task_query_with_log_offset(
     delete_flow_runs: None,
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
-    """
-    In unit tests logs are not forwarded to the Prefect server for unknown reasons.
+    """In unit tests logs are not forwarded to the Prefect server for unknown reasons.
+
     Therefore this test mainly tests log_offset and log_limit do not break the query when they are specified,
     but their logic itself is not tested on a large amount of logs.
     """
-
     result = await run_query(
         db=db,
         branch=default_branch,

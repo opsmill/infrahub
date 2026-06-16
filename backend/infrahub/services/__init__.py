@@ -6,6 +6,7 @@ from infrahub.components import ComponentType
 from infrahub.exceptions import InitializationError
 from infrahub.log import get_logger
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
+from infrahub.tls.registry import TlsContextRegistry
 
 from .adapters.event import InfrahubEventService
 from .adapters.http.httpx import HttpxAdapter
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
+    from infrahub.log_forwarding.service import LogForwardingService
     from infrahub.message_bus import InfrahubMessage
     from infrahub.message_bus.types import MessageTTL
 
@@ -34,6 +36,7 @@ class InfrahubServices:
     _message_bus: InfrahubMessageBus | None
     _workflow: InfrahubWorkflow | None
     _component: InfrahubComponent | None
+    _log_forwarding: LogForwardingService | None
 
     log: InfrahubLogger
     component_type: ComponentType
@@ -54,17 +57,16 @@ class InfrahubServices:
         message_bus: InfrahubMessageBus | None = None,
         workflow: InfrahubWorkflow | None = None,
         component: InfrahubComponent | None = None,
+        log_forwarding: LogForwardingService | None = None,
     ) -> None:
-        """
-        This method should not be called directly, use `new` instead for a proper initialization.
-        """
-
+        """This method should not be called directly, use `new` instead for a proper initialization."""
         self._cache = cache
         self._client = client
         self._database = database
         self._message_bus = message_bus
         self._workflow = workflow
         self._component = component
+        self._log_forwarding = log_forwarding
         self.log = log
         self.component_type = component_type
         self.http = http
@@ -84,12 +86,13 @@ class InfrahubServices:
         component: InfrahubComponent | None = None,
         component_type: ComponentType | None = None,
         http: InfrahubHTTP | None = None,
+        log_forwarding: LogForwardingService | None = None,
     ) -> InfrahubServices:
-        """
-        Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular
-        dependency with InfrahubServices.
-        """
+        """Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular.
 
+        dependency with InfrahubServices.
+
+        """
         component_type = component_type or ComponentType.NONE
 
         scheduler = InfrahubScheduler(component_type)
@@ -103,8 +106,9 @@ class InfrahubServices:
             component=component,
             component_type=component_type,
             scheduler=scheduler,
-            event=event or InfrahubEventService(message_bus),
-            http=http or HttpxAdapter(),
+            event=event or InfrahubEventService(message_bus, log_forwarding=log_forwarding),
+            http=http or HttpxAdapter(tls_registry=TlsContextRegistry()),
+            log_forwarding=log_forwarding,
         )
 
         # This circular dependency could be removed if InfrahubScheduler only depends on what it needs.
@@ -164,7 +168,13 @@ class InfrahubServices:
 
         return self._database
 
+    @property
+    def log_forwarding(self) -> LogForwardingService | None:
+        return self._log_forwarding
+
     async def shutdown(self) -> None:
+        if self._log_forwarding is not None:
+            await self._log_forwarding.shutdown()
         await self.scheduler.shutdown()
         await self.message_bus.shutdown()
         if self._cache is not None:

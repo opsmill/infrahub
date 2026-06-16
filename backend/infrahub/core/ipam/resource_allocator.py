@@ -45,6 +45,7 @@ class IPAMResourceAllocator:
             namespace: IP namespace node or its ID. If None, uses the default namespace.
             branch: Branch to query. If None, uses the default branch.
             branch_agnostic: If True, queries across all branches.
+
         """
         self.db = db
         self.namespace = namespace
@@ -52,7 +53,11 @@ class IPAMResourceAllocator:
         self.branch_agnostic = branch_agnostic
 
     async def _get_next_ipv4_prefix(
-        self, ip_prefix: IPNetworkType, target_prefix_length: int, at: Timestamp | str | None = None
+        self,
+        ip_prefix: IPNetworkType,
+        target_prefix_length: int,
+        at: Timestamp | str | None = None,
+        parent_uuid: str | None = None,
     ) -> IPNetworkType | None:
         """Get the next available free IPv4 prefix.
 
@@ -67,6 +72,7 @@ class IPAMResourceAllocator:
         Returns:
             The next available IPv4 prefix, or None if no space is available
             or if the target_prefix_length is invalid.
+
         """
         if target_prefix_length < 0 or target_prefix_length > 32:
             return None
@@ -81,6 +87,7 @@ class IPAMResourceAllocator:
             namespace=self.namespace,
             at=at,
             branch_agnostic=self.branch_agnostic,
+            parent_uuid=parent_uuid,
         )
         await query.execute(db=self.db)
 
@@ -92,7 +99,11 @@ class IPAMResourceAllocator:
         return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
 
     async def _get_next_ipv6_prefix(
-        self, ip_prefix: IPNetworkType, target_prefix_length: int, at: Timestamp | str | None = None
+        self,
+        ip_prefix: IPNetworkType,
+        target_prefix_length: int,
+        at: Timestamp | str | None = None,
+        parent_uuid: str | None = None,
     ) -> IPNetworkType | None:
         """Get the next available free IPv6 prefix.
 
@@ -107,6 +118,7 @@ class IPAMResourceAllocator:
         Returns:
             The next available IPv6 prefix, or None if no space is available
             or if the target_prefix_length is invalid.
+
         """
         if target_prefix_length < 0 or target_prefix_length > 128:
             return None
@@ -121,6 +133,7 @@ class IPAMResourceAllocator:
             namespace=self.namespace,
             at=at,
             branch_agnostic=self.branch_agnostic,
+            parent_uuid=parent_uuid,
         )
         await query.execute(db=self.db)
 
@@ -134,7 +147,11 @@ class IPAMResourceAllocator:
         return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
 
     async def get_next_prefix(
-        self, ip_prefix: IPNetworkType, target_prefix_length: int, at: Timestamp | str | None = None
+        self,
+        ip_prefix: IPNetworkType,
+        target_prefix_length: int,
+        at: Timestamp | str | None = None,
+        parent_uuid: str | None = None,
     ) -> IPNetworkType | None:
         """Get the next available free prefix of specified length within a parent prefix.
 
@@ -144,15 +161,19 @@ class IPAMResourceAllocator:
             ip_prefix: Parent prefix to allocate from.
             target_prefix_length: Desired prefix length for the new prefix.
             at: Optional timestamp for point-in-time queries.
+            parent_uuid: UUID of the pool-resource prefix node to exclude from occupied ranges.
 
         Returns:
             The next available prefix, or None if no space is available.
+
         """
         if ip_prefix.version == 4:
             return await self._get_next_ipv4_prefix(
-                ip_prefix=ip_prefix, target_prefix_length=target_prefix_length, at=at
+                ip_prefix=ip_prefix, target_prefix_length=target_prefix_length, at=at, parent_uuid=parent_uuid
             )
-        return await self._get_next_ipv6_prefix(ip_prefix=ip_prefix, target_prefix_length=target_prefix_length, at=at)
+        return await self._get_next_ipv6_prefix(
+            ip_prefix=ip_prefix, target_prefix_length=target_prefix_length, at=at, parent_uuid=parent_uuid
+        )
 
     async def get_next_address(
         self, ip_prefix: IPNetworkType, at: Timestamp | str | None = None, is_pool: bool = False
@@ -169,6 +190,7 @@ class IPAMResourceAllocator:
 
         Returns:
             The next available IP address, or None if no addresses are available.
+
         """
         # Use IPv6-specific query for IPv6 to avoid 64-bit integer overflow
         query_class = IPv6PrefixIPAddressFetchFree if ip_prefix.version == 6 else IPPrefixIPAddressFetchFree
@@ -193,6 +215,7 @@ class IPAMResourceAllocator:
 
         Returns:
             Iterable of IPPrefixData objects representing child subnets.
+
         """
         query = await IPPrefixSubnetFetch.init(
             db=self.db,
@@ -216,6 +239,7 @@ class IPAMResourceAllocator:
 
         Returns:
             Iterable of IPAddressData objects representing addresses in the prefix.
+
         """
         query = await IPPrefixIPAddressFetch.init(
             db=self.db,

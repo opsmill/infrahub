@@ -1,0 +1,223 @@
+---
+title: Proposed events
+---
+
+## Proposed Change Approval Revoked Event
+
+**Type**: infrahub.proposed_change.approval_revoked
+**Description**: Event generated when a proposed change approval has been revoked.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **reviewer_account_id** | The ID of the user who reviewed the proposed change |
+| **reviewer_account_name** | The name of the user who reviewed the proposed change |
+| **reviewer_former_decision** | The former decision made by the reviewer |
+
+## Proposed Change Approvals Revoked Event
+
+**Type**: infrahub.proposed_change.approvals_revoked
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **reviewer_accounts** | ID to name map of accounts whose approval was revoked |
+
+## Proposed Change Approved Event
+
+**Type**: infrahub.proposed_change.approved
+**Description**: Event generated when a proposed change has been approved.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **reviewer_account_id** | The ID of the user who reviewed the proposed change |
+| **reviewer_account_name** | The name of the user who reviewed the proposed change |
+| **reviewer_decision** | The decision made by the reviewer |
+
+## Proposed Change Merged Event
+
+**Type**: infrahub.proposed_change.merged
+**Description**: Event generated when a proposed change has been merged.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **merged_by_account_id** | The ID of the user who merged the proposed change |
+| **merged_by_account_name** | The name of the user who merged the proposed change |
+
+## Proposed Change Rejected Event
+
+**Type**: infrahub.proposed_change.rejected
+**Description**: Event generated when a proposed change has been rejected.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **reviewer_account_id** | The ID of the user who reviewed the proposed change |
+| **reviewer_account_name** | The name of the user who reviewed the proposed change |
+| **reviewer_decision** | The decision made by the reviewer |
+
+## Proposed Change Rejection Revoked Event
+
+**Type**: infrahub.proposed_change.rejection_revoked
+**Description**: Event generated when a proposed change rejection has been revoked.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **reviewer_account_id** | The ID of the user who reviewed the proposed change |
+| **reviewer_account_name** | The name of the user who reviewed the proposed change |
+| **reviewer_former_decision** | The former decision made by the reviewer |
+
+## Proposed Change Review Requested Event
+
+**Type**: infrahub.proposed_change.review_requested
+**Description**: Event generated when a proposed change has been flagged for review.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **requested_by_account_id** | The ID of the user who requested the proposed change to be reviewed |
+| **requested_by_account_name** | The name of the user who requested the proposed change to be reviewed |
+
+## Proposed Change Thread Created Event
+
+**Type**: infrahub.proposed_change_thread.created
+**Description**: Event generated when a thread has been created in a proposed change.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **thread_id** | The ID of the thread that was created or updated |
+| **thread_kind** | The name of the thread that was created or updated |
+| **action** | N/A |
+
+## Proposed Change Thread Updated Event
+
+**Type**: infrahub.proposed_change_thread.updated
+**Description**: Event generated when a thread has been updated in a proposed change.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **proposed_change_id** | The ID of the proposed change |
+| **proposed_change_name** | The name of the proposed change |
+| **proposed_change_state** | The state of the proposed change |
+| **thread_id** | The ID of the thread that was created or updated |
+| **thread_kind** | The name of the thread that was created or updated |
+| **action** | N/A |

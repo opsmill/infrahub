@@ -4,7 +4,7 @@ import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ACCOUNT_TOKEN_OBJECT } from "@/shared/config/constants";
 
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 interface ModalDeleteObjectProps {

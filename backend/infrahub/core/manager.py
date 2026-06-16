@@ -150,8 +150,8 @@ class NodeManager:
 
         Returns:
             list[Node]: List of Node object
-        """
 
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -211,7 +211,7 @@ class NodeManager:
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:
-        """Return the total number of nodes using a given filter
+        """Return the total number of nodes using a given filter.
 
         Args:
             schema (NodeSchema): Infrahub Schema or Name of a schema present in the registry.
@@ -221,8 +221,8 @@ class NodeManager:
 
         Returns:
             int: The number of responses found
-        """
 
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -1043,7 +1043,13 @@ class NodeManager:
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
-        """Return one node based on its ID."""
+        """Return one node based on its ID.
+
+        Raises:
+            NodeNotFoundError: When the node cannot be found and `raise_on_error` is True,
+                or when the found node does not match the requested kind.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         result = await cls.get_many(
@@ -1103,8 +1109,12 @@ class NodeManager:
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
     ) -> dict[str, Node]:
-        """Return a list of nodes based on their IDs."""
+        """Return a list of nodes based on their IDs.
 
+        Raises:
+            SchemaNotFoundError: When the schema associated with one of the nodes cannot be found.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -1332,6 +1342,9 @@ class NodeManager:
                 peer_with_metadata.created_by = metadata_map.get(MetadataOptions.CREATED_BY)
                 peer_with_metadata.updated_at = metadata_map.get(MetadataOptions.UPDATED_AT)
                 peer_with_metadata.updated_by = metadata_map.get(MetadataOptions.UPDATED_BY)
+                peer_with_metadata.source_id = metadata_map.get(MetadataOptions.SOURCE)
+                peer_with_metadata.owner_id = metadata_map.get(MetadataOptions.OWNER)
+                peer_with_metadata.is_protected = metadata_map.get(MetadataOptions.IS_PROTECTED)
                 rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True
@@ -1347,7 +1360,7 @@ class NodeManager:
         cascade_delete: bool = True,
         user_id: str = SYSTEM_USER_ID,
     ) -> list[Node]:
-        """Returns list of deleted nodes because of cascading deletes"""
+        """Returns list of deleted nodes because of cascading deletes."""
         branch = await registry.get_branch(branch=branch, db=db)
         nodes_to_delete = copy(nodes)
         if cascade_delete:

@@ -5,7 +5,7 @@ import type {
   BranchDeletedEvent,
   BranchMergedEvent,
   BranchRebasedEvent,
-} from "@/shared/api/graphql/generated/graphql";
+} from "@/shared/api/graphql/generated/types";
 import { Link } from "@/shared/components/ui/link";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";

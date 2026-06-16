@@ -1,10 +1,7 @@
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { type FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -27,14 +24,11 @@ import { Skeleton } from "@/shared/components/loading/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { NODE_TRIGGER_RELATIONSHIP_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
 
@@ -48,10 +42,9 @@ export const NodeRelationshipMatchForm = ({
   onCancel,
   ...props
 }: NodeRelationshipMatchFormProps) => {
-  const { currentBranch } = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
   const { parentData, parentSchema } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
+  const updateObject = useUpdateObjectMutation();
 
   const schemaFields = getFormFieldsFromSchema({
     ...props,
@@ -115,36 +108,32 @@ export const NodeRelationshipMatchForm = ({
     }
 
     if (currentObject?.id) {
-      try {
-        const result = await graphqlClient.mutate({
-          mutation: gql(
-            updateObjectWithId({
-              kind: NODE_TRIGGER_RELATIONSHIP_MATCH,
-              data: stringifyWithoutQuotes({
-                id: currentObject.id,
-                ...newObject,
-                peer: newObject?.peer?.id && {
-                  value: newObject?.peer?.id,
-                },
-              }),
-            })
-          ),
-          context: {
-            branch: currentBranch.name,
-            date,
+      await updateObject.mutateAsync(
+        {
+          objectKind: NODE_TRIGGER_RELATIONSHIP_MATCH,
+          data: {
+            id: currentObject.id,
+            ...newObject,
+            peer: newObject?.peer?.id && {
+              value: newObject?.peer?.id,
+            },
           },
-        });
-
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match updated!"} />, {
-          toastId: "alert-success-node-relationship-match-updated",
-        });
-
-        if (onSuccess) {
-          await onSuccess(result?.data?.[`${NODE_TRIGGER_RELATIONSHIP_MATCH}Update`]);
+        },
+        {
+          onSuccess: async (updatedNode) => {
+            toast(
+              <Alert type={ALERT_TYPES.SUCCESS} message={"Node relationship match updated!"} />,
+              {
+                toastId: "alert-success-node-relationship-match-updated",
+              }
+            );
+            if (onSuccess) await onSuccess(updatedNode);
+          },
+          onError: (error) => {
+            console.error("An error occurred while creating the object: ", error);
+          },
         }
-      } catch (error: unknown) {
-        console.error("An error occurred while creating the object: ", error);
-      }
+      );
     } else {
       await createObject.mutateAsync(
         {

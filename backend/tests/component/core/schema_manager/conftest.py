@@ -16,12 +16,12 @@ def _get_schema_by_kind(full_schema: dict[str, Any], kind: str) -> dict[str, Any
 
 @pytest.fixture
 async def animal_person_schema_dict() -> dict:
-    FULL_SCHEMA = {
+    return {
         "generics": [
             {
                 "name": "Animal",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "human_friendly_id": ["owner__name__value", "name__value"],
                 "order_by": ["name__value"],
                 "icon": "myicon",
@@ -58,7 +58,7 @@ async def animal_person_schema_dict() -> dict:
                 "name": "Cat",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value", "color__value"],
+                "display_label": "{{ name__value }} {{ breed__value }} {{ color__value }}",
                 "human_friendly_id": ["owner__name__value", "name__value", "breed__value"],
                 "order_by": ["breed__value", "name__value"],
                 "attributes": [
@@ -69,7 +69,7 @@ async def animal_person_schema_dict() -> dict:
             {
                 "name": "Person",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "other_name", "kind": "Text", "unique": True},
@@ -88,12 +88,10 @@ async def animal_person_schema_dict() -> dict:
         ],
     }
 
-    return FULL_SCHEMA
-
 
 @pytest.fixture
 def schema_all_in_one() -> dict[str, Any]:
-    FULL_SCHEMA = {
+    return {
         "nodes": [
             {
                 "name": "Criticality",
@@ -211,7 +209,7 @@ def schema_all_in_one() -> dict[str, Any]:
                 "label": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -238,12 +236,10 @@ def schema_all_in_one() -> dict[str, Any]:
         ],
     }
 
-    return FULL_SCHEMA
-
 
 @pytest.fixture
 def schema_criticality_tag() -> dict[str, Any]:
-    FULL_SCHEMA = {
+    return {
         "nodes": [
             {
                 "name": "Criticality",
@@ -286,12 +282,11 @@ def schema_criticality_tag() -> dict[str, Any]:
             },
         ]
     }
-    return FULL_SCHEMA
 
 
 @pytest.fixture
 def schema_parent_component() -> dict:
-    FULL_SCHEMA = {
+    return {
         "generics": [
             {
                 "name": "ComponentGenericOne",
@@ -351,25 +346,24 @@ def schema_parent_component() -> dict:
             },
         ],
     }
-    return FULL_SCHEMA
 
 
 @pytest.fixture
 def schema_diff_attr_inheritance_types() -> dict[str, Any]:
     """Two generics with the same attribute but different types and a single node implementation."""
-    FULL_SCHEMA = {
+    return {
         "generics": [
             {
                 "name": "Adapter",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "order_by": ["name__value"],
                 "attributes": [{"name": "name", "kind": "Text"}, {"name": "choice", "kind": "Text", "optional": True}],
             },
             {
                 "name": "Status",
                 "namespace": "Test",
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "order_by": ["label__value"],
                 "attributes": [
                     {"name": "label", "kind": "Text"},
@@ -387,4 +381,3 @@ def schema_diff_attr_inheritance_types() -> dict[str, Any]:
             }
         ],
     }
-    return FULL_SCHEMA

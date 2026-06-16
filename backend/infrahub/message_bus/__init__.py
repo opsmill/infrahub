@@ -31,7 +31,7 @@ class Meta(BaseModel):
 
 
 class InfrahubMessage(BaseModel):
-    """Base Model for messages"""
+    """Base Model for messages."""
 
     meta: Meta = Field(default_factory=Meta.default, description="Meta properties for the message")
 
@@ -83,7 +83,7 @@ class InfrahubResponseData(BaseModel):
 
 
 class InfrahubResponse(InfrahubMessage):
-    """A response to an RPC request"""
+    """A response to an RPC request."""
 
     passed: bool = True
     routing_key: str

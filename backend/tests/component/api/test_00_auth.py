@@ -72,7 +72,7 @@ async def test_refresh_with_invalidated_token(
 async def test_refresh_access_token(
     db: InfrahubDatabase, default_branch: Branch, client: TestClient, first_account: Node
 ) -> None:
-    """Validate that it's possible to refresh an access token using a refresh token"""
+    """Validate that it's possible to refresh an access token using a refresh token."""
     with client:
         login_response = client.post(
             "/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"}
@@ -98,7 +98,7 @@ async def test_refresh_access_token(
 async def test_refresh_access_token_with_cookies(
     db: InfrahubDatabase, default_branch: Branch, client: TestClient, first_account: Node
 ) -> None:
-    """Validate that it's possible to refresh an access token using a refresh token stored in cookies"""
+    """Validate that it's possible to refresh an access token using a refresh token stored in cookies."""
     with client:
         login_response = client.post(
             "/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"}
@@ -130,7 +130,7 @@ async def test_refresh_access_token_with_cookies(
 async def test_fail_to_refresh_access_token_with_access_token(
     db: InfrahubDatabase, default_branch: Branch, client: TestClient, first_account: Node
 ) -> None:
-    """Validate that it's not possible to refresh an access token using an access token"""
+    """Validate that it's not possible to refresh an access token using an access token."""
     with client:
         login_response = client.post(
             "/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"}
@@ -193,7 +193,7 @@ async def test_use_expired_token(
 async def test_refresh_access_token_with_expired_refresh_token(
     db: InfrahubDatabase, default_branch: Branch, client: TestClient, register_core_models_schema: None
 ) -> None:
-    """Validate that the correct error is returned for an expired refresh token"""
+    """Validate that the correct error is returned for an expired refresh token."""
     with client:
         response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {EXPIRED_REFRESH_TOKEN}"})
 
@@ -204,7 +204,7 @@ async def test_refresh_access_token_with_expired_refresh_token(
 async def test_access_resource_using_refresh_token(
     db: InfrahubDatabase, default_branch: Branch, client: TestClient, first_account: Node
 ) -> None:
-    """It should not be possible to access a resource using a refresh token"""
+    """It should not be possible to access a resource using a refresh token."""
     with client:
         login_response = client.post(
             "/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"}
@@ -226,7 +226,7 @@ async def test_access_resource_using_refresh_token(
 async def test_generate_api_token(
     db: InfrahubDatabase, default_branch: Branch, client: TestClient, create_test_admin: Node
 ) -> None:
-    """It should not be possible to generate an API token using a JWT token"""
+    """It should not be possible to generate an API token using a JWT token."""
     with client:
         login_response = client.post(
             "/api/auth/login",

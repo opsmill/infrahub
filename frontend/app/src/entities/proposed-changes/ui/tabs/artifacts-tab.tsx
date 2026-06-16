@@ -1,6 +1,6 @@
 import { DIFF_TABS } from "@/shared/config/constants";
 
-import { useGetArtifactsDiff } from "@/entities/diff/domain/get-artifacts-diff.query";
+import { useGetArtifactsDiff } from "@/entities/diff/ui/queries/get-artifacts-diff.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
 
 export interface ArtifactsTabProps {

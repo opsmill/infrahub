@@ -3,6 +3,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
@@ -10,12 +11,10 @@ import { TASK_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
 import { BRANCH_VALIDATE } from "@/entities/branches/api/validateBranch";
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
-
-import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchValidateButtonProps = {
   branch: BranchDetail;
@@ -40,7 +39,7 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
     !isAuthenticated ||
     loading ||
     !!branch.is_default ||
-    branch.status === BRANCH_STATUS.MERGED ||
+    branch.status === BranchStatus.MERGED ||
     hasOngoingTask;
 
   const handleSubmit = async () => {

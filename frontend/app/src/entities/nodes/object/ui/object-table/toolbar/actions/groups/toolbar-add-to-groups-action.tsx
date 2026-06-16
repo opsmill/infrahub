@@ -1,11 +1,13 @@
 import { DialogTrigger } from "react-aria-components";
 
+import { queryClient } from "@/shared/api/rest/client";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
 import { ToolbarButtonWithTooltip } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { addRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships";
 import type { NodeCore } from "@/entities/nodes/types";
 
@@ -30,7 +32,7 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
     <DialogTrigger>
       <ToolbarButtonWithTooltip>Add to groups</ToolbarButtonWithTooltip>
 
-      <Popover placement="top start">
+      <Popover placement="top start" className="bg-white">
         <PopoverDialog>
           {({ close }) => {
             return (
@@ -43,7 +45,11 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
                     branchName: currentBranch.name,
                   });
                 }}
-                onSuccess={close}
+                onSuccess={async () => {
+                  await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+                }}
+                onClose={close}
+                groupsQueryFilter={{ group_type__values: ["default"] }}
               />
             );
           }}

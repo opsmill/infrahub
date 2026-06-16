@@ -10,13 +10,13 @@ from tests.helpers.constants import INFRAHUB_USE_TEST_CONTAINERS, PORT_BOLT_NEO4
 
 
 def get_exposed_port(container: DockerContainer, port: int) -> int:
-    """
-    Use this method instead of DockerContainer.get_exposed_port as it is decorated with wait_container_is_ready
+    """Use this method instead of DockerContainer.get_exposed_port as it is decorated with wait_container_is_ready.
+
     which we do not want to use as it does not perform a real healthcheck. DockerContainer.get_exposed_port
     also introduces extra "Waiting for container" logs as we might call it multiple times for containers exposing
     multiple ports such as rabbitmq.
-    """
 
+    """
     return int(container.get_docker_client().port(container.get_wrapped_container().id, port))
 
 

@@ -29,6 +29,7 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
+    SchemaAttributeDisplay,
     UpdateSupport,
 )
 from infrahub.core.schema.attribute_parameters import (
@@ -350,7 +351,7 @@ base_node_schema = SchemaNode(
             internal_kind=list[list[str]],
             description="List of multi-element uniqueness constraints that can combine relationships and attributes",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="documentation",
@@ -579,7 +580,7 @@ attribute_schema = SchemaNode(
             description="Indicate if the value of this attribute must be unique in the database for a given model.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="optional",
@@ -662,6 +663,19 @@ attribute_schema = SchemaNode(
             optional=True,
             description="Mark attribute as deprecated and provide a user-friendly message to display",
             max_length=DEFAULT_DESCRIPTION_LENGTH,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the attribute is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
@@ -883,6 +897,19 @@ relationship_schema = SchemaNode(
             max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the relationship is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(
@@ -931,6 +958,14 @@ generic_schema = SchemaNode(
             description="List of Nodes that are referencing this Generic",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="restricted_namespaces",
+            kind="List",
+            internal_kind=str,
+            description="Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
     relationships=[

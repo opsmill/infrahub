@@ -6,6 +6,9 @@ ci_config: &ci_config
 github_workflows: &github_workflows
   - ".github/workflows/*.yml"
 
+version_upgrade_workflow:
+  - ".github/workflows/version-upgrade.yml"
+
 development_files: &development_files
   - "development/**"
   - "tasks/**"
@@ -35,8 +38,7 @@ openapi_schema_files: &openapi_schema_files
 
 graphql_schema_files: &graphql_schema_files
   - "schema/schema.graphql"
-  - "frontend/app/src/shared/api/graphql/graphql-env.d.ts"
-  - "frontend/app/src/shared/api/graphql/graphql-cache.d.ts"
+  - "frontend/app/src/shared/api/graphql/generated/**"
 
 e2e_test_files:
   - "frontend/app/tests/e2e/**"
@@ -112,6 +114,14 @@ openapi_schema_all:
 
 graphql_schema_all:
   - *graphql_schema_files
+
+observability_standalone_all:
+  - "development/docker-compose-observability.yml"
+  - "development/convert_compose_standalone.py"
+  - "development/alloy/**"
+  - "development/grafana/**"
+  - "development/loki/**"
+  - "development/tempo/**"
 
 e2e_all:
   - *backend_files

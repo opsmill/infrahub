@@ -25,8 +25,9 @@ async def convert_repository_type(
     repository_post_creator: RepositoryFinalizer,
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
-    An extra check is performed on input node peers relationships to make sure they are still valid."""
 
+    An extra check is performed on input node peers relationships to make sure they are still valid.
+    """
     repo_name = repository.name.value
     async with lock.registry.get(name=repo_name, namespace="repository"):
         async with db.start_transaction() as dbt:

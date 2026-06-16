@@ -8,7 +8,7 @@ import tomllib
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
@@ -22,17 +22,21 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.log import get_logger
+from infrahub.tls.context_builder import TlsContextBuilder
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
+
+log = get_logger()
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
@@ -53,6 +57,7 @@ def default_append_git_suffix_domains() -> list[str]:
 class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
+    LOG_FORWARDING = "log_forwarding"
 
 
 class UserInfoMethod(StrEnum):
@@ -205,6 +210,10 @@ class MainSettings(BaseSettings):
         default=True,
         description="When enabled, diff updates are triggered for active branches after a branch merge.",
     )
+    delete_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
@@ -213,7 +222,12 @@ class MainSettings(BaseSettings):
 
     @property
     def infrahub_address(self) -> str:
-        """This is the address that the Prefect worker will use to connect to Infrahub API."""
+        """This is the address that the Prefect worker will use to connect to Infrahub API.
+
+        Raises:
+            InitializationError: When `internal_address` has not been configured.
+
+        """
         if self.internal_address:
             return self.internal_address
 
@@ -336,7 +350,7 @@ class DatabaseSettings(BaseSettings):
 
 
 class DevelopmentSettings(BaseSettings):
-    """The development settings are only relevant for local development"""
+    """The development settings are only relevant for local development."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DEV_")
 
@@ -505,6 +519,11 @@ class GitSettings(BaseSettings):
     use_explicit_merge_commit: bool = Field(
         default=False, description="Whether to allow explicit merge commits when infrahub merges branches"
     )
+    delete_git_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
+        "Requires delete_branch_after_merge to be enabled.",
+    )
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
@@ -537,35 +556,13 @@ class HTTPSettings(BaseSettings):
         try:
             # Validate that the context can be created, we want to raise this error during application start
             # instead of running into issues later when we first try to use the tls context.
-            self.get_tls_context()
+            TlsContextBuilder.build(
+                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
+            )
         except ssl.SSLError as exc:
             raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
 
         return self
-
-    def get_tls_context(self, force_verify: bool = False) -> ssl.SSLContext:
-        if self.tls_insecure and not force_verify:
-            return ssl._create_unverified_context()
-
-        if not self.tls_ca_bundle:
-            return ssl.create_default_context()
-
-        tls_ca_path = Path(self.tls_ca_bundle)
-
-        try:
-            possibly_file = tls_ca_path.exists()
-        except OSError:
-            # Raised if the filename is too long which can indicate
-            # that the value is a PEM certificate in string form.
-            possibly_file = False
-
-        if possibly_file and tls_ca_path.is_file():
-            context = ssl.create_default_context(cafile=str(tls_ca_path))
-        else:
-            context = ssl.create_default_context()
-            context.load_verify_locations(cadata=self.tls_ca_bundle)
-
-        return context
 
 
 class InitialSettings(BaseSettings):
@@ -599,7 +596,7 @@ def _default_scopes() -> list[str]:
 
 
 class SecurityOIDCBaseSettings(BaseSettings):
-    """Baseclass for typing"""
+    """Baseclass for typing."""
 
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
@@ -607,6 +604,19 @@ class SecurityOIDCBaseSettings(BaseSettings):
     pkce_enabled: bool = Field(
         default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
     )
+    id_token_verify_signature: bool = Field(
+        default=True,
+        description="Verify the cryptographic signature, audience and issuer of the OIDC id_token.",
+    )
+
+    @model_validator(mode="after")
+    def warn_when_signature_verification_disabled(self) -> Self:
+        if not self.id_token_verify_signature:
+            log.warning(
+                "OIDC id_token verification is disabled; any token presented to the callback will be trusted.",
+                provider=self.__class__.__name__,
+            )
+        return self
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -617,7 +627,7 @@ class SecurityOIDCSettings(SecurityOIDCBaseSettings):
 
 
 class SecurityOIDCGoogle(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_GOOGLE_")
 
@@ -635,13 +645,13 @@ class SecurityOIDCGoogle(SecurityOIDCSettings):
 
 
 class SecurityOIDCProvider1(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER1_")
 
 
 class SecurityOIDCProvider2(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER2_")
 
@@ -655,7 +665,7 @@ class SecurityOIDCProviderSettings(BaseModel):
 
 
 class SecurityOAuth2BaseSettings(BaseSettings):
-    """Baseclass for typing"""
+    """Baseclass for typing."""
 
     icon: str = Field(default="mdi:account-key")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
@@ -665,7 +675,7 @@ class SecurityOAuth2BaseSettings(BaseSettings):
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
     client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
@@ -677,13 +687,13 @@ class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
 
 
 class SecurityOAuth2Provider1(SecurityOAuth2Settings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER1_")
 
 
 class SecurityOAuth2Provider2(SecurityOAuth2Settings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER2_")
 
@@ -772,6 +782,15 @@ class SecuritySettings(BaseSettings):
     sso_user_default_group: str | None = Field(
         default=None,
         description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
+    )
+    sso_account_name_fallback: bool = Field(
+        default=True,
+        description=(
+            "When enabled, an SSO login that has no linked identity and matches an existing account by "
+            "display name claims that account, as long as it has not already been linked to another "
+            "identity. When disabled, such a login always provisions a separate account instead of "
+            "reusing an existing one."
+        ),
     )
 
     @model_validator(mode="after")
@@ -874,6 +893,165 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
+
+
+class SyslogProtocol(StrEnum):
+    TCP = "tcp"
+    UDP = "udp"
+
+
+class SyslogFormat(StrEnum):
+    RFC5424 = "rfc5424"
+    RFC3164 = "rfc3164"
+
+
+class TcpFraming(StrEnum):
+    NEWLINE = "newline"
+    OCTET_COUNTING = "octet-counting"
+
+
+class LogForwardingDestinationType(StrEnum):
+    SYSLOG = "syslog"
+
+
+class LogForwardingDestination(BaseModel):
+    name: str = Field(description="Unique name for the destination, used in all observability output.")
+    type: LogForwardingDestinationType = Field(
+        default=LogForwardingDestinationType.SYSLOG, description="Destination type."
+    )
+    host: str = Field(description="Destination host or IP address.")
+    port: int | None = Field(
+        default=None, ge=1, le=65535, description="Destination port number. Defaults to 6514 for TLS, 514 otherwise."
+    )
+    protocol: SyslogProtocol = Field(default=SyslogProtocol.UDP, description="Transport protocol (tcp or udp).")
+    format: SyslogFormat = Field(default=SyslogFormat.RFC5424, description="Syslog format standard.")
+    tcp_framing: TcpFraming = Field(
+        default=TcpFraming.NEWLINE, description="TCP framing method (newline or octet-counting)."
+    )
+    tls_enabled: bool = Field(default=False, description="Enable TLS encryption for TCP connections.")
+    tls_ca_bundle: str | None = Field(
+        default=None, description="Path or PEM string for CA bundle to validate syslog server certificate."
+    )
+    queue_size: int = Field(default=10000, ge=1, description="Maximum number of messages in the per-destination queue.")
+    max_reconnect_interval: int = Field(
+        default=60, ge=1, description="Maximum reconnection backoff interval in seconds."
+    )
+    shutdown_drain_timeout: int = Field(
+        default=10, ge=0, description="Seconds to wait for queue drain on graceful shutdown."
+    )
+    forward_application_logs: bool = Field(
+        default=False, description="Forward application log messages to this destination."
+    )
+    min_log_severity: ExtraLogLevel = Field(
+        default=ExtraLogLevel.WARNING,
+        description="Minimum Python log severity to forward when application log forwarding is enabled.",
+    )
+
+    @property
+    def service_port(self) -> int:
+        if self.port:
+            return self.port
+        if self.tls_enabled:
+            return 6514
+        return 514
+
+    @model_validator(mode="after")
+    def validate_tls_protocol(self) -> Self:
+        if self.tls_enabled and self.protocol == SyslogProtocol.UDP:
+            raise ValueError("TLS is only supported with TCP protocol, not UDP.")
+        return self
+
+
+_DESTINATION_NAME_RE = re.compile(r"^[a-z0-9_]+$")
+
+
+def _load_destination_from_env(name: str) -> LogForwardingDestination:
+    """Build a LogForwardingDestination by scanning os.environ for keys matching.
+
+    INFRAHUB_LOG_FORWARDING_DESTINATION_{NAME_UPPER}_{FIELD_UPPER}.
+
+    """
+    prefix = f"INFRAHUB_LOG_FORWARDING_DESTINATION_{name.upper()}_"
+    valid_field_names = set(LogForwardingDestination.model_fields.keys()) - {"name"}
+    fields: dict[str, Any] = {"name": name}
+    for env_key, env_val in os.environ.items():
+        if env_key.upper().startswith(prefix):
+            suffix = env_key[len(prefix) :].lower()
+            if suffix in valid_field_names:
+                fields[suffix] = env_val
+    return LogForwardingDestination.model_validate(fields)
+
+
+class LogForwardingSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_LOG_FORWARDING_")
+    hostname: str | None = Field(
+        default=None,
+        description="Hostname to use in syslog message headers. If not set, defaults to the system FQDN.",
+    )
+    destination_names: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description=(
+            "Comma-separated list of destination names to load from per-destination environment variables "
+            "(e.g. `INFRAHUB_LOG_FORWARDING_DESTINATION_PRIMARY_HOST` where `PRIMARY` is the destination name). "
+            "Names must match `[a-z0-9_]+`. Mutually exclusive with `destinations`."
+        ),
+    )
+    destinations: list[LogForwardingDestination] = Field(
+        default_factory=list,
+        description="List of log forwarding destinations. (Enterprise only: not available in the community version.)",
+    )
+
+    @field_validator("destination_names", mode="before")
+    @classmethod
+    def _split_destination_names(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return [n.strip() for n in v.split(",") if n.strip()]
+        return v
+
+    @model_validator(mode="after")
+    def _materialize_destinations_from_env(self) -> Self:
+        if not self.destination_names:
+            return self
+        for name in self.destination_names:
+            if not _DESTINATION_NAME_RE.match(name):
+                raise ValueError(
+                    f"Invalid log forwarding destination name '{name}': names configured via "
+                    "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES must match [a-z0-9_]+ (lowercase letters, "
+                    "digits, and underscores only)."
+                )
+        loaded = [_load_destination_from_env(name) for name in self.destination_names]
+        # Re-run uniqueness check (covers duplicates within destination_names itself).
+        self.__class__.validate_unique_names(loaded)
+        # in case destinations have already been loaded
+        if self.destinations == loaded:
+            return self
+        # if destinations already exist and != loaded, they must have be set in different places
+        # with different values
+        if self.destinations:
+            raise ValueError(
+                "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES cannot be combined with explicit `destinations` "
+                "(set via INFRAHUB_LOG_FORWARDING_DESTINATIONS or infrahub.toml). Use one mechanism, not both."
+            )
+        self.destinations = loaded
+        return self
+
+    @field_validator("destinations")
+    @classmethod
+    def validate_unique_names(cls, v: list[LogForwardingDestination]) -> list[LogForwardingDestination]:
+        unique_names = {d.name for d in v}
+        if len(unique_names) == len(v):
+            return v
+        all_names = [d.name for d in v]
+        duplicate_names = {name for name in unique_names if all_names.count(name) > 1}
+        sorted_dupes = ", ".join(sorted(duplicate_names))
+        raise ValueError(f"Destination names must be unique; duplicates found: {sorted_dupes}")
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns enterprise features enabled by log forwarding configuration."""
+        if any(d.type == LogForwardingDestinationType.SYSLOG for d in self.destinations):
+            return [EnterpriseFeatures.LOG_FORWARDING]
+        return []
 
 
 class PolicySettings(BaseSettings):
@@ -1038,11 +1216,18 @@ class Settings(BaseSettings):
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
+    log_forwarding: LogForwardingSettings = LogForwardingSettings()
+
+    @model_validator(mode="after")
+    def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
+        if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
+            raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
+        return self
 
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
-        return self.policy.enterprise_features
+        return self.policy.enterprise_features + self.log_forwarding.enterprise_features
 
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:
@@ -1074,6 +1259,7 @@ def load_and_exit(config_file_name: Path | str = "infrahub.toml", config_data: d
     Args:
         config_file_name (str, optional): [description]. Defaults to "pyproject.toml".
         config_data (dict, optional): [description]. Defaults to None.
+
     """
     try:
         SETTINGS.settings = load(config_file_name=config_file_name, config_data=config_data)

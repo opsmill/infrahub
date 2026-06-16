@@ -404,9 +404,10 @@ async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
 
 
 def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]) -> dict[str, Any]:
-    """
-    Because we can't guarantee that Prefect is empty at the start of the test easily
+    """Because we can't guarantee that Prefect is empty at the start of the test easily.
+
     we need to exclude all events not created by this test suite.
+
     """
     filtered_events = [event for event in result_data["InfrahubEvent"]["edges"] if event["node"]["id"] in in_scope_ids]
     return {"InfrahubEvent": {"count": len(filtered_events), "edges": filtered_events}}
@@ -418,9 +419,11 @@ async def prefect_client(prefect_test_fixture: Generator[None, None, None]) -> A
         yield client
 
 
-async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: dict[str, Any]) -> ExecutionResult:
+async def run_query(
+    db: InfrahubDatabase, branch: Branch, query: str, variables: dict[str, Any], account_session: AccountSession
+) -> ExecutionResult:
     branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=account_session)
     return await graphql(
         schema=gql_params.schema,
         source=query,
@@ -436,12 +439,14 @@ async def test_event_query_prefect(
     register_core_models_schema: None,
     events_data: dict[str, InfrahubEvent],
     event_ids_inscope: list[str],
+    session_admin: AccountSession,
 ) -> None:
     result = await run_query(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
         variables={},
+        account_session=session_admin,
     )
     assert result.errors is None
     assert result.data
@@ -454,6 +459,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"order": "ASC"},
+        account_session=session_admin,
     )
     assert result.errors is None
     assert result.data
@@ -463,6 +469,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"branch": BRANCH1_NAME},
+        account_session=session_admin,
     )
     assert result_branch1.errors is None
     assert result_branch1.data
@@ -475,6 +482,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_SIMPLE_COUNT_EVENT,
         variables={"branch": BRANCH1_NAME},
+        account_session=session_admin,
     )
     assert result_count_branch1.errors is None
     assert result_count_branch1.data
@@ -489,6 +497,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_MUTATED_NODES,
         variables={"id": events_data["branch1_mutated1"].node_id},
+        account_session=session_admin,
     )
     assert mutated_nodes.errors is None
     assert mutated_nodes.data
@@ -529,6 +538,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"branch": BRANCH1_NAME, "account": ACCOUNT1_ID},
+        account_session=session_admin,
     )
     assert branch1_account1.errors is None
     assert branch1_account1.data
@@ -539,6 +549,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"branch": BRANCH1_NAME, "account": ACCOUNT2_ID},
+        account_session=session_admin,
     )
     assert branch1_account2.errors is None
     assert branch1_account2.data
@@ -549,6 +560,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"branch": BRANCH2_NAME, "account": ACCOUNT1_ID},
+        account_session=session_admin,
     )
     assert branch2_account1.errors is None
     assert branch2_account1.data
@@ -559,6 +571,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"branch": BRANCH2_NAME, "account": ACCOUNT2_ID},
+        account_session=session_admin,
     )
     assert branch2_account2.errors is None
     assert branch2_account2.data
@@ -569,6 +582,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"account": ACCOUNT1_ID, "limit": 4, "offset": 0},
+        account_session=session_admin,
     )
     assert paginated_account1_page1.errors is None
     assert paginated_account1_page1.data
@@ -580,6 +594,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"account": ACCOUNT1_ID, "limit": 4, "offset": 4},
+        account_session=session_admin,
     )
     assert paginated_account1_page2.errors is None
     assert paginated_account1_page2.data
@@ -591,6 +606,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"account": ACCOUNT1_ID, "branch": [BRANCH1_NAME, BRANCH3_NAME]},
+        account_session=session_admin,
     )
     assert account1_branch1_branch3.errors is None
     assert account1_branch1_branch3.data
@@ -602,6 +618,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"level": 1, "branch": [BRANCH3_NAME]},
+        account_session=session_admin,
     )
     assert branch3_level_1.errors is None
     assert branch3_level_1.data
@@ -614,6 +631,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"has_children": True, "branch": [BRANCH3_NAME]},
+        account_session=session_admin,
     )
     assert branch3_has_children_true.errors is None
     assert branch3_has_children_true.data
@@ -626,6 +644,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"parent__ids": [parent_node_id]},
+        account_session=session_admin,
     )
     assert find_parent.errors is None
     assert find_parent.data
@@ -638,6 +657,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"event_type": ["infrahub.node.created"], "limit": 50},
+        account_session=session_admin,
     )
     assert created_branch1.errors is None
     assert created_branch1.data
@@ -650,6 +670,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"branch": [BRANCH1_NAME]},
+        account_session=session_admin,
     )
     assert all_branch1.errors is None
     assert all_branch1.data
@@ -661,6 +682,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"branch": [BRANCH1_NAME], "since": occurred_at},
+        account_session=session_admin,
     )
     assert since_timestamp.errors is None
     assert since_timestamp.data
@@ -671,6 +693,7 @@ async def test_event_query_prefect(
         branch=default_branch,
         query=QUERY_EVENT,
         variables={"event_type": ["infrahub.group.member_added"], "account": ACCOUNT2_ID},
+        account_session=session_admin,
     )
     assert group_add_event.errors is None
     assert group_add_event.data
@@ -691,6 +714,7 @@ async def test_event_query_prefect(
             "event_type": ["infrahub.node.created"],
             "primary_node__ids": events_data["branch1_mutated7"].node_id,
         },
+        account_session=session_admin,
     )
     assert not relationship_cardinality_many.errors
     assert relationship_cardinality_many.data

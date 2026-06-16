@@ -49,18 +49,20 @@ jobs:
       yaml: ${{ steps.changes.outputs.yaml_all }}
       infrahub_uv_files: ${{ steps.changes.outputs.infrahub_uv_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
+      version_upgrade_workflow: ${{ steps.changes.outputs.version_upgrade_workflow }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
       graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
       dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
+      observability_standalone: ${{ steps.changes.outputs.observability_standalone_all }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check for file changes
-        uses: opsmill/paths-filter@v3.0.2
+        uses: dorny/paths-filter@v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -105,20 +107,26 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
+        with:
+          submodules: true
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
-        run: npx biome ci .
+        run: pnpm exec biome ci .
       - name: Check unused exports (Knip)
-        run: npm run knip
+        run: pnpm knip
       - name: Check TypeScript regressions (Betterer)
-        run: npx betterer ci
+        run: pnpm exec betterer ci
 
   frontend-validate-openapi-types:
     if: |
@@ -138,12 +146,16 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Generate OpenAPI types
-        run: npm run codegen:openapi
+        run: pnpm codegen:openapi
       - name: Check for uncommitted changes
         run: |
           if ! git diff --exit-code src/shared/api/rest/types.generated.ts; then
@@ -153,7 +165,7 @@ jobs:
             echo ""
             echo "To fix this, run the following commands from the repository root:"
             echo "  cd frontend/app"
-            echo "  npm run codegen:openapi"
+            echo "  pnpm codegen:openapi"
             echo "  git add src/shared/api/rest/types.generated.ts"
             echo "  git commit -m 'chore: regenerate OpenAPI types'"
             exit 1
@@ -177,24 +189,67 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Generate GraphQL types
-        run: npm run codegen:graphql
+        run: pnpm codegen:graphql
       - name: Check for uncommitted changes
         run: |
-          if ! git diff --exit-code src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts; then
+          if ! git diff --exit-code src/shared/api/graphql/generated/graphql-env.d.ts src/shared/api/graphql/generated/graphql-cache.d.ts; then
             echo "❌ Error: Generated GraphQL types are out of sync"
             echo ""
             echo "The gql.tada generated files need to be regenerated."
             echo ""
             echo "To fix this, run the following commands from the repository root:"
             echo "  cd frontend/app"
-            echo "  npm run codegen:graphql"
-            echo "  git add src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts"
+            echo "  pnpm codegen:graphql"
+            echo "  git add src/shared/api/graphql/generated/graphql-env.d.ts src/shared/api/graphql/generated/graphql-cache.d.ts"
             echo "  git commit -m 'chore: regenerate GraphQL types'"
+            exit 1
+          fi
+
+  validate-observability-standalone:
+    if: |
+      needs.files-changed.outputs.observability_standalone == 'true'
+    needs: ["files-changed", "prepare-environment"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Regenerate standalone compose file
+        working-directory: development
+        run: uv run python convert_compose_standalone.py
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code development/docker-compose-observability-standalone.yml; then
+            echo "❌ Error: development/docker-compose-observability-standalone.yml is out of sync"
+            echo ""
+            echo "The observability source files have been updated, but the standalone compose file hasn't been regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd development"
+            echo "  uv run python convert_compose_standalone.py"
+            echo "  git add docker-compose-observability-standalone.yml"
+            echo "  git commit -m 'chore: regenerate standalone observability compose'"
             exit 1
           fi
 
@@ -421,11 +476,20 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "graphql"
+          - "core-diff"
+          - "core-schema"
+          - "other"
     runs-on:
       group: huge-runners
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
+      PYTEST_XDIST_WORKER_COUNT: 2
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -448,15 +512,18 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Unit Tests"
-        run: "uv run invoke backend.test-component"
-      - name: "Coveralls : Unit Tests"
+      - name: "Validate component test shards"
+        if: matrix.shard == 'other'
+        run: "uv run invoke backend.validate-component-shards"
+      - name: "Component Tests (${{ matrix.shard }})"
+        run: "uv run invoke backend.test-component --shard ${{ matrix.shard }}"
+      - name: "Coveralls : Component Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-component
+          flag-name: backend-component-${{ matrix.shard }}
           parallel: true
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -714,18 +781,23 @@ jobs:
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          # https://github.com/microsoft/playwright/issues/41000
+          node-version: 24.15.0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: "Install frontend"
         working-directory: ./frontend/app
-        run: npm install
+        run: pnpm install --frozen-lockfile
       - name: Install Playwright Browsers
         working-directory: ./frontend/app
-        run: npx playwright install chromium
+        run: pnpm exec playwright install chromium
       - name: "Run unit tests"
         working-directory: ./frontend/app
-        run: "npm run test:coverage"
+        run: "pnpm test:coverage"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -788,6 +860,33 @@ jobs:
         run: "uv sync --all-groups"
       - name: Run validation
         run: uv run invoke schema.validate-jsonschema
+
+  validate-docker-compose-env-vars:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    steps:
+      - name: Check out repository code
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Run validation
+        run: uv run invoke release.validate-dockercomposeenv
 
   documentation:
     defaults:
@@ -989,8 +1088,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
@@ -1053,22 +1156,25 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
-        run: npx playwright install chromium --no-shell
+        run: pnpm exec playwright install chromium --no-shell
 
-      # Make chromium ignore netlink messages by returning ReadMessages early
-      - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run --no-shell | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
-      - name: Chrome func offset
-        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
-      - name: Patch chromium
-        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+      # Make chromium ignore netlink messages so AddressTrackerLinux takes its "assume always
+      # online" path. The LD_PRELOAD shim fails NETLINK_ROUTE sockets at the libc level, which
+      # is robust across Playwright/Chromium versions (unlike patching the chrome binary). The
+      # shim is injected into the browser process via playwright.config.ts (NO_NETLINK_SO).
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
 
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: npx playwright test artifact
+        run: pnpm exec playwright test artifact
 
       - name: Add response delay if required
         if: needs.files-changed.outputs.e2e_tests == 'true'
@@ -1083,7 +1189,7 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Run Playwright tests
-        run: npm run ci:test:e2e
+        run: pnpm ci:test:e2e
 
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -1097,7 +1203,7 @@ jobs:
 
       - name: playwright-report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: frontend/app/playwright-report/
@@ -1237,7 +1343,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.e2e == 'true'
+      (needs.files-changed.outputs.e2e == 'true' ||
+      needs.files-changed.outputs.version_upgrade_workflow == 'true')
     uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
@@ -1339,5 +1446,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
+          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
           parallel-finished: true

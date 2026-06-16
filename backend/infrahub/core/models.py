@@ -76,9 +76,7 @@ class SchemaBranchHash(BaseModel):
 
     @property
     def is_valid(self) -> bool:
-        """
-        TODO: This is a temporary solution to avoid comparing schema hashes if there are less than 2 nodes or generics.
-        """
+        """TODO: This is a temporary solution to avoid comparing schema hashes if there are less than 2 nodes or generics."""
         if len(self.nodes) < 2 and len(self.generics) < 2:
             return False
         return True
@@ -424,7 +422,6 @@ class HashableModel(BaseModel):
         In order for this function to work, it's recommended to exclude all objects or list of objects with _exclude_from_hash
         List of hashable elements are fine and they will be converted automatically to Tuple.
         """
-
         values = []
         md5hash = hashlib.md5(usedforsecurity=False)
         for field_name in sorted(self.__class__.model_fields.keys()):
@@ -471,7 +468,12 @@ class HashableModel(BaseModel):
         return tuple(getattr(self, key) for key in self._sort_by if hasattr(self, key))
 
     def _sorting_keys(self, other: HashableModel) -> tuple[list[Any], list[Any]]:
-        """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
+        """Retrieve the values of the attributes listed in the _sort_key list, for both objects.
+
+        Raises:
+            TypeError: When sorting is not supported for either object because `_sort_by` is not defined.
+
+        """
         if not self._sort_by:
             raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
 
@@ -511,7 +513,7 @@ class HashableModel(BaseModel):
 
     @staticmethod
     def _organize_sub_items(items: list[HashableModel], shared_ids: set[str]) -> dict[tuple[Any], HashableModel]:
-        """Convert a list of HashableModel into a dict with the sorting_id is the key, or the id if it was provided as part of the shared_ids"""
+        """Convert a list of HashableModel into a dict with the sorting_id is the key, or the id if it was provided as part of the shared_ids."""
         sub_items = {}
         for item in items:
             if item.id and item.id in shared_ids:
@@ -525,12 +527,15 @@ class HashableModel(BaseModel):
     def update_list_hashable_model(
         field_name: str, attr_local: list[HashableModel], attr_other: list[HashableModel]
     ) -> list[Any]:
-        """
-        Merging the list is not easy,
-        we need to create a unique id based on the sorting keys
-        and if we have 2 sub items with the same key we can merge them recursively with update()
-        """
+        """Merging the list is not easy,.
 
+        we need to create a unique id based on the sorting keys
+        and if we have 2 sub items with the same key we can merge them recursively with update().
+
+        Raises:
+            ValueError: When items cannot produce a unique `_sorting_id`, or when duplicate sorting ids are detected.
+
+        """
         # Identify all nodes that are sharing a real IDs
         local_sub_real_ids = {item.id for item in attr_local if item.id}
         other_sub_real_ids = {item.id for item in attr_other if item.id}
@@ -579,7 +584,6 @@ class HashableModel(BaseModel):
 
         TODO Implement other fields type like dict
         """
-
         for field_name in other.__class__.model_fields.keys():
             if not hasattr(self, field_name):
                 with contextlib.suppress(ValueError):

@@ -5,8 +5,8 @@ import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
-import { useDeleteObjects } from "@/entities/nodes/object/domain/delete-objects.mutation";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { useDeleteObjects } from "@/entities/nodes/object/ui/queries/delete-objects.mutation";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { NodeCore } from "@/entities/nodes/types";
 
 export interface DeleteObjectModalProps {

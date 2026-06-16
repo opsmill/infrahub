@@ -1,0 +1,134 @@
+---
+title: Infrahub Marketplace
+---
+
+# Infrahub Marketplace
+
+The Infrahub Marketplace is a public catalog of pre-built schemas and schema collections that you can fetch and load into any Infrahub instance.
+It provides a curated starting point for common infrastructure domains — from physical device modeling to IP address management — so you can get a working data model without building one from scratch.
+
+## What the Marketplace contains
+
+The Marketplace hosts two types of content:
+
+- **Schemas** — versioned YAML files that define nodes, attributes, and relationships for a specific domain. A DCIM schema might define `Device`, `Interface`, and `Platform` nodes; an IPAM schema might define `IPAddress`, `Prefix`, and `VLAN`.
+- **Collections** — curated bundles of related schemas published together. A "network automation starter" collection might include DCIM, IPAM, location, and organization schemas in a single download.
+
+## How identifiers work
+
+Every item in the Marketplace is identified by a `namespace/name` reference, similar to Docker Hub image names or npm package scopes.
+
+- `opsmill/dcim` — the `dcim` schema published by the `opsmill` namespace
+- `opsmill/starter-pack` — the `starter-pack` collection published by `opsmill`
+
+Namespaces are tied to the account of the schema's author on the Marketplace.
+
+## Schemas and schema versions
+
+Marketplace schemas follow [semantic versioning](https://semver.org/). Each published schema has a version number (`MAJOR.MINOR.PATCH`). When you fetch a schema you can pin to a specific version or use the latest published release.
+
+Breaking changes — such as removing a node or changing a relationship cardinality — require a major version bump. Additive changes (new nodes, new optional attributes) use a minor or patch bump.
+
+## Relationship to an Infrahub instance
+
+The Marketplace is an external catalog — it stores schema definitions, not your infrastructure data. Fetching a schema from the Marketplace downloads its YAML to your local filesystem. You then load that YAML into your Infrahub instance using `infrahubctl schema load`. The Marketplace and your instance remain independent; updates to a schema on the Marketplace do not automatically change your loaded schema.
+
+## Fetch and load a schema
+
+### Prerequisites
+
+- A running Infrahub instance
+- `infrahubctl` installed and configured with your instance URL (see [installation guide](../../deploy-manage/install-configure/install/overview.mdx))
+
+### Find the schema
+
+Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) and identify the schema or collection you want.
+Each item has an identifier in `namespace/name` format — for example, `opsmill/dcim`.
+Note this identifier; you will use it in the next step.
+
+### Fetch the schema
+
+Run `infrahubctl marketplace get` with the identifier:
+
+```shell
+infrahubctl marketplace get opsmill/dcim
+```
+
+The command downloads the schema YAML to `./schemas/` by default:
+
+```text
+Downloaded schema opsmill/dcim (version 1.4.2) → schemas/dcim.yml
+```
+
+#### Pin to a specific version
+
+Pin to a published version with `--version`:
+
+```shell
+infrahubctl marketplace get opsmill/dcim --version 1.2.0
+```
+
+#### Save to a custom directory
+
+Use `--output-dir` to change where files are saved:
+
+```shell
+infrahubctl marketplace get opsmill/dcim --output-dir ./infra/schemas
+```
+
+#### Inspect before loading
+
+Use `--stdout` to print the schema YAML to stdout without writing to disk:
+
+```shell
+infrahubctl marketplace get opsmill/dcim --stdout
+```
+
+This is useful for reviewing the schema or piping it into another tool before committing to disk.
+
+#### Collections
+
+The Marketplace also hosts collections — bundles of related schemas published together.
+The `get` command detects whether an identifier is a schema or a collection automatically.
+To force collection download when a name exists as both, add `--collection`:
+
+```shell
+infrahubctl marketplace get opsmill/starter-pack --collection
+```
+
+A collection download writes one file per schema in the bundle.
+
+### Load the schema into Infrahub
+
+Use `infrahubctl schema load` to apply the downloaded file to your instance:
+
+```shell
+infrahubctl schema load schemas/dcim.yml
+```
+
+For a collection, load all files at once:
+
+```shell
+infrahubctl schema load schemas/
+```
+
+Infrahub validates the schema, applies the changes, and restarts the relevant services.
+
+:::tip Verify the schema loaded
+
+After loading, browse to the [schema page](http://localhost:8000/schema) in the Infrahub UI.
+The new nodes should appear in the node list.
+
+:::
+
+## Version compatibility
+
+Marketplace schemas are versioned independently from Infrahub itself.
+If a schema uses features from a newer version of Infrahub than you are running, `infrahubctl schema load` reports a validation error.
+Check the schema's Marketplace page for the minimum supported Infrahub version before loading.
+
+## Related resources
+
+- [About Schema](../overview.mdx) — core schema concepts and how schemas govern data in Infrahub
+- [Create and load schema](../create-and-load.mdx) — create a schema from scratch and load it into Infrahub
+- [Schema extensions](../extensions.mdx) — add attributes and relationships to existing nodes using extension files

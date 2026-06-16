@@ -1,0 +1,25 @@
+---
+feature: Deployment & Management — Managing API Tokens (page move)
+pr: TBD
+description: |
+  Moves guides/managing-api-tokens.mdx into deploy-manage/user-management/managing-api-tokens.mdx.
+  Single-page move; image paths adjusted for new directory depth.
+  Original guides/managing-api-tokens.mdx remains on disk.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/guides/managing-api-tokens
+    to: /docs/deploy-manage/user-management/managing-api-tokens
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/user-management/managing-api-tokens
+    title: Managing API tokens
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/faq/faq.mdx
+    line: 137
+    current: ../guides/managing-api-tokens.mdx
+    should_be: ../deploy-manage/user-management/managing-api-tokens.mdx

@@ -1,6 +1,6 @@
 import { ListBoxItem } from "react-aria-components";
 
-import type { Dropdown } from "@/shared/api/graphql/generated/graphql";
+import type { Dropdown } from "@/shared/api/graphql/generated/types";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";

@@ -135,11 +135,11 @@ class TestConvertRepository(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         local_repo: None,
     ) -> None:
-        """
-        First build fields mapping required to convert a CoreRepository to a CoreReadOnlyRepository,
-        then convert the repository, and finally check that the repository is working properly.
-        """
+        """First build fields mapping required to convert a CoreRepository to a CoreReadOnlyRepository,.
 
+        then convert the repository, and finally check that the repository is working properly.
+
+        """
         start_time = Timestamp()
 
         query = """ query($source_kind: String!, $target_kind: String!) {
@@ -273,11 +273,11 @@ class TestConvertRepository(TestInfrahubApp):
         local_repo: None,
         git_repos_source_dir_module_scope: Path,
     ) -> None:
-        """
-        First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,
-        then convert the repository, and finally check that the repository is working properly.
-        """
+        """First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,.
 
+        then convert the repository, and finally check that the repository is working properly.
+
+        """
         start_time = Timestamp()
 
         query_get_mapping = """ query($source_kind: String!, $target_kind: String!) {
@@ -420,11 +420,11 @@ class TestConvertRepository(TestInfrahubApp):
         local_repo: None,
         git_repos_source_dir_module_scope: Path,
     ) -> None:
-        """
-        First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,
-        then convert the repository, and finally check that the repository is working properly.
-        """
+        """First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,.
 
+        then convert the repository, and finally check that the repository is working properly.
+
+        """
         start_time = Timestamp()
 
         query_get_mapping = """ query($source_kind: String!, $target_kind: String!) {
@@ -572,10 +572,7 @@ class TestConvertRepository(TestInfrahubApp):
     async def _create_proposed_change_and_wait_for_validators(
         self, repository_id: str, client: InfrahubClient, source_branch: str, target_branch: str, db: InfrahubDatabase
     ):
-        """
-        Create a proposed change and make sure validators are attached to the input repository.
-        """
-
+        """Create a proposed change and make sure validators are attached to the input repository."""
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,
             data={"source_branch": source_branch, "destination_branch": target_branch, "name": "test-pc"},

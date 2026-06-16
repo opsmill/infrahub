@@ -1,0 +1,160 @@
+---
+name: Claude Code
+
+"on":
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  # Only genuine "@claude" comments/reviews share a cancellable group (so a newer
+  # request supersedes an older one on the same PR). Every other event — including
+  # Claude's own "Claude Code is working…" status comments and unrelated review
+  # comments — gets a unique group via github.run_id so it cancels nothing. The
+  # concurrency group is evaluated before the job `if:`, so filtering there is not
+  # enough to prevent these incidental events from cancelling a running Claude job.
+  group: >-
+    ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}-${{
+      (contains(github.event.comment.body, '@claude') || contains(github.event.review.body, '@claude'))
+      && 'claude' || github.run_id
+    }}
+  cancel-in-progress: true
+
+jobs:
+  claude:
+    if: |
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(github.event.comment.body, '@claude') &&
+        !contains(github.event.comment.body, '@claude review') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      ) || (
+        github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        !contains(github.event.comment.body, '@claude review') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      ) || (
+        github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@claude') &&
+        !contains(github.event.review.body, '@claude review') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read  # Required for Claude to read CI results on PRs
+    steps:
+      - name: Resolve PR head branch
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [[ "$EVENT_NAME" == "issue_comment" ]]; then
+            BRANCH=$(gh pr view "$PR_NUMBER" \
+              --repo "$REPO" \
+              --json headRefName --jq '.headRefName')
+          else
+            BRANCH="$PR_HEAD_REF"
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR head branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.resolve.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Install pre-push safety hook
+        env:
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+        run: |
+          printf '%s' "$PR_BRANCH" > .git/allowed-push-branch
+          cat > .git/hooks/pre-push << 'HOOK'
+          #!/bin/bash
+          ALLOWED_BRANCH=$(cat "$(git rev-parse --git-dir)/allowed-push-branch")
+          while read local_ref local_sha remote_ref remote_sha; do
+            if [[ "$remote_ref" != "refs/heads/$ALLOWED_BRANCH" ]]; then
+              echo "BLOCKED: push to '$remote_ref' rejected. Only the PR head branch '$ALLOWED_BRANCH' is allowed." >&2
+              exit 1
+            fi
+          done
+          HOOK
+          chmod +x .git/hooks/pre-push
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--permission-mode dontAsk"
+
+          # This is an optional setting that allows Claude to read CI results on PRs
+          additional_permissions: |
+            actions: read
+
+          # NOTE: git push allow pattern is defence-in-depth only.
+          # The pre-push hook above enforces that pushes may only target
+          # the PR head branch. GitHub branch protection on stable/develop
+          # is the ultimate boundary.
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Read", "Edit", "Write", "Glob", "Grep",
+                  "Bash(git diff)", "Bash(git diff *)",
+                  "Bash(git log *)", "Bash(git show *)",
+                  "Bash(git status)", "Bash(git rev-parse *)",
+                  "Bash(git fetch *)", "Bash(git branch -a)",
+                  "Bash(git checkout ${{ steps.resolve.outputs.branch }})",
+                  "Bash(git add *)", "Bash(git commit -m *)",
+                  "Bash(git push origin ${{ steps.resolve.outputs.branch }})",
+                  "Bash(cd *)",
+                  "Bash(gh pr view *)", "Bash(gh pr comment *)", "Bash(gh pr edit *)", "Bash(gh pr diff *)",
+                  "Bash(gh issue view *)", "Bash(gh issue comment *)", "Bash(gh issue edit *)",
+                  "Bash(gh run view *)", "Bash(gh run list *)",
+                  "Bash(uv run pytest *)", "Bash(uv run towncrier create *)",
+                  "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
+                  "Bash(uv run invoke docs.format)", "Bash(uv run invoke docs.lint)",
+                  "Bash(uv run invoke main.lint)",
+                  "Bash(uv run invoke backend.lint)",
+                  "Bash(uv run invoke backend.generate)",
+                  "Bash(uv run invoke backend.test-unit)",
+                  "Bash(uv run invoke schema.generate-graphqlschema)",
+                  "Bash(uv run invoke schema.generate-jsonschema)",
+                  "Bash(uv run invoke docs.generate)",
+                  "Bash(npm run test)", "Bash(npm run test *)",
+                  "Bash(cd frontend/app && npm run test)",
+                  "Bash(cd frontend/app && npm run test *)",
+                  "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(pnpm run test)", "Bash(pnpm run test *)",
+                  "Bash(cd frontend/app && pnpm run test)",
+                  "Bash(cd frontend/app && pnpm run test *)",
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
+                  "Bash(ls)", "Bash(ls *)",
+                  "Bash(mkdir -p *)"
+                ],
+                "deny": [
+                  "Bash(git push --force *)", "Bash(git push -f *)",
+                  "Bash(git reset *)", "Bash(git clean *)",
+                  "Bash(gh pr merge *)",
+                  "Write(.github/**)", "Edit(.github/**)",
+                  "Write(.git/**)", "Edit(.git/**)"
+                ]
+              }
+            }
+
+          # Optional: Give a custom prompt to Claude. If this is not specified,
+          # Claude will perform the instructions specified in the triggering comment.
+          # prompt: 'Update the pull request description to include a summary of changes.'

@@ -1,60 +1,44 @@
-import Handlebars from "@/shared/libs/handlebars";
+import { graphql } from "gql.tada";
 
-export const getProposedChangesFilesThreads = Handlebars.compile(`
-query {
-  {{kind}}{{#if id}}(change__ids: "{{id}}"){{/if}} {
-    count
-    edges {
-      node {
-        id
-        display_label
-        resolved {
-          value
-        }
-        __typename
-        _updated_at
-
-        {{#each attributes}}
-          {{this.name}} {
-              value
+export const GET_FILE_THREADS = graphql(`
+  query GET_FILE_THREADS($changeIds: [ID!]) {
+    CoreFileThread(change__ids: $changeIds) {
+      count
+      edges {
+        node {
+          id
+          display_label
+          resolved {
+            value
           }
-        {{/each}}
-
-                file {
-          value
-        }
-
-        commit {
-          value
-        }
-
-        repository {
-          node {
-            id
+          __typename
+          file {
+            value
           }
-        }
-
-        line_number {
-          value
-        }
-
-        comments {
-          edges {
+          commit {
+            value
+          }
+          repository {
             node {
               id
-
-              text {
-                value
-              }
-
-              created_by {
-                node {
+            }
+          }
+          line_number {
+            value
+          }
+          comments {
+            edges {
+              node_metadata {
+                created_at
+                created_by {
                   display_label
                 }
               }
-
-              created_at {
-                value
+              node {
+                id
+                text {
+                  value
+                }
               }
             }
           }
@@ -62,5 +46,4 @@ query {
       }
     }
   }
-}
 `);

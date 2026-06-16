@@ -3,11 +3,12 @@ from .base import PatchQuery
 
 
 class DeleteDuplicatedEdgesPatchQuery(PatchQuery):
-    """
-    For all Node vertices, find duplicated or overlapping edges of the same status, type, and branch to update and delete
+    """For all Node vertices, find duplicated or overlapping edges of the same status, type, and branch to update and delete.
+
     - one edge will be kept for each pair of nodes and a given status, type, and branch. it will be
         updated to have the earliest "from" and "to" times in this group
-    - all the other duplicate/overlapping edges will be deleted
+    - all the other duplicate/overlapping edges will be deleted.
+
     """
 
     @property

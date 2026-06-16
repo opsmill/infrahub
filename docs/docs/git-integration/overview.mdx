@@ -1,0 +1,185 @@
+---
+title: Git Integration
+---
+
+import ReferenceLink from "../../src/components/Card";
+
+Git Integration in Infrahub connects your data layer to external Git repositories, letting you store and version-control the code that drives Infrahub — transformations, generators, checks, and other automation resources — alongside your infrastructure data. This page covers the underlying concepts; specific tasks like [connecting a repository](./connect-repository.mdx), [configuring `.infrahub.yml`](./infrahub-yml.mdx), and [filtering which branches sync](./branch-synchronization.mdx) live in the pages below.
+
+## Understanding Git repositories in Infrahub
+
+Infrahub integrates with external Git repositories to enable comprehensive version-controlled infrastructure management. This integration allows you to store and manage transformations, queries, Generators, and other automation resources alongside your infrastructure data. This topic explains how Infrahub's Git integration works, the available repository types, and the architectural decisions behind these features.
+
+## Why Git integration matters
+
+Modern infrastructure management requires both structured data (network configurations, device inventories) and code (automation scripts, templates, validation logic). By integrating with Git repositories, Infrahub bridges these two worlds, enabling:
+
+- **Unified version control**: Both your infrastructure data and automation code follow the same branching and merging workflows
+- **Familiar developer workflows**: Teams can leverage existing Git practices and tooling
+- **Separation of concerns**: Infrastructure data resides in Infrahub's graph database while code remains in Git
+- **Enhanced collaboration**: Multiple teams can work on different aspects of infrastructure without conflicts
+
+## Repository types and their design rationale {#read-only-vs-core}
+
+Infrahub supports two distinct repository connection types, each designed for specific use cases and operational requirements.
+
+### Repository: full bidirectional integration
+
+The standard **Repository** type provides comprehensive, bidirectional integration between Infrahub and Git. This design choice fulfills the need for truly unified version control across infrastructure data and code.
+
+**Design principles:**
+
+- **Branch parity**: Every branch in the external repository will have a corresponding branch in Infrahub
+- **Automatic synchronization**: Changes from Git are pulled automatically via background tasks
+- **Bidirectional flow**: Changes can flow from Git to Infrahub and from Infrahub back to Git (via Proposed Changes)
+
+**How it works internally:**
+
+When you create a Repository connection, Infrahub:
+
+1. Clones the repository to local storage
+2. Creates Git worktrees for each branch to enable parallel operations
+3. Tracks all remote branches and creates corresponding Infrahub branches
+4. Runs background synchronization tasks every few seconds to detect changes
+5. Parses the `.infrahub.yml` file to determine which resources to import
+
+The bidirectional nature means that when you merge a Proposed Change between two Infrahub branches that are both linked to Git branches, Infrahub creates a merge commit and automatically pushes it back to the external repository.
+
+### Read-only Repository: controlled unidirectional flow
+
+The **Read-only Repository** type offers a simpler, unidirectional integration designed for scenarios where you need to consume resources from Git without modifying the external repository.
+
+**Design principles:**
+
+- **Single reference tracking**: Links one specific Git ref (branch, tag, or commit)
+- **Manual synchronization**: Updates only happen when the `ref` property is changed
+- **Protection of external resources**: Guarantees no modifications to the external repository
+
+**How it works internally:**
+
+Read-only repositories:
+
+1. Track a single Git reference rather than all branches
+2. Pull changes only when the `ref` property is updated
+3. Import resources according to the `.infrahub.yml` configuration
+4. Maintain a simpler state model without complex branch synchronization logic
+
+## Architecture and data flow
+
+Understanding how Infrahub manages Git repositories helps clarify the system's capabilities and constraints.
+
+### Component responsibilities
+
+![Repository Architecture](../media/repository_architecture.excalidraw.svg)
+
+The architecture carefully separates concerns between components:
+
+- **Infrahub API Server**: Never directly connects to Git repositories; handles GraphQL mutations and queries
+- **Task Workers**: Manage all Git operations including cloning, fetching, and pushing
+- **Message Broker**: Coordinates communication between API server and task workers
+- **File System Storage**: Maintains local clones and worktrees in `git.repositories_directory`
+
+This separation ensures that Git operations don't block API requests and enables horizontal scaling of task workers for improved performance.
+
+### Synchronization mechanisms
+
+**For standard Repositories:**
+
+- Background tasks poll for changes multiple times per minute
+- Each sync operation fetches from origin and compares local vs. remote state
+- New branches automatically trigger Infrahub branch creation
+- Updated branches trigger re-import of changed resources
+
+**For Read-only Repositories:**
+
+- No automatic synchronization occurs
+- Updates can be triggered by modifying the `ref` property to point to a different branch, tag, or commit
+- Alternatively, use the **Import latest commit** action to fetch the latest commit for the current ref from the remote without changing the ref
+- Each update fetches the specified commit and imports resources according to configuration
+
+### Merging branches
+
+**This applies only to standard repositories:**
+
+By default, Infrahub performs fast-forward only (ff-only) merges between branches. When merging a branch linked to Git, Infrahub updates the destination branch pointer without creating a merge commit.
+
+You can configure Infrahub to always create a merge commit by setting the `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` environment variable to `true`. This approach maintains a more explicit commit history and improves auditability.
+
+<ReferenceLink title="Enabling explicit merge commits" url="/git-integration/connect-repository#customizing-git-merge-behavior"/>
+
+## The `.infrahub.yml` configuration file {#infrahub-yaml}
+
+The `.infrahub.yml` file acts as a manifest, declaring which resources Infrahub should import from the repository. This declarative approach enables:
+
+- Selective importing of repository contents based on specific needs
+- Clear boundaries between Infrahub-managed and external resources
+- Version-specific configurations (different branches can have different `.infrahub.yml` files)
+
+For detailed information about `.infrahub.yml` configuration and syntax, see [Infrahub configuration file](./infrahub-yml.mdx).
+
+## Status tracking and health monitoring {#repository-statuses}
+
+Repositories track their operational state through three distinct status dimensions, each serving a different monitoring purpose.
+
+### Admin status: lifecycle management
+
+Tracks whether Infrahub is actively using the repository:
+
+- **Active**: Repository is in production use
+- **Inactive**: Repository is disabled or unused
+- **Staging**: Repository is pending activation via Proposed Change
+
+### Operational status: connectivity health
+
+Monitors the connection between Infrahub and the Git server:
+
+- **Online**: Successfully connected and authenticated
+- **Error (credential)**: Authentication failure
+- **Error (connection)**: Network or connectivity issue
+- **Error**: Other initialization or configuration problems
+- **Unknown**: Status cannot be determined
+
+### Sync status: data consistency
+
+Indicates the state of data synchronization:
+
+- **In sync**: All repository resources are current in Infrahub
+- **Syncing**: Synchronization operation in progress
+- **Error (import)**: Failed to import resources from repository
+- **Unknown**: Synchronization state cannot be determined
+
+## Repository actions and operations
+
+Beyond basic synchronization, repositories support administrative actions for troubleshooting and maintenance:
+
+- **Check connectivity**: Validates network access and authentication without modifying data
+- **Reimport current commit**: Forces re-processing of the current commit without fetching new changes, useful for recovering from import errors
+- **Import latest commit** (read-only repositories only): Fetches the latest commit from the remote for the tracked ref and imports its resources. This is useful when the remote repository has new changes and you want to pull them without manually updating the `ref` property. Unlike changing the `ref`, this operation keeps the same ref but updates to whatever commit that ref currently points to on the remote
+
+## Design trade-offs and constraints
+
+The current architecture makes several important trade-offs:
+
+### Branch hierarchy limitations
+
+Infrahub currently supports only single-level branch hierarchy (branches created from main). This simplification:
+
+- Reduces complexity in conflict resolution
+- Ensures predictable merge paths
+- May limit advanced Git workflows
+
+### Synchronization frequency
+
+The polling-based synchronization approach:
+
+- Provides near-real-time updates (within seconds)
+- Avoids webhook complexity and firewall issues
+- May introduce slight delays compared to push-based systems
+
+## Further reading
+
+- [How to connect external Git repositories](./connect-repository.mdx) - Practical guide for setting up repositories
+- [Infrahub configuration file](./infrahub-yml.mdx) - Detailed `.infrahub.yml` reference
+- [Selective branch synchronization](./branch-synchronization.mdx) - Controlling which Git branches sync to Infrahub
+- [Proposed Changes](../proposed-changes/overview.mdx) - Understanding the merge and review process
+- [Version control in Infrahub](../immutable-history/overview.mdx) - Broader context of Infrahub's version control features

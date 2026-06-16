@@ -44,10 +44,16 @@ class TestMergeTaskLock:
         )
 
     @staticmethod
-    async def _mock_do_merge(db: InfrahubDatabase, log: Any, obj: Branch, context: Any) -> list:  # noqa: ARG004
-        obj.status = BranchStatus.MERGED
-        await obj.save(db=db)
-        registry.branch[obj.name] = obj
+    async def _mock_do_merge(
+        db: InfrahubDatabase,
+        log: Any,  # noqa: ARG004
+        branch: Branch,
+        context: Any,  # noqa: ARG004
+        proposed_change_id: str | None = None,  # noqa: ARG004
+    ) -> list:
+        branch.status = BranchStatus.MERGED
+        await branch.save(db=db)
+        registry.branch[branch.name] = branch
         return []
 
     @staticmethod
@@ -98,15 +104,17 @@ class TestMergeTaskLock:
         concurrent_count = 0
         max_concurrent = 0
 
-        async def tracking_mock_do_merge(db: InfrahubDatabase, log: Any, obj: Branch, context: Any):
+        async def tracking_mock_do_merge(
+            db: InfrahubDatabase, log: Any, branch: Branch, context: Any, proposed_change_id: str | None = None
+        ):
             nonlocal concurrent_count, max_concurrent
             concurrent_count += 1
             max_concurrent = max(max_concurrent, concurrent_count)
             await asyncio.sleep(0.1)
             concurrent_count -= 1
-            obj.status = BranchStatus.MERGED
-            await obj.save(db=db)
-            registry.branch[obj.name] = obj
+            branch.status = BranchStatus.MERGED
+            await branch.save(db=db)
+            registry.branch[branch.name] = branch
             return []
 
         mock_do_merge_fn = AsyncMock(side_effect=tracking_mock_do_merge)
