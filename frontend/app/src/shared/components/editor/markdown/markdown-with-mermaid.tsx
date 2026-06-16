@@ -2,14 +2,9 @@ import type React from "react";
 import type { Components, Options } from "react-markdown";
 import { MarkdownHooks } from "react-markdown";
 import rehypeMermaid, { type RehypeMermaidOptions } from "rehype-mermaid";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
 
-import { MermaidDiagram } from "./mermaid-diagram";
-
-type PluggableList = NonNullable<Options["rehypePlugins"]>;
-
-const remarkPlugins: PluggableList = [remarkGfm, remarkBreaks];
+import { remarkPlugins } from "@/shared/components/editor/markdown/markdown-render";
+import { MermaidDiagram } from "@/shared/components/editor/markdown/mermaid-diagram";
 
 const rehypeMermaidOptions: RehypeMermaidOptions = {
   strategy: "inline-svg",
@@ -46,7 +41,7 @@ const rehypeMermaidOptions: RehypeMermaidOptions = {
   },
 };
 
-const rehypePlugins: PluggableList = [[rehypeMermaid, rehypeMermaidOptions]];
+const rehypePlugins: Options["rehypePlugins"] = [[rehypeMermaid, rehypeMermaidOptions]];
 
 // Wrap the rendered mermaid <svg> in a pan/zoom container with controls.
 const components: Components = { svg: MermaidDiagram };

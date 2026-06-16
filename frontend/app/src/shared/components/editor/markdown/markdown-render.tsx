@@ -11,32 +11,14 @@ import { classNames } from "@/shared/utils/common";
 
 const MarkdownWithMermaid = React.lazy(() => import("./markdown-with-mermaid"));
 
-const remarkPlugins = [remarkGfm, remarkBreaks];
-
-// Fallback rendering shown while the diagram is loading:
-// render the Markdown normally but replace the raw ```mermaid block with a spinner so the rest of the document stays visible.
-const loadingComponents: Components = {
-  code({ node: _node, className: codeClassName, children, ...props }) {
-    if (codeClassName?.includes("language-mermaid")) {
-      return <Spinner className="mx-auto h-40" />;
-    }
-    return (
-      <code className={codeClassName} {...props}>
-        {children}
-      </code>
-    );
-  },
-};
+export const remarkPlugins = [remarkGfm, remarkBreaks];
 
 type MarkdownRenderProps = {
   className?: string;
   markdownText?: string;
 };
 
-export const MarkdownRender: React.FC<MarkdownRenderProps> = ({
-  className = "",
-  markdownText = "",
-}) => {
+export function MarkdownRender({ className = "", markdownText = "" }: MarkdownRenderProps) {
   const baseMarkdown = <Markdown remarkPlugins={remarkPlugins}>{markdownText}</Markdown>;
   const loadingFallback = (
     <Markdown remarkPlugins={remarkPlugins} components={loadingComponents}>
@@ -57,4 +39,19 @@ export const MarkdownRender: React.FC<MarkdownRenderProps> = ({
       )}
     </div>
   );
+}
+
+// Fallback rendering shown while the diagram is loading:
+// render the Markdown normally but replace the raw ```mermaid block with a spinner so the rest of the document stays visible.
+const loadingComponents: Components = {
+  code({ className, children, ...props }) {
+    if (className?.includes("language-mermaid")) {
+      return <Spinner className="mx-auto h-40" />;
+    }
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
 };
