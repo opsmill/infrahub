@@ -5,7 +5,7 @@ import os
 import sys
 import tempfile
 import time
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
@@ -255,12 +255,26 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema:
     return None
 
 
-@pytest.fixture
-def default_permission_backend() -> Generator[None, Any, Any]:
+@contextmanager
+def _use_default_permission_backend() -> Generator[None, Any, Any]:
     previous_backends = registry.permission_backends
     registry.permission_backends = [LocalPermissionBackend()]
-    yield
-    registry.permission_backends = previous_backends
+    try:
+        yield
+    finally:
+        registry.permission_backends = previous_backends
+
+
+@pytest.fixture
+async def default_permission_backend() -> AsyncGenerator[None, None]:
+    with _use_default_permission_backend():
+        yield
+
+
+@pytest.fixture(scope="class")
+def default_permission_backend_scope_class() -> Generator[None, Any, Any]:
+    with _use_default_permission_backend():
+        yield
 
 
 @pytest.fixture
@@ -758,6 +772,18 @@ async def car_person_schema(
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
+@pytest.fixture(scope="class")
+async def car_person_schema_scope_class(
+    db: InfrahubDatabase,
+    default_branch_scope_class: Branch,
+    node_group_schema_scope_class: None,
+    data_schema_scope_class: None,
+) -> SchemaBranch:
+    return registry.schema.register_schema(
+        schema=do_car_person_schema_unregistered(), branch=default_branch_scope_class.name
+    )
+
+
 @pytest.fixture
 async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     return SchemaRoot(
@@ -1086,6 +1112,17 @@ async def dependent_generics_schema(
 
 @pytest.fixture
 async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
+    do_node_group_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def node_group_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, data_schema_scope_class: None
+) -> None:
+    do_node_group_schema(branch=default_branch_scope_class)
+
+
+def do_node_group_schema(branch: Branch) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -1130,7 +1167,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
 
 
 @pytest.fixture

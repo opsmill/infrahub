@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
-from infrahub.graph_traversal.planning.models import Plan, TerminalByKinds
+from infrahub.graph_traversal.planning.models import Plan, TerminalById, TerminalByKinds
 
 
 def _empty_plan() -> Plan:
@@ -16,6 +16,22 @@ def _empty_plan() -> Plan:
         terminal_predicate=TerminalByKinds(kinds=frozenset({"KindB"})),
         max_depth=5,
     )
+
+
+def _linear_plan(max_depth: int = 3) -> Plan:
+    """A→B→C adjacency with terminal C.
+
+    Feasible at depth 2 (A→B→C) and depth 3 (per-hop tuple reuse allows the
+    B→C hop at two positions); infeasible at depth 1 (no direct A→C hop).
+    """
+    plan = Plan(
+        source_kind="KindA",
+        terminal_predicate=TerminalById(node_id="uuid-c", kind="KindC"),
+        max_depth=max_depth,
+    )
+    plan.add_hop(source_kind="KindA", relationship_identifier="a__b", end_kind="KindB", min_hops_to_terminal=1)
+    plan.add_hop(source_kind="KindB", relationship_identifier="b__c", end_kind="KindC", min_hops_to_terminal=0)
+    return plan
 
 
 def _default_branch() -> Branch:
@@ -58,3 +74,29 @@ class TestPathTraversalCypherRendererValidation:
     def test_render_rejects_empty_plan(self) -> None:
         with pytest.raises(ValueError, match=r"plan has no adjacency"):
             _render_empty()
+
+
+def _render_linear(*, depths: set[int] | None = None) -> str:
+    rendered = _build_renderer().render(
+        plan=_linear_plan(),
+        source_id="src-uuid",
+        at=Timestamp(),
+        max_targets=1,
+        max_paths=10,
+        depths=depths,
+    )
+    return rendered.text
+
+
+class TestFeasibleDepths:
+    def test_empty_plan_has_no_feasible_depths(self) -> None:
+        assert _build_renderer().feasible_depths(plan=_empty_plan()) == []
+
+    def test_returns_ascending_depths_that_can_reach_the_terminal(self) -> None:
+        assert _build_renderer().feasible_depths(plan=_linear_plan()) == [2, 3]
+
+
+class TestRenderDepthsFilter:
+    def test_render_with_only_unfeasible_depths_raises(self) -> None:
+        with pytest.raises(ValueError, match=r"no feasible fixed-depth branch"):
+            _render_linear(depths={1})

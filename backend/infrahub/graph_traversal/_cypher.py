@@ -35,7 +35,15 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal.planning.models import Plan, TerminalById
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.core.branch import Branch
+
+
+def _terminal_kinds_for_plan(plan: Plan) -> frozenset[str]:
+    if isinstance(plan.terminal_predicate, TerminalById):
+        return frozenset({plan.terminal_predicate.kind})
+    return plan.terminal_predicate.kinds
 
 
 class HopTuple(NamedTuple):
@@ -182,13 +190,17 @@ class PathTraversalCypherRenderer:
         at: Timestamp | None,
         max_targets: int,
         max_paths: int,
+        depths: Iterable[int] | None = None,
     ) -> RenderedCypher:
         """Render ``plan`` as a two-phase Cypher query rooted at ``source_id``.
+
+        ``depths`` restricts the rendered fixed-depth branches to the given
+        subset; ``None`` renders every feasible depth.
 
         Raises:
             ValueError: when ``plan`` is empty, ``max_targets`` or ``max_paths``
                 is out of range, or no feasible fixed-depth branch survives
-                the per-step budget.
+                the per-step budget and the ``depths`` restriction.
 
         """
         if not _MAX_TARGETS_MINIMUM <= max_targets <= _MAX_TARGETS_MAXIMUM:
@@ -203,14 +215,13 @@ class PathTraversalCypherRenderer:
         at = at if at is not None else Timestamp()
 
         terminal_anchored_by_id = isinstance(plan.terminal_predicate, TerminalById)
-        terminal_kinds: frozenset[str] = (
-            frozenset({plan.terminal_predicate.kind})
-            if isinstance(plan.terminal_predicate, TerminalById)
-            else plan.terminal_predicate.kinds
-        )
+        terminal_kinds = _terminal_kinds_for_plan(plan)
         terminal_label_union = "|".join(sorted(terminal_kinds))
 
         feasible = self._build_feasible_branches(plan=plan, terminal_kinds=terminal_kinds)
+        if depths is not None:
+            requested_depths = set(depths)
+            feasible = [b for b in feasible if b.depth in requested_depths]
         if not feasible:
             # Defensive: the planner's reverse-BFS pruning guarantees that any
             # non-empty plan has at least one depth reaching the terminal
@@ -252,6 +263,18 @@ class PathTraversalCypherRenderer:
             params["user_branch"] = self._user_branch_name
 
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
+
+    def feasible_depths(self, *, plan: Plan) -> list[int]:
+        """Ascending depths for which ``plan`` has a renderable fixed-depth branch.
+
+        Empty for an empty plan. Callers iterating depth-by-depth should loop
+        over this list rather than ``range(1, plan.max_depth + 1)`` so that
+        per-depth ``render()`` calls never hit the no-feasible-branch error.
+        """
+        if plan.is_empty:
+            return []
+        terminal_kinds = _terminal_kinds_for_plan(plan)
+        return [b.depth for b in self._build_feasible_branches(plan=plan, terminal_kinds=terminal_kinds)]
 
     def _build_feasible_branches(self, *, plan: Plan, terminal_kinds: frozenset[str]) -> list[_DepthBranchData]:
         """Compute per-depth structure once. Both phases consume the same data."""
