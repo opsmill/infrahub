@@ -86,15 +86,19 @@ Infrahub comes with a default configuration that contains pre-configured users, 
 
 #### General access
 
-This role grants standard users the ability to view resources and make changes in non-default branches.
+This role grants standard users the ability to view resources, make changes in non-default branches, and participate in the proposed change workflow (create proposed changes, comment, open threads, approve/close/reopen) on the default branch.
 
-| Permission                                | Description                                                  |
-|-------------------------------------------|--------------------------------------------------------------|
-| `global:manage_repositories:allow_all`    | Manage repositories across all branches                      |
-| `global:manage_schema:allow_all`          | Configure and modify the system schema                       |
-| `global:merge_proposed_change:allow_all`  | Merge proposed changes across all branches                   |
-| `object:*:*:view:allow_all`               | View all objects across all branches and namespaces          |
-| `object:*:*:any:allow_other`              | Perform any action on objects in non-default branches        |
+| Permission                                       | Description                                                  |
+|--------------------------------------------------|--------------------------------------------------------------|
+| `global:manage_repositories:allow_all`           | Manage repositories across all branches                      |
+| `global:manage_schema:allow_all`                 | Configure and modify the system schema                       |
+| `global:merge_proposed_change:allow_all`         | Merge proposed changes across all branches                   |
+| `object:*:*:view:allow_all`                      | View all objects across all branches and namespaces          |
+| `object:*:*:any:allow_other`                     | Perform any action on objects in non-default branches        |
+| `object:Core:ProposedChange:any:allow_all`       | Manage proposed changes on all branches                      |
+| `object:Core:ChangeComment:any:allow_all`        | Manage proposed change comments on all branches              |
+| `object:Core:ChangeThread:any:allow_all`         | Manage proposed change threads on all branches               |
+| `object:Core:ThreadComment:any:allow_all`        | Manage replies inside proposed change threads on all branches |
 
 #### Super administrator
 
