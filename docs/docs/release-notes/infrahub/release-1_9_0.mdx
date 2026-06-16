@@ -18,9 +18,9 @@ title: Release 1.9.0
   </tbody>
 </table>
 
-We're excited to announce the release of Infrahub, v1.9.0!
+Infrahub v1.9.0 is now available.
 
-Two headline additions lead the release: a brand-new **interactive schema visualizer** that turns your schema into a navigable graph, and **syslog log forwarding** for Infrahub Enterprise - giving operators a live view into both the schema and the runtime. Around those, the release is centred on three themes: **performance** - Jinja2 computed attributes now recalculate inline on local changes instead of spawning a background task per node; **artifact composition** - reusable GraphQL fragment files in `.infrahub.yml` and artifact content composition via Jinja2 filters; and **lifecycle & auditability** - automatic branch deletion after merge, login/logout activity events, and custom HTTP headers on webhooks.
+Two headline additions lead the release: a brand-new **interactive schema visualizer** that turns your schema into a navigable graph, and **syslog log forwarding** for Infrahub Enterprise - so operators can see both the schema and the runtime. Alongside these, the release is centred on three themes: **performance** - Jinja2 computed attributes now recalculate inline on local changes instead of spawning a background task per node; **artifact composition** - reusable GraphQL fragment files in `.infrahub.yml` and artifact content composition via Jinja2 filters; and **lifecycle & auditability** - automatic branch deletion after merge, login/logout activity events, and custom HTTP headers on webhooks.
 
 ⚠️ After upgrading to this release, every Infrahub user account that originated from an OAuth2 or OIDC identity provider must log in again. The login flow captures additional information that Infrahub now stores against these accounts.
 
@@ -32,25 +32,27 @@ A future release will require this information to already be present. Any accoun
 
 A new **schema graph visualizer** turns your schema into an interactive, navigable graph. Instead of opening YAML files or paging through the schema viewer one schema node at a time, you can see the whole model - nodes, generics, profiles, and templates - laid out together with their relationships drawn as edges between them.
 
-The visualizer is a canvas you can drag, zoom, and pan, with an automatic layout. Each schema kind is colour-coded so you can tell nodes, generics, profiles, and templates apart at a glance. Relationship edges with `many` cardinality are animated, and self-referencing relationships are highlighted.
+The visualizer is a canvas you can drag, zoom, and pan, with an automatic layout. Each schema kind is colour-coded so you can tell nodes, generics, profiles, and templates apart immediately. Relationship edges with `many` cardinality are animated, and self-referencing relationships are highlighted.
 
 You'll find it as a new **Graph** toggle on the Schema page, switching between the existing schema viewer and the graph view. Clicking the `view in graph` button in a schema node's details opens the graph with that node pre-highlighted.
 
 The visualizer includes:
 
-- A **filter panel** to toggle whole namespaces or individual schema types in and out of the view, so you can isolate just the part of the model you care about.
+- A **filter panel** to toggle whole namespaces or individual schema types in and out of the view, so you can isolate the part of the model you care about.
 - A **node details panel** that opens on click to show the selected schema's attributes and relationships, so you don't need to switch tabs to read the definition.
 - Context menus on nodes and edges for quick navigation.
 - **Zoom, pan, and fit-to-view** controls plus **PNG export** of the current view - useful for docs and architecture reviews.
-- State persistence, so the filters and layout you set up stick around between sessions.
+- State persistence, so the filters and layout you set up persist between sessions.
 
 ![Schema visualizer](../../media/release_notes/infrahub_1_9_0/schema_visualizer.png)
 
 ### Syslog log forwarding *(Enterprise)*
 
-Infrahub Enterprise now supports native Syslog forwarding to external SIEM systems such as Splunk, Datadog, and ELK. All `infrahub.*` activity events - including the new login/logout events - are can be forwarded continuously. Permission-denied errors on rejected GraphQL and REST requests are forwarded as `infrahub.permission.denied` events, and each destination can optionally include Infrahub's own application logs, filtered by a minimum severity. The MSG field of each syslog entry carries the JSON representation of the event.
+Infrahub Enterprise now supports native syslog forwarding to external SIEM (Security Information and Event Management) systems such as Splunk, Datadog, and ELK. All `infrahub.*` activity events can be forwarded continuously, including the new login/logout events. Permission-denied errors on rejected GraphQL and REST requests are forwarded as `infrahub.permission.denied` events. Each destination can also include Infrahub's own application logs, filtered by a minimum severity. The MSG field of each syslog entry carries the event as JSON.
 
-Configuration is via the Infrahub configuration file or environment variables and supports multiple destinations, TCP or UDP transport, optional TLS, and both RFC 5424 and RFC 3164 formats - designed to meet enterprise security and compliance requirements (SOC2, ISO 27001).
+Configuration is via the Infrahub configuration file or environment variables and supports multiple destinations, TCP or UDP transport, optional TLS, and both RFC 5424 and RFC 3164 formats, covering common SOC2 and ISO 27001 logging requirements.
+
+**Learn more:** [Log forwarding](../../deploy-manage/run-observe/log-forwarding/overview.mdx)
 
 ### Modular GraphQL queries with reusable fragments
 
@@ -91,17 +93,21 @@ query DeviceDetails($name: String!) {
 
 Transitive dependencies are resolved automatically - a fragment that spreads another fragment brings both along. Unresolvable references fail at sync time with an actionable error identifying the query and fragment. The same rendering applies when executing queries locally via `infrahubctl`, so IDE workflows keep working.
 
+**Learn more:** [GraphQL fragments](../../development-resources/graphql-fragments.mdx)
+
 ### Artifact content composition
 
 Jinja2 Transformations gain a new set of filters for composing an artifact from the content of other artifacts:
 
 - `artifact_content` takes a `storage_id` and returns the rendered content of another artifact as a string.
 - `file_object_content` does the same for a `CoreFileObject`.
-- `file_object_content_by_hfid` takes the `hfid` of a `CoreFileObject` and returns the content as a string
+- `file_object_content_by_hfid` takes the human-friendly ID (`hfid`) of a `CoreFileObject` and returns the content as a string
 - `file_object_content_by_id` takes the `id` of a `CoreFileObject` and returns the content as a string
 - `from_json` and `from_yaml` parse the inlined content so the composing template can traverse it as structured data.
 
-This lets a template inline and parse sections from other artifacts without duplicating the template logic that produced them. Python Transformations can achieve the same by calling `object_store.get()` via the SDK.
+A template can inline and parse sections from other artifacts without duplicating the template logic that produced them. Python Transformations can achieve the same by calling `object_store.get()` via the SDK.
+
+**Learn more:** [Artifact content composition](../../artifacts/content-composition.mdx)
 
 ### Display options for attributes and relationships
 
@@ -121,6 +127,8 @@ attributes:
 
 The IPAM detail pages have been unified with the standard object-details card in the same pass, picking up field metadata, the **Extra** toggle, metadata editing, and profiles & groups tabs.
 
+**Learn more:** [Field visibility](../../schema/field-visibility.mdx)
+
 ### Delete branch after merge
 
 Merged branches can now be cleaned up automatically. Two opt-in configuration flags control the behaviour:
@@ -139,11 +147,13 @@ Webhooks can now carry arbitrary custom HTTP headers - the most common use case 
 A single header can be attached to multiple webhooks, so rotating a credential in one place propagates to all of them on the next event. Two new node kinds back this, both implementing a shared `CoreKeyValue` generic:
 
 - **`CoreStaticKeyValue`** - the value is stored as-is in Infrahub. Appropriate for system identifiers, tenant IDs, or tokens that don't need external secret management.
-- **`CoreEnvKeyValue`** - only the environment-variable **name** is stored; the actual value is resolved from the worker process environment at send time. The stored configuration never contains the secret, which lets secret managers (Kubernetes secrets, Vault, Delinea) inject credentials the usual way. Missing variables are logged with a warning and the header is skipped; the remainder of the request is sent intact.
+- **`CoreEnvKeyValue`** - only the environment-variable **name** is stored; the actual value is resolved from the worker process environment at send time. The stored configuration never contains the secret, so secret managers (Kubernetes secrets, Vault, Delinea) can inject credentials through their normal mechanism. Missing variables are logged with a warning and the header is skipped; the remainder of the request is sent intact.
 
 If a custom header collides with a system-reserved header name (for example: `Content-Type`), the user's value wins.
 
 Although shipped to solve the webhook-authentication use case, `CoreKeyValue` and its two implementations are not webhook-specific - they can be reused anywhere in other contexts as well.
+
+**Learn more:** [Webhooks](../../webhooks/overview.mdx)
 
 ### IPAM: closest parent prefix lookup in search
 
@@ -185,7 +195,7 @@ The Accounts, Groups, Roles, and Global Permissions tables in Role Manager now s
 
 ### Namespace restrictions on generics
 
-Generic schemas now accept a namespace restriction parameter that limits which namespaces can inherit from them. This is enforced at schema-load time. **This affects existing extensions of `CoreGenericRepository` and `CoreWebhook`** - see the Breaking changes section below.
+Generic schemas now accept a namespace restriction parameter that limits which namespaces can inherit from them. Use it to prevent other namespaces from extending a core generic unintentionally. This is enforced at schema-load time. **This affects existing extensions of `CoreGenericRepository` and `CoreWebhook`** - see the Breaking changes section below.
 
 ### Computed attributes: local execution
 
@@ -199,7 +209,9 @@ Concretely:
 - Each local-change mutation emits **one** consolidated event/webhook containing both the original change and the updated computed attribute, instead of two separate events.
 - **Remote** changes (peer-node updates that affect computed attributes on other nodes) continue to use the existing background-task path - no behavioural change there. Python Transform-based computed attributes are also unchanged.
 
-This eliminates the single most common source of trivial background-task load in large imports and bulk edits.
+This eliminates the single most common source of background-task load from trivial local changes in large imports and bulk edits.
+
+**Learn more:** [Computed attributes](../../computed-attributes/overview.mdx)
 
 ### Schema selector: sticky search and expand/collapse
 
@@ -265,7 +277,7 @@ Before you upgrade an instance of Infrahub, we strongly advise you to delete bra
 
 **Please** read the Breaking changes section above before starting the upgrade. In particular, confirm you have no schema extensions inheriting from `CoreGenericRepository` or `CoreWebhook`, and that no client code still references the removed GraphQL queries or `_updated_at` field.
 
-**Please** make sure to upgrade any existing installations of the infrahub-sdk to v`<TBD: confirm infrahub-sdk version>`.
+**Please** make sure to upgrade any existing installations of the infrahub-sdk to v`1.20.0`.
 
 **Please** make sure to backup your instance of Infrahub and make sure you are familiar with and have tested the restore procedure. For more information visit https://docs.infrahub.app/backup
 
