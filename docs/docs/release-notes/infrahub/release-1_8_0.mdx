@@ -18,15 +18,15 @@ title: Release 1.8.0
   </tbody>
 </table>
 
-We're excited to announce the release of Infrahub, v1.8.0!
+Infrahub v1.8.0 is now available.
 
-This release introduces a file objects feature, adds stronger branch life-cycle controls with automatic freeze-on-merge, and adds support for resource pools in object templates. The Infrahub Backup tool now fully supports Kubernetes deployments.
+This release introduces a file objects feature, adds stronger branch lifecycle controls with automatic freeze-on-merge, and adds support for resource pools in object templates. The Infrahub Backup tool now fully supports Kubernetes deployments.
 
 ## Main changes
 
 ### File Object: Upload and attach files to Infrahub objects
 
-Infrahub can now store files -- Text files, PDF, images, spreadsheets, KMZ files, and any other format -- directly as objects in the database. With the new `CoreFileObject` generic, you can define custom file types in your schema. Object files behave as all other objects in Infrahub, you can fully customize the schema and relate (or attach) them to other objects.
+Infrahub can now store files -- Text files, PDF, images, spreadsheets, KMZ files, and any other format -- directly as objects in the database. With the new `CoreFileObject` generic, you can define custom file types in your schema. File objects behave like all other objects in Infrahub. You can fully customize the schema and relate (or attach) them to other objects.
 
 The contents of the file will be rendered in Infrahub's web interface, if the file has one of the following file types: 
 
@@ -40,7 +40,7 @@ The contents of the file will be rendered in Infrahub's web interface, if the fi
 - text/plain
 - text/markdown
 - application/xml
-- text/csv;
+- text/csv
 - image/png
 - image/jpeg
 - image/gif
@@ -74,6 +74,8 @@ The maximum file size defaults to 50 MB and is configurable via the `INFRAHUB_ST
 
 ![File Object](../../media/release_notes/infrahub_1_8_0/file_object.png)
 
+**Learn more:** [File objects](../../schema/file-object.mdx)
+
 ### Freeze branch after merge
 
 When a branch is merged -- either through a direct branch merge or via a Proposed Change -- it now transitions to a frozen state where no further mutations are allowed. This prevents a class of data integrity issues that could occur when a branch was modified or merged a second time after its initial merge.
@@ -82,6 +84,8 @@ Both the backend API and the frontend UI enforce this freeze:
 - GraphQL mutations (Create, Upsert, Update, Delete) are blocked on merged branches
 - The UI disables editing controls and shows a visual indication that the branch is frozen
 - Creating a new Proposed Change for an already-merged branch is prevented
+
+**Learn more:** [Merging branches](../../branches/merge.mdx)
 
 ### Resource pool references in object templates
 
@@ -96,6 +100,8 @@ The feature introduces a new `relationship_properties` field in the GraphQL sche
 
 A database migration is included to convert any existing template-IP relationships that incorrectly have pool sources into the new `_from_resource_pool` relationship format.
 
+**Learn more:** [Allocate resources from pools in templates](../../object-templates/allocate-resources-from-pools.mdx)
+
 ### Consult the diff of a proposed change after branch deletion
 
 The data and schema diff of a Proposed Change is now preserved and accessible even after the associated branch has been deleted. This is essential for audit and compliance workflows -- during incident investigation or regulatory review, users need to inspect what changes were made, by whom, and when, regardless of whether the source branch still exists.
@@ -104,9 +110,11 @@ The diff data is now tied to the Proposed Change itself rather than solely to th
 
 This feature is a prerequisite for a future capability to automatically delete branches after merge, which will help prevent stale branches that can cause Git synchronization issues.
 
+**Learn more:** [Proposed changes](../../proposed-changes/overview.mdx)
+
 ### Read-only repository: Update to Latest button
 
-Managing read-only Git repositories is now simpler. A new "Update to Latest" button fetches and imports the latest commit from the tracked branch directly from the UI. Previously, users had to manually copy and paste commit hashes from an external source to update what Infrahub was tracking. The existing reimport action has been renamed to "Reimport Current Commit" to clearly distinguish between re-processing the current commit and pulling the latest.
+A new "Update to Latest" button fetches and imports the latest commit from the tracked branch directly from the UI. Previously, users had to manually copy and paste commit hashes from an external source to update what Infrahub was tracking. The existing reimport action has been renamed to "Reimport Current Commit" to clearly distinguish between re-processing the current commit and pulling the latest.
 
 Repositories now also support providing a Git Tag as the reference (ref) to track for a repository.
 
@@ -114,7 +122,7 @@ Repositories now also support providing a Git Tag as the reference (ref) to trac
 
 The `infrahub-backup` CLI tool now fully supports Kubernetes deployments for both backup and restore operations. The tool automatically detects whether Infrahub is running on Docker Compose or Kubernetes and adjusts its behavior accordingly.
 
-For Kubernetes deployments we can now install `infrahub-backup` using the Infrahub Helm Chart. This is now the recommended installation method for Kubernetes deployments.
+For Kubernetes deployments you can now install `infrahub-backup` using the Infrahub Helm Chart. This is now the recommended installation method for Kubernetes deployments.
 See the [installation instructions](https://docs.infrahub.app/backup/guides/install#enable-via-infrahub-helm-chart-recommended) for more details
 
 Key new capabilities:
@@ -125,7 +133,7 @@ Key new capabilities:
 
 ### Display artifact count in proposed changes
 
-The Proposed Changes detail view now displays item counts on all tabs, giving you immediate visibility into how many changes exist in each category:
+The Proposed Changes detail view now displays item counts on all tabs, so you can see how many changes exist in each category:
 
 - **Data** -- count of added, updated, and removed nodes
 - **Files** -- total count of changed files across repositories
@@ -136,7 +144,7 @@ The Proposed Changes detail view now displays item counts on all tabs, giving yo
 
 ### Branch list page improvements
 
-The branch list page continues to evolve with richer information and better usability:
+The branch list page adds:
 
 - **Created By** column shows who created each branch (available for branches created after 1.7)
 - **Proposed Changes** column links directly to associated proposed changes
@@ -150,7 +158,7 @@ The branch list page continues to evolve with richer information and better usab
 
 ### General UI improvements
 
-Several smaller improvements enhance the day-to-day experience:
+Several smaller improvements:
 
 - **Schema field shortcuts** -- clicking an attribute or relationship label in the object detail view opens the schema viewer modal, scrolling directly to the relevant field definition
 - **Field type icons** -- icons next to field names indicate the attribute type (text, number, boolean) and relationship schema
@@ -169,7 +177,7 @@ Notable SDK changes in this release:
 
 ## Migration of an Infrahub instance
 
-Before you upgrade an instance of Infrahub, we strongly advise you to delete branches that are no longer needed within Infrahub. Deleting old branches helps speeding up the upgrade process and to avoid spending time running migrations for branches that are no longer needed.
+Before you upgrade an instance of Infrahub, we strongly advise you to delete branches that are no longer needed within Infrahub. Deleting old branches helps speed up the upgrade process and avoid spending time running migrations for branches that are no longer needed.
 
 **Please** make sure to upgrade any existing installations of the infrahub-sdk to v1.19.0.
 
@@ -191,11 +199,11 @@ Below are some example ways to get the latest version of Infrahub in your enviro
   - `export VERSION="1.8.0"; docker compose pull && docker compose up -d`
 - For deployments via Kubernetes, utilize the latest version of the Helm chart supplied with this release
 
-**Second**, once you have gotten the desired version of Infrahub in your environment, we need to run any needed migrations.
+**Third**, once you have the desired version of Infrahub in your environment, run any needed migrations.
 
 Infrahub provides the `infrahub upgrade` command to start these migrations.
 
-> Note: If you are running Infrahub in Docker/K8s, this command need to run from a container where Infrahub is installed.
+> Note: If you are running Infrahub in Docker/K8s, this command needs to run from a container where Infrahub is installed.
 
 ```shell
 docker compose exec infrahub-server infrahub upgrade
