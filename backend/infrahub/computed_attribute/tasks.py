@@ -14,7 +14,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
-from infrahub.events.schema_action import ChangedElementsPayload
+from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
@@ -82,18 +82,17 @@ mutation UpdateAttribute(
 
 
 def _resolve_changed_elements(
-    changed_elements: ChangedElementsPayload | dict | None,
+    changed_elements: ChangedElementsPayload | None,
 ) -> ChangedElementSet | None:
     """Normalize the workflow parameter into the internal change set.
 
-    Workflow deserialization can deliver the value as a model, a plain dict, or
-    nothing at all; ``None`` signals that no change set was available and recompute
-    must fall back to processing every attribute.
+    ``None`` signals that no change set was available and recompute must fall back
+    to processing every attribute. Prefect deserializes the JSON workflow parameter
+    into ``ChangedElementsPayload`` at the flow boundary, so consumers see either
+    the model or ``None``.
     """
     if changed_elements is None:
         return None
-    if isinstance(changed_elements, dict):
-        changed_elements = ChangedElementsPayload.model_validate(changed_elements)
     return ChangedElementSet.from_payload(changed_elements)
 
 
@@ -421,7 +420,7 @@ async def computed_attribute_setup_jinja2(
     context: EventContext,
     branch_name: str | None = None,
     event_name: str | None = None,
-    changed_elements: ChangedElementsPayload | dict | None = None,
+    changed_elements: ChangedElementsPayload | None = None,
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
@@ -531,7 +530,7 @@ async def computed_attribute_setup_python(
     branch_name: str | None = None,
     event_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
-    changed_elements: ChangedElementsPayload | dict | None = None,
+    changed_elements: ChangedElementsPayload | None = None,
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
