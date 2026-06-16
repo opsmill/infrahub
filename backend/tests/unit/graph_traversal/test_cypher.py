@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
-from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
+from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.planning.models import Plan, TerminalById, TerminalByKinds
 
 
@@ -40,8 +40,8 @@ def _default_branch() -> Branch:
     return branch
 
 
-def _build_renderer() -> PathTraversalCypherRenderer:
-    return PathTraversalCypherRenderer(branch=_default_branch(), default_branch_name="main")
+def _build_renderer() -> GraphTraversalCypherRenderer:
+    return GraphTraversalCypherRenderer(branch=_default_branch(), default_branch_name="main")
 
 
 def _render_empty(*, max_targets: int = 25, max_paths: int = 100) -> None:
@@ -54,7 +54,7 @@ def _render_empty(*, max_targets: int = 25, max_paths: int = 100) -> None:
     )
 
 
-class TestPathTraversalCypherRendererValidation:
+class TestGraphTraversalCypherRendererValidation:
     def test_rejects_max_targets_below_minimum(self) -> None:
         with pytest.raises(ValueError, match=r"max_targets must be in \[1, 200\]"):
             _render_empty(max_targets=0)
@@ -98,5 +98,5 @@ class TestFeasibleDepths:
 
 class TestRenderDepthsFilter:
     def test_render_with_only_unfeasible_depths_raises(self) -> None:
-        with pytest.raises(ValueError, match=r"no feasible fixed-depth branch"):
+        with pytest.raises(ValueError, match=r"no feasible fixed-depth query"):
             _render_linear(depths={1})

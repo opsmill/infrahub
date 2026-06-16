@@ -9,7 +9,7 @@ from graphql import GraphQLError
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import SchemaNotFoundError
-from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
+from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
@@ -294,7 +294,7 @@ async def path_traversal_resolver(
         executor = PathTraversalExecutor(
             db=graphql_context.db,
             branch=graphql_context.branch,
-            renderer=PathTraversalCypherRenderer(
+            renderer=GraphTraversalCypherRenderer(
                 branch=graphql_context.branch,
                 default_branch_name=registry.default_branch,
             ),

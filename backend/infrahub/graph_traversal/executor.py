@@ -8,7 +8,7 @@ from infrahub.graph_traversal.path import PathTraversalQuery
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
+    from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
     from infrahub.graph_traversal.planning.models import Plan
     from infrahub.graph_traversal.results import PathData
 
@@ -23,7 +23,7 @@ class PathTraversalExecutor:
     its rows internally.
     """
 
-    def __init__(self, *, db: InfrahubDatabase, branch: Branch, renderer: PathTraversalCypherRenderer) -> None:
+    def __init__(self, *, db: InfrahubDatabase, branch: Branch, renderer: GraphTraversalCypherRenderer) -> None:
         self._db = db
         self._branch = branch
         self._renderer = renderer
