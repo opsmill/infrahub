@@ -29,6 +29,8 @@ export default mergeConfig(
         "react-dom/client",
         "react-error-boundary",
         "react-scan",
+        "rehype-mermaid",
+        "mermaid",
       ],
     },
     test: {

@@ -51,4 +51,32 @@ describe("MarkdownRender Component", () => {
     const markdownDiv = component.container.querySelector(".markdown");
     expect(markdownDiv?.classList.contains("custom-class")).toBe(true);
   });
+
+  test("renders a mermaid code block as an inline SVG", async () => {
+    // GIVEN
+    const markdownText = "```mermaid\ngraph TD;\n  A-->B;\n```";
+
+    // WHEN
+    const component = await render(<MarkdownRender markdownText={markdownText} />);
+
+    // THEN
+    await expect
+      .poll(() => component.container.querySelector("svg"), { timeout: 15_000 })
+      .toBeTruthy();
+  });
+
+  test("shows an error banner when a mermaid diagram is invalid", async () => {
+    // GIVEN
+    const markdownText = "```mermaid\nnotadiagramtype\n```";
+
+    // WHEN
+    const component = await render(<MarkdownRender markdownText={markdownText} />);
+
+    // THEN
+    await expect
+      .poll(() => component.container.querySelector(".mermaid-error")?.textContent ?? "", {
+        timeout: 15_000,
+      })
+      .not.toBe("");
+  });
 });
