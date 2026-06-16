@@ -1,18 +1,23 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, LinkButton, Popover, PopoverDialog, PopoverTrigger, Tooltip } from "@infrahub/ui";
+import {
+  Button,
+  LinkButton,
+  ListBox,
+  ListBoxItem,
+  ListBoxLoadMoreItem,
+  ListBoxVirtualizer,
+  Popover,
+  PopoverDialog,
+  PopoverTrigger,
+  Tooltip,
+} from "@infrahub/ui";
 import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
-import {
-  type ButtonProps as AriaButtonProps,
-  Collection,
-  ListLayout,
-  Virtualizer,
-} from "react-aria-components";
+import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/aria/list-box";
 import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
 import { QSP } from "@/shared/config/qsp";
@@ -121,18 +126,11 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
         onInputChange={setSearch}
         suffix={<BranchFormTriggerButton onPress={() => openCreateForm(trimmedSearch)} />}
       >
-        <Virtualizer
-          layout={ListLayout}
-          layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
-        >
+        <ListBoxVirtualizer>
           <ListBox
             aria-label="branch list"
             className="max-h-125"
-            renderEmptyState={() =>
-              !isPending && (
-                <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
-              )
-            }
+            emptyMessage={isPending ? undefined : "No branch found"}
           >
             <Collection items={branches}>
               {(branch) => (
@@ -168,7 +166,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
               </ListBoxItem>
             )}
           </ListBox>
-        </Virtualizer>
+        </ListBoxVirtualizer>
       </Autocomplete>
 
       <Separator />

@@ -1,7 +1,6 @@
-import { Popover } from "@infrahub/ui";
+import { ListBox, ListBoxItem, Popover } from "@infrahub/ui";
 import type { SelectProps } from "react-aria-components";
 
-import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { Select, SelectTrigger } from "@/shared/components/aria/select";
 
 import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";

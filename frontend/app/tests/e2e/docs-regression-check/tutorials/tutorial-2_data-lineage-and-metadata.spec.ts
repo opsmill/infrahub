@@ -38,8 +38,6 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       // Wait for the metadata edit slide-over to close before checking updated data
       await expect(page.getByLabel("sheet")).toBeHidden();
 
-      await page.getByText("Description-").getByTestId("view-metadata-button").click();
-
       await expect(page.getByText("Is protectedTrue")).toBeVisible();
     });
   });
