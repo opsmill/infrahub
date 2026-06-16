@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -9,11 +9,12 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
-from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
+from infrahub.graphql.initialization import GraphqlContext, GraphqlParams, prepare_graphql_params
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.permissions import PermissionManager
 
@@ -176,7 +177,62 @@ class TestDefaultBranchPermission:
                     branch=permissions_helper.default_branch,
                 )
 
-    async def test_branch_delete_exempt_for_user_without_permission(
+    @pytest.mark.parametrize(
+        "operation_name",
+        [
+            "BranchDelete",
+            "CoreProposedChangeCreate",
+            "CoreProposedChangeUpdate",
+            "CoreProposedChangeUpsert",
+            "CoreProposedChangeDelete",
+            "CoreProposedChangeReview",
+            "CoreChangeCommentCreate",
+            "CoreChangeCommentUpdate",
+            "CoreChangeCommentUpsert",
+            "CoreChangeCommentDelete",
+            "CoreChangeThreadCreate",
+            "CoreChangeThreadUpdate",
+            "CoreChangeThreadUpsert",
+            "CoreChangeThreadDelete",
+            "CoreThreadCommentCreate",
+            "CoreThreadCommentUpdate",
+            "CoreThreadCommentUpsert",
+            "CoreThreadCommentDelete",
+        ],
+    )
+    async def test_exempt_operations_for_user_without_permission(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+        operation_name: str,
+    ) -> None:
+        checker = DefaultBranchPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query="mutation { %s { ok } }" % operation_name,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        resolution = await checker.check(
+            db=db,
+            account_session=session,
+            analyzed_query=analyzed_query,
+            query_parameters=gql_params,
+            branch=permissions_helper.default_branch,
+        )
+        assert resolution == CheckerResolution.NEXT_CHECKER
+
+    async def test_proposed_change_merge_is_not_exempt(
         self,
         db: InfrahubDatabase,
         default_permission_backend: None,
@@ -186,31 +242,23 @@ class TestDefaultBranchPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        permission_manager = PermissionManager(account_session=session)
-        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
 
-        graphql_query = create_autospec(spec=InfrahubGraphQLQueryAnalyzer)
-        graphql_query.branch = None
-        graphql_query.contains_mutation = True
-        graphql_query.operation_names = ["BranchDelete"]
-
-        graphql_context = GraphqlContext(
-            db=MagicMock(),
-            branch=MagicMock(),
-            types=MagicMock(),
-            single_relationship_resolver=MagicMock(),
-            many_relationship_resolver=MagicMock(),
-            account_metadata_resolver=AccountMetadataResolver(),
-            account_session=session,
-            permissions=permission_manager,
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
-
-        resolution = await checker.check(
-            db=db,
-            account_session=session,
-            analyzed_query=graphql_query,
-            query_parameters=query_parameters,
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query="mutation { CoreProposedChangeMerge { ok } }",
+            schema=gql_params.schema,
             branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
         )
-        assert resolution == CheckerResolution.NEXT_CHECKER
+
+        with pytest.raises(PermissionDeniedError, match=r"You are not allowed to change data in the default branch"):
+            await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                query_parameters=gql_params,
+                branch=permissions_helper.default_branch,
+            )

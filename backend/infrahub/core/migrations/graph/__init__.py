@@ -73,6 +73,7 @@ from .m068_cleanup_branch_schema_parameters import Migration068
 from .m069_set_comment_thread_created_by_on_node import Migration069
 from .m070_normalize_mac_address_values_to_colon import Migration070
 from .m071_recompute_hfid_for_ip_attributes import Migration071
+from .m072_general_access_role_proposed_change_permissions import Migration072
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -150,6 +151,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration069,
     Migration070,
     Migration071,
+    Migration072,
 ]
 
 

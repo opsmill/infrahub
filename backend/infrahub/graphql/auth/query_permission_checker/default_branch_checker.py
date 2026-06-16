@@ -24,6 +24,24 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         "InfrahubAccountSelfUpdate",
         "InfrahubAccountTokenCreate",
         "InfrahubAccountTokenDelete",
+        # Gated by object-level perms or inline checks; CoreProposedChangeMerge stays gated here.
+        "CoreProposedChangeCreate",
+        "CoreProposedChangeUpdate",
+        "CoreProposedChangeUpsert",
+        "CoreProposedChangeDelete",
+        "CoreProposedChangeReview",
+        "CoreChangeCommentCreate",
+        "CoreChangeCommentUpdate",
+        "CoreChangeCommentUpsert",
+        "CoreChangeCommentDelete",
+        "CoreChangeThreadCreate",
+        "CoreChangeThreadUpdate",
+        "CoreChangeThreadUpsert",
+        "CoreChangeThreadDelete",
+        "CoreThreadCommentCreate",
+        "CoreThreadCommentUpdate",
+        "CoreThreadCommentUpsert",
+        "CoreThreadCommentDelete",
     ]
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002

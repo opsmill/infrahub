@@ -439,6 +439,26 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
     )
     await modify_permission.save(db=db)
 
+    proposed_change_kinds = [
+        ("Core", "ProposedChange", "proposed changes"),
+        ("Core", "ChangeComment", "proposed change comments"),
+        ("Core", "ChangeThread", "proposed change threads"),
+        ("Core", "ThreadComment", "proposed change thread comments"),
+    ]
+    proposed_change_object_permissions: list[Node] = []
+    for namespace, name, label in proposed_change_kinds:
+        permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+        await permission.new(
+            db=db,
+            name=name,
+            namespace=namespace,
+            action=PermissionAction.ANY.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+            description=f"Allow a user to manage {label}",
+        )
+        await permission.save(db=db)
+        proposed_change_object_permissions.append(permission)
+
     role_name = "General Access"
     role = await Node.init(db=db, schema=CoreAccountRole)
     await role.new(
@@ -450,6 +470,7 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
             proposed_change_permission,
             view_permission,
             modify_permission,
+            *proposed_change_object_permissions,
         ],
     )
     await role.save(db=db)
