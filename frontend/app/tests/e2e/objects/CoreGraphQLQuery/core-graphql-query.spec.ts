@@ -97,6 +97,9 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Metadata updated")).toBeVisible();
 
+    await page.getByTestId("metadata-tooltip").press("Escape");
+    await expect(page.getByTestId("metadata-tooltip")).toBeHidden();
+
     await test.step("return to list using breadcrumb", async () => {
       await page
         .getByTestId("breadcrumb-navigation")

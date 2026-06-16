@@ -71,7 +71,7 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
     return error_messages
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="schema-path-migrate",
     task_run_name="Migrate Schema Path {migration_name} on {branch.name}",
     description="Apply a given migration to the database",

@@ -101,7 +101,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Verify profile metadata", async () => {
       await page.getByText("Nametag with profile").getByTestId("view-metadata-button").click();
       await expect(page.getByTestId("metadata-tooltip").getByText("Source-")).toBeVisible();
-      await page.getByText("Nametag with profile").getByTestId("view-metadata-button").click(); // to close popover
+      await page.getByTestId("metadata-tooltip").press("Escape"); // to close popover
       await page
         .getByText("DescriptionA profile for E2E")
         .getByTestId("view-metadata-button")

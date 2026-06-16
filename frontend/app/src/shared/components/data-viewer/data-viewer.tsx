@@ -46,7 +46,11 @@ function DataViewerContent({
 }) {
   switch (contentType) {
     case "text/markdown": {
-      return <MarkdownViewer>{content}</MarkdownViewer>;
+      return (
+        <ScrollArea scrollX scrollBarClassName="bg-transparent">
+          <MarkdownViewer>{content}</MarkdownViewer>
+        </ScrollArea>
+      );
     }
 
     case "image/svg+xml": {

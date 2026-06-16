@@ -26,6 +26,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.utils import get_fixtures_dir
 from tests.constants import TestKind
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -297,7 +298,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         assert proposed_change_after.state.updated_by.id == proposed_change_user.id
         assert proposed_change_after.state.updated_by.display_label == "Jimmy-Change-User"
 
-        for _ in range(10):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             merge_event = await client.execute_graphql(
                 query=QUERY_EVENT,
                 variables={
@@ -317,7 +318,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         richard = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Richard", kind=TestKind.PERSON)
 
         # Use this sleep mechanism to wait for the events being fired
-        for _ in range(10):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             secondary_events = await client.execute_graphql(
                 query=QUERY_EVENT, variables={"parent__ids": merge_event_id}
             )

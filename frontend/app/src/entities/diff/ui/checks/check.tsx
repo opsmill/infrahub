@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Tooltip } from "@infrahub/ui";
+import { Popover, PopoverTrigger, Tooltip } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 
 import { InfoButton } from "@/shared/components/buttons/info-button";
@@ -9,7 +9,6 @@ import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { List } from "@/shared/components/table/list";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";
 
 import { DataIntegrityConflicts } from "@/entities/diff/ui/checks/data-integrity-conflicts";
@@ -144,15 +143,13 @@ export const Check = ({ id }: tCheckProps) => {
             <div className="flex flex-1 items-center justify-end">
               {created_at?.value && <DateDisplay date={created_at?.value} />}
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <InfoButton />
-                </PopoverTrigger>
+              <PopoverTrigger>
+                <InfoButton />
 
-                <PopoverContent>
+                <Popover>
                   <List columns={columns} row={row} />
-                </PopoverContent>
-              </Popover>
+                </Popover>
+              </PopoverTrigger>
             </div>
           </div>
 

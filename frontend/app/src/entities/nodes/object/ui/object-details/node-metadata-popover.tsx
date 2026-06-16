@@ -1,11 +1,10 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate } from "@/shared/utils/date";
 
 import { useGetNodeMetadata } from "@/entities/nodes/object/ui/queries/get-node-metadata.query";
@@ -69,22 +68,20 @@ export function NodeMetadata({ objectKind, objectId }: NodeMetadataProps) {
 
 export function NodeMetadataPopover(props: NodeMetadataProps) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          size="xs"
-          shape="circle"
-          variant="ghost"
-          className="text-gray-500"
-          aria-label="View node metadata"
-        >
-          <Icon icon="mdi:information-slab-circle-outline" />
-        </Button>
-      </PopoverTrigger>
+    <PopoverTrigger>
+      <Button
+        size="xs"
+        shape="circle"
+        variant="ghost"
+        className="text-gray-500"
+        aria-label="View node metadata"
+      >
+        <Icon icon="mdi:information-slab-circle-outline" />
+      </Button>
 
-      <PopoverContent>
+      <Popover>
         <NodeMetadata {...props} />
-      </PopoverContent>
-    </Popover>
+      </Popover>
+    </PopoverTrigger>
   );
 }

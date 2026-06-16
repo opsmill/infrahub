@@ -77,7 +77,7 @@ async def profile_refresh_setup(
 
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_profile_refresh, trigger_type=TriggerType.PROFILE
-        )  # type: ignore[misc]
+        )
 
         log.info(f"{report.in_use_count} Profile refresh automation configuration completed")
 

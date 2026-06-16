@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Popover } from "@infrahub/ui";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, EllipsisVertical } from "lucide-react";
 
@@ -13,7 +13,6 @@ import {
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
-import { Popover } from "@/shared/components/aria/popover";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
