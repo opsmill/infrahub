@@ -29,10 +29,16 @@ export const MarkdownEditor = ({
   ref,
 }: MarkdownEditorProps) => {
   const [isPreviewActive, setPreviewActive] = React.useState<boolean>(false);
+  const [hasRenderedPreview, setHasRenderedPreview] = React.useState<boolean>(false);
   const codeMirrorRef = React.useRef<HTMLDivElement>(null);
 
   const handleTextChange = (value: string) => {
     if (onChange) onChange(value);
+  };
+
+  const handlePreviewToggle = () => {
+    if (!isPreviewActive) setHasRenderedPreview(true);
+    setPreviewActive((prev) => !prev);
   };
 
   const codeMirror = useCodeMirror(codeMirrorRef.current, {
@@ -74,15 +80,25 @@ export const MarkdownEditor = ({
         <MarkdownEditorHeader
           codeMirror={codeMirror}
           previewMode={isPreviewActive}
-          onPreviewToggle={() => setPreviewActive((prev) => !prev)}
+          onPreviewToggle={handlePreviewToggle}
           editLabel="Raw"
         />
 
-        {isPreviewActive ? (
-          <MarkdownRender markdownText={codeMirror.view?.state?.doc.toString()} className="p-2" />
-        ) : (
-          <div ref={codeMirrorRef} data-cy="codemirror-editor" data-testid="codemirror-editor" />
+        {/* Both views stay mounted and toggle via `hidden` so the rendered
+            preview (and CodeMirror) keep their state across switches. The
+            preview is mounted lazily on first use to avoid loading its async
+            deps until needed. */}
+        {hasRenderedPreview && (
+          <MarkdownRender
+            markdownText={codeMirror.view?.state?.doc.toString()}
+            className={classNames("p-2", !isPreviewActive && "hidden")}
+          />
         )}
+        <div
+          ref={codeMirrorRef}
+          data-testid="codemirror-editor"
+          className={classNames(isPreviewActive && "hidden")}
+        />
       </div>
     </>
   );
