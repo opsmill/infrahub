@@ -1,3 +1,4 @@
+import mermaid from "mermaid";
 import type { ReactNode } from "react";
 import type { Options } from "react-markdown";
 import { MarkdownHooks } from "react-markdown";
@@ -29,6 +30,12 @@ const rehypeMermaidOptions: RehypeMermaidOptions = {
 };
 
 const rehypePlugins: PluggableList = [[rehypeMermaid, rehypeMermaidOptions]];
+
+// mermaid-isomorphic's browser renderer calls mermaid.render() but never
+// mermaid.initialize(), so the mermaidConfig passed to rehype-mermaid is ignored
+// client-side. Initialize the shared mermaid singleton directly so strict
+// sanitization is enforced (not left to mermaid's default) and the theme applies.
+mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
 
 type MarkdownWithMermaidProps = {
   markdownText: string;
