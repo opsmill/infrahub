@@ -109,7 +109,9 @@ When a user attempts to access Infrahub, the following authentication flow occur
    - For SSO users: The user is redirected to the identity provider, authenticated there, and returned to Infrahub
 3. A user session is created after successful authentication
 4. For first-time SSO users, a corresponding local user record is automatically created
-5. Group memberships and roles are applied based on configuration
+5. Group memberships are applied:
+   - On a user's first login, the default group (if configured) is assigned, if the authentication provider does not provide any group membership information
+   - On every login, group memberships derived from the provider's claims are added. This is additive — Infrahub never removes a user from a group automatically, even if a claim is dropped
 6. The user is granted access according to their assigned permissions
 
 ## Application authentication

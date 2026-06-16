@@ -86,6 +86,7 @@ Infrahub maps the following claims from identity providers to its internal user 
 | Identity anchor | `sub` | `sub` | Provider-issued subject identifier; used to resolve accounts across logins. Requires the `openid` scope. |
 | Account name | `name` | `name` | Used as the account name on creation. If `name` is already claimed by another SSO user, `email` is used instead. |
 | Display label | `name` | `name` | Synced on every login. |
+| Group memberships | `groups` | `groups` | Read from the `groups` claim by default; override per provider with `groups_claim` when your provider emits memberships under a different key (e.g., `roles`). Applied on every login, additively — memberships are never removed automatically. See [group mapping](../deploy-manage/user-management/sso/advanced-sso.mdx#group-mapping). |
 
 ### Account name fallback
 
