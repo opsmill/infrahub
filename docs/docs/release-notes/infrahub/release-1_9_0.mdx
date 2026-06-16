@@ -48,7 +48,7 @@ The visualizer includes:
 
 ### Syslog log forwarding *(Enterprise)*
 
-Infrahub Enterprise now supports native syslog forwarding to external SIEM (Security Information and Event Management) systems such as Splunk, Datadog, and ELK. All `infrahub.*` activity events can be forwarded continuously, including the new login/logout events. Permission-denied errors on rejected GraphQL and REST requests are forwarded as `infrahub.permission.denied` events. Each destination can also include Infrahub's own application logs, filtered by a minimum severity. The MSG field of each syslog entry carries the event as JSON.
+Infrahub Enterprise now supports native syslog forwarding to external SIEM (Security Information and Event Management) systems such as Splunk, Datadog, and ELK. All `infrahub.*` activity events can be forwarded continuously, including the new login/logout events. Permission-denied errors on rejected GraphQL and REST requests are forwarded as `infrahub.permission.denied` events. Each destination can also include Infrahub's own application logs, filtered by a minimum severity. The MSG field of each syslog entry contains the event as JSON.
 
 Configuration is via the Infrahub configuration file or environment variables and supports multiple destinations, TCP or UDP transport, optional TLS, and both RFC 5424 and RFC 3164 formats, covering common SOC2 and ISO 27001 logging requirements.
 
@@ -142,7 +142,7 @@ The `BranchDelete` GraphQL mutation accepts a `delete_from_git` parameter to ove
 
 ### Custom HTTP headers on webhooks
 
-Webhooks can now carry arbitrary custom HTTP headers - the most common use case being authentication to target systems that require `Authorization: Bearer <token>` or similar.
+Webhooks can now send arbitrary custom HTTP headers - the most common use case being authentication to target systems that require `Authorization: Bearer <token>` or similar.
 
 A single header can be attached to multiple webhooks, so rotating a credential in one place propagates to all of them on the next event. Two new node kinds back this, both implementing a shared `CoreKeyValue` generic:
 
