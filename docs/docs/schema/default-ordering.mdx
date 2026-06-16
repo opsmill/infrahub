@@ -6,13 +6,13 @@ import ReferenceLink from "../../src/components/Card";
 
 # Default ordering
 
-The `order_by` field on a node or generic sets the default sort order for every list of that kind's objects. Once declared, the order applies everywhere the objects are listed — the web interface, the GraphQL API, and the Python SDK — without each query specifying how to sort.
+The `order_by` field on a node or generic sets the default sort order for every list of that kind's objects. Once declared, the order applies everywhere the objects are listed - the web interface, the GraphQL API, and the Python SDK - without each query specifying how to sort.
 
 `order_by` controls which **objects** come first in a list. This is distinct from [`order_weight`](./order-weight), which controls which **fields** come first within a single object's view.
 
 ## Why this matters
 
-A schema author usually knows the natural order for a kind of object: documentation notes read best newest-first, devices read best alphabetically, invoices read best by largest amount. Without a schema-level default, that order has to be requested on every individual query, and any consumer that forgets — the detail-page tab, an ad-hoc API call — shows the objects in an order nobody chose.
+A schema author usually knows the natural order for a kind of object: documentation notes read best newest-first, devices read best alphabetically, invoices read best by largest amount. Without a schema-level default, that order has to be requested on every individual query, and any consumer that forgets - the object list view, an ad-hoc API call - shows the objects in an order nobody chose.
 
 Declaring `order_by` once moves that decision into the schema. Every consumer inherits it, and a single edit changes the order across all of them.
 
@@ -70,7 +70,7 @@ nodes:
       - node_metadata__created_at__desc
 ```
 
-When notes are attached to a parent object through a many-cardinality relationship, the parent's notes tab and any API read of that relationship return them newest-first — no per-query ordering argument.
+When notes are attached to a parent object through a many-cardinality relationship, the parent's notes tab and any API read of that relationship return them newest-first - no per-query ordering argument.
 
 Order devices by descending name, then by ascending serial number as a tiebreaker:
 
@@ -87,15 +87,15 @@ nodes:
 
 Schema-level `order_by` is honored consistently in the three places a list of objects is returned:
 
-- **Top-level listings** — querying a kind directly.
-- **Relationship listings** — the objects on the far side of a many-cardinality relationship. The **peer** schema's `order_by` is the source of truth; there is no per-relationship override.
-- **Hierarchy listings** — children, ancestors, and descendants of a hierarchical node.
+- **Top-level listings** - querying a kind directly.
+- **Relationship listings** - the objects on the far side of a many-cardinality relationship. The **peer** schema's `order_by` is the source of truth; there is no per-relationship override.
+- **Hierarchy listings** - children, ancestors, and descendants of a hierarchical node.
 
-Whenever `order_by` is in effect, the object UUID is appended as a final ascending tiebreaker. Two objects that compare equal on every declared entry — two notes created in the same millisecond — therefore keep a stable relative order, so pagination does not shuffle between requests.
+Whenever `order_by` is in effect, the object UUID is appended as a final ascending tiebreaker. Two objects that compare equal on every declared entry - two notes created in the same millisecond - therefore keep a stable relative order, so pagination does not shuffle between requests.
 
 ## Ordering by object metadata
 
-`created_at` and `updated_at` are object-level metadata that Infrahub records automatically for every node — there is no need to add a timestamp attribute to the schema to sort on them.
+`created_at` and `updated_at` are object-level metadata that Infrahub records automatically for every node - there is no need to add a timestamp attribute to the schema to sort on them.
 
 <ReferenceLink title="Data lineage and metadata" url="../objects/metadata" />
 
@@ -103,13 +103,13 @@ Only `created_at` and `updated_at` can be used in `order_by`. The `created_by` a
 
 ## Inheritance
 
-A concrete node inherits a generic's `order_by` only when the node does not declare its own. When the node declares `order_by`, its value applies in full and the generic's is not merged in. The metadata and direction syntax inherits the same way. This matches existing `order_by` inheritance — no new rules are introduced.
+A concrete node inherits a generic's `order_by` only when the node does not declare its own. When the node declares `order_by`, its value applies in full and the generic's is not merged in. The metadata and direction syntax inherits the same way. This matches existing `order_by` inheritance - no new rules are introduced.
 
 <ReferenceLink title="Generics & inheritance" url="./generics-and-inheritance" />
 
 ## Overriding at query time
 
-A query can pass an `order` argument to sort that one request differently. When it does, the `order` argument **fully replaces** the schema's `order_by` for that query — the two are not combined, and the schema default contributes no fallback tiebreaker.
+A query can pass an `order` argument to sort that one request differently. When it does, the `order` argument **fully replaces** the schema's `order_by` for that query - the two are not combined, and the schema default contributes no fallback tiebreaker.
 
 The query-time `order` argument uses the same entry grammar as the schema field. For the GraphQL details, see the ordering section of the queries guide.
 
@@ -138,8 +138,8 @@ If a schema in use before this release has an attribute or relationship named `n
 
 ## Related concepts
 
-- [Order weight](./order-weight) — Controls the order of fields within an object's view
-- [Data lineage and metadata](../objects/metadata) — The object-level metadata you can sort on
-- [Generics & inheritance](./generics-and-inheritance) — How a node inherits a generic's `order_by`
-- [Ordering results in GraphQL](../development-resources/graphql/queries-and-mutations#ordering-results) — Overriding the default order at query time
-- [Reference: Node](../reference/schema/node) — Full node property reference
+- [Order weight](./order-weight) - Controls the order of fields within an object's view
+- [Data lineage and metadata](../objects/metadata) - The object-level metadata you can sort on
+- [Generics & inheritance](./generics-and-inheritance) - How a node inherits a generic's `order_by`
+- [Ordering results in GraphQL](../development-resources/graphql/queries-and-mutations#ordering-results) - Overriding the default order at query time
+- [Reference: Node](../reference/schema/node) - Full node property reference
