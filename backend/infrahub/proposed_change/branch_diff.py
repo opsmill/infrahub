@@ -76,7 +76,7 @@ class GitRepositoryFileDiffer:
             repository_kind=repository_kind,
         )
         files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
-            first_commit=source_commit, second_commit=destination_commit
+            first_commit=destination_commit, second_commit=source_commit
         )
         return RepositoryFileDiff(files_changed=files_changed, files_added=files_added, files_removed=files_removed)
 

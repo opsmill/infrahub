@@ -16,6 +16,18 @@ Tests are organized by type:
 
 Note that at some point the current integration tests will be merged with the functional tests and the `tests/integration_docker` tests will move to `tests/integration`.
 
+### Running integration_docker tests locally
+
+Repo-based `tests/integration_docker/` tests build throwaway git repositories with dulwich (`porcelain.commit`), which honors your global `commit.gpgsign` setting. If you sign commits and the `gpg` Python bindings (gpgme) are not installed — common on macOS — repository setup fails with a misleading `ModuleNotFoundError: No module named 'gpg'`. That takes down every repo-based test plus any test that depends on the repo, showing up as cascading, confusing assertion failures.
+
+These tests never need signed commits. Disable signing for the run by pointing git's config at `/dev/null`:
+
+```bash
+GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null uv run pytest backend/tests/integration_docker/<file>
+```
+
+With an empty config `commit.gpgsign` defaults to off, and dulwich falls back to your OS username/host for the commit author, so no `[user]` block is needed. CI does not sign commits, so this only affects local runs.
+
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 
 ## Test Documentation
@@ -274,6 +286,7 @@ If you find yourself wanting to mock:
 
 - External HTTP APIs with no test mode (use `responses` or `httpx_mock` sparingly)
 - Time-dependent behavior (`freezegun`)
+- Prefect's `get_run_logger` when calling a `.fn` outside a flow context — patch it to return a stdlib `logging.getLogger(...)` so `caplog` can capture output. See [Backend Testing — Logging](../../knowledge/backend/testing.md#logging-use-caplog-instead-of-mocking-get_run_logger) for the pattern.
 
 Even in these cases, prefer adapter patterns when the dependency is used widely.
 

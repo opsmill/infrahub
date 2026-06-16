@@ -246,7 +246,7 @@ async def documentation() -> RedirectResponse:
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
-    return templates.TemplateResponse("index.html", {"request": req})
+    return templates.TemplateResponse(request=req, name="index.html")
 
 
 def _validate_feature_selection(configuration: config.Settings) -> None:

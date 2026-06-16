@@ -1,6 +1,8 @@
 import { defineConfig } from "oxlint";
 
+// We enable all rules and disable irrelevant ones.
 export default defineConfig({
+  ignorePatterns: ["**/.storybook/**"],
   categories: {
     correctness: "error",
     nursery: "error",
@@ -10,13 +12,20 @@ export default defineConfig({
     style: "error",
     suspicious: "error",
   },
+  env: {
+    browser: true,
+  },
   plugins: ["oxc", "typescript", "react", "react-perf", "jsx-a11y", "vitest", "unicorn"],
   rules: {
     "eslint/arrow-body-style": "off",
     "eslint/func-style": "off",
+    "eslint/id-length": "off",
+    "eslint/no-console": ["error", { allow: ["error"] }],
+    "eslint/no-empty-function": "off",
     "eslint/no-magic-numbers": ["error", { ignore: [0, 1] }],
     "eslint/max-lines-per-function": "off",
     "eslint/no-ternary": "off",
+    "eslint/no-undefined": "off",
     "eslint/sort-imports": "off",
     "eslint/sort-keys": "off",
     "oxc/no-rest-spread-properties": "off",
@@ -25,10 +34,12 @@ export default defineConfig({
     "react/forbid-component-props": "off",
     "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
     "react/jsx-max-depth": "off",
+    "react/jsx-no-constructed-context-values": "off",
     "react/jsx-props-no-spreading": "off",
     "react/no-multi-comp": "off",
     "react/only-export-components": "off",
     "react/react-in-jsx-scope": "off",
+    "react_perf/jsx-no-new-array-as-prop": "off",
     "react_perf/jsx-no-new-function-as-prop": "off",
     "typescript/explicit-function-return-type": "off",
     "typescript/explicit-module-boundary-types": "off",

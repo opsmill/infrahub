@@ -94,5 +94,5 @@ Show the drafted title and body to the user for approval before invoking `gh pr 
 ## Notes
 
 - Use this command after commits are already on `origin/<branch>` or about to be pushed. It does not create commits.
-- For split-PR workflows (e.g. driven by `/feature-flow` Phase 6c), invoke this command per branch and add a `Depends on #<sibling-PR>` line at the top of dependent bodies.
+- For split-PR workflows, invoke this command per branch and add a `Depends on #<sibling-PR>` line at the top of dependent bodies.
 - If the PR already exists for the current branch, `gh pr create` will fail — use `gh pr view --web` to open the existing one instead.

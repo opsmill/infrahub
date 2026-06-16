@@ -1,10 +1,7 @@
-import { Icon } from "@iconify-icon/react";
+import { FloatingPanel } from "@infrahub/graph";
 import { Button } from "@infrahub/ui";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
-
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import Content from "@/shared/components/layout/content";
 
 import { DependenciesModeMain } from "./dependencies-mode/dependencies-mode-main";
 import { DependenciesModeSidebar } from "./dependencies-mode/dependencies-mode-sidebar";
@@ -59,26 +56,12 @@ export function PathTraversalPage() {
       </main>
 
       {parametersOpen && (
-        <Content.Card className="absolute top-4 right-4 bottom-4 z-10 flex w-80 flex-col overflow-hidden shadow-xl">
-          <div className="border-gray-200 border-b p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h2 className="font-semibold text-lg">{meta.title}</h2>
-                <p className="mt-1 text-gray-500 text-sm">{meta.description}</p>
-              </div>
-              <Tooltip message="Close panel">
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  shape="square"
-                  onPress={toggleParameters}
-                  className="-mt-1 -mr-1 text-gray-400"
-                >
-                  <Icon icon="mdi:close" className="text-lg" />
-                </Button>
-              </Tooltip>
-            </div>
-
+        <FloatingPanel
+          title={meta.title}
+          description={meta.description}
+          onClose={toggleParameters}
+          className="absolute top-4 right-4 bottom-4 z-10 flex w-80 flex-col shadow-xl"
+          headerContent={
             <div className="mt-2 flex gap-1">
               {MODES.map((m) => (
                 <Button
@@ -94,12 +77,10 @@ export function PathTraversalPage() {
                 </Button>
               ))}
             </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {mode === "path" ? <PathModeSidebar /> : <DependenciesModeSidebar />}
-          </div>
-        </Content.Card>
+          }
+        >
+          {mode === "path" ? <PathModeSidebar /> : <DependenciesModeSidebar />}
+        </FloatingPanel>
       )}
     </div>
   );

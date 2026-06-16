@@ -155,6 +155,16 @@ event = MyDomainActionEvent(
 await service.event.send(event=event)
 ```
 
+### Step 7: Regenerate the events documentation
+
+The events reference under `docs/docs/reference/infrahub-events/<domain>.mdx` is generated from the event classes and their field descriptions — it is not edited by hand. After adding or changing an event class, or adding/changing any of its fields, regenerate it and commit the result:
+
+```bash
+uv run invoke docs.generate
+```
+
+CI's `validate-generated-documentation` job runs `uv run invoke docs.validate` and fails if the generated doc is stale.
+
 ## Complete Example
 
 Here is a complete example based on `BranchCreatedEvent`:
@@ -199,6 +209,7 @@ After implementing your event:
 - [ ] Verify any message bus messages returned by `get_messages()` are triggered
 - [ ] Check that event payloads contain expected resource/related data
 - [ ] Run unit tests covering event creation
+- [ ] Run `uv run invoke docs.generate` and commit the regenerated events reference doc
 
 ## Quality Checklist
 
@@ -211,6 +222,7 @@ Before submitting your event:
 - [ ] All resource/related values are strings
 - [ ] Docstring describes when event is generated
 - [ ] Tests cover event creation and emission
+- [ ] Generated events documentation regenerated and committed (`uv run invoke docs.validate` passes)
 - [ ] Code passes `uv run invoke lint`
 
 ## Related Resources

@@ -221,6 +221,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_GOOGLE_ICON` | None | string | mdi:google |
 | `INFRAHUB_OAUTH2_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_GOOGLE_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_GOOGLE_AUTHORIZATION_URL` | None | string | https://accounts.google.com/o/oauth2/auth |
@@ -233,6 +234,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_PROVIDER1_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OAUTH2_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_PROVIDER1_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_AUTHORIZATION_URL` | None | string | None |
@@ -243,6 +245,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_PROVIDER2_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OAUTH2_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_PROVIDER2_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_AUTHORIZATION_URL` | None | string | None |
@@ -260,6 +263,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_GOOGLE_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_GOOGLE_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_GOOGLE_DISCOVERY_URL` | None | string | https://accounts.google.com/.well-known/openid-configuration |
@@ -271,6 +275,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER1_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER1_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
@@ -280,6 +285,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER2_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER2_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER2_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
@@ -387,3 +393,12 @@ LDAP authentication configuration.
 | `SHUTDOWN_DRAIN_TIMEOUT` | Seconds to wait for queue drain on graceful shutdown. | integer | 10 |
 | `FORWARD_APPLICATION_LOGS` | Forward application log messages to this destination. | boolean | False |
 | `MIN_LOG_SEVERITY` | Minimum Python log severity to forward when application log forwarding is enabled. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | WARNING |
+
+## Logging
+
+These variables configure logging at process startup. They are read directly from the environment and are not part of a `.toml` configuration file.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_PRODUCTION` | Controls the logging output format. When `true`, logs are rendered as JSON with structured exception information, suitable for production log aggregation. When `false`, logs are rendered as human-readable, colorized console output with plain tracebacks, intended for local development. | boolean | True |
+| `INFRAHUB_LOG_LEVEL` | Minimum severity level of log messages emitted by Infrahub. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | INFO |

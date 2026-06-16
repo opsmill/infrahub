@@ -3,8 +3,8 @@ import { XIcon } from "lucide-react";
 
 import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
 
-import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
 import { Separator } from "@/shared/components/aria/separator";
+import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
 import { Col, Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
@@ -24,12 +24,7 @@ export function AboutModal({ isOpen, onOpenChange }: AboutModalProps) {
   const deploymentId = isPending ? null : isError || !data ? "N/A" : data.deployment_id;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      aria-label="About Infrahub"
-      className="w-full max-w-lg"
-    >
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} aria-label="About Infrahub">
       <Row className="mb-1 justify-between p-2">
         <InfrahubLogo className="h-8" role="img" aria-label="Infrahub logo" />
         <Button

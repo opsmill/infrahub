@@ -194,7 +194,6 @@ Use selectors in this priority order:
 
 ```typescript
 page.getByTestId("create-object-button")
-page.getByTestId("side-panel-container")
 page.getByTestId("object-items")
 ```
 
@@ -234,7 +233,6 @@ page.locator("#alert-success-Tenant-created")
 Scope selectors to containers to avoid ambiguity:
 
 ```typescript
-page.getByTestId("side-panel-container").getByLabel("Status")
 page.getByTestId("object-items").getByRole("link", { name: "my-tenant" })
 ```
 
@@ -360,7 +358,7 @@ await page.getByTestId("modal-delete-confirm").click();
 ### Dropdown/Select
 
 ```typescript
-await page.getByTestId("side-panel-container").getByLabel("Status").click();
+await page.getByLabel("Status").click();
 await page.getByRole("option", { name: "Maintenance" }).click();
 ```
 

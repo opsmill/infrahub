@@ -2,7 +2,7 @@ import { Button } from "@infrahub/ui";
 import type React from "react";
 
 import { Row } from "@/shared/components/container";
-import CheckboxField from "@/shared/components/form/fields/checkbox.field";
+import BooleanField from "@/shared/components/form/fields/boolean.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
@@ -29,7 +29,6 @@ import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-sc
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   isBulkUpdate?: boolean;
   fields: Array<DynamicFieldProps>;
-  onCancel?: () => void;
   submitLabel?: string;
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
   ref?: React.Ref<FormRef>;
@@ -49,7 +48,7 @@ const DynamicForm = ({
   );
 
   return (
-    <Form ref={ref} {...props} defaultValues={formDefaultValues}>
+    <Form ref={ref} {...props} onCancel={onCancel} defaultValues={formDefaultValues}>
       {fields.map((field) => (
         <DynamicField key={`${field.type}_${field.name}`} {...field} />
       ))}
@@ -80,7 +79,7 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX: {
       const { type, ...otherProps } = props;
-      return <CheckboxField {...otherProps} />;
+      return <BooleanField {...otherProps} />;
     }
     case ATTRIBUTE_KIND.DROPDOWN: {
       const { type, ...otherProps } = props;

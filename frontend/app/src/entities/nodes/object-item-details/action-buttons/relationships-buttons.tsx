@@ -1,12 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
@@ -130,18 +129,13 @@ export function RelationshipsButtons({
         </Button>
       </Tooltip>
 
-      <SlideOver
-        title={
-          <SlideOverTitle
-            schema={parentSchema}
-            currentObjectLabel={relationshipSchemaData.label}
-            title={`Associate a new ${relationshipLabel}`}
-            subtitle={`Add a new ${relationshipLabel} to the current object`}
-          />
-        }
-        open={showAddDrawer}
-        setOpen={setShowAddDrawer}
-      >
+      <Sheet isOpen={showAddDrawer} onOpenChange={setShowAddDrawer}>
+        <SlideOverTitle
+          schema={parentSchema}
+          currentObjectLabel={relationshipSchemaData.label}
+          title={`Associate a new ${relationshipLabel}`}
+          subtitle={`Add a new ${relationshipLabel} to the current object`}
+        />
         <FormContext value={{ parentSchema, parentData: objectDetailsData }}>
           {relationshipSchemaData.kind === "Component" &&
           peerRelationshipSchema?.kind === "Parent" &&
@@ -189,7 +183,7 @@ export function RelationshipsButtons({
             />
           )}
         </FormContext>
-      </SlideOver>
+      </Sheet>
     </>
   );
 }

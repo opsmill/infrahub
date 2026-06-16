@@ -75,7 +75,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
 
         response: FlowRun = await run_deployment(
             name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags
-        )  # type: ignore[return-value, misc]
+        )  # type: ignore[misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
@@ -107,5 +107,5 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
         tls_context = self._tls_registry.get(insecure=tls_insecure, ca_bundle=tls_ca_bundle)
         async with AsyncClientContext(httpx_settings={"verify": tls_context}):
-            flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[return-value, misc]
+            flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[misc]
         return WorkflowInfo.from_flow(flow_run=flow_run)

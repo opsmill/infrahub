@@ -28,14 +28,14 @@ test.describe("/role-management/roles - Roles CRUD", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByRole("textbox", { name: "Name *" }).fill("test role");
       await page.getByLabel("Groups").click();
-      await page.getByTestId("side-panel-container").getByText("Infrahub Users").click();
+      await page.getByLabel("sheet").getByText("Infrahub Users").click();
       await page.getByLabel("Groups").click();
-      await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
+      await page.getByLabel("sheet").getByLabel("Permissions").click();
       await page
-        .getByTestId("side-panel-container")
+        .getByLabel("sheet")
         .getByRole("option", { name: "global:super_admin:allow_all" })
         .click();
-      await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
+      await page.getByLabel("sheet").getByLabel("Permissions").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Role created!")).toBeVisible();
     });
@@ -72,16 +72,8 @@ test.describe("/role-management/roles - Roles CRUD", () => {
     });
 
     await test.step("bulk edit both roles", async () => {
-      await page
-        .getByRole("link", { name: "test role updated" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
-      await page
-        .getByRole("link", { name: "test role 2" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
+      await getDataTableRow(page, "test role updated").locator("label").click();
+      await getDataTableRow(page, "test role 2").locator("label").click();
       await page.getByRole("button", { name: "Edit" }).click();
       await page.getByRole("button", { name: "Add Permissions" }).click();
       await page.getByRole("option", { name: "global:super_admin:allow_all" }).click();

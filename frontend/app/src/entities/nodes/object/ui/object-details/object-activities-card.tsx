@@ -1,4 +1,4 @@
-import { Card, CardHeader } from "@infrahub/ui/card";
+import { Card, CardHeader } from "@infrahub/ui";
 
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 

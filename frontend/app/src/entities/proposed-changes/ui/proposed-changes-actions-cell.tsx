@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import {
@@ -8,7 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import type { Permission } from "@/entities/permission/types";
@@ -40,7 +39,11 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end">
-          <Tooltip enabled={!isDeleteAllowed} content={permission.delete.message} side="left">
+          <Tooltip
+            message={!isDeleteAllowed ? permission.delete.message : undefined}
+            placement="left"
+            nonInteractiveTrigger
+          >
             <div>
               <DropdownMenuItem
                 disabled={!isDeleteAllowed}

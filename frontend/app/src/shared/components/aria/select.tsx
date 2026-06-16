@@ -1,3 +1,10 @@
+import {
+  ListBox,
+  ListBoxItem,
+  type ListBoxItemProps,
+  Popover,
+  type PopoverProps,
+} from "@infrahub/ui";
 import { ChevronDownIcon } from "lucide-react";
 import {
   Button as AriaButton,
@@ -8,8 +15,6 @@ import {
   composeRenderProps,
 } from "react-aria-components";
 
-import { ListBox, ListBoxItem, type ListBoxItemProps } from "@/shared/components/aria/list-box";
-import { Popover, type PopoverProps } from "@/shared/components/aria/popover";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";

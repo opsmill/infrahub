@@ -87,7 +87,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByTestId("source-profile-badge").hover();
       await expect(page.getByTestId("source-profile-tooltip").first()).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" }).first()).toBeVisible();
-      await page.getByLabel("Name *").click(); // hide tooltip
+      await page.getByLabel("Description").click(); // hide tooltip
 
       await page.getByLabel("Name *").fill("tag with profile");
       await page.getByRole("button", { name: "Save" }).click();
@@ -101,7 +101,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Verify profile metadata", async () => {
       await page.getByText("Nametag with profile").getByTestId("view-metadata-button").click();
       await expect(page.getByTestId("metadata-tooltip").getByText("Source-")).toBeVisible();
-      await page.getByText("Nametag with profile").getByTestId("view-metadata-button").click(); // to close popover
+      await page.getByTestId("metadata-tooltip").press("Escape"); // to close popover
       await page
         .getByText("DescriptionA profile for E2E")
         .getByTestId("view-metadata-button")

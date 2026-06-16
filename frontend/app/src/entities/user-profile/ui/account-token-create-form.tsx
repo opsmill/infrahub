@@ -10,14 +10,20 @@ import { useCreateAccountTokenMutation } from "@/entities/user-profile/ui/querie
 
 export interface AccountTokenCreateFormProps {
   onSuccess: (data: { token: string }) => Promise<void>;
+  onCancel?: () => void;
   className?: string;
 }
 
-export function AccountTokenCreateForm({ onSuccess, className }: AccountTokenCreateFormProps) {
+export function AccountTokenCreateForm({
+  onSuccess,
+  onCancel,
+  className,
+}: AccountTokenCreateFormProps) {
   const createAccountToken = useCreateAccountTokenMutation();
 
   return (
     <DynamicForm
+      onCancel={onCancel}
       className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}
       fields={[
         {

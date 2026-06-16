@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { TableCell } from "@/shared/components/table/table-cell";
 import {
@@ -119,29 +119,22 @@ export function RelationshipActionsCell({
         />
       </PopoverContent>
 
-      {showEditForm && (
-        <SlideOver
-          title={
-            <SlideOverTitle
-              schema={parentSchema}
-              currentObjectLabel={relationshipLabel}
-              title={`Edit ${relationshipLabel}`}
-            />
-          }
-          open={true}
-          setOpen={() => setShowEditForm(false)}
-        >
-          <ObjectItemEditComponent
-            closeDrawer={() => setShowEditForm(false)}
-            onUpdateComplete={async () => {
-              await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-              setShowEditForm(false);
-            }}
-            objectId={relationshipId}
-            objectname={relationshipKind}
-          />
-        </SlideOver>
-      )}
+      <Sheet isOpen={showEditForm} onOpenChange={() => setShowEditForm(false)}>
+        <SlideOverTitle
+          schema={parentSchema}
+          currentObjectLabel={relationshipLabel}
+          title={`Edit ${relationshipLabel}`}
+        />
+        <ObjectItemEditComponent
+          closeDrawer={() => setShowEditForm(false)}
+          onUpdateComplete={async () => {
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+            setShowEditForm(false);
+          }}
+          objectId={relationshipId}
+          objectname={relationshipKind}
+        />
+      </Sheet>
 
       {showDissociateModal && (
         <DissociateRelationshipsModal

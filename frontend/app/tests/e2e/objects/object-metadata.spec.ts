@@ -21,10 +21,19 @@ test.describe("Object metadata", () => {
     await expect(page.getByLabel("Kind").first().getByTestId("select-value")).not.toBeVisible();
 
     // Is protected should not be checked
-    await expect(page.getByLabel("is protected *")).not.toBeChecked();
+    await expect(
+      page.getByRole("group", { name: "is protected" }).getByRole("checkbox", { name: "false" })
+    ).toBeChecked();
+    await expect(
+      page.getByRole("group", { name: "is protected" }).getByRole("checkbox", { name: "true" })
+    ).not.toBeChecked();
 
     // Check is protected
-    await page.getByLabel("is protected *").check();
+    await page
+      .getByRole("group", { name: "is protected" })
+      .locator("label")
+      .filter({ hasText: "True" })
+      .click();
 
     // Select Architecture team
     await page.getByLabel("Kind").first().click();
@@ -55,7 +64,12 @@ test.describe("Object metadata", () => {
     await expect(page.getByTestId("select-value").nth(1)).toContainText("Architecture Team");
 
     // Is protected should be checked
-    await expect(page.getByLabel("is protected *")).toBeChecked();
+    await expect(
+      page.getByRole("group", { name: "is protected" }).getByRole("checkbox", { name: "true" })
+    ).toBeChecked();
+    await expect(
+      page.getByRole("group", { name: "is protected" }).getByRole("checkbox", { name: "false" })
+    ).not.toBeChecked();
   });
 
   test("read only attribute should not have metadata edit button", async ({ page }) => {

@@ -20,6 +20,12 @@
             vale
             stdenv.cc.cc.lib
             nodejs_24
+          ] ++ lib.optionals stdenv.isLinux [
+            # bonsai (enterprise extra) has no Linux wheel, so it compiles from
+            # sdist and links libldap + libsasl2. macOS uses a prebuilt wheel
+            # against the system OpenLDAP, so neither is needed there.
+            openldap
+            cyrus_sasl
           ];
 
           shellHook = ''
@@ -30,9 +36,12 @@
             echo "  - lychee (link checker): $(lychee --version)"
             echo "  - vale (prose linter): $(vale --version)"
           '';
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath ([
             pkgs.stdenv.cc.cc.lib
-          ];
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+            pkgs.openldap
+            pkgs.cyrus_sasl
+          ]);
         };
       }
     );

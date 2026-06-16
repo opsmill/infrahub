@@ -1,0 +1,1 @@
+Fixed Python transform based computed attributes not being configured after a repository commit update. The trigger template referenced `event.payload['commit']` instead of `event.payload['data']['commit']`; starting with Prefect 3.7 an undefined template reference fails the whole automation action instead of rendering an empty string, so the setup workflow never ran.

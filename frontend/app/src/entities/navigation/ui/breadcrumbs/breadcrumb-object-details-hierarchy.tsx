@@ -1,12 +1,7 @@
+import { BreadcrumbItem, BreadcrumbItemError, BreadcrumbItemLoading, Tooltip } from "@infrahub/ui";
 import { keepPreviousData } from "@tanstack/react-query";
 import { TriangleAlertIcon } from "lucide-react";
 
-import {
-  BreadcrumbItem,
-  BreadcrumbItemError,
-  BreadcrumbItemLoading,
-} from "@/shared/components/aria/breadcrumbs";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
@@ -51,8 +46,7 @@ export function BreadcrumbObjectDetailsHierarchy({
     <>
       {!hasTopLevelNode && (
         <Tooltip
-          enabled
-          content={
+          message={
             <div className="max-w-xs">
               <p className="mb-2 font-semibold">Hierarchy depth limit reached</p>
               <p>

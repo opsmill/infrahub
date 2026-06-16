@@ -63,7 +63,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: opsmill/paths-filter@v3.0.2
+        uses: dorny/paths-filter@v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -113,13 +113,13 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
@@ -146,13 +146,13 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate OpenAPI types
@@ -189,13 +189,13 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify generated error bindings match schema/error-catalogue.json
@@ -230,13 +230,13 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate GraphQL types
@@ -502,7 +502,7 @@ jobs:
       - name: "Unit Tests"
         run: "uv run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
-        if: matrix.python-version == '3.13'
+        if: matrix.python-version == '3.14'
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
@@ -518,11 +518,20 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "graphql"
+          - "core-diff"
+          - "core-schema"
+          - "other"
     runs-on:
       group: huge-runners
-    timeout-minutes: 80
+    timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
+      PYTEST_XDIST_WORKER_COUNT: 2
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -545,15 +554,18 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Unit Tests"
-        run: "uv run invoke backend.test-component"
-      - name: "Coveralls : Unit Tests"
+      - name: "Validate component test shards"
+        if: matrix.shard == 'other'
+        run: "uv run invoke backend.validate-component-shards"
+      - name: "Component Tests (${{ matrix.shard }})"
+        run: "uv run invoke backend.test-component --shard ${{ matrix.shard }}"
+      - name: "Coveralls : Component Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-component
+          flag-name: backend-component-${{ matrix.shard }}
           parallel: true
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -811,14 +823,14 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
           # https://github.com/microsoft/playwright/issues/41000
           node-version: 24.15.0
           cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: "Install frontend"
         working-directory: ./frontend/app
         run: pnpm install --frozen-lockfile
@@ -828,6 +840,9 @@ jobs:
       - name: "Run unit tests"
         working-directory: ./frontend/app
         run: "pnpm test:coverage"
+      - name: "Run unit tests (@infrahub/graph)"
+        working-directory: ./frontend/packages/graph
+        run: "pnpm test"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -1117,13 +1132,13 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          package_json_file: frontend/package.json
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
@@ -1191,13 +1206,16 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm exec playwright install chromium --no-shell
 
-      # Make chromium ignore netlink messages by returning ReadMessages early
-      - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(pnpm exec playwright install chromium --no-shell --dry-run | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
-      - name: Chrome func offset
-        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
-      - name: Patch chromium
-        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+      # Make chromium ignore netlink messages so AddressTrackerLinux takes its "assume always
+      # online" path. The LD_PRELOAD shim fails NETLINK_ROUTE sockets at the libc level, which
+      # is robust across Playwright/Chromium versions (unlike patching the chrome binary). The
+      # shim is injected into the browser process via playwright.config.ts (NO_NETLINK_SO).
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
 
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'
@@ -1473,5 +1491,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
+          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
           parallel-finished: true

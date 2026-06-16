@@ -1,16 +1,16 @@
-import { keepPreviousData } from "@tanstack/react-query";
-import { useLocation, useParams } from "react-router";
-
-import { constructPath } from "@/shared/api/rest/fetch";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbItemError,
   BreadcrumbItemLoading,
   Breadcrumbs,
-} from "@/shared/components/aria/breadcrumbs";
+  Popover,
+} from "@infrahub/ui";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useLocation, useParams } from "react-router";
+
+import { constructPath } from "@/shared/api/rest/fetch";
 import { MenuTrigger } from "@/shared/components/aria/menu";
-import { Popover } from "@/shared/components/aria/popover";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";

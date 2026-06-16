@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.9.7"
+version = "1.10.0b0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -16,10 +16,10 @@ classifiers = [
 ]
 
 dependencies = [
-    "neo4j==6.0.3",
-    "neo4j-rust-ext==6.0.3.0",
+    "neo4j==6.2.0",
+    "neo4j-rust-ext==6.2.0.0",
     "pydantic>=2.12,<2.13",
-    "pydantic-settings>=2.8,<2.9",
+    "pydantic-settings>=2.10,<3.0",
     "pytest>=9.0,<9.1",
     "aio-pika>=9.4,<9.5",
     "structlog==24.1.0",
@@ -28,8 +28,8 @@ dependencies = [
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
     "click>=8.3,<9",
-    "prefect==3.6.13",
-    "prefect-redis==0.2.8",
+    "prefect==3.7.4",
+    "prefect-redis==0.2.12",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3,<4",
@@ -37,7 +37,7 @@ dependencies = [
     "tomli>=1.1.0; python_version<='3.11'",
     "deepdiff==8.6.2",
     # Dependencies specific to the API Server
-    "fastapi==0.131.0",
+    "fastapi==0.136.3",
     "fastapi-storages>=0.3,<0.4",
     "graphene>=3.4,<3.5",
     "gunicorn>=23.0.0,<24",
@@ -65,7 +65,7 @@ dependencies = [
     "rich>=13,<14",
     "pyarrow>=14",
     "numpy>=1.26.2",
-    "dulwich==0.24.7",
+    "dulwich==1.2.5",
     "whenever==0.9.3",
     "netutils==1.12.0",
     "ariadne-codegen==0.18.0",
@@ -116,7 +116,7 @@ dev = [
     "jwcrypto==1.5.7",
     "ty==0.0.32",
     "prek>=0.3.0",
-    "coverage==7.13.5",
+    "coverage==7.14.1",
 ]
 
 # test-scale = [

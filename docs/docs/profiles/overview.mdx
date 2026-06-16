@@ -133,7 +133,7 @@ Relationship inheritance in Profiles follows the same principles as attribute in
 
 2. **Priority-based resolution**: When multiple Profiles define the same relationship, the Profile with the highest priority (lowest priority number) takes precedence.
 
-3. **Override capability**: Like attributes, relationship values can be overridden on individual objects when exceptions are needed.
+3. **Override capability**: Like attributes, relationship peers can be overridden on individual objects when exceptions are needed. A relationship is overridden as a whole; modifying it on an object clears the Profile-source of every peer in the relationship (see [Override specific Profile values](./override-values.mdx)).
 
 4. **Metadata tracking**: Relationship values inherited from Profiles include metadata indicating their source, enabling full data lineage tracking.
 

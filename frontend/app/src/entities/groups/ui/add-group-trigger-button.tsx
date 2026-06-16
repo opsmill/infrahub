@@ -1,10 +1,9 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import type { GroupData } from "@/entities/groups/domain/types";
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
@@ -44,19 +43,13 @@ export function AddGroupTriggerButton({
         </Button>
       </Tooltip>
 
-      <SlideOver
-        offset={1}
-        title={
-          <SlideOverTitle
-            schema={schema}
-            currentObjectLabel={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
-            title="Select group(s)"
-            subtitle="Select one or more groups to assign"
-          />
-        }
-        open={isAddGroupFormOpen}
-        setOpen={setIsAddGroupFormOpen}
-      >
+      <Sheet isOpen={isAddGroupFormOpen} onOpenChange={setIsAddGroupFormOpen}>
+        <SlideOverTitle
+          schema={schema}
+          currentObjectLabel={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
+          title="Select group(s)"
+          subtitle="Select one or more groups to assign"
+        />
         <AddGroupForm
           objectId={objectId}
           defaultGroupIds={
@@ -79,7 +72,7 @@ export function AddGroupTriggerButton({
             setIsAddGroupFormOpen(false);
           }}
         />
-      </SlideOver>
+      </Sheet>
     </>
   );
 }
