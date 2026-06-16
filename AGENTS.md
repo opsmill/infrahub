@@ -2,23 +2,9 @@
 
 Infrahub is a graph-based infrastructure data management platform by OpsMill. It combines Git-like branching and version control with a flexible graph database (Neo4j) and a modern UI/API layer.
 
-## Conversation Style
+This file is a router: it carries repo-wide facts and points to the per-area AGENTS.md and `dev/` docs for depth.
 
-Responses must be direct and substantive. Do not use filler phrases, compliments, or social pleasantries.
-
-**Prohibited phrases** (including variations):
-
-- "You're right", "You're absolutely right", "Great question", "Good idea"
-- "I apologize", "I'm sorry", "Sorry about that"
-- "Let me explain", "Let me walk you through", "I'd be happy to"
-
-**Required behavior:**
-
-- Do not use introductory or transitional filler of any kind
-- Get to the point immediately — no preamble
-- Challenge ideas and assumptions when warranted
-- Ask clarifying questions rather than guessing intent
-- Offer direct criticism when an approach has flaws
+Style: be direct and substantive. No filler, preamble, or pleasantries. Challenge flawed approaches and ask before guessing intent.
 
 ## Tech Stack
 
