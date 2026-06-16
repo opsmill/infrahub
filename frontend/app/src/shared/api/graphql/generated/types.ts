@@ -37247,6 +37247,8 @@ export type ReachableNodesInput = {
   max_paths?: InputMaybe<Scalars['Int']['input']>;
   /** Maximum number of distinct terminal nodes to discover (default: 50, max: 200) */
   max_results?: InputMaybe<Scalars['Int']['input']>;
+  /** When true (default), return only the shortest path(s) to each reachable target. When false, return every path to each target within max_depth that meets the filters. */
+  shortest_paths_only?: InputMaybe<Scalars['Boolean']['input']>;
   /** UUID of the source node */
   source_id: Scalars['String']['input'];
   /** Node kinds to search for */
