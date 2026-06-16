@@ -4,9 +4,8 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError
-from infrahub.log import get_logger
 
-from .repository import InfrahubRepository, PendingObjectImport
+from .repository import FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -14,8 +13,6 @@ if TYPE_CHECKING:
     from infrahub.lock import InfrahubLockRegistry
 
     from .models import GitRepositoryAdd
-
-log = get_logger()
 
 
 class RepositoryImporter(ABC):
@@ -93,7 +90,7 @@ class RepositorySyncer:
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
             collected = await repo.collect_pending_imports(staging_branch=staging_branch)
 
-        failed_branches = list(collected.failed_branches)
+        failed_imports = list(collected.failed_imports)
         for pending_import in collected.imports:
             try:
                 await self._importer.import_branch(repo, pending_import)
@@ -102,12 +99,10 @@ class RepositorySyncer:
             except Exception as exc:
                 # The import already records its own per-branch error status before re-raising, so
                 # isolate the failure here to keep importing the remaining branches.
-                log.warning(
-                    "Failed to import branch objects, skipping it.",
-                    repository=repo.name,
-                    branch=pending_import.infrahub_branch_name,
-                    exc_info=exc,
+                failed_imports.append(
+                    FailedImport(
+                        branch_name=pending_import.infrahub_branch_name, step=ImportStep.IMPORT, reason=str(exc)
+                    )
                 )
-                failed_branches.append(pending_import.infrahub_branch_name)
 
-        repo.raise_if_branches_failed(failed_branches)
+        repo.raise_if_branches_failed(failed_imports)

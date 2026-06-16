@@ -35,7 +35,9 @@ from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
 )
+from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
 from infrahub.git.worktree import Worktree
+from infrahub.lock import InfrahubLockRegistry
 from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
 from tests.conftest import TestHelper
@@ -529,9 +531,14 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> 
     assert str(response) == str(commit_after)
 
 
+async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> None:
+    syncer = RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter())
+    await syncer.sync(repo, staging_branch=staging_branch)
+
+
 async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
     repo = git_repo_02
-    await repo.sync()
+    await _sync(repo)
 
     assert True
 
@@ -570,7 +577,7 @@ async def test_sync_new_branch(
     with patch(
         "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
     ) as mock_import:
-        await repo.sync()
+        await _sync(repo)
         mock_import.assert_awaited()
     worktrees = repo.get_worktrees()
 
@@ -591,7 +598,7 @@ async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: Infr
     with patch(
         "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
     ) as mock_import:
-        await repo.sync()
+        await _sync(repo)
         mock_import.assert_awaited()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
@@ -612,7 +619,7 @@ async def test_sync_continues_after_branch_pull_failure(
 
     # A branch failure may surface as an error once all branches have been processed.
     with contextlib.suppress(RepositoryError):
-        await repo.sync()
+        await _sync(repo)
 
     assert repo.get_commit_value(branch_name="branch02", remote=False) == str(remote_commit_branch02)
 

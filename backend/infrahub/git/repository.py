@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache
@@ -38,17 +39,32 @@ class PendingObjectImport:
     git_branch_name: str | None = None
 
 
+class ImportStep(StrEnum):
+    """The phase of a branch synchronization in which a failure occurred."""
+
+    COLLECTION = "collection"
+    IMPORT = "import"
+
+
+@dataclass
+class FailedImport:
+    """A branch that could not be synchronized, with the phase that failed and why."""
+
+    branch_name: str
+    step: ImportStep
+    reason: str
+
+
 @dataclass
 class CollectedImports:
     """Outcome of the git/branch-setup phase of a sync.
 
-    ``imports`` are the branches ready to have their objects imported. ``failed_branches`` are the
-    branches whose git or branch setup failed and were skipped so the others could still proceed;
-    the caller surfaces them once every branch has been handled.
+    ``imports`` are the branches ready to have their objects imported. ``failed_imports`` are the
+    branches whose git or branch setup failed, each carrying the phase that failed and the reason.
     """
 
     imports: list[PendingObjectImport] = field(default_factory=list)
-    failed_branches: list[str] = field(default_factory=list)
+    failed_imports: list[FailedImport] = field(default_factory=list)
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -88,59 +104,29 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return response
 
-    async def sync(self, staging_branch: str | None = None) -> None:
-        """Synchronize the repository with its remote origin and with the database.
-
-        By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
-
-        A failure scoped to a single branch does not prevent the synchronization of the remaining branches.
-
-        Raises:
-            RepositoryConnectionError: When the remote repository is unreachable.
-            RepositoryCredentialsError: When the credentials for the remote repository are invalid.
-            RepositoryError: When the synchronization of one or more branches failed.
-            GraphQLError: When a branch or commit update against the database fails.
-
-        """
-        collected = await self.collect_pending_imports(staging_branch=staging_branch)
-        failed_branches = list(collected.failed_branches)
-        for pending in collected.imports:
-            try:
-                await self.import_objects_from_files(
-                    infrahub_branch_name=pending.infrahub_branch_name,
-                    git_branch_name=pending.git_branch_name,
-                    commit=pending.commit,
-                )
-            except (RepositoryConnectionError, RepositoryCredentialsError):
-                raise
-            except Exception as exc:
-                # The import already records its own per-branch error status before re-raising, so
-                # isolate the failure here to keep importing the remaining branches.
-                log.warning(
-                    "Failed to import branch objects, skipping it.",
-                    repository=self.name,
-                    branch=pending.infrahub_branch_name,
-                    exc_info=exc,
-                )
-                failed_branches.append(pending.infrahub_branch_name)
-
-        self.raise_if_branches_failed(failed_branches)
-
-    def raise_if_branches_failed(self, failed_branches: list[str]) -> None:
-        """Surface a single error summarizing every branch that failed to synchronize.
+    def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
+        """Log every branch that failed to synchronize and surface them as a single error.
 
         Raises:
             RepositoryError: When at least one branch failed to synchronize.
 
         """
-        if not failed_branches:
+        if not failed_imports:
             return
 
+        for failed in failed_imports:
+            log.warning(
+                "Failed to synchronize branch, skipping it.",
+                repository=self.name,
+                branch=failed.branch_name,
+                step=failed.step.value,
+                reason=failed.reason,
+            )
+
+        details = ", ".join(f"{failed.branch_name} ({failed.step}: {failed.reason})" for failed in failed_imports)
         raise RepositoryError(
             identifier=self.name,
-            message=(
-                f"Unable to synchronize the following branches of repository {self.name}: {', '.join(failed_branches)}"
-            ),
+            message=f"Unable to synchronize the following branches of repository {self.name}: {details}",
         )
 
     async def collect_pending_imports(self, staging_branch: str | None = None) -> CollectedImports:
@@ -149,8 +135,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         Brings the local clone in line with the remote and records the affected branches and their
         commits in the database, pinning a per-commit worktree for each. Returns one entry per branch
         whose objects still need importing into the graph, alongside the branches whose git setup
-        failed. A per-branch git failure is logged and recorded so the other branches' imports are
-        still returned and the failure can be surfaced once every branch has been handled.
+        failed and the reason each one failed.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -164,11 +149,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         new_branches, updated_branches = await self.compare_local_remote()
 
-        collected = CollectedImports()
         if not new_branches and not updated_branches:
-            return collected
+            return CollectedImports()
 
         log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
+
+        imports: list[PendingObjectImport] = []
+        failed_imports: list[FailedImport] = []
 
         # TODO need to handle properly the situation when a branch is not valid.
         if self.internal_status == RepositoryInternalStatus.ACTIVE.value:
@@ -196,18 +183,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     # branches is pointless, so let it abort the whole sync.
                     raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
-                    # Isolate per-branch git failures so imports already collected for the other
-                    # branches are still returned and applied.
-                    log.warning(
-                        "Failed to prepare branch for import, skipping it.",
-                        repository=self.name,
-                        branch=branch_name,
-                        exc_info=exc,
+                    # Isolate per-branch git failures so the other branches are still collected;
+                    # graph errors are left to propagate.
+                    failed_imports.append(
+                        FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
                     )
-                    collected.failed_branches.append(branch_name)
                     continue
 
-                collected.imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
+                imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
             for branch_name in updated_branches:
                 is_valid = self.validate_remote_branch(branch_name=branch_name)
@@ -221,21 +204,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 except (RepositoryConnectionError, RepositoryCredentialsError):
                     raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
-                    # Isolate per-branch git failures so imports already collected for the other
-                    # branches are still returned and applied; graph errors are left to propagate.
-                    log.warning(
-                        "Failed to pull branch for import, skipping it.",
-                        repository=self.name,
-                        branch=branch_name,
-                        exc_info=exc,
+                    # Isolate per-branch git failures so the other branches are still collected;
+                    # graph errors are left to propagate.
+                    failed_imports.append(
+                        FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
                     )
-                    collected.failed_branches.append(branch_name)
                     continue
 
                 if isinstance(commit_after, str):
-                    collected.imports.append(
-                        PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit_after)
-                    )
+                    imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit_after))
 
                 elif commit_after is True:
                     log.warning(
@@ -244,10 +221,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         branch=branch_name,
                     )
 
-        collected.imports.extend(
+        imports.extend(
             await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches)
         )
-        return collected
+        return CollectedImports(imports=imports, failed_imports=failed_imports)
 
     async def _collect_staging_imports(
         self, staging_branch: str | None, updated_branches: list[str]
