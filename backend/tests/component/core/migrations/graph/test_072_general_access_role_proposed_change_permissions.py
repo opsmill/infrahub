@@ -12,7 +12,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
-async def _get_general_access_pc_permissions(
+async def _get_general_access_proposed_change_permissions(
     db: InfrahubDatabase,
 ) -> tuple[Node, list[Node]]:
     roles = await NodeManager.query(
@@ -44,19 +44,19 @@ async def _get_general_access_pc_permissions(
 async def test_migration_072_backfills_missing_permissions(db: InfrahubDatabase, default_branch: Branch) -> None:
     await first_time_initialization(db=db)
 
-    _, initial_permissions = await _get_general_access_pc_permissions(db=db)
+    _, initial_permissions = await _get_general_access_proposed_change_permissions(db=db)
     assert len(initial_permissions) == len(PROPOSED_CHANGE_PERMISSIONS)
     for permission in initial_permissions:
         await permission.delete(db=db)
 
-    _, after_delete = await _get_general_access_pc_permissions(db=db)
+    _, after_delete = await _get_general_access_proposed_change_permissions(db=db)
     assert after_delete == []
 
     migration = Migration072()
     result = await migration.execute(MigrationInput(db=db))
     assert result.success
 
-    _, after_migration = await _get_general_access_pc_permissions(db=db)
+    _, after_migration = await _get_general_access_proposed_change_permissions(db=db)
     assert {(p.namespace.value, p.name.value) for p in after_migration} == {
         (namespace, name) for namespace, name, _ in PROPOSED_CHANGE_PERMISSIONS
     }
@@ -69,14 +69,14 @@ async def test_migration_072_is_idempotent(db: InfrahubDatabase, default_branch:
     first_run = await migration.execute(MigrationInput(db=db))
     assert first_run.success
 
-    _, after_first_run = await _get_general_access_pc_permissions(db=db)
+    _, after_first_run = await _get_general_access_proposed_change_permissions(db=db)
     assert len(after_first_run) == len(PROPOSED_CHANGE_PERMISSIONS)
     first_run_ids = {p.id for p in after_first_run}
 
     second_run = await migration.execute(MigrationInput(db=db))
     assert second_run.success
 
-    _, after_second_run = await _get_general_access_pc_permissions(db=db)
+    _, after_second_run = await _get_general_access_proposed_change_permissions(db=db)
     assert len(after_second_run) == len(PROPOSED_CHANGE_PERMISSIONS)
     assert {p.id for p in after_second_run} == first_run_ids
 

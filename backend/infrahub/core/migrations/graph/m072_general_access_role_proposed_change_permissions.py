@@ -28,7 +28,7 @@ PROPOSED_CHANGE_PERMISSIONS = [
 ]
 
 
-async def _existing_pc_permissions(db: InfrahubDatabase, role: CoreAccountRole) -> set[tuple[str, str]]:
+async def _existing_proposed_change_permissions(db: InfrahubDatabase, role: CoreAccountRole) -> set[tuple[str, str]]:
     peers = await role.permissions.get_peers(db=db, peer_type=CoreObjectPermission)
     existing: set[tuple[str, str]] = set()
     for peer in peers.values():
@@ -65,7 +65,7 @@ class Migration072(ArbitraryMigration):
             return result
         role = roles[0]
 
-        existing = await _existing_pc_permissions(db=db, role=role)
+        existing = await _existing_proposed_change_permissions(db=db, role=role)
         new_permissions: list[Node] = []
         for namespace, name, label in PROPOSED_CHANGE_PERMISSIONS:
             if (namespace, name) in existing:
