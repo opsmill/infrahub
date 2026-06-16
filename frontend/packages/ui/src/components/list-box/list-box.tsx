@@ -7,10 +7,22 @@ import {
   ListBoxLoadMoreItem as AriaListBoxLoadMoreItem,
   type ListBoxLoadMoreItemProps as AriaListBoxLoadMoreItemProps,
   type ListBoxProps as AriaListBoxProps,
+  ListLayout,
+  Virtualizer,
 } from "react-aria-components";
 import { cn, tv } from "tailwind-variants";
 
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
+
+const listBoxLayoutOptions = { rowHeight: 30, loaderHeight: 30, padding: 4 };
+
+export function ListBoxVirtualizer({ children }: { children: React.ReactNode }) {
+  return (
+    <Virtualizer layout={ListLayout} layoutOptions={listBoxLayoutOptions}>
+      {children}
+    </Virtualizer>
+  );
+}
 
 export type SelectionIndicator = "checkmark" | "highlight" | "none";
 

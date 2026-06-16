@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type React from "react";
 
-import { ListBox, ListBoxItem, type ListBoxProps } from "./list-box";
+import { ListBox, ListBoxItem, ListBoxVirtualizer, type ListBoxProps } from "./list-box";
 
 const meta: Meta<typeof ListBox> = {
   component: ListBox,
@@ -101,6 +101,27 @@ export const AllVariants: Story = {
   parameters: {
     layout: "padded",
   },
+};
+
+const LONG_LIST = Array.from({ length: 1000 }, (_, i) => `Item ${i + 1}`);
+
+// Virtualized: only the visible rows are rendered even though the list has 1000 items.
+function VirtualizedRender(args: ListBoxProps<object>) {
+  return (
+    <ListBoxVirtualizer>
+      <ListBox {...args} aria-label="Virtualized list" className="max-h-80 min-w-48">
+        {LONG_LIST.map((label, index) => (
+          <ListBoxItem key={label} id={index}>
+            {label}
+          </ListBoxItem>
+        ))}
+      </ListBox>
+    </ListBoxVirtualizer>
+  );
+}
+
+export const Virtualized: Story = {
+  render: VirtualizedRender,
 };
 
 function PlaygroundRender(args: ListBoxProps<object>) {

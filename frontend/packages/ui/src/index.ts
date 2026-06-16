@@ -31,6 +31,8 @@ export {
   ListBoxItem,
   type ListBoxItemProps,
   ListBoxLoadMoreItem,
+  ListBoxVirtualizer,
+  type SelectionIndicator,
 } from "./components/list-box/list-box";
 export { Meter, type MeterProps } from "./components/meter/meter";
 export {

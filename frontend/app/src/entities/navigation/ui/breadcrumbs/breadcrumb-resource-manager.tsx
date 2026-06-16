@@ -7,11 +7,11 @@ import {
   Button,
   ListBox,
   ListBoxItem,
+  ListBoxVirtualizer,
   Popover,
   PopoverDialog,
 } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
-import { ListLayout, Virtualizer } from "react-aria-components";
 import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -93,10 +93,7 @@ function ResourceSelector({
             <PopoverDialog>
               {({ close }) => (
                 <Autocomplete>
-                  <Virtualizer
-                    layout={ListLayout}
-                    layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
-                  >
+                  <ListBoxVirtualizer>
                     <ListBox items={resources} onAction={close}>
                       {(resource) => (
                         <ListBoxItem
@@ -108,7 +105,7 @@ function ResourceSelector({
                         </ListBoxItem>
                       )}
                     </ListBox>
-                  </Virtualizer>
+                  </ListBoxVirtualizer>
                 </Autocomplete>
               )}
             </PopoverDialog>

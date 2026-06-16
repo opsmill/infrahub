@@ -5,6 +5,7 @@ import {
   ListBox,
   ListBoxItem,
   ListBoxLoadMoreItem,
+  ListBoxVirtualizer,
   Popover,
   PopoverDialog,
   PopoverTrigger,
@@ -13,12 +14,7 @@ import {
 import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
-import {
-  type ButtonProps as AriaButtonProps,
-  Collection,
-  ListLayout,
-  Virtualizer,
-} from "react-aria-components";
+import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
@@ -130,10 +126,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
         onInputChange={setSearch}
         suffix={<BranchFormTriggerButton onPress={() => openCreateForm(trimmedSearch)} />}
       >
-        <Virtualizer
-          layout={ListLayout}
-          layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
-        >
+        <ListBoxVirtualizer>
           <ListBox
             aria-label="branch list"
             className="max-h-125"
@@ -173,7 +166,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
               </ListBoxItem>
             )}
           </ListBox>
-        </Virtualizer>
+        </ListBoxVirtualizer>
       </Autocomplete>
 
       <Separator />
