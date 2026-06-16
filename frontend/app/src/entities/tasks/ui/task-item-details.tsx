@@ -15,6 +15,8 @@ import { Link } from "@/shared/components/ui/link";
 import { TASK_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { useDisplayLabels } from "@/entities/nodes/object/ui/queries/get-display-labels.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 
@@ -48,6 +50,23 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
 
   // Provide refetch function to parent
   React.useImperativeHandle(ref, () => ({ refetch }));
+
+  const taskNode = (data as Record<string, any>)?.[TASK_OBJECT]?.edges?.[0]?.node;
+  const relatedNodeRefs = React.useMemo(
+    () =>
+      (taskNode?.related_nodes ?? []).flatMap(
+        (item: { id?: string; kind?: string } | string | null) =>
+          item && typeof item !== "string" && item.id && item.kind
+            ? [{ id: item.id, kind: item.kind }]
+            : []
+      ),
+    [taskNode?.related_nodes]
+  );
+  const { labels, loading: labelsLoading } = useDisplayLabels({
+    items: relatedNodeRefs,
+    branch: taskNode?.branch,
+    date: taskNode?.updated_at ? new Date(taskNode.updated_at) : null,
+  });
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
@@ -116,6 +135,8 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
                   branch={object.branch}
                   date={new Date(object.updated_at)}
                   preventCopy
+                  label={labels.has(item.id) ? getNodeLabel(labels.get(item.id)!) : undefined}
+                  loading={labelsLoading && !labels.has(item.id)}
                 />
               </Link>
             );

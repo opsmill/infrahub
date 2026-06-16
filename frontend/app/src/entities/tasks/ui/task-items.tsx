@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useLocation } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -16,6 +17,8 @@ import useFilters from "@/shared/hooks/useFilters";
 
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
+import { useDisplayLabels } from "@/entities/nodes/object/ui/queries/get-display-labels.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/ui/queries/get-task-list.query";
@@ -61,6 +64,17 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
     state,
     relatedNodeIds: relatedNode ? [relatedNode] : undefined,
   });
+
+  const relatedNodeRefs = useMemo(
+    () =>
+      (data ?? []).flatMap((task) =>
+        (task.related_nodes ?? []).flatMap((node) =>
+          node?.id && node.kind ? [{ id: node.id, kind: node.kind }] : []
+        )
+      ),
+    [data]
+  );
+  const { labels, loading: labelsLoading } = useDisplayLabels({ items: relatedNodeRefs });
 
   if (isPendingCount) {
     return <LoadingIndicator className="h-full p-4" />;
@@ -147,6 +161,8 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
                       branch={task.branch}
                       date={new Date(task.updated_at)}
                       preventCopy
+                      label={labels.has(item.id) ? getNodeLabel(labels.get(item.id)!) : undefined}
+                      loading={labelsLoading && !labels.has(item.id)}
                     />
                   </Link>
                 );
