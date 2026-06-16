@@ -47,9 +47,9 @@ export function ListBox<T extends object>({
           cn("no-scrollbar max-h-[inherit] overflow-auto", resolvedClassName),
         )}
         renderEmptyState={
-          emptyMessage
-            ? () => <div className="px-2 py-1 text-neutral-600 text-sm">{emptyMessage}</div>
-            : undefined
+          emptyMessage === undefined
+            ? undefined
+            : () => <div className="px-2 py-1 text-neutral-600 text-sm">{emptyMessage}</div>
         }
         {...props}
       />
@@ -86,7 +86,7 @@ export function ListBoxItem<T extends object>({
       className={composeAriaClassName(className, ({ isFocused, isSelected }) =>
         cn(
           listBoxItemStyles({ isFocused }),
-          isSelected && selectionIndicator === "highlight" && "bg-stone-700/10",
+          isSelected && selectionIndicator === "highlight" && "bg-stone-700/10  text-stone-800",
         ),
       )}
       {...props}
