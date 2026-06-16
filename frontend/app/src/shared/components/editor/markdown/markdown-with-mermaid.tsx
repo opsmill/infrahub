@@ -1,4 +1,3 @@
-import mermaid from "mermaid";
 import type React from "react";
 import type { Options } from "react-markdown";
 import { MarkdownHooks } from "react-markdown";
@@ -14,7 +13,6 @@ const rehypeMermaidOptions: RehypeMermaidOptions = {
   strategy: "inline-svg",
   mermaidConfig: { securityLevel: "strict", theme: "default" },
   // On failure, show a red error banner with the message above the raw diagram
-  // source, instead of mermaid's default error graphic.
   errorFallback: (_element, diagram, error) => {
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -25,7 +23,7 @@ const rehypeMermaidOptions: RehypeMermaidOptions = {
         {
           type: "element",
           tagName: "div",
-          properties: { className: ["mermaid-error"] },
+          properties: { className: ["mermaid-error", "text-sm rounded-md p-2"] },
           children: [{ type: "text", value: message }],
         },
         {
@@ -47,12 +45,6 @@ const rehypeMermaidOptions: RehypeMermaidOptions = {
 };
 
 const rehypePlugins: PluggableList = [[rehypeMermaid, rehypeMermaidOptions]];
-
-// mermaid-isomorphic's browser renderer calls mermaid.render() but never
-// mermaid.initialize(), so the mermaidConfig passed to rehype-mermaid is ignored
-// client-side. Initialize the shared mermaid singleton directly so strict
-// sanitization is enforced (not left to mermaid's default) and the theme applies.
-mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
 
 type MarkdownWithMermaidProps = {
   markdownText: string;

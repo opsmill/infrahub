@@ -197,12 +197,7 @@
 }
 
 .markdown .mermaid-error {
-  margin-bottom: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #fca5a5;
-  border-radius: 0.375rem;
   background-color: #fef2f2;
   color: #b91c1c;
-  font-size: 0.875rem;
   white-space: pre-wrap;
 }

@@ -23,7 +23,7 @@ const remarkPlugins = [remarkGfm, remarkBreaks];
 const loadingComponents: Components = {
   code({ node: _node, className: codeClassName, children, ...props }) {
     if (codeClassName?.includes("language-mermaid")) {
-      return <Spinner />;
+      return <Spinner className="mx-auto h-40" />;
     }
     return (
       <code className={codeClassName} {...props}>
