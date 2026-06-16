@@ -31,6 +31,7 @@ export default mergeConfig(
         "react-scan",
         "rehype-mermaid",
         "mermaid",
+        "react-zoom-pan-pinch",
       ],
     },
     test: {

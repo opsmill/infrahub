@@ -65,6 +65,17 @@ describe("MarkdownRender Component", () => {
       .toBeTruthy();
   });
 
+  test("renders zoom controls for a mermaid diagram", async () => {
+    // GIVEN
+    const markdownText = "```mermaid\ngraph TD;\n  A-->B;\n```";
+
+    // WHEN
+    const component = await render(<MarkdownRender markdownText={markdownText} />);
+
+    // THEN
+    await expect.element(component.getByRole("button", { name: "Zoom in" })).toBeVisible();
+  });
+
   test("shows an error banner when a mermaid diagram is invalid", async () => {
     // GIVEN
     const markdownText = "```mermaid\nnotadiagramtype\n```";
