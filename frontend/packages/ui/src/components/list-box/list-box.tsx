@@ -1,6 +1,5 @@
-import type React from "react";
-
 import { CheckIcon, LoaderIcon } from "lucide-react";
+import React from "react";
 import {
   ListBox as AriaListBox,
   ListBoxItem as AriaListBoxItem,
@@ -13,24 +12,36 @@ import { cn, tv } from "tailwind-variants";
 
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
+export type SelectionIndicator = "checkmark" | "highlight" | "none";
+
+const SelectionIndicatorContext = React.createContext<SelectionIndicator>("checkmark");
+
 export interface ListBoxProps<T> extends AriaListBoxProps<T> {
-  emptyMessage?: string;
+  emptyMessage?: React.ReactNode;
+  selectionIndicator?: SelectionIndicator;
 }
 
-export function ListBox<T extends object>({ className, emptyMessage, ...props }: ListBoxProps<T>) {
+export function ListBox<T extends object>({
+  className,
+  emptyMessage,
+  selectionIndicator = "checkmark",
+  ...props
+}: ListBoxProps<T>) {
   return (
-    <AriaListBox
-      shouldFocusOnHover
-      className={composeAriaClassName(className, (resolvedClassName) =>
-        cn("no-scrollbar max-h-[inherit] overflow-auto", resolvedClassName),
-      )}
-      renderEmptyState={
-        emptyMessage
-          ? () => <div className="px-2 py-1.5 text-neutral-600 text-sm">{emptyMessage}</div>
-          : undefined
-      }
-      {...props}
-    />
+    <SelectionIndicatorContext.Provider value={selectionIndicator}>
+      <AriaListBox
+        shouldFocusOnHover
+        className={composeAriaClassName(className, (resolvedClassName) =>
+          cn("no-scrollbar max-h-[inherit] overflow-auto", resolvedClassName),
+        )}
+        renderEmptyState={
+          emptyMessage
+            ? () => <div className="px-2 py-1 text-neutral-600 text-sm">{emptyMessage}</div>
+            : undefined
+        }
+        {...props}
+      />
+    </SelectionIndicatorContext.Provider>
   );
 }
 
@@ -46,7 +57,6 @@ const listBoxItemStyles = tv({
 
 export interface ListBoxItemProps<T> extends AriaListBoxItemProps<T> {
   ref?: React.Ref<HTMLDivElement>;
-  selectionIndicator?: "checkmark" | "highlight" | "none";
 }
 
 export function ListBoxItem<T extends object>({
@@ -54,9 +64,9 @@ export function ListBoxItem<T extends object>({
   className,
   textValue,
   ref,
-  selectionIndicator = "checkmark",
   ...props
 }: ListBoxItemProps<T>) {
+  const selectionIndicator = React.use(SelectionIndicatorContext);
   return (
     <AriaListBoxItem
       ref={ref}

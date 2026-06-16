@@ -137,11 +137,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
           <ListBox
             aria-label="branch list"
             className="max-h-125"
-            renderEmptyState={() =>
-              !isPending && (
-                <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
-              )
-            }
+            emptyMessage={isPending ? undefined : "No branch found"}
           >
             <Collection items={branches}>
               {(branch) => (

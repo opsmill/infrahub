@@ -12,11 +12,13 @@ const meta: Meta<typeof ListBox> = {
     selectionMode: "single",
     emptyMessage: "No results found.",
     shouldFocusOnHover: true,
+    selectionIndicator: "checkmark",
   },
   argTypes: {
     selectionMode: { control: "select", options: ["none", "single", "multiple"] },
     emptyMessage: { control: "text" },
     shouldFocusOnHover: { control: "boolean" },
+    selectionIndicator: { control: "inline-radio", options: ["checkmark", "highlight", "none"] },
   },
 };
 
@@ -32,9 +34,10 @@ const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
 
 const FRUITS = ["Apple", "Banana", "Cherry"];
 
-const fruitItems = (selectionIndicator?: "checkmark" | "none") =>
+// Items inherit the selection indicator from the <ListBox> via context.
+const fruitItems = () =>
   FRUITS.map((fruit) => (
-    <ListBoxItem key={fruit} id={fruit.toLowerCase()} selectionIndicator={selectionIndicator}>
+    <ListBoxItem key={fruit} id={fruit.toLowerCase()}>
       {fruit}
     </ListBoxItem>
   ));
@@ -44,6 +47,7 @@ export const AllVariants: Story = {
     selectionMode: { table: { disable: true } },
     emptyMessage: { table: { disable: true } },
     shouldFocusOnHover: { table: { disable: true } },
+    selectionIndicator: { table: { disable: true } },
   },
   render: () => (
     <div className="grid grid-cols-[10rem_auto] items-start gap-x-6 gap-y-4">
@@ -53,18 +57,31 @@ export const AllVariants: Story = {
         className="max-w-64"
         selectionMode="single"
         selectedKeys={["banana"]}
+        selectionIndicator="checkmark"
       >
         {fruitItems()}
       </ListBox>
 
-      <ColumnLabel>Selection (no checkmark)</ColumnLabel>
+      <ColumnLabel>Selection (highlight)</ColumnLabel>
       <ListBox
-        aria-label="Selection without checkmark"
+        aria-label="Selection with highlight"
         className="max-w-64"
         selectionMode="single"
         selectedKeys={["banana"]}
+        selectionIndicator="highlight"
       >
-        {fruitItems("none")}
+        {fruitItems()}
+      </ListBox>
+
+      <ColumnLabel>Selection (none)</ColumnLabel>
+      <ListBox
+        aria-label="Selection without indicator"
+        className="max-w-64"
+        selectionMode="single"
+        selectedKeys={["banana"]}
+        selectionIndicator="none"
+      >
+        {fruitItems()}
       </ListBox>
 
       <ColumnLabel>Disabled item</ColumnLabel>
@@ -86,22 +103,14 @@ export const AllVariants: Story = {
   },
 };
 
-type PlaygroundArgs = ListBoxProps<object> & { selectionIndicator?: "checkmark" | "none" };
-
-function PlaygroundRender({ selectionIndicator, ...args }: PlaygroundArgs) {
+function PlaygroundRender(args: ListBoxProps<object>) {
   return (
     <ListBox {...args} aria-label="Playground" className="min-w-48">
-      {fruitItems(selectionIndicator)}
+      {fruitItems()}
     </ListBox>
   );
 }
 
-export const Playground: StoryObj<PlaygroundArgs> = {
-  args: {
-    selectionIndicator: "checkmark",
-  },
-  argTypes: {
-    selectionIndicator: { control: "inline-radio", options: ["checkmark", "none"] },
-  },
+export const Playground: Story = {
   render: PlaygroundRender,
 };

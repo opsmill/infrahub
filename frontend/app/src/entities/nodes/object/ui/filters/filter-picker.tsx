@@ -74,6 +74,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
             <ListBox
               aria-label="Filter fields"
               selectionMode="single"
+              selectionIndicator="highlight"
               selectedKeys={selectedField ? [selectedField] : []}
               onAction={handleAction}
               className="max-h-72 p-1"
@@ -125,7 +126,7 @@ function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItem
   const label = getFilterDefinitionLabel(definition);
 
   return (
-    <ListBoxItem id={name} textValue={label} selectionIndicator="highlight" ref={ref}>
+    <ListBoxItem id={name} textValue={label} ref={ref}>
       {definition.type === "relationship" ? (
         <FieldSchemaIcon fieldSchema={definition.schema} />
       ) : (
