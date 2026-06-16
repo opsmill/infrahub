@@ -52,6 +52,10 @@ class TestMergeInProgressBlock(TestInfrahubApp):
             with pytest.raises(GraphQLError) as default_exc:
                 await default_node.save()
             assert default_exc.value.errors[0]["message"] == MERGE_IN_PROGRESS_MESSAGE
+            default_extensions = default_exc.value.errors[0]["extensions"]
+            assert default_extensions["code"] == "MERGE_IN_PROGRESS"
+            assert default_extensions["http_status"] == 423
+            assert default_extensions["data"] == {"branch_name": "main", "merging_branch": source_name}
 
             # Source gate: a write to the branch being merged is rejected as read-only.
             source_node = await client.create(kind="TestingPerson", name="source gate", branch=source_name)
@@ -60,6 +64,10 @@ class TestMergeInProgressBlock(TestInfrahubApp):
             assert source_exc.value.errors[0]["message"] == (
                 f"Branch '{source_name}' is being merged and is read-only. No modifications are allowed."
             )
+            source_extensions = source_exc.value.errors[0]["extensions"]
+            assert source_extensions["code"] == "MERGE_IN_PROGRESS"
+            assert source_extensions["http_status"] == 423
+            assert source_extensions["data"] == {"branch_name": source_name, "merging_branch": source_name}
 
             # An unrelated branch stays writable.
             unrelated_node = await client.create(

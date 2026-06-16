@@ -1,11 +1,11 @@
 import { type APIRequestContext, expect } from "@playwright/test";
 
+import { ERROR_CODES, parseCatalogueError } from "../../../src/shared/api/errors";
+
 const API_URL = process.env.CI ? process.env.INFRAHUB_ADDRESS : "http://localhost:8000";
 const API_KEY = "06438eb2-8019-4776-878c-0941b1f1d1ec";
 
 // A merging branch blocks writes to the default branch. Retry until blocking merge is complete or time is up
-const MERGE_IN_PROGRESS_MESSAGE =
-  "A merge is currently in progress; writes are temporarily blocked. Please retry shortly.";
 const MERGE_RETRY_TIMEOUT_MS = 120_000;
 const MERGE_RETRY_DELAY_MS = 2000;
 
@@ -13,7 +13,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface GraphQLResponse<T = any> {
   data?: T;
-  errors?: Array<{ message: string }>;
+  errors?: Array<{ message: string; extensions?: unknown }>;
 }
 
 async function executeGraphQLMutation<T>(
@@ -37,7 +37,7 @@ async function executeGraphQLMutation<T>(
     }
 
     const isMergeInProgress = result.errors.some(
-      (error) => error.message === MERGE_IN_PROGRESS_MESSAGE
+      (error) => parseCatalogueError(error.extensions).code === ERROR_CODES.MERGE_IN_PROGRESS
     );
     if (isMergeInProgress && Date.now() < deadline) {
       await sleep(MERGE_RETRY_DELAY_MS);

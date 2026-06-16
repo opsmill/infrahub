@@ -419,6 +419,16 @@ class BranchAlreadyMergedError(BranchStatusError): ...
 class BranchNeedsRebaseError(BranchStatusError): ...
 
 
+class MergeInProgressError(BranchStatusError):
+    """Write rejected because a merge is in progress on `merging_branch`."""
+
+    HTTP_CODE: int = 423
+
+    def __init__(self, identifier: str, message: str, merging_branch: str) -> None:
+        self.merging_branch = merging_branch
+        super().__init__(identifier=identifier, message=message)
+
+
 class EnterpriseRequiredError(Error):
     """Raised when a community deployment invokes an Enterprise-gated feature.
 

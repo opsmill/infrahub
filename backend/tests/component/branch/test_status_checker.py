@@ -9,7 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.merge.write_blocker import MergeProtectionState, MergeWriteBlocker
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError
+from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError, MergeInProgressError
 from tests.adapters.cache import MemoryCache, UnreachableCache
 
 if TYPE_CHECKING:
@@ -60,15 +60,17 @@ class TestBranchStatusChecker:
         blocker = MergeWriteBlocker(cache=MemoryCache())
         await blocker.set(branch="feature-branch", state=MergeProtectionState.MERGING)
         branch = Branch(name="feature-branch", status=BranchStatus.MERGING)
-        with pytest.raises(BranchAlreadyMergedError, match=r"feature-branch.*is being merged and is read-only"):
+        with pytest.raises(MergeInProgressError, match=r"feature-branch.*is being merged and is read-only") as exc:
             await _checker(db, blocker).check(branch=branch)
+        assert exc.value.merging_branch == "feature-branch"
 
     async def test_blocks_default_branch_while_protected(self, db: InfrahubDatabase) -> None:
         blocker = MergeWriteBlocker(cache=MemoryCache())
         await blocker.set(branch="feature-branch", state=MergeProtectionState.MERGING)
         branch = Branch(name="main", status=BranchStatus.OPEN, is_default=True)
-        with pytest.raises(BranchAlreadyMergedError, match=MERGE_IN_PROGRESS_MESSAGE):
+        with pytest.raises(MergeInProgressError, match=MERGE_IN_PROGRESS_MESSAGE) as exc:
             await _checker(db, blocker).check(branch=branch)
+        assert exc.value.merging_branch == "feature-branch"
 
     async def test_unrelated_branch_writable_while_protected(self, db: InfrahubDatabase) -> None:
         blocker = MergeWriteBlocker(cache=MemoryCache())
@@ -81,7 +83,7 @@ class TestBranchStatusChecker:
         checker = _checker(db, blocker)
         default_branch = Branch(name="main", status=BranchStatus.OPEN, is_default=True)
 
-        with pytest.raises(BranchAlreadyMergedError, match=MERGE_IN_PROGRESS_MESSAGE):
+        with pytest.raises(MergeInProgressError, match=MERGE_IN_PROGRESS_MESSAGE):
             await checker.check(branch=default_branch)
 
         await blocker.delete()
@@ -116,12 +118,14 @@ class TestBranchStatusChecker:
         await open_branch.save(db=db)
         checker = _checker(db, MergeWriteBlocker(cache=UnreachableCache()))
 
-        with pytest.raises(BranchAlreadyMergedError, match=MERGE_IN_PROGRESS_MESSAGE):
+        with pytest.raises(MergeInProgressError, match=MERGE_IN_PROGRESS_MESSAGE) as default_exc:
             await checker.check(branch=default_branch_scope_class)
+        assert default_exc.value.merging_branch == "status-checker-db-merging"
 
         with pytest.raises(
-            BranchAlreadyMergedError, match=r"status-checker-db-merging.*is being merged and is read-only"
-        ):
+            MergeInProgressError, match=r"status-checker-db-merging.*is being merged and is read-only"
+        ) as source_exc:
             await checker.check(branch=persisted_merging_branch)
+        assert source_exc.value.merging_branch == "status-checker-db-merging"
 
         await checker.check(branch=open_branch)

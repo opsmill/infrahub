@@ -14,8 +14,11 @@ from infrahub.errors.exceptions import (
 from infrahub.errors.validation import MultiFieldValidationError
 from infrahub.exceptions import (
     AuthorizationError,
+    BranchAlreadyMergedError,
+    BranchNeedsRebaseError,
     BranchNotFoundError,
     Error,
+    MergeInProgressError,
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
@@ -121,6 +124,31 @@ CASES = [
         expected_code="SCHEMA_NOT_FOUND",
         expected_http_status=422,
         expected_data={"kind": "MissingKind"},
+    ),
+    CodeCase(
+        name="branch_already_merged",
+        exc=BranchAlreadyMergedError(identifier="feature-branch", message="Branch 'feature-branch' has been merged"),
+        expected_code="BRANCH_ALREADY_MERGED",
+        expected_http_status=400,
+        expected_data={"branch_name": "feature-branch"},
+    ),
+    CodeCase(
+        name="branch_needs_rebase",
+        exc=BranchNeedsRebaseError(identifier="feature-branch", message="Branch feature-branch must be rebased"),
+        expected_code="BRANCH_NEEDS_REBASE",
+        expected_http_status=400,
+        expected_data={"branch_name": "feature-branch"},
+    ),
+    CodeCase(
+        name="merge_in_progress",
+        exc=MergeInProgressError(
+            identifier="main",
+            message="A merge is currently in progress; writes are temporarily blocked. Please retry shortly.",
+            merging_branch="feature-branch",
+        ),
+        expected_code="MERGE_IN_PROGRESS",
+        expected_http_status=423,
+        expected_data={"branch_name": "main", "merging_branch": "feature-branch"},
     ),
 ]
 

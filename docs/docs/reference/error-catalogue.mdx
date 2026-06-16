@@ -4,7 +4,7 @@ title: Error Catalogue
 
 # Error Catalogue
 
-**Catalogue version**: 1 — 10 codes
+**Catalogue version**: 1 — 13 codes
 
 Every GraphQL error response carries an `extensions` block with a stable string `code`, the logical `http_status`, and a typed `data` payload. Switch on `code` rather than parsing the human-readable `message`, which is not part of the stable contract.
 
@@ -150,6 +150,72 @@ This code carries no `data` payload; `data` is always `{}`.
 }
 ```
 
+### BRANCH_ALREADY_MERGED
+
+The target branch has been merged and is permanently read-only.
+
+- **Stability**: `stable`
+- **HTTP status**: `400`
+
+**`data` payload**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `branch_name` | string | yes |
+
+**Example response**
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "The target branch has been merged and is permanently read-only.",
+      "extensions": {
+        "code": "BRANCH_ALREADY_MERGED",
+        "http_status": 400,
+        "data": {
+          "branch_name": "example"
+        }
+      }
+    }
+  ]
+}
+```
+
+### BRANCH_NEEDS_REBASE
+
+The target branch must be rebased before it accepts new changes.
+
+- **Stability**: `stable`
+- **HTTP status**: `400`
+
+**`data` payload**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `branch_name` | string | yes |
+
+**Example response**
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "The target branch must be rebased before it accepts new changes.",
+      "extensions": {
+        "code": "BRANCH_NEEDS_REBASE",
+        "http_status": 400,
+        "data": {
+          "branch_name": "example"
+        }
+      }
+    }
+  ]
+}
+```
+
 ### BRANCH_NOT_FOUND
 
 The requested branch does not exist.
@@ -176,6 +242,41 @@ The requested branch does not exist.
         "http_status": 400,
         "data": {
           "branch_name": "example"
+        }
+      }
+    }
+  ]
+}
+```
+
+### MERGE_IN_PROGRESS
+
+The write was rejected because a branch merge is in progress. The block is transient; retry once the merge completes.
+
+- **Stability**: `evolving`
+- **HTTP status**: `423`
+
+**`data` payload**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `branch_name` | string | yes |
+| `merging_branch` | string | yes |
+
+**Example response**
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "The write was rejected because a branch merge is in progress. The block is transient; retry once the merge completes.",
+      "extensions": {
+        "code": "MERGE_IN_PROGRESS",
+        "http_status": 423,
+        "data": {
+          "branch_name": "example",
+          "merging_branch": "example"
         }
       }
     }
