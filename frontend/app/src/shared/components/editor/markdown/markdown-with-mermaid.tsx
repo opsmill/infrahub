@@ -1,5 +1,5 @@
 import mermaid from "mermaid";
-import type { ReactNode } from "react";
+import type React from "react";
 import type { Options } from "react-markdown";
 import { MarkdownHooks } from "react-markdown";
 import rehypeMermaid, { type RehypeMermaidOptions } from "rehype-mermaid";
@@ -39,7 +39,7 @@ mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "defaul
 
 type MarkdownWithMermaidProps = {
   markdownText: string;
-  fallback: ReactNode;
+  fallback: React.ReactNode;
 };
 
 export default function MarkdownWithMermaid({ markdownText, fallback }: MarkdownWithMermaidProps) {
