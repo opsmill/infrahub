@@ -111,7 +111,7 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
               }}
               render={({ field }) => (
                 <div className="space-y-1">
-                  <FormLabel>Max Results</FormLabel>
+                  <FormLabel>Max Targets</FormLabel>
                   <FormInput>
                     <Input
                       type="number"
@@ -138,7 +138,7 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
               }}
               render={({ field }) => (
                 <div className="space-y-1">
-                  <FormLabel>Max Targets</FormLabel>
+                  <FormLabel>Max Paths</FormLabel>
                   <FormInput>
                     <Input
                       type="number"
