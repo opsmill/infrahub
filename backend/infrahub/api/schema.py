@@ -389,17 +389,17 @@ async def load_schema(
 
         coordinator = SchemaUpdateCoordinator(
             db=db,
-            branch=branch,
             schema_manager=registry.schema,
-            origin_schema=origin_schema,
             workflow=service.workflow,
-            context=context,
-            migration_executor=MigrationExecutor.WORKFLOW,
         )
 
         updated_hash = await coordinator.execute(
+            branch=branch,
+            origin_schema=origin_schema,
             candidate_schema=candidate_schema,
             at=Timestamp(),
+            context=context,
+            migration_executor=MigrationExecutor.WORKFLOW,
             diff=result.diff,
             migrations=result.migrations,
             limit=result.diff.all,

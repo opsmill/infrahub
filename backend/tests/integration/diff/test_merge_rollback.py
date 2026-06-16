@@ -9,7 +9,7 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.graph_merger import GraphMerger
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.node import Node
 from tests.constants import TestKind
@@ -37,9 +37,9 @@ mutation($branch: String!) {
 """
 
 
-class BrokenBranchMerger:
+class BrokenGraphMerger:
     def __init__(self, *args, **kwargs) -> None:
-        self.real_merger = BranchMerger(*args, **kwargs)
+        self.real_merger = GraphMerger(*args, **kwargs)
         self.real_merge_graph = self.real_merger.diff_merger.merge_graph
         self.real_merger.diff_merger.merge_graph = self.merge_graph  # type: ignore
 
@@ -48,15 +48,15 @@ class BrokenBranchMerger:
         # Forwarded so the merge task's rollback path can restore the destination branch's schema.
         return self.real_merger.destination_branch
 
-    async def merge(self, at: Timestamp | None = None) -> None:
+    async def merge(self, at: Timestamp) -> None:
         await self.real_merger.merge(at=at)
 
     async def merge_graph(self, at: Timestamp) -> Never:
         await self.real_merge_graph(at=at)
         raise ValueError("This is broken on purpose")
 
-    async def rollback(self) -> None:
-        await self.real_merger.rollback()
+    async def rollback(self, at: Timestamp) -> None:
+        await self.real_merger.rollback(at=at)
 
 
 class TestBranchMergeRollback(TestInfrahubApp):
@@ -167,7 +167,7 @@ class TestBranchMergeRollback(TestInfrahubApp):
         # Capture the branch's pre-merge `branched_from` so we can verify rollback restored it.
         pre_merge_branched_from = branch1.branched_from
 
-        with patch("infrahub.core.branch.tasks.BranchMerger", new=BrokenBranchMerger):
+        with patch("infrahub.core.merge.builder.GraphMerger", new=BrokenGraphMerger):
             with pytest.raises(GraphQLError) as exc:
                 await client.execute_graphql(query=BRANCH_MERGE, variables={"branch": branch1.name})
 

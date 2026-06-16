@@ -148,13 +148,32 @@ previous_updated_by = updated_by` — mirroring `DiffMergeMetadataQuery` — so 
 vertices can be metadata-restored on recovery. `/speckit-tasks` enumerates the exact set.
 
 **Range rollback vs the in-process rollback**: recovery uses this range query, which needs no
-node-UUID list (so recovery does **not** call `get_affected_node_uuids`). The existing in-process
-rollback (the merge's own caught-exception path, which runs *before* migrations and has its
-in-memory `_affected_node_uuids` + snapshots) may keep its current UUID-scoped restore — it only has
-to undo the graph merge, and migration collateral does not exist yet at that point. `/speckit-tasks`
-decides whether to unify both paths on the range query. Idempotent — re-running after a partial
-rollback is a no-op (no edges match `>= merge_at` once deleted/reopened; the `updated_at >= merge_at`
-filter excludes already-restored vertices).
+node-UUID list (so recovery does **not** call `get_affected_node_uuids`).
+
+**Correction (was wrong here):** an earlier draft of this section claimed the in-process rollback
+"runs *before* migrations… migration collateral does not exist yet at that point," and used that to
+justify keeping its UUID-scoped restore. That is **false** about the orchestrator: the schema
+migration step runs *inside* the same `try` whose `except` fires the in-process rollback, so a
+post-migration in-process failure currently gets a UUID-scoped graph rollback + in-memory schema
+restore that does **not** undo migration DB collateral (migration writes land at `merge_at` on
+vertices that need not be in `_affected_node_uuids`). The range query, keyed on `merge_at`, closes
+exactly that gap.
+
+**Decision — unify both paths on the range query.** The `_affected_node_uuids` instance-state
+coupling is the only reason the in-process rollback had to be co-located with the merge; the range
+query removes it (it needs only `(default branch, merge_started_at)`, both owned by the orchestrator).
+The in-process `except` path and `infrahub recover` therefore call the **same** range rollback; the
+in-process path additionally restores in-memory state (schema registry, branch object) that the
+out-of-process path gets for free by reloading from DB after restart. Once this lands, the
+UUID-scoped `diff_merger.rollback()` and `GraphMerger.rollback()` are deleted.
+
+**Groundwork already done on the refactor branch:** `GraphMerger.merge()`'s inner self-rollback was
+removed so there is a single rollback trigger (the orchestrator `except` → `MergeRollbackHandler`),
+eliminating a latent double `diff_merger.rollback()`. The handler stays a thin shim over
+`GraphMerger.rollback()` until this unify work swaps its body to the range query.
+
+Idempotent — re-running after a partial rollback is a no-op (no edges match `>= merge_at` once
+deleted/reopened; the `updated_at >= merge_at` filter excludes already-restored vertices).
 
 ## 4. Detection + recovery component
 
