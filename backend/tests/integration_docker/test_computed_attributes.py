@@ -34,6 +34,30 @@ async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
         await sleep(1)
 
 
+async def load_schema_and_wait(client: InfrahubClient, schema: dict, *, branch: str | None = None) -> None:
+    """Load a schema, wait for it to converge, and assert it was applied.
+
+    When ``branch`` is omitted, also asserts that the global schema is in sync.
+    Per-branch loads skip that check since ``in_sync`` reflects global state.
+    """
+    if branch is None:
+        loaded = await client.schema.load(schemas=[schema], wait_until_converged=True)
+    else:
+        loaded = await client.schema.load(schemas=[schema], branch=branch, wait_until_converged=True)
+    assert loaded.schema_updated
+    if branch is None:
+        assert await client.schema.in_sync()
+
+
+def bump_order_weight(field: dict) -> None:
+    """Increment ``order_weight`` so the schema diff records a real change.
+
+    Assigning a fixed value would no-op if the field already happened to carry
+    that value (for example after an earlier test in the same class run).
+    """
+    field["order_weight"] = (field.get("order_weight") or 0) + 100
+
+
 class TestComputedAttributes(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
@@ -45,10 +69,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
     async def test_load_schema(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:
         """Prepare the schema."""
-        tshirt_schema = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert tshirt_schema.schema_updated
-        # Validate that the schema is in sync after loading the device and interface schema
-        assert await client.schema.in_sync()
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
     async def test_computed_attribute_update(self, client: InfrahubClient) -> None:
         """Validate that the computed attribute is registered and created and also updated correctly."""
@@ -238,11 +259,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         # Update schema LocationSite with a change that IS NOT related to the computed attribute
         # The computed attribute of type Jinja2 should not be updated neither on the sites nor on the continents
         schema_computed_tshirt["nodes"][4]["description"] = "New Description that will trigger a new schema"
-        tshirt_schema = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert tshirt_schema.schema_updated
-
-        # Validate that the schema is in sync after loading the device and interface schema
-        assert await client.schema.in_sync()
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
@@ -257,11 +274,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         schema_computed_tshirt["nodes"][4]["attributes"][3]["computed_attribute"]["jinja2_template"] = (
             "WELCOME TO {{ name__value }}!"
         )
-        tshirt_schema = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert tshirt_schema.schema_updated
-
-        # Validate that the schema is in sync after loading the device and interface schema
-        assert await client.schema.in_sync()
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
         # Wait for the computed attribute tasks to be created and completed
         # Tasks may not be created immediately after schema load, so poll for them
@@ -293,10 +306,8 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         )
 
         # Unrelated: re-order a LocationSite field that no template reads -> no recompute.
-        schema_computed_tshirt["nodes"][4]["attributes"][1]["order_weight"] = 8500  # LocationSite.address
-        unrelated = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert unrelated.schema_updated
-        assert await client.schema.in_sync()
+        bump_order_weight(schema_computed_tshirt["nodes"][4]["attributes"][1])  # LocationSite.address
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
@@ -306,10 +317,8 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         assert jinja2_after_unrelated == jinja2_before
 
         # Related: re-order TestingColor.name, which TestingTShirt.description reads via the color relationship.
-        schema_computed_tshirt["nodes"][0]["attributes"][0]["order_weight"] = 8800  # TestingColor.name
-        related = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert related.schema_updated
-        assert await client.schema.in_sync()
+        bump_order_weight(schema_computed_tshirt["nodes"][0]["attributes"][0])  # TestingColor.name
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
         jinja2_after_related = jinja2_after_unrelated
         deadline = time.monotonic() + 30
@@ -337,10 +346,8 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         )
 
         # Unrelated: re-order a LocationSite field the transform query does not read -> no recompute.
-        schema_computed_tshirt["nodes"][4]["attributes"][2]["order_weight"] = 8600  # LocationSite.contact
-        unrelated = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert unrelated.schema_updated
-        assert await client.schema.in_sync()
+        bump_order_weight(schema_computed_tshirt["nodes"][4]["attributes"][2])  # LocationSite.contact
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
@@ -350,10 +357,8 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         assert python_after_unrelated == python_before
 
         # Related: re-order InfraDevice.device_type, which the DeviceNameAttribute query reads.
-        schema_computed_tshirt["nodes"][5]["attributes"][0]["order_weight"] = 8700  # InfraDevice.device_type
-        related = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
-        assert related.schema_updated
-        assert await client.schema.in_sync()
+        bump_order_weight(schema_computed_tshirt["nodes"][5]["attributes"][0])  # InfraDevice.device_type
+        await load_schema_and_wait(client, schema_computed_tshirt)
 
         python_after_related = python_after_unrelated
         deadline = time.monotonic() + 30
@@ -392,8 +397,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         branch_schema["nodes"][4]["attributes"][3]["computed_attribute"]["jinja2_template"] = (
             "Isolated branch: {{ name__value }}"
         )
-        loaded = await client.schema.load(schemas=[branch_schema], branch=branch.name, wait_until_converged=True)
-        assert loaded.schema_updated
+        await load_schema_and_wait(client, branch_schema, branch=branch.name)
 
         branch_after = branch_before
         deadline = time.monotonic() + 30
@@ -432,8 +436,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         branch_schema["nodes"][1]["attributes"][1]["computed_attribute"]["jinja2_template"] = (
             "Merged template: {{ name__value }}"  # TestingTShirt.description
         )
-        loaded = await client.schema.load(schemas=[branch_schema], branch=branch.name, wait_until_converged=True)
-        assert loaded.schema_updated
+        await load_schema_and_wait(client, branch_schema, branch=branch.name)
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
