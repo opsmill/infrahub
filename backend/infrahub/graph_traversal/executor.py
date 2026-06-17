@@ -26,13 +26,23 @@ class PathTraversalExecutor:
     One quantified-path-pattern query returns up to ``max_paths`` paths to the
     anchored destination, shortest first. The search walks Neo4j's frontier and
     stops once the budget is filled, so shallow targets return without exploring
-    the full ``max_depth`` cone.
+    the full ``max_depth`` cone. When ``timeout_seconds`` is set the query runs
+    under that server-side transaction timeout so a pathological search aborts
+    rather than overloading the database.
     """
 
-    def __init__(self, *, db: InfrahubDatabase, branch: Branch, renderer: GraphTraversalCypherRenderer) -> None:
+    def __init__(
+        self,
+        *,
+        db: InfrahubDatabase,
+        branch: Branch,
+        renderer: GraphTraversalCypherRenderer,
+        timeout_seconds: float | None = None,
+    ) -> None:
         self._db = db
         self._branch = branch
         self._renderer = renderer
+        self._timeout_seconds = timeout_seconds
 
     async def run(self, *, plan: Plan, source_id: str, max_paths: int, at: Timestamp | None = None) -> list[PathData]:
         at = at if at is not None else Timestamp()
@@ -45,7 +55,7 @@ class PathTraversalExecutor:
             source_id=source_id,
             max_paths=max_paths,
         )
-        await query.execute(db=self._db)
+        await query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
         return query.get_paths()
 
 
@@ -60,10 +70,18 @@ class ReachableNodesExecutor:
     internally.
     """
 
-    def __init__(self, *, db: InfrahubDatabase, branch: Branch, renderer: GraphTraversalCypherRenderer) -> None:
+    def __init__(
+        self,
+        *,
+        db: InfrahubDatabase,
+        branch: Branch,
+        renderer: GraphTraversalCypherRenderer,
+        timeout_seconds: float | None = None,
+    ) -> None:
         self._db = db
         self._branch = branch
         self._renderer = renderer
+        self._timeout_seconds = timeout_seconds
 
     async def run(
         self,
@@ -86,7 +104,7 @@ class ReachableNodesExecutor:
             source_id=source_id,
             max_targets=max_targets,
         )
-        await targets_query.execute(db=self._db)
+        await targets_query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
         terminal_uuids = targets_query.get_terminal_uuids()
         if not terminal_uuids:
             return []
@@ -112,7 +130,7 @@ class ReachableNodesExecutor:
             terminal_uuids=terminal_uuids,
             max_paths=max_paths,
         )
-        await query.execute(db=self._db)
+        await query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
         return query.get_reachable_nodes()
 
     async def _run_all_paths(
@@ -134,6 +152,6 @@ class ReachableNodesExecutor:
                 max_paths=remaining,
                 depths={depth},
             )
-            await paths_query.execute(db=self._db)
+            await paths_query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
             collected.extend(paths_query.get_reachable_nodes())
         return collected

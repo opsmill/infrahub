@@ -561,7 +561,7 @@ class Query:
         return ":params { " + ", ".join(params) + " }"
 
     @trace.get_tracer(__name__).start_as_current_span("Query.execute")
-    async def execute(self, db: InfrahubDatabase) -> Self:
+    async def execute(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -573,14 +573,24 @@ class Query:
         if self.type == QueryType.READ:
             if self.limit or self.offset:
                 results = await db.execute_query(
-                    query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
+                    query=query_str,
+                    params=self.params,
+                    name=self.name,
+                    context=self.get_context(),
+                    type=self.type,
+                    timeout_seconds=timeout_seconds,
                 )
             else:
-                results = await self.query_with_size_limit(db=db)
+                results = await self.query_with_size_limit(db=db, timeout_seconds=timeout_seconds)
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
+                query=query_str,
+                params=self.params,
+                name=self.name,
+                context=self.get_context(),
+                type=self.type,
+                timeout_seconds=timeout_seconds,
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -596,7 +606,9 @@ class Query:
 
         return self
 
-    async def query_with_size_limit(self, db: InfrahubDatabase) -> list[Record]:
+    async def query_with_size_limit(
+        self, db: InfrahubDatabase, timeout_seconds: float | None = None
+    ) -> list[Record]:
         query_limit = config.SETTINGS.database.query_size_limit
         offset = 0
         results: list[Record] = []
@@ -608,6 +620,7 @@ class Query:
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
+                timeout_seconds=timeout_seconds,
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
