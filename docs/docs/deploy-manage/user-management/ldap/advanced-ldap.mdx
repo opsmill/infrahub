@@ -78,7 +78,7 @@ group_bfs_max_depth = 16
 </TabItem>
 </Tabs>
 
-`group_bfs_max_depth` applies only to the `bfs` strategy. Cycles in the group structure are detected automatically.
+`group_bfs_max_depth` applies only to the `bfs` strategy. Cycles in the group structure are detected automatically. Raise it above the default of 16 only when groups nest deeper than that — common in large Active Directory forests with deeply nested organizational units. The `ad_in_chain` strategy has no depth limit but is available only against Active Directory.
 
 ## Auto-create groups from LDAP
 
@@ -114,6 +114,14 @@ per_server_timeout = 10
 </TabItem>
 </Tabs>
 
+## Tune for large directories
+
+In directories with many entries, keep each sign-in lookup fast and predictable:
+
+- **Scope `user_search_base` (and `group_base_dn`) to the narrowest subtree** that contains the relevant entries, so each search examines fewer objects.
+- **Index the sign-in attribute** (`attribute_username`, such as `sAMAccountName` or `uid`) on the directory side. An attribute that is not indexed forces a full scan on every sign-in.
+- **Account for `per_server_timeout` during failover.** Each unreachable server is given the full timeout before Infrahub moves to the next, so a sign-in attempt can wait up to `per_server_timeout` × the number of unreachable servers. Keep the timeout tight enough that failover stays within an acceptable sign-in latency.
+
 ## Harden the TLS connection
 
 For production, verify the directory's certificate against a trusted authority and set a minimum protocol version.
@@ -148,7 +156,14 @@ tls_minimum_version = "TLSv1.2"
 `tls_insecure` skips certificate validation entirely. Restrict it to test and development environments; never enable it in production.
 :::
 
-To upgrade a plain `ldap://` connection rather than connecting over `ldaps://`, set `tls_starttls = true`.
+### Choose LDAPS or STARTTLS
+
+Both modes give you an encrypted connection; pick one based on the port your directory exposes:
+
+- **LDAPS (implicit TLS)** — connect to `ldaps://` URIs on port 636. TLS is established before any LDAP traffic.
+- **STARTTLS** — connect to plain `ldap://` URIs on port 389 and set `tls_starttls = true` to upgrade the connection in place.
+
+Infrahub rejects contradictory combinations at startup: `tls_starttls` cannot be paired with an `ldaps://` URI, and `tls_insecure` cannot be combined with a `tls_ca_bundle`.
 
 ## Related resources
 

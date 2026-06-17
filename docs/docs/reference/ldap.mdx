@@ -59,6 +59,10 @@ All options live under the top-level `ldap` configuration group. Each maps to an
 | Insecure | `INFRAHUB_LDAP_TLS_INSECURE` | `ldap.tls_insecure` | Skip TLS certificate validation. Test and development only; never enable in production. | `false` |
 | Minimum TLS version | `INFRAHUB_LDAP_TLS_MINIMUM_VERSION` | `ldap.tls_minimum_version` | Minimum TLS protocol version accepted: `TLSv1.2` or `TLSv1.3`. | `TLSv1.2` |
 
+:::note
+`tls_starttls` and an `ldaps://` server URI are mutually exclusive, as are `tls_insecure` and `tls_ca_bundle`. Either combination is rejected when the server starts.
+:::
+
 ## Login button
 
 | Parameter | Environment Variable | TOML Path | Description | Default |

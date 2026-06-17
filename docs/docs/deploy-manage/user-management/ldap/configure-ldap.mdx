@@ -17,7 +17,7 @@ When complete, users will see an LDAP sign-in button on the login page and authe
 Before configuring LDAP, you need:
 
 - An Infrahub deployment running the Enterprise Edition. The Community Edition rejects LDAP sign-ins with an enterprise-required error.
-- A directory service account (distinguished name and password) that can search the user subtree.
+- A directory service account (distinguished name and password) with **read-only** access to search the user subtree — and the group subtree, if you enable group resolution. It never needs write permissions; grant it the least privilege required.
 - The connection details for your directory: server URIs, the user search base, and the attribute that holds the sign-in name.
 - Administrative access to your Infrahub configuration.
 
@@ -37,14 +37,14 @@ Gather the following from your directory administrator:
 | Information | Example | Notes |
 |-------------|---------|-------|
 | Server URIs | `ldaps://dc1.corp.example.com:636` | One or more; the `ldap` or `ldaps` scheme is required |
-| Service account DN | `CN=infrahub-svc,OU=Service,DC=corp,DC=example,DC=com` | Used to look up users before verifying their credentials |
+| Service account DN | `CN=infrahub-svc,OU=Service,DC=corp,DC=example,DC=com` | Read-only access is sufficient; used to look up users before verifying their credentials |
 | Service account password | — | Store as a secret |
 | User search base | `OU=Users,DC=corp,DC=example,DC=com` | Subtree where user entries live |
 | Sign-in name attribute | `sAMAccountName` (AD), `uid` (OpenLDAP) | Defaults to `sAMAccountName` |
 
 ## Step 2: Configure the connection
 
-List your directory servers and choose how to encrypt the connection. Use `ldaps://` URIs for implicit TLS, or set `tls_starttls` to upgrade a plain `ldap://` connection.
+List your directory servers and choose how to encrypt the connection. Use `ldaps://` URIs (port 636) for implicit TLS, or keep plain `ldap://` URIs (port 389) and set `tls_starttls` to upgrade the connection with STARTTLS. Pick one — combining `tls_starttls` with an `ldaps://` URI is rejected at startup. For production certificate verification, see [Harden the TLS connection](./advanced-ldap.mdx#harden-the-tls-connection).
 
 <Tabs groupId="config-method" queryString>
 <TabItem value="environment-variables" default>
@@ -162,6 +162,10 @@ enabled = true
 
 <ReferenceLink title="Configure Infrahub" url="../../install-configure/configure-infrahub" openInNewTab />
 
+:::info Configuration is validated at startup
+With `enabled = true`, Infrahub refuses to start until `servers`, `service_account_dn`, `service_account_password`, and `user_search_base` are set — plus `group_base_dn` when group resolution is on. A missing or contradictory setting fails fast at startup with a message naming the problem, rather than surfacing later at sign-in.
+:::
+
 ## Step 6: Validate the configuration
 
 1. Navigate to your Infrahub login page.
@@ -184,6 +188,19 @@ Every LDAP sign-in attempt is recorded in the Infrahub server logs. Review them 
 | Sign-in fails with `401` | Wrong credentials, or the user is not found by the search base and filter | Verify the service account, `user_search_base`, and `attribute_username` |
 | Sign-in returns `409 LDAP_ACCOUNT_COLLISION` | The directory sign-in name matches an existing local-only account | Reconcile or rename the local account before the user signs in via LDAP |
 | Sign-in returns `502` | Every configured server was unreachable, or the TLS handshake failed | Check the server URIs and that the servers are reachable, and the TLS settings and CA bundle |
+
+### Check the directory independently
+
+When a sign-in fails, reproduce the service-account lookup directly against the directory with `ldapsearch`. This separates a directory-side problem (credentials, search base, filter) from an Infrahub one:
+
+```bash
+ldapsearch -H ldaps://dc1.corp.example.com:636 \
+  -D "CN=infrahub-svc,OU=Service,DC=corp,DC=example,DC=com" -W \
+  -b "OU=Users,DC=corp,DC=example,DC=com" \
+  "(sAMAccountName=jdoe)"
+```
+
+A successful bind that returns the expected user entry confirms the service-account credentials, `user_search_base`, and sign-in attribute are correct — which narrows the problem to Infrahub's configuration. Add `-ZZ` to test STARTTLS on a plain `ldap://` connection.
 
 ## Related resources
 

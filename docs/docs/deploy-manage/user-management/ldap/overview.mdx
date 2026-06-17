@@ -48,6 +48,14 @@ On each LDAP sign-in, Infrahub:
 
 Multiple directory servers can be configured for high availability, and connections can be encrypted with LDAPS or STARTTLS.
 
+## Account lifecycle
+
+Infrahub resolves identity and group membership on every sign-in rather than syncing the directory in the background. Plan for a few consequences:
+
+- **Provisioning is lazy.** A local account is created the first time a directory user signs in, not when they are added to the directory.
+- **Permission changes apply at the next sign-in.** Because groups resolve on each sign-in, a directory group change takes effect the next time the user authenticates — not immediately. Removing a user from a directory group does not revoke an already-active Infrahub session.
+- **Removal blocks future sign-ins but does not delete the account.** When a user is removed or disabled in the directory, their next sign-in fails — the service-account lookup no longer finds them, or the disabled-account check rejects the bind. Infrahub does not delete the local account or end active sessions on its own. To revoke access ahead of the directory change, disable or remove the local account under `Admin` > `Users and Permissions` > `Accounts`.
+
 ## Supported directories
 
 The implementation works against any RFC 4510-compliant LDAP server. The attribute defaults are tuned for Active Directory (`sAMAccountName` for the sign-in name, `userAccountControl` for disabled-account detection), and every attribute is configurable for directories such as OpenLDAP that use different conventions (`uid`, `posixGroup`).
