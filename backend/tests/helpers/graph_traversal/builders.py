@@ -16,9 +16,9 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
+from infrahub.graph_traversal.executor import ReachableNodesExecutor
 from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from infrahub.graph_traversal.reachable import ReachableNodesExecutor
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.resolver import PermissionResolver
 

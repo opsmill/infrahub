@@ -44,7 +44,6 @@ class PathTraversalQuery(Query):
             plan=self._plan,
             source_id=self._source_id,
             at=self.at,
-            max_targets=1,
             max_paths=self._max_paths,
             depths=self._depths,
         )

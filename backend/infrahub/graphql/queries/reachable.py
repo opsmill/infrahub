@@ -9,9 +9,9 @@ from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
+from infrahub.graph_traversal.executor import ReachableNodesExecutor
 from infrahub.graph_traversal.planning.models import TerminalByKinds, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from infrahub.graph_traversal.reachable import ReachableNodesExecutor
 from infrahub.graphql.queries.path import (
     PathNodeType,
     PathResultType,

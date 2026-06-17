@@ -286,7 +286,6 @@ class GraphTraversalCypherRenderer:
         plan: Plan,
         source_id: str,
         at: Timestamp | None,
-        max_targets: int,
         max_paths: int,
         depths: Iterable[int] | None = None,
     ) -> RenderedCypher:
@@ -296,12 +295,12 @@ class GraphTraversalCypherRenderer:
         subset; ``None`` renders every feasible depth.
 
         Raises:
-            ValueError: when ``plan`` is empty, ``max_targets`` or ``max_paths``
-                is out of range, the terminal is not anchored by id, or no
-                feasible fixed-depth query survives the ``depths`` restriction.
+            ValueError: when ``plan`` is empty, ``max_paths`` is out of range,
+                the terminal is not anchored by id, or no feasible fixed-depth
+                query survives the ``depths`` restriction.
 
         """
-        self._validate(plan=plan, max_targets=max_targets, max_paths=max_paths)
+        self._validate(plan=plan, max_paths=max_paths)
         if not isinstance(plan.terminal_predicate, TerminalById):
             raise ValueError(
                 "render() handles TerminalById only; "
@@ -315,7 +314,6 @@ class GraphTraversalCypherRenderer:
         text = _path_traversal_text(phase_two_inner=self._phase_two_inner(plan=plan, depth_renders=depth_renders))
         params: dict[str, Any] = {
             **self._base_params(source_id=source_id, at=at),
-            "max_targets": max_targets,
             "max_paths": max_paths,
             "target_id": plan.terminal_predicate.node_id,
             **self._hop_tuple_params(depth_renders),

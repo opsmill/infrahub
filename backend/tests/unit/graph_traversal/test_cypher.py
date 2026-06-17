@@ -44,24 +44,32 @@ def _build_renderer() -> GraphTraversalCypherRenderer:
     return GraphTraversalCypherRenderer(branch=_default_branch(), default_branch_name="main")
 
 
-def _render_empty(*, max_targets: int = 25, max_paths: int = 100) -> None:
+def _render_empty(*, max_paths: int = 100) -> None:
     _build_renderer().render(
         plan=_empty_plan(),
         source_id="src-uuid",
         at=Timestamp(),
-        max_targets=max_targets,
         max_paths=max_paths,
+    )
+
+
+def _render_targets_empty(*, max_targets: int = 25) -> None:
+    _build_renderer().render_reachable_targets(
+        plan=_empty_plan(),
+        source_id="src-uuid",
+        at=Timestamp(),
+        max_targets=max_targets,
     )
 
 
 class TestGraphTraversalCypherRendererValidation:
     def test_rejects_max_targets_below_minimum(self) -> None:
         with pytest.raises(ValueError, match=r"max_targets must be in \[1, 200\]"):
-            _render_empty(max_targets=0)
+            _render_targets_empty(max_targets=0)
 
     def test_rejects_max_targets_above_maximum(self) -> None:
         with pytest.raises(ValueError, match=r"max_targets must be in \[1, 200\]"):
-            _render_empty(max_targets=201)
+            _render_targets_empty(max_targets=201)
 
     def test_rejects_max_paths_below_minimum(self) -> None:
         with pytest.raises(ValueError, match=r"max_paths must be in \[1, 5000\]"):
@@ -81,7 +89,6 @@ def _render_linear(*, depths: set[int] | None = None) -> str:
         plan=_linear_plan(),
         source_id="src-uuid",
         at=Timestamp(),
-        max_targets=1,
         max_paths=10,
         depths=depths,
     )
