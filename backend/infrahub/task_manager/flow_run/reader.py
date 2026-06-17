@@ -13,7 +13,7 @@ from prefect.client.schemas.filters import (
     LogFilter,
     LogFilterFlowRunId,
 )
-from prefect.client.schemas.objects import Flow, FlowRun
+from prefect.client.schemas.objects import Artifact, Flow, FlowRun, Log
 from prefect.client.schemas.sorting import FlowRunSort
 
 from infrahub.log import get_logger
@@ -24,6 +24,57 @@ log = get_logger()
 
 NB_LOGS_LIMIT = 10_000
 PREFECT_MAX_LOGS_PER_CALL = 200
+
+
+class FlowRunReaderClient(Protocol):
+    """The subset of Prefect client read operations the flow-run reader depends on."""
+
+    async def read_flow_runs(
+        self,
+        flow_filter: FlowFilter,
+        flow_run_filter: FlowRunFilter,
+        limit: int | None,
+        offset: int,
+        sort: FlowRunSort,
+    ) -> list[FlowRun]: ...
+
+    async def read_logs(self, log_filter: LogFilter, offset: int, limit: int) -> list[Log]: ...
+
+    async def read_artifacts(
+        self, artifact_filter: ArtifactFilter, flow_run_filter: FlowRunFilter
+    ) -> list[Artifact]: ...
+
+    async def read_flows(self, flow_filter: FlowFilter | None = None) -> list[Flow]: ...
+
+
+class PrefectFlowRunReaderClient:
+    """Forward the flow-run read operations to a Prefect client."""
+
+    def __init__(self, client: PrefectClient) -> None:
+        self.client = client
+
+    async def read_flow_runs(
+        self,
+        flow_filter: FlowFilter,
+        flow_run_filter: FlowRunFilter,
+        limit: int | None,
+        offset: int,
+        sort: FlowRunSort,
+    ) -> list[FlowRun]:
+        return await self.client.read_flow_runs(
+            flow_filter=flow_filter, flow_run_filter=flow_run_filter, limit=limit, offset=offset, sort=sort
+        )
+
+    async def read_logs(self, log_filter: LogFilter, offset: int, limit: int) -> list[Log]:
+        return await self.client.read_logs(log_filter=log_filter, offset=offset, limit=limit)
+
+    async def read_artifacts(self, artifact_filter: ArtifactFilter, flow_run_filter: FlowRunFilter) -> list[Artifact]:
+        return await self.client.read_artifacts(artifact_filter=artifact_filter, flow_run_filter=flow_run_filter)
+
+    async def read_flows(self, flow_filter: FlowFilter | None = None) -> list[Flow]:
+        if flow_filter is None:
+            return await self.client.read_flows()
+        return await self.client.read_flows(flow_filter=flow_filter)
 
 
 class FlowRunReaderProtocol(Protocol):
@@ -45,7 +96,7 @@ class FlowRunReaderProtocol(Protocol):
 class FlowRunReader:
     """Thin adapter over the Prefect client read operations used to display flow runs."""
 
-    def __init__(self, client: PrefectClient) -> None:
+    def __init__(self, client: FlowRunReaderClient) -> None:
         self.client = client
 
     async def read_flow_runs(
