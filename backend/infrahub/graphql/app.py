@@ -35,13 +35,9 @@ from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
-<<<<<<< HEAD
 from infrahub.auth.auth import authentication_token
 from infrahub.auth.session import AccountSession  # noqa: TC001
-=======
-from infrahub.auth import AccountSession, authentication_token
 from infrahub.branch.query_time_validator import BranchQueryTimeValidator
->>>>>>> origin/stable
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
