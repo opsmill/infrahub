@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 from collections import defaultdict
-from uuid import UUID  # noqa: TC003
+from uuid import UUID
 
-from prefect.client.schemas.objects import FlowRun, StateType  # noqa: TC002
-from prefect.client.schemas.objects import Log as PrefectLog  # noqa: TC002
+from prefect.client.schemas.objects import FlowRun, StateType
+from prefect.client.schemas.objects import Log as PrefectLog
 from pydantic import BaseModel, Field
 
 
