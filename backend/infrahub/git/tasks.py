@@ -239,6 +239,19 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         raise
 
 
+def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -> str | None:
+    """Return the git branch whose objects must be seeded after a clone, or None when none is needed.
+
+    A freshly created or re-cloned local copy needs its default branch imported into the graph; an
+    already-present clone does not. The branch is taken from the repository's own default branch, which
+    is the git branch the clone checks out, rather than the platform default branch which may differ
+    and would not exist locally.
+    """
+    if init_failed or repo.reinitialized:
+        return repo.default_branch
+    return None
+
+
 async def bootstrap_local_repository(
     repo_name: str,
     repository: CoreRepository,
@@ -253,7 +266,6 @@ async def bootstrap_local_repository(
     skipped.
     """
     log = get_run_logger()
-    default_import_git_branch: str | None = None
     pinned_import_commit: str | None = None
     async with lock.registry.get(name=repo_name, namespace="repository"):
         init_failed = False
@@ -283,10 +295,8 @@ async def bootstrap_local_repository(
             except RepositoryError as exc:
                 log.info(exc.message)
                 return None
-            default_import_git_branch = registry.default_branch
 
-        if repo.reinitialized:
-            default_import_git_branch = repo.default_branch
+        default_import_git_branch = resolve_initial_import_branch(repo, init_failed=init_failed)
 
         if default_import_git_branch is not None:
             # Pin the commit while the lock is held so the import below reads an immutable
@@ -331,7 +341,7 @@ async def sync_repository_from_origin(
             infrahub_branch=infrahub_branch,
         )
         try:
-            pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
+            pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
         except (ValueError, InvalidGitRepositoryError) as exc:
             log.debug(
                 f"Could not resolve pinned commit for {repository.name.value}, workers will fall back to pull: {exc}"

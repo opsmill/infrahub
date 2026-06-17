@@ -1,0 +1,1 @@
+Repository synchronization now resolves both a new repository's initial import and the pinned worker-pool commit from the repository's Git default branch rather than Infrahub's default branch name, fixing repositories whose Git default branch differs and staging-branch syncs.
