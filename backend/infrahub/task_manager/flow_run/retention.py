@@ -1,52 +1,25 @@
 import asyncio
 from datetime import UTC, timedelta
-from typing import Protocol
-from uuid import UUID
 
 from prefect import State
-from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import (
     FlowRunFilter,
     FlowRunFilterStartTime,
     FlowRunFilterState,
     FlowRunFilterStateType,
 )
-from prefect.client.schemas.objects import FlowRun, StateType
+from prefect.client.schemas.objects import StateType
 from prefect.types import DateTime
 
 from infrahub.log import get_logger
 
-
-class FlowRunRetentionClient(Protocol):
-    """The subset of Prefect client operations the retention purge depends on."""
-
-    async def read_flow_runs(self, flow_run_filter: FlowRunFilter, limit: int) -> list[FlowRun]: ...
-
-    async def delete_flow_run(self, flow_run_id: UUID) -> None: ...
-
-    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> None: ...
-
-
-class PrefectFlowRunRetentionClient:
-    """Forward the retention operations to a Prefect client."""
-
-    def __init__(self, client: PrefectClient) -> None:
-        self.client = client
-
-    async def read_flow_runs(self, flow_run_filter: FlowRunFilter, limit: int) -> list[FlowRun]:
-        return await self.client.read_flow_runs(flow_run_filter=flow_run_filter, limit=limit)
-
-    async def delete_flow_run(self, flow_run_id: UUID) -> None:
-        await self.client.delete_flow_run(flow_run_id=flow_run_id)
-
-    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> None:
-        await self.client.set_flow_run_state(flow_run_id=flow_run_id, state=state, force=force)
+from .prefect_client import RetentionPrefectClient
 
 
 class FlowRunRetention:
     """Purge old flow runs, either deleting them or forcing them into a terminal state."""
 
-    def __init__(self, client: FlowRunRetentionClient) -> None:
+    def __init__(self, client: RetentionPrefectClient) -> None:
         self.client = client
 
     async def purge(

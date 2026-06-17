@@ -26,11 +26,11 @@ class FakeReaderClient:
 
     async def read_flow_runs(
         self,
-        flow_filter: FlowFilter,
-        flow_run_filter: FlowRunFilter,
-        limit: int | None,
-        offset: int,
-        sort: FlowRunSort,
+        flow_filter: FlowFilter | None = None,
+        flow_run_filter: FlowRunFilter | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        sort: FlowRunSort | None = None,
     ) -> list[FlowRun]:
         return []
 
