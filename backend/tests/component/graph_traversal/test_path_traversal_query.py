@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
+from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import Plan, TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
@@ -380,7 +380,7 @@ async def test_executor_per_depth_run_matches_full_depth_run(
     executor = PathTraversalExecutor(
         db=db,
         branch=default_branch,
-        renderer=PathTraversalCypherRenderer(branch=default_branch, default_branch_name=default_branch.name),
+        renderer=GraphTraversalCypherRenderer(branch=default_branch, default_branch_name=default_branch.name),
     )
     executor_paths = await executor.run(plan=plan, source_id=person1.id, max_paths=10)
 
@@ -408,7 +408,7 @@ async def test_executor_stops_once_max_paths_budget_is_filled(
     executor = PathTraversalExecutor(
         db=db,
         branch=default_branch,
-        renderer=PathTraversalCypherRenderer(branch=default_branch, default_branch_name=default_branch.name),
+        renderer=GraphTraversalCypherRenderer(branch=default_branch, default_branch_name=default_branch.name),
     )
     paths = await executor.run(plan=plan, source_id=person1.id, max_paths=1)
 

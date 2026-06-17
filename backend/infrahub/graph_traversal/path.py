@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from infrahub.database import InfrahubDatabase
-    from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
+    from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
     from infrahub.graph_traversal.planning.models import Plan
     from infrahub.graph_traversal.results import PathData
 
@@ -25,7 +25,7 @@ class PathTraversalQuery(Query):
     def __init__(
         self,
         *,
-        renderer: PathTraversalCypherRenderer,
+        renderer: GraphTraversalCypherRenderer,
         plan: Plan,
         source_id: str,
         max_paths: int,
