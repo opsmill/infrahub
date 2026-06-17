@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
     from infrahub.core.schema import NodeSchema
-    from infrahub.graphql.analyzer import GraphQLQueryReport
 
 # Reads of these computed/derived fields cannot be mapped back to a precise set of
 # backing schema elements, so an attribute that reads them must be recomputed on any
@@ -65,11 +64,6 @@ class TransformReadSet:
             read_fields[kind] = fields
 
         return cls(read_kinds=frozenset(read_fields), read_fields=read_fields)
-
-    @classmethod
-    def from_query_report(cls, report: GraphQLQueryReport) -> TransformReadSet:
-        """Map an analyzed GraphQL query into the kinds and fields it reads."""
-        return cls.from_read_fields({kind: access.fields for kind, access in report.requested_read.items()})
 
 
 class PythonTransformRegistry:

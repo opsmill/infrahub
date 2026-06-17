@@ -46,6 +46,7 @@ from .scoping import (
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
+    from infrahub.graphql.analyzer import GraphQLQueryReport
 
 
 def get_prefect_max_related_resources() -> int:
@@ -94,6 +95,11 @@ def _resolve_changed_elements(
     if changed_elements is None:
         return None
     return ChangedElementSet.from_payload(changed_elements)
+
+
+def _transform_read_set_from_query_report(report: GraphQLQueryReport) -> TransformReadSet:
+    """Map an analyzed GraphQL query report into the kinds and fields it reads."""
+    return TransformReadSet.from_read_fields({kind: access.fields for kind, access in report.requested_read.items()})
 
 
 @task(name="computed-attribute-process-transform-for-node", cache_policy=NONE)
@@ -551,8 +557,8 @@ async def computed_attribute_setup_python(
         read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
         for trigger in triggers_python:
             definition = trigger.computed_attribute.computed_attribute
-            read_sets[trigger.branch, definition.kind, definition.attribute.name] = TransformReadSet.from_query_report(
-                report=trigger.computed_attribute.query_analyzer.query_report
+            read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
+                _transform_read_set_from_query_report(report=trigger.computed_attribute.query_analyzer.query_report)
             )
 
         # Since we can have multiple trigger per NodeKind
