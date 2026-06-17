@@ -336,9 +336,8 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
-    # TODO: lower default
     graph_traversal_query_timeout: float = Field(
-        default=300,
+        default=75,
         ge=1,
         description=(
             "Server-side transaction timeout in seconds for graph-traversal queries "
