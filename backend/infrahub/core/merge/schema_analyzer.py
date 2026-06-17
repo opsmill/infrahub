@@ -82,6 +82,7 @@ class MergeSchemaAnalyzer:
             base_branch_name=self.destination_branch.name,
             diff_branch_names=[self.source_branch.name],
             tracking_id=BranchTrackingId(name=self.source_branch.name),
+            # SchemaGeneric omitted: a generic's migration-relevant changes surface on Attribute/Relationships and inheriting SchemaNodes
             filters={"kind": {"includes": ["SchemaNode", "SchemaAttribute", "SchemaRelationship"]}},
         )
         if not diff_summary:

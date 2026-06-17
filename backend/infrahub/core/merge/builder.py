@@ -13,7 +13,6 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
 
 from .graph_merger import GraphMerger
-from .merge_locker import MergeLocker
 from .orchestrator import BranchMergeOrchestrator
 from .post_merge import PostMergeDispatcher
 from .repository_merge_dispatcher import RepositoryMergeDispatcher
@@ -98,7 +97,6 @@ async def build_branch_merge_orchestrator(
         schema_update_coordinator=schema_update_coordinator,
         rollback_handler=rollback_handler,
         post_merge_dispatcher=post_merge_dispatcher,
-        merge_locker=MergeLocker(),
         merge_write_blocker=merge_write_blocker,
         ipam_diff_parser=ipam_diff_parser,
         diff_repository=diff_repository,

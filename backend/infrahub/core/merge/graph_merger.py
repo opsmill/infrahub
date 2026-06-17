@@ -64,24 +64,24 @@ class GraphMerger:
             is_incremental=False,
         ):
             self.log.info("Diff lock acquired for merge")
+            errors: list[str] = []
+            async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
+                diff_branch_name=self.source_branch.name,
+                tracking_id=BranchTrackingId(name=self.source_branch.name),
+            ):
+                if conflict.selected_branch is None or conflict.resolvable is False:
+                    errors.append(conflict_path)
+
+            if errors:
+                raise ValidationError(
+                    f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
+                )
+
             try:
-                errors: list[str] = []
-                async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
-                    diff_branch_name=self.source_branch.name,
-                    tracking_id=BranchTrackingId(name=self.source_branch.name),
-                ):
-                    if conflict.selected_branch is None or conflict.resolvable is False:
-                        errors.append(conflict_path)
-
-                if errors:
-                    raise ValidationError(
-                        f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
-                    )
-
                 await self.diff_merger.merge_graph(at=at)
             except Exception as exc:
                 # Rollback is handled outside of this class b/c there is more than just the graph changes to revert
-                self.log.exception("Merge failed")
+                self.log.exception("Graph merge failed")
                 raise MergeFailedError(branch_name=self.source_branch.name) from exc
 
     async def rollback(self, at: Timestamp) -> None:

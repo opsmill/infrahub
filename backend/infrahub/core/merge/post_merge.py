@@ -123,8 +123,13 @@ class PostMergeDispatcher:
             )
             events.append(mutate_event)
 
+        # The merge is already committed by the time events are dispatched, so a failed send must not
+        # surface as a merge failure: log it and continue, like the other post-merge follow-ups.
         for event in events:
-            await self.event_service.send(event=event)
+            try:
+                await self.event_service.send(event=event)
+            except Exception:
+                self.log.exception("Failed to send post-merge event '%s'", type(event).__name__)
 
     async def _submit_workflow(
         self,

@@ -21,6 +21,7 @@ from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
+from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -275,13 +276,16 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         log = get_run_logger()
         await add_tags(branches=[branch, registry.default_branch])
 
-        source_branch = await Branch.get_by_name(db=db, name=branch)
-        destination_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+        # Hold the global merge lock for the whole flow and load the branches under it, so the
+        # orchestrator and its components operate on branch state that cannot change mid-merge.
+        async with MergeLocker().acquire_global_lock():
+            source_branch = await Branch.get_by_name(db=db, name=branch)
+            destination_branch = await registry.get_branch(db=db, branch=registry.default_branch)
 
-        orchestrator = await build_branch_merge_orchestrator(
-            db=db, source_branch=source_branch, destination_branch=destination_branch, logger=log
-        )
-        await orchestrator.merge(context=context, proposed_change_id=proposed_change_id)
+            orchestrator = await build_branch_merge_orchestrator(
+                db=db, source_branch=source_branch, destination_branch=destination_branch, logger=log
+            )
+            await orchestrator.merge(context=context, proposed_change_id=proposed_change_id)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
