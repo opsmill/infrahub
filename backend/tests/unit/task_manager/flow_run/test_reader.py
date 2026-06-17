@@ -1,5 +1,4 @@
 from datetime import UTC
-from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -21,7 +20,7 @@ class FakeReaderClient:
         self._logs = logs or []
         self._artifacts = artifacts or []
         self._flows = flows or []
-        self.read_logs_calls: list[dict[str, Any]] = []
+        self._log_fetches: list[tuple[int, int]] = []
         self.read_flows_calls: list[FlowFilter | None] = []
 
     async def read_flow_runs(
@@ -35,8 +34,12 @@ class FakeReaderClient:
         return []
 
     async def read_logs(self, log_filter: LogFilter, offset: int, limit: int) -> list[Log]:
-        self.read_logs_calls.append({"offset": offset, "limit": limit})
+        self._log_fetches.append((offset, limit))
         return self._logs[offset : offset + limit]
+
+    def assert_log_pages_fetched(self, pages: list[tuple[int, int]]) -> None:
+        """Assert read_logs was invoked once per (offset, limit) page, in order."""
+        assert self._log_fetches == pages
 
     async def read_artifacts(self, artifact_filter: ArtifactFilter, flow_run_filter: FlowRunFilter) -> list[Artifact]:
         return self._artifacts
@@ -74,10 +77,9 @@ class TestReadLogs:
         result = await FlowRunReader(client=client).read_logs(flow_ids=[flow_id], log_limit=None, log_offset=None)
 
         assert len(result.logs[flow_id]) == total
-        assert client.read_logs_calls == [
-            {"offset": 0, "limit": PREFECT_MAX_LOGS_PER_CALL},
-            {"offset": PREFECT_MAX_LOGS_PER_CALL, "limit": PREFECT_MAX_LOGS_PER_CALL},
-        ]
+        client.assert_log_pages_fetched(
+            [(0, PREFECT_MAX_LOGS_PER_CALL), (PREFECT_MAX_LOGS_PER_CALL, PREFECT_MAX_LOGS_PER_CALL)]
+        )
 
     async def test_excludes_completed_finished_message(self) -> None:
         flow_id = uuid4()
