@@ -42,13 +42,8 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         clearBranchIfCurrent(sourceBranch);
       }
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occurred while merging proposed change"}
-        />
-      );
+    onError: (error) => {
+      toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
     },
   });
 
