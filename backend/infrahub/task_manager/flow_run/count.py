@@ -1,6 +1,4 @@
-import hashlib
-import json
-from typing import Any, Protocol
+from typing import Protocol
 
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import FlowFilter, FlowRunFilter
@@ -8,6 +6,8 @@ from prefect.client.schemas.filters import FlowFilter, FlowRunFilter
 from infrahub import config
 from infrahub.message_bus.types import KVTTL
 from infrahub.services.adapters.cache import InfrahubCache
+
+from .cache_key import FlowRunCountCacheKeyBuilder
 
 
 class FlowRunCounterProtocol(Protocol):
@@ -21,15 +21,12 @@ class FlowRunCounterProtocol(Protocol):
 class FlowRunCounter:
     """Count flow runs matching a filter, caching results above a configurable threshold."""
 
-    def __init__(self, client: PrefectClient, cache: InfrahubCache) -> None:
+    def __init__(
+        self, client: PrefectClient, cache: InfrahubCache, cache_key_builder: FlowRunCountCacheKeyBuilder
+    ) -> None:
         self.client = client
         self.cache = cache
-
-    @staticmethod
-    def _build_cache_key(body: dict[str, Any]) -> str:
-        serialized = json.dumps(body, sort_keys=True, separators=(",", ":"))
-        hashed = hashlib.sha256(serialized.encode()).hexdigest()
-        return f"task_manager:flow_run_count:{hashed}"
+        self.cache_key_builder = cache_key_builder
 
     async def count(
         self,
@@ -40,7 +37,7 @@ class FlowRunCounter:
             "flows": flow_filter.model_dump(mode="json") if flow_filter else None,
             "flow_runs": (flow_run_filter.model_dump(mode="json", exclude_unset=True) if flow_run_filter else None),
         }
-        cache_key = self._build_cache_key(body)
+        cache_key = self.cache_key_builder.build(body)
 
         cached_value_raw = await self.cache.get(key=cache_key)
         if cached_value_raw is not None:

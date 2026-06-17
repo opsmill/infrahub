@@ -3,6 +3,7 @@ from prefect.client.orchestration import PrefectClient
 from infrahub.database import InfrahubDatabase
 from infrahub.workers.dependencies import get_cache
 
+from .cache_key import FlowRunCountCacheKeyBuilder
 from .count import FlowRunCounter, FlowRunCounterProtocol
 from .enrichment import RelatedNodeEnricher, RelatedNodeEnricherProtocol
 from .filters import FlowRunFilterBuilder
@@ -96,7 +97,7 @@ async def build_prefect_task_service(db: InfrahubDatabase, client: PrefectClient
     return PrefectTaskService(
         filter_builder=FlowRunFilterBuilder(),
         reader=FlowRunReader(client=client),
-        counter=FlowRunCounter(client=client, cache=cache),
+        counter=FlowRunCounter(client=client, cache=cache, cache_key_builder=FlowRunCountCacheKeyBuilder()),
         enricher=RelatedNodeEnricher(db=db, tag_decoder=tag_decoder),
         tag_decoder=tag_decoder,
     )
