@@ -4,7 +4,7 @@ from prefect.client.schemas.objects import StateType
 
 from infrahub.task_manager.flow_run.filters import FlowRunFilterBuilder
 from infrahub.task_manager.flow_run.models import FlowRunQueryCriteria
-from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
+from infrahub.workflows.constants import TAG_NAMESPACE
 
 
 class TestBuildFlowFilter:
@@ -34,7 +34,7 @@ class TestBuildFlowRunFilter:
         flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(criteria=FlowRunQueryCriteria(branch="main"))
 
         assert flow_run_filter.tags is not None
-        assert flow_run_filter.tags.all_ == [TAG_NAMESPACE, WorkflowTag.BRANCH.render(identifier="main")]
+        assert flow_run_filter.tags.all_ == [TAG_NAMESPACE, "infrahub.app/branch/main"]
 
     def test_extra_tags_are_preserved(self) -> None:
         flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(
@@ -50,7 +50,7 @@ class TestBuildFlowRunFilter:
         )
 
         assert flow_run_filter.tags is not None
-        assert flow_run_filter.tags.all_ == [TAG_NAMESPACE, WorkflowTag.RELATED_NODE.render(identifier="node-1")]
+        assert flow_run_filter.tags.all_ == [TAG_NAMESPACE, "infrahub.app/node/node-1"]
 
     def test_ids_are_converted_to_uuid(self) -> None:
         id_a = "00000000-0000-0000-0000-000000000001"
@@ -93,8 +93,8 @@ class TestBuildFlowRunFilter:
         assert flow_run_filter.tags.all_ == [
             TAG_NAMESPACE,
             "custom",
-            WorkflowTag.BRANCH.render(identifier="main"),
-            WorkflowTag.RELATED_NODE.render(identifier="rel-1"),
+            "infrahub.app/branch/main",
+            "infrahub.app/node/rel-1",
         ]
         assert flow_run_filter.id is not None
         assert flow_run_filter.id.any_ == [UUID(node_id)]
