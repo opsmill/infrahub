@@ -133,7 +133,6 @@ async def build_path_traversal_query(
     source_id: str,
     default_branch_name: str,
     max_paths: int = 10,
-    depths: Iterable[int] | None = None,
     at: Timestamp | None = None,
 ) -> PathTraversalQuery:
     """Construct a ``GraphTraversalCypherRenderer`` and a ``PathTraversalQuery`` around it."""
@@ -150,7 +149,6 @@ async def build_path_traversal_query(
         plan=plan,
         source_id=source_id,
         max_paths=max_paths,
-        depths=depths,
     )
 
 

@@ -19,14 +19,14 @@ if TYPE_CHECKING:
     from infrahub.graph_traversal.results import PathData
 
 
+# TODO: I think this class can be removed now
 class PathTraversalExecutor:
-    """Run a path-traversal plan depth-by-depth, shallowest first.
+    """Run a path-traversal plan as a single ``SHORTEST k`` search.
 
-    Each feasible depth executes as its own query with the remaining path
-    budget, so deeper branches are never evaluated once ``max_paths`` paths
-    have been collected. Results keep the shortest-first ordering of a single
-    all-depths query: the loop ascends depth and each per-depth query orders
-    its rows internally.
+    One quantified-path-pattern query returns up to ``max_paths`` paths to the
+    anchored destination, shortest first. The search walks Neo4j's frontier and
+    stops once the budget is filled, so shallow targets return without exploring
+    the full ``max_depth`` cone.
     """
 
     def __init__(self, *, db: InfrahubDatabase, branch: Branch, renderer: GraphTraversalCypherRenderer) -> None:
@@ -36,24 +36,17 @@ class PathTraversalExecutor:
 
     async def run(self, *, plan: Plan, source_id: str, max_paths: int, at: Timestamp | None = None) -> list[PathData]:
         at = at if at is not None else Timestamp()
-        collected: list[PathData] = []
-        for depth in self._renderer.feasible_depths(plan=plan):
-            remaining = max_paths - len(collected)
-            if remaining <= 0:
-                break
-            query = await PathTraversalQuery.init(
-                db=self._db,
-                branch=self._branch,
-                at=at,
-                renderer=self._renderer,
-                plan=plan,
-                source_id=source_id,
-                max_paths=remaining,
-                depths={depth},
-            )
-            await query.execute(db=self._db)
-            collected.extend(query.get_paths())
-        return collected
+        query = await PathTraversalQuery.init(
+            db=self._db,
+            branch=self._branch,
+            at=at,
+            renderer=self._renderer,
+            plan=plan,
+            source_id=source_id,
+            max_paths=max_paths,
+        )
+        await query.execute(db=self._db)
+        return query.get_paths()
 
 
 class ReachableNodesExecutor:

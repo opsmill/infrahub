@@ -44,8 +44,8 @@ def _build_renderer() -> GraphTraversalCypherRenderer:
     return GraphTraversalCypherRenderer(branch=_default_branch(), default_branch_name="main")
 
 
-def _render_empty(*, max_paths: int = 100) -> None:
-    _build_renderer().render(
+def _render_by_id(*, max_paths: int = 100) -> None:
+    _build_renderer().render_shortest_path_by_id(
         plan=_empty_plan(),
         source_id="src-uuid",
         at=Timestamp(),
@@ -73,22 +73,23 @@ class TestGraphTraversalCypherRendererValidation:
 
     def test_rejects_max_paths_below_minimum(self) -> None:
         with pytest.raises(ValueError, match=r"max_paths must be in \[1, 5000\]"):
-            _render_empty(max_paths=0)
+            _render_by_id(max_paths=0)
 
     def test_rejects_max_paths_above_maximum(self) -> None:
         with pytest.raises(ValueError, match=r"max_paths must be in \[1, 5000\]"):
-            _render_empty(max_paths=5001)
+            _render_by_id(max_paths=5001)
 
     def test_render_rejects_empty_plan(self) -> None:
         with pytest.raises(ValueError, match=r"plan has no adjacency"):
-            _render_empty()
+            _render_by_id()
 
 
-def _render_linear(*, depths: set[int] | None = None) -> str:
-    rendered = _build_renderer().render(
+def _render_linear_paths(*, depths: set[int] | None = None) -> str:
+    rendered = _build_renderer().render_paths_to_targets(
         plan=_linear_plan(),
         source_id="src-uuid",
         at=Timestamp(),
+        terminal_uuids=["uuid-c"],
         max_paths=10,
         depths=depths,
     )
@@ -106,4 +107,4 @@ class TestFeasibleDepths:
 class TestRenderDepthsFilter:
     def test_render_with_only_unfeasible_depths_raises(self) -> None:
         with pytest.raises(ValueError, match=r"no feasible fixed-depth query"):
-            _render_linear(depths={1})
+            _render_linear_paths(depths={1})
