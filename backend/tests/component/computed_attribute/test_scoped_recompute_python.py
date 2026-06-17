@@ -1,34 +1,26 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator
+from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import config
-from infrahub.auth import AccountSession, AuthType
 from infrahub.computed_attribute.tasks import computed_attribute_setup_python
-from infrahub.context import InfrahubContext
 from infrahub.core.constants import InfrahubKind, RelationshipCardinality
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.events.schema_action import ChangedElementsPayload
-from infrahub.server import app
-from infrahub.workers.dependencies import build_workflow
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
-from infrahub.workflows.initialization import setup_task_manager
-from tests.adapters.workflow import WorkflowRecorder
+from tests.component.computed_attribute._base import ScopedRecomputeCase, ScopedRecomputeTestBase
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
 
 if TYPE_CHECKING:
-    from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
-    from infrahub.services import InfrahubServices
+    from tests.adapters.workflow import WorkflowRecorder
 
 
 CAR_PERSON_PYTHON_SCHEMA = SchemaRoot(
@@ -81,29 +73,25 @@ CAR_PERSON_PYTHON_SCHEMA = SchemaRoot(
 )
 
 
-class TestScopedRecomputePython(TestInfrahubAppBase):
-    @pytest.fixture(scope="class", autouse=True)
-    async def workflow_recorder(
-        self,
-        prefect: Generator[str, None, None],
-        dependency_provider: Provider,
-    ) -> AsyncGenerator[WorkflowRecorder, None]:
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        await setup_task_manager()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
-            yield recorder
-        config.OVERRIDE.workflow = original
+# ``computed_desc_python`` reads only TestCar.name via transform01.
+# ``computed_desc_python_opaque`` reads display_label via transform_opaque, so its read set
+# is imprecise and the attribute always recomputes (the conservative, opaque case).
+PYTHON_CASES = [
+    ScopedRecomputeCase(
+        name="unrelated_field_skips_scoped_keeps_opaque",
+        changed_elements=ChangedElementsPayload(changed_fields={"TestCar": ["nbr_seats"]}),
+        expected_submitted={"computed_desc_python_opaque"},
+    ),
+    ScopedRecomputeCase(
+        name="related_field_recomputes_scoped_and_opaque",
+        changed_elements=ChangedElementsPayload(changed_fields={"TestCar": ["name"]}),
+        expected_submitted={"computed_desc_python", "computed_desc_python_opaque"},
+    ),
+]
 
-    @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: Any) -> InfrahubServices:
-        return app.state.service
 
-    @pytest.fixture(autouse=True)
-    def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
-        workflow_recorder.execute_calls.clear()
-        workflow_recorder.submit_calls.clear()
+class TestScopedRecomputePython(ScopedRecomputeTestBase):
+    WORKFLOW = TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
 
     @pytest.fixture(scope="class")
     async def transform_dataset(
@@ -160,78 +148,18 @@ class TestScopedRecomputePython(TestInfrahubAppBase):
 
         await load_schema(db=db, schema=CAR_PERSON_PYTHON_SCHEMA, update_db=True)
 
-    def _context(self, admin_account: CoreAccount, branch: Branch) -> InfrahubContext:
-        account = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=admin_account.id, role="admin")
-        return InfrahubContext.init(branch=branch, account=account)
-
-    @staticmethod
-    def _submitted_attribute_names(recorder: WorkflowRecorder) -> set[str]:
-        return {
-            call["parameters"]["computed_attribute_name"]
-            for call in recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
-        }
-
-    async def test_unrelated_change_skips_scoped_python_recompute(
+    @pytest.mark.parametrize("case", PYTHON_CASES, ids=[c.name for c in PYTHON_CASES])
+    async def test_scoped_recompute(
         self,
+        case: ScopedRecomputeCase,
         transform_dataset: None,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
-        client: InfrahubClient,
     ) -> None:
-        """A change to a field no transform reads does not recompute the precisely-scoped attribute."""
-        context = self._context(admin_account, default_branch)
-        changed_elements = ChangedElementsPayload(changed_fields={"TestCar": ["nbr_seats"]})
-
         await computed_attribute_setup_python(
-            context=context,
+            context=self._context(admin_account, default_branch),
             branch_name=default_branch.name,
-            changed_elements=changed_elements,
+            changed_elements=case.changed_elements,
         )
-
-        assert "computed_desc_python" not in self._submitted_attribute_names(workflow_recorder)
-
-    async def test_related_change_submits_python_recompute(
-        self,
-        transform_dataset: None,
-        workflow_recorder: WorkflowRecorder,
-        default_branch: Branch,
-        admin_account: CoreAccount,
-        client: InfrahubClient,
-    ) -> None:
-        """A change to a field the transform reads (TestCar.name) submits the recompute job."""
-        context = self._context(admin_account, default_branch)
-        changed_elements = ChangedElementsPayload(changed_fields={"TestCar": ["name"]})
-
-        await computed_attribute_setup_python(
-            context=context,
-            branch_name=default_branch.name,
-            changed_elements=changed_elements,
-        )
-
-        assert "computed_desc_python" in self._submitted_attribute_names(workflow_recorder)
-
-    async def test_opaque_attribute_recomputed_without_full_escalation(
-        self,
-        transform_dataset: None,
-        workflow_recorder: WorkflowRecorder,
-        default_branch: Branch,
-        admin_account: CoreAccount,
-        client: InfrahubClient,
-    ) -> None:
-        """An unanalyzable-query attribute recomputes on an unrelated change while a scoped one is skipped.
-
-        Proves the opaque attribute does not escalate to a branch-wide full recompute.
-        """
-        context = self._context(admin_account, default_branch)
-        changed_elements = ChangedElementsPayload(changed_fields={"TestCar": ["nbr_seats"]})
-
-        await computed_attribute_setup_python(
-            context=context,
-            branch_name=default_branch.name,
-            changed_elements=changed_elements,
-        )
-
-        submitted = self._submitted_attribute_names(workflow_recorder)
-        assert "computed_desc_python_opaque" in submitted
-        assert "computed_desc_python" not in submitted
+        assert self._submitted_attribute_names(workflow_recorder) == case.expected_submitted
