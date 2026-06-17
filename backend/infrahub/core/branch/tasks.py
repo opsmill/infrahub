@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from prefect import flow, get_run_logger
@@ -53,6 +54,11 @@ from infrahub.workflows.catalogue import (
     TRIGGER_GENERATOR_DEFINITION_RUN,
 )
 from infrahub.workflows.utils import add_tags
+
+if TYPE_CHECKING:
+    from logging import Logger, LoggerAdapter
+
+    from infrahub.database import InfrahubDatabase
 
 
 @flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
@@ -271,21 +277,44 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
 async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id: str | None = None) -> None:
+    log = get_run_logger()
+    await add_tags(branches=[branch, registry.default_branch])
+
     database = await get_database()
     async with database.start_session() as db:
-        log = get_run_logger()
-        await add_tags(branches=[branch, registry.default_branch])
-
-        # Hold the global merge lock for the whole flow and load the branches under it, so the
-        # orchestrator and its components operate on branch state that cannot change mid-merge.
+        # Hold the global merge lock for the whole flow and load the branch under it, so the merge
+        # decision and the orchestrator operate on branch state that cannot change mid-merge.
         async with MergeLocker().acquire_global_lock():
             source_branch = await Branch.get_by_name(db=db, name=branch)
-            destination_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+            if source_branch.status != BranchStatus.OPEN:
+                log.info(f"Branch '{branch}' is not open (status={source_branch.status}), skipping merge")
+                return
 
-            orchestrator = await build_branch_merge_orchestrator(
-                db=db, source_branch=source_branch, destination_branch=destination_branch, logger=log
+            destination_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+            await _do_merge_branch(
+                db=db,
+                source_branch=source_branch,
+                destination_branch=destination_branch,
+                context=context,
+                proposed_change_id=proposed_change_id,
+                log=log,
             )
-            await orchestrator.merge(context=context, proposed_change_id=proposed_change_id)
+
+
+async def _do_merge_branch(
+    *,
+    db: InfrahubDatabase,
+    source_branch: Branch,
+    destination_branch: Branch,
+    context: InfrahubContext,
+    proposed_change_id: str | None,
+    log: Logger | LoggerAdapter[Logger],
+) -> None:
+    """Run the merge body for an OPEN source branch."""
+    orchestrator = await build_branch_merge_orchestrator(
+        db=db, source_branch=source_branch, destination_branch=destination_branch, logger=log
+    )
+    await orchestrator.merge(context=context, proposed_change_id=proposed_change_id)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")

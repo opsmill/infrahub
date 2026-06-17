@@ -67,12 +67,6 @@ class BranchMergeOrchestrator:
     async def merge(self, *, context: InfrahubContext, proposed_change_id: str | None = None) -> None:
         user_id = context.account.account_id
 
-        if self.source_branch.status != BranchStatus.OPEN:
-            self.log.info(
-                f"Branch '{self.source_branch.name}' is not open (status={self.source_branch.status}), skipping merge"
-            )
-            return
-
         protection = await self.merge_write_blocker.get()
         if protection is not None and protection.branch != self.source_branch.name:
             raise ValidationError("Cannot merge a branch while a merge is in progress.")
