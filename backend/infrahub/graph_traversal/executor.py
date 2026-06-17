@@ -6,7 +6,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.graph_traversal.reachable import (
     ReachablePathsQuery,
-    ReachableShortestPathsQuery,
     ReachableTargetsQuery,
 )
 
@@ -19,7 +18,6 @@ if TYPE_CHECKING:
     from infrahub.graph_traversal.results import PathData
 
 
-# TODO: I think this class can be removed now
 class PathTraversalExecutor:
     """Run a path-traversal plan as a single ``SHORTEST k`` search.
 
@@ -117,22 +115,6 @@ class ReachableNodesExecutor:
             plan=plan, source_id=source_id, terminal_uuids=terminal_uuids, max_paths=max_paths, at=at
         )
 
-    async def _run_shortest(
-        self, *, plan: Plan, source_id: str, terminal_uuids: list[str], max_paths: int, at: Timestamp
-    ) -> list[ReachableNodeData]:
-        query = await ReachableShortestPathsQuery.init(
-            db=self._db,
-            branch=self._branch,
-            at=at,
-            renderer=self._renderer,
-            plan=plan,
-            source_id=source_id,
-            terminal_uuids=terminal_uuids,
-            max_paths=max_paths,
-        )
-        await query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
-        return query.get_reachable_nodes()
-
     async def _run_all_paths(
         self, *, plan: Plan, source_id: str, terminal_uuids: list[str], max_paths: int, at: Timestamp
     ) -> list[ReachableNodeData]:
@@ -154,4 +136,40 @@ class ReachableNodesExecutor:
             )
             await paths_query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
             collected.extend(paths_query.get_reachable_nodes())
+        return collected
+
+    async def _run_shortest(
+        self, *, plan: Plan, source_id: str, terminal_uuids: list[str], max_paths: int, at: Timestamp
+    ) -> list[ReachableNodeData]:
+        """Shortest path(s) per target, resolved by ascending depth band.
+
+        A target first reached at depth ``d`` is removed from the search before band
+        ``d + 1`` runs, so each target contributes only its minimum-depth path(s). Every
+        remaining target is resolved in one batched band query rather than one search apiece,
+        so cost scales with the number of feasible bands, not with the number of targets.
+        """
+        collected: list[ReachableNodeData] = []
+        remaining_targets = list(terminal_uuids)
+        for depth in self._renderer.feasible_depths(plan=plan):
+            if not remaining_targets:
+                break
+            budget = max_paths - len(collected)
+            if budget <= 0:
+                break
+            paths_query = await ReachablePathsQuery.init(
+                db=self._db,
+                branch=self._branch,
+                at=at,
+                renderer=self._renderer,
+                plan=plan,
+                source_id=source_id,
+                terminal_uuids=remaining_targets,
+                max_paths=budget,
+                depths={depth},
+            )
+            await paths_query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
+            rows = paths_query.get_reachable_nodes()
+            collected.extend(rows)
+            reached = {row.node.uuid for row in rows}
+            remaining_targets = [t for t in remaining_targets if t not in reached]
         return collected

@@ -606,9 +606,7 @@ class Query:
 
         return self
 
-    async def query_with_size_limit(
-        self, db: InfrahubDatabase, timeout_seconds: float | None = None
-    ) -> list[Record]:
+    async def query_with_size_limit(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> list[Record]:
         query_limit = config.SETTINGS.database.query_size_limit
         offset = 0
         results: list[Record] = []

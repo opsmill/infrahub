@@ -168,29 +168,6 @@ LIMIT $max_paths
 RETURN start_node_uuid, start_node_kind, hops, depth
 """
 
-# Per-target ALL SHORTEST: one quantified-path-pattern shortest search per
-# discovered terminal. The repeated unit is one node-to-node hop
-# (Node -[IS_RELATED]- Relationship -[IS_RELATED]- Node); ``a`` is the unit's
-# left boundary (``source`` on the first iteration), ``b`` its destination.
-_REACHABLE_SHORTEST_ENVELOPE = """
-%(source_match)s
-UNWIND $terminal_uuids AS terminal_uuid
-MATCH path = ALL SHORTEST (source) %(unit)s (target:Node WHERE target.uuid = terminal_uuid)
-WITH
-    source.uuid AS start_node_uuid,
-    source.kind AS start_node_kind,
-    (size(nodes(path)) - 1) / 2 AS depth,
-    [i IN range(0, (size(nodes(path)) - 1) / 2 - 1) | {
-        relationship_identifier: nodes(path)[i * 2 + 1].name,
-        uuid: nodes(path)[i * 2 + 2].uuid,
-        kind: nodes(path)[i * 2 + 2].kind
-    }] AS hops
-ORDER BY depth ASC, hops[-1].kind ASC, hops[-1].uuid ASC
-LIMIT $max_paths
-RETURN start_node_uuid, start_node_kind, hops, depth
-"""
-
-
 # By-id k-SHORTEST: resolve both endpoints to their branch/time-correct active Node
 # rows, then run a single quantified-path-pattern search for the ``max_paths`` shortest
 # paths between the two bound nodes. ``SHORTEST k`` walks Neo4j's frontier in a stable
@@ -235,10 +212,6 @@ def _reachable_targets_text(*, phase_one_inner: str) -> str:
 
 def _reachable_paths_text(*, phase_two_inner: str) -> str:
     return _REACHABLE_PATHS_ENVELOPE % {"source_match": _SOURCE_MATCH, "phase_two_inner": phase_two_inner}
-
-
-def _reachable_shortest_text(*, unit: str) -> str:
-    return _REACHABLE_SHORTEST_ENVELOPE % {"source_match": _SOURCE_MATCH, "unit": unit}
 
 
 class GraphTraversalCypherRenderer:
@@ -357,32 +330,6 @@ class GraphTraversalCypherRenderer:
             "terminal_uuids": list(terminal_uuids),
             "max_paths": max_paths,
             **self._hop_tuple_params(depth_renders),
-        }
-        return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
-
-    def render_shortest_paths_to_targets(
-        self, *, plan: Plan, source_id: str, at: Timestamp | None, terminal_uuids: list[str], max_paths: int
-    ) -> RenderedCypher:
-        """Render the all-shortest-paths Phase 2 for ``TerminalByKinds``.
-
-        One ``ALL SHORTEST`` quantified-path-pattern search per discovered
-        terminal returns every path tied for that terminal's minimum depth.
-        ``terminal_uuids`` is bound as a parameter; the search is bounded to
-        ``plan.max_depth`` hops and to the plan's schema-legal triples.
-
-        Raises:
-            ValueError: when ``plan`` is empty or ``max_paths`` is out of range.
-
-        """
-        self._validate(plan=plan, max_paths=max_paths)
-
-        at = at if at is not None else Timestamp()
-        text = _reachable_shortest_text(unit=self._shortest_qpp_unit(max_depth=plan.max_depth))
-        params: dict[str, Any] = {
-            **self._base_params(source_id=source_id, at=at),
-            "terminal_uuids": list(terminal_uuids),
-            "legal_triples": _legal_triples(plan),
-            "max_paths": max_paths,
         }
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
 
