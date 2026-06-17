@@ -11,7 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import EventMeta
-from infrahub.events.schema_action import ChangedElementsPayload, SchemaUpdatedEvent
+from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
@@ -342,7 +342,7 @@ async def update_registry(
             event = SchemaUpdatedEvent(
                 branch_name=branch.name,
                 schema_hash=branch.active_schema_hash.main,
-                changed_elements=ChangedElementsPayload.from_schema_diff(diff),
+                changed_elements=build_changed_elements_payload(diff),
                 meta=EventMeta(
                     initiator_id=WORKER_IDENTITY,
                     request_id=request_id,

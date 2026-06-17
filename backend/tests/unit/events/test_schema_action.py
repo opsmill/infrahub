@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from infrahub.core.models import HashableModelDiff, SchemaDiff
-from infrahub.events.schema_action import ChangedElementsPayload
+from infrahub.events.schema_action import build_changed_elements_payload
 
 
 def _attributes_bucket(
@@ -23,7 +23,7 @@ def _attributes_bucket(
 def test_changed_attribute_surfaces_field_name_not_bucket() -> None:
     diff = SchemaDiff(changed={"InfraDevice": _attributes_bucket(changed=["computed_description", "type"])})
 
-    payload = ChangedElementsPayload.from_schema_diff(diff)
+    payload = build_changed_elements_payload(diff)
 
     assert payload.changed_fields == {"InfraDevice": ["computed_description", "type"]}
     assert "attributes" not in payload.changed_fields["InfraDevice"]
@@ -34,7 +34,7 @@ def test_relationship_bucket_surfaces_relationship_names() -> None:
     node_diff = HashableModelDiff(changed={"relationships": relationships})
     diff = SchemaDiff(changed={"InfraCircuit": node_diff})
 
-    payload = ChangedElementsPayload.from_schema_diff(diff)
+    payload = build_changed_elements_payload(diff)
 
     assert payload.changed_fields == {"InfraCircuit": ["provider"]}
 
@@ -44,7 +44,7 @@ def test_added_changed_and_removed_elements_are_all_recorded() -> None:
         changed={"InfraDevice": _attributes_bucket(added=["new_field"], changed=["type"], removed=["legacy"])}
     )
 
-    payload = ChangedElementsPayload.from_schema_diff(diff)
+    payload = build_changed_elements_payload(diff)
 
     assert payload.changed_fields == {"InfraDevice": ["legacy", "new_field", "type"]}
 
@@ -53,7 +53,7 @@ def test_node_level_field_kept_under_its_own_name() -> None:
     node_diff = HashableModelDiff(changed={"label": None, "attributes": HashableModelDiff(changed={"type": None})})
     diff = SchemaDiff(changed={"InfraDevice": node_diff})
 
-    payload = ChangedElementsPayload.from_schema_diff(diff)
+    payload = build_changed_elements_payload(diff)
 
     assert payload.changed_fields == {"InfraDevice": ["label", "type"]}
 
@@ -61,7 +61,7 @@ def test_node_level_field_kept_under_its_own_name() -> None:
 def test_added_and_removed_kinds_are_captured() -> None:
     diff = SchemaDiff(added={"NewKind": HashableModelDiff()}, removed={"OldKind": HashableModelDiff()})
 
-    payload = ChangedElementsPayload.from_schema_diff(diff)
+    payload = build_changed_elements_payload(diff)
 
     assert payload.added_kinds == ["NewKind"]
     assert payload.removed_kinds == ["OldKind"]
