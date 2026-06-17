@@ -1,4 +1,4 @@
-from infrahub.task_manager.models import InfrahubEventFilter
+from infrahub.task_manager.event.models import InfrahubEventFilter
 
 
 class TestInfrahubEventFilter:

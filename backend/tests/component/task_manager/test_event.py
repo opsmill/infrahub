@@ -9,8 +9,8 @@ from tests.helpers.events import dummy_event_meta, extract_expected_ids, send_ev
 from infrahub.core.branch import Branch
 from infrahub.events.branch_action import BranchCreatedEvent, BranchMergedEvent, BranchRebasedEvent
 from infrahub.events.models import InfrahubEvent
-from infrahub.task_manager.event import PrefectEvent
-from infrahub.task_manager.models import InfrahubEventFilter
+from infrahub.task_manager.event.models import InfrahubEventFilter
+from infrahub.task_manager.event.query import PrefectEvent
 
 QUERY_EVENT = """
 query {
