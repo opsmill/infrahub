@@ -16,7 +16,8 @@ from .models import (
     FlowRunQueryResult,
     RelatedNodesInfo,
 )
-from .reader import FlowRunReader, FlowRunReaderProtocol, PrefectFlowRunReaderClient
+from .prefect_client import PrefectClientAdapter
+from .reader import FlowRunReader, FlowRunReaderProtocol
 from .tags import WorkflowTagDecoder
 
 
@@ -94,10 +95,11 @@ class PrefectTaskService:
 async def build_prefect_task_service(db: InfrahubDatabase, client: PrefectClient) -> PrefectTaskService:
     tag_decoder = WorkflowTagDecoder()
     cache = await get_cache()
+    prefect = PrefectClientAdapter(client)
     return PrefectTaskService(
         filter_builder=FlowRunFilterBuilder(),
-        reader=FlowRunReader(client=PrefectFlowRunReaderClient(client)),
-        counter=FlowRunCounter(client=client, cache=cache, cache_key_builder=FlowRunCountCacheKeyBuilder()),
+        reader=FlowRunReader(client=prefect),
+        counter=FlowRunCounter(client=prefect, cache=cache, cache_key_builder=FlowRunCountCacheKeyBuilder()),
         enricher=RelatedNodeEnricher(db=db, tag_decoder=tag_decoder),
         tag_decoder=tag_decoder,
     )
