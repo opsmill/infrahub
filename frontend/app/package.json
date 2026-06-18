@@ -87,7 +87,7 @@
     "react-hook-form": "7.73.1",
     "react-markdown": "^10.1.0",
     "react-paginate": "^8.3.0",
-    "react-resizable-panels": "^4.11.2",
+    "react-resizable-panels": "^4.10.0",
     "react-router": "^7.18.0",
     "react-scan": "^0.5.7",
     "react-simple-code-editor": "^0.14.1",
@@ -96,7 +96,7 @@
     "recharts": "^3.8.1",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
-    "remeda": "^2.39.0",
+    "remeda": "^2.33.7",
     "sha1": "^1.1.1",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.1",
@@ -106,7 +106,7 @@
     "vite": "^8.0.16",
     "vite-plugin-monaco-editor-esm": "^2.0.2",
     "vite-plugin-svgr": "^5.2.0",
-    "zod": "^4.4.3"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@betterer/cli": "6.0.0-alpha.1",

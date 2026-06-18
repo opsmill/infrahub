@@ -184,8 +184,8 @@ importers:
         specifier: ^8.3.0
         version: 8.3.0(react@19.2.7)
       react-resizable-panels:
-        specifier: ^4.11.2
-        version: 4.11.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: ^4.10.0
+        version: 4.10.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-router:
         specifier: ^7.18.0
         version: 7.18.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -211,8 +211,8 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       remeda:
-        specifier: ^2.39.0
-        version: 2.39.0
+        specifier: ^2.33.7
+        version: 2.33.7
       sha1:
         specifier: ^1.1.1
         version: 1.1.1
@@ -241,8 +241,8 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0(typescript@5.9.3)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@betterer/cli':
         specifier: 6.0.0-alpha.1
@@ -5106,8 +5106,8 @@ packages:
       '@types/react':
         optional: true
 
-  react-resizable-panels@4.11.2:
-    resolution: {integrity: sha512-+kfFbDZ8mygc7g0vxOcDzCVGuwiIUOnILqPoUHo6/uP+Mmyx6HzZU+kj1aOPDlktXuobYbr6BtQekvJwHRX4Eg==}
+  react-resizable-panels@4.10.0:
+    resolution: {integrity: sha512-frjewRQt7TCv/vCH1pJfjZ7RxAhr5pKuqVQtVgzFq/vherxBFOWyC3xMbryx5Ti2wylViGUFc93Etg4rB3E0UA==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
@@ -5224,9 +5224,8 @@ packages:
   remark-stringify@11.0.0:
     resolution: {integrity: sha512-1OSmLd3awB/t8qdoEOMazZkNsfVTeY4fTsgzcQFdXNq8ToTN4ZGwrMnlda4K6smTFKD+GRV6O48i6Z4iKgPPpw==}
 
-  remeda@2.39.0:
-    resolution: {integrity: sha512-3Ki8dU1o3OVu4dwIQ2Pj+yiuP7OnEbmWAGmJ3yDRqopily5jsj8NWzPvbS89H85d6UdONKEcUnrfuHY6jN9vyw==}
-    engines: {node: '>=18.0.0'}
+  remeda@2.33.7:
+    resolution: {integrity: sha512-cXlyjevWx5AcslOUEETG4o8XYi9UkoCXcJmj7XhPFVbla+ITuOBxv6ijBrmbeg+ZhzmDThkNdO+iXKUfrJep1w==}
 
   remedial@1.0.8:
     resolution: {integrity: sha512-/62tYiOe6DzS5BqVsNpH/nkGlX45C/Sp6V+NtiN6JQNS1Viay7cWkazmRkrQrdFj2eshDe96SIQNIoMxqhzBOg==}
@@ -5900,8 +5899,8 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
@@ -9391,8 +9390,8 @@ snapshots:
       '@babel/parser': 7.29.7
       eslint: 10.5.0(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 4.4.3
-      zod-validation-error: 4.0.2(zod@4.4.3)
+      zod: 4.3.6
+      zod-validation-error: 4.0.2(zod@4.3.6)
     transitivePeerDependencies:
       - supports-color
 
@@ -9992,7 +9991,7 @@ snapshots:
       tinyglobby: 0.2.17
       unbash: 4.0.1
       yaml: 2.9.0
-      zod: 4.4.3
+      zod: 4.3.6
 
   levn@0.4.1:
     dependencies:
@@ -11028,7 +11027,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.17
 
-  react-resizable-panels@4.11.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  react-resizable-panels@4.10.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
@@ -11199,7 +11198,7 @@ snapshots:
       mdast-util-to-markdown: 2.1.2
       unified: 11.0.5
 
-  remeda@2.39.0: {}
+  remeda@2.33.7: {}
 
   remedial@1.0.8: {}
 
@@ -11496,7 +11495,7 @@ snapshots:
       jsonc-parser: 3.3.1
       nypm: 0.6.7
       yaml: 2.9.0
-      zod: 4.4.3
+      zod: 4.3.6
     optionalDependencies:
       oxlint: 1.66.0
 
@@ -11782,11 +11781,11 @@ snapshots:
 
   zen-observable@0.8.15: {}
 
-  zod-validation-error@4.0.2(zod@4.4.3):
+  zod-validation-error@4.0.2(zod@4.3.6):
     dependencies:
-      zod: 4.4.3
+      zod: 4.3.6
 
-  zod@4.4.3: {}
+  zod@4.3.6: {}
 
   zustand@4.5.7(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7):
     dependencies:
