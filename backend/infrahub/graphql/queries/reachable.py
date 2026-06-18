@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import SchemaNotFoundError
+from infrahub.exceptions import QueryTimeoutError, SchemaNotFoundError
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
+from infrahub.graph_traversal.executor import ReachableNodesExecutor
 from infrahub.graph_traversal.planning.models import TerminalByKinds, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from infrahub.graph_traversal.reachable import ReachableNodesExecutor
 from infrahub.graphql.queries.path import (
     PathNodeType,
     PathResultType,
@@ -126,6 +127,7 @@ async def reachable_nodes_resolver(
                 branch=graphql_context.branch,
                 default_branch_name=registry.default_branch,
             ),
+            timeout_seconds=config.SETTINGS.database.graph_traversal_query_timeout,
         )
         try:
             reachable_data = await executor.run(
@@ -138,6 +140,11 @@ async def reachable_nodes_resolver(
             )
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
+        except QueryTimeoutError as exc:
+            raise GraphQLError(
+                "Reachable-nodes traversal exceeded its time budget. Reduce max_depth, lower "
+                "max_results/max_paths, or add excluded_kinds/excluded_namespaces filters to narrow the search."
+            ) from exc
 
     all_ids: set[str] = {source_id}
     for n in reachable_data:
