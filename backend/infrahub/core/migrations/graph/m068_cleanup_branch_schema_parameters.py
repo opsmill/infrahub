@@ -120,7 +120,9 @@ class Migration068(ArbitraryMigration):
     """
 
     name: str = "068_cleanup_branch_schema_parameters"
-    description: str = "Remove spurious branch-specific parameters left on schema attributes by an older version of Migration056."
+    description: str = (
+        "Remove spurious branch-specific parameters left on schema attributes by an older version of Migration056."
+    )
     minimum_version: int = 67
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
