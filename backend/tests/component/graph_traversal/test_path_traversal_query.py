@@ -370,7 +370,7 @@ async def test_included_kinds_re_include_ipam_namespace_bounce(
     assert [hop.node.uuid for hop in paths[0].hops] == [namespace.id, ip2.id]
 
 
-async def test_executor_per_depth_run_matches_full_depth_run(
+async def test_executor_returns_shortest_first_across_depths(
     db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
 ) -> None:
     person1, blue = person_with_paths_at_two_depths
@@ -382,23 +382,12 @@ async def test_executor_per_depth_run_matches_full_depth_run(
         branch=default_branch,
         renderer=GraphTraversalCypherRenderer(branch=default_branch, default_branch_name=default_branch.name),
     )
-    executor_paths = await executor.run(plan=plan, source_id=person1.id, max_paths=10)
+    paths = await executor.run(plan=plan, source_id=person1.id, max_paths=10)
 
-    full_query = await build_path_traversal_query(
-        db=db,
-        branch=default_branch,
-        plan=plan,
-        source_id=person1.id,
-        default_branch_name=default_branch.name,
-    )
-    await full_query.execute(db=db)
-    full_paths = full_query.get_paths()
-
-    assert [p.depth for p in executor_paths] == [1, 3]
-    assert executor_paths == full_paths
+    assert [p.depth for p in paths] == [1, 3]
 
 
-async def test_executor_stops_once_max_paths_budget_is_filled(
+async def test_executor_respects_max_paths(
     db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
 ) -> None:
     person1, blue = person_with_paths_at_two_depths
@@ -416,28 +405,3 @@ async def test_executor_stops_once_max_paths_budget_is_filled(
     assert paths[0].depth == 1
     assert paths[0].start_node.uuid == person1.id
     assert [hop.node.uuid for hop in paths[0].hops] == [blue.id]
-
-
-async def test_depths_restricts_query_to_requested_depths(
-    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
-) -> None:
-    person1, blue = person_with_paths_at_two_depths
-    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
-    assert not plan.is_empty
-
-    async def paths_for(depths: set[int] | None) -> list[int]:
-        query = await build_path_traversal_query(
-            db=db,
-            branch=default_branch,
-            plan=plan,
-            source_id=person1.id,
-            default_branch_name=default_branch.name,
-            depths=depths,
-        )
-        await query.execute(db=db)
-        return [path.depth for path in query.get_paths()]
-
-    assert await paths_for(None) == [1, 3]
-    assert await paths_for({1}) == [1]
-    assert await paths_for({3}) == [3]
-    assert await paths_for({2}) == []

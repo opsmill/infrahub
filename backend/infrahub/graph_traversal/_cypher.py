@@ -2,10 +2,10 @@
 
 Two terminal predicates are served by separate entry points:
 
-- ``TerminalById`` (``render``): a single fixed-length-``MATCH`` phase anchored
-  on ``source`` and ``target.uuid IN [target.uuid]`` enumerates every path of
-  length ``≤ plan.max_depth`` to the given target, bounded by ``$max_paths``.
-  An optional ``depths`` restriction renders only the requested fixed depths.
+- ``TerminalById`` (``render_shortest_path_by_id``): both endpoints are resolved
+  to their branch/time-correct active ``Node`` rows, then a single ``SHORTEST k``
+  quantified-path-pattern search between the two bound nodes returns up to
+  ``$max_paths`` paths to the target, shortest first.
 
 - ``TerminalByKinds`` is split into two renders so the caller can discover
   terminals once and then enumerate paths depth-by-depth:
@@ -168,25 +168,21 @@ LIMIT $max_paths
 RETURN start_node_uuid, start_node_kind, hops, depth
 """
 
-_PATH_TRAVERSAL_ENVELOPE = """
+# By-id k-SHORTEST: resolve both endpoints to their branch/time-correct active Node
+# rows, then run a single quantified-path-pattern search for the ``max_paths`` shortest
+# paths between the two bound nodes. ``SHORTEST k`` walks Neo4j's frontier in a stable
+# traversal order and stops once ``k`` paths are found, so shallow targets return
+# without exploring the full ``max_depth`` cone. The outer ``ORDER BY`` gives a stable
+# presentation order (depth, then the intermediate relationship:uuid sequence). Binding
+# both ``source`` and ``target`` lets the planner anchor both ends.
+#
+# Determinism note: the result is fully reproducible whenever the number of connecting
+# paths is <= ``max_paths`` (no tier is cut). When more paths exist than ``max_paths``,
+# which paths fill the final tier is decided by Neo4j's traversal order and is stable for
+# unchanged data and a fixed Neo4j version/plan.
+_PATH_BY_ID_SHORTEST_ENVELOPE = """
 %(source_match)s%(target_match)s
-WITH source, [target.uuid] AS terminal_uuids
-CALL (source, terminal_uuids) {
-%(phase_two_inner)s
-}
-ORDER BY depth ASC, hops[-1].kind ASC, hops[-1].uuid ASC
-LIMIT $max_paths
-RETURN start_node_uuid, start_node_kind, hops, depth
-"""
-
-# Per-target ALL SHORTEST: one quantified-path-pattern shortest search per
-# discovered terminal. The repeated unit is one node-to-node hop
-# (Node -[IS_RELATED]- Relationship -[IS_RELATED]- Node); ``a`` is the unit's
-# left boundary (``source`` on the first iteration), ``b`` its destination.
-_REACHABLE_SHORTEST_ENVELOPE = """
-%(source_match)s
-UNWIND $terminal_uuids AS terminal_uuid
-MATCH path = ALL SHORTEST (source) %(unit)s (target:Node WHERE target.uuid = terminal_uuid)
+MATCH path = SHORTEST %(k)s (source) %(unit)s (target)
 WITH
     source.uuid AS start_node_uuid,
     source.kind AS start_node_kind,
@@ -196,17 +192,17 @@ WITH
         uuid: nodes(path)[i * 2 + 2].uuid,
         kind: nodes(path)[i * 2 + 2].kind
     }] AS hops
-ORDER BY depth ASC, hops[-1].kind ASC, hops[-1].uuid ASC
-LIMIT $max_paths
+ORDER BY depth ASC, reduce(ordering_key = "", h IN hops | ordering_key + h.relationship_identifier + ">" + h.uuid) ASC
 RETURN start_node_uuid, start_node_kind, hops, depth
 """
 
 
-def _path_traversal_text(*, phase_two_inner: str) -> str:
-    return _PATH_TRAVERSAL_ENVELOPE % {
+def _path_by_id_shortest_text(*, unit: str, k: int) -> str:
+    return _PATH_BY_ID_SHORTEST_ENVELOPE % {
         "source_match": _SOURCE_MATCH,
         "target_match": _TARGET_BY_ID_MATCH,
-        "phase_two_inner": phase_two_inner,
+        "unit": unit,
+        "k": k,
     }
 
 
@@ -218,15 +214,11 @@ def _reachable_paths_text(*, phase_two_inner: str) -> str:
     return _REACHABLE_PATHS_ENVELOPE % {"source_match": _SOURCE_MATCH, "phase_two_inner": phase_two_inner}
 
 
-def _reachable_shortest_text(*, unit: str) -> str:
-    return _REACHABLE_SHORTEST_ENVELOPE % {"source_match": _SOURCE_MATCH, "unit": unit}
-
-
 class GraphTraversalCypherRenderer:
     """Renders a ``Plan`` into Cypher.
 
-    - ``render()`` handles ``TerminalById``: anchors the given target, builds
-      ``terminal_uuids = [target.uuid]``, enumerates paths.
+    - ``render_shortest_path_by_id()`` handles ``TerminalById``: resolves both
+      endpoints to bound nodes and runs a single ``SHORTEST k`` search between them.
     - ``render_reachable_targets()`` / ``render_paths_to_targets()`` handle
       ``TerminalByKinds`` as two separate queries so a caller can discover the
       terminal set once and then enumerate paths to it depth-by-depth.
@@ -279,48 +271,6 @@ class GraphTraversalCypherRenderer:
         return "\n  UNION ALL\n".join(
             self._render_phase_two_for_depth(dr, terminal_label_union=terminal_label_union) for dr in depth_renders
         )
-
-    def render(
-        self,
-        *,
-        plan: Plan,
-        source_id: str,
-        at: Timestamp | None,
-        max_targets: int,
-        max_paths: int,
-        depths: Iterable[int] | None = None,
-    ) -> RenderedCypher:
-        """Render ``plan`` as a Cypher query for a ``TerminalById`` target.
-
-        ``depths`` restricts the rendered fixed-depth queries to the given
-        subset; ``None`` renders every feasible depth.
-
-        Raises:
-            ValueError: when ``plan`` is empty, ``max_targets`` or ``max_paths``
-                is out of range, the terminal is not anchored by id, or no
-                feasible fixed-depth query survives the ``depths`` restriction.
-
-        """
-        self._validate(plan=plan, max_targets=max_targets, max_paths=max_paths)
-        if not isinstance(plan.terminal_predicate, TerminalById):
-            raise ValueError(
-                "render() handles TerminalById only; "
-                "use render_reachable_targets/render_paths_to_targets for TerminalByKinds"
-            )
-
-        at = at if at is not None else Timestamp()
-        depth_renders = self._feasible_for_depths(
-            plan=plan, terminal_kinds=_terminal_kinds_for_plan(plan), depths=depths
-        )
-        text = _path_traversal_text(phase_two_inner=self._phase_two_inner(plan=plan, depth_renders=depth_renders))
-        params: dict[str, Any] = {
-            **self._base_params(source_id=source_id, at=at),
-            "max_targets": max_targets,
-            "max_paths": max_paths,
-            "target_id": plan.terminal_predicate.node_id,
-            **self._hop_tuple_params(depth_renders),
-        }
-        return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
 
     def render_reachable_targets(
         self, *, plan: Plan, source_id: str, at: Timestamp | None, max_targets: int
@@ -383,29 +333,32 @@ class GraphTraversalCypherRenderer:
         }
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
 
-    def render_shortest_paths_to_targets(
-        self, *, plan: Plan, source_id: str, at: Timestamp | None, terminal_uuids: list[str], max_paths: int
+    def render_shortest_path_by_id(
+        self, *, plan: Plan, source_id: str, at: Timestamp | None, max_paths: int
     ) -> RenderedCypher:
-        """Render the all-shortest-paths Phase 2 for ``TerminalByKinds``.
+        """Render a ``SHORTEST k`` search for a ``TerminalById`` target.
 
-        One ``ALL SHORTEST`` quantified-path-pattern search per discovered
-        terminal returns every path tied for that terminal's minimum depth.
-        ``terminal_uuids`` is bound as a parameter; the search is bounded to
-        ``plan.max_depth`` hops and to the plan's schema-legal triples.
+        Returns up to ``max_paths`` paths to the anchored destination, shortest
+        first, with a stable presentation order (depth, then the ordered
+        intermediate ``relationship:uuid`` sequence). Fully reproducible when the
+        number of connecting paths is at most ``max_paths``; beyond that, which
+        paths fill the final tier follows Neo4j's traversal order.
 
         Raises:
-            ValueError: when ``plan`` is empty or ``max_paths`` is out of range.
+            ValueError: when ``plan`` is empty, ``max_paths`` is out of range, or
+                the terminal is not anchored by id.
 
         """
         self._validate(plan=plan, max_paths=max_paths)
+        if not isinstance(plan.terminal_predicate, TerminalById):
+            raise ValueError("render_shortest_path_by_id handles TerminalById only")
 
         at = at if at is not None else Timestamp()
-        text = _reachable_shortest_text(unit=self._shortest_qpp_unit(max_depth=plan.max_depth))
+        text = _path_by_id_shortest_text(unit=self._shortest_qpp_unit(max_depth=plan.max_depth), k=max_paths)
         params: dict[str, Any] = {
             **self._base_params(source_id=source_id, at=at),
-            "terminal_uuids": list(terminal_uuids),
+            "target_id": plan.terminal_predicate.node_id,
             "legal_triples": _legal_triples(plan),
-            "max_paths": max_paths,
         }
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
 

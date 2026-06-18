@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -346,6 +347,88 @@ async def test_shortest_mode_reroutes_when_branch_deletes_shortest_edge(
     blue_entries = [r for r in results if r.node.uuid == blue.id]
     assert len(blue_entries) >= 1
     assert min(e.depth for e in blue_entries) == 3
+
+
+async def test_shortest_mode_resolves_each_target_at_its_own_minimum_depth(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node
+) -> None:
+    # Several targets of the same kind, each first reachable at a different depth:
+    #   blue  -> depth 1 (person1 -primary_tag- blue)
+    #   red   -> depth 1 (person1 -tags- red)
+    #   green -> depth 3 (person1 -tags- red -tags- person2 -primary_tag- green)
+    # The depth-banded walk must return each at its own minimum depth in one query, dropping
+    # each target from deeper bands once it is reached.
+    blue = tag_blue_main
+
+    red = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await red.new(db=db, name="Red")
+    await red.save(db=db)
+
+    green = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await green.new(db=db, name="Green")
+    await green.save(db=db)
+
+    person1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person1.new(db=db, firstname="Ada", lastname="One", primary_tag=blue, tags=[red])
+    await person1.save(db=db)
+
+    person2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person2.new(db=db, firstname="Bea", lastname="Two", primary_tag=green, tags=[red])
+    await person2.save(db=db)
+
+    plan = _build_plan(
+        db=db, branch=default_branch, source=person1, target_kinds=frozenset({blue.get_kind()}), max_depth=3
+    )
+    assert not plan.is_empty
+
+    results = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person1.id
+    )
+
+    depths_by_tag: dict[str, set[int]] = {}
+    for r in results:
+        depths_by_tag.setdefault(r.node.uuid, set()).add(r.depth)
+    assert depths_by_tag.get(blue.id) == {1}
+    assert depths_by_tag.get(red.id) == {1}
+    assert depths_by_tag.get(green.id) == {3}
+
+
+async def test_shortest_mode_returns_all_tied_shortest_paths_to_a_target(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None
+) -> None:
+    # person2 is reachable from person1 only at depth 2, but via two distinct intermediate
+    # tags shared by both people. Shortest mode must return BOTH tied depth-2 paths -- the
+    # per-band query yields every path at the target's minimum depth, not just one.
+    red_a = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await red_a.new(db=db, name="RedA")
+    await red_a.save(db=db)
+
+    red_b = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await red_b.new(db=db, name="RedB")
+    await red_b.save(db=db)
+
+    person1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person1.new(db=db, firstname="Ada", lastname="One", tags=[red_a, red_b])
+    await person1.save(db=db)
+
+    person2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person2.new(db=db, firstname="Bea", lastname="Two", tags=[red_a, red_b])
+    await person2.save(db=db)
+
+    plan = _build_plan(
+        db=db, branch=default_branch, source=person1, target_kinds=frozenset({"TestPerson"}), max_depth=2
+    )
+    assert not plan.is_empty
+
+    results = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person1.id
+    )
+
+    person2_entries = [r for r in results if r.node.uuid == person2.id]
+    assert len(person2_entries) == 2
+    assert {e.depth for e in person2_entries} == {2}
+    # the two tied paths differ only by their intermediate tag
+    assert {e.path.hops[0].node.uuid for e in person2_entries} == {red_a.id, red_b.id}
 
 
 async def test_kind_filter_accepts_generic_and_admits_every_concrete_implementor(

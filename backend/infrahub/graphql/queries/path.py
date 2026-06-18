@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING, Any
 from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import SchemaNotFoundError
+from infrahub.exceptions import QueryTimeoutError, SchemaNotFoundError
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
@@ -247,8 +248,8 @@ async def path_traversal_resolver(
     max_depth = data.max_depth or 5
     max_paths = data.max_paths or 10
 
-    if max_paths > MAX_PATHS:
-        raise GraphQLError(f"max_paths must be <= {MAX_PATHS}, got {max_paths}")
+    if not 1 <= max_paths <= MAX_PATHS:
+        raise GraphQLError(f"max_paths must be in [1, {MAX_PATHS}], got {max_paths}")
 
     if source_id == destination_id:
         raise GraphQLError("Source and destination nodes must be different")
@@ -298,6 +299,7 @@ async def path_traversal_resolver(
                 branch=graphql_context.branch,
                 default_branch_name=registry.default_branch,
             ),
+            timeout_seconds=config.SETTINGS.database.graph_traversal_query_timeout,
         )
         try:
             path_data_list = await executor.run(
@@ -308,6 +310,11 @@ async def path_traversal_resolver(
             )
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
+        except QueryTimeoutError as exc:
+            raise GraphQLError(
+                "Path traversal exceeded its time budget. Reduce max_depth, lower max_paths, "
+                "or add excluded_kinds/excluded_namespaces filters to narrow the search."
+            ) from exc
 
     all_node_ids: set[str] = {source_id, destination_id}
     for path_data in path_data_list:

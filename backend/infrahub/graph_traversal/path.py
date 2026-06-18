@@ -6,8 +6,6 @@ from infrahub.core.query import Query, QueryType
 from infrahub.graph_traversal._extract import extract_path_from_result
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from infrahub.database import InfrahubDatabase
     from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
     from infrahub.graph_traversal.planning.models import Plan
@@ -15,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class PathTraversalQuery(Query):
-    """Execute a traversal plan and project the matched paths."""
+    """Execute a traversal plan and project the shortest matched paths."""
 
     name = "path_traversal"
     type = QueryType.READ
@@ -29,24 +27,20 @@ class PathTraversalQuery(Query):
         plan: Plan,
         source_id: str,
         max_paths: int,
-        depths: Iterable[int] | None = None,
         **kwargs: Any,
     ) -> None:
         self._renderer = renderer
         self._plan = plan
         self._source_id = source_id
         self._max_paths = max_paths
-        self._depths = depths
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        rendered = self._renderer.render(
+        rendered = self._renderer.render_shortest_path_by_id(
             plan=self._plan,
             source_id=self._source_id,
             at=self.at,
-            max_targets=1,
             max_paths=self._max_paths,
-            depths=self._depths,
         )
         self.add_to_query(rendered.text)
         self.params.update(rendered.params)
