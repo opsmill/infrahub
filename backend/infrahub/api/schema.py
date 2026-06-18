@@ -44,7 +44,7 @@ from infrahub.core.validators.models.validate_migration import (
 )
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
-from infrahub.events.schema_action import SchemaUpdatedEvent
+from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
 from infrahub.exceptions import BranchStatusError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
@@ -411,6 +411,7 @@ async def load_schema(
     event = SchemaUpdatedEvent(
         branch_name=branch.name,
         schema_hash=branch.active_schema_hash.main,
+        changed_elements=build_changed_elements_payload(result.diff),
         meta=EventMeta(
             initiator_id=WORKER_IDENTITY,
             request_id=request_id,
