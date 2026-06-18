@@ -775,7 +775,9 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
-    await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)  # type: ignore[call-overload]
+    plan = await repo.build_import_plan(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
+    async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        await repo.apply_import_plan(plan)
 
 
 @flow(
