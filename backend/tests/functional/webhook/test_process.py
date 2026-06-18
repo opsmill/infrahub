@@ -8,6 +8,7 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.webhook.models import EventContext
 from infrahub.webhook.tasks import convert_node_to_webhook, webhook_process
+from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.http import MemoryHTTP
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -122,6 +123,11 @@ class TestWebhookProcess(TestInfrahubApp):
                 event_occured_at="2025-02-28T08:37:09.969Z",
                 event_payload=BRANCH_CREATED_PAYLOAD,
             )
+
+        related_node_tag = WorkflowTag.RELATED_NODE.render(identifier=webhook1.id)
+        flow_runs = await prefect_client.read_flow_runs()
+        applied_tags = {tag for flow_run in flow_runs for tag in flow_run.tags}
+        assert related_node_tag in applied_tags
 
     async def test_process_standard_webhook_failure(
         self,
