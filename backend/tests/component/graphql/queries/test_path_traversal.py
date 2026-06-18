@@ -177,7 +177,34 @@ class TestPathTraversalResolver:
         )
 
         assert errors is not None
-        assert errors[0].message == "max_paths must be <= 100, got 101"
+        assert errors[0].message == "max_paths must be in [1, 100], got 101"
+
+    async def test_resolver_rejects_max_paths_below_minimum(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        default_permission_backend_scope_class: None,
+        session_admin_scope_class: AccountSession,
+        two_cars_one_owner_scope_class: tuple[Node, Node, Node],
+    ) -> None:
+        car_a, car_b, _person = two_cars_one_owner_scope_class
+        default_branch_scope_class.update_schema_hash()
+
+        variables = {
+            "data": {
+                "source_id": car_a.id,
+                "destination_id": car_b.id,
+                "max_depth": 5,
+                "max_paths": -1,
+            }
+        }
+
+        _, errors = await _run_resolver(
+            db=db, branch=default_branch_scope_class, session=session_admin_scope_class, variables=variables
+        )
+
+        assert errors is not None
+        assert errors[0].message == "max_paths must be in [1, 100], got -1"
 
     async def test_resolver_kind_filter_admits_intermediate_kind(
         self,
