@@ -641,6 +641,20 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             Error: When rendering a configured GraphQL query template fails (from infrahub_sdk).
 
         """
+        local_queries = await self._build_graphql_query_definitions(commit=commit, config_file=config_file)
+        await self._apply_graphql_query_definitions(branch_name=branch_name, local_queries=local_queries)
+
+    async def _build_graphql_query_definitions(
+        self, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> dict[str, str]:
+        """Render the desired GraphQL queries from the pinned commit worktree.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            Error: When rendering a configured GraphQL query template fails (from infrahub_sdk).
+
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
@@ -656,6 +670,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             except InfrahubSdkError as exc:
                 log.error(f"Query '{query_config.name}': {exc}")
                 raise
+
+        return local_queries
+
+    async def _apply_graphql_query_definitions(self, branch_name: str, local_queries: dict[str, str]) -> None:
+        """Reconcile the desired GraphQL queries against the graph by creating, updating and deleting.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
 
         if not local_queries:
             return
