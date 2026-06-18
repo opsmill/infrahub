@@ -20,16 +20,8 @@
   },
   "dependencies": {
     "@radix-ui/react-scroll-area": "^1.2.12",
-<<<<<<< HEAD
     "lucide-react": "catalog:",
     "react-aria-components": "catalog:",
-=======
-    "@tailwindcss/vite": "^4.3.0",
-    "lucide-react": "^1.17.0",
-    "react": "^19.2.7",
-    "react-aria-components": "^1.18.0",
-    "react-dom": "^19.2.7",
->>>>>>> origin/release-1.10
     "react-resizable-panels": "^4.11.2",
     "tailwind-merge": "catalog:",
     "tailwind-variants": "^3.2.2",
