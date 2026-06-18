@@ -1558,7 +1558,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.39.0" },
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.60b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.60b0" },
-    { name = "prefect", specifier = "==3.7.4" },
+    { name = "prefect", specifier = "==3.7.5.dev6" },
     { name = "prefect-redis", specifier = "==0.2.12" },
     { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", specifier = ">=14" },
@@ -2766,7 +2766,7 @@ wheels = [
 
 [[package]]
 name = "prefect"
-version = "3.7.4"
+version = "3.7.5.dev6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -2827,9 +2827,9 @@ dependencies = [
     { name = "websockets" },
     { name = "whenever", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0a/f6/0992db98fc12ee627a8d492b2a370762b6ed8f3edcb36f78077431e8196a/prefect-3.7.4.tar.gz", hash = "sha256:65a143310a42850caa1d7f21c2d9be5dfd18ee4b7baa1ce6dd8c6b421bc3e4ea", size = 14098696, upload-time = "2026-06-05T17:52:18.752Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/b6/a1cb89a7176b78dbde8a3dc488576969d1043c812c0bb66b605977f6993d/prefect-3.7.5.dev6.tar.gz", hash = "sha256:81ad53a6e23b83d9ffcc27fa6a1449df6967cedd9ba4bd4beeede37343283768", size = 13880628, upload-time = "2026-06-18T09:39:22.791Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/69/b674cc47e0f35094a44b1671ad092e243acaa75157ae84725819aeeae9c5/prefect-3.7.4-py3-none-any.whl", hash = "sha256:1ab7c5e9d418eb6e7dbb870b08704a2cce9ff054369c3bd1a9e9b0f8ec0d1257", size = 14987192, upload-time = "2026-06-05T17:52:14.651Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/86/ee9611e66bbf37163c5f026b85a7c4d06806f8880fc1a1fea50054c44c6e/prefect-3.7.5.dev6-py3-none-any.whl", hash = "sha256:e960a04f409ebb14831e1d18d0476f4d86c34791546b8f1515f341916c9433fc", size = 14765364, upload-time = "2026-06-18T09:39:19.402Z" },
 ]
 
 [[package]]
