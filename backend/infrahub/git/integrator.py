@@ -269,16 +269,21 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         commit: str,  # noqa: ARG002
         config_file: InfrahubRepositoryConfig,
     ) -> None:
+        local_transforms = await self._build_jinja2_transform_definitions(
+            branch_name=branch_name, config_file=config_file
+        )
+        await self._apply_jinja2_transform_definitions(branch_name=branch_name, local_transforms=local_transforms)
+
+    async def _build_jinja2_transform_definitions(
+        self, branch_name: str, config_file: InfrahubRepositoryConfig
+    ) -> dict[str, InfrahubRepositoryJinja2]:
+        """Build the desired Jinja2 transform definitions from the repository config.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+        """
         log = get_run_logger()
 
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
-
-        transforms_in_graph = {
-            transform.name.value: transform
-            for transform in await self.sdk.filters(
-                kind=CoreTransformJinja2, branch=branch_name, repository__ids=[str(self.id)]
-            )
-        }
 
         local_transforms: dict[str, InfrahubRepositoryJinja2] = {}
 
@@ -308,6 +313,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             transform.query = graphql_query.id
 
             local_transforms[transform.name] = transform
+
+        return local_transforms
+
+    async def _apply_jinja2_transform_definitions(
+        self, branch_name: str, local_transforms: dict[str, InfrahubRepositoryJinja2]
+    ) -> None:
+        """Reconcile the desired Jinja2 transform definitions against the graph: create, update, delete.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        transforms_in_graph = {
+            transform.name.value: transform
+            for transform in await self.sdk.filters(
+                kind=CoreTransformJinja2, branch=branch_name, repository__ids=[str(self.id)]
+            )
+        }
 
         present_in_both, only_graph, only_local = compare_lists(
             list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
