@@ -167,10 +167,10 @@ exports[`fix ts error`] = {
       [165, 49, 4, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'RelationshipNode\'.\\n  Types of property \'display_label\' are incompatible.\\n    Type \'null | string | undefined\' is not assignable to type \'string\'.\\n      Type \'undefined\' is not assignable to type \'string\'.", "2087865285"]
     ],
     "src/entities/proposed-changes/ui/action-button/pc-action-button.tsx:3529577009": [
-      [42, 22, 5, "tsc: Type \'Record<string, ActionAvailability> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
+      [42, 22, 5, "tsc: Type \'NoInfer<Record<string, ActionAvailability>> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
     ],
     "src/entities/proposed-changes/ui/action-button/pc-review-button.tsx:2748295683": [
-      [40, 22, 5, "tsc: Type \'Record<string, ActionAvailability> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
+      [40, 22, 5, "tsc: Type \'NoInfer<Record<string, ActionAvailability>> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
     ],
     "src/entities/proposed-changes/ui/conversations/add-comment.tsx:2673311560": [
       [37, 9, 13, "tsc: Property \'attribute\' is missing in type \'\\"Required\\"; }; }; } | { name: string; label: string; placeholder: string; rules: { validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\' but required in type \'FormFieldProps\'.", "941754925"]
