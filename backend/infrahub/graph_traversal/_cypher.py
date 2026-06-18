@@ -1,20 +1,23 @@
 """Cypher renderer for the graph-traversal planner.
 
-The rendered query is two-phase:
+Two terminal predicates are served by separate entry points:
 
-- **Phase 1** (for ``TerminalByKinds`` only — i.e. ``ReachableNodesQuery``):
-  per-depth chained ``DISTINCT`` CALLs discover up to ``$max_targets`` distinct
-  terminal vertices. Inter-CALL ``ORDER BY kind, uuid LIMIT $max_targets``
-  clauses keep the intermediate cardinality bounded.
+- ``TerminalById`` (``render``): a single fixed-length-``MATCH`` phase anchored
+  on ``source`` and ``target.uuid IN [target.uuid]`` enumerates every path of
+  length ``≤ plan.max_depth`` to the given target, bounded by ``$max_paths``.
+  An optional ``depths`` restriction renders only the requested fixed depths.
 
-- **Phase 2** (both ``TerminalByKinds`` and ``TerminalById`` — i.e. ``PathTraversalQuery``):
-  per-depth fixed-length ``MATCH`` branches anchored on ``source`` and
-  ``target.uuid IN terminal_uuids`` enumerate every path of length
-  ``≤ plan.max_depth`` to the discovered/given terminal(s), bounded by
-  ``$max_paths``.
+- ``TerminalByKinds`` is split into two renders so the caller can discover
+  terminals once and then enumerate paths depth-by-depth:
 
-``TerminalById`` skips Phase 1; the target is anchored via its uuid and the
-``terminal_uuids`` list is the single-element ``[target.uuid]``.
+  - ``render_reachable_targets``: per-depth chained ``DISTINCT`` CALLs discover
+    up to ``$max_targets`` distinct terminal vertices. Inter-CALL
+    ``ORDER BY kind, uuid LIMIT $max_targets`` clauses bound intermediate
+    cardinality. Returns ``collect(target.uuid) AS terminal_uuids``.
+  - ``render_paths_to_targets``: per-depth fixed-length ``MATCH`` queries
+    anchored on ``source`` and ``target.uuid IN $terminal_uuids`` (a bound
+    parameter) enumerate paths to the discovered terminals, bounded by
+    ``$max_paths`` and an optional ``depths`` restriction.
 
 Branch-conditional pieces:
 
@@ -35,7 +38,24 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal.planning.models import Plan, TerminalById
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.core.branch import Branch
+
+
+def _terminal_kinds_for_plan(plan: Plan) -> frozenset[str]:
+    if isinstance(plan.terminal_predicate, TerminalById):
+        return frozenset({plan.terminal_predicate.kind})
+    return plan.terminal_predicate.kinds
+
+
+def _legal_triples(plan: Plan) -> list[list[str]]:
+    """Every schema-legal ``[start_kind, rel_name, end_kind]`` hop in the plan's adjacency."""
+    triples: set[tuple[str, str, str]] = set()
+    for kind in plan.get_all_source_kinds():
+        for rel_name, ends in plan.get_relationship_map_for_kind(kind).items():
+            triples.update((kind, rel_name, end) for end in ends)
+    return [list(t) for t in sorted(triples)]
 
 
 class HopTuple(NamedTuple):
@@ -47,6 +67,7 @@ class HopTuple(NamedTuple):
 
 
 _RETURN_LABELS: tuple[str, ...] = ("start_node_uuid", "start_node_kind", "hops", "depth")
+_TARGETS_RETURN_LABELS: tuple[str, ...] = ("terminal_uuids",)
 
 _MAX_TARGETS_MINIMUM = 1
 _MAX_TARGETS_MAXIMUM = 200
@@ -63,8 +84,8 @@ class RenderedCypher:
 
 
 @dataclass(frozen=True, slots=True)
-class _DepthBranchData:
-    """Pre-computed data for rendering one fixed-depth branch (Phase 1 or Phase 2).
+class _DepthRenderData:
+    """Pre-computed data for rendering one fixed-depth query (Phase 1 or Phase 2).
 
     ``per_step_kinds[k - 1]`` lists the kinds allowed at intermediate position
     ``k`` (positions 1..depth-1); empty for depth-1 paths.
@@ -125,7 +146,7 @@ AND {del_var}.from <= $at
 AND ({del_var}.to IS NULL OR {del_var}.to >= $at) }}
 """
 
-_REACHABLE_NODES_ENVELOPE = """
+_REACHABLE_TARGETS_ENVELOPE = """
 %(source_match)s
 CALL (source) {
 %(phase_one_inner)s
@@ -133,7 +154,12 @@ CALL (source) {
 WITH source, target
 ORDER BY target.kind ASC, target.uuid ASC
 LIMIT $max_targets
-WITH source, collect(target.uuid) AS terminal_uuids
+RETURN collect(target.uuid) AS terminal_uuids
+"""
+
+_REACHABLE_PATHS_ENVELOPE = """
+%(source_match)s
+WITH source, $terminal_uuids AS terminal_uuids
 CALL (source, terminal_uuids) {
 %(phase_two_inner)s
 }
@@ -153,16 +179,57 @@ LIMIT $max_paths
 RETURN start_node_uuid, start_node_kind, hops, depth
 """
 
+# Per-target ALL SHORTEST: one quantified-path-pattern shortest search per
+# discovered terminal. The repeated unit is one node-to-node hop
+# (Node -[IS_RELATED]- Relationship -[IS_RELATED]- Node); ``a`` is the unit's
+# left boundary (``source`` on the first iteration), ``b`` its destination.
+_REACHABLE_SHORTEST_ENVELOPE = """
+%(source_match)s
+UNWIND $terminal_uuids AS terminal_uuid
+MATCH path = ALL SHORTEST (source) %(unit)s (target:Node WHERE target.uuid = terminal_uuid)
+WITH
+    source.uuid AS start_node_uuid,
+    source.kind AS start_node_kind,
+    (size(nodes(path)) - 1) / 2 AS depth,
+    [i IN range(0, (size(nodes(path)) - 1) / 2 - 1) | {
+        relationship_identifier: nodes(path)[i * 2 + 1].name,
+        uuid: nodes(path)[i * 2 + 2].uuid,
+        kind: nodes(path)[i * 2 + 2].kind
+    }] AS hops
+ORDER BY depth ASC, hops[-1].kind ASC, hops[-1].uuid ASC
+LIMIT $max_paths
+RETURN start_node_uuid, start_node_kind, hops, depth
+"""
 
-class PathTraversalCypherRenderer:
-    """Renders a ``Plan`` into a two-phase Cypher query.
 
-    ``render()`` dispatches on ``plan.terminal_predicate`` type:
+def _path_traversal_text(*, phase_two_inner: str) -> str:
+    return _PATH_TRAVERSAL_ENVELOPE % {
+        "source_match": _SOURCE_MATCH,
+        "target_match": _TARGET_BY_ID_MATCH,
+        "phase_two_inner": phase_two_inner,
+    }
 
-    - ``TerminalByKinds`` emits Phase 1 (terminal discovery, capped at
-      ``$max_targets``) and Phase 2 (path enumeration, capped at ``$max_paths``).
-    - ``TerminalById`` anchors the given target, builds
-      ``terminal_uuids = [target.uuid]``, runs only Phase 2.
+
+def _reachable_targets_text(*, phase_one_inner: str) -> str:
+    return _REACHABLE_TARGETS_ENVELOPE % {"source_match": _SOURCE_MATCH, "phase_one_inner": phase_one_inner}
+
+
+def _reachable_paths_text(*, phase_two_inner: str) -> str:
+    return _REACHABLE_PATHS_ENVELOPE % {"source_match": _SOURCE_MATCH, "phase_two_inner": phase_two_inner}
+
+
+def _reachable_shortest_text(*, unit: str) -> str:
+    return _REACHABLE_SHORTEST_ENVELOPE % {"source_match": _SOURCE_MATCH, "unit": unit}
+
+
+class GraphTraversalCypherRenderer:
+    """Renders a ``Plan`` into Cypher.
+
+    - ``render()`` handles ``TerminalById``: anchors the given target, builds
+      ``terminal_uuids = [target.uuid]``, enumerates paths.
+    - ``render_reachable_targets()`` / ``render_paths_to_targets()`` handle
+      ``TerminalByKinds`` as two separate queries so a caller can discover the
+      terminal set once and then enumerate paths to it depth-by-depth.
     """
 
     def __init__(self, *, branch: Branch, default_branch_name: str) -> None:
@@ -174,6 +241,45 @@ class PathTraversalCypherRenderer:
             else [default_branch_name, GLOBAL_BRANCH_NAME, branch.name]
         )
 
+    def _validate(self, *, plan: Plan, max_targets: int | None = None, max_paths: int | None = None) -> None:
+        """Reject out-of-range caps and empty plans before rendering.
+
+        Raises:
+            ValueError: when a supplied cap is out of range or the plan is empty.
+
+        """
+        if max_targets is not None and not _MAX_TARGETS_MINIMUM <= max_targets <= _MAX_TARGETS_MAXIMUM:
+            raise ValueError(
+                f"max_targets must be in [{_MAX_TARGETS_MINIMUM}, {_MAX_TARGETS_MAXIMUM}], got {max_targets}"
+            )
+        if max_paths is not None and not _MAX_PATHS_MINIMUM <= max_paths <= _MAX_PATHS_MAXIMUM:
+            raise ValueError(f"max_paths must be in [{_MAX_PATHS_MINIMUM}, {_MAX_PATHS_MAXIMUM}], got {max_paths}")
+        if plan.is_empty:
+            raise ValueError("plan has no adjacency")
+
+    def _base_params(self, *, source_id: str, at: Timestamp) -> dict[str, Any]:
+        """Params common to every rendered query: source anchor, timestamp, branch scope."""
+        params: dict[str, Any] = {
+            "source_id": source_id,
+            "at": at.to_string(),
+            "valid_branches": self._valid_branches,
+        }
+        if self._is_user_branch:
+            params["user_branch"] = self._user_branch_name
+        return params
+
+    def _phase_one_inner(self, *, plan: Plan, depth_renders: list[_DepthRenderData]) -> str:
+        terminal_label_union = "|".join(sorted(_terminal_kinds_for_plan(plan)))
+        return "\n  UNION\n".join(
+            self._render_phase_one_for_depth(dr, terminal_label_union=terminal_label_union) for dr in depth_renders
+        )
+
+    def _phase_two_inner(self, *, plan: Plan, depth_renders: list[_DepthRenderData]) -> str:
+        terminal_label_union = "|".join(sorted(_terminal_kinds_for_plan(plan)))
+        return "\n  UNION ALL\n".join(
+            self._render_phase_two_for_depth(dr, terminal_label_union=terminal_label_union) for dr in depth_renders
+        )
+
     def render(
         self,
         *,
@@ -182,80 +288,178 @@ class PathTraversalCypherRenderer:
         at: Timestamp | None,
         max_targets: int,
         max_paths: int,
+        depths: Iterable[int] | None = None,
     ) -> RenderedCypher:
-        """Render ``plan`` as a two-phase Cypher query rooted at ``source_id``.
+        """Render ``plan`` as a Cypher query for a ``TerminalById`` target.
+
+        ``depths`` restricts the rendered fixed-depth queries to the given
+        subset; ``None`` renders every feasible depth.
 
         Raises:
             ValueError: when ``plan`` is empty, ``max_targets`` or ``max_paths``
-                is out of range, or no feasible fixed-depth branch survives
-                the per-step budget.
+                is out of range, the terminal is not anchored by id, or no
+                feasible fixed-depth query survives the ``depths`` restriction.
 
         """
-        if not _MAX_TARGETS_MINIMUM <= max_targets <= _MAX_TARGETS_MAXIMUM:
+        self._validate(plan=plan, max_targets=max_targets, max_paths=max_paths)
+        if not isinstance(plan.terminal_predicate, TerminalById):
             raise ValueError(
-                f"max_targets must be in [{_MAX_TARGETS_MINIMUM}, {_MAX_TARGETS_MAXIMUM}], got {max_targets}"
+                "render() handles TerminalById only; "
+                "use render_reachable_targets/render_paths_to_targets for TerminalByKinds"
             )
-        if not _MAX_PATHS_MINIMUM <= max_paths <= _MAX_PATHS_MAXIMUM:
-            raise ValueError(f"max_paths must be in [{_MAX_PATHS_MINIMUM}, {_MAX_PATHS_MAXIMUM}], got {max_paths}")
-        if plan.is_empty:
-            raise ValueError("plan has no adjacency")
 
         at = at if at is not None else Timestamp()
-
-        terminal_anchored_by_id = isinstance(plan.terminal_predicate, TerminalById)
-        terminal_kinds: frozenset[str] = (
-            frozenset({plan.terminal_predicate.kind})
-            if isinstance(plan.terminal_predicate, TerminalById)
-            else plan.terminal_predicate.kinds
+        depth_renders = self._feasible_for_depths(
+            plan=plan, terminal_kinds=_terminal_kinds_for_plan(plan), depths=depths
         )
-        terminal_label_union = "|".join(sorted(terminal_kinds))
-
-        feasible = self._build_feasible_branches(plan=plan, terminal_kinds=terminal_kinds)
-        if not feasible:
-            # Defensive: the planner's reverse-BFS pruning guarantees that any
-            # non-empty plan has at least one depth reaching the terminal
-            raise ValueError("plan has adjacency but no feasible fixed-depth branch within max_depth")
-
-        phase_two_inner = "\n  UNION ALL\n".join(
-            self._render_phase_two_branch(b, terminal_label_union=terminal_label_union) for b in feasible
-        )
-
-        if terminal_anchored_by_id:
-            text = _PATH_TRAVERSAL_ENVELOPE % {
-                "source_match": _SOURCE_MATCH,
-                "target_match": _TARGET_BY_ID_MATCH,
-                "phase_two_inner": phase_two_inner,
-            }
-        else:
-            phase_one_inner = "\n  UNION\n".join(
-                self._render_phase_one_branch(b, terminal_label_union=terminal_label_union) for b in feasible
-            )
-            text = _REACHABLE_NODES_ENVELOPE % {
-                "source_match": _SOURCE_MATCH,
-                "phase_one_inner": phase_one_inner,
-                "phase_two_inner": phase_two_inner,
-            }
-
+        text = _path_traversal_text(phase_two_inner=self._phase_two_inner(plan=plan, depth_renders=depth_renders))
         params: dict[str, Any] = {
-            "source_id": source_id,
-            "at": at.to_string(),
-            "valid_branches": self._valid_branches,
+            **self._base_params(source_id=source_id, at=at),
             "max_targets": max_targets,
             "max_paths": max_paths,
+            "target_id": plan.terminal_predicate.node_id,
+            **self._hop_tuple_params(depth_renders),
         }
-        for branch_data in feasible:
-            for hop_idx, hop_tuples in enumerate(branch_data.tuples_per_hop, start=1):
-                params[branch_data.hop_tuple_param(hop_idx)] = [list(t) for t in hop_tuples]
-        if isinstance(plan.terminal_predicate, TerminalById):
-            params["target_id"] = plan.terminal_predicate.node_id
-        if self._is_user_branch:
-            params["user_branch"] = self._user_branch_name
-
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
 
-    def _build_feasible_branches(self, *, plan: Plan, terminal_kinds: frozenset[str]) -> list[_DepthBranchData]:
-        """Compute per-depth structure once. Both phases consume the same data."""
-        feasible: list[_DepthBranchData] = []
+    def render_reachable_targets(
+        self, *, plan: Plan, source_id: str, at: Timestamp | None, max_targets: int
+    ) -> RenderedCypher:
+        """Render Phase 1 for ``TerminalByKinds``: discover up to ``max_targets`` terminal uuids.
+
+        Returns a query whose single column ``terminal_uuids`` is the ordered,
+        capped list of discovered terminal-node uuids.
+
+        Raises:
+            ValueError: when ``plan`` is empty, ``max_targets`` is out of range,
+                or no feasible fixed-depth query reaches the terminal.
+
+        """
+        self._validate(plan=plan, max_targets=max_targets)
+
+        at = at if at is not None else Timestamp()
+        depth_renders = self._feasible_for_depths(plan=plan, terminal_kinds=_terminal_kinds_for_plan(plan), depths=None)
+        text = _reachable_targets_text(phase_one_inner=self._phase_one_inner(plan=plan, depth_renders=depth_renders))
+        params: dict[str, Any] = {
+            **self._base_params(source_id=source_id, at=at),
+            "max_targets": max_targets,
+            **self._hop_tuple_params(depth_renders),
+        }
+        return RenderedCypher(text=text, params=params, return_labels=_TARGETS_RETURN_LABELS)
+
+    def render_paths_to_targets(
+        self,
+        *,
+        plan: Plan,
+        source_id: str,
+        at: Timestamp | None,
+        terminal_uuids: list[str],
+        max_paths: int,
+        depths: Iterable[int] | None = None,
+    ) -> RenderedCypher:
+        """Render Phase 2 for ``TerminalByKinds``: enumerate paths to ``terminal_uuids``.
+
+        ``terminal_uuids`` is bound as a query parameter (the discovered set from
+        ``render_reachable_targets``). ``depths`` restricts the rendered
+        fixed-depth queries; ``None`` renders every feasible depth.
+
+        Raises:
+            ValueError: when ``plan`` is empty, ``max_paths`` is out of range,
+                or no feasible fixed-depth query survives the ``depths`` restriction.
+
+        """
+        self._validate(plan=plan, max_paths=max_paths)
+
+        at = at if at is not None else Timestamp()
+        depth_renders = self._feasible_for_depths(
+            plan=plan, terminal_kinds=_terminal_kinds_for_plan(plan), depths=depths
+        )
+        text = _reachable_paths_text(phase_two_inner=self._phase_two_inner(plan=plan, depth_renders=depth_renders))
+        params: dict[str, Any] = {
+            **self._base_params(source_id=source_id, at=at),
+            "terminal_uuids": list(terminal_uuids),
+            "max_paths": max_paths,
+            **self._hop_tuple_params(depth_renders),
+        }
+        return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
+
+    def render_shortest_paths_to_targets(
+        self, *, plan: Plan, source_id: str, at: Timestamp | None, terminal_uuids: list[str], max_paths: int
+    ) -> RenderedCypher:
+        """Render the all-shortest-paths Phase 2 for ``TerminalByKinds``.
+
+        One ``ALL SHORTEST`` quantified-path-pattern search per discovered
+        terminal returns every path tied for that terminal's minimum depth.
+        ``terminal_uuids`` is bound as a parameter; the search is bounded to
+        ``plan.max_depth`` hops and to the plan's schema-legal triples.
+
+        Raises:
+            ValueError: when ``plan`` is empty or ``max_paths`` is out of range.
+
+        """
+        self._validate(plan=plan, max_paths=max_paths)
+
+        at = at if at is not None else Timestamp()
+        text = _reachable_shortest_text(unit=self._shortest_qpp_unit(max_depth=plan.max_depth))
+        params: dict[str, Any] = {
+            **self._base_params(source_id=source_id, at=at),
+            "terminal_uuids": list(terminal_uuids),
+            "legal_triples": _legal_triples(plan),
+            "max_paths": max_paths,
+        }
+        return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
+
+    def _shortest_qpp_unit(self, *, max_depth: int) -> str:
+        """The repeated quantified-path-pattern unit: one schema hop with its predicates."""
+        preds = [
+            _EDGE_ACTIVE_PREDICATE.format(rv="ri"),
+            _EDGE_ACTIVE_PREDICATE.format(rv="ro"),
+            "[a.kind, relx.name, b.kind] IN $legal_triples",
+            "b.uuid <> $source_id",
+        ]
+        if self._is_user_branch:
+            preds.append(_DELETION_SHADOW_PREDICATE.format(from_var="a", to_var="relx", edge_var="ri", del_var="del_a"))
+            preds.append(_DELETION_SHADOW_PREDICATE.format(from_var="relx", to_var="b", edge_var="ro", del_var="del_b"))
+        where = " AND ".join(preds)
+        return (
+            f"( (a)-[ri:IS_RELATED]-(relx:Relationship)-[ro:IS_RELATED]-(b:Node)\n    WHERE {where} ){{1,{max_depth}}}"
+        )
+
+    def _feasible_for_depths(
+        self, *, plan: Plan, terminal_kinds: frozenset[str], depths: Iterable[int] | None
+    ) -> list[_DepthRenderData]:
+        depth_renders = self._build_depth_renders(plan=plan, terminal_kinds=terminal_kinds)
+        if depths is not None:
+            requested_depths = set(depths)
+            depth_renders = [dr for dr in depth_renders if dr.depth in requested_depths]
+        if not depth_renders:
+            # Defensive: the planner's reverse-BFS pruning guarantees that any
+            # non-empty plan has at least one depth reaching the terminal
+            raise ValueError("plan has adjacency but no feasible fixed-depth query within max_depth")
+        return depth_renders
+
+    def _hop_tuple_params(self, depth_renders: list[_DepthRenderData]) -> dict[str, Any]:
+        params: dict[str, Any] = {}
+        for depth_render in depth_renders:
+            for hop_idx, hop_tuples in enumerate(depth_render.tuples_per_hop, start=1):
+                params[depth_render.hop_tuple_param(hop_idx)] = [list(t) for t in hop_tuples]
+        return params
+
+    def feasible_depths(self, *, plan: Plan) -> list[int]:
+        """Ascending depths for which ``plan`` has a renderable fixed-depth query.
+
+        Empty for an empty plan. Callers iterating depth-by-depth should loop
+        over this list rather than ``range(1, plan.max_depth + 1)`` so that
+        per-depth ``render()`` calls never hit the no-feasible-depth error.
+        """
+        if plan.is_empty:
+            return []
+        terminal_kinds = _terminal_kinds_for_plan(plan)
+        return [dr.depth for dr in self._build_depth_renders(plan=plan, terminal_kinds=terminal_kinds)]
+
+    def _build_depth_renders(self, *, plan: Plan, terminal_kinds: frozenset[str]) -> list[_DepthRenderData]:
+        """Compute the renderable per-depth structure once. Both phases consume the same data."""
+        depth_renders: list[_DepthRenderData] = []
         for depth in range(1, plan.max_depth + 1):
             per_step = self._per_step_kinds_for_depth(plan=plan, depth=depth)
             tuples_per_hop = self._hop_tuples_for_depth(
@@ -263,8 +467,8 @@ class PathTraversalCypherRenderer:
             )
             if tuples_per_hop is None:
                 continue
-            feasible.append(_DepthBranchData(depth=depth, per_step_kinds=per_step, tuples_per_hop=tuples_per_hop))
-        return feasible
+            depth_renders.append(_DepthRenderData(depth=depth, per_step_kinds=per_step, tuples_per_hop=tuples_per_hop))
+        return depth_renders
 
     def _per_step_kinds_for_depth(self, *, plan: Plan, depth: int) -> list[list[str]]:
         """Per-intermediate-position kind sets.
@@ -303,8 +507,8 @@ class PathTraversalCypherRenderer:
             tuples_per_hop.append(hop_tuples)
         return tuples_per_hop
 
-    def _render_phase_one_branch(self, branch_data: _DepthBranchData, *, terminal_label_union: str) -> str:
-        """Phase 1 per-depth branch: chained DISTINCT-capped CALLs returning ``target``.
+    def _render_phase_one_for_depth(self, depth_render: _DepthRenderData, *, terminal_label_union: str) -> str:
+        """Phase 1 per-depth query: chained DISTINCT-capped CALLs returning ``target``.
 
         Each hop is a separate ``CALL (var) { ... RETURN DISTINCT bN }``
         subquery. Between hops, a ``WITH … ORDER BY bN.kind, bN.uuid LIMIT $max_targets``
@@ -335,20 +539,20 @@ class PathTraversalCypherRenderer:
             }
             RETURN target
         """
-        depth = branch_data.depth
+        depth = depth_render.depth
         parts: list[str] = []
         accumulated: list[str] = ["source"]
         for hop in range(1, depth + 1):
             from_var = "source" if hop == 1 else f"b{hop - 1}"
             to_var = "target" if hop == depth else f"b{hop}"
             to_pattern = self._end_node_pattern(
-                branch_data=branch_data, hop=hop, to_var=to_var, terminal_label_union=terminal_label_union
+                depth_render=depth_render, hop=hop, to_var=to_var, terminal_label_union=terminal_label_union
             )
             r_in, rel_var, r_out = "ra", "rel", "rb"
             # Phase 1 source-excludes every hop's destination, including the
             # terminal — so $source_id never enters terminal_uuids.
             preds = self._hop_predicates(
-                branch_data=branch_data,
+                depth_render=depth_render,
                 hop=hop,
                 from_var=from_var,
                 rel_var=rel_var,
@@ -387,8 +591,8 @@ LIMIT $max_targets"""
         parts.append("    RETURN target")
         return "\n".join(parts)
 
-    def _render_phase_two_branch(self, branch_data: _DepthBranchData, *, terminal_label_union: str) -> str:
-        """Phase 2 per-depth branch: fixed-length ``MATCH`` constrained to ``target.uuid IN terminal_uuids``.
+    def _render_phase_two_for_depth(self, depth_render: _DepthRenderData, *, terminal_label_union: str) -> str:
+        """Phase 2 per-depth query: fixed-length ``MATCH`` constrained to ``target.uuid IN terminal_uuids``.
 
         For depth-``d`` paths, builds a single ``MATCH`` with ``2d`` IS_RELATED
         edges and ``d`` Relationship vertices. Each hop carries the per-hop
@@ -422,7 +626,7 @@ LIMIT $max_targets"""
               AND NOT b2.uuid IN [b1.uuid]
               AND NOT b3.uuid IN [b1.uuid, b2.uuid]
         """
-        depth = branch_data.depth
+        depth = depth_render.depth
         path_segs: list[str] = ["(source)"]
         preds: list[str] = ["target.uuid IN terminal_uuids"]
         for hop in range(1, depth + 1):
@@ -430,7 +634,7 @@ LIMIT $max_targets"""
             from_var = "source" if hop == 1 else f"b{hop - 1}"
             to_var = "target" if hop == depth else f"b{hop}"
             to_pattern = self._end_node_pattern(
-                branch_data=branch_data, hop=hop, to_var=to_var, terminal_label_union=terminal_label_union
+                depth_render=depth_render, hop=hop, to_var=to_var, terminal_label_union=terminal_label_union
             )
             path_segs.append(f"-[{r_s}:IS_RELATED]-({rel_var}:Relationship)-[{r_e}:IS_RELATED]-{to_pattern}")
             # Phase 2 source-excludes intermediates only b/c target is
@@ -438,7 +642,7 @@ LIMIT $max_targets"""
             # filtered $source_id out of terminal_uuids
             preds.extend(
                 self._hop_predicates(
-                    branch_data=branch_data,
+                    depth_render=depth_render,
                     hop=hop,
                     from_var=from_var,
                     rel_var=rel_var,
@@ -478,17 +682,17 @@ RETURN
         }
 
     def _end_node_pattern(
-        self, *, branch_data: _DepthBranchData, hop: int, to_var: str, terminal_label_union: str
+        self, *, depth_render: _DepthRenderData, hop: int, to_var: str, terminal_label_union: str
     ) -> str:
         """Return the ``(var:Labels)`` pattern fragment for the destination node at ``hop``."""
-        if hop < branch_data.depth:
-            return f"({to_var}:{'|'.join(branch_data.per_step_kinds[hop - 1])})"
+        if hop < depth_render.depth:
+            return f"({to_var}:{'|'.join(depth_render.per_step_kinds[hop - 1])})"
         return f"(target:{terminal_label_union})"
 
     def _hop_predicates(
         self,
         *,
-        branch_data: _DepthBranchData,
+        depth_render: _DepthRenderData,
         hop: int,
         from_var: str,
         rel_var: str,
@@ -513,14 +717,14 @@ RETURN
         intermediate hop — used by Phase 2 to prevent an intermediate vertex
         from coinciding with the anchored target.
         """
-        is_intermediate = hop < branch_data.depth
+        is_intermediate = hop < depth_render.depth
         preds: list[str] = [_EDGE_ACTIVE_PREDICATE.format(rv=rv) for rv in (r_in, r_out)]
         preds.append(
             _HOP_TUPLE_PREDICATE.format(
                 start_var=from_var,
                 rel_var=rel_var,
                 end_var=to_var,
-                hop_tuple_param=branch_data.hop_tuple_param(hop),
+                hop_tuple_param=depth_render.hop_tuple_param(hop),
             )
         )
         if is_intermediate or source_exclude_on_target:

@@ -1543,7 +1543,7 @@ requires-dist = [
     { name = "fast-depends", specifier = "==3.0.5" },
     { name = "fastapi", specifier = "==0.136.3" },
     { name = "fastapi-storages", specifier = ">=0.3,<0.4" },
-    { name = "gitpython", specifier = ">=3,<4" },
+    { name = "gitpython", specifier = ">=3.1.50,<4" },
     { name = "graphene", specifier = ">=3.4,<3.5" },
     { name = "gunicorn", specifier = ">=23.0.0,<24" },
     { name = "jinja2", specifier = ">=3,<4" },

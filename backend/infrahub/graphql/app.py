@@ -37,6 +37,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth.auth import authentication_token
 from infrahub.auth.session import AccountSession  # noqa: TC001
+from infrahub.branch.query_time_validator import BranchQueryTimeValidator
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
@@ -218,18 +219,21 @@ class InfrahubGraphQLApp:
         # if the query contains some mutation, it's not currently supported to set AT manually
         if analyzed_query.contains_mutation:
             graphql_params.context.at = Timestamp()
-        elif at and branch.schema_changed_at and Timestamp(branch.schema_changed_at) > Timestamp(at):
-            schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=Timestamp(at))
-            db.add_schema(name=branch.name, schema=schema_branch)
-            analyzed_query = InfrahubGraphQLQueryAnalyzer(
-                query=query,
-                schema_branch=schema_branch,
-                query_variables=variable_values,
-                schema=graphql_params.schema,
-                operation_name=operation_name,
-                branch=branch,
-                document=cached_parse(query),
-            )
+        elif at:
+            at_ts = Timestamp(at)
+            BranchQueryTimeValidator(registry=registry).validate(branch=branch, at=at_ts)
+            if branch.schema_changed_at and Timestamp(branch.schema_changed_at) > at_ts:
+                schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=at_ts)
+                db.add_schema(name=branch.name, schema=schema_branch)
+                analyzed_query = InfrahubGraphQLQueryAnalyzer(
+                    query=query,
+                    schema_branch=schema_branch,
+                    query_variables=variable_values,
+                    schema=graphql_params.schema,
+                    operation_name=operation_name,
+                    branch=branch,
+                    document=cached_parse(query),
+                )
         impacted_models = analyzed_query.query_report.impacted_models
 
         try:

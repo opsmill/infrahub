@@ -88,6 +88,7 @@ class FakeGraphqlInput:
     name: str
     kind_filter: list[str] | None = None
     excluded_kinds: list[str] | None = None
+    included_kinds: list[str] | None = None
     excluded_namespaces: list[str] | None = None
     relationship_filter: list[str] | None = None
 
@@ -97,6 +98,7 @@ class TestUserFilters:
         filters = UserFilters.from_graphql_input(None)
         assert filters.kind_filter == frozenset()
         assert filters.excluded_kinds == frozenset()
+        assert filters.included_kinds == frozenset()
         assert filters.relationship_filter == frozenset()
         assert filters.excluded_namespaces == frozenset(DEFAULT_EXCLUDED_NAMESPACES)
 
@@ -117,14 +119,21 @@ class TestUserFilters:
             name="all_filters",
             kind_filter=["InfraDevice"],
             excluded_kinds=["TestThing"],
+            included_kinds=["IpamNamespace"],
             excluded_namespaces=["Foo"],
             relationship_filter=["primary_tag"],
         )
         filters = UserFilters.from_graphql_input(data)
         assert filters.kind_filter == frozenset({"InfraDevice"})
         assert filters.excluded_kinds == frozenset({"TestThing"})
+        assert filters.included_kinds == frozenset({"IpamNamespace"})
         assert filters.excluded_namespaces == frozenset({"Foo"}) | frozenset(DEFAULT_EXCLUDED_NAMESPACES)
         assert filters.relationship_filter == frozenset({"primary_tag"})
+
+    def test_from_graphql_input_with_empty_included_kinds_yields_empty_set(self) -> None:
+        data = FakeGraphqlInput(name="empty_included", included_kinds=[])
+        filters = UserFilters.from_graphql_input(data)
+        assert filters.included_kinds == frozenset()
 
     def test_from_graphql_input_handles_object_without_filter_fields(self) -> None:
         """ReachableNodesInput has none of the filter fields; getattr-defaults handle it."""
@@ -136,5 +145,6 @@ class TestUserFilters:
         filters = UserFilters.from_graphql_input(MinimalInput(source_id="x"))
         assert filters.kind_filter == frozenset()
         assert filters.excluded_kinds == frozenset()
+        assert filters.included_kinds == frozenset()
         assert filters.relationship_filter == frozenset()
         assert filters.excluded_namespaces == frozenset(DEFAULT_EXCLUDED_NAMESPACES)

@@ -393,6 +393,50 @@ class TestDefaultGroupFallback:
         assert len(accounts) == 1
         assert accounts[0].id in members
 
+    async def test_default_group_not_reapplied_on_second_login_after_manual_removal(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_disabled: None,
+        sso_user_default_group_configured: str,
+    ) -> None:
+        """The default group is a first-login bootstrap, not re-applied on later logins.
+
+        Once the account exists, an administrator removing it from the default group must not be
+        undone the next time the user logs in with no group claims.
+        """
+        default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await default_group.new(db=db, name=sso_user_default_group_configured)
+        await default_group.save(db=db)
+
+        identity = make_identity(sub="sub-default-no-reapply-1", display_name="Nora Default")
+
+        # First login: the account is created and lands in the default group.
+        await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+        accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Nora Default"})
+        assert len(accounts) == 1
+        account_id = accounts[0].id
+
+        refreshed = await NodeManager.get_one(db=db, id=default_group.id, prefetch_relationships=True)
+        members_rel = refreshed.get_relationship(name="members")
+        members = await members_rel.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
+        assert account_id in members
+
+        # An administrator removes the account from the default group.
+        await members_rel.remove_locally(db=db, peer_id=account_id)
+        await members_rel.save(db=db)
+
+        # Second login with the same identity and still no group claims.
+        await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+        refreshed_after = await NodeManager.get_one(db=db, id=default_group.id, prefetch_relationships=True)
+        members_after = await refreshed_after.get_relationship(name="members").get_peers(
+            db=db, branch_agnostic=True, peer_type=CoreAccount
+        )
+        assert members_after == {}, "default group must not be re-applied on a returning user's login"
+
 
 class TestPerLoginCap:
     """Per-login soft cap on new-group creation."""

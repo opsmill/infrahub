@@ -15,10 +15,10 @@ from infrahub.core.branch import Branch
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
-from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
+from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from infrahub.graph_traversal.reachable import ReachableNodesQuery
+from infrahub.graph_traversal.reachable import ReachableNodesExecutor
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.resolver import PermissionResolver
 
@@ -111,33 +111,18 @@ def build_permission_resolver(
     )
 
 
-async def build_reachable_query(
+def build_reachable_executor(
     *,
     db: InfrahubDatabase,
     branch: Branch,
-    plan: Plan,
-    source_id: str,
     default_branch_name: str,
-    max_targets: int = 50,
-    max_paths: int = 500,
-    at: Timestamp | None = None,
-) -> ReachableNodesQuery:
-    """Construct a ``PathTraversalCypherRenderer`` and a ``ReachableNodesQuery`` around it."""
-    timestamp = at or Timestamp()
-    renderer = PathTraversalCypherRenderer(
+) -> ReachableNodesExecutor:
+    """Construct a ``GraphTraversalCypherRenderer`` and a ``ReachableNodesExecutor`` around it."""
+    renderer = GraphTraversalCypherRenderer(
         branch=branch,
         default_branch_name=default_branch_name,
     )
-    return await ReachableNodesQuery.init(
-        db=db,
-        branch=branch,
-        at=timestamp,
-        renderer=renderer,
-        plan=plan,
-        source_id=source_id,
-        max_targets=max_targets,
-        max_paths=max_paths,
-    )
+    return ReachableNodesExecutor(db=db, branch=branch, renderer=renderer)
 
 
 async def build_path_traversal_query(
@@ -148,11 +133,12 @@ async def build_path_traversal_query(
     source_id: str,
     default_branch_name: str,
     max_paths: int = 10,
+    depths: Iterable[int] | None = None,
     at: Timestamp | None = None,
 ) -> PathTraversalQuery:
-    """Construct a ``PathTraversalCypherRenderer`` and a ``PathTraversalQuery`` around it."""
+    """Construct a ``GraphTraversalCypherRenderer`` and a ``PathTraversalQuery`` around it."""
     timestamp = at or Timestamp()
-    renderer = PathTraversalCypherRenderer(
+    renderer = GraphTraversalCypherRenderer(
         branch=branch,
         default_branch_name=default_branch_name,
     )
@@ -164,6 +150,7 @@ async def build_path_traversal_query(
         plan=plan,
         source_id=source_id,
         max_paths=max_paths,
+        depths=depths,
     )
 
 

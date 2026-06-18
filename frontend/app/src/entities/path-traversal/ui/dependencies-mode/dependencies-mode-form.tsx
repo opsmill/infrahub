@@ -1,5 +1,6 @@
 import type { UseFormReturn } from "react-hook-form";
 
+import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
 import {
   Accordion,
@@ -104,13 +105,13 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
             <FormField
               name="maxResults"
               rules={{
-                required: "Max results is required",
+                required: "Max targets is required",
                 min: { value: 1, message: "Must be ≥ 1" },
                 max: { value: 200, message: "Must be ≤ 200" },
               }}
               render={({ field }) => (
                 <div className="space-y-1">
-                  <FormLabel>Max Results</FormLabel>
+                  <FormLabel>Max Targets</FormLabel>
                   <FormInput>
                     <Input
                       type="number"
@@ -151,6 +152,27 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                     />
                   </FormInput>
                   <FormMessage />
+                </div>
+              )}
+            />
+
+            <FormField
+              name="shortestPathsOnly"
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <FormInput>
+                      <Checkbox
+                        checked={Boolean(field.value)}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                    </FormInput>
+                    <FormLabel className="cursor-pointer">Shortest paths only</FormLabel>
+                  </div>
+                  <p className="text-gray-500 text-xs">
+                    Only return the shortest path(s) to each target. Uncheck to return every path
+                    within the max depth.
+                  </p>
                 </div>
               )}
             />

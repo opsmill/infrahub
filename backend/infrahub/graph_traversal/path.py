@@ -6,8 +6,10 @@ from infrahub.core.query import Query, QueryType
 from infrahub.graph_traversal._extract import extract_path_from_result
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.database import InfrahubDatabase
-    from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
+    from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
     from infrahub.graph_traversal.planning.models import Plan
     from infrahub.graph_traversal.results import PathData
 
@@ -23,16 +25,18 @@ class PathTraversalQuery(Query):
     def __init__(
         self,
         *,
-        renderer: PathTraversalCypherRenderer,
+        renderer: GraphTraversalCypherRenderer,
         plan: Plan,
         source_id: str,
         max_paths: int,
+        depths: Iterable[int] | None = None,
         **kwargs: Any,
     ) -> None:
         self._renderer = renderer
         self._plan = plan
         self._source_id = source_id
         self._max_paths = max_paths
+        self._depths = depths
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -42,6 +46,7 @@ class PathTraversalQuery(Query):
             at=self.at,
             max_targets=1,
             max_paths=self._max_paths,
+            depths=self._depths,
         )
         self.add_to_query(rendered.text)
         self.params.update(rendered.params)
