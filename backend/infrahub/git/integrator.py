@@ -305,13 +305,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 continue
 
             transform = InfrahubRepositoryJinja2(repository=str(self.id), **config_transform.model_dump())
-
-            # Query the GraphQL query and (eventually) replace the name with the ID
-            graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
-            )
-            transform.query = graphql_query.id
-
             local_transforms[transform.name] = transform
 
         return local_transforms
@@ -325,6 +318,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         concurrent import of the same repository.
         """
         log = get_run_logger()
+
+        # Resolve each query reference to its node id now that the queries have been applied.
+        for transform in local_transforms.values():
+            graphql_query = await self.sdk.get(
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
+            )
+            transform.query = graphql_query.id
 
         transforms_in_graph = {
             transform.name.value: transform
@@ -796,7 +796,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
             checks.extend(
                 await self.get_check_definition(
-                    branch_name=branch_name,
                     module=module,
                     file_path=file_info.relative_path_file,
                     check_definition=check,
@@ -816,6 +815,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log = get_run_logger()
 
         local_check_definitions = {check.name: check for check in definitions}
+
+        # Resolve each query reference to its node id now that the queries have been applied.
+        for check in local_check_definitions.values():
+            graphql_query = await self.sdk.get(
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check.query), populate_store=True
+            )
+            check.query = str(graphql_query.id)
+
         check_definition_in_graph = {
             check.name.value: check
             for check in await self.sdk.filters(
@@ -1011,7 +1018,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
             transforms.extend(
                 await self.get_python_transforms(
-                    branch_name=branch_name,
                     module=module,
                     file_path=file_info.relative_path_file,
                     transform=transform,
@@ -1030,6 +1036,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         """
         log = get_run_logger()
         local_transform_definitions = {transform.name: transform for transform in definitions}
+
+        # Resolve each query reference to its node id now that the queries have been applied.
+        for transform in local_transform_definitions.values():
+            graphql_query = await self.sdk.get(
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
+            )
+            transform.query = str(graphql_query.id)
+
         transform_definition_in_graph = {
             transform.name.value: transform
             for transform in await self.sdk.filters(
@@ -1143,7 +1157,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)
     async def get_check_definition(
         self,
-        branch_name: str,
         module: types.ModuleType,
         file_path: str,
         check_definition: InfrahubCheckDefinitionConfig,
@@ -1156,9 +1169,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         check_class = getattr(module, check_definition.class_name)
 
         try:
-            graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check_class.query), populate_store=True
-            )
             checks.append(
                 CheckDefinitionInformation(
                     name=check_definition.name,
@@ -1166,7 +1176,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     class_name=check_definition.class_name,
                     check_class=check_class,
                     file_path=file_path,
-                    query=str(graphql_query.id),
+                    query=str(check_class.query),
                     timeout=check_class.timeout,
                     parameters=check_definition.parameters,
                     targets=check_definition.targets,
@@ -1182,7 +1192,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)
     async def get_python_transforms(
-        self, branch_name: str, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
+        self, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
     ) -> list[TransformPythonInformation]:
         log = get_run_logger()
         if transform.class_name not in dir(module):
@@ -1190,9 +1200,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         transforms = []
         transform_class = getattr(module, transform.class_name)
-        graphql_query = await self.sdk.get(
-            kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform_class.query), populate_store=True
-        )
         try:
             transforms.append(
                 TransformPythonInformation(
@@ -1201,7 +1208,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     class_name=transform.class_name,
                     transform_class=transform_class,
                     file_path=file_path,
-                    query=str(graphql_query.id),
+                    query=str(transform_class.query),
                     timeout=transform_class.timeout,
                     convert_query_response=transform.convert_query_response,
                     description=transform.description,
