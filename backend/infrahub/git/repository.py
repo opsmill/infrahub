@@ -123,10 +123,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 reason=failed.reason,
             )
 
-        details = ", ".join(f"{failed.branch_name} ({failed.step}: {failed.reason})" for failed in failed_imports)
+        branches = ", ".join(failed.branch_name for failed in failed_imports)
         raise RepositoryError(
             identifier=self.name,
-            message=f"Unable to synchronize the following branches of repository {self.name}: {details}",
+            message=f"Unable to synchronize the following branches of repository {self.name}: {branches}",
         )
 
     async def collect_pending_imports(self, staging_branch: str | None = None) -> CollectedImports:
