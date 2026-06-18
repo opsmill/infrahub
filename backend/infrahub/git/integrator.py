@@ -846,6 +846,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_python_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        definitions = await self._build_python_transform_definitions(
+            branch_name=branch_name, commit=commit, config_file=config_file
+        )
+        await self._apply_python_transform_definitions(branch_name=branch_name, definitions=definitions)
+
+    async def _build_python_transform_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> list[TransformPythonInformation]:
+        """Build the desired transform definitions by reading the pinned commit worktree.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            ModuleNotFoundError: When a transform module cannot be imported.
+
+        """
         log = get_run_logger()
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
@@ -880,7 +896,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 )  # type: ignore[call-overload]
             )
 
-        local_transform_definitions = {transform.name: transform for transform in transforms}
+        return transforms
+
+    async def _apply_python_transform_definitions(
+        self, branch_name: str, definitions: list[TransformPythonInformation]
+    ) -> None:
+        """Reconcile the desired transform definitions against the graph by creating, updating and deleting.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+        local_transform_definitions = {transform.name: transform for transform in definitions}
         transform_definition_in_graph = {
             transform.name.value: transform
             for transform in await self.sdk.filters(
