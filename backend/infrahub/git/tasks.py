@@ -295,16 +295,18 @@ async def bootstrap_local_repository(
 
         if default_import_git_branch is not None:
             # Pin the commit while the lock is held so the import below reads an immutable
-            # worktree even though it runs after the lock is released.
+            # worktree even though it is built after the lock is released.
             pinned_import_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
 
     if default_import_git_branch is not None:
         try:
-            await repo.import_objects_from_files(  # type: ignore[call-overload]
+            plan = await repo.build_import_plan(
                 git_branch_name=default_import_git_branch,
                 infrahub_branch_name=infrahub_branch,
                 commit=pinned_import_commit,
             )
+            async with lock.registry.get(name=repo_name, namespace="repository"):
+                await repo.apply_import_plan(plan)
         except (RepositoryError, CommitNotFoundError) as exc:
             log.info(exc.message)
             return None
