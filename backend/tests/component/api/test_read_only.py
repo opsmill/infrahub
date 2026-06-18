@@ -174,7 +174,7 @@ class TestApiReadOnly(TestInfrahubApp):
 
         response = await test_client.post("/graphql", json={"query": query}, headers=admin_headers)
 
-        assert response.status_code
+        assert response.status_code == 200
         assert response.json() == {"data": {"AccountProfile": {"name": {"value": "admin"}}}}
 
     async def test_download_schema(

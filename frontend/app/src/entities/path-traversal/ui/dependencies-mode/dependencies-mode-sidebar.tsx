@@ -27,6 +27,7 @@ export function DependenciesModeSidebar() {
       maxDepth: params.depth,
       maxResults: params.maxResults,
       maxPaths: params.maxPaths,
+      shortestPathsOnly: params.shortestPathsOnly,
     },
     { enabled: !!params.source && params.targetKinds.length > 0 }
   );
@@ -45,7 +46,7 @@ export function DependenciesModeSidebar() {
       {data && (
         <PathResultsList
           paths={paths}
-          countLabel={`${data.count} dependenc${data.count === 1 ? "y" : "ies"} found`}
+          countLabel={`${data.count} path${data.count === 1 ? "" : "s"} found`}
           selectedIndex={params.selectedIndex}
           onSelect={(index) => setParams({ selectedIndex: index })}
           variant="amber"

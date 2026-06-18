@@ -122,13 +122,13 @@ export function handleGraphQLAuthError({
         // miss is visible during manual testing. Prod stays silent
         // (just the generic toast) to avoid leaking implementation noise.
         if (import.meta.env.DEV) {
-          console.warn(
+          console.error(
             "[catalogue gap] Unmatched error code surfaced as UNDEFINED_ERROR. " +
               "Register it in backend/infrahub/errors/catalogue.py, regenerate " +
               "the schema, and run `pnpm generate:error-bindings`.",
             { message: graphQLError.message, extensions: graphQLError.extensions }
           );
-          notifyUser(`[catalogue gap] ${graphQLError.message}`, operation);
+          notifyUser(graphQLError.message, operation);
           return;
         }
         notifyUser(graphQLError.message, operation);

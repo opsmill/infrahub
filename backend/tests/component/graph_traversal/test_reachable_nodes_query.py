@@ -7,11 +7,12 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graph_traversal.planning.models import Plan, TerminalByKinds, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from tests.helpers.graph_traversal.builders import build_permission_resolver, build_reachable_query, identifier_of
+from tests.helpers.graph_traversal.builders import build_permission_resolver, build_reachable_executor, identifier_of
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.graph_traversal.reachable import ReachableNodeData
 
 
 def _build_plan(
@@ -38,6 +39,27 @@ def _build_plan(
     )
 
 
+async def _reachable_nodes(
+    *,
+    db: InfrahubDatabase,
+    branch: Branch,
+    default_branch_name: str,
+    plan: Plan,
+    source_id: str,
+    max_targets: int = 50,
+    max_paths: int = 500,
+    shortest_paths_only: bool = True,
+) -> list[ReachableNodeData]:
+    executor = build_reachable_executor(db=db, branch=branch, default_branch_name=default_branch_name)
+    return await executor.run(
+        plan=plan,
+        source_id=source_id,
+        max_targets=max_targets,
+        max_paths=max_paths,
+        shortest_paths_only=shortest_paths_only,
+    )
+
+
 async def test_returns_reachable_target_on_default_branch(
     db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
 ) -> None:
@@ -46,15 +68,9 @@ async def test_returns_reachable_target_on_default_branch(
     plan = _build_plan(db=db, branch=default_branch, source=person, target_kinds=frozenset({tag.get_kind()}))
     assert not plan.is_empty
 
-    query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=plan,
-        source_id=person.id,
-        default_branch_name=default_branch.name,
+    results = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
     )
-    await query.execute(db=db)
-    results = query.get_reachable_nodes()
 
     assert len(results) == 1
     only = results[0]
@@ -79,15 +95,9 @@ async def test_user_branch_edge_does_not_surface_on_default_branch(
     plan = _build_plan(db=db, branch=default_branch, source=person, target_kinds=frozenset({tag_blue_main.get_kind()}))
     assert not plan.is_empty
 
-    query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=plan,
-        source_id=person.id,
-        default_branch_name=default_branch.name,
+    results = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
     )
-    await query.execute(db=db)
-    results = query.get_reachable_nodes()
 
     assert results == []
 
@@ -108,15 +118,9 @@ async def test_default_branch_target_is_hidden_when_edge_deleted_on_user_branch(
     plan = _build_plan(db=db, branch=feature_branch, source=person, target_kinds=frozenset({tag.get_kind()}))
     assert not plan.is_empty
 
-    query = await build_reachable_query(
-        db=db,
-        branch=feature_branch,
-        plan=plan,
-        source_id=person.id,
-        default_branch_name=default_branch.name,
+    results = await _reachable_nodes(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
     )
-    await query.execute(db=db)
-    results = query.get_reachable_nodes()
 
     assert results == []
 
@@ -130,15 +134,9 @@ async def test_default_branch_target_remains_visible_on_untouched_user_branch(
     plan = _build_plan(db=db, branch=feature_branch, source=person, target_kinds=frozenset({tag.get_kind()}))
     assert not plan.is_empty
 
-    query = await build_reachable_query(
-        db=db,
-        branch=feature_branch,
-        plan=plan,
-        source_id=person.id,
-        default_branch_name=default_branch.name,
+    results = await _reachable_nodes(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
     )
-    await query.execute(db=db)
-    results = query.get_reachable_nodes()
 
     assert len(results) == 1
     only = results[0]
@@ -163,16 +161,10 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
     baseline_plan = _build_plan(
         db=db, branch=default_branch, source=car, target_kinds=frozenset({"TestPerson"}), max_depth=1
     )
-    baseline_query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=baseline_plan,
-        source_id=car.id,
-        default_branch_name=default_branch.name,
+    baseline = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=baseline_plan, source_id=car.id
     )
-    await baseline_query.execute(db=db)
-    baseline_ids = {r.node.uuid for r in baseline_query.get_reachable_nodes()}
-    assert baseline_ids == {owner.id, driver.id}
+    assert {r.node.uuid for r in baseline} == {owner.id, driver.id}
 
     owner_only_plan = _build_plan(
         db=db,
@@ -182,16 +174,10 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({owner_identifier})),
     )
-    owner_only_query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=owner_only_plan,
-        source_id=car.id,
-        default_branch_name=default_branch.name,
+    owner_only = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=owner_only_plan, source_id=car.id
     )
-    await owner_only_query.execute(db=db)
-    owner_only_ids = {r.node.uuid for r in owner_only_query.get_reachable_nodes()}
-    assert owner_only_ids == {owner.id}
+    assert {r.node.uuid for r in owner_only} == {owner.id}
 
     driver_only_plan = _build_plan(
         db=db,
@@ -201,16 +187,10 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({driver_identifier})),
     )
-    driver_only_query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=driver_only_plan,
-        source_id=car.id,
-        default_branch_name=default_branch.name,
+    driver_only = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=driver_only_plan, source_id=car.id
     )
-    await driver_only_query.execute(db=db)
-    driver_only_ids = {r.node.uuid for r in driver_only_query.get_reachable_nodes()}
-    assert driver_only_ids == {driver.id}
+    assert {r.node.uuid for r in driver_only} == {driver.id}
 
 
 async def test_excluded_kinds_drops_one_concrete_generic_implementor(
@@ -225,16 +205,10 @@ async def test_excluded_kinds_drops_one_concrete_generic_implementor(
     baseline_plan = _build_plan(
         db=db, branch=default_branch, source=human, target_kinds=frozenset({"TestDog", "TestCat"}), max_depth=1
     )
-    baseline_query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=baseline_plan,
-        source_id=human.id,
-        default_branch_name=default_branch.name,
+    baseline = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=baseline_plan, source_id=human.id
     )
-    await baseline_query.execute(db=db)
-    baseline_ids = {r.node.uuid for r in baseline_query.get_reachable_nodes()}
-    assert baseline_ids == {dog.id, cat.id}
+    assert {r.node.uuid for r in baseline} == {dog.id, cat.id}
 
     dog_only_plan = _build_plan(
         db=db,
@@ -244,16 +218,10 @@ async def test_excluded_kinds_drops_one_concrete_generic_implementor(
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), excluded_kinds=frozenset({"TestCat"})),
     )
-    dog_only_query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=dog_only_plan,
-        source_id=human.id,
-        default_branch_name=default_branch.name,
+    dog_only = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=dog_only_plan, source_id=human.id
     )
-    await dog_only_query.execute(db=db)
-    dog_only_ids = {r.node.uuid for r in dog_only_query.get_reachable_nodes()}
-    assert dog_only_ids == {dog.id}
+    assert {r.node.uuid for r in dog_only} == {dog.id}
 
     cat_only_plan = _build_plan(
         db=db,
@@ -263,16 +231,10 @@ async def test_excluded_kinds_drops_one_concrete_generic_implementor(
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), excluded_kinds=frozenset({"TestDog"})),
     )
-    cat_only_query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=cat_only_plan,
-        source_id=human.id,
-        default_branch_name=default_branch.name,
+    cat_only = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=cat_only_plan, source_id=human.id
     )
-    await cat_only_query.execute(db=db)
-    cat_only_ids = {r.node.uuid for r in cat_only_query.get_reachable_nodes()}
-    assert cat_only_ids == {cat.id}
+    assert {r.node.uuid for r in cat_only} == {cat.id}
 
 
 async def test_target_kinds_accepts_generic_and_expands_to_concretes(
@@ -284,16 +246,10 @@ async def test_target_kinds_accepts_generic_and_expands_to_concretes(
     human, dog, cat = human_with_two_pets
 
     plan = _build_plan(db=db, branch=default_branch, source=human, target_kinds=frozenset({"TestAnimal"}), max_depth=1)
-    query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=plan,
-        source_id=human.id,
-        default_branch_name=default_branch.name,
+    results = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=human.id
     )
-    await query.execute(db=db)
-    ids = {r.node.uuid for r in query.get_reachable_nodes()}
-    assert ids == {dog.id, cat.id}
+    assert {r.node.uuid for r in results} == {dog.id, cat.id}
 
 
 async def test_excluded_kinds_accepts_generic_and_removes_every_concrete_implementor(
@@ -315,6 +271,83 @@ async def test_excluded_kinds_accepts_generic_and_removes_every_concrete_impleme
     assert plan.is_empty
 
 
+async def test_shortest_mode_returns_only_shortest_path_per_target(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_with_paths_at_two_depths: tuple[Node, Node],
+) -> None:
+    # The blue tag is reachable from person1 at depth 1 (primary_tag) and depth 3
+    # (via the shared red tag + person2). Shortest mode must keep only the depth-1 path.
+    person1, blue = person_with_paths_at_two_depths
+
+    plan = _build_plan(
+        db=db, branch=default_branch, source=person1, target_kinds=frozenset({blue.get_kind()}), max_depth=3
+    )
+    assert not plan.is_empty
+
+    results = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person1.id
+    )
+    blue_entries = [r for r in results if r.node.uuid == blue.id]
+    assert len(blue_entries) == 1
+    assert blue_entries[0].depth == 1
+
+
+async def test_all_paths_mode_returns_paths_at_every_depth(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_with_paths_at_two_depths: tuple[Node, Node],
+) -> None:
+    # Same data, shortest_paths_only=False: every path to blue within max_depth is returned,
+    # so blue appears at both depth 1 and depth 3.
+    person1, blue = person_with_paths_at_two_depths
+
+    plan = _build_plan(
+        db=db, branch=default_branch, source=person1, target_kinds=frozenset({blue.get_kind()}), max_depth=3
+    )
+    assert not plan.is_empty
+
+    results = await _reachable_nodes(
+        db=db,
+        branch=default_branch,
+        default_branch_name=default_branch.name,
+        plan=plan,
+        source_id=person1.id,
+        shortest_paths_only=False,
+    )
+    blue_depths = sorted({r.depth for r in results if r.node.uuid == blue.id})
+    assert blue_depths == [1, 3]
+
+
+async def test_shortest_mode_reroutes_when_branch_deletes_shortest_edge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_with_paths_at_two_depths: tuple[Node, Node],
+) -> None:
+    # Deleting the depth-1 primary_tag edge on a user branch must be respected
+    # the shortest result then routes to the depth-3 path
+    # exercises intermediate-hop predicates.
+    person1, blue = person_with_paths_at_two_depths
+    feature_branch = await create_branch(db=db, branch_name="reach-shortest-deleted")
+
+    person1_on_branch = await NodeManager.get_one(db=db, id=person1.id, branch=feature_branch)
+    assert person1_on_branch is not None
+    await person1_on_branch.get_relationship(name="primary_tag").update(db=db, data=None)
+    await person1_on_branch.save(db=db)
+
+    plan = _build_plan(
+        db=db, branch=feature_branch, source=person1, target_kinds=frozenset({blue.get_kind()}), max_depth=3
+    )
+    assert not plan.is_empty
+
+    results = await _reachable_nodes(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=plan, source_id=person1.id
+    )
+    blue_entries = [r for r in results if r.node.uuid == blue.id]
+    assert len(blue_entries) >= 1
+    assert min(e.depth for e in blue_entries) == 3
+
+
 async def test_kind_filter_accepts_generic_and_admits_every_concrete_implementor(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -333,13 +366,7 @@ async def test_kind_filter_accepts_generic_and_admits_every_concrete_implementor
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), kind_filter=frozenset({"TestAnimal"})),
     )
-    query = await build_reachable_query(
-        db=db,
-        branch=default_branch,
-        plan=plan,
-        source_id=human.id,
-        default_branch_name=default_branch.name,
+    results = await _reachable_nodes(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=human.id
     )
-    await query.execute(db=db)
-    ids = {r.node.uuid for r in query.get_reachable_nodes()}
-    assert ids == {dog.id, cat.id}
+    assert {r.node.uuid for r in results} == {dog.id, cat.id}

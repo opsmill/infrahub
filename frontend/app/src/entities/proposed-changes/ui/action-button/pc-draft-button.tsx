@@ -31,17 +31,8 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         />
       );
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={
-            isDraft
-              ? "An error occurred while removing draft status"
-              : "An error occurred while moving to draft"
-          }
-        />
-      );
+    onError: (error) => {
+      toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
     },
   });
 

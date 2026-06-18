@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
+from graphene import Boolean, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import SchemaNotFoundError
-from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
+from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.planning.models import TerminalByKinds, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from infrahub.graph_traversal.reachable import ReachableNodesQuery
+from infrahub.graph_traversal.reachable import ReachableNodesExecutor
 from infrahub.graphql.queries.path import (
     PathNodeType,
     PathResultType,
@@ -58,6 +58,14 @@ class ReachableNodesInput(InputObjectType):
         default_value=500,
         description="Maximum total paths returned across all discovered terminals (default: 500, max: 5000)",
     )
+    shortest_paths_only = Boolean(
+        required=False,
+        default_value=True,
+        description=(
+            "When true (default), return only the shortest path(s) to each reachable target. "
+            "When false, return every path to each target within max_depth that meets the filters."
+        ),
+    )
 
 
 async def reachable_nodes_resolver(
@@ -72,6 +80,7 @@ async def reachable_nodes_resolver(
     max_depth = data.max_depth or 5
     max_results = data.max_results or 50
     max_paths = 500 if data.max_paths is None else data.max_paths
+    shortest_paths_only = True if data.shortest_paths_only is None else data.shortest_paths_only
 
     if not target_kinds:
         raise GraphQLError("At least one target kind is required")
@@ -110,25 +119,25 @@ async def reachable_nodes_resolver(
 
     reachable_data: list[ReachableNodeData] = []
     if not plan.is_empty:
-        renderer = PathTraversalCypherRenderer(
+        executor = ReachableNodesExecutor(
+            db=graphql_context.db,
             branch=graphql_context.branch,
-            default_branch_name=registry.default_branch,
+            renderer=GraphTraversalCypherRenderer(
+                branch=graphql_context.branch,
+                default_branch_name=registry.default_branch,
+            ),
         )
         try:
-            query = await ReachableNodesQuery.init(
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-                at=graphql_context.at,
-                renderer=renderer,
+            reachable_data = await executor.run(
                 plan=plan,
                 source_id=source_id,
                 max_targets=max_results,
                 max_paths=max_paths,
+                shortest_paths_only=shortest_paths_only,
+                at=graphql_context.at,
             )
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
-        await query.execute(db=graphql_context.db)
-        reachable_data = query.get_reachable_nodes()
 
     all_ids: set[str] = {source_id}
     for n in reachable_data:

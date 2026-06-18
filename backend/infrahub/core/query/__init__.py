@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
@@ -250,13 +251,18 @@ class QueryResult:
         return return_type(item)
 
     def get_as_list_of_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> list[RETURN_TYPE]:
-        """Return a label whose value is a Cypher-projected list of maps.
+        """Return a label whose value is a Cypher-projected list.
 
-        Each map is constructed into ``return_type`` via keyword arguments,
-        so ``return_type`` is typically a ``TypedDict`` (or a dataclass)
-        describing the projection's field shape:
+        Each element is constructed into ``return_type``. Map elements (e.g. a
+        ``collect`` of map projections) are unpacked as keyword arguments, so
+        ``return_type`` is typically a ``TypedDict`` or dataclass describing the
+        projection's field shape:
 
             .get_as_list_of_type(label="hops", return_type=HopRow)
+
+        Scalar elements (e.g. a ``collect`` of strings) are passed positionally:
+
+            .get_as_list_of_type(label="terminal_uuids", return_type=str)
 
         Raises:
             ValueError: when the label's value is not a list.
@@ -265,7 +271,7 @@ class QueryResult:
         entry = self._get(label=label)
         if not isinstance(entry, list):
             raise ValueError(f"{label} is not a list")
-        return [return_type(**item) for item in entry]
+        return [return_type(**item) if isinstance(item, Mapping) else return_type(item) for item in entry]
 
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
         entry = self._get(label=label)
