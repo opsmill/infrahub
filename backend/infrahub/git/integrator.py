@@ -830,12 +830,24 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_generator_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        definitions = await self._build_generator_definitions(
+            branch_name=branch_name, commit=commit, config_file=config_file
+        )
+        await self._apply_generator_definitions(branch_name=branch_name, definitions=definitions)
+
+    async def _build_generator_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> list[InfrahubGeneratorDefinitionConfig]:
+        """Build the desired generator definitions by reading the pinned commit worktree.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        generators = []
+        generators: list[InfrahubGeneratorDefinitionConfig] = []
         log.info(f"Found {len(config_file.generator_definitions)} generator definitions in the repository")
 
         for generator in config_file.generator_definitions:
@@ -849,7 +861,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
             generators.append(generator)
 
-        local_generator_definitions = {generator.name: generator for generator in generators}
+        return generators
+
+    async def _apply_generator_definitions(
+        self, branch_name: str, definitions: list[InfrahubGeneratorDefinitionConfig]
+    ) -> None:
+        """Reconcile the desired generator definitions against the graph by creating, updating and deleting.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        local_generator_definitions = {generator.name: generator for generator in definitions}
         generator_definition_in_graph = {
             generator.name.value: generator
             for generator in await self.sdk.filters(
