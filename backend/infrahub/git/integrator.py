@@ -731,6 +731,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_python_check_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        definitions = await self._build_python_check_definitions(
+            branch_name=branch_name, commit=commit, config_file=config_file
+        )
+        await self._apply_python_check_definitions(branch_name=branch_name, definitions=definitions)
+
+    async def _build_python_check_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> list[CheckDefinitionInformation]:
+        """Build the desired check definitions by reading the pinned commit worktree.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            ModuleNotFoundError: When a check module cannot be imported.
+
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
@@ -740,7 +756,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if str(self.directory_root) not in sys.path:
             sys.path.append(str(self.directory_root))
 
-        checks = []
+        checks: list[CheckDefinitionInformation] = []
         log.info(f"Found {len(config_file.check_definitions)} check definitions in the repository")
         for check in config_file.check_definitions:
             log.debug(f"{self.name}, file={check.file_path}")
@@ -765,7 +781,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 )  # type: ignore[call-overload]
             )
 
-        local_check_definitions = {check.name: check for check in checks}
+        return checks
+
+    async def _apply_python_check_definitions(
+        self, branch_name: str, definitions: list[CheckDefinitionInformation]
+    ) -> None:
+        """Reconcile the desired check definitions against the graph by creating, updating and deleting.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        local_check_definitions = {check.name: check for check in definitions}
         check_definition_in_graph = {
             check.name.value: check
             for check in await self.sdk.filters(
