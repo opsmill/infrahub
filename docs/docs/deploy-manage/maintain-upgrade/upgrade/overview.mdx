@@ -116,29 +116,28 @@ Use this command before and after `infrahub db migrate` (or `infrahub upgrade`) 
 
 The third column of `showmigrations` reports the migration's class. The four types behave differently:
 
-- **GraphMigration** — applies one or more Cypher queries to the graph. The query list is shown by `db showmigration N`.
+- **GraphMigration** — applies one or more Cypher queries to the graph.
 - **InternalSchemaMigration** — updates the internal schema definition.
 - **ArbitraryMigration** — runs arbitrary Python logic. May print its own progress messages while it works.
 - **MigrationRequiringRebase** — rewrites data that any open branches were built on top of. After this kind of migration, every open branch needs to be rebased before it can be used again — see `infrahub upgrade --rebase-branches`.
 
 ### Inspecting a single migration
 
-`infrahub db showmigration N` reports details about a specific migration, including its type, the graph version it requires, whether it has been applied, and (for `GraphMigration`) the list of Cypher queries it runs:
+`infrahub db showmigration N` reports details about a specific migration — its type, the minimum graph version it requires, whether it has been applied, and a human-readable description of what data it touches:
 
 ```console
-$ infrahub db showmigration 1
+$ infrahub db showmigration 70
 
-Migration 001: add_version_to_graph
-  Type:            GraphMigration
-  Minimum version: 0
-  Status:          Applied
-  Source:          /source/backend/infrahub/core/migrations/graph/m001_add_version_to_graph.py
-
-  Queries:
-    1. Migration001Query01 (WRITE)
+Migration 070: 070_normalize_mac_address_values_to_colon
+  Type:            MigrationRequiringRebase
+  Minimum version: 69
+  Status:          Pending
+  Description:     Rewrite stored MacAddress values to colon-separated
+                   uppercase form and recompute any HFID or display_label
+                   that depends on them.
 ```
 
-For `ArbitraryMigration` and `MigrationRequiringRebase` migrations the `Queries:` block is omitted because those types do not expose a query list.
+Use this command when `showmigrations` flags a migration as pending and you want to understand what it will change before applying it.
 
 ### Previewing without writing
 

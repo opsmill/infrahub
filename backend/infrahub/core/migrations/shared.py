@@ -73,7 +73,7 @@ class BaseMigration(BaseModel):
     """Common base for all graph migration types."""
 
     name: str = Field(..., description="Name of the migration")
-    description: str = Field(default="", description="Human-readable description of what this migration does")
+    description: str = Field(..., description="Human-readable description of what this migration does")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @property

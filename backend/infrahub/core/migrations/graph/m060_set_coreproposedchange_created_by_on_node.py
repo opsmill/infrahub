@@ -32,6 +32,7 @@ class SetCoreProposedChangeCreatedByOnNodeQuery(Query):
 
 class Migration060(GraphMigration):
     name: str = "060_set_coreproposedchange_created_by_on_node"
+    description: str = "N/A"
     minimum_version: int = 59
     queries: Sequence[type[Query]] = [SetCoreProposedChangeCreatedByOnNodeQuery]
 

@@ -50,6 +50,7 @@ class Migration053(GraphMigration):
     """
 
     name: str = "053_fix_branch_level_zero"
+    description: str = "N/A"
     minimum_version: int = 52
     queries: Sequence[type[Query]] = [FixBranchLevelZeroQuery]
 

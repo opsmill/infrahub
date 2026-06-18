@@ -61,6 +61,7 @@ class Migration024(GraphMigration):
     """
 
     name: str = "024_backfill_hierarchy"
+    description: str = "N/A"
     minimum_version: int = 23
     queries: Sequence[type[Query]] = [BackfillMissingHierarchyQuery]
 

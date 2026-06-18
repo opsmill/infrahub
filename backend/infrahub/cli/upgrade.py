@@ -85,9 +85,9 @@ async def upgrade_cmd(
     rebase_branches: bool = typer.Option(
         False,
         help=(
-            "In step 6, automatically rebase every branch that needs it. Without this flag, "
-            "the upgrade reports which branches need rebase and stops; rebase them manually "
-            "later or re-run with this flag."
+            "Automatically rebase every open branch that needs it after migrations run. "
+            "Without this flag, the upgrade reports which branches need rebase and stops; "
+            "rebase them manually later or re-run with this flag."
         ),
     ),
     interactive: bool = typer.Option(

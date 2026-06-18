@@ -39,6 +39,7 @@ class Migration067Query01(Query):
 
 class Migration067(GraphMigration):
     name: str = "067_freeze_orphaned_branch_tracking_diffs"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration067Query01]
     minimum_version: int = 66
 

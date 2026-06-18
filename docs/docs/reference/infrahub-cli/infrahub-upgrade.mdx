@@ -15,7 +15,7 @@ $ infrahub upgrade [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--check / --no-check`: Report what the upgrade would do without writing anything to the database. Shows pending migrations and their types, whether the core schema needs an update, and which open branches need rebase.  [default: no-check]
-* `--rebase-branches / --no-rebase-branches`: In step 6, automatically rebase every branch that needs it. Without this flag, the upgrade reports which branches need rebase and stops; rebase them manually later or re-run with this flag.  [default: no-rebase-branches]
+* `--rebase-branches / --no-rebase-branches`: Automatically rebase every open branch that needs it after migrations run. Without this flag, the upgrade reports which branches need rebase and stops; rebase them manually later or re-run with this flag.  [default: no-rebase-branches]
 * `--interactive / --no-interactive`: When combined with --rebase-branches, prompt y/N before rebasing each branch. Has no effect without --rebase-branches.  [default: no-interactive]
 * `--verbose / --no-verbose`: Also show internal infrahub and prefect logger output (schema-loader warnings, validator messages, workflow-client logs) from migrations and rebase that is suppressed by default. Per-step and per-migration progress messages are always shown and are not controlled by this flag.  [default: no-verbose]
 * `--install-completion`: Install completion for the current shell.
