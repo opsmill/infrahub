@@ -1,1 +1,0 @@
-Fixed event queries silently returning no results when filtering on labels containing `_` or `%` (such as most branch names) with a SQLite-backed task manager. Prefect builds these filters as SQL LIKE expressions without declaring an escape character, which PostgreSQL tolerates but SQLite does not; the Infrahub task manager now declares the escape character explicitly.
