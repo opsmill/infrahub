@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -144,6 +145,25 @@ class TransformPythonInformation(BaseModel):
     """Description of the Transform"""
 
 
+@dataclass
+class ObjectImportPlan:
+    """The desired state of a branch's objects, built by reading the pinned commit worktree.
+
+    Holds no graph state, only what was read from disk, so it can be built without serialization and
+    then applied to the graph under the repository lock.
+    """
+
+    infrahub_branch_name: str
+    commit: str
+    config_file: InfrahubRepositoryConfig
+    query_strings: dict[str, str]
+    transform_definitions: list[TransformPythonInformation]
+    jinja2_definitions: dict[str, InfrahubRepositoryJinja2]
+    check_definitions: list[CheckDefinitionInformation]
+    generator_definitions: list[InfrahubGeneratorDefinitionConfig]
+    artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
+
+
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
 
@@ -195,6 +215,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_objects_from_files(
         self, infrahub_branch_name: str, git_branch_name: str | None = None, commit: str | None = None
     ) -> None:
+        plan = await self.build_import_plan(
+            infrahub_branch_name=infrahub_branch_name, git_branch_name=git_branch_name, commit=commit
+        )
+        await self.apply_import_plan(plan)
+
+    async def build_import_plan(
+        self, infrahub_branch_name: str, git_branch_name: str | None = None, commit: str | None = None
+    ) -> ObjectImportPlan:
+        """Build the desired state of a branch's objects by reading the pinned commit worktree.
+
+        Performs no graph mutation other than recording that a sync is in progress, so the expensive
+        worktree reads and module imports do not need to be serialized against concurrent imports.
+        """
         if not commit:
             commit = self.get_commit_value(branch_name=git_branch_name or infrahub_branch_name)
 
@@ -203,47 +236,88 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self.create_commit_worktree(commit)
         await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
 
+        try:
+            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
+            query_strings = await self._build_graphql_query_definitions(commit=commit, config_file=config_file)
+            transform_definitions = await self._build_python_transform_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
+            jinja2_definitions = await self._build_jinja2_transform_definitions(
+                branch_name=infrahub_branch_name, config_file=config_file
+            )
+            check_definitions = await self._build_python_check_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
+            generator_definitions = await self._build_generator_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
+            artifact_definitions = await self._build_artifact_definitions(
+                branch_name=infrahub_branch_name, config_file=config_file
+            )
+        except Exception:
+            await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.ERROR_IMPORT)
+            raise
+
+        return ObjectImportPlan(
+            infrahub_branch_name=infrahub_branch_name,
+            commit=commit,
+            config_file=config_file,
+            query_strings=query_strings,
+            transform_definitions=transform_definitions,
+            jinja2_definitions=jinja2_definitions,
+            check_definitions=check_definitions,
+            generator_definitions=generator_definitions,
+            artifact_definitions=artifact_definitions,
+        )
+
+    async def apply_import_plan(self, plan: ObjectImportPlan) -> None:
+        """Apply a previously built plan to the graph: schema, queries, transforms, objects, definitions.
+
+        Performs every graph mutation of the import, so it must run serialized against any concurrent
+        import of the same repository.
+        """
         sync_status = RepositorySyncStatus.IN_SYNC
         error: Exception | None = None
 
         try:
-            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
-            await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
-            if config_file.schemas:
-                await self.sdk.schema.all(branch=infrahub_branch_name, refresh=True)
-            await self.import_all_graphql_query(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            await self.import_schema_files(
+                branch_name=plan.infrahub_branch_name, commit=plan.commit, config_file=plan.config_file
             )  # type: ignore[call-overload]
+            if plan.config_file.schemas:
+                await self.sdk.schema.all(branch=plan.infrahub_branch_name, refresh=True)
+            await self._apply_graphql_query_definitions(
+                branch_name=plan.infrahub_branch_name, local_queries=plan.query_strings
+            )
             # Transforms must be registered before objects so that an object referencing a transform
             # defined in the same repository resolves during import.
-            await self.import_python_transforms(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
-            await self.import_jinja2_transforms(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
+            await self._apply_python_transform_definitions(
+                branch_name=plan.infrahub_branch_name, definitions=plan.transform_definitions
+            )
+            await self._apply_jinja2_transform_definitions(
+                branch_name=plan.infrahub_branch_name, local_transforms=plan.jinja2_definitions
+            )
             await self.import_objects(
-                branch_name=infrahub_branch_name,
-                commit=commit,
-                config_file=config_file,
+                branch_name=plan.infrahub_branch_name,
+                commit=plan.commit,
+                config_file=plan.config_file,
             )  # type: ignore[call-overload]
             # Checks, generators and artifact definitions are imported after objects because their
             # targets reference groups that are defined as objects in the repository.
-            await self.import_python_check_definitions(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
-            await self.import_generator_definitions(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
-            await self.import_artifact_definitions(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
+            await self._apply_python_check_definitions(
+                branch_name=plan.infrahub_branch_name, definitions=plan.check_definitions
+            )
+            await self._apply_generator_definitions(
+                branch_name=plan.infrahub_branch_name, definitions=plan.generator_definitions
+            )
+            await self._apply_artifact_definitions(
+                branch_name=plan.infrahub_branch_name, local_artifact_defs=plan.artifact_definitions
+            )
 
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
             error = exc
 
-        await self._update_sync_status(branch_name=infrahub_branch_name, status=sync_status)
+        await self._update_sync_status(branch_name=plan.infrahub_branch_name, status=sync_status)
 
         if error:
             raise error
@@ -251,11 +325,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if self.reinitialized:
             return
 
-        infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
+        infrahub_branch = registry.get_branch_from_registry(branch=plan.infrahub_branch_name)
         event_service = await get_event_service()
         await event_service.send(
             CommitUpdatedEvent(
-                commit=commit,
+                commit=plan.commit,
                 repository_name=self.name,
                 repository_id=str(self.id),
                 meta=EventMeta.with_dummy_context(branch=infrahub_branch),
