@@ -86,6 +86,9 @@ async def reachable_nodes_resolver(
     if not target_kinds:
         raise GraphQLError("At least one target kind is required")
 
+    if max_paths < 1:
+        raise GraphQLError(f"max_paths must be >= 1, got {max_paths}")
+
     source_node: Node | None = await NodeManager.get_one(
         db=graphql_context.db,
         branch=graphql_context.branch,

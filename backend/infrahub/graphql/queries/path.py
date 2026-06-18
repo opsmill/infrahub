@@ -248,8 +248,8 @@ async def path_traversal_resolver(
     max_depth = data.max_depth or 5
     max_paths = data.max_paths or 10
 
-    if max_paths > MAX_PATHS:
-        raise GraphQLError(f"max_paths must be <= {MAX_PATHS}, got {max_paths}")
+    if not 1 <= max_paths <= MAX_PATHS:
+        raise GraphQLError(f"max_paths must be in [1, {MAX_PATHS}], got {max_paths}")
 
     if source_id == destination_id:
         raise GraphQLError("Source and destination nodes must be different")
