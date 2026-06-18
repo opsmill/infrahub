@@ -398,15 +398,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         commit: str,  # noqa: ARG002
         config_file: InfrahubRepositoryConfig,
     ) -> None:
+        local_artifact_defs = await self._build_artifact_definitions(branch_name=branch_name, config_file=config_file)
+        await self._apply_artifact_definitions(branch_name=branch_name, local_artifact_defs=local_artifact_defs)
+
+    async def _build_artifact_definitions(
+        self, branch_name: str, config_file: InfrahubRepositoryConfig
+    ) -> dict[str, InfrahubRepositoryArtifactDefinitionConfig]:
+        """Build the desired artifact definitions from the repository config.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+        """
         log = get_run_logger()
         schema = await self.sdk.schema.get(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name)
-
-        artifact_defs_in_graph = {
-            artdef.name.value: artdef
-            for artdef in await self.sdk.filters(
-                kind=CoreArtifactDefinition, branch=branch_name, prefetch_relationships=True, populate_store=True
-            )
-        }
 
         local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
 
@@ -426,6 +429,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 continue
 
             local_artifact_defs[artdef.name] = artdef
+
+        return local_artifact_defs
+
+    async def _apply_artifact_definitions(
+        self, branch_name: str, local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
+    ) -> None:
+        """Reconcile the desired artifact definitions against the graph by creating and updating.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        artifact_defs_in_graph = {
+            artdef.name.value: artdef
+            for artdef in await self.sdk.filters(
+                kind=CoreArtifactDefinition, branch=branch_name, prefetch_relationships=True, populate_store=True
+            )
+        }
 
         present_in_both, _, only_local = compare_lists(
             list1=list(artifact_defs_in_graph.keys()), list2=list(local_artifact_defs.keys())
