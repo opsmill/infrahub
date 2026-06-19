@@ -7,14 +7,14 @@ from infrahub.git.sync import RepositorySyncer
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 
 
-async def test_repository_lock_released_before_import(
+async def test_repository_lock_scopes_import_build_and_apply(
     prefect_test_fixture: None, git_repo_04: InfrahubRepository
 ) -> None:
-    """The object import must not run while the repository lock is held.
+    """The build phase of an import must run outside the lock and the apply phase inside it.
 
-    The lock serializes mutations of the repository's on-disk git state. The import reads file
-    content from the per-commit worktree pinned earlier in the sync, so it stays outside that
-    critical section.
+    The build phase reads file content from the per-commit worktree pinned earlier in the sync, so it
+    stays outside the critical section. The apply phase mutates the graph and must be serialized
+    against concurrent imports of the same repository.
     """
     branch = Branch(name="branch01", uuid=uuid4())
     registry.branch[branch.name] = branch
@@ -26,4 +26,5 @@ async def test_repository_lock_released_before_import(
 
     await syncer.sync(git_repo_04)
 
-    timeline.assert_not_held_at_checkpoint(f"repository.{git_repo_04.name}", "import")
+    timeline.assert_not_held_at_checkpoint(f"repository.{git_repo_04.name}", "build")
+    timeline.assert_held_at_checkpoint(f"repository.{git_repo_04.name}", "apply")
