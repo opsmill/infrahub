@@ -305,6 +305,74 @@ async def git_repo_06(
 
 
 @pytest.fixture
+async def git_repo_07(
+    client: InfrahubClient,
+    git_upstream_repo_03: dict[str, str | Path],
+    git_repos_dir: Path,
+    branch01: BranchData,
+    branch02: BranchData,
+) -> InfrahubRepository:
+    """Git Repository with git_upstream_repo_03 as remote.
+
+    The repo has 3 local branches: main, branch01 and branch02.
+    After the repo has been initialized:
+    - branch01 has been updated both locally and in the remote with different changes to the
+      same file, so pulling branch01 fails with a conflict.
+    - branch02 has been updated in the remote only, so pulling branch02 is a clean fast-forward.
+    """
+    upstream = Repo(git_upstream_repo_03["path"])
+
+    # Create branch02 in the remote with a dedicated file so it cannot conflict with main
+    upstream.git.checkout("-b", "branch02", "main")
+    branch02_file = Path(git_upstream_repo_03["path"]) / "branch02-file.txt"
+    branch02_file.write_text("initial content\n", encoding="utf-8")
+    upstream.index.add([str(branch02_file)])
+    upstream.index.commit("Add branch02 file")
+    upstream.git.checkout("main")
+
+    repo = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_03["name"],
+        location=str(git_upstream_repo_03["path"]),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
+
+    # Update the first file of branch01 in the remote
+    upstream.git.checkout(branch01.name)
+    first_file = find_first_file_in_directory(Path(git_upstream_repo_03["path"]))
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
+        await file.write("remote line\n")
+    upstream.index.add([first_file])
+    upstream.index.commit("Change first file in the remote")
+    upstream.git.checkout("main")
+
+    # Update the same file of branch01 locally with a different change to create a conflict on pull
+    branch_wt = repo.get_worktree(identifier=branch01.name)
+    branch_repo = Repo(branch_wt.directory)
+    local_first_file = find_first_file_in_directory(branch_wt.directory)
+    assert local_first_file
+    async with await anyio.open_file(local_first_file, mode="a", encoding="utf-8") as file:
+        await file.write("local line\n")
+    branch_repo.index.add([local_first_file])
+    branch_repo.index.commit("Change first file locally")
+
+    # Advance branch02 in the remote with a fast-forward commit
+    upstream.git.checkout("branch02")
+    async with await anyio.open_file(branch02_file, mode="a", encoding="utf-8") as file:
+        await file.write("new line\n")
+    upstream.index.add([str(branch02_file)])
+    upstream.index.commit("Change branch02 file")
+    upstream.git.checkout("main")
+
+    await repo.fetch()
+
+    return repo
+
+
+@pytest.fixture
 async def git_repo_jinja(
     client: InfrahubClient, git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
 ) -> InfrahubRepository:

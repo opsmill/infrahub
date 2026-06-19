@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import ANY, call, patch
 
 import pytest
+from prefect import flow
 
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
@@ -12,6 +13,8 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
+from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
+from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import (
@@ -94,6 +97,14 @@ PROPOSED_CHANGE_QUERY = """
 """
 
 
+@flow(name="sync-repository-for-test")
+async def sync_repository(repo: InfrahubRepository) -> None:
+    """Run a repository sync inside a flow run so the import has a Prefect run context, as in production."""
+    await RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter()).sync(
+        repo
+    )
+
+
 class TestProposedChange(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def user_account(self, db: InfrahubDatabase) -> Node:
@@ -143,7 +154,7 @@ class TestProposedChange(TestInfrahubApp):
         )
 
         repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
-        await repo.sync()
+        await sync_repository(repo)
 
         result = await graphql_mutation(
             query=PROPOSED_CHANGE_CREATE,

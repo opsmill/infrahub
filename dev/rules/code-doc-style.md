@@ -1,6 +1,7 @@
 ---
 paths:
-  - "backend/infrahub/**/*.py"
+  - "backend/**/*.py"
+  - "python_testcontainers/**/*.py"
 ---
 
 # Code documentation style
