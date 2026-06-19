@@ -22,7 +22,7 @@ const triggerStyles = tv({
   ],
 });
 
-export function SelectTrigger({ className, ...props }: AriaButtonProps) {
+export function SelectTrigger({ className, ...props }: Omit<AriaButtonProps, "children">) {
   return (
     <AriaButton className={composeAriaClassName(className, triggerStyles())} {...props}>
       <AriaSelectValue className="truncate data-placeholder:text-neutral-400" />
