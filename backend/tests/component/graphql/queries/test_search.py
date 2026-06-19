@@ -2,9 +2,10 @@ from typing import Any
 
 import pytest
 
+from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -90,6 +91,8 @@ async def test_search_anywhere_by_uuid(
     assert result.data["InfrahubSearchAnywhere"]["count"] == 1
     assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == car_accord_main.id
     assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["kind"] == car_accord_main.get_kind()
+    # TestCar display_labels are ["name__value", "color__value"]; accord has the default color.
+    assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["display_label"] == "accord #444444"
 
 
 async def test_search_anywhere_by_uuid_includes_schema_internal_nodes(
@@ -162,28 +165,88 @@ async def test_search_anywhere_by_uuid_includes_schema_internal_nodes(
     assert node_data["display_label"] == "test-schema"
 
 
-async def test_search_anywhere_by_uuid_includes_display_label(
+async def test_search_anywhere_by_uuid_respects_view_permissions(
     db: InfrahubDatabase,
-    car_accord_main: Node,
-    branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: SchemaBranch,
+    default_branch: Branch,
+    first_account: Node,
+    session_first_account: AccountSession,
 ) -> None:
-    """UUID search should include display_label for regular nodes."""
-    branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
-
-    result = await graphql(
-        schema=gql_params.schema,
-        source=SEARCH_QUERY,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"search": car_accord_main.id},
+    """UUID search hides nodes the account cannot view, while leaving system metadata reachable."""
+    # Grant the account view access to Builtin objects only.
+    permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await permission.new(
+        db=db,
+        namespace="Builtin",
+        name="*",
+        action=PermissionAction.VIEW.value,
+        decision=PermissionDecision.ALLOW_DEFAULT.value,
     )
+    await permission.save(db=db)
 
-    assert result.errors is None
-    assert result.data
-    node_data = result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]
-    # TestCar display_labels are ["name__value", "color__value"]; accord has the default color.
-    assert node_data["display_label"] == "accord #444444"
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(db=db, name="builtin-viewer", permissions=[permission])
+    await role.save(db=db)
+
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="builtin-viewers", roles=[role])
+    await group.save(db=db)
+    await group.members.add(db=db, data={"id": first_account.id})
+    await group.members.save(db=db)
+
+    schema = SchemaRoot(
+        nodes=[
+            {
+                "name": "Widget",
+                "namespace": "Internal",
+                "display_labels": ["name__value"],
+                "attributes": [{"name": "name", "kind": "Text"}],
+            },
+        ],
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    viewable_tag = await Node.init(db=db, schema=InfrahubKind.TAG)
+    await viewable_tag.new(db=db, name="blue")
+    await viewable_tag.save(db=db)
+
+    hidden_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await hidden_group.new(db=db, name="hidden")
+    await hidden_group.save(db=db)
+
+    internal_node = await Node.init(db=db, schema="InternalWidget")
+    await internal_node.new(db=db, name="internal")
+    await internal_node.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_first_account)
+
+    async def search(node_id: str) -> dict[str, Any]:
+        result = await graphql(
+            schema=gql_params.schema,
+            source=SEARCH_QUERY,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"search": node_id},
+        )
+        assert result.errors is None
+        assert result.data
+        return result.data["InfrahubSearchAnywhere"]
+
+    # Builtin object is viewable -> returned
+    builtin_result = await search(viewable_tag.id)
+    assert builtin_result["count"] == 1
+    assert builtin_result["edges"][0]["node"]["id"] == viewable_tag.id
+
+    # Core object is not viewable -> excluded
+    hidden_result = await search(hidden_group.id)
+    assert hidden_result["count"] == 0
+
+    # Internal namespace metadata stays reachable despite no explicit permission
+    internal_result = await search(internal_node.id)
+    assert internal_result["count"] == 1
+    assert internal_result["edges"][0]["node"]["id"] == internal_node.id
 
 
 async def test_search_anywhere_text_excludes_schema_internal_nodes(
