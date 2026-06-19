@@ -1,6 +1,5 @@
 from typing import Protocol
 
-from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import FlowFilter, FlowRunFilter
 
 from infrahub import config
@@ -8,6 +7,7 @@ from infrahub.message_bus.types import KVTTL
 from infrahub.services.adapters.cache import InfrahubCache
 
 from .cache_key import FlowRunCountCacheKeyBuilder
+from .prefect_client import FlowRunCounting
 
 
 class FlowRunCounterProtocol(Protocol):
@@ -22,7 +22,7 @@ class FlowRunCounter:
     """Count flow runs matching a filter, caching results above a configurable threshold."""
 
     def __init__(
-        self, client: PrefectClient, cache: InfrahubCache, cache_key_builder: FlowRunCountCacheKeyBuilder
+        self, client: FlowRunCounting, cache: InfrahubCache, cache_key_builder: FlowRunCountCacheKeyBuilder
     ) -> None:
         self.client = client
         self.cache = cache
@@ -46,9 +46,7 @@ class FlowRunCounter:
             except (TypeError, ValueError):
                 await self.cache.delete(key=cache_key)
 
-        response = await self.client._client.post("/flow_runs/count", json=body)
-        response.raise_for_status()
-        count_value = int(response.json())
+        count_value = await self.client.count_flow_runs(body)
 
         if count_value >= config.SETTINGS.workflow.flow_run_count_cache_threshold:
             await self.cache.set(key=cache_key, value=str(count_value), expires=KVTTL.ONE_MINUTE)

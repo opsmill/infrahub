@@ -1,7 +1,6 @@
 from typing import Protocol
 from uuid import UUID
 
-from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import (
     ArtifactFilter,
     ArtifactFilterType,
@@ -19,6 +18,7 @@ from prefect.client.schemas.sorting import FlowRunSort
 from infrahub.log import get_logger
 
 from .models import FlowLogs, FlowProgress
+from .prefect_client import ReaderPrefectClient
 
 log = get_logger()
 
@@ -43,9 +43,9 @@ class FlowRunReaderProtocol(Protocol):
 
 
 class FlowRunReader:
-    """Thin adapter over the Prefect client read operations used to display flow runs."""
+    """Read and shape the flow-run data needed to display tasks."""
 
-    def __init__(self, client: PrefectClient) -> None:
+    def __init__(self, client: ReaderPrefectClient) -> None:
         self.client = client
 
     async def read_flow_runs(

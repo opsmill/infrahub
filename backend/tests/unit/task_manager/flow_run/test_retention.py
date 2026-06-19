@@ -1,8 +1,9 @@
 from uuid import UUID, uuid4
 
 from prefect import State
-from prefect.client.schemas.filters import FlowRunFilter
+from prefect.client.schemas.filters import FlowFilter, FlowRunFilter
 from prefect.client.schemas.objects import FlowRun, StateType
+from prefect.client.schemas.sorting import FlowRunSort
 
 from infrahub.task_manager.flow_run.retention import FlowRunRetention
 
@@ -20,11 +21,18 @@ class InMemoryRetentionClient:
 
     def __init__(self, flow_runs: list[FlowRun] | None = None) -> None:
         self.runs: list[FlowRun] = list(flow_runs or [])
-        self.read_calls: list[int] = []
+        self.read_calls: list[int | None] = []
         self.deleted: list[UUID] = []
         self.state_changes: list[tuple[UUID, State, bool]] = []
 
-    async def read_flow_runs(self, flow_run_filter: FlowRunFilter, limit: int) -> list[FlowRun]:
+    async def read_flow_runs(
+        self,
+        flow_filter: FlowFilter | None = None,
+        flow_run_filter: FlowRunFilter | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        sort: FlowRunSort | None = None,
+    ) -> list[FlowRun]:
         self.read_calls.append(limit)
         return self.runs[:limit]
 
@@ -44,7 +52,14 @@ class StuckRetentionClient:
         self.runs = list(flow_runs)
         self.deleted: list[UUID] = []
 
-    async def read_flow_runs(self, flow_run_filter: FlowRunFilter, limit: int) -> list[FlowRun]:
+    async def read_flow_runs(
+        self,
+        flow_filter: FlowFilter | None = None,
+        flow_run_filter: FlowRunFilter | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        sort: FlowRunSort | None = None,
+    ) -> list[FlowRun]:
         return self.runs[:limit]
 
     async def delete_flow_run(self, flow_run_id: UUID) -> None:

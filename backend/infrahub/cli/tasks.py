@@ -7,7 +7,8 @@ from prefect.client.schemas.objects import StateType
 
 from infrahub import config
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
-from infrahub.task_manager.flow_run.retention import FlowRunRetention, PrefectFlowRunRetentionClient
+from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
+from infrahub.task_manager.flow_run.retention import FlowRunRetention
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
 from infrahub.workers.dependencies import build_tls_registry
 from infrahub.workflows.initialization import setup_task_manager
@@ -75,7 +76,7 @@ async def flow_runs(
     config.load_and_exit(config_file_name=config_file)
 
     async with get_client(sync_client=False) as client:
-        await FlowRunRetention(client=PrefectFlowRunRetentionClient(client)).purge(
+        await FlowRunRetention(client=PrefectClientAdapter(client)).purge(
             days_to_keep=days_to_keep,
             batch_size=batch_size,
         )
@@ -96,6 +97,6 @@ async def stale_runs(
     config.load_and_exit(config_file_name=config_file)
 
     async with get_client(sync_client=False) as client:
-        await FlowRunRetention(client=PrefectFlowRunRetentionClient(client)).purge(
+        await FlowRunRetention(client=PrefectClientAdapter(client)).purge(
             states=[StateType.RUNNING], delete=False, days_to_keep=days_to_keep, batch_size=batch_size
         )
