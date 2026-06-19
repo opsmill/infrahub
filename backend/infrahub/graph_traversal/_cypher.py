@@ -159,8 +159,9 @@ AND {rv}.status = "active" """
 # IS_PART_OF edge visible on the branch at this time (most-specific branch, then most recent)
 # WITHOUT pre-filtering on status, and only then keep the vertex if that latest edge is
 # "active". A node deleted on a higher-priority branch therefore wins over a stale "active"
-# edge on a lower branch. There should be at most one active Node per UUID per branch; the
-# trailing LIMIT 1 is defensive.
+# edge on a lower branch. There should be at most one active Node per UUID per branch; if
+# several survive, the trailing ORDER BY + LIMIT 1 deterministically picks the most-authoritative
+# (highest branch, then most recent) so traversal always anchors on the same vertex.
 # ----------------
 _SOURCE_MATCH = """
 MATCH (source:Node {uuid: $source_id})
@@ -173,8 +174,10 @@ CALL (source) {
 }
 WITH source, part_of
 WHERE part_of.status = "active"
-WITH source
+WITH source, part_of
+ORDER BY part_of.branch_level DESC, part_of.from DESC
 LIMIT 1
+WITH source
 """ % {"visible_r": _BRANCH_VISIBLE.format(rv="r")}
 
 _TARGET_BY_ID_MATCH = """
@@ -188,8 +191,10 @@ CALL (target) {
 }
 WITH source, target, part_of
 WHERE part_of.status = "active"
-WITH source, target
+WITH source, target, part_of
+ORDER BY part_of.branch_level DESC, part_of.from DESC
 LIMIT 1
+WITH source, target
 """ % {"visible_r": _BRANCH_VISIBLE.format(rv="r")}
 
 # Same active-Node resolution for a BFS anchor (the source on a forward expansion, the
@@ -205,8 +210,10 @@ CALL (anchor) {
 }
 WITH anchor, part_of
 WHERE part_of.status = "active"
-WITH anchor
+WITH anchor, part_of
+ORDER BY part_of.branch_level DESC, part_of.from DESC
 LIMIT 1
+WITH anchor
 """ % {"visible_r": _BRANCH_VISIBLE.format(rv="r")}
 
 _HOP_TUPLE_PREDICATE = """[{start_var}.kind, {rel_var}.name, {end_var}.kind] IN ${hop_tuple_param}"""
