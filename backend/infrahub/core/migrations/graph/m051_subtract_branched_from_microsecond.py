@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 class Migration051(ArbitraryMigration):
     name: str = "051_subtract_branched_from_microsecond"
+    description: str = "N/A"
     minimum_version: int = 50
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

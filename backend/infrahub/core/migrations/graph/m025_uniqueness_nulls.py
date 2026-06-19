@@ -16,6 +16,7 @@ log = get_logger()
 
 class Migration025(InternalSchemaMigration):
     name: str = "025_validate_nulls_in_uniqueness_constraints"
+    description: str = "N/A"
     minimum_version: int = 24
     migrations: Sequence[SchemaMigration] = []
 
