@@ -49,7 +49,7 @@ export type AttributeValueFromProfile = {
 
 export type AttributeValueFromPool = {
   source: PoolSource;
-  value: { from_pool: { id: string } };
+  value: { from_pool: { id: string; prefixlen?: number } };
 };
 
 export type AttributeValueForCheckbox = {
@@ -104,7 +104,7 @@ export type RelationshipManyValueFromTemplate = {
 
 export type RelationshipValueFromPool = {
   source: PoolSource;
-  value: NodeCore | { from_pool: { id: string } };
+  value: NodeCore | { from_pool: { id: string; prefixlen?: number } };
 };
 
 export type RelationshipOneValueFromProfile = {

@@ -210,6 +210,94 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
   });
 
+  it("includes the requested prefixlen on a direct from-pool relationship", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        defaultValue: { source: { type: "user" }, value: null },
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "IpamIPAddress" },
+      }),
+    ];
+    const formData: Record<string, RelationshipValueFromPool> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id", prefixlen: 24 } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      primary_address: { from_pool: { id: "pool-id", prefixlen: 24 } },
+    });
+  });
+
+  it("omits prefixlen on a direct from-pool relationship when none was entered", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        defaultValue: { source: { type: "user" }, value: null },
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "IpamIPAddress" },
+      }),
+    ];
+    // The nested prefix-length field registers an undefined value when untouched;
+    // it must not be serialized as `prefixlen: undefined` (invalid GraphQL).
+    const formData: Record<string, RelationshipValueFromPool> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id", prefixlen: undefined } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      primary_address: { from_pool: { id: "pool-id" } },
+    });
+  });
+
+  it("skips the update when the same pool is reselected, even with a different prefixlen", () => {
+    // Allocation is idempotent on the reservation identifier, so re-selecting the
+    // same pool cannot change an existing allocation's mask — it is a no-op.
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        defaultValue: {
+          source: {
+            type: "pool",
+            label: "Loopbacks pool",
+            id: "pool-id",
+            kind: "CoreIPAddressPool",
+          },
+          value: { from_pool: { id: "pool-id", prefixlen: 32 } },
+        },
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "IpamIPAddress" },
+      }),
+    ];
+    const formData: Record<string, RelationshipValueFromPool> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id", prefixlen: 28 } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+    // THEN
+    expect(mutationData).to.deep.equal({});
+  });
+
   describe("Resource pool from-pool relationship", () => {
     it("splits pool value to from-pool relationship when fromPoolRelationshipName is set", () => {
       // GIVEN

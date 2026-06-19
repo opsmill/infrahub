@@ -84,6 +84,10 @@ export const getFormFieldFromAttribute = ({
       required: !isFilterForm && !isBulkUpdate && !attributeSchema.optional,
       validate: (formFieldValue: FormFieldValue) => {
         if (isFilterForm || isBulkUpdate) return true;
+
+        // A from-pool value has no concrete value to check against the attribute
+        // constraints; the pool resolves it on submit (and its prefix-length override,
+        // for IP pools, is validated by the pool's own field).
         if (formFieldValue.source?.type === "pool") return true;
 
         const attributeKind = attributeSchema.kind as AttributeKind;

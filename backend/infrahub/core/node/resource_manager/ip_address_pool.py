@@ -51,6 +51,20 @@ class CoreIPAddressPool(Node):
                     node = await registry.manager.get_one(db=db, id=address.get("uuid"), branch=branch)
 
                     if node:
+                        # Allocation is idempotent: a reserved address can't change its prefix
+                        # length. Reject an explicit conflicting one instead of silently ignoring
+                        # it (a matching or absent one stays idempotent).
+                        requested_prefixlen = prefixlen if prefixlen is not None else (data or {}).get("prefixlen")
+                        existing_address = node.address.value  # type: ignore[attr-defined]
+                        existing_prefixlen = ipaddress.ip_interface(str(existing_address)).network.prefixlen
+                        if requested_prefixlen is not None and requested_prefixlen != existing_prefixlen:
+                            raise ValidationError(
+                                input_value=(
+                                    f"IPAddressPool: {self.name.value} | This resource is already "  # type: ignore[attr-defined]
+                                    f"allocated as {existing_address}; its prefix length cannot be "
+                                    f"changed, only /{existing_prefixlen} can be used."
+                                )
+                            )
                         return node
 
             data = data or {}

@@ -20,6 +20,7 @@ export type PoolValue = {
     id: string;
     name: string;
     kind: string;
+    prefixlen?: number;
   };
 };
 

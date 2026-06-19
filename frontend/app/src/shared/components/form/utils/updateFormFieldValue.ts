@@ -28,6 +28,13 @@ export const updateAttributeFieldValue = (
   defaultValue?: FormAttributeValue
 ): FormAttributeValue => {
   if (newValue && "from_pool" in newValue) {
+    if (defaultValue?.source?.type === "pool" && defaultValue.source.id === newValue.from_pool.id) {
+      // Re-selecting the field's original pool restores the existing allocation
+      // unchanged. Allocation is idempotent on the reservation identifier, so the
+      // original pool cannot be re-allocated with a different mask — show the
+      // resolved value rather than a pending allocation with an editable length.
+      return defaultValue;
+    }
     return {
       source: {
         type: "pool",
@@ -38,6 +45,9 @@ export const updateAttributeFieldValue = (
       value: {
         from_pool: {
           id: newValue.from_pool.id,
+          ...(newValue.from_pool.prefixlen !== undefined && {
+            prefixlen: newValue.from_pool.prefixlen,
+          }),
         },
       },
     };
@@ -51,6 +61,13 @@ export const updateRelationshipFieldValue = (
   defaultValue?: FormRelationshipValue
 ): FormRelationshipValue => {
   if (newValue && "from_pool" in newValue) {
+    if (defaultValue?.source?.type === "pool" && defaultValue.source.id === newValue.from_pool.id) {
+      // Re-selecting the field's original pool restores the existing allocation
+      // unchanged. Allocation is idempotent on the reservation identifier, so the
+      // original pool cannot be re-allocated with a different mask — show the
+      // resolved value rather than a pending allocation with an editable length.
+      return defaultValue;
+    }
     return {
       source: {
         type: "pool",
@@ -61,6 +78,9 @@ export const updateRelationshipFieldValue = (
       value: {
         from_pool: {
           id: newValue.from_pool.id,
+          ...(newValue.from_pool.prefixlen !== undefined && {
+            prefixlen: newValue.from_pool.prefixlen,
+          }),
         },
       },
     };

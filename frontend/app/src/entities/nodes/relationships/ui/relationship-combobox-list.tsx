@@ -22,6 +22,9 @@ export interface RelationshipComboboxListProps
   peer: string;
   onSelect: (value: RelationshipNode) => void;
   value?: RelationshipNode | null;
+  // Mark the selected item by id when the full node is not available to the
+  // caller. Takes precedence over `value?.id`.
+  selectedValue?: string;
   filterItem?: (relationshipNode: RelationshipNode) => boolean;
   filterQuery?: Record<string, string | number | boolean | string[]>;
 }
@@ -30,6 +33,7 @@ export const RelationshipComboboxList = ({
   ref,
   peer,
   value,
+  selectedValue,
   onSelect,
   filterItem,
   filterQuery,
@@ -58,6 +62,7 @@ export const RelationshipComboboxList = ({
       onValueChange={(newValue) => setSearchDebounced(newValue)}
       shouldFilter={false}
       placeholder="Search by value or UUID..."
+      defaultActiveValue={selectedValue}
       {...props}
     >
       {isPending ? (
@@ -73,7 +78,7 @@ export const RelationshipComboboxList = ({
               <ComboboxItem
                 key={node.id}
                 value={node.id}
-                selectedValue={value?.id}
+                selectedValue={selectedValue ?? value?.id}
                 onSelect={() => onSelect(node)}
               >
                 <span className="truncate">{getNodeLabel(node)}</span>

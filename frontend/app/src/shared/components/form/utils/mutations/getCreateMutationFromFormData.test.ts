@@ -209,7 +209,86 @@ describe("getCreateMutationFromFormData", () => {
     });
   });
 
+  it("includes the requested prefixlen on a direct from-pool relationship", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "IpamIPAddress" },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id", prefixlen: 32 } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      primary_address: { from_pool: { id: "pool-id", prefixlen: 32 } },
+    });
+  });
+
+  it("omits prefixlen on a direct from-pool relationship when not set", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildFormField({
+        name: "primary_address",
+        type: "relationship",
+        pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "IpamIPAddress" },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      primary_address: {
+        source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
+        value: { from_pool: { id: "pool-id" } },
+      },
+    };
+
+    // WHEN
+    const mutationData = getCreateMutationFromFormData(fields, formData);
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      primary_address: { from_pool: { id: "pool-id" } },
+    });
+  });
+
   describe("Resource pool from-pool relationship", () => {
+    it("includes prefixlen on the from-pool relationship when fromPoolRelationshipName is set", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "ip_address",
+          type: "relationship",
+          pool: {
+            kind: "CoreIPAddressPool",
+            defaultAllocatedObjectKind: "InfraIPAddress",
+            fromPoolRelationshipName: "ip_address_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormRelationshipValue> = {
+        ip_address: {
+          source: { type: "pool", label: "test pool", id: "pool-id", kind: "CoreIPAddressPool" },
+          value: { from_pool: { id: "pool-id", prefixlen: 24 } },
+        },
+      };
+
+      // WHEN
+      const mutationData = getCreateMutationFromFormData(fields, formData);
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        ip_address_from_resource_pool: { id: "pool-id", prefixlen: 24 },
+      });
+    });
+
     it("splits pool value to from-pool relationship when fromPoolRelationshipName is set", () => {
       // GIVEN
       const fields: Array<DynamicFieldProps> = [

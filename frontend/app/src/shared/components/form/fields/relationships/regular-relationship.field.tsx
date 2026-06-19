@@ -149,9 +149,11 @@ export const NodeRelationshipField = ({
 
                 {pool && (
                   <PoolSelect
+                    name={name}
                     poolKind={pool.kind}
                     poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
                     selectedPoolId={selectedPoolId}
+                    value={fieldData}
                     onChange={onChange}
                   />
                 )}

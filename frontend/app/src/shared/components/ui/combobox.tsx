@@ -72,6 +72,7 @@ export interface ComboboxListProps extends React.ComponentProps<typeof CommandLi
   shouldFilter?: boolean;
   onValueChange?: (search: string) => void;
   placeholder?: string;
+  defaultActiveValue?: string;
 }
 
 export const ComboboxList = ({
@@ -80,11 +81,12 @@ export const ComboboxList = ({
   autoFocus,
   onValueChange,
   placeholder = "Filter...",
+  defaultActiveValue,
   ref,
   ...props
 }: ComboboxListProps) => {
   return (
-    <Command shouldFilter={shouldFilter} className={className}>
+    <Command shouldFilter={shouldFilter} className={className} defaultValue={defaultActiveValue}>
       <CommandInput placeholder={placeholder} autoFocus={autoFocus} onValueChange={onValueChange} />
       <CommandList ref={ref} {...props} />
     </Command>

@@ -88,9 +88,11 @@ export default function RelationshipHierarchicalField({
 
               {relationship.cardinality === "one" && pool && (
                 <PoolSelect
+                  name={name}
                   poolKind={pool.kind}
                   poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
                   selectedPoolId={selectedPoolId}
+                  value={fieldData}
                   onChange={onChange}
                 />
               )}

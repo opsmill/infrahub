@@ -4,6 +4,7 @@ import {
   isFormFieldValueFromPool,
   isFormFieldValueFromTemplate,
 } from "@/shared/components/form/type";
+import { buildFromPoolPayload } from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
 
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 
@@ -26,8 +27,12 @@ export const getCreateMutationFromFormData = (
         return acc;
       }
       const fromPoolField = field.pool?.fromPoolRelationshipName;
-      if (fromPoolField && "from_pool" in fieldData.value) {
-        return { ...acc, [fromPoolField]: { id: fieldData.value.from_pool.id } };
+      if ("from_pool" in fieldData.value) {
+        const fromPool = buildFromPoolPayload(fieldData.value.from_pool);
+        if (fromPoolField) {
+          return { ...acc, [fromPoolField]: fromPool };
+        }
+        return { ...acc, [field.name]: { from_pool: fromPool } };
       }
       return { ...acc, [field.name]: fieldData.value };
     }
@@ -102,6 +107,12 @@ export const getCreateMutationFromFormDataOnly = (
     if (isFormFieldValueFromPool(fieldData)) {
       if (fieldData.source.fromTemplate) {
         return acc;
+      }
+      if ("from_pool" in fieldData.value) {
+        return {
+          ...acc,
+          [fieldName]: { from_pool: buildFromPoolPayload(fieldData.value.from_pool) },
+        };
       }
       return { ...acc, [fieldName]: fieldData.value };
     }
