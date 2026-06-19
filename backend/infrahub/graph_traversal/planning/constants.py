@@ -5,7 +5,7 @@ from __future__ import annotations
 from infrahub.core.constants import InfrahubKind
 
 MIN_DEPTH = 1
-MAX_DEPTH = 20
+MAX_DEPTH = 30
 
 DEFAULT_EXCLUDED_NAMESPACES: tuple[str, ...] = (
     "Core",

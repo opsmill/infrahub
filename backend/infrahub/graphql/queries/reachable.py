@@ -48,7 +48,7 @@ class ReachableNodesResultType(ObjectType):
 class ReachableNodesInput(InputObjectType):
     source_id = String(required=True, description="UUID of the source node")
     target_kinds = List(of_type=NonNull(String), required=True, description="Node kinds to search for")
-    max_depth = Int(required=False, default_value=5, description="Maximum traversal depth (default: 5, max: 20)")
+    max_depth = Int(required=False, default_value=5, description="Maximum traversal depth (default: 5, max: 30)")
     max_results = Int(
         required=False,
         default_value=50,
