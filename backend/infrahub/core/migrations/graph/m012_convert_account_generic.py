@@ -321,6 +321,7 @@ class Migration012UpdateHFID(SchemaAttributeUpdateQuery):
 
 class Migration012(GraphMigration):
     name: str = "012_convert_account_generic"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [
         Migration012DeleteOldElementsSchema,
         Migration012RenameTypeAttributeData,

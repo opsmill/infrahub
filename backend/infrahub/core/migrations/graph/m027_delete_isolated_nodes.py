@@ -43,6 +43,7 @@ class Migration027(GraphMigration):
     """
 
     name: str = "027_deleted_isolated_nodes"
+    description: str = "N/A"
     minimum_version: int = 26
     queries: Sequence[type[Query]] = [DeleteIsolatedNodesQuery]
 

@@ -455,6 +455,7 @@ class Migration037(ArbitraryMigration):
     """
 
     name: str = "037_index_attr_vals"
+    description: str = "N/A"
     minimum_version: int = 36
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

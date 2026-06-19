@@ -3,7 +3,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from .repository import InfrahubRepository, PendingObjectImport
+from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError
+
+from .repository import FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -86,6 +88,21 @@ class RepositorySyncer:
 
     async def sync(self, repo: InfrahubRepository, staging_branch: str | None = None) -> None:
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
-            pending_imports = await repo.collect_pending_imports(staging_branch=staging_branch)
-        for pending_import in pending_imports:
-            await self._importer.import_branch(repo, pending_import)
+            collected = await repo.collect_pending_imports(staging_branch=staging_branch)
+
+        failed_imports = list(collected.failed_imports)
+        for pending_import in collected.imports:
+            try:
+                await self._importer.import_branch(repo, pending_import)
+            except (RepositoryConnectionError, RepositoryCredentialsError):
+                raise
+            except Exception as exc:
+                # The import already records its own per-branch error status before re-raising, so
+                # isolate the failure here to keep importing the remaining branches.
+                failed_imports.append(
+                    FailedImport(
+                        branch_name=pending_import.infrahub_branch_name, step=ImportStep.IMPORT, reason=str(exc)
+                    )
+                )
+
+        repo.raise_if_branches_failed(failed_imports)
