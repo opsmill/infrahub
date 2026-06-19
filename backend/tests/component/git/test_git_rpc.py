@@ -24,7 +24,7 @@ from infrahub.git.models import (
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
 )
-from infrahub.git.repository import InfrahubReadOnlyRepository
+from infrahub.git.repository import CollectedImports, InfrahubReadOnlyRepository
 from infrahub.git.sync import RepositoryAdder
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.lock import InfrahubLockRegistry
@@ -101,7 +101,7 @@ class TestAddRepository:
 
         self.mock_repo.name = git_upstream_repo_01["name"]
         self.mock_repo.import_objects_from_files = AsyncMock()
-        self.mock_repo.collect_pending_imports = AsyncMock(return_value=[])
+        self.mock_repo.collect_pending_imports = AsyncMock(return_value=CollectedImports())
 
         with patch("infrahub.git.sync.InfrahubRepository", spec=InfrahubRepository) as mock_repo_class:
             mock_repo_class.new.return_value = self.mock_repo
