@@ -23722,7 +23722,7 @@ export type PathTraversalInput = {
   included_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Filter to only traverse through nodes of these kinds */
   kind_filter?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Maximum number of node hops (default: 5, max: 20) */
+  /** Maximum number of node hops (default: 5, max: 30) */
   max_depth?: InputMaybe<Scalars['Int']['input']>;
   /** Maximum number of paths to return (default: 10, max: 100) */
   max_paths?: InputMaybe<Scalars['Int']['input']>;
@@ -37241,7 +37241,7 @@ export type ReachableNodeType = {
 };
 
 export type ReachableNodesInput = {
-  /** Maximum traversal depth (default: 5, max: 20) */
+  /** Maximum traversal depth (default: 5, max: 30) */
   max_depth?: InputMaybe<Scalars['Int']['input']>;
   /** Maximum total paths returned across all discovered terminals (default: 500, max: 5000) */
   max_paths?: InputMaybe<Scalars['Int']['input']>;
