@@ -12,6 +12,8 @@ from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
+from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
+from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import (
@@ -143,7 +145,9 @@ class TestProposedChange(TestInfrahubApp):
         )
 
         repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
-        await repo.sync()
+        await RepositorySyncer(
+            lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter()
+        ).sync(repo)
 
         result = await graphql_mutation(
             query=PROPOSED_CHANGE_CREATE,
