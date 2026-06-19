@@ -16,9 +16,9 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
+from infrahub.graph_traversal.executor import ReachableNodesExecutor
 from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from infrahub.graph_traversal.reachable import ReachableNodesExecutor
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.resolver import PermissionResolver
 
@@ -133,7 +133,6 @@ async def build_path_traversal_query(
     source_id: str,
     default_branch_name: str,
     max_paths: int = 10,
-    depths: Iterable[int] | None = None,
     at: Timestamp | None = None,
 ) -> PathTraversalQuery:
     """Construct a ``GraphTraversalCypherRenderer`` and a ``PathTraversalQuery`` around it."""
@@ -150,7 +149,6 @@ async def build_path_traversal_query(
         plan=plan,
         source_id=source_id,
         max_paths=max_paths,
-        depths=depths,
     )
 
 

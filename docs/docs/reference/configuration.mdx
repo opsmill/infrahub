@@ -105,6 +105,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_RETRY_JITTER_MAX` | Maximum jitter in seconds added to retry delay to avoid thundering herd. | number | 0.1 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` | Maximum number of concurrent queries that can run (0 means unlimited). | integer | 0 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` | Delay to add when max_concurrent_queries is reached. | number | 0.01 |
+| `INFRAHUB_DB_GRAPH_TRAVERSAL_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for graph-traversal queries (path traversal and reachable nodes); the query is aborted once it is exceeded. | number | 75 |
 
 ## Broker
 
