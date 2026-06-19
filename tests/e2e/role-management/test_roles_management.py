@@ -43,15 +43,11 @@ class TestRolesCrud:
         await admin_page.get_by_test_id("create-object-button").click()
         await admin_page.get_by_role("textbox", name="Name *").fill("test role")
         await admin_page.get_by_label("Groups").click()
-        await admin_page.get_by_test_id("side-panel-container").get_by_text("Infrahub Users").click()
+        await admin_page.get_by_label("sheet").get_by_text("Infrahub Users").click()
         await admin_page.get_by_label("Groups").click()
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Permissions").click()
-        await (
-            admin_page.get_by_test_id("side-panel-container")
-            .get_by_role("option", name="global:super_admin:allow_all")
-            .click()
-        )
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Permissions").click()
+        await admin_page.get_by_label("sheet").get_by_label("Permissions").click()
+        await admin_page.get_by_label("sheet").get_by_role("option", name="global:super_admin:allow_all").click()
+        await admin_page.get_by_label("sheet").get_by_label("Permissions").click()
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("Role created!")).to_be_visible()
 
@@ -83,18 +79,8 @@ class TestRolesCrud:
         await expect(admin_page.get_by_role("link", name="test role 2")).to_be_visible()
 
         # bulk edit both roles
-        await (
-            admin_page.get_by_role("link", name="test role updated")
-            .locator("..")
-            .get_by_test_id("identifier-checkbox-cell")
-            .click()
-        )
-        await (
-            admin_page.get_by_role("link", name="test role 2")
-            .locator("..")
-            .get_by_test_id("identifier-checkbox-cell")
-            .click()
-        )
+        await get_data_table_row(admin_page, "test role updated").locator("label").click()
+        await get_data_table_row(admin_page, "test role 2").locator("label").click()
         await admin_page.get_by_role("button", name="Edit").click()
         await admin_page.get_by_role("button", name="Add Permissions").click()
         await admin_page.get_by_role("option", name="global:super_admin:allow_all").click()

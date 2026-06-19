@@ -41,13 +41,13 @@ class TestBulkDeleteAllRows:
         # assert we have the initial values
         await admin_page.goto(f"/objects/BuiltinTag?branch={branch}")
         await expect(admin_page.get_by_role("link", name="green")).to_be_visible()
-        await expect(admin_page.get_by_test_id("identifier-checkbox-cell")).to_have_count(3)
+        await expect(admin_page.get_by_test_id("identifier-cell").get_by_role("checkbox")).to_have_count(3)
 
         # select all rows
         await admin_page.get_by_test_id("select-all-rows").click()
-        await expect(admin_page.get_by_test_id("identifier-checkbox-cell").nth(0)).to_be_checked()
-        await expect(admin_page.get_by_test_id("identifier-checkbox-cell").nth(1)).to_be_checked()
-        await expect(admin_page.get_by_test_id("identifier-checkbox-cell").nth(2)).to_be_checked()
+        await expect(admin_page.get_by_test_id("identifier-cell").nth(0).get_by_role("checkbox")).to_be_checked()
+        await expect(admin_page.get_by_test_id("identifier-cell").nth(1).get_by_role("checkbox")).to_be_checked()
+        await expect(admin_page.get_by_test_id("identifier-cell").nth(2).get_by_role("checkbox")).to_be_checked()
 
         # delete all rows
         await admin_page.get_by_test_id("object-table-toolbar").get_by_role("button", name="Delete").click()

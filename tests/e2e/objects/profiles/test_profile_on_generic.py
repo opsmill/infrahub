@@ -73,7 +73,7 @@ class TestProfileOnGeneric:
         await expect(admin_page.get_by_label("Layer2 Mode *")).not_to_be_visible()
         await expect(admin_page.get_by_label("Speed *")).not_to_be_visible()
         await expect(admin_page.get_by_label("Untagged VLAN")).not_to_be_visible()
-        await expect(admin_page.get_by_test_id("side-panel-container").get_by_text("Tagged VLANs")).to_be_visible()
+        await expect(admin_page.get_by_label("sheet").get_by_text("Tagged VLANs")).to_be_visible()
         await expect(admin_page.get_by_label("Device *")).not_to_be_visible()
 
     async def test_create_interface_l2_profile(self, admin_page: Page, branch: str) -> None:

@@ -42,9 +42,9 @@ class TestBulkEditSomeRows:
     async def test_should_be_able_to_update_multiple_objects_at_once(self, admin_page: Page, branch: str) -> None:
         # navigate to objects page and select items
         await admin_page.goto(f"/objects/InfraDevice?branch={branch}")
-        await admin_page.get_by_test_id("identifier-checkbox-cell").nth(0).click()
-        await admin_page.get_by_test_id("identifier-checkbox-cell").nth(1).click()
-        await admin_page.get_by_test_id("identifier-checkbox-cell").nth(2).click()
+        await admin_page.get_by_test_id("identifier-cell").nth(0).locator("label").click()
+        await admin_page.get_by_test_id("identifier-cell").nth(1).locator("label").click()
+        await admin_page.get_by_test_id("identifier-cell").nth(2).locator("label").click()
         await admin_page.get_by_test_id("object-table-toolbar").get_by_role("button", name="Edit").click()
 
         # verify bulk edit panel is displayed correctly

@@ -70,6 +70,10 @@ class TestResourceManager:
         await expect(admin_page.get_by_text("Updated at")).to_be_visible()
         await expect(admin_page.get_by_text("Updated by")).to_be_visible()
 
+        # dismiss the metadata popover so it stops overlaying the edit button
+        await admin_page.keyboard.press("Escape")
+        await expect(admin_page.get_by_text("Created at")).to_be_hidden()
+
         await admin_page.get_by_test_id("edit-button").click()
         await expect(admin_page.get_by_label("Default Prefix Type")).to_contain_text("IP PrefixIpam")
         await admin_page.get_by_label("Description").fill("a test pool for e2e")

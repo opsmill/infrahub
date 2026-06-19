@@ -129,7 +129,7 @@ class TestProposedChangesCreateEditMerge:
         await admin_page.get_by_test_id("edit-button").click()
         await admin_page.get_by_label("Name").fill(pc_names["name_edit"])
         await (
-            admin_page.get_by_test_id("side-panel-container")
+            admin_page.get_by_label("sheet")
             .get_by_test_id("codemirror-editor")
             .get_by_role("textbox")
             .fill("My description edit")

@@ -97,7 +97,7 @@ class TestObjectRelationships:
 
         # Add a new relationship
         await admin_page.get_by_test_id("open-relationship-form-button").click()
-        await admin_page.get_by_test_id("side-panel-container").get_by_label("Devices").click()
+        await admin_page.get_by_label("sheet").get_by_label("Devices").click()
         await admin_page.get_by_role("option", name="atl1-leaf1").click()
         await admin_page.get_by_role("button", name="Save").click()
 

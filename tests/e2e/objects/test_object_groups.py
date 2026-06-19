@@ -72,31 +72,35 @@ class TestObjectGroupsUpdate:
         # auto-generated toggle button not visible if there is no auto-generated groups
         await expect(admin_page.get_by_role("button", name="auto-generated")).not_to_be_visible()
 
+        # Scope the manager-list assertions to the group-manager sheet: after the SlideOver ->
+        # Sheet migration the group links/controls can match duplicates elsewhere on the page.
+        group_manager = admin_page.get_by_test_id("group-manager")
+
         # new groups are visible in groups manager
-        await expect(admin_page.get_by_role("link", name="arista_devices")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="backbone_interfaces")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="Standard Group").first).to_be_visible()
+        await expect(group_manager.get_by_role("link", name="arista_devices")).to_be_visible()
+        await expect(group_manager.get_by_role("link", name="backbone_interfaces")).to_be_visible()
+        await expect(group_manager.get_by_role("link", name="Standard Group").first).to_be_visible()
 
         # filter groups
-        await admin_page.get_by_placeholder("filter groups...").fill("ari")
-        await expect(admin_page.get_by_role("link", name="arista_devices")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="backbone_interfaces")).not_to_be_visible()
+        await group_manager.get_by_placeholder("filter groups...").fill("ari")
+        await expect(group_manager.get_by_role("link", name="arista_devices")).to_be_visible()
+        await expect(group_manager.get_by_role("link", name="backbone_interfaces")).not_to_be_visible()
 
-        await admin_page.get_by_placeholder("filter groups...").fill("")
-        await expect(admin_page.get_by_role("link", name="arista_devices")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="backbone_interfaces")).to_be_visible()
+        await group_manager.get_by_placeholder("filter groups...").fill("")
+        await expect(group_manager.get_by_role("link", name="arista_devices")).to_be_visible()
+        await expect(group_manager.get_by_role("link", name="backbone_interfaces")).to_be_visible()
 
         # leave arista_devices group
-        await admin_page.get_by_test_id("leave-group-button").first.click()
+        await group_manager.get_by_test_id("leave-group-button").first.click()
         await expect(admin_page.get_by_role("heading", name="Leave Group")).to_be_visible()
         await expect(admin_page.get_by_text("Are you sure you want to leave group arista_devices?")).to_be_visible()
         await admin_page.get_by_test_id("modal-delete-confirm").click()
 
         # arista_devices group is not visible in groups manager
-        await expect(admin_page.get_by_role("link", name="backbone_interfaces")).to_be_visible()
-        await expect(admin_page.get_by_role("link", name="arista_devices")).not_to_be_visible()
+        await expect(group_manager.get_by_role("link", name="backbone_interfaces")).to_be_visible()
+        await expect(group_manager.get_by_role("link", name="arista_devices")).not_to_be_visible()
 
         # add group form default values is visible
-        await admin_page.get_by_test_id("open-group-form-button").click()
+        await group_manager.get_by_test_id("open-group-form-button").click()
         await expect(admin_page.get_by_text("backbone_interfaces×")).to_be_visible()
         await expect(admin_page.get_by_text("arista_devices×")).not_to_be_visible()

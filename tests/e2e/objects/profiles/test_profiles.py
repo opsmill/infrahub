@@ -108,7 +108,7 @@ class TestProfiles:
         await admin_page.get_by_test_id("source-profile-badge").hover()
         await expect(admin_page.get_by_test_id("source-profile-tooltip").first).to_be_visible()
         await expect(admin_page.get_by_role("link", name="profile test tag").first).to_be_visible()
-        await admin_page.get_by_label("Name *").click()  # hide tooltip
+        await admin_page.get_by_label("Description").click()  # hide tooltip
 
         await admin_page.get_by_label("Name *").fill("tag with profile")
         await admin_page.get_by_role("button", name="Save").click()
@@ -120,9 +120,7 @@ class TestProfiles:
         # Verify profile metadata
         await admin_page.get_by_text("Nametag with profile").get_by_test_id("view-metadata-button").click()
         await expect(admin_page.get_by_test_id("metadata-tooltip").get_by_text("Source-")).to_be_visible()
-        await (
-            admin_page.get_by_text("Nametag with profile").get_by_test_id("view-metadata-button").click()
-        )  # to close popover
+        await admin_page.get_by_test_id("metadata-tooltip").press("Escape")  # to close popover
         await admin_page.get_by_text("DescriptionA profile for E2E").get_by_test_id("view-metadata-button").click()
         await expect(
             admin_page.get_by_test_id("metadata-tooltip").get_by_role("link", name="profile test tag")
