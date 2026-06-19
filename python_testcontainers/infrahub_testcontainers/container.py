@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import time
+import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from functools import cached_property
+from http import HTTPStatus
 from pathlib import Path
 
 from testcontainers.compose import DockerCompose
@@ -32,6 +35,7 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 PROJECT_ENV_VARIABLES: dict[str, str] = {
     "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:4.2.1-management",
     "CACHE_DOCKER_IMAGE": "redis:8.4.0",
+    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-community",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
@@ -193,6 +197,50 @@ class InfrahubDockerCompose(DockerCompose):
         if self.services:
             cmd.extend(self.services)
         self._run_command(cmd=cmd)
+
+    def set_server_response_delay(self, delay: int) -> None:
+        """Enable a per-GraphQL-request delay on the running infrahub-server.
+
+        POSTs to the ``/api/response-delay`` endpoint, which broadcasts the new value over the
+        message bus so every API worker process across all server replicas applies it at
+        runtime — no restart involved. Each worker consumes the broadcast asynchronously, so
+        the change is then verified by timing GraphQL probes until consecutive responses
+        observe the delay.
+
+        Intended to be called AFTER the dataset is loaded: a boot-time delay would slow the
+        demo-data load (thousands of GraphQL mutations).
+        """
+        address = f"http://localhost:{self.get_services_port()['server']}"
+        token = self.get_env_var("INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN")
+        request = urllib.request.Request(  # noqa: S310 (fixed localhost URL)
+            url=f"{address}/api/response-delay",
+            data=json.dumps({"response_delay": delay}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "X-INFRAHUB-KEY": token},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 (fixed localhost URL)
+            if response.status != HTTPStatus.OK:
+                raise RuntimeError(f"Failed to set the response delay: HTTP {response.status}")
+
+        if not delay:
+            return
+
+        required_delayed_probes = 5
+        consecutive_delayed = 0
+        deadline = time.monotonic() + 60
+        while consecutive_delayed < required_delayed_probes:
+            if time.monotonic() > deadline:
+                raise RuntimeError("The response delay did not become active on the server within 60s")
+            probe = urllib.request.Request(  # noqa: S310 (fixed localhost URL)
+                url=f"{address}/graphql",
+                data=json.dumps({"query": "query { __typename }"}).encode("utf-8"),
+                headers={"Content-Type": "application/json", "X-INFRAHUB-KEY": token},
+                method="POST",
+            )
+            start = time.monotonic()
+            with urllib.request.urlopen(probe, timeout=30 + delay):  # noqa: S310 (fixed localhost URL)
+                pass
+            consecutive_delayed = consecutive_delayed + 1 if time.monotonic() - start >= delay else 0
 
     def start_container(self, service_name: str | list[str]) -> None:
         """

@@ -252,6 +252,7 @@ If you find yourself wanting to mock:
 
 - External HTTP APIs with no test mode (use `responses` or `httpx_mock` sparingly)
 - Time-dependent behavior (`freezegun`)
+- Prefect's `get_run_logger` when calling a `.fn` outside a flow context — patch it to return a stdlib `logging.getLogger(...)` so `caplog` can capture output. See [Backend Testing — Logging](../../knowledge/backend/testing.md#logging-use-caplog-instead-of-mocking-get_run_logger) for the pattern.
 
 Even in these cases, prefer adapter patterns when the dependency is used widely.
 

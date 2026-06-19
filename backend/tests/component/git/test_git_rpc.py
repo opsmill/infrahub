@@ -23,7 +23,7 @@ from infrahub.git.models import (
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
 )
-from infrahub.git.repository import InfrahubReadOnlyRepository
+from infrahub.git.repository import CollectedImports, InfrahubReadOnlyRepository
 from infrahub.git.sync import RepositoryAdder
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.lock import InfrahubLockRegistry
@@ -99,8 +99,7 @@ class TestAddRepository:
         )
 
         self.mock_repo.name = git_upstream_repo_01["name"]
-        self.mock_repo.import_objects_from_files = AsyncMock()
-        self.mock_repo.collect_pending_imports = AsyncMock(return_value=[])
+        self.mock_repo.collect_pending_imports = AsyncMock(return_value=CollectedImports())
 
         with patch("infrahub.git.sync.InfrahubRepository", spec=InfrahubRepository) as mock_repo_class:
             mock_repo_class.new.return_value = self.mock_repo
@@ -117,11 +116,12 @@ class TestAddRepository:
                 internal_status="active",
                 default_branch_name=self.default_branch_name,
             )
-            self.mock_repo.import_objects_from_files.assert_awaited_once_with(
+            self.mock_repo.build_import_plan.assert_awaited_once_with(
                 infrahub_branch_name=self.default_branch_name,
                 git_branch_name=self.default_branch_name,
                 commit="0123456789abcdef0123456789abcdef01234567",
             )
+            self.mock_repo.apply_import_plan.assert_awaited_once()
 
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
@@ -386,11 +386,15 @@ class TestPullReadOnly:
 
 
 @pytest.mark.usefixtures("git_repos_dir")
-async def test_add_git_repository_releases_lock_before_import(
+async def test_add_git_repository_scopes_import_build_and_apply(
     prefect_test_fixture: None,
     git_upstream_repo_01: dict[str, str],
 ) -> None:
-    """The default-branch import must run after the repository lock held for the clone is released."""
+    """The default-branch import builds outside the lock and applies under it.
+
+    The lock held for the clone is released before the import is built, and the apply phase
+    re-acquires it so that concurrent imports of the same repository are serialized.
+    """
     timeline = LockTimeline()
     client = InfrahubClient(config=Config(requester=dummy_async_request))
     model = GitRepositoryAdd(
@@ -410,4 +414,5 @@ async def test_add_git_repository_releases_lock_before_import(
     )
     await adder.add(model)
 
-    timeline.assert_not_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "import")
+    timeline.assert_not_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "build")
+    timeline.assert_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "apply")

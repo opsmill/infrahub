@@ -1,3 +1,3 @@
-from . import registry
+from . import registry, settings
 
-__all__ = ["registry"]
+__all__ = ["registry", "settings"]

@@ -34,8 +34,10 @@ from starlette.requests import ClientDisconnect, HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
+from infrahub import config
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
+from infrahub.branch.query_time_validator import BranchQueryTimeValidator
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
@@ -176,10 +178,12 @@ class InfrahubGraphQLApp:
     async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> JSONResponse:
-        if request.app.state.response_delay:
-            self.logger.info(f"Adding response delay of {request.app.state.response_delay} seconds")
+        # Read live so the delay can be updated at runtime (see POST /api/response-delay).
+        response_delay = config.SETTINGS.miscellaneous.response_delay
+        if response_delay:
+            self.logger.info(f"Adding response delay of {response_delay} seconds")
             # This is on purpose
-            time.sleep(request.app.state.response_delay)  # noqa: ASYNC251
+            time.sleep(response_delay)  # noqa: ASYNC251
 
         try:
             operations = await _get_operation_from_request(request)
@@ -216,18 +220,21 @@ class InfrahubGraphQLApp:
         # if the query contains some mutation, it's not currently supported to set AT manually
         if analyzed_query.contains_mutation:
             graphql_params.context.at = Timestamp()
-        elif at and branch.schema_changed_at and Timestamp(branch.schema_changed_at) > Timestamp(at):
-            schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=Timestamp(at))
-            db.add_schema(name=branch.name, schema=schema_branch)
-            analyzed_query = InfrahubGraphQLQueryAnalyzer(
-                query=query,
-                schema_branch=schema_branch,
-                query_variables=variable_values,
-                schema=graphql_params.schema,
-                operation_name=operation_name,
-                branch=branch,
-                document=cached_parse(query),
-            )
+        elif at:
+            at_ts = Timestamp(at)
+            BranchQueryTimeValidator(registry=registry).validate(branch=branch, at=at_ts)
+            if branch.schema_changed_at and Timestamp(branch.schema_changed_at) > at_ts:
+                schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=at_ts)
+                db.add_schema(name=branch.name, schema=schema_branch)
+                analyzed_query = InfrahubGraphQLQueryAnalyzer(
+                    query=query,
+                    schema_branch=schema_branch,
+                    query_variables=variable_values,
+                    schema=graphql_params.schema,
+                    operation_name=operation_name,
+                    branch=branch,
+                    document=cached_parse(query),
+                )
         impacted_models = analyzed_query.query_report.impacted_models
 
         try:
