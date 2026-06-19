@@ -64,6 +64,7 @@ async def update_schema_on_branch(db: InfrahubDatabase, branch: Branch, at: Time
 
 class Migration056(ArbitraryMigration):
     name: str = "056_update_schema_node_generic_constraints"
+    description: str = "N/A"
     minimum_version: int = 55
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

@@ -133,7 +133,9 @@ export function CoreFileForm({
               await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
 
               toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
-                toastId: `alert-success-${schema?.name}-updated`,
+                // Per-node id: a constant per-kind id makes react-toastify dedupe rapid
+                // successive operations on different objects of the same kind.
+                toastId: `alert-success-${schema?.name}-updated-${updatedNode.id}`,
               });
               if (onSuccess) await onSuccess(updatedNode);
             },
@@ -147,7 +149,7 @@ export function CoreFileForm({
           {
             onSuccess: async (newNode) => {
               toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
-                toastId: `alert-success-${schema?.name}-created`,
+                toastId: `alert-success-${schema?.name}-created-${newNode.id}`,
               });
               if (onSuccess) await onSuccess(newNode);
             },

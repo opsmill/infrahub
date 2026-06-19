@@ -192,8 +192,27 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
     print(" - Generate Infrahub CLI documentation")
     with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'uv run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
+            output_path = f"docs/docs/reference/infrahub-cli/{command[2]}.mdx"
+            exec_cmd = f'uv run typer {command[0]} utils docs --name "{command[1]}" --output {output_path}'
             context.run(exec_cmd)
+            _strip_developer_sections_from_cli_doc(Path(output_path))
+
+
+def _strip_developer_sections_from_cli_doc(path: Path) -> None:
+    """Strip Sphinx-style `Raises:` blocks from a rendered CLI reference page.
+
+    The typer docs renderer copies Python docstrings verbatim, which leaks developer-facing
+    `Raises: typer.Exit:` text into the public CLI reference. The exception information stays
+    in the Python source for static analysis (DOC501); it is removed only from the rendered MDX.
+    """
+    import re
+
+    text = path.read_text(encoding="utf-8")
+    # Match "Raises:" at column 0, then indented (4-space) detail lines, then a blank line.
+    pattern = re.compile(r"^Raises:\n(?:    .*\n)+\n", flags=re.MULTILINE)
+    new_text = pattern.sub("", text)
+    if new_text != text:
+        path.write_text(new_text, encoding="utf-8")
 
 
 def _generate(context: Context) -> None:

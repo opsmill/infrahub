@@ -65,6 +65,7 @@ DELETE val
 
 class Migration065(GraphMigration):
     name: str = "065_remove_generic_generate_template"
+    description: str = "N/A"
     minimum_version: int = 64
     queries: Sequence[type[Query]] = [
         RemoveGenericGenerateTemplateQuery,

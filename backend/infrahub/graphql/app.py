@@ -34,6 +34,7 @@ from starlette.requests import ClientDisconnect, HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
+from infrahub import config
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth.auth import authentication_token
 from infrahub.auth.session import AccountSession  # noqa: TC001
@@ -179,10 +180,12 @@ class InfrahubGraphQLApp:
     async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> JSONResponse:
-        if request.app.state.response_delay:
-            self.logger.info(f"Adding response delay of {request.app.state.response_delay} seconds")
+        # Read live so the delay can be updated at runtime (see POST /api/response-delay).
+        response_delay = config.SETTINGS.miscellaneous.response_delay
+        if response_delay:
+            self.logger.info(f"Adding response delay of {response_delay} seconds")
             # This is on purpose
-            time.sleep(request.app.state.response_delay)  # noqa: ASYNC251
+            time.sleep(response_delay)  # noqa: ASYNC251
 
         try:
             operations = await _get_operation_from_request(request)
