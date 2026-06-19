@@ -89,7 +89,11 @@ Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normaliz
 
 ## Database migration commands
 
-`infrahub db migrate` runs the same code path as **Step 1/6 of `infrahub upgrade`**, with identical formatting. Use `infrahub upgrade` when you also need to update the internal and core schema, refresh internal objects (menu, permissions), reconfigure the task manager, and rebase open branches. Use `infrahub db migrate` only when you specifically want the migration step in isolation.
+:::note
+In normal operation you do not need any of the `infrahub db` commands — `infrahub upgrade` takes care of everything. The commands below are intended for advanced debugging: inspecting which migrations exist, previewing what would run, or applying the migration step in isolation when investigating a failure.
+:::
+
+`infrahub db migrate` runs the same code path as **Step 1/6 of `infrahub upgrade`**, with identical formatting. Use it only when you specifically want the migration step in isolation — for example, to reproduce a migration failure outside the full upgrade pipeline.
 
 ### Listing migrations
 
