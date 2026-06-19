@@ -1,4 +1,3 @@
-import { Button } from "@infrahub/ui";
 import { SearchIcon, XIcon } from "lucide-react";
 import type React from "react";
 import {
@@ -10,11 +9,11 @@ import {
   type SearchFieldProps as AriaSearchFieldProps,
   useFilter,
 } from "react-aria-components";
+import { cn } from "tailwind-variants";
 
-import { Row } from "@/shared/components/container";
-import { classNames } from "@/shared/utils/common";
+import { Button } from "../button/button";
 
-interface AutocompleteProps extends AriaAutocompleteProps {
+export interface AutocompleteProps extends AriaAutocompleteProps {
   suffix?: React.ReactNode;
 }
 
@@ -32,10 +31,10 @@ export function Autocomplete({
   return (
     <AriaAutocomplete filter={resolvedFilter} onInputChange={onInputChange} {...props}>
       <div className="max-h-[inherit] overflow-hidden">
-        <Row className="sticky w-full gap-0 overflow-hidden border-neutral-300 border-b pr-1">
+        <div className="sticky flex w-full items-center gap-0 overflow-hidden border-neutral-300 border-b pr-1">
           <AutocompleteSearchField placeholder="Search..." className="grow" />
           {suffix}
-        </Row>
+        </div>
         {children}
       </div>
     </AriaAutocomplete>
@@ -49,7 +48,7 @@ interface SearchInputProps extends AriaSearchFieldProps {
 function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
   return (
     <AriaSearchField
-      className={classNames("group flex items-center overflow-hidden text-sm", className)}
+      className={cn("group flex items-center overflow-hidden text-sm", className)}
       aria-label="Search"
       autoFocus
       {...props}
