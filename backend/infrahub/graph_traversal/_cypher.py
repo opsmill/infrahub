@@ -289,11 +289,12 @@ WITH %(carried)s, visited + %(hop)s AS visited"""
 # distances). Source and destination are both resolved to their active same-UUID vertex
 # (so a migrated node anchors on its active version, not a stale duplicate).
 #
-# No loop-prevention predicate is needed: an exact-``left_len``-hop path to a node whose
-# global forward distance is ``left_len`` is necessarily a simple geodesic (a cycle would
-# imply a shorter path, contradicting the distance), so the left half's intermediates
-# occupy forward-distances ``1..left_len-1``, the right half's ``left_len+1..depth-1``, and
-# the shared middle sits at ``left_len`` — disjoint ranges, no node can repeat.
+# A distinct-node predicate IS required. Each half is a shortest path to/from the pinned
+# middle, but the two halves can still share a node *other than* the middle: three nodes
+# reaching each other through one shared hub H give a left half ``source..H..mid`` and a right
+# half ``mid..H..target`` that are both shortest yet revisit H. So after assembling ``hops`` the
+# full node sequence (start node plus every hop node) is required to be all-distinct, dropping
+# such non-simple walks before the ``ORDER BY``/``LIMIT`` so the cap counts only simple paths.
 #
 # The ``ORDER BY`` (depth, then the ordered relationship:uuid sequence) matches the caller's
 # ascending-depth tier loop: processing tiers in depth order and ordering within a tier by
@@ -319,6 +320,11 @@ WITH
         uuid: nodes(rpath)[i * 2 + 2].uuid,
         kind: nodes(rpath)[i * 2 + 2].kind
     }] AS hops
+WITH start_node_uuid, start_node_kind, depth, hops,
+    [start_node_uuid] + [h IN hops | h.uuid] AS node_uuids
+// remove any paths that return to the same UUID
+WHERE all(idx IN range(0, size(node_uuids) - 1) WHERE NOT node_uuids[idx] IN node_uuids[idx + 1..])
+WITH start_node_uuid, start_node_kind, depth, hops
 ORDER BY depth ASC, reduce(ordering_key = "", h IN hops | ordering_key + h.relationship_identifier + ">" + h.uuid) ASC
 LIMIT $tier_limit
 RETURN start_node_uuid, start_node_kind, hops, depth
@@ -340,6 +346,10 @@ WITH
         uuid: nodes(rpath)[i * 2 + 2].uuid,
         kind: nodes(rpath)[i * 2 + 2].kind
     }] AS hops
+WITH start_node_uuid, start_node_kind, depth, hops,
+    [start_node_uuid] + [h IN hops | h.uuid] AS node_uuids
+WHERE all(idx IN range(0, size(node_uuids) - 1) WHERE NOT node_uuids[idx] IN node_uuids[idx + 1..])
+WITH start_node_uuid, start_node_kind, depth, hops
 ORDER BY depth ASC, reduce(ordering_key = "", h IN hops | ordering_key + h.relationship_identifier + ">" + h.uuid) ASC
 LIMIT $tier_limit
 RETURN start_node_uuid, start_node_kind, hops, depth

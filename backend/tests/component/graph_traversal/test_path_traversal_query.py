@@ -62,6 +62,38 @@ def _path_signature(path: PathData) -> tuple[int, tuple[str, ...]]:
     return (path.depth, tuple(hop.node.uuid for hop in path.hops))
 
 
+def _path_node_uuids(path: PathData) -> list[str]:
+    """The full ordered node sequence of a path: start node followed by each hop's node."""
+    return [path.start_node.uuid] + [hop.node.uuid for hop in path.hops]
+
+
+async def test_excludes_non_simple_paths_through_shared_intermediate(
+    db: InfrahubDatabase, default_branch: Branch, three_people_shared_tag: tuple[Node, Node, Node, Node]
+) -> None:
+    """Every returned path must be loopless — no node may appear twice.
+
+    Three people share one tag. p1 -> p2 has a real depth-2 path (p1 -tag- p2). The only
+    deeper route, p1 -tag- p3 -tag- p2, revisits the shared tag: a non-simple walk the
+    bidirectional join must not emit.
+    """
+    p1, p2, _p3, blue = three_people_shared_tag
+
+    plan = _build_plan(db=db, branch=default_branch, source=p1, destination=p2, max_depth=4)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=p1.id
+    )
+
+    # The genuine simple path p1 -> blue -> p2 must be present.
+    assert (2, (blue.id, p2.id)) in {_path_signature(path) for path in paths}
+
+    # No returned path may revisit a node (in particular, the p1 -> blue -> p3 -> blue -> p2 walk).
+    for path in paths:
+        uuids = _path_node_uuids(path)
+        assert len(uuids) == len(set(uuids)), f"non-simple path returned: {uuids}"
+
+
 async def test_returns_direct_peer_path_on_default_branch(
     db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
 ) -> None:
