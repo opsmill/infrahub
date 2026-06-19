@@ -21,28 +21,28 @@
     "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.4",
-    "lucide-react": "^1.8.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "tailwind-merge": "^3.5.0",
+    "@tailwindcss/vite": "^4.3.1",
+    "lucide-react": "^1.21.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tailwind-merge": "^3.6.0",
     "tailwind-variants": "^3.2.2",
-    "tailwindcss": "^4.2.4"
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
-    "@storybook/react-vite": "^10.3.5",
-    "@types/node": "^25.6.0",
-    "@types/react": "^19.2.14",
+    "@storybook/react-vite": "^10.4.6",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.0.2",
     "babel-plugin-react-compiler": "^1.0.0",
-    "chromatic": "^16.4.0",
-    "globals": "^17.5.0",
-    "oxfmt": "^0.46.0",
-    "oxlint": "^1.61.0",
-    "storybook": "^10.3.5",
+    "chromatic": "^17.5.0",
+    "globals": "^17.6.0",
+    "oxfmt": "^0.55.0",
+    "oxlint": "^1.70.0",
+    "storybook": "^10.4.6",
     "typescript": "~6.0.3",
-    "vite": "^8.0.9"
+    "vite": "^8.0.16"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

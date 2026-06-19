@@ -14,7 +14,7 @@ The schema provides an abstraction layer to the graph database, and as such no k
 
 The schema is described in YAML format, and consists of nodes, attributes, relationships, and other descriptors. A new deployment of Infrahub will have no schema by default — it is up to the administrator to define and load the initial schema.
 
-Example schemas can be found in the [Schema Library](https://github.com/opsmill/schema-library), the most comprehensive collection currently maintained by the community and OpsMill.
+Example schemas can be found in the [Infrahub Marketplace](https://marketplace.infrahub.app), the catalog of schemas maintained by the community and OpsMill.
 
 The schema can be loaded using the [`infrahubctl schema load`]($(base_url)infrahubctl/infrahubctl-load) command for development, or via Infrahub Git integration for production deployments. Once loaded, it's stored and version controlled in the graph database. Changes to the schema can be made at any time, and it's best practice to make schema changes in a branch to allow for testing before implementation.
 

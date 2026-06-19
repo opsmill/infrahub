@@ -9,6 +9,7 @@ from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.initialization import create_branch
+from infrahub.core.timestamp import Timestamp
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
 
@@ -265,6 +266,33 @@ async def test_query_endpoint_wrong_branch(
         )
 
     assert response.status_code == 400
+
+
+async def test_query_endpoint_at_before_branch_creation(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    create_test_admin: Node,
+    car_person_data: dict[str, Node],
+) -> None:
+    at_before_creation = Timestamp("2000-01-01T00:00:00Z")
+    assert at_before_creation < Timestamp(default_branch.get_created_at()), (
+        "Test precondition: the chosen `at` must be earlier than the branch's created_at"
+    )
+
+    with client:
+        response = client.get(
+            f"/api/query/query01?at={at_before_creation.to_string()}",
+            headers=admin_headers,
+        )
+
+    expected_message = (
+        f"Requested time '{at_before_creation.to_string()}' is before "
+        f"branch '{default_branch.name}' was created at '{default_branch.get_created_at()}'."
+    )
+    assert response.status_code == 422
+    assert response.json()["errors"][0]["message"] == expected_message
 
 
 async def test_query_endpoint_missing_privs(

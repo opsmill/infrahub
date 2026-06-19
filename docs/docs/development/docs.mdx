@@ -313,32 +313,23 @@ For a deeper dive into reference docs, refer to the [diátaxis reference page](h
 
 ## Application screenshots
 
-To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](./frontend/testing-guidelines.mdx#e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/app/tests/e2e/tutorial`.
+To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use the Python end-to-end (e2e) test suite. You'll find the e2e tests specifically designed for tutorials and guides located in `tests/e2e/tutorial`.
 
 ### Updating all screenshots manually
 
-#### 1. Start with a fresh data environment
+#### 1. Run the tutorial e2e tests with screenshots enabled
 
-Start with fresh demo data each time you want to take new screenshots, as the tests are not idempotent. This ensures consistency across screenshots.
-
-```shell
-invoke dev.destroy dev.start dev.load-infra-schema dev.load-infra-data dev.infra-git-import dev.infra-git-create
-```
-
-#### 2. run the e2e tests
-
-E2E test commands are accessible through inside the `frontend/app` directory. To run the tests with screenshots, execute:
+The test suite provisions its own Infrahub environment with fresh demo data on every run (using `infrahub-testcontainers`), so no manual environment preparation is needed. From the repository root, execute:
 
 ```shell
-cd frontend/app
-npm run test:e2e:screenshots
+UPDATE_DOCS_SCREENSHOTS=1 uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
 ```
 
 :::info
-By default, tests are run in headless mode. To run them in a visible browser, use `npm run test:e2e:screenshots:headed` instead.
+By default, tests are run in headless mode. To run them in a visible browser, append `--headed` to the command.
 :::
 
-#### 3. Check the results
+#### 2. Check the results
 
 The screenshots will be saved in `docs/docs/media`. You can then use them in our documentation:
 
@@ -350,20 +341,20 @@ The screenshots will be saved in `docs/docs/media`. You can then use them in our
 
 #### 1. Locate on which test the screenshot should be added
 
-If the test does not exist yet, create must create it first. Refer to the [write e2e tests](./frontend/testing-guidelines.mdx#writing-e2e-tests) for more information.
+If the test does not exist yet, you must create it first. Refer to `tests/e2e/README.md` for how the suite is structured and how to write tests.
 
 #### 2. Add the screenshot
 
-To add a new screenshot in the documentation, use this command within the tutorial e2e test:
+To add a new screenshot in the documentation, use the `save_screenshot_for_docs` helper from `tests/e2e/helpers.py` within the test:
 
-```ts
-await saveScreenshotForDocs(page, "my-screenshot-name");
+```python
+await save_screenshot_for_docs(page, "my-screenshot-name")
 ```
 
 You can also organize your screenshots using folders, by specifying the folder name like this:
 
-```ts
-await saveScreenshotForDocs(page, "my-folder/my-screenshot-name" );
+```python
+await save_screenshot_for_docs(page, "my-folder/my-screenshot-name")
 ```
 
 ## Documentation release checklist

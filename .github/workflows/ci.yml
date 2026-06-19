@@ -51,6 +51,7 @@ jobs:
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       version_upgrade_workflow: ${{ steps.changes.outputs.version_upgrade_workflow }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
+      e2e_pytest_tests: ${{ steps.changes.outputs.e2e_pytest_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
       graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
@@ -62,7 +63,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: opsmill/paths-filter@v3.0.2
+        uses: dorny/paths-filter@v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -109,16 +110,16 @@ jobs:
         uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
@@ -142,16 +143,16 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate OpenAPI types
@@ -185,16 +186,16 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate GraphQL types
@@ -476,11 +477,20 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "graphql"
+          - "core-diff"
+          - "core-schema"
+          - "other"
     runs-on:
       group: huge-runners
-    timeout-minutes: 80
+    timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
+      PYTEST_XDIST_WORKER_COUNT: 2
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -503,15 +513,18 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Unit Tests"
-        run: "uv run invoke backend.test-component"
-      - name: "Coveralls : Unit Tests"
+      - name: "Validate component test shards"
+        if: matrix.shard == 'other'
+        run: "uv run invoke backend.validate-component-shards"
+      - name: "Component Tests (${{ matrix.shard }})"
+        run: "uv run invoke backend.test-component --shard ${{ matrix.shard }}"
+      - name: "Coveralls : Component Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          flag-name: backend-component
+          flag-name: backend-component-${{ matrix.shard }}
           parallel: true
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
@@ -766,16 +779,17 @@ jobs:
         uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+          # https://github.com/microsoft/playwright/issues/41000
+          node-version: 24.15.0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: "Install frontend"
         working-directory: ./frontend/app
         run: pnpm install --frozen-lockfile
@@ -1071,16 +1085,16 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: true
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
@@ -1148,13 +1162,16 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm exec playwright install chromium --no-shell
 
-      # Make chromium ignore netlink messages by returning ReadMessages early
-      - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(pnpm exec playwright install chromium --no-shell --dry-run | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
-      - name: Chrome func offset
-        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
-      - name: Patch chromium
-        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+      # Make chromium ignore netlink messages so AddressTrackerLinux takes its "assume always
+      # online" path. The LD_PRELOAD shim fails NETLINK_ROUTE sockets at the libc level, which
+      # is robust across Playwright/Chromium versions (unlike patching the chrome binary). The
+      # shim is injected into the browser process via playwright.config.ts (NO_NETLINK_SO).
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
 
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'
@@ -1234,6 +1251,98 @@ jobs:
       - name: "Show graph URL"
         if: always()
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
+
+  # ----------------------------- E2E pytest-playwright (infrahub-testcontainers) -----------------------------
+  # New Python e2e suite. Runs ALONGSIDE E2E-testing-playwright (the TS suite)
+  # until parity is confirmed, then the TS job can be removed. Instead of
+  # `invoke dev.start dev.load-infra-*`, infrahub-testcontainers spins up the
+  # stack and pytest fixtures load the dataset (see tests/e2e/).
+  E2E-testing-pytest-playwright:
+    needs:
+      - prepare-environment
+      - files-changed
+      - yaml-lint
+      - python-lint
+      - infrahub-testcontainers-check
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.e2e == 'true'
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [foundation, sites_a, sites_b, branches_repo, tutorial]
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      PYTEST_XDIST_WORKER_COUNT: 1
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+      - name: Install tini
+        run: apt-get update && apt-get install -y tini
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: |
+          RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
+          echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME}/_temp" >> $GITHUB_ENV
+          echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_IMAGE=opsmill/infrahub >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_PULL=false >> $GITHUB_ENV
+          echo NEO4J_DOCKER_IMAGE=neo4j:2025.10.1-enterprise >> $GITHUB_ENV
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
+      - name: Build Demo
+        run: |
+          echo "::group::Build infrahub container"
+          uv run invoke dev.build
+          echo "::endgroup::"
+      - name: Run Playwright tests
+        if: matrix.shard != 'tutorial'
+        env:
+          INFRAHUB_TESTING_RESPONSE_DELAY: ${{ needs.files-changed.outputs.e2e_pytest_tests == 'true' && '1' || '0' }}
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/tutorial -m shard_${{ matrix.shard }}
+      - name: Run tutorial Playwright tests
+        if: matrix.shard == 'tutorial'
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
+      - name: playwright-report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: E2E-testing-pytest-playwright-${{ matrix.shard }}
+          path: |
+            test-results/
+            playwright-junit.xml
+      - name: Containers after tests
+        if: always()
+        run: docker ps -a
 
   # ------------------------------------------ E2E invoke demo ------------------------------------------------
   E2E-testing-invoke-demo-start:
@@ -1430,5 +1539,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
+          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
           parallel-finished: true

@@ -25,6 +25,14 @@ export type Scalars = {
    */
   DateTime: { input: any; output: any; }
   /**
+   * GenericScalar with correct variable substitution in parse_literal.
+   *
+   * graphene's GenericScalar.parse_literal does not forward _variables to
+   * recursive calls, so $variable references inside a nested object or list
+   * resolve to None instead of their supplied values.
+   */
+  FixedGenericScalar: { input: any; output: any; }
+  /**
    * The `GenericScalar` scalar type represents a generic
    * GraphQL scalar value that could be:
    * String, Boolean, Int, Float, List or Object.
@@ -1478,6 +1486,8 @@ export type CoreAccount = CoreGenericAccount & CoreNode & LineageOwner & Lineage
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Scalars['String']['output'];
+  /** True when the account is linked to an external identity provider (LDAP, OIDC, OAuth2). Local password changes are refused for such accounts. */
+  is_externally_managed: Scalars['Boolean']['output'];
   label: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
   name: Maybe<TextAttribute>;
@@ -6918,6 +6928,8 @@ export type CoreGenericAccount = {
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Maybe<Scalars['String']['output']>;
+  /** True when the account is linked to an external identity provider (LDAP, OIDC, OAuth2). Local password changes are refused for such accounts. */
+  is_externally_managed: Scalars['Boolean']['output'];
   label: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
   name: Maybe<TextAttribute>;
@@ -17110,7 +17122,7 @@ export type IpAddressPoolGetResourceInput = {
   /** Kind of IP address to allocate */
   address_type?: InputMaybe<Scalars['String']['input']>;
   /** Additional data to pass to the newly created IP address */
-  data?: InputMaybe<Scalars['GenericScalar']['input']>;
+  data?: InputMaybe<Scalars['FixedGenericScalar']['input']>;
   /** HFID of the pool to allocate from */
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   /** ID of the pool to allocate from */
@@ -17206,7 +17218,7 @@ export type IpPrefixPoolGetResource = {
 
 export type IpPrefixPoolGetResourceInput = {
   /** Additional data to pass to the newly created prefix */
-  data?: InputMaybe<Scalars['GenericScalar']['input']>;
+  data?: InputMaybe<Scalars['FixedGenericScalar']['input']>;
   /** HFID of the pool to allocate from */
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   /** ID of the pool to allocate from */
@@ -37704,7 +37716,7 @@ export type InfrahubAccountTokenCreateMutation = { InfrahubAccountTokenCreate: {
 export type GetAccountProfileQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetAccountProfileQuery = { AccountProfile: { __typename: 'CoreAccount', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, label: { __typename: 'TextAttribute', value: string | null } | null, description: { __typename: 'TextAttribute', value: string | null } | null } | null };
+export type GetAccountProfileQuery = { AccountProfile: { __typename: 'CoreAccount', id: string, display_label: string | null, is_externally_managed: boolean, name: { __typename: 'TextAttribute', value: string | null } | null, label: { __typename: 'TextAttribute', value: string | null } | null, description: { __typename: 'TextAttribute', value: string | null } | null } | null };
 
 export type InfrahubAccountTokenQueryVariables = Exact<{ [key: string]: never; }>;
 

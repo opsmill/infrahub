@@ -63,6 +63,7 @@ export const DropdownItem = ({
 }: DropdownItemProps) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [removeDropdownOption, { loading }] = useMutation(DROPDOWN_REMOVE_MUTATION);
+  const namespace = useNamespace(schema?.namespace);
 
   return (
     <ComboboxItem ref={ref} className={classNames("rounded-none", className)} {...props}>
@@ -81,9 +82,10 @@ export const DropdownItem = ({
         <p className="truncate text-xs">{item.description}</p>
       </div>
 
-      {schema && fieldSchema && (
+      {schema && fieldSchema && namespace?.user_editable && (
         <>
           <Button
+            aria-label="Delete option"
             tabIndex={-1}
             variant="ghost"
             size="sm"

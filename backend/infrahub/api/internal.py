@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 import ujson
 from fastapi import APIRouter, Depends, Request
 from lunr.index import Index
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from infrahub import config
-from infrahub.api.dependencies import get_current_user
+from infrahub.api.dependencies import get_current_user, get_permission_manager
 from infrahub.config import (  # noqa: TC001
     AnalyticsSettings,
     ExperimentalFeaturesSettings,
@@ -17,11 +17,16 @@ from infrahub.config import (  # noqa: TC001
     MainSettings,
 )
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.workers.dependencies import get_installation_type
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
+    from infrahub.permissions import PermissionManager
+    from infrahub.services import InfrahubServices
 
 router = APIRouter()
 
@@ -57,6 +62,32 @@ async def get_config() -> ConfigAPI:
 @router.get("/info")
 async def get_info(request: Request, _: AccountSession = Depends(get_current_user)) -> InfoAPI:
     return InfoAPI(deployment_id=str(registry.id), version=request.app.version)
+
+
+class ResponseDelayAPI(BaseModel):
+    response_delay: int = Field(ge=0, description="Delay in seconds added to each GraphQL request")
+
+
+@router.post("/response-delay", include_in_schema=False)
+async def set_response_delay(
+    request: Request,
+    delay: ResponseDelayAPI,
+    permission_manager: PermissionManager = Depends(get_permission_manager),
+) -> ResponseDelayAPI:
+    """Update the API response delay at runtime (testing facility).
+
+    The new value is broadcast over the message bus so every API worker process
+    across all server replicas applies it without a restart.
+    """
+    permission_manager.raise_for_permission(
+        permission=GlobalPermission(
+            action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+        )
+    )
+
+    service: InfrahubServices = request.app.state.service
+    await service.send(message=RefreshSettingsResponseDelay(response_delay=delay.response_delay))
+    return delay
 
 
 class SearchDocs:

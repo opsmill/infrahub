@@ -111,6 +111,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME: ${INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME:-2592000}
   INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS: ${INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS:-true}
   INFRAHUB_SECURITY_SECRET_KEY:
+  INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK: ${INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK:-true}
   INFRAHUB_STORAGE_BUCKET_NAME:
   INFRAHUB_STORAGE_CUSTOM_DOMAIN:
   INFRAHUB_STORAGE_DEFAULT_ACL: ${INFRAHUB_STORAGE_DEFAULT_ACL:-private}
@@ -161,6 +162,7 @@ x-infrahub-sso: &infrahub_sso
   INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL:
   INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL:
   INFRAHUB_OIDC_PROVIDER1_ICON:
+  INFRAHUB_OIDC_PROVIDER1_ID_TOKEN_VERIFY_SIGNATURE: ${INFRAHUB_OIDC_PROVIDER1_ID_TOKEN_VERIFY_SIGNATURE:-true}
 
 x-task-manager-config:
   INFRAHUB_TASKMANAGER_DB_USER: ${INFRAHUB_TASKMANAGER_DB_USER:-postgres}
@@ -213,7 +215,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.6}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.8}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -246,7 +248,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.6}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.8}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -292,7 +294,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.6}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.8}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

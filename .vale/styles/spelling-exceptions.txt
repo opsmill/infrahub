@@ -1,4 +1,5 @@
 _updated_at
+Agentic
 Alibaba
 anonymized
 Ansible
@@ -25,6 +26,7 @@ bool
 boolean
 booleans
 Buildkite
+cAdvisor
 Ceph
 changelog
 conftest
@@ -117,9 +119,11 @@ Jotai
 json
 JSON
 JSONSchema
+Junos
 kbps
 Keycloak
 kubectl
+kubelet
 Kubernetes
 linter
 linting
@@ -137,6 +141,7 @@ menu_placement
 metadata
 microservices
 middleware
+misconfigured
 mixin
 modeline
 modularization
@@ -213,6 +218,7 @@ Slurp'it
 snapshotting
 Streamlit
 string_type
+subchart
 subcommand
 submodule
 subnet
@@ -254,8 +260,10 @@ uv
 validator
 Validator
 validators
+Viptela
 Vitest
 VLANs
+VRFs
 VSCode
 walkthrough
 walkthroughs
@@ -279,5 +287,8 @@ QRadar
 rsyslog
 sourcetype
 Splunk
+stderr
+stdin
+stdout
 syslog
 Syslog

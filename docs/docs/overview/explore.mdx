@@ -10,7 +10,7 @@ To see Infrahub in action, you have several options. Depending on your available
 - **[Infrahub sandbox](#infrahub-sandbox)** - A public instance of Infrahub that you can explore right now.
 - **[Getting started lab](#getting-started-lab)** - Interactive lab that covers the basic concepts of Infrahub.
 - **[Videos](#videos)** - A series of short videos that provide an overview of Infrahub and its capabilities.
-- **[Infrahub demos](#infrahub-bundles-and-demos)** - Full-blown demos that showcase Infrahub's capabilities in specific business scenarios.
+- **[Infrahub demos](#infrahub-demos)** - Full-blown demos that showcase Infrahub's capabilities in specific business scenarios.
 - **[Meeting OpsMill](#meeting-opsmill)** - Book a session with OpsMill to discuss your use case.
 
 :::note
@@ -63,13 +63,13 @@ A recording of a livestream that covers what the Infrahub schema actually is, wh
 
 <ReferenceLink title="OpsMill YouTube Channel" url="https://www.youtube.com/@OpsMill" openInNewTab />
 
-## Infrahub bundles and demos
+## Infrahub demos
 
 Below is the current list of available demos developed and maintained by OpsMill and the community:
 
-- **Bundle DC**
+- **Demo DC**
 
-A bundle is an end-to-end reference implementation you can actually learn from. This bundle includes:
+Demo DC is an end-to-end reference implementation you can actually learn from. This demo includes:
 
 - Schema-driven modelling — spine-leaf fabrics, VxLAN/EVPN overlays, POPs, security zones, load balancers
 - Design-driven automation — create a topology design, watch Generators spawn all the devices, interfaces, IPs, BGP peers (the otters do the work)
@@ -86,6 +86,19 @@ A bundle is an end-to-end reference implementation you can actually learn from. 
 The Service Catalog demo demonstrates how Infrahub can be used to manage and deploy services within an ISP environment. It walks through the process of creating a service catalog using Infrahub and Streamlit. From modeling services in the schema, codifying them in Generator, to making these capabilities accessible across the organization via a Streamlit app. This demo provides a comprehensive, end-to-end overview of the workflow.
 
 <ReferenceLink title="Demo Service Catalog" url="$(base_url)demo-service-catalog" openInNewTab />
+
+- **Demo SP**
+
+Demo SP is a service-provider reference implementation that shows how Infrahub manages a multi-vendor MPLS backbone and provisions customer-facing services end to end. This demo includes:
+
+- Schema-driven service modelling — `ServiceL3Vpn` and `ServiceSdwan` with uniqueness constraints, parent/child relationships, vendor and topology enums, and lifecycle status
+- Generator-driven provisioning — materialize VRFs, route targets, PE-CE interfaces, IP allocation from resource pools, and eBGP sessions from a single user-facing object
+- Per-vendor configuration artifacts — render the same intent into Arista EOS, Cisco IOS-XR, Juniper Junos, Nokia SR OS, Cisco Viptela, and Versa VOS configurations
+- Branch-based workflows — catalog form to feature branch to Generator to artifact regeneration to proposed change with validation checks before merge
+- Streamlit Service Catalog — self-service L3VPN and SD-WAN provisioning
+- Containerlab integration — boot the rendered MPLS backbone in a virtual lab for hands-on testing
+
+<ReferenceLink title="Demo SP" url="$(base_url)infrahub-demo-sp" openInNewTab />
 
 ## Meeting OpsMill
 

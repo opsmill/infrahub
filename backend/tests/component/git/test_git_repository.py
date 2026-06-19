@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -18,6 +19,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
+    CommitNotFoundError,
     RepositoryError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
@@ -33,7 +35,9 @@ from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
 )
+from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
 from infrahub.git.worktree import Worktree
+from infrahub.lock import InfrahubLockRegistry
 from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
 from tests.conftest import TestHelper
@@ -209,18 +213,51 @@ async def test_create_commit_worktree_wrong_commit(git_repo_01: InfrahubReposito
 
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
-    with pytest.raises(GitCommandError, match="invalid reference"):
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
         repo.create_commit_worktree(commit=commit)
 
 
-async def test_create_commit_worktree_wrong_commit_no_origin(git_repo_01: InfrahubRepository) -> None:
+async def test_init_fetches_missing_commit_under_repo_lock(
+    git_repo_01: InfrahubRepository, git_upstream_repo_01: dict[str, str | Path]
+) -> None:
     repo = git_repo_01
-    repo.has_origin = False
+
+    # Add a commit to the upstream main after the local clone exists, without fetching it locally.
+    upstream = Repo(git_upstream_repo_01["path"])
+    first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
+        await file.write("new line\n")
+    upstream.index.add([first_file])
+    new_commit = str(upstream.index.commit("Change first file"))
+
+    # The local clone has not fetched the new commit, so the local primitive cannot find it.
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {new_commit} not found with GitRepository '{repo.name}'"):
+        repo.create_commit_worktree(commit=new_commit)
+
+    # init() recovers by fetching the missing commit and materializing its worktree.
+    recovered = await InfrahubRepository.init(id=repo.id, name=repo.name, commit=new_commit, client=repo.client)
+    assert recovered.has_worktree(identifier=new_commit) is True
+
+
+async def test_init_missing_commit_without_origin_raises(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    repo.get_git_repo_main().git.remote("remove", "origin")
 
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
-    with pytest.raises(RepositoryError, match="no remote origin configured"):
-        repo.create_commit_worktree(commit=commit)
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
+        await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
+
+
+async def test_init_missing_commit_absent_on_remote_raises(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+
+    commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
+
+    # The commit exists neither locally nor on the remote, so init fetches once and still raises.
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
+        await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
 
 
 async def test_get_worktrees(git_repo_01: InfrahubRepository) -> None:
@@ -407,6 +444,23 @@ async def test_pull_new_branch(git_repo_01: InfrahubRepository) -> None:
     assert response is True
 
 
+async def test_pull_new_branch_updates_commit_value(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    await repo.fetch()
+
+    branch_name = "branch02"
+
+    response = await repo.pull(
+        branch_name=branch_name,
+        branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
+        create_if_missing=True,
+        update_commit_value=True,
+    )
+
+    commit = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert response == commit
+
+
 async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
     repo = git_repo_06
     await repo.fetch()
@@ -477,9 +531,14 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> 
     assert str(response) == str(commit_after)
 
 
+async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> None:
+    syncer = RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter())
+    await syncer.sync(repo, staging_branch=staging_branch)
+
+
 async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
     repo = git_repo_02
-    await repo.sync()
+    await _sync(repo)
 
     assert True
 
@@ -518,7 +577,7 @@ async def test_sync_new_branch(
     with patch(
         "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
     ) as mock_import:
-        await repo.sync()
+        await _sync(repo)
         mock_import.assert_awaited()
     worktrees = repo.get_worktrees()
 
@@ -539,10 +598,31 @@ async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: Infr
     with patch(
         "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
     ) as mock_import:
-        await repo.sync()
+        await _sync(repo)
         mock_import.assert_awaited()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
+
+
+async def test_sync_continues_after_branch_pull_failure(
+    prefect_test_fixture: None, git_repo_07: InfrahubRepository
+) -> None:
+    """A branch whose pull fails must not prevent the synchronization of the remaining branches."""
+    repo = git_repo_07
+
+    for branch_name in ["branch01", "branch02"]:
+        branch = Branch(name=branch_name, uuid=uuid4())
+        registry.branch[branch.name] = branch
+
+    remote_commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=True)
+    assert repo.get_commit_value(branch_name="branch02", remote=False) != str(remote_commit_branch02)
+
+    # A branch failure surfaces as an error once all branches have been processed.
+    expected_message = f"Unable to synchronize the following branches of repository {repo.name}: branch01"
+    with pytest.raises(RepositoryError, match=re.escape(expected_message)):
+        await _sync(repo)
+
+    assert repo.get_commit_value(branch_name="branch02", remote=False) == str(remote_commit_branch02)
 
 
 async def test_render_jinja2_template_success(prefect_test_fixture: None, git_repo_jinja: InfrahubRepository) -> None:
@@ -923,8 +1003,9 @@ async def test_calculate_diff_between_commits(
     commit_branch01 = repo.get_commit_value(branch_name=branch01.name, remote=False)
     commit_branch02 = repo.get_commit_value(branch_name=branch02.name, remote=False)
 
+    # branch02 is the base, branch01 holds the changes; first_commit is the old side, second_commit the new.
     changed, added, removed = await repo.calculate_diff_between_commits(
-        first_commit=commit_branch01, second_commit=commit_branch02
+        first_commit=commit_branch02, second_commit=commit_branch01
     )
     assert changed == ["README.md", "test_files/sports.yml"]
     assert added == ["mynewfile.txt"]

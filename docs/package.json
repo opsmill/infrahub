@@ -15,32 +15,32 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.10.0",
-    "@docusaurus/preset-classic": "^3.10.0",
-    "@docusaurus/theme-mermaid": "^3.10.0",
-    "@easyops-cn/docusaurus-search-local": "^0.55.1",
-    "@mdx-js/react": "^3.0.1",
+    "@docusaurus/core": "^3.10.1",
+    "@docusaurus/preset-classic": "^3.10.1",
+    "@docusaurus/theme-mermaid": "^3.10.1",
+    "@easyops-cn/docusaurus-search-local": "^0.55.2",
+    "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
     "image-size": "^2.0.2",
-    "prism-react-renderer": "^2.4.0",
+    "prism-react-renderer": "^2.4.1",
     "raw-loader": "^4.0.2",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-player": "^3.4.0"
   },
   "devDependencies": {
-    "@docusaurus/eslint-plugin": "^3.10.0",
-    "@docusaurus/module-type-aliases": "^3.10.0",
-    "@docusaurus/tsconfig": "^3.10.0",
-    "@docusaurus/types": "^3.10.0",
-    "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.28.0",
-    "@typescript-eslint/eslint-plugin": "^8.58.0",
-    "@typescript-eslint/parser": "^8.58.0",
-    "baseline-browser-mapping": "^2.10.13",
-    "eslint": "^9.39.4",
-    "markdownlint-cli2": "^0.21.0",
-    "typescript": "^6.0.2"
+    "@docusaurus/eslint-plugin": "^3.10.1",
+    "@docusaurus/module-type-aliases": "^3.10.1",
+    "@docusaurus/tsconfig": "^3.10.1",
+    "@docusaurus/types": "^3.10.1",
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.61.1",
+    "baseline-browser-mapping": "^2.10.38",
+    "eslint": "^10.5.0",
+    "markdownlint-cli2": "^0.22.1",
+    "typescript": "^6.0.3"
   },
   "browserslist": {
     "production": [
@@ -55,8 +55,8 @@
     ]
   },
   "overrides": {
-    "@typescript-eslint/utils": "^8.58.0",
-    "serialize-javascript": "^7.0.4"
+    "@typescript-eslint/utils": "^8.61.1",
+    "serialize-javascript": "^7.0.6"
   },
   "engines": {
     "node": ">=24.0"
