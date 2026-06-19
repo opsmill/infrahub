@@ -264,7 +264,7 @@ class TestArtifactRegenEdgeCases(ArtifactRegenTestBase):
             workflow_recorder=workflow_recorder,
             diff_summary=[
                 make_node_diff(
-                    dataset["artdef_new_id"], "CoreArtifactDefinition", SOURCE_BRANCH, ["name"], action="added"
+                    dataset["artdef_new_id"], "CoreArtifactDefinition", SOURCE_BRANCH, ["name"], action="ADDED"
                 )
             ],
         )
