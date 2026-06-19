@@ -104,30 +104,38 @@ async def test_returns_direct_peer_path_on_non_default_branch(
     assert paths[0].hops[-1].relationship_identifier
 
 
-async def test_user_branch_edge_is_invisible_on_default_branch(
+async def test_branch_edge_is_invisible_on_default_branch(
     db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node
 ) -> None:
-    """Test edges on a user branch are ignored for a query on the default branch"""
-    feature_branch = await create_branch(db=db, branch_name="feature-user-only-edge")
-
-    person = await Node.init(db=db, schema="TestPerson", branch=feature_branch)
-    await person.new(db=db, firstname="Mira", lastname="Lin", primary_tag=tag_blue_main)
+    """A relationship created on a branch must not be visible when querying the default branch."""
+    # Both endpoints exist on the default branch before the fork; only the edge is branch-local.
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, firstname="Cy", lastname="Vee", primary_tag=tag_blue_main)
     await person.save(db=db)
+    green = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await green.new(db=db, name="Greenbranch")
+    await green.save(db=db)
 
-    plan = _build_plan(db=db, branch=default_branch, source=person, destination=tag_blue_main)
+    feature_branch = await create_branch(db=db, branch_name="feature-branch-only-edge")
+    person_on_branch = await NodeManager.get_one(db=db, id=person.id, branch=feature_branch)
+    assert person_on_branch is not None
+    await person_on_branch.get_relationship("tags").update(db=db, data=[green])
+    await person_on_branch.save(db=db)
+
+    plan = _build_plan(db=db, branch=default_branch, source=person, destination=green, max_depth=2)
     assert not plan.is_empty
 
     paths = await _run_paths(
         db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
     )
 
-    assert paths == []
+    assert paths == [], "an edge created on the branch must not leak onto the default branch"
 
 
-async def test_default_branch_edge_deleted_on_user_branch_is_hidden(
+async def test_edge_deleted_on_branch_is_hidden_on_branch_and_visible_on_default(
     db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
 ) -> None:
-    """Test query correctly ignores a relationship deleted on a user branch (both BFS halves)"""
+    """A relationship deleted on a branch is hidden there but stays visible on the default branch."""
     person, tag = jack_with_blue_tag
     feature_branch = await create_branch(db=db, branch_name="feature-edge-deleted")
 
@@ -136,14 +144,45 @@ async def test_default_branch_edge_deleted_on_user_branch_is_hidden(
     await person_on_branch.get_relationship("primary_tag").update(db=db, data=None)
     await person_on_branch.save(db=db)
 
-    plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
-    assert not plan.is_empty
-
-    paths = await _run_paths(
-        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
+    branch_plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
+    branch_paths = await _run_paths(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=branch_plan, source_id=person.id
     )
+    assert branch_paths == [], "deletion on the branch should hide the edge on that branch"
 
-    assert paths == [], "deletion on the user branch should mask the default-branch edge"
+    main_plan = _build_plan(db=db, branch=default_branch, source=person, destination=tag)
+    main_paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=main_plan, source_id=person.id
+    )
+    assert len(main_paths) == 1, "the branch-local deletion must not affect the default branch"
+    assert [hop.node.uuid for hop in main_paths[0].hops] == [tag.id]
+
+
+async def test_edge_deleted_on_default_after_fork_is_visible_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, jack_with_blue_tag: tuple[Node, Node]
+) -> None:
+    """A relationship deleted on the default branch AFTER an isolated branch forked stays visible on it."""
+    person, tag = jack_with_blue_tag
+    feature_branch = await create_branch(db=db, branch_name="feature-default-delete-after-fork")
+
+    # Delete the edge on the DEFAULT branch, after the fork.
+    person_on_main = await NodeManager.get_one(db=db, id=person.id, branch=default_branch)
+    assert person_on_main is not None
+    await person_on_main.get_relationship("primary_tag").update(db=db, data=None)
+    await person_on_main.save(db=db)
+
+    branch_plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
+    branch_paths = await _run_paths(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=branch_plan, source_id=person.id
+    )
+    assert len(branch_paths) == 1, "a post-fork default-branch deletion must not reach back into the branch"
+    assert [hop.node.uuid for hop in branch_paths[0].hops] == [tag.id]
+
+    main_plan = _build_plan(db=db, branch=default_branch, source=person, destination=tag)
+    main_paths = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=main_plan, source_id=person.id
+    )
+    assert main_paths == [], "the deletion took effect on the default branch"
 
 
 async def test_default_branch_edge_remains_visible_on_user_branch_when_not_deleted(
@@ -165,6 +204,37 @@ async def test_default_branch_edge_remains_visible_on_user_branch_when_not_delet
     assert only.depth == 1
     assert only.start_node.uuid == person.id
     assert [hop.node.uuid for hop in only.hops] == [tag.id]
+
+
+async def test_default_branch_edge_added_after_fork_is_invisible_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node
+) -> None:
+    """A default-branch relationship created after an isolated branch forked must be invisible on it."""
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, firstname="Ada", lastname="One", primary_tag=tag_blue_main)
+    await person.save(db=db)
+
+    # Tag exists before the fork, but is NOT yet linked to the person.
+    green = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+    await green.new(db=db, name="Green")
+    await green.save(db=db)
+
+    feature_branch = await create_branch(db=db, branch_name="feature-late-default-edge")
+
+    # AFTER the fork, link person -> green ON THE DEFAULT BRANCH.
+    person_on_main = await NodeManager.get_one(db=db, id=person.id, branch=default_branch)
+    assert person_on_main is not None
+    await person_on_main.get_relationship("tags").update(db=db, data=[green])
+    await person_on_main.save(db=db)
+
+    plan = _build_plan(db=db, branch=feature_branch, source=person, destination=green, max_depth=2)
+    assert not plan.is_empty
+
+    paths = await _run_paths(
+        db=db, branch=feature_branch, default_branch_name=default_branch.name, plan=plan, source_id=person.id
+    )
+
+    assert paths == [], "default-branch edge added after the fork must not leak into the isolated branch"
 
 
 async def test_relationship_filter_selects_one_of_two_parallel_relationships(

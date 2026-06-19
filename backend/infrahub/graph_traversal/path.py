@@ -11,25 +11,18 @@ if TYPE_CHECKING:
     from infrahub.graph_traversal.planning.models import Plan
     from infrahub.graph_traversal.results import PathData
 
-# Backstop on the number of nodes returned by a single BFS frontier expansion. A realistic
-# infrastructure graph stays far below this; it exists only so a pathological mega-frontier
-# is truncated rather than exhausting memory. Setting a (large) limit also routes the query
-# through the single-execution path instead of the internal size-limit pagination loop,
-# which assumes an internal LIMIT the frontier query intentionally omits.
-FRONTIER_HARD_LIMIT = 1_000_000
 
+class BfsQuery(Query):
+    """The full bidirectional-search BFS from one anchor, run as a single query.
 
-class FrontierHopQuery(Query):
-    """One BFS step of the bidirectional by-id search: expand the frontier by one hop.
-
-    Returns the distinct legal neighbour uuids of the nodes in ``frontier``. The caller
-    loops this depth-by-depth, recording each node's first-seen depth.
+    Returns one ``frontiers`` row: a list whose ``i``-th element lists the node uuids first
+    reached at depth ``i + 1`` from the anchor.
     """
 
-    name = "path_traversal_frontier_hop"
+    name = "path_traversal_bfs"
     type = QueryType.READ
     insert_return = False
-    insert_limit = True
+    insert_limit = False
 
     def __init__(
         self,
@@ -38,37 +31,37 @@ class FrontierHopQuery(Query):
         plan: Plan,
         source_id: str,
         target_id: str,
-        frontier_uuids: list[str],
         direction: Literal["forward", "backward"],
-        seed: bool,
+        max_hops: int,
         **kwargs: Any,
     ) -> None:
         self._renderer = renderer
         self._plan = plan
         self._source_id = source_id
         self._target_id = target_id
-        self._frontier_uuids = frontier_uuids
         self._direction = direction
-        self._seed = seed
-        kwargs.setdefault("limit", FRONTIER_HARD_LIMIT)
+        self._max_hops = max_hops
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        rendered = self._renderer.render_frontier_hop(
+        rendered = self._renderer.render_bfs(
             plan=self._plan,
             source_id=self._source_id,
             target_id=self._target_id,
-            frontier_uuids=self._frontier_uuids,
             direction=self._direction,
-            seed=self._seed,
+            max_hops=self._max_hops,
             at=self.at,
         )
         self.add_to_query(rendered.text)
         self.params.update(rendered.params)
         self.return_labels = list(rendered.return_labels)
 
-    def get_neighbor_uuids(self) -> list[str]:
-        return [uuid for result in self.get_results() if (uuid := result.get_as_str(label="uuid"))]
+    def get_frontiers(self) -> list[list[str]]:
+        """Per-depth uuid lists; ``frontiers[i]`` are the nodes first reached at depth ``i + 1``."""
+        result = self.get_result()
+        if result is None:
+            return []
+        return result.get_as_list_of_type(label="frontiers", return_type=list)
 
 
 class PathJoinQuery(Query):

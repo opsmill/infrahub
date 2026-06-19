@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from infrahub.core.timestamp import Timestamp
-from infrahub.graph_traversal.path import FrontierHopQuery, PathJoinQuery
+from infrahub.graph_traversal.path import BfsQuery, PathJoinQuery
 from infrahub.graph_traversal.planning.models import TerminalById
 from infrahub.graph_traversal.reachable import (
     ReachablePathsQuery,
@@ -122,33 +122,28 @@ class PathTraversalExecutor:
         max_hops: int,
         at: Timestamp,
     ) -> dict[str, int]:
-        """BFS from ``seed_uuid`` to ``max_hops``, returning each node's first-seen (shortest) depth.
+        """BFS from ``seed_uuid`` to ``max_hops``, returning each node's first-seen depth.
 
-        The first hop resolves the anchor to its active same-UUID vertex; later hops expand
-        the accumulated frontier by uuid.
+        Runs as a single query: the anchor is resolved to its active same-UUID vertex, then
+        each hop is a chained CALL subquery deduped against a carried ``visited`` list.
         """
+        query = await BfsQuery.init(
+            db=self._db,
+            branch=self._branch,
+            at=at,
+            renderer=self._renderer,
+            plan=plan,
+            source_id=source_id,
+            target_id=target_id,
+            direction=direction,
+            max_hops=max_hops,
+        )
+        await query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
         distance_map: dict[str, int] = {seed_uuid: 0}
-        frontier = [seed_uuid]
-        for hop in range(1, max_hops + 1):
-            if not frontier:
-                break
-            query = await FrontierHopQuery.init(
-                db=self._db,
-                branch=self._branch,
-                at=at,
-                renderer=self._renderer,
-                plan=plan,
-                source_id=source_id,
-                target_id=target_id,
-                frontier_uuids=frontier,
-                direction=direction,
-                seed=hop == 1,
-            )
-            await query.execute(db=self._db, timeout_seconds=self._timeout_seconds)
-            next_frontier = [uuid for uuid in query.get_neighbor_uuids() if uuid not in distance_map]
-            for uuid in next_frontier:
-                distance_map[uuid] = hop
-            frontier = next_frontier
+        for depth, level in enumerate(query.get_frontiers(), start=1):
+            for uuid in level:
+                if uuid not in distance_map:
+                    distance_map[uuid] = depth
         return distance_map
 
 

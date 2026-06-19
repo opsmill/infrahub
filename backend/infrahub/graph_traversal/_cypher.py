@@ -3,11 +3,11 @@
 Two terminal predicates are served by separate entry points:
 
 - ``TerminalById`` is served by a bidirectional ("meet-in-the-middle") search the
-  caller orchestrates: ``render_frontier_hop`` expands a node-bounded BFS frontier
-  inward from each anchor (one step per call) to build a per-node shortest-distance
-  map, and ``render_canonical_join`` reconstructs the shortest paths of one depth
-  tier through the candidate middle nodes. This avoids the exponential path
-  enumeration of a single deep ``SHORTEST k`` search to a specific target.
+  caller orchestrates: ``render_bfs`` expands a node-bounded BFS frontier inward from
+  each anchor (all hops in one query) to build a per-node shortest-distance map, and
+  ``render_canonical_join`` reconstructs the shortest paths of one depth tier through
+  the candidate middle nodes. This avoids the exponential path enumeration of a single
+  deep ``SHORTEST k`` search to a specific target.
 
 - ``TerminalByKinds`` is split into two renders so the caller can discover
   terminals once and then enumerate paths depth-by-depth:
@@ -23,11 +23,13 @@ Two terminal predicates are served by separate entry points:
 
 Branch-conditional pieces:
 
-- ``$valid_branches``: ``[default, global]`` on the default branch;
-  ``[default, global, user]`` on a user branch.
-- On a user branch each hop in both phases gets two ``NOT EXISTS``
-  deletion-shadow checks (one for each side of the ``Relationship`` vertex)
-  and the query binds ``$user_branch``.
+- Edge visibility is branch/time-aware (see ``_BRANCH_VISIBLE``): edges on the queried
+  branch (or global) are visible at ``$at``; edges on the default branch (or global) are
+  visible at ``$default_time`` — the branch's fork time (``branched_from``), so
+  default-branch edges created after the fork are excluded. On the default branch both
+  clauses collapse to ``$at``.
+- On a user branch each hop in both phases gets two ``NOT EXISTS`` deletion-shadow checks
+  (one for each side of the ``Relationship`` vertex) and the query binds ``$user_branch``.
 """
 
 from __future__ import annotations
@@ -80,7 +82,6 @@ class HopTuple(NamedTuple):
 
 _RETURN_LABELS: tuple[str, ...] = ("start_node_uuid", "start_node_kind", "hops", "depth")
 _TARGETS_RETURN_LABELS: tuple[str, ...] = ("terminal_uuids",)
-_FRONTIER_RETURN_LABELS: tuple[str, ...] = ("uuid", "kind")
 
 _MAX_TARGETS_MINIMUM = 1
 _MAX_TARGETS_MAXIMUM = 200
@@ -132,20 +133,40 @@ class _DepthRenderData:
         return f"hop_tuples_d{self.depth}_h{hop}"
 
 
+# Branch/time visibility for one edge variable, without a status check. Two clauses, one per
+# (branch-set, cutoff-time) pair, mirroring ``Branch.get_query_filter_path``:
+#   - ``$at_branches`` = [global, queried-branch]; these edges are visible up to ``$at`` (now).
+#   - ``$default_branches`` = [global, default-branch]; these edges are visible only up to
+#     ``$default_time``, which is the queried branch's fork time (``branched_from``) — so
+#     default-branch edges created after the fork are excluded. ``$default_time`` is ``$at``
+#     when querying the default branch itself, collapsing the two clauses to one.
+# (The global branch is in both sets, so global edges are visible up to ``$at`` via the first.)
+_BRANCH_VISIBLE = """(
+    ({rv}.branch IN $at_branches AND {rv}.from <= $at AND ({rv}.to IS NULL OR {rv}.to >= $at))
+    OR
+    ({rv}.branch IN $default_branches AND {rv}.from <= $default_time AND ({rv}.to IS NULL OR {rv}.to >= $default_time))
+)"""
+
+_EDGE_ACTIVE_PREDICATE = (
+    _BRANCH_VISIBLE
+    + """
+AND {rv}.status = "active" """
+)
+
 # ----------------
 # Resolve the active Node for a UUID. A kind/namespace/inheritance migration can leave
 # several Node vertices sharing one UUID, so for each candidate vertex we take its latest
-# IS_PART_OF edge on the branch at this time (most-specific branch, then most recent) WITHOUT
-# pre-filtering on status, and only then keep the vertex if that latest edge is "active". A
-# node deleted on a higher-priority branch therefore wins over a stale "active" edge on a
-# lower branch. There should be at most one active Node per UUID per branch; the trailing
-# LIMIT 1 is defensive.
+# IS_PART_OF edge visible on the branch at this time (most-specific branch, then most recent)
+# WITHOUT pre-filtering on status, and only then keep the vertex if that latest edge is
+# "active". A node deleted on a higher-priority branch therefore wins over a stale "active"
+# edge on a lower branch. There should be at most one active Node per UUID per branch; the
+# trailing LIMIT 1 is defensive.
 # ----------------
 _SOURCE_MATCH = """
 MATCH (source:Node {uuid: $source_id})
 CALL (source) {
     MATCH (source)-[r:IS_PART_OF]->(:Root)
-    WHERE r.branch IN $valid_branches AND r.from <= $at AND (r.to IS NULL OR r.to >= $at)
+    WHERE %(visible_r)s
     RETURN r AS part_of
     ORDER BY r.branch_level DESC, r.from DESC
     LIMIT 1
@@ -154,13 +175,13 @@ WITH source, part_of
 WHERE part_of.status = "active"
 WITH source
 LIMIT 1
-"""
+""" % {"visible_r": _BRANCH_VISIBLE.format(rv="r")}
 
 _TARGET_BY_ID_MATCH = """
 MATCH (target:Node {uuid: $target_id})
 CALL (target) {
     MATCH (target)-[r:IS_PART_OF]->(:Root)
-    WHERE r.branch IN $valid_branches AND r.from <= $at AND (r.to IS NULL OR r.to >= $at)
+    WHERE %(visible_r)s
     RETURN r AS part_of
     ORDER BY r.branch_level DESC, r.from DESC
     LIMIT 1
@@ -169,7 +190,7 @@ WITH source, target, part_of
 WHERE part_of.status = "active"
 WITH source, target
 LIMIT 1
-"""
+""" % {"visible_r": _BRANCH_VISIBLE.format(rv="r")}
 
 # Same active-Node resolution for a BFS anchor (the source on a forward expansion, the
 # destination on a backward one), so the search expands from the anchor's active version.
@@ -177,7 +198,7 @@ _SEED_ANCHOR_MATCH = """
 MATCH (anchor:Node {uuid: $anchor_id})
 CALL (anchor) {
     MATCH (anchor)-[r:IS_PART_OF]->(:Root)
-    WHERE r.branch IN $valid_branches AND r.from <= $at AND (r.to IS NULL OR r.to >= $at)
+    WHERE %(visible_r)s
     RETURN r AS part_of
     ORDER BY r.branch_level DESC, r.from DESC
     LIMIT 1
@@ -186,14 +207,7 @@ WITH anchor, part_of
 WHERE part_of.status = "active"
 WITH anchor
 LIMIT 1
-"""
-
-_EDGE_ACTIVE_PREDICATE = """
-{rv}.branch IN $valid_branches
-AND {rv}.status = "active"
-AND {rv}.from <= $at
-AND ({rv}.to IS NULL OR {rv}.to >= $at)
-"""
+""" % {"visible_r": _BRANCH_VISIBLE.format(rv="r")}
 
 _HOP_TUPLE_PREDICATE = """[{start_var}.kind, {rel_var}.name, {end_var}.kind] IN ${hop_tuple_param}"""
 
@@ -232,27 +246,34 @@ RETURN start_node_uuid, start_node_kind, hops, depth
 # frontier of depth ceil(max_depth/2) inward from each anchor (cost ~ fan-out ^ (depth/2),
 # bounded by graph size, not path count), intersect the frontiers to find candidate middle
 # nodes, then reconstruct full paths through that small middle set with exact-length joins.
-#
-# ``_FRONTIER_SEED_HOP`` is the first BFS step: it resolves the anchor (source or
-# destination) to its active same-UUID vertex and expands from there. ``_FRONTIER_HOP`` is
-# every subsequent step: from each uuid in ``$frontier`` it returns the distinct legal
-# neighbours. The caller loops these depth-by-depth, recording each node's first-seen depth
-# (its shortest distance from the anchor). ``$anchor_id`` is the source uuid on a forward
-# expansion, the destination uuid on a backward one; it is also the uuid excluded from the
-# neighbour set so the search never bounces back onto its anchor.
-_FRONTIER_SEED_HOP = """
-%(anchor_match)s
-MATCH (anchor)-[ri:IS_RELATED]-(rel:Relationship)-[ro:IS_RELATED]-(b:Node)
-WHERE %(preds)s
-RETURN DISTINCT b.uuid AS uuid, b.kind AS kind
-"""
+# The whole BFS from one anchor runs in a single query (``render_bfs``): the active-anchor
+# resolution followed by one ``CALL`` subquery per hop, each expanding the previous frontier
+# and a carried ``visited`` list deduping globally so a node is recorded at its first-seen
+# (shortest) depth. ``$anchor_id`` is the source uuid on a forward expansion, the destination
+# uuid on a backward one; it is the uuid excluded from the first hop so the search never
+# bounces back onto its anchor.
+_BFS_EDGES = "-[ri:IS_RELATED]-(rel:Relationship)-[ro:IS_RELATED]-(b:Node)"
 
-_FRONTIER_HOP = """
-UNWIND $frontier AS fid
-MATCH (a:Node {uuid: fid})-[ri:IS_RELATED]-(rel:Relationship)-[ro:IS_RELATED]-(b:Node)
-WHERE %(preds)s
-RETURN DISTINCT b.uuid AS uuid, b.kind AS kind
-"""
+_BFS_HOP_TRIPLE_PREDICATE = "[{from_var}.kind, rel.name, b.kind] IN $hop_triples"
+
+# Hop 1: expand the active anchor (excluding the anchor uuid so we never bounce back), seed
+# ``visited``. ``%(where)s`` is the assembled WHERE for this hop.
+_BFS_SEED_HOP = """CALL (anchor) {
+    MATCH (anchor)%(edges)s
+    WHERE %(where)s
+    RETURN collect(DISTINCT b.uuid) AS h1
+}
+WITH h1, [$anchor_id] + h1 AS visited"""
+
+# Hop N>=2: expand the previous frontier ``%(prev)s``, dedup against ``visited``, then carry
+# every frontier so far (``%(carried)s`` includes ``%(hop)s``) plus the grown ``visited``.
+_BFS_HOP = """CALL (%(prev)s, visited) {
+    UNWIND %(prev)s AS fid
+    MATCH (a:Node {uuid: fid})%(edges)s
+    WHERE %(where)s
+    RETURN collect(DISTINCT b.uuid) AS %(hop)s
+}
+WITH %(carried)s, visited + %(hop)s AS visited"""
 
 # ``_CANONICAL_JOIN`` reconstructs every shortest path of length ``left_len + right_len``
 # whose canonical split node sits at forward-distance ``left_len`` and backward-distance
@@ -329,9 +350,9 @@ def _reachable_paths_text(*, phase_two_inner: str) -> str:
 class GraphTraversalCypherRenderer:
     """Renders a ``Plan`` into Cypher.
 
-    - ``render_frontier_hop()`` / ``render_canonical_join()`` handle ``TerminalById``
-      as a bidirectional search: the caller expands a BFS frontier inward from each
-      anchor and then joins the two halves through the discovered middle nodes.
+    - ``render_bfs()`` / ``render_canonical_join()`` handle ``TerminalById`` as a
+      bidirectional search: the caller expands a BFS frontier inward from each anchor
+      and then joins the two halves through the discovered middle nodes.
     - ``render_reachable_targets()`` / ``render_paths_to_targets()`` handle
       ``TerminalByKinds`` as two separate queries so a caller can discover the
       terminal set once and then enumerate paths to it depth-by-depth.
@@ -340,11 +361,28 @@ class GraphTraversalCypherRenderer:
     def __init__(self, *, branch: Branch, default_branch_name: str) -> None:
         self._is_user_branch = not branch.is_default
         self._user_branch_name = branch.name
-        self._valid_branches: list[str] = (
-            [default_branch_name, GLOBAL_BRANCH_NAME]
-            if branch.is_default
-            else [default_branch_name, GLOBAL_BRANCH_NAME, branch.name]
-        )
+        self._branched_from = branch.branched_from
+        # ``$at_branches``: edges on the queried branch (or global) are visible at ``$at``.
+        # ``$default_branches``: edges on the default branch (or global) are visible at
+        # ``$default_time`` — the branch's fork time.
+        self._at_branches: list[str] = [GLOBAL_BRANCH_NAME, branch.name]
+        self._default_branches: list[str] = [GLOBAL_BRANCH_NAME, default_branch_name]
+
+    def _branch_params(self, *, at: Timestamp) -> dict[str, Any]:
+        """Branch/time params shared by every edge-visibility predicate."""
+        if self._is_user_branch and self._branched_from and at > Timestamp(self._branched_from):
+            default_time = self._branched_from
+        else:
+            default_time = at.to_string()
+        params: dict[str, Any] = {
+            "at": at.to_string(),
+            "at_branches": self._at_branches,
+            "default_branches": self._default_branches,
+            "default_time": default_time,
+        }
+        if self._is_user_branch:
+            params["user_branch"] = self._user_branch_name
+        return params
 
     def _validate(self, *, plan: Plan, max_targets: int | None = None, max_paths: int | None = None) -> None:
         """Reject out-of-range caps and empty plans before rendering.
@@ -363,15 +401,8 @@ class GraphTraversalCypherRenderer:
             raise ValueError("plan has no adjacency")
 
     def _base_params(self, *, source_id: str, at: Timestamp) -> dict[str, Any]:
-        """Params common to every rendered query: source anchor, timestamp, branch scope."""
-        params: dict[str, Any] = {
-            "source_id": source_id,
-            "at": at.to_string(),
-            "valid_branches": self._valid_branches,
-        }
-        if self._is_user_branch:
-            params["user_branch"] = self._user_branch_name
-        return params
+        """Params common to every rendered query: source anchor plus branch/time scope."""
+        return {"source_id": source_id, **self._branch_params(at=at)}
 
     def _phase_one_inner(self, *, plan: Plan, depth_renders: list[_DepthRenderData]) -> str:
         terminal_label_union = "|".join(sorted(_terminal_kinds_for_plan(plan)))
@@ -446,35 +477,33 @@ class GraphTraversalCypherRenderer:
         }
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
 
-    def render_frontier_hop(
+    def render_bfs(
         self,
         *,
         plan: Plan,
         source_id: str,
         target_id: str,
-        frontier_uuids: list[str],
         direction: Literal["forward", "backward"],
-        seed: bool,
+        max_hops: int,
         at: Timestamp | None,
     ) -> RenderedCypher:
-        """Render one BFS step for the bidirectional by-id search.
+        """Render the whole BFS from one anchor as a single query.
 
-        Returns the distinct legal neighbours (uuid + kind) of the current frontier.
-        ``forward`` walks from the source using ``$legal_triples``; ``backward`` walks
-        from the destination using the reversed triples. The anchor uuid is excluded from
-        the neighbour set so the search never bounces back onto it.
-
-        ``seed`` selects the first step: it resolves the anchor to its active same-UUID
-        vertex (handling a migrated node with multiple same-UUID vertices) and expands
-        from there, ignoring ``frontier_uuids``. Subsequent steps (``seed=False``) expand
-        every uuid in ``frontier_uuids``. The caller loops this depth-by-depth to build a
-        per-node shortest-distance map from each anchor.
+        Resolves the anchor to its active same-UUID vertex, then chains one ``CALL``
+        subquery per hop (1..``max_hops``): each expands the previous frontier by one legal
+        edge and a carried ``visited`` list dedupes globally, so a node is recorded only at
+        its first-seen (shortest) depth. ``forward`` walks from the source with
+        ``$legal_triples``; ``backward`` walks from the destination with the reversed
+        triples. Returns a single ``frontiers`` column: a list whose ``i``-th element is the
+        list of node uuids first reached at depth ``i + 1``.
 
         Raises:
-            ValueError: when ``plan`` is empty or ``direction`` is unknown.
+            ValueError: when ``plan`` is empty, ``direction`` is unknown, or ``max_hops < 1``.
 
         """
         self._validate(plan=plan)
+        if max_hops < 1:
+            raise ValueError(f"max_hops must be >= 1, got {max_hops}")
         at = at if at is not None else Timestamp()
         if direction == "forward":
             triples = _legal_triples(plan)
@@ -485,39 +514,45 @@ class GraphTraversalCypherRenderer:
         else:
             raise ValueError(f"direction must be 'forward' or 'backward', got {direction!r}")
 
-        from_var = "anchor" if seed else "a"
-        preds = [
-            # TODO: these predicates are not quite right. If searching on a user branch and an
-            # edge was added on the default branch after the user branch forked, it would be
-            # erroneously included (default-branch edges should be bounded by branched_from).
-            _EDGE_ACTIVE_PREDICATE.format(rv="ri"),
-            _EDGE_ACTIVE_PREDICATE.format(rv="ro"),
-            f"[{from_var}.kind, rel.name, b.kind] IN $hop_triples",
-            "b.uuid <> $anchor_id",
-        ]
-        if self._is_user_branch:
-            preds.append(
-                _DELETION_SHADOW_PREDICATE.format(from_var=from_var, to_var="rel", edge_var="ri", del_var="del_a")
-            )
-            preds.append(_DELETION_SHADOW_PREDICATE.format(from_var="rel", to_var="b", edge_var="ro", del_var="del_b"))
+        def hop_where(from_var: str, dedup: str) -> str:
+            preds = [
+                _EDGE_ACTIVE_PREDICATE.format(rv="ri"),
+                _EDGE_ACTIVE_PREDICATE.format(rv="ro"),
+                _BFS_HOP_TRIPLE_PREDICATE.format(from_var=from_var),
+                dedup,
+            ]
+            if self._is_user_branch:
+                preds.append(
+                    _DELETION_SHADOW_PREDICATE.format(from_var=from_var, to_var="rel", edge_var="ri", del_var="del_a")
+                )
+                preds.append(
+                    _DELETION_SHADOW_PREDICATE.format(from_var="rel", to_var="b", edge_var="ro", del_var="del_b")
+                )
+            return " AND ".join(preds)
 
-        joined = " AND ".join(preds)
-        text = (
-            _FRONTIER_SEED_HOP % {"anchor_match": _SEED_ANCHOR_MATCH, "preds": joined}
-            if seed
-            else _FRONTIER_HOP % {"preds": joined}
-        )
-        params: dict[str, Any] = {
-            "at": at.to_string(),
-            "valid_branches": self._valid_branches,
-            "hop_triples": triples,
-            "anchor_id": anchor_id,
-        }
-        if not seed:
-            params["frontier"] = list(frontier_uuids)
-        if self._is_user_branch:
-            params["user_branch"] = self._user_branch_name
-        return RenderedCypher(text=text, params=params, return_labels=_FRONTIER_RETURN_LABELS)
+        parts = [
+            _SEED_ANCHOR_MATCH,
+            _BFS_SEED_HOP % {"edges": _BFS_EDGES, "where": hop_where("anchor", "b.uuid <> $anchor_id")},
+        ]
+        carried = ["h1"]
+        for hop in range(2, max_hops + 1):
+            hop_name = f"h{hop}"
+            carried.append(hop_name)
+            parts.append(
+                _BFS_HOP
+                % {
+                    "prev": f"h{hop - 1}",
+                    "edges": _BFS_EDGES,
+                    "where": hop_where("a", "NOT b.uuid IN visited"),
+                    "hop": hop_name,
+                    "carried": ", ".join(carried),
+                }
+            )
+        parts.append("RETURN [%s] AS frontiers" % ", ".join(carried))
+
+        text = "\n".join(parts)
+        params: dict[str, Any] = {**self._branch_params(at=at), "hop_triples": triples, "anchor_id": anchor_id}
+        return RenderedCypher(text=text, params=params, return_labels=("frontiers",))
 
     def render_canonical_join(
         self,
