@@ -31,13 +31,12 @@ class TestIpPrefixList:
         )
         await page.get_by_role("link", name="Details").click()
         object_details = page.get_by_test_id("object-details")
-        await expect(object_details.get_by_role("heading", name="Details")).to_be_visible()
+        await expect(object_details.get_by_text("Details", exact=True)).to_be_visible()
         await expect(object_details.get_by_text("Prefix203.111.0.0/16")).to_be_visible()
-        await expect(object_details.get_by_text("Utilization0%")).to_be_visible()
-        await expect(object_details.get_by_role("progressbar")).to_be_visible()
+        await expect(page.get_by_label("Utilization")).to_contain_text("0%")
         await expect(object_details.get_by_text("IP Namespacedefault")).to_be_visible()
-        await expect(page.get_by_role("heading", name="Groups")).to_be_visible()
-        await expect(page.get_by_role("heading", name="Activities")).to_be_visible()
+        await expect(page.get_by_text("Groups", exact=True)).to_be_visible()
+        await expect(page.get_by_text("Activities", exact=True)).to_be_visible()
 
     async def test_view_all_sub_prefixes(self, page: Page, data_sites: SitesHandle) -> None:
         await page.goto("/ipam")

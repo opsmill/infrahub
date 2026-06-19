@@ -92,20 +92,20 @@ class TestBranchDetailsNonDefaultBranch:
 
         tabs_nav = admin_page.get_by_role("navigation", name="Tabs")
         await tabs_nav.get_by_text("Data").click()
-        await expect(admin_page).to_have_url(re.compile(r".*branch_tab=data"))
+        await expect(admin_page).to_have_url(re.compile(rf"/branches/{NON_DEFAULT_BRANCH}/data"))
 
         await tabs_nav.get_by_text("Files").click()
-        await expect(admin_page).to_have_url(re.compile(r".*branch_tab=files"))
+        await expect(admin_page).to_have_url(re.compile(rf"/branches/{NON_DEFAULT_BRANCH}/files"))
 
         await tabs_nav.get_by_text("Artifacts").click()
-        await expect(admin_page).to_have_url(re.compile(r".*branch_tab=artifacts"))
+        await expect(admin_page).to_have_url(re.compile(rf"/branches/{NON_DEFAULT_BRANCH}/artifacts"))
 
         await tabs_nav.get_by_text("Schema").click()
-        await expect(admin_page).to_have_url(re.compile(r".*branch_tab=schema"))
+        await expect(admin_page).to_have_url(re.compile(rf"/branches/{NON_DEFAULT_BRANCH}/schema"))
 
-        # Going back to the Details tab (first tab) clears the query string param.
+        # Going back to the Details tab (first tab) returns to the bare branch URL.
         await tabs_nav.get_by_text("Details").click()
-        await expect(admin_page).not_to_have_url(re.compile(r".*branch_tab=details"))
+        await expect(admin_page).to_have_url(re.compile(rf"/branches/{NON_DEFAULT_BRANCH}$"))
 
     async def test_display_node_metadata(
         self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle

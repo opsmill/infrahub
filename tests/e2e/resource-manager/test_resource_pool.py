@@ -59,7 +59,7 @@ class TestResourceManager:
         await admin_page.goto("/resource-manager")
         await admin_page.get_by_role("link", name="test prefix pool").click()
 
-        await expect(admin_page.get_by_text("Core IP Prefix Pool")).to_be_visible()
+        await expect(admin_page.get_by_text("CoreIP Prefix Pool")).to_be_visible()
         await expect(admin_page.get_by_text("Nametest prefix pool")).to_be_visible()
         await expect(admin_page.get_by_text("Description-")).to_be_visible()
         assert "/resource-manager/" in admin_page.url

@@ -35,7 +35,7 @@ class TestTutorial2Metadata:
         await read_write_page.get_by_role("option", name="Account").first.click()
         await read_write_page.get_by_label("Account").click()
         await read_write_page.get_by_role("option", name="Admin").click()
-        await read_write_page.get_by_label("is protected *").check()
+        await read_write_page.get_by_role("group", name="is protected").locator("label").filter(has_text="True").click()
         await save_screenshot_for_docs(read_write_page, "tutorial_4_metadata_edit")
         await read_write_page.get_by_role("button", name="Save").click()
 

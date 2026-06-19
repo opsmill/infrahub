@@ -64,7 +64,7 @@ class TestProposedChangesChecks:
         await expect(checks_summary.get_by_text("Repository")).to_be_visible()
         await expect(checks_summary.get_by_text("Schema")).to_be_visible()
         await expect(checks_summary.get_by_text("User")).to_be_visible()
-        assert "tab=checks" in admin_page.url
+        assert "/checks" in admin_page.url
 
         await admin_page.wait_for_timeout(3000)  # wait for circle animation to finish
         await save_screenshot_for_docs(admin_page, "topics/proposed_change/pc_tab_checks")

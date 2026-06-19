@@ -48,7 +48,7 @@ class TestBranchesCreationDeletion:
 
     async def test_should_create_a_new_branch(self, admin_page: Page, new_branch_name: str) -> None:
         await admin_page.goto("/")
-        await admin_page.get_by_test_id("branch-selector-trigger").click()
+        await admin_page.get_by_role("button", name="main").click()
         await admin_page.get_by_test_id("create-branch-button").click()
 
         # Form
@@ -58,13 +58,13 @@ class TestBranchesCreationDeletion:
         await admin_page.get_by_role("button", name="Create a new branch").click()
 
         # After submit
-        await expect(admin_page.get_by_test_id("branch-selector-trigger")).to_contain_text(new_branch_name)
+        await expect(admin_page.get_by_role("button", name=new_branch_name)).to_be_visible()
         await expect(admin_page).to_have_url(re.compile(rf".*?branch={new_branch_name}"))
 
     async def test_should_display_the_new_branch(self, admin_page: Page, existing_branch: str) -> None:
         await admin_page.goto("/")
-        await admin_page.get_by_test_id("branch-selector-trigger").click()
-        await expect(admin_page.get_by_test_id("branch-list")).to_contain_text(existing_branch)
+        await admin_page.get_by_role("button", name="main").click()
+        await expect(admin_page.get_by_label("branch list")).to_contain_text(existing_branch)
 
         await admin_page.get_by_role("link", name="View all branches").click()
         await expect(admin_page).to_have_url(re.compile(r".*/branches"))
@@ -101,11 +101,11 @@ class TestBranchesCreationDeletion:
             await modal_delete.get_by_role("button", name="Delete").click()
 
             # we should stay on the active branch
+            await expect(admin_page.get_by_role("heading", name="Branches")).to_be_visible()
             await expect(admin_page.get_by_test_id("branch-selector-trigger")).to_contain_text(active_branch)
             await admin_page.get_by_test_id("branch-selector-trigger").click()
-            await expect(admin_page.get_by_test_id("branch-list")).to_contain_text(active_branch)
-            await expect(admin_page.get_by_test_id("branch-list")).not_to_contain_text(target_branch)
-            await expect(admin_page.get_by_role("heading", name="Branches")).to_be_visible()
+            await expect(admin_page.get_by_label("branch list")).to_contain_text(active_branch)
+            await expect(admin_page.get_by_label("branch list")).not_to_contain_text(target_branch)
             assert f"/branches?branch={active_branch}" in admin_page.url
         finally:
             for name in (active_branch, target_branch):
@@ -123,8 +123,8 @@ class TestBranchesCreationDeletion:
 
             await expect(admin_page.get_by_role("heading", name="Branches")).to_be_visible()
             assert "/branches" in admin_page.url
-            await admin_page.get_by_test_id("branch-selector-trigger").click()
-            await expect(admin_page.get_by_test_id("branch-list")).not_to_contain_text(branch)
+            await admin_page.get_by_role("button", name="main").click()
+            await expect(admin_page.get_by_label("branch list")).not_to_contain_text(branch)
         finally:
             with contextlib.suppress(Exception):
                 await branch_api.delete(branch)

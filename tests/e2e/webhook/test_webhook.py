@@ -67,7 +67,12 @@ class TestCoreWebhook:
 
         await admin_page.get_by_label("Shared Key *").fill("secret")
 
-        await admin_page.get_by_label("Validate Certificates").uncheck()
+        await (
+            admin_page.get_by_role("group", name="Validate Certificates")
+            .locator("label")
+            .filter(has_text="False")
+            .click()
+        )
 
         await save_screenshot_for_docs(admin_page, "webhook_create")
 

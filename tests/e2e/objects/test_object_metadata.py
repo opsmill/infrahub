@@ -39,10 +39,15 @@ class TestObjectMetadata:
         await expect(admin_page.get_by_label("Kind").first.get_by_test_id("select-value")).not_to_be_visible()
 
         # Is protected should not be checked
-        await expect(admin_page.get_by_label("is protected *")).not_to_be_checked()
+        await expect(
+            admin_page.get_by_role("group", name="is protected").get_by_role("checkbox", name="false")
+        ).to_be_checked()
+        await expect(
+            admin_page.get_by_role("group", name="is protected").get_by_role("checkbox", name="true")
+        ).not_to_be_checked()
 
         # Check is protected
-        await admin_page.get_by_label("is protected *").check()
+        await admin_page.get_by_role("group", name="is protected").locator("label").filter(has_text="True").click()
 
         # Select Architecture team
         await admin_page.get_by_label("Kind").first.click()
@@ -73,7 +78,12 @@ class TestObjectMetadata:
         await expect(admin_page.get_by_test_id("select-value").nth(1)).to_contain_text("Architecture Team")
 
         # Is protected should be checked
-        await expect(admin_page.get_by_label("is protected *")).to_be_checked()
+        await expect(
+            admin_page.get_by_role("group", name="is protected").get_by_role("checkbox", name="true")
+        ).to_be_checked()
+        await expect(
+            admin_page.get_by_role("group", name="is protected").get_by_role("checkbox", name="false")
+        ).not_to_be_checked()
 
     async def test_read_only_attribute_should_not_have_metadata_edit_button(
         self, admin_page: Page, data_sites: SitesHandle

@@ -88,7 +88,7 @@ class TestProfileOnGeneric:
         await admin_page.get_by_label("Profile Name *").fill(PROFILE_NAME)
         await admin_page.get_by_label("Profile Priority").fill("2000")
         await admin_page.get_by_label("MTU").fill("256")
-        await admin_page.get_by_label("Enabled").check()
+        await admin_page.get_by_role("group", name="Enabled").locator("label").filter(has_text="True").click()
         await admin_page.get_by_label("Status").click()
         await admin_page.get_by_text("Provisioning").click()
         await admin_page.get_by_role("button", name="Save").click()
