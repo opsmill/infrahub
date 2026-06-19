@@ -136,39 +136,33 @@ def _try_parse_ip_or_prefix(
 _PERMISSION_EXEMPT_NAMESPACES = ("Schema", "Internal")
 
 
-def _viewable_kinds(graphql_context: GraphqlContext, kinds: set[str]) -> set[str]:
-    """Return the subset of the given kinds the active account is allowed to view.
+def _account_can_view(graphql_context: GraphqlContext, kind: str) -> bool:
+    """Tell whether the active account is allowed to view nodes of the given kind.
 
-    When the context carries no permission manager, no account is attached and nothing
-    is filtered out. This keeps the search consistent with the per-kind view permissions
-    enforced on regular object queries, so a UUID or attribute lookup cannot surface a
-    node the caller would otherwise be denied access to.
+    Returns True when the context carries no permission manager (no account attached,
+    e.g. internal or unauthenticated calls), so nothing is filtered in that case.
+    Schema and Internal namespace nodes are system metadata and are always viewable.
     """
     permissions = graphql_context.permissions
     if permissions is None:
-        return set(kinds)
+        return True
+
+    extracted_words = extract_camelcase_words(kind)
+    if extracted_words[0] in _PERMISSION_EXEMPT_NAMESPACES:
+        return True
 
     required_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT
         if graphql_context.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
         else PermissionDecisionFlag.ALLOW_OTHER
     )
-
-    viewable: set[str] = set()
-    for kind in kinds:
-        extracted_words = extract_camelcase_words(kind)
-        if extracted_words[0] in _PERMISSION_EXEMPT_NAMESPACES:
-            viewable.add(kind)
-            continue
-        permission = ObjectPermission(
-            namespace=extracted_words[0],
-            name="".join(extracted_words[1:]),
-            action="view",
-            decision=required_decision,
-        )
-        if permissions.has_permission(permission=permission):
-            viewable.add(kind)
-    return viewable
+    permission = ObjectPermission(
+        namespace=extracted_words[0],
+        name="".join(extracted_words[1:]),
+        action="view",
+        decision=required_decision,
+    )
+    return permissions.has_permission(permission=permission)
 
 
 async def search_resolver(
@@ -190,16 +184,19 @@ async def search_resolver(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
         if matching:
-            display_label = await matching.get_display_label(db=graphql_context.db)
             kind = matching.get_kind()
-            node_entry: dict[str, str] = {"id": matching.id, "kind": kind, "display_label": display_label}
-            # For SchemaNode/SchemaGeneric records, expose the kind of the schema they describe
-            # so clients can link to that schema's page instead of the generic SchemaNode page.
-            if kind in ("SchemaNode", "SchemaGeneric"):
-                namespace = matching.get_attribute("namespace").value
-                name = matching.get_attribute("name").value
-                node_entry["target_kind"] = f"{namespace}{name}"
-            results.append(node_entry)
+            # A UUID lookup returns a single explicitly-requested object, so the view
+            # permission is enforced here rather than after a limited result window.
+            if _account_can_view(graphql_context=graphql_context, kind=kind):
+                display_label = await matching.get_display_label(db=graphql_context.db)
+                node_entry: dict[str, str] = {"id": matching.id, "kind": kind, "display_label": display_label}
+                # For SchemaNode/SchemaGeneric records, expose the kind of the schema they describe
+                # so clients can link to that schema's page instead of the generic SchemaNode page.
+                if kind in ("SchemaNode", "SchemaGeneric"):
+                    namespace = matching.get_attribute("namespace").value
+                    name = matching.get_attribute("name").value
+                    node_entry["target_kind"] = f"{namespace}{name}"
+                results.append(node_entry)
     else:
         with contextlib.suppress(ValueError, ipaddress.AddressValueError):
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
@@ -245,17 +242,6 @@ async def search_resolver(
                 )
                 for obj in objs:
                     results.append({"id": obj.id, "kind": obj.get_kind()})
-
-    viewable_kinds = _viewable_kinds(
-        graphql_context=graphql_context,
-        kinds={result["kind"] for result in results}
-        | {entry["node"]["kind"] for entry in response.get("parent_prefixes", [])},
-    )
-    results = [result for result in results if result["kind"] in viewable_kinds]
-    if "parent_prefixes" in response:
-        response["parent_prefixes"] = [
-            entry for entry in response["parent_prefixes"] if entry["node"]["kind"] in viewable_kinds
-        ]
 
     if "edges" in fields:
         response["edges"] = [{"node": result} for result in results]
