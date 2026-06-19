@@ -1,0 +1,75 @@
+dev/specs/infp-117-health-telemetry/contracts/telemetry-health-payload.md
+  s_1bd12ad8e50715::t_fff54fcd8d2ee8 1-44
+backend/infrahub/telemetry/tasks.py
+  s_1bd12ad8e50715::t_338cf7a71be554 89
+  s_1bd12ad8e50715::t_0626b7b4795adc 23
+CLAUDE.md
+  s_1bd12ad8e50715::t_994ebc6d89345c 6
+dev/specs/infp-117-health-telemetry/data-model.md
+  s_1bd12ad8e50715::t_4398a656da3fd7 1-61
+changelog/+health-telemetry.added.md
+  s_1bd12ad8e50715::t_b28c7c3b79404a 1
+dev/specs/infp-117-health-telemetry/plan.md
+  s_1bd12ad8e50715::t_921402eba8d6c7 2,5-7,9-11,21-23,25,27-29,37,39,41,43,45-50,58-62,79-80,82-86
+  s_1bd12ad8e50715::t_f78197c13f99ae 1,3-4,8,12-20,24,26,30-36,38,40,42,44,51-57,63-78,81,87
+dev/specs/infp-117-health-telemetry/checklists/requirements.md
+  s_1bd12ad8e50715::t_5099a8d60d859c 1-35
+backend/infrahub/telemetry/models.py
+  s_1bd12ad8e50715::t_f44f46876258dc 57-62
+  s_1bd12ad8e50715::t_0357d7ed595e09 76
+  s_1bd12ad8e50715::t_047917c826581d 1-2,5
+backend/infrahub/health.py
+  s_1bd12ad8e50715::t_046b36988b5bac 169-175
+  s_1bd12ad8e50715::t_2c46ddb8f23d60 85-109
+.specify/feature.json
+  s_1bd12ad8e50715::t_8c37ce988b33f5 2
+dev/specs/infp-117-health-telemetry/spec.md
+  s_1bd12ad8e50715::t_c85f9698a45b05 15
+  s_1bd12ad8e50715::t_6f7f99475f0f85 14
+  s_1bd12ad8e50715::t_bdf6b354b007b1 99
+  s_1bd12ad8e50715::t_f80cfaf8207f77 78
+  s_1bd12ad8e50715::t_c82a7db482d8b3 108
+  s_1bd12ad8e50715::t_c77db93dbaafa1 40
+  s_1bd12ad8e50715::t_424f2adfcbed10 1-8,17-39,41-43,45-77,79-85,87-98,100-107
+  s_1bd12ad8e50715::t_bd4283e3e77e90 9-13,16
+  s_1bd12ad8e50715::t_aa29e6a5a95510 86
+  s_1bd12ad8e50715::t_312b0fc8a92c48 44
+dev/specs/infp-117-health-telemetry/research.md
+  s_1bd12ad8e50715::t_a8e30b4dda1a96 1-20,23-52
+  s_1bd12ad8e50715::t_b32b845f99cb18 21-22
+dev/specs/infp-117-health-telemetry/quickstart.md
+  s_1bd12ad8e50715::t_c9dd1735a6fcd3 1-60
+docs/docs/deploy-manage/run-observe/telemetry.mdx
+  s_1bd12ad8e50715::t_e4552d7cc77d72 13
+backend/infrahub/telemetry/constants.py
+  s_1bd12ad8e50715::t_7584f2e8cdcfdc 4
+backend/tests/unit/telemetry/test_health.py
+  s_1bd12ad8e50715::t_d663b9c5239d50 140-142
+  s_1bd12ad8e50715::t_fc62dbc21d44a7 109-111
+  s_1bd12ad8e50715::t_9462e058c89a81 136-137
+  s_1bd12ad8e50715::t_8549822710d42e 1-21,24-108,112-135,138-139
+  s_1bd12ad8e50715::t_ad6eba4d8e3499 22-23
+backend/infrahub/telemetry/health.py
+  s_1bd12ad8e50715::t_1303faaad2b450 72
+  s_1bd12ad8e50715::t_48484a5bd00d5c 37-39
+  s_1bd12ad8e50715::t_708f096fb09b04 1-36,40-71,73-75
+dev/specs/infp-117-health-telemetry/tasks.md
+  s_1bd12ad8e50715::t_11bbc03fa952cb 31,41-42,56-57,61-64,78-79,83,97-98,102,110-112
+  s_1bd12ad8e50715::t_5dfb1f12dffffd 1-30,32-40,43-55,58-60,65-77,80-82,84-96,99-101,103-109,113-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "dceb602e465c61b50a1382c48b570bb6bc180ce0",
+  "prompts": {},
+  "sessions": {
+    "s_1bd12ad8e50715": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "673fa291-d40b-431a-99c6-12bc5ad19244",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}
