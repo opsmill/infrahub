@@ -44,6 +44,7 @@ from infrahub.core.schema.order_by import (
     ParsedOrderByEntry,
     ParsedRelationshipAttributeOrderBy,
     parse_order_by_entry,
+    parse_order_by_path,
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import build_regex_attrs, extract_field_filters
@@ -1705,9 +1706,10 @@ class NodeGetListQuery(Query):
         return False
 
     def _get_parsed_schema_order_by(self) -> list[ParsedOrderByEntry]:
-        if self.requested_order and self.requested_order.order_by:
+        if self.requested_order and self.requested_order.by:
             return [
-                parse_order_by_entry(entry=entry, node_schema=self.schema) for entry in self.requested_order.order_by
+                parse_order_by_path(field=entry.field, direction=entry.direction, node_schema=self.schema)
+                for entry in self.requested_order.by
             ]
         query_time_order_overrides_schema = bool(self.requested_order)
         if query_time_order_overrides_schema:
@@ -2593,10 +2595,10 @@ class NodeGetHierarchyQuery(Query):
         if self.requested_order and self.requested_order.disable:
             return
 
-        if self.requested_order and self.requested_order.order_by:
+        if self.requested_order and self.requested_order.by:
             entries: list[ParsedOrderByEntry] = [
-                parse_order_by_entry(entry=entry, node_schema=hierarchy_schema)
-                for entry in self.requested_order.order_by
+                parse_order_by_path(field=entry.field, direction=entry.direction, node_schema=hierarchy_schema)
+                for entry in self.requested_order.by
             ]
         elif self.requested_order and self.requested_order.node_metadata:
             nm = self.requested_order.node_metadata
