@@ -1,5 +1,6 @@
-import { SearchIcon, XIcon } from "lucide-react";
 import type React from "react";
+
+import { SearchIcon, XIcon } from "lucide-react";
 import {
   Autocomplete as AriaAutocomplete,
   type AutocompleteProps as AriaAutocompleteProps,
@@ -12,6 +13,39 @@ import {
 import { cn } from "tailwind-variants";
 
 import { Button } from "../button/button";
+
+interface AutocompleteSearchFieldProps extends AriaSearchFieldProps {
+  placeholder?: AriaInputProps["placeholder"];
+}
+
+function AutocompleteSearchField({
+  className,
+  placeholder,
+  ...props
+}: AutocompleteSearchFieldProps) {
+  return (
+    <AriaSearchField
+      className={cn("group flex items-center overflow-hidden text-sm", className)}
+      aria-label="Search"
+      {...props}
+    >
+      <SearchIcon aria-hidden className="m-2 size-3.5 text-neutral-400" />
+      <AriaInput
+        className="min-w-0 flex-1 border-none outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden"
+        placeholder={placeholder}
+      />
+      <Button
+        slot="remove"
+        variant="ghost"
+        shape="square"
+        size="xxs"
+        className="opacity-50 hover:opacity-100 group-data-empty:invisible"
+      >
+        <XIcon />
+      </Button>
+    </AriaSearchField>
+  );
+}
 
 export interface AutocompleteProps extends AriaAutocompleteProps {
   suffix?: React.ReactNode;
@@ -38,35 +72,5 @@ export function Autocomplete({
         {children}
       </div>
     </AriaAutocomplete>
-  );
-}
-
-interface SearchInputProps extends AriaSearchFieldProps {
-  placeholder?: AriaInputProps["placeholder"];
-}
-
-function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
-  return (
-    <AriaSearchField
-      className={cn("group flex items-center overflow-hidden text-sm", className)}
-      aria-label="Search"
-      autoFocus
-      {...props}
-    >
-      <SearchIcon aria-hidden className="m-2 size-3.5 text-neutral-400" />
-      <AriaInput
-        className="min-w-0 flex-1 border-none outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden"
-        placeholder={placeholder}
-      />
-      <Button
-        slot="remove"
-        variant="ghost"
-        shape="square"
-        size="xxs"
-        className="opacity-50 hover:opacity-100 group-data-empty:invisible"
-      >
-        <XIcon />
-      </Button>
-    </AriaSearchField>
   );
 }
