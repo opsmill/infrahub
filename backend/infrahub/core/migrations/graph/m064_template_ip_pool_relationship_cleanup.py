@@ -32,6 +32,7 @@ class Migration064(MigrationRequiringRebase):
     """
 
     name: str = "064_template_pool_relationship_cleanup"
+    description: str = "N/A"
     minimum_version: int = 63
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

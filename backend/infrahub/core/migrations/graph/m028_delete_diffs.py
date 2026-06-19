@@ -20,6 +20,7 @@ class Migration028(ArbitraryMigration):
     """Delete all diffs because of an update to how we store diff information. All diffs will need to be recalculated."""
 
     name: str = "028_diff_delete_bug_fix_update"
+    description: str = "N/A"
     minimum_version: int = 27
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

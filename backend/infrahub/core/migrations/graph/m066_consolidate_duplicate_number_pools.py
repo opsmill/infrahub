@@ -34,6 +34,7 @@ class Migration066(ArbitraryMigration):
     """
 
     name: str = "066_consolidate_duplicate_number_pools"
+    description: str = "N/A"
     minimum_version: int = 65
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

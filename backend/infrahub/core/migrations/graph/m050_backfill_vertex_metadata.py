@@ -154,6 +154,7 @@ class BackfillNodeMetadataQuery(Query):
 
 class Migration050(GraphMigration):
     name: str = "050_backfill_vertex_metadata"
+    description: str = "N/A"
     minimum_version: int = 49
     queries: Sequence[type[Query]] = [
         BackfillAttributeMetadataQuery,  # Run first

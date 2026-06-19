@@ -72,6 +72,7 @@ class Migration030(GraphMigration):
     """Edges could have been added to Nodes after the Node was deleted, so we need to hard-delete those illegal edges."""
 
     name: str = "030_delete_illegal_edges"
+    description: str = "N/A"
     minimum_version: int = 29
     queries: Sequence[type[Query]] = [DeletePosthumousEdges]
 

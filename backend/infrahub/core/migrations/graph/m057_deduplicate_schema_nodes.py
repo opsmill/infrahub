@@ -141,6 +141,7 @@ RETURN
 
 class Migration057(ArbitraryMigration):
     name: str = "057_deduplicate_schema_nodes"
+    description: str = "N/A"
     minimum_version: int = 56
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
