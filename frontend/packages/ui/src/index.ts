@@ -53,6 +53,13 @@ export {
   ResizablePanelGroup,
 } from "./components/resizable/resizable";
 export { ScrollArea, type ScrollAreaProps } from "./components/scroll-area/scroll-area";
+export {
+  Select,
+  SelectItem,
+  SelectList,
+  type SelectListProps,
+  SelectTrigger,
+} from "./components/select/select";
 export { Sheet, type SheetProps } from "./components/sheet/sheet";
 export { DismissGuardContext, useDismissGuard } from "./hooks/use-dissmiss-guard";
 export { Spinner, type SpinnerProps } from "./components/spinner/spinner";

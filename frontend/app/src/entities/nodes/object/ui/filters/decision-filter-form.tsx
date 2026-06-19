@@ -1,6 +1,6 @@
+import { Select, SelectItem, SelectList, SelectTrigger } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { FormField } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";

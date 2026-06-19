@@ -23,3 +23,16 @@ export const Default: Story = {
     </PopoverTrigger>
   ),
 };
+
+export const MatchTriggerWidth: Story = {
+  render: () => (
+    <PopoverTrigger>
+      <Button>Open a wide popover trigger</Button>
+      <Popover matchTriggerWidth>
+        <PopoverDialog className="p-4">
+          <p className="text-sm">This popover matches the trigger width exactly.</p>
+        </PopoverDialog>
+      </Popover>
+    </PopoverTrigger>
+  ),
+};
