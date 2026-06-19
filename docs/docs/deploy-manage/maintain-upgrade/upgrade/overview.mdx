@@ -16,7 +16,7 @@ Upgrading Infrahub involves pulling the latest container images, running databas
 
 ## What the upgrade does
 
-`infrahub upgrade` runs as a structured six-step pipeline against the database the configured Infrahub instance points at:
+`infrahub upgrade` runs as a structured six-step pipeline against the configured Infrahub instance's database:
 
 | Step  | What runs |
 |-------|-----------|
@@ -85,12 +85,12 @@ Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normaliz
 
 ### What `--verbose` does
 
-`--verbose` does **not** control per-migration progress (that is always shown). It only lifts the suppression on the `infrahub` and `prefect` Python loggers so their schema-loader warnings, validator-determiner messages, and workflow-client logs become visible during Step 1/6 and Step 6/6. Use it when a migration is failing and you want the full internal log trail; in normal operation you do not need it.
+`--verbose` does **not** control per-migration progress (that is always shown). It only removes the suppression on the `infrahub` and `prefect` Python loggers so their schema-loader warnings, validator-determiner messages, and workflow-client logs become visible during Step 1/6 and Step 6/6. Use it when a migration is failing and you want the full internal log trail; in normal operation you do not need it.
 
 ## Database migration commands
 
 :::note
-You do not need any of the `infrahub db` commands for day-to-day upgrades — `infrahub upgrade` takes care of everything. However, `infrahub db showmigrations` is a useful verification step after an upgrade, while the remaining commands are intended for advanced debugging: previewing what would run, or applying the migration step in isolation when investigating a failure.
+You do not need any of the `infrahub db` commands for day-to-day upgrades — `infrahub upgrade` performs all the necessary steps. However, `infrahub db showmigrations` is a useful verification step after an upgrade, while the remaining commands are intended for advanced debugging: previewing what would run, or applying the migration step in isolation when investigating a failure.
 :::
 `infrahub db migrate` runs the same code path as **Step 1/6 of `infrahub upgrade`**, with identical formatting. Use it only when you specifically want the migration step in isolation — for example, to reproduce a migration failure outside the full upgrade pipeline.
 
