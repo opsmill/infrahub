@@ -14,10 +14,8 @@ from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
-from infrahub.graph_traversal.executor import ReachableNodesExecutor
-from infrahub.graph_traversal.path import PathTraversalQuery
+from infrahub.graph_traversal.executor import PathTraversalExecutor, ReachableNodesExecutor
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.resolver import PermissionResolver
@@ -125,31 +123,18 @@ def build_reachable_executor(
     return ReachableNodesExecutor(db=db, branch=branch, renderer=renderer)
 
 
-async def build_path_traversal_query(
+def build_path_traversal_executor(
     *,
     db: InfrahubDatabase,
     branch: Branch,
-    plan: Plan,
-    source_id: str,
     default_branch_name: str,
-    max_paths: int = 10,
-    at: Timestamp | None = None,
-) -> PathTraversalQuery:
-    """Construct a ``GraphTraversalCypherRenderer`` and a ``PathTraversalQuery`` around it."""
-    timestamp = at or Timestamp()
+) -> PathTraversalExecutor:
+    """Construct a ``GraphTraversalCypherRenderer`` and a ``PathTraversalExecutor`` around it."""
     renderer = GraphTraversalCypherRenderer(
         branch=branch,
         default_branch_name=default_branch_name,
     )
-    return await PathTraversalQuery.init(
-        db=db,
-        branch=branch,
-        at=timestamp,
-        renderer=renderer,
-        plan=plan,
-        source_id=source_id,
-        max_paths=max_paths,
-    )
+    return PathTraversalExecutor(db=db, branch=branch, renderer=renderer)
 
 
 def make_planner(

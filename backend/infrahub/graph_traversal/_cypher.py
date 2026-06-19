@@ -2,10 +2,12 @@
 
 Two terminal predicates are served by separate entry points:
 
-- ``TerminalById`` (``render_shortest_path_by_id``): both endpoints are resolved
-  to their branch/time-correct active ``Node`` rows, then a single ``SHORTEST k``
-  quantified-path-pattern search between the two bound nodes returns up to
-  ``$max_paths`` paths to the target, shortest first.
+- ``TerminalById`` is served by a bidirectional ("meet-in-the-middle") search the
+  caller orchestrates: ``render_frontier_hop`` expands a node-bounded BFS frontier
+  inward from each anchor (one step per call) to build a per-node shortest-distance
+  map, and ``render_canonical_join`` reconstructs the shortest paths of one depth
+  tier through the candidate middle nodes. This avoids the exponential path
+  enumeration of a single deep ``SHORTEST k`` search to a specific target.
 
 - ``TerminalByKinds`` is split into two renders so the caller can discover
   terminals once and then enumerate paths depth-by-depth:
@@ -31,7 +33,7 @@ Branch-conditional pieces:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.timestamp import Timestamp
@@ -58,6 +60,16 @@ def _legal_triples(plan: Plan) -> list[list[str]]:
     return [list(t) for t in sorted(triples)]
 
 
+def _legal_triples_reversed(plan: Plan) -> list[list[str]]:
+    """``_legal_triples`` with each hop reversed: ``[end_kind, rel_name, start_kind]``.
+
+    A backward frontier expansion walks from the destination toward the source, so an
+    edge that is legal as ``[start, rel, end]`` in source→destination order is matched
+    from the other side as ``[end, rel, start]``.
+    """
+    return [[end, rel, start] for start, rel, end in _legal_triples(plan)]
+
+
 class HopTuple(NamedTuple):
     """A legal ``(start_kind, relationship_identifier, end_kind)`` schema hop."""
 
@@ -68,6 +80,7 @@ class HopTuple(NamedTuple):
 
 _RETURN_LABELS: tuple[str, ...] = ("start_node_uuid", "start_node_kind", "hops", "depth")
 _TARGETS_RETURN_LABELS: tuple[str, ...] = ("terminal_uuids",)
+_FRONTIER_RETURN_LABELS: tuple[str, ...] = ("uuid", "kind")
 
 _MAX_TARGETS_MINIMUM = 1
 _MAX_TARGETS_MAXIMUM = 200
@@ -81,6 +94,21 @@ class RenderedCypher:
     text: str
     params: dict[str, Any]
     return_labels: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _QppVars:
+    """Cypher variable names for one quantified-path-pattern hop ``(start)-[edge_in]-(rel)-[edge_out]-(end)``.
+
+    The two halves of the canonical join need disjoint names because Neo4j forbids reusing
+    a QPP-local variable across separate MATCH clauses.
+    """
+
+    start: str
+    edge_in: str
+    rel: str
+    edge_out: str
+    end: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,29 +132,59 @@ class _DepthRenderData:
         return f"hop_tuples_d{self.depth}_h{hop}"
 
 
+# ----------------
+# Resolve the active Node for a UUID. A kind/namespace/inheritance migration can leave
+# several Node vertices sharing one UUID, so for each candidate vertex we take its latest
+# IS_PART_OF edge on the branch at this time (most-specific branch, then most recent) WITHOUT
+# pre-filtering on status, and only then keep the vertex if that latest edge is "active". A
+# node deleted on a higher-priority branch therefore wins over a stale "active" edge on a
+# lower branch. There should be at most one active Node per UUID per branch; the trailing
+# LIMIT 1 is defensive.
+# ----------------
 _SOURCE_MATCH = """
-// ----------------
-// get the latest Node with this UUID in case it had its kind/inheritance migrated
-// and multiple Nodes with the same UUID exist, assumes the Node is active
-// ----------------
-MATCH (source:Node {uuid: $source_id})-[source_active:IS_PART_OF]->(:Root)
-WHERE source_active.branch IN $valid_branches AND source_active.status = "active"
-  AND source_active.from <= $at AND (source_active.to IS NULL OR source_active.to >= $at)
+MATCH (source:Node {uuid: $source_id})
+CALL (source) {
+    MATCH (source)-[r:IS_PART_OF]->(:Root)
+    WHERE r.branch IN $valid_branches AND r.from <= $at AND (r.to IS NULL OR r.to >= $at)
+    RETURN r AS part_of
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH source, part_of
+WHERE part_of.status = "active"
 WITH source
-ORDER BY source_active.branch_level DESC, source_active.from DESC
 LIMIT 1
 """
 
 _TARGET_BY_ID_MATCH = """
-// ----------------
-// get the latest Node with this UUID in case it had its kind/inheritance migrated
-// and multiple Nodes with the same UUID exist, assumes the Node is active
-// ----------------
-MATCH (target:Node {uuid: $target_id})-[target_active:IS_PART_OF]->(:Root)
-WHERE target_active.branch IN $valid_branches AND target_active.status = "active"
-  AND target_active.from <= $at AND (target_active.to IS NULL OR target_active.to >= $at)
+MATCH (target:Node {uuid: $target_id})
+CALL (target) {
+    MATCH (target)-[r:IS_PART_OF]->(:Root)
+    WHERE r.branch IN $valid_branches AND r.from <= $at AND (r.to IS NULL OR r.to >= $at)
+    RETURN r AS part_of
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH source, target, part_of
+WHERE part_of.status = "active"
 WITH source, target
-ORDER BY target_active.branch_level DESC, target_active.from DESC
+LIMIT 1
+"""
+
+# Same active-Node resolution for a BFS anchor (the source on a forward expansion, the
+# destination on a backward one), so the search expands from the anchor's active version.
+_SEED_ANCHOR_MATCH = """
+MATCH (anchor:Node {uuid: $anchor_id})
+CALL (anchor) {
+    MATCH (anchor)-[r:IS_PART_OF]->(:Root)
+    WHERE r.branch IN $valid_branches AND r.from <= $at AND (r.to IS NULL OR r.to >= $at)
+    RETURN r AS part_of
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH anchor, part_of
+WHERE part_of.status = "active"
+WITH anchor
 LIMIT 1
 """
 
@@ -168,42 +226,96 @@ LIMIT $max_paths
 RETURN start_node_uuid, start_node_kind, hops, depth
 """
 
-# By-id k-SHORTEST: resolve both endpoints to their branch/time-correct active Node
-# rows, then run a single quantified-path-pattern search for the ``max_paths`` shortest
-# paths between the two bound nodes. ``SHORTEST k`` walks Neo4j's frontier in a stable
-# traversal order and stops once ``k`` paths are found, so shallow targets return
-# without exploring the full ``max_depth`` cone. The outer ``ORDER BY`` gives a stable
-# presentation order (depth, then the intermediate relationship:uuid sequence). Binding
-# both ``source`` and ``target`` lets the planner anchor both ends.
+# By-id bidirectional ("meet-in-the-middle") search. Reaching a single deep target with a
+# ``SHORTEST k`` quantified-path-pattern forces the engine to enumerate an exponential
+# number of path-steps (cost ~ fan-out ^ depth). Instead, expand a node-bounded BFS
+# frontier of depth ceil(max_depth/2) inward from each anchor (cost ~ fan-out ^ (depth/2),
+# bounded by graph size, not path count), intersect the frontiers to find candidate middle
+# nodes, then reconstruct full paths through that small middle set with exact-length joins.
 #
-# Determinism note: the result is fully reproducible whenever the number of connecting
-# paths is <= ``max_paths`` (no tier is cut). When more paths exist than ``max_paths``,
-# which paths fill the final tier is decided by Neo4j's traversal order and is stable for
-# unchanged data and a fixed Neo4j version/plan.
-_PATH_BY_ID_SHORTEST_ENVELOPE = """
+# ``_FRONTIER_SEED_HOP`` is the first BFS step: it resolves the anchor (source or
+# destination) to its active same-UUID vertex and expands from there. ``_FRONTIER_HOP`` is
+# every subsequent step: from each uuid in ``$frontier`` it returns the distinct legal
+# neighbours. The caller loops these depth-by-depth, recording each node's first-seen depth
+# (its shortest distance from the anchor). ``$anchor_id`` is the source uuid on a forward
+# expansion, the destination uuid on a backward one; it is also the uuid excluded from the
+# neighbour set so the search never bounces back onto its anchor.
+_FRONTIER_SEED_HOP = """
+%(anchor_match)s
+MATCH (anchor)-[ri:IS_RELATED]-(rel:Relationship)-[ro:IS_RELATED]-(b:Node)
+WHERE %(preds)s
+RETURN DISTINCT b.uuid AS uuid, b.kind AS kind
+"""
+
+_FRONTIER_HOP = """
+UNWIND $frontier AS fid
+MATCH (a:Node {uuid: fid})-[ri:IS_RELATED]-(rel:Relationship)-[ro:IS_RELATED]-(b:Node)
+WHERE %(preds)s
+RETURN DISTINCT b.uuid AS uuid, b.kind AS kind
+"""
+
+# ``_CANONICAL_JOIN`` reconstructs every shortest path of length ``left_len + right_len``
+# whose canonical split node sits at forward-distance ``left_len`` and backward-distance
+# ``right_len``. Both halves traverse in source→target order (forward ``$legal_triples``);
+# the middle is pinned to ``$tier_middles`` (nodes at exactly those bidirectional
+# distances). Source and destination are both resolved to their active same-UUID vertex
+# (so a migrated node anchors on its active version, not a stale duplicate).
+#
+# No loop-prevention predicate is needed: an exact-``left_len``-hop path to a node whose
+# global forward distance is ``left_len`` is necessarily a simple geodesic (a cycle would
+# imply a shorter path, contradicting the distance), so the left half's intermediates
+# occupy forward-distances ``1..left_len-1``, the right half's ``left_len+1..depth-1``, and
+# the shared middle sits at ``left_len`` — disjoint ranges, no node can repeat.
+#
+# The ``ORDER BY`` (depth, then the ordered relationship:uuid sequence) matches the caller's
+# ascending-depth tier loop: processing tiers in depth order and ordering within a tier by
+# this total-order key yields a deterministic prefix of a fixed global order, so the result
+# is reproducible and raising ``max_paths`` only appends paths.
+_CANONICAL_JOIN = """
 %(source_match)s%(target_match)s
-MATCH path = SHORTEST %(k)s (source) %(unit)s (target)
+WITH source, target
+MATCH lpath = (source) %(left_unit)s{%(left_len)d} (mid:Node)
+WHERE mid.uuid IN $tier_middles
+MATCH rpath = (mid) %(right_unit)s{%(right_len)d} (target)
+WITH source, lpath, rpath
 WITH
     source.uuid AS start_node_uuid,
     source.kind AS start_node_kind,
-    (size(nodes(path)) - 1) / 2 AS depth,
-    [i IN range(0, (size(nodes(path)) - 1) / 2 - 1) | {
-        relationship_identifier: nodes(path)[i * 2 + 1].name,
-        uuid: nodes(path)[i * 2 + 2].uuid,
-        kind: nodes(path)[i * 2 + 2].kind
+    %(depth)d AS depth,
+    [i IN range(0, %(left_last)d) | {
+        relationship_identifier: nodes(lpath)[i * 2 + 1].name,
+        uuid: nodes(lpath)[i * 2 + 2].uuid,
+        kind: nodes(lpath)[i * 2 + 2].kind
+    }] + [i IN range(0, %(right_last)d) | {
+        relationship_identifier: nodes(rpath)[i * 2 + 1].name,
+        uuid: nodes(rpath)[i * 2 + 2].uuid,
+        kind: nodes(rpath)[i * 2 + 2].kind
     }] AS hops
 ORDER BY depth ASC, reduce(ordering_key = "", h IN hops | ordering_key + h.relationship_identifier + ">" + h.uuid) ASC
+LIMIT $tier_limit
 RETURN start_node_uuid, start_node_kind, hops, depth
 """
 
-
-def _path_by_id_shortest_text(*, unit: str, k: int) -> str:
-    return _PATH_BY_ID_SHORTEST_ENVELOPE % {
-        "source_match": _SOURCE_MATCH,
-        "target_match": _TARGET_BY_ID_MATCH,
-        "unit": unit,
-        "k": k,
-    }
+# ``_DIRECT_JOIN`` is the ``left_len == 0`` case (a depth-1 path: source and target are
+# adjacent, so the middle is the source itself and there is no left half).
+_DIRECT_JOIN = """
+%(source_match)s%(target_match)s
+WITH source, target
+MATCH rpath = (source) %(right_unit)s{%(right_len)d} (target)
+WITH source, rpath
+WITH
+    source.uuid AS start_node_uuid,
+    source.kind AS start_node_kind,
+    %(depth)d AS depth,
+    [i IN range(0, %(right_last)d) | {
+        relationship_identifier: nodes(rpath)[i * 2 + 1].name,
+        uuid: nodes(rpath)[i * 2 + 2].uuid,
+        kind: nodes(rpath)[i * 2 + 2].kind
+    }] AS hops
+ORDER BY depth ASC, reduce(ordering_key = "", h IN hops | ordering_key + h.relationship_identifier + ">" + h.uuid) ASC
+LIMIT $tier_limit
+RETURN start_node_uuid, start_node_kind, hops, depth
+"""
 
 
 def _reachable_targets_text(*, phase_one_inner: str) -> str:
@@ -217,8 +329,9 @@ def _reachable_paths_text(*, phase_two_inner: str) -> str:
 class GraphTraversalCypherRenderer:
     """Renders a ``Plan`` into Cypher.
 
-    - ``render_shortest_path_by_id()`` handles ``TerminalById``: resolves both
-      endpoints to bound nodes and runs a single ``SHORTEST k`` search between them.
+    - ``render_frontier_hop()`` / ``render_canonical_join()`` handle ``TerminalById``
+      as a bidirectional search: the caller expands a BFS frontier inward from each
+      anchor and then joins the two halves through the discovered middle nodes.
     - ``render_reachable_targets()`` / ``render_paths_to_targets()`` handle
       ``TerminalByKinds`` as two separate queries so a caller can discover the
       terminal set once and then enumerate paths to it depth-by-depth.
@@ -333,49 +446,166 @@ class GraphTraversalCypherRenderer:
         }
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
 
-    def render_shortest_path_by_id(
-        self, *, plan: Plan, source_id: str, at: Timestamp | None, max_paths: int
+    def render_frontier_hop(
+        self,
+        *,
+        plan: Plan,
+        source_id: str,
+        target_id: str,
+        frontier_uuids: list[str],
+        direction: Literal["forward", "backward"],
+        seed: bool,
+        at: Timestamp | None,
     ) -> RenderedCypher:
-        """Render a ``SHORTEST k`` search for a ``TerminalById`` target.
+        """Render one BFS step for the bidirectional by-id search.
 
-        Returns up to ``max_paths`` paths to the anchored destination, shortest
-        first, with a stable presentation order (depth, then the ordered
-        intermediate ``relationship:uuid`` sequence). Fully reproducible when the
-        number of connecting paths is at most ``max_paths``; beyond that, which
-        paths fill the final tier follows Neo4j's traversal order.
+        Returns the distinct legal neighbours (uuid + kind) of the current frontier.
+        ``forward`` walks from the source using ``$legal_triples``; ``backward`` walks
+        from the destination using the reversed triples. The anchor uuid is excluded from
+        the neighbour set so the search never bounces back onto it.
+
+        ``seed`` selects the first step: it resolves the anchor to its active same-UUID
+        vertex (handling a migrated node with multiple same-UUID vertices) and expands
+        from there, ignoring ``frontier_uuids``. Subsequent steps (``seed=False``) expand
+        every uuid in ``frontier_uuids``. The caller loops this depth-by-depth to build a
+        per-node shortest-distance map from each anchor.
 
         Raises:
-            ValueError: when ``plan`` is empty, ``max_paths`` is out of range, or
-                the terminal is not anchored by id.
+            ValueError: when ``plan`` is empty or ``direction`` is unknown.
 
         """
-        self._validate(plan=plan, max_paths=max_paths)
-        if not isinstance(plan.terminal_predicate, TerminalById):
-            raise ValueError("render_shortest_path_by_id handles TerminalById only")
-
+        self._validate(plan=plan)
         at = at if at is not None else Timestamp()
-        text = _path_by_id_shortest_text(unit=self._shortest_qpp_unit(max_depth=plan.max_depth), k=max_paths)
-        params: dict[str, Any] = {
-            **self._base_params(source_id=source_id, at=at),
-            "target_id": plan.terminal_predicate.node_id,
-            "legal_triples": _legal_triples(plan),
-        }
-        return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
+        if direction == "forward":
+            triples = _legal_triples(plan)
+            anchor_id = source_id
+        elif direction == "backward":
+            triples = _legal_triples_reversed(plan)
+            anchor_id = target_id
+        else:
+            raise ValueError(f"direction must be 'forward' or 'backward', got {direction!r}")
 
-    def _shortest_qpp_unit(self, *, max_depth: int) -> str:
-        """The repeated quantified-path-pattern unit: one schema hop with its predicates."""
+        from_var = "anchor" if seed else "a"
         preds = [
+            # TODO: these predicates are not quite right. If searching on a user branch and an
+            # edge was added on the default branch after the user branch forked, it would be
+            # erroneously included (default-branch edges should be bounded by branched_from).
             _EDGE_ACTIVE_PREDICATE.format(rv="ri"),
             _EDGE_ACTIVE_PREDICATE.format(rv="ro"),
-            "[a.kind, relx.name, b.kind] IN $legal_triples",
-            "b.uuid <> $source_id",
+            f"[{from_var}.kind, rel.name, b.kind] IN $hop_triples",
+            "b.uuid <> $anchor_id",
         ]
         if self._is_user_branch:
-            preds.append(_DELETION_SHADOW_PREDICATE.format(from_var="a", to_var="relx", edge_var="ri", del_var="del_a"))
-            preds.append(_DELETION_SHADOW_PREDICATE.format(from_var="relx", to_var="b", edge_var="ro", del_var="del_b"))
-        where = " AND ".join(preds)
+            preds.append(
+                _DELETION_SHADOW_PREDICATE.format(from_var=from_var, to_var="rel", edge_var="ri", del_var="del_a")
+            )
+            preds.append(_DELETION_SHADOW_PREDICATE.format(from_var="rel", to_var="b", edge_var="ro", del_var="del_b"))
+
+        joined = " AND ".join(preds)
+        text = (
+            _FRONTIER_SEED_HOP % {"anchor_match": _SEED_ANCHOR_MATCH, "preds": joined}
+            if seed
+            else _FRONTIER_HOP % {"preds": joined}
+        )
+        params: dict[str, Any] = {
+            "at": at.to_string(),
+            "valid_branches": self._valid_branches,
+            "hop_triples": triples,
+            "anchor_id": anchor_id,
+        }
+        if not seed:
+            params["frontier"] = list(frontier_uuids)
+        if self._is_user_branch:
+            params["user_branch"] = self._user_branch_name
+        return RenderedCypher(text=text, params=params, return_labels=_FRONTIER_RETURN_LABELS)
+
+    def render_canonical_join(
+        self,
+        *,
+        plan: Plan,
+        source_id: str,
+        target_id: str,
+        left_len: int,
+        right_len: int,
+        tier_middles: list[str],
+        tier_limit: int,
+        at: Timestamp | None,
+    ) -> RenderedCypher:
+        """Render the path-reconstruction join for one depth tier of the by-id search.
+
+        Reconstructs every shortest path of length ``left_len + right_len`` whose
+        canonical split node (at forward-distance ``left_len``, backward-distance
+        ``right_len``) is in ``tier_middles``. ``left_len == 0`` is the depth-1 case
+        (source and destination are adjacent): the middle is the source itself and only
+        the right half is emitted.
+
+        Raises:
+            ValueError: when ``plan`` is empty, ``max_paths`` (``tier_limit``) is out of
+                range, or ``right_len < 1``.
+
+        """
+        self._validate(plan=plan, max_paths=tier_limit)
+        if right_len < 1:
+            raise ValueError(f"right_len must be >= 1, got {right_len}")
+        if left_len < 0:
+            raise ValueError(f"left_len must be >= 0, got {left_len}")
+
+        at = at if at is not None else Timestamp()
+        right_unit = self._join_unit(_QppVars(start="c", edge_in="si", rel="srel", edge_out="so", end="d"))
+        depth = left_len + right_len
+        params: dict[str, Any] = {
+            **self._base_params(source_id=source_id, at=at),
+            "target_id": target_id,
+            "legal_triples": _legal_triples(plan),
+            "tier_limit": tier_limit,
+        }
+        if left_len == 0:
+            text = _DIRECT_JOIN % {
+                "source_match": _SOURCE_MATCH,
+                "target_match": _TARGET_BY_ID_MATCH,
+                "right_unit": right_unit,
+                "right_len": right_len,
+                "right_last": right_len - 1,
+                "depth": depth,
+            }
+        else:
+            left_unit = self._join_unit(_QppVars(start="a", edge_in="ri", rel="relx", edge_out="ro", end="b"))
+            text = _CANONICAL_JOIN % {
+                "source_match": _SOURCE_MATCH,
+                "target_match": _TARGET_BY_ID_MATCH,
+                "left_unit": left_unit,
+                "right_unit": right_unit,
+                "left_len": left_len,
+                "right_len": right_len,
+                "left_last": left_len - 1,
+                "right_last": right_len - 1,
+                "depth": depth,
+            }
+            params["tier_middles"] = list(tier_middles)
+        return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
+
+    def _join_unit(self, qpp: _QppVars) -> str:
+        """One forward quantified-path-pattern hop for the canonical join."""
+        preds = [
+            _EDGE_ACTIVE_PREDICATE.format(rv=qpp.edge_in),
+            _EDGE_ACTIVE_PREDICATE.format(rv=qpp.edge_out),
+            f"[{qpp.start}.kind, {qpp.rel}.name, {qpp.end}.kind] IN $legal_triples",
+            f"{qpp.end}.uuid <> $source_id",
+        ]
+        if self._is_user_branch:
+            preds.append(
+                _DELETION_SHADOW_PREDICATE.format(
+                    from_var=qpp.start, to_var=qpp.rel, edge_var=qpp.edge_in, del_var=f"del_{qpp.edge_in}"
+                )
+            )
+            preds.append(
+                _DELETION_SHADOW_PREDICATE.format(
+                    from_var=qpp.rel, to_var=qpp.end, edge_var=qpp.edge_out, del_var=f"del_{qpp.edge_out}"
+                )
+            )
         return (
-            f"( (a)-[ri:IS_RELATED]-(relx:Relationship)-[ro:IS_RELATED]-(b:Node)\n    WHERE {where} ){{1,{max_depth}}}"
+            f"( ({qpp.start})-[{qpp.edge_in}:IS_RELATED]-({qpp.rel}:Relationship)"
+            f"-[{qpp.edge_out}:IS_RELATED]-({qpp.end}:Node)\n    WHERE {' AND '.join(preds)} )"
         )
 
     def _feasible_for_depths(
