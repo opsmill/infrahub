@@ -100,8 +100,7 @@ async def webhook_process(
     client = get_client()
     cache = await get_cache()
 
-    if branch_name:
-        await add_tags(branches=[branch_name])
+    await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
 
     webhook_data_str = await cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook_id}")
     if not webhook_data_str:
