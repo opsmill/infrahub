@@ -29,9 +29,6 @@ export const getUpdateMutationFromFormData = ({
       (field.defaultValue as AttributeValueFromPool | RelationshipValueFromPool)?.source?.id ===
         fieldData?.source?.id
     ) {
-      // If the same pool is selected, then remove from the updates. Allocation is
-      // idempotent on the reservation identifier, so re-selecting the same pool —
-      // including with a different requested prefix length — is a no-op.
       return acc;
     }
 

@@ -34,9 +34,6 @@ export function PoolSelect({
   value,
 }: PoolSelectProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  // Shown as the prefix-length placeholder so the user sees what the pool would
-  // allocate by default. The override is only sent when the user types a value.
-  const [defaultPrefixLength, setDefaultPrefixLength] = React.useState<number | null>(null);
 
   const filterQuery = React.useMemo<
     { default_address_type__value: string } | { default_prefix_type__value: string } | undefined
@@ -82,6 +79,9 @@ export function PoolSelect({
           name={`${name}.value.from_pool.prefixlen`}
           rules={{
             validate: (prefixlen: number | null | undefined) => {
+              if (typeof prefixlen === "number" && !Number.isInteger(prefixlen)) {
+                return "Prefix length must be a whole number";
+              }
               const result = validateNumberAttribute(
                 { min: MIN_PREFIX_LENGTH, max: MAX_PREFIX_LENGTH },
                 prefixlen ?? null
@@ -92,7 +92,6 @@ export function PoolSelect({
           render={({ field, fieldState }) => (
             <PoolPrefixLengthInput
               value={field.value}
-              placeholder={defaultPrefixLength}
               invalid={!!fieldState.error}
               onChange={field.onChange}
             />
@@ -110,24 +109,12 @@ export function PoolSelect({
               // value rather than clearing it. Clearing a pool is done through the
               // relationship/attribute input or the reset action.
               if (selectedPoolId !== pool.id) {
-                setDefaultPrefixLength(pool.default_prefix_length?.value ?? null);
                 onChange({
-                  from_pool: {
-                    id: pool.id,
-                    name: pool.display_label,
-                    kind: pool.__typename,
-                    // No prefixlen here: only the override the user explicitly types is sent.
-                    // Allocation is idempotent — re-selecting a pool that already holds a
-                    // reservation for this object can't change the mask, and the backend
-                    // rejects a conflicting prefix length. Omitting it on the zero-effort path
-                    // keeps that case working (the existing reservation is reused).
-                    //
-                    // This is a workaround for that edge case. The cleaner fix is a dedicated
-                    // endpoint to look up a pool's reserved resources, so this field could show
-                    // the already-reserved prefix and disable editing instead of relying on a
-                    // backend error.
-                  },
+                  from_pool: { id: pool.id, name: pool.display_label, kind: pool.__typename },
                 });
+                // No prefixlen is sent unless the user types an override: allocation is
+                // idempotent, so re-selecting a pool that already holds a reservation can't
+                // change the mask, and the backend rejects a conflicting length.
               }
               setIsOpen(false);
             }}

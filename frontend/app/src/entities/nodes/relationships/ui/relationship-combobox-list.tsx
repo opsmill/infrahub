@@ -22,8 +22,6 @@ export interface RelationshipComboboxListProps
   peer: string;
   onSelect: (value: RelationshipNode) => void;
   value?: RelationshipNode | null;
-  // Mark the selected item by id when the full node is not available to the
-  // caller. Takes precedence over `value?.id`.
   selectedValue?: string;
   filterItem?: (relationshipNode: RelationshipNode) => boolean;
   filterQuery?: Record<string, string | number | boolean | string[]>;

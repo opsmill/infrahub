@@ -4,7 +4,6 @@ export type RelationshipNode = {
   id: string;
   display_label: string;
   __typename: string;
-  default_prefix_length?: { value: number | null } | null;
 };
 
 export type RelationshipProperties = {

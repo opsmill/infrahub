@@ -5,8 +5,6 @@ import { classNames } from "@/shared/utils/common";
 
 export interface PoolPrefixLengthInputProps {
   value: number | null | undefined;
-  /** Pool default, shown as a placeholder when no override is entered. */
-  placeholder?: number | null;
   invalid?: boolean;
   onChange: (value: number | null) => void;
 }
@@ -17,15 +15,16 @@ export interface PoolPrefixLengthInputProps {
  * and owns how its value is validated and persisted. Clearing emits `null` (rather
  * than `undefined`) so react-hook-form actually writes the empty state.
  */
-export function PoolPrefixLengthInput({
-  value,
-  placeholder,
-  invalid,
-  onChange,
-}: PoolPrefixLengthInputProps) {
+export function PoolPrefixLengthInput({ value, invalid, onChange }: PoolPrefixLengthInputProps) {
   const handleChange = (raw: string) => {
-    const parsed = Number(raw);
-    onChange(raw === "" || Number.isNaN(parsed) ? null : parsed);
+    if (raw === "") {
+      onChange(null);
+      return;
+    }
+    // Prefix length is integer-only: reject anything that isn't whole digits
+    // ("24.5", "1e2", "-1", " 5"). The controlled input reverts the rejected keystroke.
+    if (!/^\d+$/.test(raw)) return;
+    onChange(Number(raw));
   };
 
   return (
@@ -39,7 +38,6 @@ export function PoolPrefixLengthInput({
       <span className="text-gray-500">/</span>
       <Input
         value={value ?? ""}
-        placeholder={placeholder != null ? String(placeholder) : undefined}
         onChange={(event) => handleChange(event.target.value)}
         inputMode="numeric"
         aria-label="Prefix length"

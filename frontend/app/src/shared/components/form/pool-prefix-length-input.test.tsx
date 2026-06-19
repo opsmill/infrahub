@@ -35,4 +35,13 @@ describe("PoolPrefixLengthInput", () => {
 
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
+
+  test("rejects non-integer input (prefix length is integer-only)", async () => {
+    const onChange = vi.fn<(value: number | null) => void>();
+    const component = await render(<PoolPrefixLengthInput value={undefined} onChange={onChange} />);
+
+    await component.getByTestId("pool-prefix-length-input").fill("24.5");
+
+    expect(onChange).not.toHaveBeenCalledWith(24.5);
+  });
 });
