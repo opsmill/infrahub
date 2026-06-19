@@ -16,6 +16,7 @@ from infrahub.exceptions import ValidationError
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
+from .reservation import validate_reserved_prefix_length
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -49,6 +50,13 @@ class CoreIPPrefixPool(Node):
                     # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
                     node = await registry.manager.get_one(db=db, id=prefix.get("uuid"), branch=branch)
                     if node:
+                        validate_reserved_prefix_length(
+                            pool_kind="IPPrefixPool",
+                            pool_name=self.name.value,  # type: ignore[attr-defined]
+                            reserved_value=node.prefix.value,  # type: ignore[attr-defined]
+                            prefixlen=prefixlen,
+                            data=data,
+                        )
                         return node
 
             ip_namespace = await self.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]

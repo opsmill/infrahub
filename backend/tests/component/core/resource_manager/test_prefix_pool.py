@@ -8,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 
 
 async def test_get_next(
@@ -41,6 +42,54 @@ async def test_get_next(
         db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
     )
     assert next_prefix.id == next_prefix2.id
+
+
+async def test_get_resource_conflicting_prefixlen_raises(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_ipam_schema: SchemaBranch,
+    ip_dataset_prefix_v4: dict,
+) -> None:
+    ns1 = ip_dataset_prefix_v4["ns1"]
+    net140 = ip_dataset_prefix_v4["net140"]
+    net141 = ip_dataset_prefix_v4["net141"]
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool1", resources=[net140, net141], ip_namespace=ns1)
+    await pool.save(db=db)
+
+    first = await pool.get_resource(
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+
+    # An explicit prefixlen that conflicts with the existing reservation is rejected
+    # rather than silently ignored.
+    with pytest.raises(
+        ValidationError,
+        match=r"already allocated as .*; its prefix length cannot be changed, only /17 can be used\.$",
+    ):
+        await pool.get_resource(
+            db=db,
+            prefixlen=18,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="item1",
+            branch=default_branch,
+        )
+
+    # The same prefixlen, or none at all, stays idempotent.
+    same = await pool.get_resource(
+        db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert same.id == first.id
+
+    same_no_prefixlen = await pool.get_resource(
+        db=db, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
+    )
+    assert same_no_prefixlen.id == first.id
 
 
 async def test_get_next_weighted(
