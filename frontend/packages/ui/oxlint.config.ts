@@ -28,6 +28,7 @@ export default defineConfig({
     "eslint/no-undefined": "off",
     "eslint/sort-imports": "off",
     "eslint/sort-keys": "off",
+    "oxc/no-optional-chaining": "off",
     "oxc/no-rest-spread-properties": "off",
     "react-perf/jsx-no-new-object-as-prop": "off",
     "react/button-has-type": "off",
@@ -35,6 +36,7 @@ export default defineConfig({
     "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
     "react/jsx-max-depth": "off",
     "react/jsx-no-constructed-context-values": "off",
+    "react/jsx-no-literals": "off",
     "react/jsx-props-no-spreading": "off",
     "react/no-multi-comp": "off",
     "react/only-export-components": "off",
@@ -46,5 +48,6 @@ export default defineConfig({
     "typescript/no-empty-interface": "off",
     "typescript/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
     "unicorn/no-null": "off",
+    "unicorn/prefer-export-from": "off",
   },
 });

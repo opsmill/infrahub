@@ -25,6 +25,7 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./components/card/card";
+export { Label, type LabelProps } from "./components/label/label";
 export {
   ListBox,
   type ListBoxProps,
