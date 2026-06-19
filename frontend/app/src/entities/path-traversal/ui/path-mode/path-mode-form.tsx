@@ -91,7 +91,10 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                   rules={{
                     required: "Max depth is required",
                     min: { value: 1, message: "Must be ≥ 1" },
-                    max: { value: MAX_TRAVERSAL_DEPTH, message: `Must be ≤ ${MAX_TRAVERSAL_DEPTH}` },
+                    max: {
+                      value: MAX_TRAVERSAL_DEPTH,
+                      message: `Must be ≤ ${MAX_TRAVERSAL_DEPTH}`,
+                    },
                   }}
                   render={({ field }) => (
                     <>
