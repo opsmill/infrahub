@@ -82,6 +82,31 @@ async def check_dependency(
     return DependencyHealth(name=name, status=DependencyStatus.DOWN, error=ErrorCategory.UNKNOWN_ERROR)
 
 
+async def gather_dependency_health(
+    *,
+    database_probe: Callable[[], Awaitable[bool]],
+    message_bus_probe: Callable[[], Awaitable[bool]],
+    cache_probe: Callable[[], Awaitable[bool]],
+    task_manager_probe: Callable[[], Awaitable[bool]],
+    task_manager_db_probe: Callable[[], Awaitable[bool]],
+    check_timeout: float,
+) -> list[DependencyHealth]:
+    """Probe every backing dependency concurrently and return their individual health.
+
+    Each probe is a no-argument coroutine so that resolving or accessing the underlying
+    collaborator happens inside the per-dependency timeout-and-catch boundary: a collaborator
+    that is missing or unreachable is reported as DOWN rather than aborting the whole set.
+    """
+    checks = await asyncio.gather(
+        check_dependency(DependencyName.DATABASE, database_probe, timeout_seconds=check_timeout),
+        check_dependency(DependencyName.MESSAGE_BUS, message_bus_probe, timeout_seconds=check_timeout),
+        check_dependency(DependencyName.CACHE, cache_probe, timeout_seconds=check_timeout),
+        check_dependency(DependencyName.TASK_MANAGER, task_manager_probe, timeout_seconds=check_timeout),
+        check_dependency(DependencyName.TASK_MANAGER_DB, task_manager_db_probe, timeout_seconds=check_timeout),
+    )
+    return list(checks)
+
+
 class HealthStatusEvaluator(Protocol):
     """Aggregates individual dependency checks into a single overall status.
 
@@ -141,16 +166,14 @@ class HealthChecker:
         async def probe_workflow() -> bool:
             return await self._service.workflow.is_healthy()
 
-        checks = await asyncio.gather(
-            check_dependency(DependencyName.DATABASE, self._db.is_healthy, timeout_seconds=self._check_timeout),
-            check_dependency(DependencyName.MESSAGE_BUS, probe_message_bus, timeout_seconds=self._check_timeout),
-            check_dependency(DependencyName.CACHE, probe_cache, timeout_seconds=self._check_timeout),
-            check_dependency(DependencyName.TASK_MANAGER, probe_workflow, timeout_seconds=self._check_timeout),
-            check_dependency(
-                DependencyName.TASK_MANAGER_DB, self._task_manager_db_probe, timeout_seconds=self._check_timeout
-            ),
+        return await gather_dependency_health(
+            database_probe=self._db.is_healthy,
+            message_bus_probe=probe_message_bus,
+            cache_probe=probe_cache,
+            task_manager_probe=probe_workflow,
+            task_manager_db_probe=self._task_manager_db_probe,
+            check_timeout=self._check_timeout,
         )
-        return list(checks)
 
 
 TASK_MANAGER_DB_CONNECTION_URL_ENV = "PREFECT_API_DATABASE_CONNECTION_URL"

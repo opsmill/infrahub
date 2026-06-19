@@ -1,4 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel
+
+from infrahub.health import DependencyHealth, OverallStatus
 
 from .constants import InfrahubType
 
@@ -50,6 +54,12 @@ class TelemetryPrefectData(BaseModel):
     work_pools: list[TelemetryWorkPoolData]
 
 
+class TelemetryHealthData(BaseModel):
+    status: OverallStatus
+    checks: list[DependencyHealth]
+    timestamp: datetime
+
+
 class TelemetryData(BaseModel):
     deployment_id: str | None
     execution_time: float | None
@@ -63,3 +73,4 @@ class TelemetryData(BaseModel):
     schema_info: TelemetrySchemaData
     database: TelemetryDatabaseData
     prefect: TelemetryPrefectData
+    health: TelemetryHealthData | None = None

@@ -10,7 +10,7 @@ Infrahub stores a daily telemetry snapshot locally in the Neo4j database, regard
 
 The daily telemetry workflow:
 
-1. Gathers anonymous usage data (schema counts, feature usage, database stats)
+1. Gathers anonymous usage data (schema counts, feature usage, database stats, and a point-in-time health status of backing services such as the database, message bus, cache, and task manager)
 2. Stores a `TelemetrySnapshot` in the local Neo4j database
 3. If remote telemetry is enabled, sends the data to the remote endpoint
 4. Records the remote send status (`sent`, `skipped`, or `failed`) on each snapshot

@@ -20,6 +20,7 @@ from .constants import (
     RemoteSendStatus,
 )
 from .database import gather_database_information
+from .health import gather_health_data
 from .models import TelemetryBranchData, TelemetryData, TelemetrySchemaData, TelemetryWorkerData
 from .repository import TelemetrySnapshotRepository
 from .snapshot import TelemetrySnapshot
@@ -85,6 +86,7 @@ async def gather_anonymous_telemetry_data() -> TelemetryData:
         schema_info=await gather_schema_information(branch=default_branch),
         database=await gather_database_information(db=await get_database()),
         prefect=await gather_prefect_information(),
+        health=await gather_health_data(),
     )
 
     data.execution_time = time.time() - start_time
