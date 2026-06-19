@@ -56,9 +56,11 @@ describe("updateRelationshipFieldValue - from-pool", () => {
 });
 
 describe("updateAttributeFieldValue - from-pool", () => {
+  // An attribute allocated from a pool carries a `from_pool` value (attributes are not
+  // nodes); re-selecting the same pool restores it unchanged.
   const original: FormAttributeValue = {
     source: { type: "pool", id: "loopbacks", kind: "CoreIPAddressPool", label: "Loopbacks pool" },
-    value: { id: "addr-id", display_label: "10.0.0.31/24", __typename: "IpamIPAddress" },
+    value: { from_pool: { id: "loopbacks", prefixlen: 24 } },
   };
 
   it("restores the existing allocation when the original pool is re-selected, ignoring a new prefixlen", () => {
