@@ -583,12 +583,24 @@ async def test_sync_new_branch(
     )
 
     repo.client = client
+<<<<<<< HEAD
     # Mock import_objects_from_files since we're testing git sync, not import functionality
     with patch(
         "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
     ) as mock_import:
         await _sync(repo)
         mock_import.assert_awaited()
+=======
+    # Skip the object import (build + apply phases) since we're testing git sync, not import functionality
+    with (
+        patch("infrahub.git.integrator.InfrahubRepositoryIntegrator.build_import_plan", new_callable=AsyncMock),
+        patch(
+            "infrahub.git.integrator.InfrahubRepositoryIntegrator.apply_import_plan", new_callable=AsyncMock
+        ) as mock_apply,
+    ):
+        await _sync(repo)
+        mock_apply.assert_awaited()
+>>>>>>> origin/stable
     worktrees = repo.get_worktrees()
 
     assert repo.get_commit_value(branch_name=branch.name) == commit
@@ -604,12 +616,24 @@ async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: Infr
     # Mock update_commit_value query
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
+<<<<<<< HEAD
     # Mock import_objects_from_files since we're testing git sync, not import functionality
     with patch(
         "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
     ) as mock_import:
         await _sync(repo)
         mock_import.assert_awaited()
+=======
+    # Skip the object import (build + apply phases) since we're testing git sync, not import functionality
+    with (
+        patch("infrahub.git.integrator.InfrahubRepositoryIntegrator.build_import_plan", new_callable=AsyncMock),
+        patch(
+            "infrahub.git.integrator.InfrahubRepositoryIntegrator.apply_import_plan", new_callable=AsyncMock
+        ) as mock_apply,
+    ):
+        await _sync(repo)
+        mock_apply.assert_awaited()
+>>>>>>> origin/stable
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 

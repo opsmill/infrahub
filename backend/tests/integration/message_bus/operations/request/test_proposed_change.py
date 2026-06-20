@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import ANY, call, patch
 
 import pytest
+from prefect import flow
 
 from infrahub import config
 from infrahub.auth.session import AccountSession
@@ -97,6 +98,14 @@ PROPOSED_CHANGE_QUERY = """
 """
 
 
+@flow(name="sync-repository-for-test")
+async def sync_repository(repo: InfrahubRepository) -> None:
+    """Run a repository sync inside a flow run so the import has a Prefect run context, as in production."""
+    await RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter()).sync(
+        repo
+    )
+
+
 class TestProposedChange(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def user_account(self, db: InfrahubDatabase) -> Node:
@@ -146,9 +155,13 @@ class TestProposedChange(TestInfrahubApp):
         )
 
         repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
+<<<<<<< HEAD
         await RepositorySyncer(
             lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter()
         ).sync(repo)
+=======
+        await sync_repository(repo)
+>>>>>>> origin/stable
 
         result = await graphql_mutation(
             query=PROPOSED_CHANGE_CREATE,
