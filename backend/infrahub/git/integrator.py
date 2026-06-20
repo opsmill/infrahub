@@ -259,7 +259,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )
             jinja2_definitions = await self._build_jinja2_transform_definitions(
-                branch_name=infrahub_branch_name, config_file=config_file
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )
             check_definitions = await self._build_python_check_definitions(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
@@ -361,12 +361,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         config_file: InfrahubRepositoryConfig,
     ) -> None:
         local_transforms = await self._build_jinja2_transform_definitions(
-            branch_name=branch_name, config_file=config_file
+            branch_name=branch_name, commit=commit, config_file=config_file
         )
         await self._apply_jinja2_transform_definitions(branch_name=branch_name, local_transforms=local_transforms)
 
     async def _build_jinja2_transform_definitions(
-        self, branch_name: str, config_file: InfrahubRepositoryConfig
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> dict[str, InfrahubRepositoryJinja2]:
         """Build the desired Jinja2 transform definitions from the repository config.
 
