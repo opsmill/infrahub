@@ -100,10 +100,6 @@ class TestAddRepository:
         )
 
         self.mock_repo.name = git_upstream_repo_01["name"]
-<<<<<<< HEAD
-        self.mock_repo.import_objects_from_files = AsyncMock()
-=======
->>>>>>> origin/stable
         self.mock_repo.collect_pending_imports = AsyncMock(return_value=CollectedImports())
 
         with patch("infrahub.git.sync.InfrahubRepository", spec=InfrahubRepository) as mock_repo_class:

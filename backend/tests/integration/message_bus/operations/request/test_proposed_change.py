@@ -155,13 +155,7 @@ class TestProposedChange(TestInfrahubApp):
         )
 
         repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
-<<<<<<< HEAD
-        await RepositorySyncer(
-            lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter()
-        ).sync(repo)
-=======
         await sync_repository(repo)
->>>>>>> origin/stable
 
         result = await graphql_mutation(
             query=PROPOSED_CHANGE_CREATE,
