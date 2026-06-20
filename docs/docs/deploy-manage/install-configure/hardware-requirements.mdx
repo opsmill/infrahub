@@ -4,7 +4,7 @@ title: Hardware requirements
 
 import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
 
-This page outlines the hardware requirements for running Infrahub, including minimum and recommended specifications, enterprise sizing, cloud provider machine types, and a utility for benchmarking your system's performance.
+This page outlines the hardware requirements for running Infrahub, including minimum and recommended specifications, enterprise sizing, cloud provider machine types, task manager database storage, and a utility for benchmarking your system's performance.
 
 If you only want to try Infrahub, follow the [Quick Start](../../overview/quickstart.mdx).
 
@@ -26,6 +26,24 @@ For cloud deployments, use at least the following machine types:
 | Microsoft Azure             | Standard_D4as_v7   |
 | Oracle Cloud Infrastructure | VM.Standard.E6     |
 | Alibaba Cloud               | ecs.g9a.xlarge     |
+
+## Task manager database (PostgreSQL) storage
+
+The storage figures in the tables above size the Neo4j graph database. The task manager (Prefect) keeps its own [PostgreSQL database](../../overview/architecture.mdx#task-manager), which you size separately.
+
+PostgreSQL storage grows with **activity, not with the amount of data stored in Infrahub**. It is driven by how busy the instance is — the number of open proposed changes, the volume of changes per day, task execution history, and events — not by how many objects (IP addresses, devices, services) you manage. An instance with a small dataset but heavy automation can use more PostgreSQL storage than a large but mostly static one.
+
+Use the following as starting points:
+
+| Instance type               | PostgreSQL storage |
+|-----------------------------|--------------------|
+| Local or one-off            | 8 GB               |
+| Long-running or development | 20 GB              |
+| Production                  | 100 GB             |
+
+Infrahub periodically prunes old activity logs, so storage usage tends to plateau rather than grow without bound. Monitor disk utilization over time and resize the volume as activity increases.
+
+For what the task manager database contains and how to back it up, see the [database backup overview](../maintain-upgrade/database-backup/overview.mdx). For the signals to watch in production, see the [FAQ](../../faq/faq.mdx).
 
 ## Enterprise sizing <EnterpriseBadge />
 
