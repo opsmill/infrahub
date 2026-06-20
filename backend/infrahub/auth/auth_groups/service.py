@@ -83,6 +83,10 @@ class AutoCreatedGroupsService:
         budget is exhausted, claims that would require a brand-new group are silently dropped.
         Existing-group reuse continues uncapped.
 
+        A claim whose persistence fails is isolated: the error is logged, a rejected event is
+        emitted, and the remaining claims are still applied. One failing claim never aborts the
+        login or drops the other groups.
+
         Returns the effective names that resulted in a successful membership, in matching order.
         An empty tuple means auto-creation produced no memberships.
         """
@@ -111,32 +115,42 @@ class AutoCreatedGroupsService:
                 continue
             seen.add(name)
 
-            if new_creations < self._max_per_login:
-                result = await self._find_or_create(name=name, source_pattern=match.source_pattern)
-                group = result.group
-                if group is None:
-                    continue
-                if result.was_created:
-                    new_creations += 1
-            else:
-                # Cap exhausted: only allow reuse of an existing row. A claim that would
-                # require a fresh creation is dropped.
-                existing = await self._lookup_by_name(name)
-                if existing is None:
-                    log.info(
-                        "auth_groups.skip_claim_over_per_login_cap",
-                        provider_name=self._provider_name,
-                        effective_name=name,
-                        max_per_login=self._max_per_login,
-                    )
-                    dropped.append(claim)
-                    continue
-                group = self._reuse_or_skip(name, existing)
-                if group is None:
-                    continue
+            try:
+                if new_creations < self._max_per_login:
+                    result = await self._find_or_create(name=name, source_pattern=match.source_pattern)
+                    group = result.group
+                    if group is None:
+                        continue
+                    if result.was_created:
+                        new_creations += 1
+                else:
+                    # Cap exhausted: only allow reuse of an existing row. A claim that would
+                    # require a fresh creation is dropped.
+                    existing = await self._lookup_by_name(name)
+                    if existing is None:
+                        log.info(
+                            "auth_groups.skip_claim_over_per_login_cap",
+                            provider_name=self._provider_name,
+                            effective_name=name,
+                            max_per_login=self._max_per_login,
+                        )
+                        dropped.append(claim)
+                        continue
+                    group = self._reuse_or_skip(name, existing)
+                    if group is None:
+                        continue
 
-            if await self._add_member(group):
-                granted.append(name)
+                if await self._add_member(group):
+                    granted.append(name)
+            except Exception:
+                # One claim's persistence failing must not abort the login: log it, record a rejected
+                # event, and keep applying the remaining claims.
+                log.exception(
+                    "auth_groups.claim_processing_failed",
+                    provider_name=self._provider_name,
+                    effective_name=name,
+                )
+                await self._emitter.claim_rejected(claim=claim)
 
         if dropped:
             await self._emitter.cap_breached(cap_value=self._max_per_login, dropped_claims=dropped)
