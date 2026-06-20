@@ -79,7 +79,7 @@ class PathTraversalResultType(ObjectType):
 class PathTraversalInput(InputObjectType):
     source_id = String(required=True, description="UUID of the start node")
     destination_id = String(required=True, description="UUID of the end node")
-    max_depth = Int(required=False, default_value=5, description="Maximum number of node hops (default: 5, max: 20)")
+    max_depth = Int(required=False, default_value=5, description="Maximum number of node hops (default: 5, max: 30)")
     max_paths = Int(
         required=False, default_value=10, description="Maximum number of paths to return (default: 10, max: 100)"
     )

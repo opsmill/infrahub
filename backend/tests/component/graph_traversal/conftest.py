@@ -24,6 +24,23 @@ async def jack_with_blue_tag(
 
 
 @pytest.fixture
+async def three_people_shared_tag(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, tag_blue_main: Node
+) -> tuple[Node, Node, Node, Node]:
+    # Three people all linked to the same tag. From p1 to p2 the only simple route is the
+    # direct p1 -tag- p2 (depth 2); the only deeper route, p1 -tag- p3 -tag- p2 (depth 4),
+    # revisits the shared tag and is therefore a non-simple walk that must be excluded.
+    people = []
+    for first in ("One", "Two", "Three"):
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await person.new(db=db, firstname=first, lastname="Shared", tags=[tag_blue_main])
+        await person.save(db=db)
+        people.append(person)
+    p1, p2, p3 = people
+    return p1, p2, p3, tag_blue_main
+
+
+@pytest.fixture
 async def two_ips_in_one_namespace(
     db: InfrahubDatabase,
     default_branch: Branch,

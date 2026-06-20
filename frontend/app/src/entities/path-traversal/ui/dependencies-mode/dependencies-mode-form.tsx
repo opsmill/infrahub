@@ -18,6 +18,7 @@ import {
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
+import { MAX_TRAVERSAL_DEPTH } from "../../domain/path-traversal.constants";
 import { ObjectPicker } from "../object-picker";
 import { isVisibleNamespace } from "../utils";
 import type { DependenciesModeFormValues } from "./use-dependencies-mode-params";
@@ -80,7 +81,7 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
               rules={{
                 required: "Max depth is required",
                 min: { value: 1, message: "Must be ≥ 1" },
-                max: { value: 20, message: "Must be ≤ 20" },
+                max: { value: MAX_TRAVERSAL_DEPTH, message: `Must be ≤ ${MAX_TRAVERSAL_DEPTH}` },
               }}
               render={({ field }) => (
                 <div className="space-y-1">
@@ -89,7 +90,7 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                     <Input
                       type="number"
                       min={1}
-                      max={20}
+                      max={MAX_TRAVERSAL_DEPTH}
                       value={(field.value as number) ?? ""}
                       onChange={(e) => {
                         const value = e.target.valueAsNumber;

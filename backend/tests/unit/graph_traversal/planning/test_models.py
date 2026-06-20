@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES
+from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES, MAX_DEPTH, MIN_DEPTH
 from infrahub.graph_traversal.planning.models import (
     Plan,
     TerminalById,
@@ -57,19 +57,19 @@ class TestPlan:
         assert plan.get_min_depth_to_terminal_for_kind("C") == 1
 
     def test_rejects_max_depth_below_minimum(self) -> None:
-        with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
+        with pytest.raises(ValueError, match=rf"Plan.max_depth must be in \[{MIN_DEPTH}, {MAX_DEPTH}\]"):
             Plan(
                 source_kind="A",
                 terminal_predicate=TerminalById(node_id="uuid", kind="B"),
-                max_depth=0,
+                max_depth=MIN_DEPTH - 1,
             )
 
     def test_rejects_max_depth_above_maximum(self) -> None:
-        with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
+        with pytest.raises(ValueError, match=rf"Plan.max_depth must be in \[{MIN_DEPTH}, {MAX_DEPTH}\]"):
             Plan(
                 source_kind="A",
                 terminal_predicate=TerminalById(node_id="uuid", kind="B"),
-                max_depth=21,
+                max_depth=MAX_DEPTH + 1,
             )
 
     def test_plan_with_no_hops_is_empty(self) -> None:
