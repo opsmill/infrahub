@@ -112,13 +112,9 @@ class RepositorySyncer:
         failed_imports = list(collected.failed_imports)
         for pending_import in collected.imports:
             try:
-<<<<<<< HEAD
-                await self._importer.import_branch(repo, pending_import)
-=======
                 plan = await self._importer.build_branch_import(repo, pending_import)
                 async with self._lock_registry.get(name=repo.name, namespace="repository"):
                     await self._importer.apply_branch_import(repo, plan)
->>>>>>> origin/stable
             except (RepositoryConnectionError, RepositoryCredentialsError):
                 raise
             except Exception as exc:

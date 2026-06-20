@@ -341,12 +341,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if self.reinitialized:
             return
 
-<<<<<<< HEAD
-        infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
-        event_context = InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context()
-=======
         infrahub_branch = registry.get_branch_from_registry(branch=plan.infrahub_branch_name)
->>>>>>> origin/stable
+        event_context = InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             CommitUpdatedEvent(
@@ -402,7 +398,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 log.error(exc.message)
                 continue
 
-<<<<<<< HEAD
             closure = closure_builder.build(
                 transform_config=config_transform,
                 worktree_root=Path(worktree.directory),
@@ -414,10 +409,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 dependencies_complete=closure.complete,
                 **config_transform.model_dump(),
             )
-=======
-            transform = InfrahubRepositoryJinja2(repository=str(self.id), **config_transform.model_dump())
             local_transforms[transform.name] = transform
->>>>>>> origin/stable
 
         return local_transforms
 
@@ -1321,17 +1313,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)
     async def get_python_transforms(
-<<<<<<< HEAD
         self,
-        branch_name: str,
         module: types.ModuleType,
         file_path: str,
         transform: InfrahubPythonTransformConfig,
         dependencies: list[str],
         dependencies_complete: bool,
-=======
-        self, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
->>>>>>> origin/stable
     ) -> list[TransformPythonInformation]:
         log = get_run_logger()
         if transform.class_name not in dir(module):
