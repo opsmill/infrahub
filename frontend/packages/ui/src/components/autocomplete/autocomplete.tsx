@@ -27,6 +27,7 @@ function AutocompleteSearchField({
     <AriaSearchField
       className={cn("group flex items-center overflow-hidden text-sm", className)}
       aria-label="Search"
+      autoFocus
       {...props}
     >
       <SearchIcon aria-hidden className="m-2 size-3.5 text-neutral-400" />
