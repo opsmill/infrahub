@@ -28,6 +28,7 @@ export default defineConfig({
     "eslint/no-undefined": "off",
     "eslint/sort-imports": "off",
     "eslint/sort-keys": "off",
+    "jsx-a11y/no-autofocus": "off",
     "oxc/no-optional-chaining": "off",
     "oxc/no-rest-spread-properties": "off",
     "react-perf/jsx-no-new-object-as-prop": "off",
