@@ -1,3 +1,1 @@
-Allocating from an IP address or IP prefix pool with an explicit prefix length that conflicts with an existing reservation for the same identifier now raises a validation error instead of silently returning the existing allocation. A request with no prefix length, or one matching the reservation, is unchanged (the existing allocation is returned).
-
-This is a behaviour change for callers of `get_resource` beyond the UI — notably the `IPAddressPoolGetResource` / `IPPrefixPoolGetResource` mutations used by the SDK and generators, which thread `prefix_length` into the same path. Re-allocating a reservation with a different `prefix_length` that previously succeeded (returning the existing allocation unchanged) now errors.
+Allocating from an IP address or prefix pool with a prefix length that conflicts with an existing reservation now returns a clear error instead of silently reusing the existing allocation.

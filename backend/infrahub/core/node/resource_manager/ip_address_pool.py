@@ -54,8 +54,8 @@ class CoreIPAddressPool(Node):
                     if node:
                         validate_reserved_prefix_length(
                             pool_kind="IPAddressPool",
-                            pool_name=self.name.value,  # type: ignore[attr-defined]
-                            reserved_value=node.address.value,  # type: ignore[attr-defined]
+                            pool_name=str(self.get_attribute("name").value),
+                            reserved_value=node.get_attribute("address").value,
                             prefixlen=prefixlen,
                             data=data,
                         )

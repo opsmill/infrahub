@@ -67,10 +67,7 @@ async def test_get_resource_conflicting_prefixlen_raises(
 
     # An explicit prefixlen that conflicts with the existing reservation is rejected
     # rather than silently ignored.
-    with pytest.raises(
-        ValidationError,
-        match=r"already allocated as .*; its prefix length cannot be changed, only /17 can be used\.$",
-    ):
+    with pytest.raises(ValidationError) as exc_info:
         await pool.get_resource(
             db=db,
             prefixlen=18,
@@ -79,6 +76,10 @@ async def test_get_resource_conflicting_prefixlen_raises(
             identifier="item1",
             branch=default_branch,
         )
+    assert str(exc_info.value) == (
+        f"IPPrefixPool: pool1 | This resource is already allocated as {first.get_attribute('prefix').value}; "
+        "its prefix length cannot be changed, only /17 can be used."
+    )
 
     # The same prefixlen, or none at all, stays idempotent.
     same = await pool.get_resource(
