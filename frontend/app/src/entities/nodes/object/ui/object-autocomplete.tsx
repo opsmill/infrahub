@@ -1,9 +1,14 @@
 import { Icon } from "@iconify-icon/react";
-import { ListBox, ListBoxItem, ListBoxLoadMoreItem, ListBoxVirtualizer } from "@infrahub/ui";
+import {
+  Autocomplete,
+  ListBox,
+  ListBoxItem,
+  ListBoxLoadMoreItem,
+  ListBoxVirtualizer,
+} from "@infrahub/ui";
 import React from "react";
 import { Collection } from "react-aria-components";
 
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { debounce } from "@/shared/utils/common";
 

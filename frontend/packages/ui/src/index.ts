@@ -1,3 +1,4 @@
+export { Autocomplete, type AutocompleteProps } from "./components/autocomplete/autocomplete";
 export {
   Breadcrumb,
   type BreadcrumbProps,
