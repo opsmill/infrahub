@@ -49,12 +49,10 @@ class RelatedNodesInfo(BaseModel):
     def get_related_nodes(self, flow_id: UUID) -> list[RelatedNodeInfo]:
         if flow_id not in self.flows or len(self.flows[flow_id].keys()) == 0:
             return []
-        return list(self.flows[flow_id].values())
+        return [item for item in self.flows[flow_id].values() if item.kind is not None]
 
     def get_related_nodes_as_dict(self, flow_id: UUID) -> list[dict[str, str | None]]:
-        if flow_id not in self.flows or len(self.flows[flow_id].keys()) == 0:
-            return []
-        return [item.model_dump() for item in list(self.flows[flow_id].values())]
+        return [item.model_dump() for item in self.get_related_nodes(flow_id=flow_id)]
 
     def get_first_related_node(self, flow_id: UUID) -> RelatedNodeInfo | None:
         if nodes := self.get_related_nodes(flow_id=flow_id):
