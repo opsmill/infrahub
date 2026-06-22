@@ -14,7 +14,6 @@ import {
   CopyToClipboardMenuItem,
   Menu,
   MenuItem,
-  MenuItemWithTooltip,
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
@@ -154,46 +153,42 @@ export function ObjectDetailsMenu({
             )}
 
             <MenuSection title="Manage">
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 onAction={() => setIsEditModalOpen(true)}
               >
                 <PencilLineIcon className="size-3.5" />
                 <span>Edit</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 onAction={() => setIsManageGroupsDrawerOpen(true)}
               >
                 <GroupIcon className="size-3.5" />
                 <span>Groups</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 href={constructPath(`/objects/${objectData.__typename}/${objectData.id}/convert`)}
               >
                 <Icon icon="mdi:swap-horizontal" className="size-3" />
                 Convert object type
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isDeleteAllowed}
-                tooltipEnabled={!isDeleteAllowed}
-                tooltipContent={deleteTooltipMessage}
+                tooltip={deleteTooltipMessage}
                 className="text-red-500"
                 onAction={() => setIsDeleteModalOpen(true)}
               >
                 <Trash2Icon className="size-3.5" />
                 <span>Delete</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
             </MenuSection>
           </Menu>
         </Popover>

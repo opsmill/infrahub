@@ -33,9 +33,31 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
   );
 };
 
-export interface MenuItemProps extends AriaMenuItemProps {}
+export interface MenuItemProps extends AriaMenuItemProps {
+  tooltip?: TooltipProps["message"];
+  side?: TooltipProps["placement"];
+}
 
-export const MenuItem = ({ children, className, textValue, ...props }: MenuItemProps) => {
+export const MenuItem = ({
+  tooltip,
+  side,
+  children,
+  className,
+  textValue,
+  ...props
+}: MenuItemProps) => {
+  if (tooltip !== undefined) {
+    return (
+      <MenuItemWithTooltip
+        tooltip={tooltip}
+        side={side}
+        className={className}
+        textValue={textValue}
+        {...props}
+      />
+    );
+  }
+
   return (
     <AriaMenuItem
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
@@ -71,25 +93,28 @@ export const MenuSection = <T extends object>({
   );
 };
 
-export interface MenuItemWithTooltipProps extends Omit<MenuItemProps, "children"> {
-  tooltipContent?: TooltipProps["message"];
-  tooltipEnabled?: boolean;
-  side?: TooltipProps["placement"];
+interface MenuItemWithTooltipProps extends Omit<MenuItemProps, "children"> {
   children?: React.ReactNode;
 }
 
-export function MenuItemWithTooltip({
-  tooltipContent,
-  tooltipEnabled,
+function MenuItemWithTooltip({
+  tooltip,
   side = "left",
   isDisabled,
+  className,
   children,
   ...props
 }: MenuItemWithTooltipProps) {
   return (
-    <MenuItem isDisabled={isDisabled} className="data-disabled:pointer-events-auto" {...props}>
+    <MenuItem
+      isDisabled={isDisabled}
+      className={composeRenderProps(className, (className) =>
+        classNames("data-disabled:pointer-events-auto", className)
+      )}
+      {...props}
+    >
       <Tooltip
-        message={tooltipEnabled && isDisabled ? tooltipContent : undefined}
+        message={isDisabled ? tooltip : undefined}
         placement={side}
         className="z-100001"
         nonInteractiveTrigger
