@@ -66,17 +66,21 @@ class MergeRollbackHandler:
             return False
 
         try:
+            # Lift the write protection BEFORE flipping the branch back to OPEN so that a failure
+            # leaves the branch MERGING and it can be detected during recovery
+            await self.merge_write_blocker.delete()
+
             branch.branched_from = pre_merge_branched_from
             branch.status = BranchStatus.OPEN
             await branch.save(db=self.db, user_id=user_id)
             registry.branch[branch.name] = branch
-
-            # Lift the write protection now that the merge has been cleanly rolled back.
-            await self.merge_write_blocker.delete()
         except Exception:
-            # Hold the write protection (leave the key set) rather than reporting a clean rollback on a
-            # partially-restored state, so recovery takes over instead of allowing writes. Never raise:
-            # raising here would mask the original merge error that triggered the rollback.
+            # Report a failed rollback rather than a clean one on a partially-restored state, so
+            # recovery takes over. If the key delete failed, the branch is still MERGING with the key
+            # set; if the delete succeeded but the OPEN flip did not, the branch is still durably
+            # MERGING, which recovery still detects (its rollback is idempotent over already-reverted
+            # data). Never raise: raising here would mask the original merge error that triggered the
+            # rollback.
             self.log.exception("Branch state restore failed during merge rollback")
             return False
 
