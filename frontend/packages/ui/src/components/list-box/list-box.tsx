@@ -44,7 +44,7 @@ export function ListBox<T extends object>({
       <AriaListBox
         shouldFocusOnHover
         className={composeAriaClassName(className, (resolvedClassName) =>
-          cn("no-scrollbar max-h-[inherit] overflow-auto", resolvedClassName),
+          cn("no-scrollbar max-h-[inherit] overflow-auto outline-hidden", resolvedClassName),
         )}
         renderEmptyState={
           emptyMessage === undefined

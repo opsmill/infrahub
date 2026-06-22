@@ -23,6 +23,9 @@ const popoverStyles = tv({
     isExiting: {
       true: "fade-out-0 zoom-out-95 animate-out",
     },
+    matchTriggerWidth: {
+      true: "w-(--trigger-width)",
+    },
   },
 });
 
@@ -30,13 +33,17 @@ const popoverDialogStyles = tv({
   base: "outline-hidden",
 });
 
-export interface PopoverProps extends AriaPopoverProps {}
+export interface PopoverProps extends AriaPopoverProps {
+  matchTriggerWidth?: boolean;
+}
 
-export function Popover({ className, ...props }: PopoverProps) {
+export function Popover({ className, matchTriggerWidth, ...props }: PopoverProps) {
   return (
     <AriaPopover
       offset={4}
-      className={composeAriaClassName(className, (renderProps) => popoverStyles(renderProps))}
+      className={composeAriaClassName(className, (renderProps) =>
+        popoverStyles({ ...renderProps, matchTriggerWidth }),
+      )}
       {...props}
     />
   );

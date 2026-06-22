@@ -76,6 +76,7 @@ class Migration054(GraphMigration):
     """
 
     name: str = "054_cleanup_orphaned_nodes"
+    description: str = "N/A"
     minimum_version: int = 53
     queries: Sequence[type[Query]] = [CleanupOrphanedNodesQuery]
 

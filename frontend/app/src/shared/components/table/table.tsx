@@ -67,7 +67,6 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                 "h-[36px] border-gray-200 border-b",
                 row.link ? "cursor-pointer hover:bg-gray-50" : ""
               )}
-              data-cy="object-table-row"
             >
               {columns.map((column, index) => {
                 return (

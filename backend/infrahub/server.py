@@ -108,7 +108,6 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         check_timeout=config.SETTINGS.health.check_timeout,
         task_manager_db_probe=get_task_manager_db_probe(),
     )
-    application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
 
     if enable_scheduler:
         await service.scheduler.start_schedule()

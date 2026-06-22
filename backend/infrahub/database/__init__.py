@@ -33,7 +33,7 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
 from infrahub.core.query import QueryType
-from infrahub.exceptions import DatabaseError
+from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
@@ -331,9 +331,10 @@ class InfrahubDatabase:
         name: str = "undefined",
         context: dict[str, str] | None = None,
         type: QueryType | None = None,
+        timeout_seconds: float | None = None,
     ) -> list[Record]:
         results, _ = await self.execute_query_with_metadata(
-            query=query, params=params, name=name, context=context, type=type
+            query=query, params=params, name=name, context=context, type=type, timeout_seconds=timeout_seconds
         )
         return results
 
@@ -344,6 +345,7 @@ class InfrahubDatabase:
         name: str = "undefined",
         context: dict[str, str] | None = None,
         type: QueryType | None = None,
+        timeout_seconds: float | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
         connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
         CONNECTION_POOL_USAGE.labels(self._driver._pool.address).set(float(connpool_usage))
@@ -396,24 +398,43 @@ class InfrahubDatabase:
                 )
 
             with QUERY_EXECUTION_METRICS.labels(**labels).time():
-                response = await self.run_query(query=query, params=params, name=name)
-                if response is None:
-                    span.set_attribute("rows", "empty")
-                    return [], {}
-                results = [item async for item in response]
+                try:
+                    response = await self.run_query(
+                        query=query, params=params, name=name, timeout_seconds=timeout_seconds
+                    )
+                    if response is None:
+                        span.set_attribute("rows", "empty")
+                        return [], {}
+                    results = [item async for item in response]
+                except ClientError as exc:
+                    # A server-side transaction timeout surfaces as a ClientError while the
+                    # result is consumed; translate it into a domain error callers can handle.
+                    if exc.code and "TransactionTimedOut" in exc.code:
+                        raise QueryTimeoutError(
+                            message=f"Query '{name}' exceeded its execution time budget of {timeout_seconds}s"
+                        ) from exc
+                    raise
                 span.set_attribute("rows", len(results))
                 return results, response._metadata or {}
 
     async def run_query(
-        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str | None = "undefined",
+        timeout_seconds: float | None = None,
     ) -> AsyncResult:
         _query: str | Query = query
         if self.is_transaction:
+            # An explicit transaction's timeout is fixed at begin_transaction time, so a
+            # per-query timeout cannot be applied here; auto-commit queries carry it on the
+            # Query wrapper below.
             execution_method = await self.transaction(name=name)
         else:
             _query = Query(
                 text=query,
                 metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"},
+                timeout=timeout_seconds,
             )
             execution_method = await self.session()
 

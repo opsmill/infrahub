@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import {
+  Autocomplete,
   Button,
   LinkButton,
   ListBox,
@@ -17,7 +18,6 @@ import React from "react";
 import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
 import { QSP } from "@/shared/config/qsp";

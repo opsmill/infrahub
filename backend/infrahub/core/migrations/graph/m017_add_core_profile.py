@@ -18,6 +18,7 @@ log = get_logger()
 
 class Migration017(InternalSchemaMigration):
     name: str = "017_add_graph_migration"
+    description: str = "N/A"
     minimum_version: int = 16
     migrations: Sequence[SchemaMigration] = []
 

@@ -22,5 +22,8 @@ export function updateProposedChangeReviewFromApi({
       proposedChangeId,
       decision,
     },
+    context: {
+      processErrorMessage: () => {},
+    },
   });
 }

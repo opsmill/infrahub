@@ -311,6 +311,14 @@ class QueryError(Error):
         """
 
 
+class QueryTimeoutError(Error):
+    HTTP_CODE: int = 504
+
+    def __init__(self, message: str = "The query exceeded its execution time budget.") -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
 class QueryValidationError(Error):
     HTTP_CODE = 400
 
