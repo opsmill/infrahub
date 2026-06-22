@@ -3,7 +3,7 @@ import type React from "react";
 
 import { CopyIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 
-import { Menu, MenuItem, type MenuProps, MenuSection } from "./menu";
+import { Menu, MenuItem, MenuSection } from "./menu";
 
 const meta: Meta<typeof Menu> = {
   title: "Components/Menu",
@@ -96,29 +96,4 @@ export const Default: Story = {
   parameters: {
     layout: "padded",
   },
-};
-
-function PlaygroundRender(args: MenuProps<object>) {
-  return (
-    <MenuSurface>
-      <Menu {...args} aria-label="Playground">
-        <MenuItem>
-          <PencilLineIcon className="size-3.5" />
-          <span>Edit</span>
-        </MenuItem>
-        <MenuItem>
-          <CopyIcon className="size-3.5" />
-          <span>Duplicate</span>
-        </MenuItem>
-        <MenuItem className="text-red-500">
-          <Trash2Icon className="size-3.5" />
-          <span>Delete</span>
-        </MenuItem>
-      </Menu>
-    </MenuSurface>
-  );
-}
-
-export const Playground: Story = {
-  render: PlaygroundRender,
 };
