@@ -81,7 +81,7 @@ Push the current branch and open a GitHub PR. This command is the "PR" half of t
 If `--title` is omitted:
 
 - Read `git log --oneline <base>..HEAD` and `git diff <base>...HEAD --stat`.
-- Compose `<type>(<scope>): <short description>` following the conventions in `dev/commands/git-commit.md`.
+- Compose `<type>(<scope>): <short description>` following the conventions in `.agents/commands/git-commit.md`.
 - Keep ≤70 chars.
 
 If `--body` is omitted:
