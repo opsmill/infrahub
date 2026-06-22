@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping, overload
 
 from infrahub import lock
 from infrahub.core import registry
@@ -23,6 +23,7 @@ from infrahub.profiles.node_applier import NodeProfilesApplier
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.node import SchemaProtocol
     from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes, RelationshipSchema
@@ -275,20 +276,47 @@ async def _do_create_node(
     return obj
 
 
+@overload
+async def create_node(
+    data: dict[str, Any],
+    db: InfrahubDatabase,
+    branch: Branch,
+    schema: type[SchemaProtocol],
+    at: Timestamp | None = ...,
+    user_id: str = ...,
+) -> SchemaProtocol: ...
+
+
+@overload
 async def create_node(
     data: dict[str, Any],
     db: InfrahubDatabase,
     branch: Branch,
     schema: MainSchemaTypes,
+    at: Timestamp | None = ...,
+    user_id: str = ...,
+) -> Node: ...
+
+
+async def create_node(
+    data: dict[str, Any],
+    db: InfrahubDatabase,
+    branch: Branch,
+    schema: MainSchemaTypes | type[SchemaProtocol],
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
-) -> Node:
+) -> Node | SchemaProtocol:
     """Create a node in the database if constraint checks succeed.
+
+    A schema protocol class may be passed instead of a schema object; the return type is then
+    narrowed to that protocol.
 
     Raises:
         ValueError: When the schema is a `GenericSchema` and cannot be instantiated.
 
     """
+    if isinstance(schema, type):
+        schema = db.schema.get(name=schema.__name__, branch=branch)
     if isinstance(schema, GenericSchema):
         raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
 

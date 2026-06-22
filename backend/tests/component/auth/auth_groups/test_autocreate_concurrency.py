@@ -23,9 +23,15 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-@pytest.fixture(autouse=True)
-def _local_lock_registry() -> Iterator[None]:
-    """Use a local (in-process) lock registry so concurrent tasks serialize without Redis."""
+@pytest.fixture
+def local_lock_registry() -> Iterator[None]:
+    """Force a fresh in-process lock registry (no Redis/NATS container needed).
+
+    A single shared asyncio.Lock backs the auto-create lock, serializing coroutines within one
+    process — the in-process contract this test asserts. It does NOT model multi-worker
+    deployments, where each process has its own registry and the local lock provides no
+    cross-process serialization.
+    """
     original = lock.registry
     lock.initialize_lock(local_only=True)
     try:
@@ -34,61 +40,54 @@ def _local_lock_registry() -> Iterator[None]:
         lock.registry = original
 
 
-class TestConcurrentFirstLoginSameClaim:
-    """Two first-logins for the same brand-new claim must produce exactly one group.
+async def test_concurrent_logins_create_single_group_and_single_event(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    autocreate_filter_enabled: None,
+    local_lock_registry: None,
+) -> None:
+    """Two concurrent first-logins for the same brand-new claim converge on one group.
 
-    This pins down the concurrency contract of the find-or-create path: the per-name lock plus
-    the in-lock re-lookup guarantee that simultaneous first-logins converge on a single
-    `CoreAccountGroup` — both logins succeed, no duplicate row, and exactly one creation event.
+    Creation runs under the shared object lock, so the second login loses the uniqueness race and
+    reuses the winning group: both logins succeed, exactly one group exists with one creation
+    event, and both accounts are members.
     """
+    recorder = MemoryInfrahubEvent()
+    identity_a = make_identity(sub="sub-concurrent-a", provider_name="AzureAD-corp", display_name="Concurrent UserA")
+    identity_b = make_identity(sub="sub-concurrent-b", provider_name="AzureAD-corp", display_name="Concurrent UserB")
 
-    async def test_concurrent_logins_create_single_group_and_single_event(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        register_core_models_schema: SchemaBranch,
-        autocreate_filter_enabled: None,
-    ) -> None:
-        recorder = MemoryInfrahubEvent()
-        identity_a = make_identity(
-            sub="sub-concurrent-a", provider_name="AzureAD-corp", display_name="Concurrent UserA"
-        )
-        identity_b = make_identity(
-            sub="sub-concurrent-b", provider_name="AzureAD-corp", display_name="Concurrent UserB"
-        )
+    async def login(identity: ExternalIdentity) -> None:
+        async with db.start_session() as session:
+            await signin_sso_account(
+                db=session,
+                external_identity=identity,
+                sso_groups=["LDAP/group/concurrent-team"],
+                event_service=recorder,
+            )
 
-        async def login(identity: ExternalIdentity) -> None:
-            async with db.start_session() as session:
-                await signin_sso_account(
-                    db=session,
-                    external_identity=identity,
-                    sso_groups=["LDAP/group/concurrent-team"],
-                    event_service=recorder,
-                )
+    results = await asyncio.gather(login(identity_a), login(identity_b), return_exceptions=True)
 
-        results = await asyncio.gather(login(identity_a), login(identity_b), return_exceptions=True)
+    errors = [r for r in results if isinstance(r, Exception)]
+    assert errors == [], f"both concurrent first-logins must succeed, got: {errors}"
 
-        errors = [r for r in results if isinstance(r, Exception)]
-        assert errors == [], f"both concurrent first-logins must succeed, got: {errors}"
+    groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "concurrent-team"})
+    assert len(groups) == 1, "concurrent first-logins must produce exactly one group, not a duplicate"
+    assert groups[0].origin.value == "AzureAD-corp"
 
-        groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "concurrent-team"})
-        assert len(groups) == 1, "concurrent first-logins must produce exactly one group, not a duplicate"
-        assert groups[0].origin.value == "AzureAD-corp"
+    refreshed = await NodeManager.get_one(db=db, id=groups[0].id, prefetch_relationships=True)
+    members = await refreshed.get_relationship(name="members").get_peers(
+        db=db, branch_agnostic=True, peer_type=CoreAccount
+    )
+    accounts = await NodeManager.query(
+        db=db, schema=InfrahubKind.ACCOUNT, filters={"name__values": ["Concurrent UserA", "Concurrent UserB"]}
+    )
+    assert len(accounts) == 2, "both accounts must have been created"
+    for account in accounts:
+        assert account.id in members, "both users must be members of the single group"
 
-        refreshed = await NodeManager.get_one(db=db, id=groups[0].id, prefetch_relationships=True)
-        members = await refreshed.get_relationship(name="members").get_peers(
-            db=db, branch_agnostic=True, peer_type=CoreAccount
-        )
-        accounts = await NodeManager.query(
-            db=db, schema=InfrahubKind.ACCOUNT, filters={"name__values": ["Concurrent UserA", "Concurrent UserB"]}
-        )
-        assert len(accounts) == 2, "both accounts must have been created"
-        for account in accounts:
-            assert account.id in members, "both users must be members of the single group"
-
-        created_events = [event for event in recorder.events if isinstance(event, GroupAutoCreatedEvent)]
-        assert len(created_events) == 1, (
-            f"exactly one GroupAutoCreatedEvent must be emitted across concurrent first-logins, "
-            f"got {len(created_events)}"
-        )
-        assert str(created_events[0].group_id) == groups[0].id, "the event must reference the surviving group"
+    created_events = [event for event in recorder.events if isinstance(event, GroupAutoCreatedEvent)]
+    assert len(created_events) == 1, (
+        f"exactly one GroupAutoCreatedEvent must be emitted across concurrent first-logins, got {len(created_events)}"
+    )
+    assert str(created_events[0].group_id) == groups[0].id, "the event must reference the surviving group"

@@ -400,7 +400,6 @@ async def _assign_group_memberships(
             db=db,
             account=account,
             provider_name=external_identity.provider_name,
-            lock_registry=lock.registry,
             max_per_login=config.SETTINGS.security.auto_create_groups_max_per_login,
             emitter=emitter,
         ).assign(
