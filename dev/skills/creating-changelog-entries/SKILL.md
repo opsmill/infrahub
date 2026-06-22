@@ -23,10 +23,10 @@ When NOT to use: the project doesn't use Towncrier; pure internal refactors with
 ## Quick Reference
 
 ```bash
-towncrier create -c "content of changelog entry" ${ISSUE}.${TYPE}.md
+uv run towncrier create -c "content of changelog entry" ${ISSUE}.${TYPE}.md
 ```
 
-If the project wraps Python tools in a runner, prefix accordingly — e.g. `uv run towncrier ...` (uv) or `poetry run towncrier ...` (Poetry).
+These commands use `uv run`, which runs the project's pinned Towncrier and is the convention across these Python projects. If your project doesn't use uv, drop the prefix (`towncrier create ...`) or use its runner (e.g. `poetry run towncrier ...`).
 
 - **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+deps-update`).
 - **TYPE** — one of the change types below.
@@ -59,17 +59,15 @@ In a monorepo, they do **not** belong in a sub-package directory such as `backen
 
 ## Examples
 
-> These examples show the bare `towncrier` command. In this repo (and other `uv`-based projects) `towncrier` is not on `PATH` directly — prefix with `uv run` (e.g. `uv run towncrier create ...`), as noted under Quick Reference.
-
 ```bash
 # Bug fix for issue #1234
-towncrier create -c "Fixed sidebar collapse issue" 1234.fixed.md
+uv run towncrier create -c "Fixed sidebar collapse issue" 1234.fixed.md
 
 # New feature for issue #7549
-towncrier create -c "Added breadcrumb navigation for hierarchical schemas" 7549.added.md
+uv run towncrier create -c "Added breadcrumb navigation for hierarchical schemas" 7549.added.md
 
 # Housekeeping without an issue
-towncrier create -c "Updated dependencies to latest versions" +deps-update.housekeeping.md
+uv run towncrier create -c "Updated dependencies to latest versions" +deps-update.housekeeping.md
 ```
 
 ## Common Mistakes
