@@ -28,14 +28,33 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 }
 
 
-@flow(name="webhook-send", flow_run_name="Send webhook {webhook_name}", retries=3)
-async def webhook_send(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:  # noqa: ARG001
-    """Resolve the webhook config, assign its headers, and POST the prepared payload. Retries up to 3 times."""
-    log = get_run_logger()
+# 0s, 1m, 30m, 6h
+WEBHOOK_SEND_RETRY_DELAYS: list[float] = [0, 60, 1800, 21600]
+
+
+@task(
+    name="webhook-post",
+    task_run_name="Send webhook {webhook_name}",
+    cache_policy=NONE,
+    retries=len(WEBHOOK_SEND_RETRY_DELAYS),
+    retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAYS,
+)
+async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:  # noqa: ARG001
+    """Resolve the webhook config, assign its headers, and POST the prepared payload."""
     http_service = get_http()
     webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
     response = await webhook.send_payload(payload=payload, http_service=http_service)
     response.raise_for_status()
+    return response
+
+
+@flow(name="webhook-send", flow_run_name="Send webhook {webhook_name}")
+async def webhook_send(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:
+    """Send the webhook delivery, retrying the POST on failure."""
+    log = get_run_logger()
+    response = await webhook_post(
+        webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload
+    )
     log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
     return response
 
