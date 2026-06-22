@@ -299,7 +299,7 @@ async def path_traversal_resolver(
                 branch=graphql_context.branch,
                 default_branch_name=registry.default_branch,
             ),
-            timeout_seconds=config.SETTINGS.database.graph_traversal_query_timeout,
+            timeout_seconds=config.SETTINGS.database.path_traversal_query_timeout,
         )
         try:
             path_data_list = await executor.run(

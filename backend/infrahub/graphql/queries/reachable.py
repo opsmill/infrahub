@@ -130,7 +130,7 @@ async def reachable_nodes_resolver(
                 branch=graphql_context.branch,
                 default_branch_name=registry.default_branch,
             ),
-            timeout_seconds=config.SETTINGS.database.graph_traversal_query_timeout,
+            timeout_seconds=config.SETTINGS.database.reachable_nodes_query_timeout,
         )
         try:
             reachable_data = await executor.run(

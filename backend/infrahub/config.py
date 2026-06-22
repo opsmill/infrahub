@@ -336,12 +336,20 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
-    graph_traversal_query_timeout: float = Field(
+    path_traversal_query_timeout: float = Field(
         default=75,
         ge=1,
         description=(
-            "Server-side transaction timeout in seconds for graph-traversal queries "
-            "(path traversal and reachable nodes); the query is aborted once it is exceeded."
+            "Server-side transaction timeout in seconds for point-to-point path-traversal queries; "
+            "the query is aborted once it is exceeded."
+        ),
+    )
+    reachable_nodes_query_timeout: float = Field(
+        default=75,
+        ge=1,
+        description=(
+            "Server-side transaction timeout in seconds for reachable-nodes queries; "
+            "the query is aborted once it is exceeded."
         ),
     )
 
