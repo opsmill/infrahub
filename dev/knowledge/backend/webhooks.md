@@ -50,8 +50,15 @@ Application Event (e.g. node.created) ──► │ Prefect Automation   │
                                           └────────┬────────┘
                                                    │
                                           ┌────────┴────────┐
-                                          │ Prepare payload  │
-                                          │ + HMAC headers   │
+                                          │ Compute payload  │
+                                          └────────┬────────┘
+                                                   │
+                                                   ▼
+                                          webhook_send subflow
+                                                   │
+                                          ┌────────┴────────┐
+                                          │ Build headers    │
+                                          │ + HMAC signing   │
                                           └────────┬────────┘
                                                    │
                                                    ▼
@@ -95,12 +102,12 @@ Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Lit
 
 The base class handles:
 
-- Payload preparation (`_prepare_payload`)
-- Header assignment with custom headers and optional HMAC signing (`_assign_headers`)
-- HTTP delivery via `send()`
+- Payload computation (`compute_payload`)
+- Header construction with custom headers and optional HMAC signing (`_build_headers`)
+- HTTP delivery of a precomputed payload via `send_payload()`
 - Cache serialization (`to_cache` / `from_cache`)
 
-The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_assign_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time (missing vars are skipped with a warning log).
+The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_build_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time (missing vars are skipped with a warning log).
 
 ## Schema (GraphQL)
 
@@ -172,9 +179,10 @@ When a matched event fires, Prefect runs the `webhook_process` flow:
 2. On cache miss, fetches the webhook node from the database and caches it
 3. Deserializes the webhook using the `WEBHOOK_MAP` type registry
 4. Builds `EventContext` from the raw event
-5. Calls `webhook.send()` which prepares the payload, assigns headers (with optional HMAC), and POSTs to the target URL
+5. Calls `webhook.compute_payload()` to build the payload
+6. Hands the payload to the `webhook_send` subflow, which resolves the webhook config, builds the headers (with optional HMAC), and POSTs to the target URL
 
-The `webhook_send` task has 3 retries configured and calls `response.raise_for_status()`.
+The `webhook_send` subflow has 3 retries configured and calls `response.raise_for_status()`. It is invoked directly by `webhook_process` rather than registered in the workflow catalogue.
 
 ## Security
 
@@ -209,7 +217,7 @@ Three headers are added to signed requests:
 
 | Workflow | Type | Cron | Purpose |
 |----------|------|------|---------|
-| `WEBHOOK_PROCESS` | USER | — | Delivers webhook payload on event match |
+| `WEBHOOK_PROCESS` | INTERNAL | — | Resolves the webhook, computes the payload, and invokes the `webhook_send` subflow on event match |
 | `WEBHOOK_CONFIGURE` | INTERNAL | daily at 3 AM (random minute) | Unified webhook automation configuration (configure, delete, reconcile) |
 | `WEBHOOK_INVALIDATE_HEADERS` | INTERNAL | — | Invalidates cached webhook data when a referenced KeyValue header changes |
 
