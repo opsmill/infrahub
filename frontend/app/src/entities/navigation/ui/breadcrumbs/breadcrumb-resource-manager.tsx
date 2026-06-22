@@ -9,6 +9,7 @@ import {
   ListBox,
   ListBoxItem,
   ListBoxVirtualizer,
+  MenuTrigger,
   Popover,
   PopoverDialog,
 } from "@infrahub/ui";
@@ -16,7 +17,6 @@ import { ChevronsUpDownIcon } from "lucide-react";
 import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Col, Row } from "@/shared/components/container";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";

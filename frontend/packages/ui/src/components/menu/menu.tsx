@@ -1,5 +1,5 @@
-import { Tooltip, type TooltipProps } from "@infrahub/ui";
-import { CopyIcon } from "lucide-react";
+import type React from "react";
+
 import {
   Header as AriaHeader,
   Menu as AriaMenu,
@@ -10,12 +10,11 @@ import {
   type MenuSectionProps as AriaMenuSectionProps,
   MenuTrigger as AriaMenuTrigger,
   Collection,
-  composeRenderProps,
 } from "react-aria-components";
+import { cn } from "tailwind-variants";
 
-import { disabledStyle } from "@/shared/components/aria/style-rac";
-import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
-import { classNames } from "@/shared/utils/common";
+import { composeAriaClassName } from "../../utils/compose-aria-class-name";
+import { Tooltip, type TooltipProps } from "../tooltip/tooltip";
 
 export const MenuTrigger = AriaMenuTrigger;
 
@@ -23,10 +22,12 @@ export interface MenuProps<T> extends AriaMenuProps<T> {}
 export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) => {
   return (
     <AriaMenu
-      className={classNames(
-        "no-scrollbar max-h-[inherit] overflow-auto p-1 outline-hidden",
-        "space-y-0.5 *:[[role='group']:not(:last-child)]:mb-2",
-        className
+      className={composeAriaClassName(className, (resolvedClassName) =>
+        cn(
+          "no-scrollbar max-h-[inherit] overflow-auto p-1 outline-hidden",
+          "space-y-0.5 *:[[role='group']:not(:last-child)]:mb-2",
+          resolvedClassName,
+        ),
       )}
       {...props}
     />
@@ -54,20 +55,22 @@ export const MenuItem = ({
         className={className}
         textValue={textValue}
         {...props}
-      />
+      >
+        {children}
+      </MenuItemWithTooltip>
     );
   }
 
   return (
     <AriaMenuItem
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
-      className={composeRenderProps(className, (className) =>
-        classNames(
-          disabledStyle,
+      className={composeAriaClassName(className, (resolvedClassName) =>
+        cn(
+          "data-disabled:pointer-events-none data-disabled:opacity-50",
           "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
           "data-focused:ring-1",
-          className
-        )
+          resolvedClassName,
+        ),
       )}
       {...props}
     >
@@ -86,16 +89,14 @@ export const MenuSection = <T extends object>({
   ...props
 }: MenuSectionProps<T>) => {
   return (
-    <AriaMenuSection className={classNames("flex flex-col gap-0.5", className)} {...props}>
+    <AriaMenuSection className={cn("flex flex-col gap-0.5", className)} {...props}>
       {title && <AriaHeader className="px-1 text-stone-500 text-xs">{title}</AriaHeader>}
       <Collection items={props.items}>{children}</Collection>
     </AriaMenuSection>
   );
 };
 
-interface MenuItemWithTooltipProps extends Omit<MenuItemProps, "children"> {
-  children?: React.ReactNode;
-}
+interface MenuItemWithTooltipProps extends MenuItemProps {}
 
 function MenuItemWithTooltip({
   tooltip,
@@ -108,37 +109,21 @@ function MenuItemWithTooltip({
   return (
     <MenuItem
       isDisabled={isDisabled}
-      className={composeRenderProps(className, (className) =>
-        classNames("data-disabled:pointer-events-auto", className)
-      )}
+      className={composeAriaClassName(className, "data-disabled:pointer-events-auto")}
       {...props}
     >
-      <Tooltip
-        message={isDisabled ? tooltip : undefined}
-        placement={side}
-        className="z-100001"
-        nonInteractiveTrigger
-      >
-        <span className="flex w-full items-center gap-[inherit]">{children}</span>
-      </Tooltip>
-    </MenuItem>
-  );
-}
-
-export interface CopyToClipboardMenuItemProps extends Omit<MenuItemProps, "onAction" | "children"> {
-  textToCopy: string;
-  children?: React.ReactNode;
-}
-export function CopyToClipboardMenuItem({
-  textToCopy,
-  children,
-  ...props
-}: CopyToClipboardMenuItemProps) {
-  const { copyToClipboard } = useCopyToClipboard();
-  return (
-    <MenuItem onAction={() => copyToClipboard(textToCopy)} {...props}>
-      <CopyIcon className="size-3" />
-      {children}
+      {(renderProps) => (
+        <Tooltip
+          message={isDisabled ? tooltip : undefined}
+          placement={side}
+          className="z-100001"
+          nonInteractiveTrigger
+        >
+          <span className="flex w-full items-center gap-[inherit]">
+            {typeof children === "function" ? children(renderProps) : children}
+          </span>
+        </Tooltip>
+      )}
     </MenuItem>
   );
 }

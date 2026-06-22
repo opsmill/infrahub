@@ -1,5 +1,14 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, type ButtonProps, Popover, Sheet } from "@infrahub/ui";
+import {
+  Button,
+  type ButtonProps,
+  Menu,
+  MenuItem,
+  MenuSection,
+  MenuTrigger,
+  Popover,
+  Sheet,
+} from "@infrahub/ui";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
@@ -10,13 +19,7 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import {
-  CopyToClipboardMenuItem,
-  Menu,
-  MenuItem,
-  MenuSection,
-  MenuTrigger,
-} from "@/shared/components/aria/menu";
+import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
