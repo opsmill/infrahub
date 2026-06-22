@@ -43,7 +43,6 @@ export const getObjectsCountFromApi = async ({
     context: {
       branch: branchName,
       date: atDate,
-      queryDeduplication: false,
       processErrorMessage: () => {},
     },
   });
