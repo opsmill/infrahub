@@ -173,12 +173,16 @@ class SchemaUpdateCoordinator:
             The updated schema hash, or None if the schema was not updated
 
         Raises:
-            RuntimeError: When the WORKFLOW executor is selected but workflow or context is not provided.
+            RuntimeError: When migrations must run via the WORKFLOW executor but workflow or context is not provided.
             MigrationError: If migrations fail and rollback completes
             Exception: Original exception if migrations fail via exception
 
         """
-        if migration_executor is MigrationExecutor.WORKFLOW and (self.workflow is None or context is None):
+        if (
+            migrations
+            and migration_executor is MigrationExecutor.WORKFLOW
+            and (self.workflow is None or context is None)
+        ):
             raise RuntimeError("Workflow and context are required for WORKFLOW executor")
 
         # Step 1: Update schema in DB and/or registry
