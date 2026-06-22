@@ -89,6 +89,11 @@ export async function getObjectsFromApi({
     context: {
       branch: branchName,
       date: atDate,
+      // Disable Apollo query deduplication (as the count query already does):
+      // a list refetch triggered by a mutation must not be merged into a still
+      // in-flight pre-mutation request, otherwise it adopts that request's stale
+      // response and, after invalidation clears, leaves deleted rows visible.
+      queryDeduplication: false,
     },
   });
 }

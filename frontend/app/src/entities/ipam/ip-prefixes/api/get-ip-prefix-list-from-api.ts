@@ -56,6 +56,9 @@ export async function getIpPrefixListFromApi({
     context: {
       branch: branchName,
       date: atDate,
+      // See get-objects-from-api: keep a post-mutation refetch from being merged
+      // into a stale in-flight request by Apollo query deduplication.
+      queryDeduplication: false,
     },
   });
 }
