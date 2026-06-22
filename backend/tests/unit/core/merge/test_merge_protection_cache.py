@@ -1,9 +1,11 @@
+import re
 from dataclasses import dataclass
 
 import pytest
 
 from infrahub.core.merge.write_blocker import (
     MERGE_PROTECTED_CACHE_KEY,
+    MalformedMergeProtectionError,
     MergeProtection,
     MergeProtectionState,
     MergeWriteBlocker,
@@ -31,9 +33,21 @@ PARSE_CASES = [
     ),
     ParseCase(name="none", value=None, expected=None),
     ParseCase(name="empty", value="", expected=None),
-    ParseCase(name="no_separator", value="feature-branch", expected=None),
-    ParseCase(name="unknown_state", value="feature-branch::BOGUS", expected=None),
-    ParseCase(name="missing_branch", value="::MERGING", expected=None),
+]
+
+
+@dataclass
+class MalformedCase:
+    name: str
+    value: str
+
+
+# A present-but-unparseable value must fail closed (raise) rather than read as "no merge in
+# progress", which would lift the write block while a merge is still underway.
+MALFORMED_CASES = [
+    MalformedCase(name="no_separator", value="feature-branch"),
+    MalformedCase(name="unknown_state", value="feature-branch::BOGUS"),
+    MalformedCase(name="missing_branch", value="::MERGING"),
 ]
 
 
@@ -43,6 +57,14 @@ async def test_get_parses_cache_value(case: ParseCase) -> None:
     if case.value is not None:
         cache.storage[MERGE_PROTECTED_CACHE_KEY] = case.value
     assert await MergeWriteBlocker(cache=cache).get() == case.expected
+
+
+@pytest.mark.parametrize("case", MALFORMED_CASES, ids=[c.name for c in MALFORMED_CASES])
+async def test_get_fails_closed_on_malformed_value(case: MalformedCase) -> None:
+    cache = MemoryCache()
+    await cache.set(MERGE_PROTECTED_CACHE_KEY, case.value)
+    with pytest.raises(MalformedMergeProtectionError, match=re.escape(case.value)):
+        await MergeWriteBlocker(cache=cache).get()
 
 
 async def test_set_writes_expected_value() -> None:

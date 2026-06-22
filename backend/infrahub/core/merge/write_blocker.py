@@ -13,6 +13,10 @@ MERGE_PROTECTED_CACHE_KEY = "merge:protected"
 _SEPARATOR = "::"
 
 
+class MalformedMergeProtectionError(Exception):
+    """Raised when a present merge-protection cache value cannot be parsed."""
+
+
 class MergeProtectionState(InfrahubStringEnum):
     """State carried by the merge protection cache key.
 
@@ -42,18 +46,24 @@ class MergeWriteBlocker:
     def _parse(self, value: str | None) -> MergeProtection | None:
         """Parse a cache value of the form ``"{branch}::{state}"``.
 
-        Returns ``None`` for a missing or malformed value. Branch names cannot contain ``:`` so the
-        final separator unambiguously splits the branch name from the state.
+        Returns ``None`` only for a genuinely absent value (no merge in progress). A present but
+        unparseable value is corruption that must not silently lift the write block, so it raises
+        rather than returning ``None``. Branch names cannot contain ``:`` so the final separator
+        unambiguously splits the branch name from the state.
+
+        Raises:
+            MalformedMergeProtectionError: if a present value cannot be parsed.
+
         """
         if not value:
             return None
         branch, separator, raw_state = value.rpartition(_SEPARATOR)
         if not separator or not branch:
-            return None
+            raise MalformedMergeProtectionError(value)
         try:
             state = MergeProtectionState(raw_state)
-        except ValueError:
-            return None
+        except ValueError as exc:
+            raise MalformedMergeProtectionError(value) from exc
         return MergeProtection(branch=branch, state=state)
 
     async def set(self, *, branch: str, state: MergeProtectionState) -> None:
