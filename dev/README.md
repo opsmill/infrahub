@@ -12,7 +12,7 @@ Internal documentation for contributors. For user-facing docs, see `/docs/`.
 | Complete a specific task | `guides/` |
 | See what's being built | `specs/` |
 | Explore rough ideas | `explorations/` |
-| Use agent commands | `commands/` |
+| Use agent commands | `../.agents/commands/` |
 
 ## Directory Guide
 
@@ -29,9 +29,10 @@ Internal documentation for contributors. For user-facing docs, see `/docs/`.
   - `docs/` - Documentation-specific guides
   - `frontend/` - Frontend-specific guides
 - **adr/**: Architecture Decision Records. Why we chose what we chose.
-- **commands/**: Reusable agent commands (canonical source).
 - **prompts/**: Prompt templates for common thinking tasks.
-- **skills/**: Domain-specific skill guides for AI agents (e.g., Neo4j Cypher).
+
+Agent commands and skills now live under [`../.agents/`](../.agents/) (the canonical
+source of truth): `../.agents/commands/` and `../.agents/skills/`.
 
 ## Document Lifecycle
 
@@ -71,15 +72,15 @@ Backend guides in [guides/backend/](guides/backend/):
 
 ## Current Commands
 
-Available agent commands in [commands/](commands/):
+Available agent commands in [../.agents/commands/](../.agents/commands/):
 
-- [_shared.md](commands/_shared.md) - Shared instructions for all flows
-- [new-component.md](commands/new-component.md) - React component creation flow
-- [guided-task.md](commands/guided-task.md) - General task flow
-- [add-docs.md](commands/add-docs.md) - Documentation flow
-- [bug-analyze.md](commands/bug-analyze.md) - Root cause analysis (`/bug-analyze <issue>`)
-- [bug-tdd.md](commands/bug-tdd.md) - Failing test from analysis (`/bug-tdd <issue>`)
-- [bug-fix.md](commands/bug-fix.md) - Fix implementation (`/bug-fix <issue>`)
-- [fix-github-issue.md](commands/fix-github-issue.md) - GitHub issue fixing
-- [fix-mypy-module.md](commands/fix-mypy-module.md) - Mypy type fixes
-- [fix-ruff-rule.md](commands/fix-ruff-rule.md) - Ruff linting fixes
+- [_shared.md](../.agents/commands/_shared.md) - Shared instructions for all flows
+- [new-component.md](../.agents/commands/new-component.md) - React component creation flow
+- [guided-task.md](../.agents/commands/guided-task.md) - General task flow
+- [add-docs.md](../.agents/commands/add-docs.md) - Documentation flow
+- [bug-analyze.md](../.agents/commands/bug-analyze.md) - Root cause analysis (`/bug-analyze <issue>`)
+- [bug-tdd.md](../.agents/commands/bug-tdd.md) - Failing test from analysis (`/bug-tdd <issue>`)
+- [bug-fix.md](../.agents/commands/bug-fix.md) - Fix implementation (`/bug-fix <issue>`)
+- [fix-github-issue.md](../.agents/commands/fix-github-issue.md) - GitHub issue fixing
+- [fix-mypy-module.md](../.agents/commands/fix-mypy-module.md) - Mypy type fixes
+- [fix-ruff-rule.md](../.agents/commands/fix-ruff-rule.md) - Ruff linting fixes
