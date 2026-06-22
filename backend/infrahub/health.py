@@ -59,11 +59,11 @@ class HealthResponse(BaseModel):
 
 
 def classify_error(exc: Exception) -> ErrorCategory:
-    if isinstance(exc, TimeoutError | asyncio.TimeoutError | httpx.TimeoutException):
+    if isinstance(exc, TimeoutError | httpx.TimeoutException):
         return ErrorCategory.TIMEOUT
     if isinstance(exc, InitializationError):
         return ErrorCategory.NOT_INITIALIZED
-    if isinstance(exc, ConnectionRefusedError | ConnectionResetError | OSError | httpx.ConnectError):
+    if isinstance(exc, OSError | httpx.ConnectError):
         return ErrorCategory.CONNECTION_REFUSED
     return ErrorCategory.UNKNOWN_ERROR
 
