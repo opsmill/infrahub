@@ -28,7 +28,7 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 }
 
 
-@task(name="webhook-send", task_run_name="Send Standard Webhook {webhook.name}", cache_policy=NONE, retries=3)
+@flow(name="webhook-send", flow_run_name="Send webhook {webhook.name}", retries=3)
 async def webhook_send(webhook: Webhook, context: EventContext, event_data: dict) -> Response:
     """Send an HTTP request to the webhook endpoint. Retries up to 3 times on failure."""
     http_service = get_http()
