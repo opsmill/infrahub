@@ -146,7 +146,7 @@ async def reachable_nodes_resolver(
         except QueryTimeoutError as exc:
             raise GraphQLError(
                 "Reachable-nodes traversal exceeded its time budget. Reduce max_depth, lower "
-                "max_results/max_paths, or add excluded_kinds/excluded_namespaces filters to narrow the search."
+                "max_results/max_paths, or narrow target_kinds to reduce the search space."
             ) from exc
 
     all_ids: set[str] = {source_id}

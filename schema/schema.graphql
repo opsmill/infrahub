@@ -12115,7 +12115,9 @@ input PathTraversalInput {
   max_depth: Int = 5
   """Maximum number of paths to return (default: 10, max: 100)"""
   max_paths: Int = 10
-  """Filter to only follow relationships with these names"""
+  """
+  Filter to only follow relationships with these identifiers (the relationship's schema identifier, e.g. `device__interface`), not relationship names (e.g. `interfaces`).
+  """
   relationship_filter: [String!]
   """UUID of the start node"""
   source_id: String!
@@ -12130,7 +12132,9 @@ type PathTraversalResultType {
   Concrete node kinds excluded from this traversal: the default exclusions plus the requested excluded_kinds, minus included_kinds.
   """
   excluded_kinds: [String!]!
-  """Paths found, ordered shortest first"""
+  """
+  Paths found, ordered shortest first. Only the shortest path through each intermediate node is returned; longer routes through the same intermediate are omitted.
+  """
   paths: [PathResultType!]!
   """The start node"""
   source: PathNodeType!
@@ -24881,7 +24885,9 @@ type Query {
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!
-  """Find all shortest paths between two nodes in the graph"""
+  """
+  Find the shortest path(s) between two nodes — the shortest route through each intermediate node, up to max_paths.
+  """
   InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
   """Find all nodes of specified kinds reachable from a source node"""

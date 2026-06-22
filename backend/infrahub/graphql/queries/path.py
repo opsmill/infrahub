@@ -61,7 +61,12 @@ class PathResultType(ObjectType):
 
 class PathTraversalResultType(ObjectType):
     paths = Field(
-        List(of_type=NonNull(PathResultType)), required=True, description="Paths found, ordered shortest first"
+        List(of_type=NonNull(PathResultType)),
+        required=True,
+        description=(
+            "Paths found, ordered shortest first. Only the shortest path through each intermediate "
+            "node is returned; longer routes through the same intermediate are omitted."
+        ),
     )
     source = Field(PathNodeType, required=True, description="The start node")
     destination = Field(PathNodeType, required=True, description="The end node")
@@ -87,7 +92,12 @@ class PathTraversalInput(InputObjectType):
         of_type=NonNull(String), required=False, description="Filter to only traverse through nodes of these kinds"
     )
     relationship_filter = List(
-        of_type=NonNull(String), required=False, description="Filter to only follow relationships with these names"
+        of_type=NonNull(String),
+        required=False,
+        description=(
+            "Filter to only follow relationships with these identifiers (the relationship's schema "
+            "identifier, e.g. `device__interface`), not relationship names (e.g. `interfaces`)."
+        ),
     )
     excluded_namespaces = List(
         of_type=NonNull(String),
@@ -342,7 +352,10 @@ async def path_traversal_resolver(
 InfrahubPathTraversal = Field(
     PathTraversalResultType,
     data=PathTraversalInput(required=True),
-    description="Find all shortest paths between two nodes in the graph",
+    description=(
+        "Find the shortest path(s) between two nodes — the shortest route through each intermediate "
+        "node, up to max_paths."
+    ),
     resolver=path_traversal_resolver,
     required=True,
 )
