@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import os
-from contextlib import suppress
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
+from prefect.client.orchestration import get_client
 from pydantic import BaseModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.pool import NullPool
 
 from infrahub.exceptions import InitializationError
 
@@ -176,31 +172,18 @@ class HealthChecker:
         )
 
 
-TASK_MANAGER_DB_CONNECTION_URL_ENV = "PREFECT_API_DATABASE_CONNECTION_URL"
+TASK_MANAGER_READINESS_ROUTE = "/ready"
 
 
 async def probe_task_manager_db() -> bool:
-    """Probe the task manager's backing store using the connection URL the task manager itself uses.
+    """Probe the task manager's backing store through the task manager's own readiness endpoint.
 
-    The URL is read from the environment rather than the task manager's resolved settings so that an
-    unset value is treated as not-configured, instead of silently probing the task manager's default
-    local store.
-
-    Raises:
-        InitializationError: When the connection URL is not configured.
-
+    The readiness endpoint reports whether the task manager can reach its database. Delegating the
+    check to the task manager keeps the backing store's credentials out of this process: only the
+    task manager authenticates to its own database, and a backing-store outage surfaces here as a
+    non-success response.
     """
-    connection_url = os.environ.get(TASK_MANAGER_DB_CONNECTION_URL_ENV)
-    if not connection_url:
-        raise InitializationError("Task manager database connection URL is not configured")
-
-    engine = create_async_engine(connection_url, poolclass=NullPool)
-    try:
-        async with engine.connect() as connection:
-            await connection.execute(text("SELECT 1"))
-    finally:
-        # Never let a disposal error mask the probe's real failure (timeout / connection error).
-        # suppress(Exception) leaves CancelledError untouched, so timeout classification is preserved.
-        with suppress(Exception):
-            await engine.dispose()
+    async with get_client(sync_client=False) as client:
+        response = await client._client.get(TASK_MANAGER_READINESS_ROUTE)
+        response.raise_for_status()
     return True

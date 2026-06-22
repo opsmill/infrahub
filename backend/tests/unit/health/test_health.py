@@ -9,7 +9,6 @@ import pytest
 
 from infrahub.exceptions import InitializationError
 from infrahub.health import (
-    TASK_MANAGER_DB_CONNECTION_URL_ENV,
     DefaultHealthStatusEvaluator,
     DependencyHealth,
     DependencyName,
@@ -224,20 +223,14 @@ async def test_report_all_down() -> None:
     assert all(c.status == DependencyStatus.DOWN for c in report.checks)
 
 
-async def test_probe_task_manager_db_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(TASK_MANAGER_DB_CONNECTION_URL_ENV, raising=False)
-    with pytest.raises(InitializationError, match=r"connection URL is not configured"):
-        await probe_task_manager_db()
-
-
-async def test_probe_task_manager_db_uses_configured_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    # A refused localhost target proves the probe connects to whatever URL is configured rather than
-    # short-circuiting, so the check behaves the same whether the store is in-deployment or external.
-    monkeypatch.setenv(TASK_MANAGER_DB_CONNECTION_URL_ENV, "postgresql+asyncpg://infrahub:infrahub@127.0.0.1:1/prefect")
+async def test_probe_task_manager_db_unreachable_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A refused localhost target proves the probe reaches the task manager API rather than touching a
+    # database directly, and reports DOWN when the readiness request cannot be served. Retries are
+    # disabled so the refused connection surfaces immediately instead of backing off.
+    monkeypatch.setenv("PREFECT_API_URL", "http://127.0.0.1:1/api")
+    monkeypatch.setenv("PREFECT_CLIENT_MAX_RETRIES", "0")
     result = await check_dependency(DependencyName.TASK_MANAGER_DB, probe_task_manager_db, timeout_seconds=5)
     assert result.status == DependencyStatus.DOWN
-    # The probe attempted a real connection to the configured URL rather than short-circuiting; the
-    # exact failure category (connection refused vs. timeout) depends on the environment's networking.
     assert result.error != ErrorCategory.NOT_INITIALIZED
 
 
