@@ -135,13 +135,13 @@ class HealthChecker:
         *,
         check_timeout: float,
         task_manager_db_probe: Callable[[], Awaitable[bool]],
-        status_evaluator: HealthStatusEvaluator | None = None,
+        status_evaluator: HealthStatusEvaluator,
     ) -> None:
         self._db = db
         self._service = service
         self._check_timeout = check_timeout
         self._task_manager_db_probe = task_manager_db_probe
-        self._status_evaluator = status_evaluator or DefaultHealthStatusEvaluator()
+        self._status_evaluator = status_evaluator
 
     async def report(self) -> HealthResponse:
         checks = await self._run_checks()

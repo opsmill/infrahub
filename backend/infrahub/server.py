@@ -28,7 +28,7 @@ from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ForwardableError, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
-from infrahub.health import HealthChecker
+from infrahub.health import DefaultHealthStatusEvaluator, HealthChecker
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
@@ -107,6 +107,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         service=service,
         check_timeout=config.SETTINGS.health.check_timeout,
         task_manager_db_probe=get_task_manager_db_probe(),
+        status_evaluator=DefaultHealthStatusEvaluator(),
     )
 
     if enable_scheduler:

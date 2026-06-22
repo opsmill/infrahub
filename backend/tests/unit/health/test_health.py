@@ -112,6 +112,7 @@ def _build_checker(
         service=cast("InfrahubServices", service),
         check_timeout=3,
         task_manager_db_probe=probe.is_healthy,
+        status_evaluator=DefaultHealthStatusEvaluator(),
     )
 
 
@@ -198,6 +199,7 @@ async def test_report_uninitialized_service() -> None:
         service=cast("InfrahubServices", _UninitializedService()),
         check_timeout=3,
         task_manager_db_probe=HealthyProbe().is_healthy,
+        status_evaluator=DefaultHealthStatusEvaluator(),
     )
     report = await checker.report()
     assert report.status == OverallStatus.UNHEALTHY
