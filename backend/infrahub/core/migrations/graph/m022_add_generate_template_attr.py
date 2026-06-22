@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class Migration022(InternalSchemaMigration):
     name: str = "022_add_generate_template_attr"
+    description: str = "N/A"
     minimum_version: int = 21
 
     @classmethod

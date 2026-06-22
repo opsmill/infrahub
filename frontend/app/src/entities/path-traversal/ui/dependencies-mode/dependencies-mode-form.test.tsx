@@ -12,4 +12,14 @@ describe("DependenciesModeForm validation", () => {
     await expect.element(component.getByText("Source is required")).toBeVisible();
     await expect.element(component.getByText("Select at least one target kind")).toBeVisible();
   });
+
+  test("exposes the shortest paths only option, checked by default", async () => {
+    const component = await render(<DependenciesModeSidebar />);
+
+    await component.getByRole("button", { name: /search options/i }).click();
+
+    const checkbox = component.getByRole("checkbox", { name: /shortest paths only/i });
+    await expect.element(checkbox).toBeVisible();
+    await expect.element(checkbox).toBeChecked();
+  });
 });

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class Migration008(InternalSchemaMigration):
     name: str = "008_node_add_human_friendly_id"
+    description: str = "N/A"
     minimum_version: int = 7
 
     @classmethod

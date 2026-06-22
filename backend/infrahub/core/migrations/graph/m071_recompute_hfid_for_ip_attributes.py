@@ -110,6 +110,7 @@ class Migration071(MigrationRequiringRebase):
     """
 
     name: str = "071_recompute_hfid_for_ip_attributes"
+    description: str = "Recompute HFID and display_label for every schema that uses an IPHost or IPNetwork attribute."
     minimum_version: int = 70
     update_batch_size: int = 1000
 

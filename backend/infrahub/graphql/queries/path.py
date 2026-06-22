@@ -6,11 +6,12 @@ from typing import TYPE_CHECKING, Any
 from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import SchemaNotFoundError
-from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
-from infrahub.graph_traversal.path import PathTraversalQuery
+from infrahub.exceptions import QueryTimeoutError, SchemaNotFoundError
+from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
+from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
 
@@ -65,6 +66,14 @@ class PathTraversalResultType(ObjectType):
     source = Field(PathNodeType, required=True, description="The start node")
     destination = Field(PathNodeType, required=True, description="The end node")
     count = Field(Int, required=True, description="Total number of paths discovered")
+    excluded_kinds = Field(
+        List(of_type=NonNull(String)),
+        required=True,
+        description=(
+            "Concrete node kinds excluded from this traversal: the default exclusions "
+            "plus the requested excluded_kinds, minus included_kinds."
+        ),
+    )
 
 
 class PathTraversalInput(InputObjectType):
@@ -92,7 +101,20 @@ class PathTraversalInput(InputObjectType):
     excluded_kinds = List(
         of_type=NonNull(String),
         required=False,
-        description="Specific node kinds to exclude from traversal paths.",
+        description=(
+            "Specific node kinds to exclude from traversal paths. Unioned with the "
+            "default excluded kinds (BuiltinIPNamespace and all kinds inheriting it); "
+            "the defaults can be re-included via included_kinds."
+        ),
+    )
+    included_kinds = List(
+        of_type=NonNull(String),
+        required=False,
+        description=(
+            "Kinds excluded by default (BuiltinIPNamespace and all kinds inheriting it) "
+            "to re-include in traversal paths. Passing the generic re-includes every "
+            "implementer. Has no effect on kinds passed in excluded_kinds in the same request."
+        ),
     )
 
 
@@ -226,8 +248,8 @@ async def path_traversal_resolver(
     max_depth = data.max_depth or 5
     max_paths = data.max_paths or 10
 
-    if max_paths > MAX_PATHS:
-        raise GraphQLError(f"max_paths must be <= {MAX_PATHS}, got {max_paths}")
+    if not 1 <= max_paths <= MAX_PATHS:
+        raise GraphQLError(f"max_paths must be in [1, {MAX_PATHS}], got {max_paths}")
 
     if source_id == destination_id:
         raise GraphQLError("Source and destination nodes must be different")
@@ -270,24 +292,29 @@ async def path_traversal_resolver(
         # No schema route survives planning, return an empty result
         path_data_list: list[PathData] = []
     else:
-        renderer = PathTraversalCypherRenderer(
+        executor = PathTraversalExecutor(
+            db=graphql_context.db,
             branch=graphql_context.branch,
-            default_branch_name=registry.default_branch,
+            renderer=GraphTraversalCypherRenderer(
+                branch=graphql_context.branch,
+                default_branch_name=registry.default_branch,
+            ),
+            timeout_seconds=config.SETTINGS.database.graph_traversal_query_timeout,
         )
         try:
-            query = await PathTraversalQuery.init(
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-                at=graphql_context.at,
-                renderer=renderer,
+            path_data_list = await executor.run(
                 plan=plan,
                 source_id=source_id,
                 max_paths=max_paths,
+                at=graphql_context.at,
             )
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
-        await query.execute(db=graphql_context.db)
-        path_data_list = query.get_paths()
+        except QueryTimeoutError as exc:
+            raise GraphQLError(
+                "Path traversal exceeded its time budget. Reduce max_depth, lower max_paths, "
+                "or add excluded_kinds/excluded_namespaces filters to narrow the search."
+            ) from exc
 
     all_node_ids: set[str] = {source_id, destination_id}
     for path_data in path_data_list:
@@ -308,6 +335,7 @@ async def path_traversal_resolver(
         "source": source_info,
         "destination": destination_info,
         "count": len(path_data_list),
+        "excluded_kinds": sorted(plan.excluded_kinds),
     }
 
 

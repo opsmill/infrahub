@@ -336,6 +336,14 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
+    graph_traversal_query_timeout: float = Field(
+        default=75,
+        ge=1,
+        description=(
+            "Server-side transaction timeout in seconds for graph-traversal queries "
+            "(path traversal and reachable nodes); the query is aborted once it is exceeded."
+        ),
+    )
 
     @property
     def database_uri(self) -> str:
@@ -812,7 +820,9 @@ class SecuritySettings(BaseSettings):
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
     sso_user_default_group: str | None = Field(
         default=None,
-        description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
+        description="Name of the group assigned to an SSO user on their first login when the identity "
+        "provider supplies no group claims. Applied only when the account is first created; it is "
+        "not re-applied on subsequent logins, so removing a user from this group is not undone.",
     )
     auto_create_groups_filter: str | list[str] | None = Field(
         default=None,

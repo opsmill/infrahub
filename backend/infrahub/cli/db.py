@@ -164,7 +164,15 @@ async def migrate_cmd(
     ctx: typer.Context,
     check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
     plan: bool = typer.Option(False, help="Show the migration plan without executing."),
-    verbose: bool = typer.Option(False, help="Show detailed internal output from each migration."),
+    verbose: bool = typer.Option(
+        False,
+        help=(
+            "Also show internal infrahub and prefect logger output "
+            "(schema-loader warnings, validator messages, workflow-client logs) "
+            "that is suppressed by default. Per-migration progress messages are "
+            "always shown and are not controlled by this flag."
+        ),
+    ),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     migration_number: int | None = typer.Option(
         None, help="Apply a specific migration by number, regardless of current database version"
@@ -424,7 +432,7 @@ async def update_core_schema_cmd(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations."""
+    """Reload the internal core schema definition and apply schema-only migrations."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -1032,10 +1040,10 @@ async def load_export_cmd(
     query_limit: int = typer.Option(1000, help="Maximum batch size of import query"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Cannot be used for backup/restore functionality.
+    """Load an anonymized export produced by `db selected-export` into Neo4j.
 
-    Loads an anonymized export into Neo4j.
-    Only used for analysis of output of the selected-export command.
+    Intended only for analysis of selected-export output — not a general
+    backup/restore mechanism.
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)

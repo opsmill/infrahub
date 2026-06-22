@@ -12088,12 +12088,18 @@ type PathResultType {
 input PathTraversalInput {
   """UUID of the end node"""
   destination_id: String!
-  """Specific node kinds to exclude from traversal paths."""
+  """
+  Specific node kinds to exclude from traversal paths. Unioned with the default excluded kinds (BuiltinIPNamespace and all kinds inheriting it); the defaults can be re-included via included_kinds.
+  """
   excluded_kinds: [String!]
   """
   Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input.
   """
   excluded_namespaces: [String!]
+  """
+  Kinds excluded by default (BuiltinIPNamespace and all kinds inheriting it) to re-include in traversal paths. Passing the generic re-includes every implementer. Has no effect on kinds passed in excluded_kinds in the same request.
+  """
+  included_kinds: [String!]
   """Filter to only traverse through nodes of these kinds"""
   kind_filter: [String!]
   """Maximum number of node hops (default: 5, max: 20)"""
@@ -12111,6 +12117,10 @@ type PathTraversalResultType {
   count: Int!
   """The end node"""
   destination: PathNodeType!
+  """
+  Concrete node kinds excluded from this traversal: the default exclusions plus the requested excluded_kinds, minus included_kinds.
+  """
+  excluded_kinds: [String!]!
   """Paths found, ordered shortest first"""
   paths: [PathResultType!]!
   """The start node"""
@@ -25678,6 +25688,10 @@ input ReachableNodesInput {
   Maximum number of distinct terminal nodes to discover (default: 50, max: 200)
   """
   max_results: Int = 50
+  """
+  When true (default), return only the shortest path(s) to each reachable target. When false, return every path to each target within max_depth that meets the filters.
+  """
+  shortest_paths_only: Boolean = true
   """UUID of the source node"""
   source_id: String!
   """Node kinds to search for"""

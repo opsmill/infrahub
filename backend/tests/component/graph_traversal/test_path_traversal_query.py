@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
+from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import Plan, TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
 from tests.helpers.graph_traversal.builders import (
@@ -299,3 +301,107 @@ async def test_excluded_kinds_with_generic_drops_all_concrete_implementors(
         user_filters=UserFilters(excluded_namespaces=frozenset(), excluded_kinds=frozenset({"TestAnimal"})),
     )
     assert plan.is_empty
+
+
+async def test_default_excluded_kinds_hide_ipam_namespace_bounce(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    two_ips_in_one_namespace: tuple[Node, Node, Node],
+) -> None:
+    # Two IPs share only their namespace; the namespace-kind default exclusion
+    # must remove the IP > namespace > IP' bounce while the prefix route keeps
+    # the plan renderable.
+    _namespace, ip1, ip2 = two_ips_in_one_namespace
+
+    plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=ip1,
+        destination=ip2,
+        max_depth=2,
+        user_filters=UserFilters(),
+    )
+    assert "IpamNamespace" in plan.excluded_kinds
+    assert not plan.is_empty
+
+    query = await build_path_traversal_query(
+        db=db,
+        branch=default_branch,
+        plan=plan,
+        source_id=ip1.id,
+        default_branch_name=default_branch.name,
+    )
+    await query.execute(db=db)
+
+    assert query.get_paths() == []
+
+
+async def test_included_kinds_re_include_ipam_namespace_bounce(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    two_ips_in_one_namespace: tuple[Node, Node, Node],
+) -> None:
+    # Re-including the namespace kind restores the bounce path, proving the
+    # default behavior is an exclusion rather than absence of data.
+    namespace, ip1, ip2 = two_ips_in_one_namespace
+
+    plan = _build_plan(
+        db=db,
+        branch=default_branch,
+        source=ip1,
+        destination=ip2,
+        max_depth=2,
+        user_filters=UserFilters(included_kinds=frozenset({"IpamNamespace"})),
+    )
+    assert "IpamNamespace" not in plan.excluded_kinds
+
+    query = await build_path_traversal_query(
+        db=db,
+        branch=default_branch,
+        plan=plan,
+        source_id=ip1.id,
+        default_branch_name=default_branch.name,
+    )
+    await query.execute(db=db)
+    paths = query.get_paths()
+
+    assert len(paths) == 1
+    assert paths[0].depth == 2
+    assert [hop.node.uuid for hop in paths[0].hops] == [namespace.id, ip2.id]
+
+
+async def test_executor_returns_shortest_first_across_depths(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    assert not plan.is_empty
+
+    executor = PathTraversalExecutor(
+        db=db,
+        branch=default_branch,
+        renderer=GraphTraversalCypherRenderer(branch=default_branch, default_branch_name=default_branch.name),
+    )
+    paths = await executor.run(plan=plan, source_id=person1.id, max_paths=10)
+
+    assert [p.depth for p in paths] == [1, 3]
+
+
+async def test_executor_respects_max_paths(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    assert not plan.is_empty
+
+    executor = PathTraversalExecutor(
+        db=db,
+        branch=default_branch,
+        renderer=GraphTraversalCypherRenderer(branch=default_branch, default_branch_name=default_branch.name),
+    )
+    paths = await executor.run(plan=plan, source_id=person1.id, max_paths=1)
+
+    assert len(paths) == 1
+    assert paths[0].depth == 1
+    assert paths[0].start_node.uuid == person1.id
+    assert [hop.node.uuid for hop in paths[0].hops] == [blue.id]

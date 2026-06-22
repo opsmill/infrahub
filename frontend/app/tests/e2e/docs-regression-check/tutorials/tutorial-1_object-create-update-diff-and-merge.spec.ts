@@ -32,7 +32,10 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("confirm creation and update UI", async () => {
-      await expect(page.locator("#alert-success-Tenant-created")).toContainText("Tenant created");
+      // The toast id carries the created node's uuid suffix, so prefix-match it.
+      await expect(page.locator('[id^="alert-success-Tenant-created"]')).toContainText(
+        "Tenant created"
+      );
       await expect(page.getByRole("link", { name: "my-first-tenant" })).toBeVisible();
       await expect(page.getByText("Testing Infrahub")).toBeVisible();
     });

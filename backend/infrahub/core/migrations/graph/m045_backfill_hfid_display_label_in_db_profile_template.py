@@ -21,6 +21,7 @@ class Migration045(Migration044):
     """Backfill `human_friendly_id` and `display_label` attributes for profile and template nodes with schemas that define them."""
 
     name: str = "045_backfill_hfid_display_label_in_db_profile_template"
+    description: str = "N/A"
     minimum_version: int = 44
     update_batch_size: int = 1000
 

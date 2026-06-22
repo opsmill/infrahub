@@ -8,11 +8,11 @@ export const DismissGuardContext = React.createContext<DismissGuardContextValue 
 
 export function useDismissGuard(onOpenChange?: (isOpen: boolean) => void) {
   const dismissableRef = React.useRef(true);
-  const onDismissAttemptRef = React.useRef<(() => void) | undefined>(undefined);
+  const onDismissAttemptRef = React.useRef<(() => void) | null>(null);
 
   const setDismissable = (value: boolean, onDismissAttempt?: () => void) => {
     dismissableRef.current = value;
-    onDismissAttemptRef.current = onDismissAttempt;
+    onDismissAttemptRef.current = onDismissAttempt ?? null;
   };
 
   const guardedOnOpenChange = (isOpen: boolean) => {

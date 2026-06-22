@@ -14,6 +14,156 @@ Upgrading Infrahub involves pulling the latest container images, running databas
 
 **Release notes**: Review the [release notes](../../../release-notes/infrahub/) for any version-specific upgrade instructions. In Infrahub 1.2 and later, the upgrade process was streamlined with a unified upgrade command. For earlier versions, refer to the release notes for specific instructions.
 
+## What the upgrade does
+
+`infrahub upgrade` runs as a structured six-step pipeline against the database the configured Infrahub instance points at:
+
+| Step  | What runs |
+|-------|-----------|
+| 1/6   | Database migrations (same code path as `infrahub db migrate`) |
+| 2/6   | Internal schema initialization |
+| 3/6   | Core schema update |
+| 4/6   | Internal objects — menu and permissions |
+| 5/6   | Task manager — workflow blocks, worker pools, deployments |
+| 6/6   | Branch rebase (only writes when `--rebase-branches` is set) |
+
+The command logs a header for each step, per-migration timing inside Step 1/6, and a final `Upgrade complete SUCCESS` line. Use `--check` to see what the upgrade would do without writing anything.
+
+### What you will see during an upgrade
+
+Each step prints a header, and migrations inside Step 1/6 print per-migration progress. Long, data-rewriting migrations — recomputing HFID and display-label values, normalizing MAC addresses, unifying IP pool resource identifiers — also print their own progress messages so you can confirm which data they are touching. Example excerpt:
+
+```console
+Step 1/6: Database migrations
+Database version: 67
+Target version:   73
+Pending: 6 migrations
+  068  cleanup_branch_schema_parameters     (ArbitraryMigration)
+  069  set_comment_thread_created_by_on_node (GraphMigration)
+  070  normalize_mac_address_values_to_colon (MigrationRequiringRebase)
+  071  recompute_hfid_for_ip_attributes     (MigrationRequiringRebase)
+  072  index_hfid_values                    (ArbitraryMigration)
+  073  unify_ip_pool_resource_identifier    (ArbitraryMigration)
+
+Applying migrations:
+Cleaning up spurious branch schema attribute parameters from Migration056
+Checking 2 open user branches
+  Applying 068_cleanup_branch_schema_parameters... OK (0.01s)
+  Applying 069_set_comment_thread_created_by_on_node... OK (0.00s)
+Normalizing MacAddress values for InfraDevice.mac_address
+  Applying 070_normalize_mac_address_values_to_colon... OK (0.02s)
+Recomputing HFID/display_label for InternalIPPrefixAvailable
+  Applying 071_recompute_hfid_for_ip_attributes... OK (0.01s)
+Normalized 14 HFID value(s) to all-string format
+  Applying 072_index_hfid_values... OK (0.01s)
+  Rewrote CoreIPPrefixPool.resources.identifier → ippool__resource.
+  Applying 073_unify_ip_pool_resource_identifier... OK (0.04s)
+Applied 6 migrations successfully in 1.44s
+
+Step 2/6: Internal schema
+Internal schema initialized
+
+Step 3/6: Core schema
+Core Schema updated successfully
+
+Step 4/6: Internal objects
+Menu has been updated
+Permissions up to date, nothing to update
+
+Step 5/6: Task manager
+Task manager configured
+
+Step 6/6: Branch rebase
+Found 2 branches that need to be rebased
+Rebased branch 'clean-branch' (ID: ...) SUCCESS
+Rebased branch 'conflict-branch' (ID: ...) SUCCESS
+
+Upgrade complete SUCCESS
+```
+
+Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normalized N HFID value(s) …`, and `Rewrote … → …` are migration progress messages, not errors. They tell you which data the current migration is about to touch and are expected output.
+
+### What `--verbose` does
+
+`--verbose` does **not** control per-migration progress (that is always shown). It only lifts the suppression on the `infrahub` and `prefect` Python loggers so their schema-loader warnings, validator-determiner messages, and workflow-client logs become visible during Step 1/6 and Step 6/6. Use it when a migration is failing and you want the full internal log trail; in normal operation you do not need it.
+
+## Database migration commands
+
+:::note
+You do not need any of the `infrahub db` commands for day-to-day upgrades — `infrahub upgrade` takes care of everything. However, `infrahub db showmigrations` is a useful verification step after an upgrade, while the remaining commands are intended for advanced debugging: previewing what would run, or applying the migration step in isolation when investigating a failure.
+:::
+`infrahub db migrate` runs the same code path as **Step 1/6 of `infrahub upgrade`**, with identical formatting. Use it only when you specifically want the migration step in isolation — for example, to reproduce a migration failure outside the full upgrade pipeline.
+
+### Listing migrations
+
+`infrahub db showmigrations` lists every known migration and whether it has been applied to the connected database:
+
+```console
+$ infrahub db showmigrations
+
+Migration list (database version: 71, target version: 73):
+
+ [X] 001  add_version_to_graph                          GraphMigration
+ [X] 002  attribute_is_default                          GraphMigration
+ ...
+ [X] 071  recompute_hfid_for_ip_attributes              MigrationRequiringRebase
+ [ ] 072  index_hfid_values                             ArbitraryMigration
+ [ ] 073  unify_ip_pool_resource_identifier             ArbitraryMigration
+```
+
+`[X]` marks migrations that have already been applied to this database. `[ ]` marks migrations that are pending. The header reports the current graph version stored on the Root node and the target version that the running Infrahub binary expects.
+
+Use this command before and after `infrahub db migrate` (or `infrahub upgrade`) to confirm which migrations were applied.
+
+#### Migration types
+
+The third column of `showmigrations` reports the migration's class. The four types behave differently:
+
+- **GraphMigration** — applies one or more Cypher queries to the graph.
+- **InternalSchemaMigration** — updates the internal schema definition.
+- **ArbitraryMigration** — runs arbitrary Python logic. May print its own progress messages while it works.
+- **MigrationRequiringRebase** — rewrites data that any open branches were built on top of. After this kind of migration, every open branch needs to be rebased before it can be used again — see `infrahub upgrade --rebase-branches`.
+
+### Inspecting a single migration
+
+`infrahub db showmigration N` reports details about a specific migration — its type, the minimum graph version it requires, whether it has been applied, and a human-readable description of what data it touches:
+
+```console
+$ infrahub db showmigration 70
+
+Migration 070: 070_normalize_mac_address_values_to_colon
+  Type:            MigrationRequiringRebase
+  Minimum version: 69
+  Status:          Pending
+  Description:     Rewrite stored MacAddress values to colon-separated
+                   uppercase form and recompute any HFID or display_label
+                   that depends on them.
+```
+
+Use this command when `showmigrations` flags a migration as pending and you want to understand what it will change before applying it.
+
+### Previewing without writing
+
+`infrahub db migrate --plan` lists the pending migrations and reports what would be applied, without touching the database:
+
+```console
+$ infrahub db migrate --plan
+
+Database version: 71
+Target version:   73
+Pending: 2 migrations
+  072  index_hfid_values                              (ArbitraryMigration)
+  073  unify_ip_pool_resource_identifier              (ArbitraryMigration)
+
+Migration plan (2 pending):
+  1. index_hfid_values                                ArbitraryMigration
+  2. unify_ip_pool_resource_identifier                ArbitraryMigration
+
+No migrations were applied. Run 'infrahub db migrate' to apply.
+```
+
+`--plan` does not write to the database. Re-running `infrahub db showmigrations` immediately afterwards must show identical state.
+
 ## Upgrade guides
 
 Select the guide for your edition and deployment:

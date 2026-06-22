@@ -293,6 +293,7 @@ class Migration013AddInternalStatusData(AttributeAddQuery):
 
 class Migration013(GraphMigration):
     name: str = "013_convert_git_password_credential"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [
         Migration013ConvertCoreRepositoryWithCred,
         Migration013ConvertCoreRepositoryWithoutCred,

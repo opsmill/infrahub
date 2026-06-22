@@ -1,4 +1,10 @@
-import { parseAsInteger, parseAsNativeArrayOf, parseAsString, useQueryStates } from "nuqs";
+import {
+  parseAsBoolean,
+  parseAsInteger,
+  parseAsNativeArrayOf,
+  parseAsString,
+  useQueryStates,
+} from "nuqs";
 
 export const DEPENDENCIES_MODE_PARAMS = {
   source: parseAsString.withDefault(""),
@@ -6,6 +12,7 @@ export const DEPENDENCIES_MODE_PARAMS = {
   depth: parseAsInteger.withDefault(5),
   maxResults: parseAsInteger.withDefault(50),
   maxPaths: parseAsInteger.withDefault(500),
+  shortestPathsOnly: parseAsBoolean.withDefault(true),
   selectedIndex: parseAsInteger.withDefault(0),
 } as const;
 
@@ -15,6 +22,7 @@ export type DependenciesModeParams = {
   depth: number;
   maxResults: number;
   maxPaths: number;
+  shortestPathsOnly: boolean;
   selectedIndex: number;
 };
 
@@ -24,6 +32,7 @@ export type DependenciesModeFormValues = {
   maxDepth: number;
   maxResults: number;
   maxPaths: number;
+  shortestPathsOnly: boolean;
 };
 
 export function paramsToFormValues(p: DependenciesModeParams): DependenciesModeFormValues {
@@ -33,6 +42,7 @@ export function paramsToFormValues(p: DependenciesModeParams): DependenciesModeF
     maxDepth: p.depth,
     maxResults: p.maxResults,
     maxPaths: p.maxPaths,
+    shortestPathsOnly: p.shortestPathsOnly,
   };
 }
 
@@ -43,6 +53,7 @@ export function formValuesToParams(v: DependenciesModeFormValues): Partial<Depen
     depth: v.maxDepth,
     maxResults: v.maxResults,
     maxPaths: v.maxPaths,
+    shortestPathsOnly: v.shortestPathsOnly,
     selectedIndex: 0,
   };
 }
