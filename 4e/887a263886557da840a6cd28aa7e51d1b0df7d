@@ -1,0 +1,24 @@
+backend/infrahub/health.py
+  s_2f147521a27904::t_89404e4017ea48 8
+  s_2f147521a27904::t_b66b5d6fcb21a1 175,179,181-184,186-188
+backend/tests/unit/health/test_health.py
+  s_2f147521a27904::t_419812bea91601 226-231
+changelog/+task-manager-db-healthcheck.added.md
+  s_2f147521a27904::t_165775c25cc9db 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "4e887a263886557da840a6cd28aa7e51d1b0df7d",
+  "prompts": {},
+  "sessions": {
+    "s_2f147521a27904": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc19b123-f090-4700-8cfd-ea1e0e3530bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}
