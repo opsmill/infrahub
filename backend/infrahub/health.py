@@ -5,7 +5,9 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
+import httpx
 from prefect.client.orchestration import get_client
+from prefect.settings import PREFECT_CLIENT_MAX_RETRIES, get_current_settings, temporary_settings
 from pydantic import BaseModel
 
 from infrahub.exceptions import InitializationError
@@ -57,11 +59,11 @@ class HealthResponse(BaseModel):
 
 
 def classify_error(exc: Exception) -> ErrorCategory:
-    if isinstance(exc, TimeoutError | asyncio.TimeoutError):
+    if isinstance(exc, TimeoutError | asyncio.TimeoutError | httpx.TimeoutException):
         return ErrorCategory.TIMEOUT
     if isinstance(exc, InitializationError):
         return ErrorCategory.NOT_INITIALIZED
-    if isinstance(exc, ConnectionRefusedError | ConnectionResetError | OSError):
+    if isinstance(exc, ConnectionRefusedError | ConnectionResetError | OSError | httpx.ConnectError):
         return ErrorCategory.CONNECTION_REFUSED
     return ErrorCategory.UNKNOWN_ERROR
 
@@ -172,9 +174,6 @@ class HealthChecker:
         )
 
 
-TASK_MANAGER_READINESS_ROUTE = "/ready"
-
-
 async def probe_task_manager_db() -> bool:
     """Probe the task manager's backing store through the task manager's own readiness endpoint.
 
@@ -182,8 +181,20 @@ async def probe_task_manager_db() -> bool:
     check to the task manager keeps the backing store's credentials out of this process: only the
     task manager authenticates to its own database, and a backing-store outage surfaces here as a
     non-success response.
+
+    Raises:
+        InitializationError: When the task manager API location is not configured. Without it the
+            client would fall back to an in-process ephemeral server and report a meaningless UP.
+
     """
-    async with get_client(sync_client=False) as client:
-        response = await client._client.get(TASK_MANAGER_READINESS_ROUTE)
-        response.raise_for_status()
+    if get_current_settings().api.url is None:
+        raise InitializationError("Task manager API URL is not configured")
+
+    # Disable client retries: a backing-store outage answers the readiness endpoint with a 503 that
+    # the client would otherwise retry with exponential backoff, blocking the probe until the
+    # health-check timeout cancels it. The probe must fail fast so the outage is reported promptly.
+    with temporary_settings({PREFECT_CLIENT_MAX_RETRIES: 0}):
+        async with get_client(sync_client=False) as client:
+            response = await client._client.get("/ready")
+            response.raise_for_status()
     return True

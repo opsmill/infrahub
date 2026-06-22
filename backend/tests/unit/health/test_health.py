@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 
 import pytest
+from prefect.settings import PREFECT_API_URL, temporary_settings
 
 from infrahub.exceptions import InitializationError
 from infrahub.health import (
@@ -223,15 +224,22 @@ async def test_report_all_down() -> None:
     assert all(c.status == DependencyStatus.DOWN for c in report.checks)
 
 
-async def test_probe_task_manager_db_unreachable_api(monkeypatch: pytest.MonkeyPatch) -> None:
-    # A refused localhost target proves the probe reaches the task manager API rather than touching a
-    # database directly, and reports DOWN when the readiness request cannot be served. Retries are
-    # disabled so the refused connection surfaces immediately instead of backing off.
-    monkeypatch.setenv("PREFECT_API_URL", "http://127.0.0.1:1/api")
-    monkeypatch.setenv("PREFECT_CLIENT_MAX_RETRIES", "0")
-    result = await check_dependency(DependencyName.TASK_MANAGER_DB, probe_task_manager_db, timeout_seconds=5)
+async def test_probe_task_manager_db_not_configured() -> None:
+    # With no task manager API configured the probe must report NOT_INITIALIZED rather than fall back
+    # to an in-process ephemeral server and report a meaningless UP.
+    with temporary_settings(restore_defaults={PREFECT_API_URL}):
+        result = await check_dependency(DependencyName.TASK_MANAGER_DB, probe_task_manager_db, timeout_seconds=5)
     assert result.status == DependencyStatus.DOWN
-    assert result.error != ErrorCategory.NOT_INITIALIZED
+    assert result.error == ErrorCategory.NOT_INITIALIZED
+
+
+async def test_probe_task_manager_db_unreachable_api() -> None:
+    # A refused localhost target proves the probe reaches the task manager API rather than touching a
+    # database directly; a connection failure is reported as DOWN with a connection_refused category.
+    with temporary_settings({PREFECT_API_URL: "http://127.0.0.1:1/api"}):
+        result = await check_dependency(DependencyName.TASK_MANAGER_DB, probe_task_manager_db, timeout_seconds=5)
+    assert result.status == DependencyStatus.DOWN
+    assert result.error == ErrorCategory.CONNECTION_REFUSED
 
 
 @dataclass
