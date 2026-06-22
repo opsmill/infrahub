@@ -61,11 +61,13 @@ async def test_create_race_reuses_winning_group_without_emitting_a_second_event(
     register_core_models_schema: SchemaBranch,
     autocreate_filter_enabled: None,
 ) -> None:
-    """A claim whose group is created between the lookup and the create reuses the winning group.
+    """A group created between this login's existence check and its create is reused, not duplicated.
 
-    The first lookup misses, creation raises a uniqueness violation against the already-existing
-    group, and the re-lookup reuses it: no duplicate group is written, no second creation event is
-    emitted, and the account is added to the existing group.
+    Reproduces the window where a competing creation of the same name (a concurrent SSO login or a
+    GraphQL/API mutation) commits after the initial, unlocked existence check but before this
+    login's own create. The check misses, the create then raises a uniqueness violation against the
+    now-existing group, and it is reused: no duplicate row, no second creation event, and the
+    account is added to the existing group.
     """
     winner = await Node.init(db=db, schema=CoreAccountGroup)
     await winner.new(db=db, name=CONTESTED_NAME, origin="OktaProd")
