@@ -107,7 +107,6 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 - `git-workflow.md` - Git commit conventions
 - `markdown.md` - Markdown formatting standards
 - `documentation.md` - Documentation writing guidelines
-- `changelog.md` - Changelog entry format
 
 **Subdirectories**: Use domain-based organization when needed:
 
@@ -533,7 +532,7 @@ Maintain a single source of truth with symlinks for tool compatibility, since mo
 rm -rf .claude/commands .claude/skills
 
 # Create tool directories
-mkdir -p .claude 
+mkdir -p .claude
 
 # Create symlinks to canonical source
 ln -s ../.agents/commands .claude/commands
