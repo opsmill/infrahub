@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub import config
-from infrahub.auth.auth_groups.emitter import AutoCreateEventEmitter
 from infrahub.auth.auth_groups.filter import ClaimFilter
 from infrahub.auth.auth_groups.service import AutoCreatedGroupsService
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
+from tests.adapters.event import RecordingAutoCreateEventEmitter
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -37,24 +37,6 @@ class _LookupMissesOnceNodeManager(NodeManager):
         return await super().query(*args, **kwargs)
 
 
-class _RecordingEmitter(AutoCreateEventEmitter):
-    """Adapter emitter that records the audit events emitted during one assignment."""
-
-    def __init__(self) -> None:
-        self.created_groups: list[str] = []
-        self.rejected_claims: list[str] = []
-        self.cap_values: list[int] = []
-
-    async def created(self, *, group: CoreAccountGroup, source_pattern: str) -> None:
-        self.created_groups.append(group.name.value)
-
-    async def claim_rejected(self, *, claim: str) -> None:
-        self.rejected_claims.append(claim)
-
-    async def cap_breached(self, *, cap_value: int, dropped_claims: list[str]) -> None:
-        self.cap_values.append(cap_value)
-
-
 async def test_create_race_reuses_winning_group_without_emitting_a_second_event(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -78,7 +60,7 @@ async def test_create_race_reuses_winning_group_without_emitting_a_second_event(
     await account.save(db=db)
 
     _LookupMissesOnceNodeManager.first_lookup_done = False
-    emitter = _RecordingEmitter()
+    emitter = RecordingAutoCreateEventEmitter()
     service = AutoCreatedGroupsService(
         db=db,
         account=account,
