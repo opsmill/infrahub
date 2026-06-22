@@ -26,13 +26,13 @@ class _LookupMissesOnceNodeManager(NodeManager):
     (the re-lookup, membership reads) goes to the real manager.
     """
 
-    _first_lookup_done = False
+    first_lookup_done = False
 
     @classmethod
     async def query(cls, *args: Any, **kwargs: Any) -> Any:
         filters = kwargs.get("filters")
-        if filters and filters.get("name__value") == CONTESTED_NAME and not cls._first_lookup_done:
-            cls._first_lookup_done = True
+        if filters and filters.get("name__value") == CONTESTED_NAME and not cls.first_lookup_done:
+            cls.first_lookup_done = True
             return []
         return await super().query(*args, **kwargs)
 
@@ -77,7 +77,7 @@ async def test_create_race_reuses_winning_group_without_emitting_a_second_event(
     await account.new(db=db, name="Pat Auto", account_type="User", password="pat-password")
     await account.save(db=db)
 
-    _LookupMissesOnceNodeManager._first_lookup_done = False
+    _LookupMissesOnceNodeManager.first_lookup_done = False
     emitter = _RecordingEmitter()
     service = AutoCreatedGroupsService(
         db=db,
