@@ -1,6 +1,6 @@
 ---
 name: creating-changelog-entries
-description: Use in a project that manages its changelog with Towncrier, when you've fixed a bug, added a feature, or made any user-facing change and need to record it — before committing or opening a PR, or whenever asked to add a changelog entry, towncrier fragment, or news fragment.
+description: Use when you've fixed a bug, added a feature, or made any user-facing change in a project that uses Towncrier and need to record it for the changelog — before committing or opening a PR, or whenever asked to add a changelog entry, towncrier fragment, or news fragment.
 compatibility: Requires the project to use Towncrier for changelog management — a configured Towncrier setup (e.g. `[tool.towncrier]` in pyproject.toml) and the `towncrier` CLI available, typically via a Python runner such as uv or poetry.
 ---
 
@@ -9,8 +9,6 @@ compatibility: Requires the project to use Towncrier for changelog management �
 ## Overview
 
 [Towncrier](https://towncrier.readthedocs.io/) assembles the changelog from per-change "fragment" files — one small file per change, collected and rendered at release time. This skill applies to any project that uses Towncrier. Every issue fix or new feature should ship with a fragment, written short and user-facing: describe *what* changed, not how it was implemented.
-
-**Requires Towncrier.** If the project has no `[tool.towncrier]` config (or another Towncrier config file), this skill does not apply — follow that project's own changelog process instead.
 
 **Core rule:** always create fragments with `towncrier create`, never hand-write them. The command derives the location and naming from the Towncrier config and places the fragment correctly no matter which directory you run it from.
 
@@ -60,6 +58,8 @@ In a monorepo, they do **not** belong in a sub-package directory such as `backen
 - Avoid technical jargon.
 
 ## Examples
+
+> These examples show the bare `towncrier` command. In this repo (and other `uv`-based projects) `towncrier` is not on `PATH` directly — prefix with `uv run` (e.g. `uv run towncrier create ...`), as noted under Quick Reference.
 
 ```bash
 # Bug fix for issue #1234
