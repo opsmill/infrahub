@@ -246,15 +246,14 @@ class Webhook(BaseModel):
     event_type: str = Field(...)
     validate_certificates: bool | None = Field(...)
     custom_headers: list[WebhookHeader] = Field(default_factory=list)
-    _payload: Any = None
-    _headers: dict[str, Any] | None = None
     shared_key: str | None = Field(default=None, description="Shared key for signing the webhook requests")
 
-    async def _prepare_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:  # noqa: ARG002
-        self._payload = {"data": data, **context.model_dump()}
+    async def compute_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> Any:  # noqa: ARG002
+        """Build and return the payload to deliver."""
+        return {"data": data, **context.model_dump()}
 
-    def _assign_headers(self, uuid: UUID | None = None, at: Timestamp | None = None) -> None:
-        self._headers = {
+    def _build_headers(self, payload: Any, uuid: UUID | None = None, at: Timestamp | None = None) -> dict[str, Any]:
+        headers: dict[str, Any] = {
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
@@ -269,19 +268,21 @@ class Webhook(BaseModel):
                 )
             seen_keys.add(header.key)
             try:
-                self._headers[header.key] = header.resolve()
+                headers[header.key] = header.resolve()
             except WebhookHeaderResolutionError as exc:
                 logger.warning("Webhook '%s': %s, skipping header '%s'", self.name, exc, header.key)
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
             timestamp = str(at.to_timestamp()) if at else str(Timestamp().to_timestamp())
-            payload = json.dumps(self._payload or {}, separators=(",", ":"))
-            unsigned_data = f"{message_id}.{timestamp}.{payload}".encode()
+            signed_payload = json.dumps(payload or {}, separators=(",", ":"))
+            unsigned_data = f"{message_id}.{timestamp}.{signed_payload}".encode()
             signature = self._sign(data=unsigned_data)
-            self._headers["webhook-id"] = message_id
-            self._headers["webhook-timestamp"] = timestamp
-            self._headers["webhook-signature"] = f"v1,{base64.b64encode(signature).decode('utf-8')}"
+            headers["webhook-id"] = message_id
+            headers["webhook-timestamp"] = timestamp
+            headers["webhook-signature"] = f"v1,{base64.b64encode(signature).decode('utf-8')}"
+
+        return headers
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -300,25 +301,10 @@ class Webhook(BaseModel):
             return self.shared_key
         raise ValueError("Shared key is not set for the webhook")
 
-    async def prepare(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:
-        await self._prepare_payload(data=data, context=context, client=client)
-        self._assign_headers()
-
-    async def compute_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> Any:
-        """Build and return the payload to deliver, running any transform once."""
-        await self._prepare_payload(data=data, context=context, client=client)
-        return self._payload
-
     async def send_payload(self, payload: Any, http_service: InfrahubHTTP) -> Response:
         """Assign the headers for the given payload and POST it to the webhook endpoint."""
-        self._payload = payload
-        self._assign_headers()
-        return await http_service.post(
-            url=self.url, json=payload, headers=self._headers, verify=self.validate_certificates
-        )
-
-    def get_payload(self) -> dict[str, Any]:
-        return self._payload
+        headers = self._build_headers(payload=payload)
+        return await http_service.post(url=self.url, json=payload, headers=headers, verify=self.validate_certificates)
 
     def to_cache(self) -> dict[str, Any]:
         return self.model_dump()
@@ -369,7 +355,8 @@ class TransformWebhook(Webhook):
     transform_timeout: int = Field(...)
     convert_query_response: bool = Field(...)
 
-    async def _prepare_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:
+    async def compute_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> Any:
+        """Build and return the payload by running the configured Python transform once."""
         repo: InfrahubReadOnlyRepository | InfrahubRepository
         if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
             repo = await InfrahubReadOnlyRepository.init(
@@ -381,7 +368,7 @@ class TransformWebhook(Webhook):
         branch = context.branch or repo.default_branch
         commit = repo.get_commit_value(branch_name=branch)
 
-        self._payload = await repo.execute_python_transform.with_options(timeout_seconds=self.transform_timeout)(
+        return await repo.execute_python_transform.with_options(timeout_seconds=self.transform_timeout)(
             branch_name=branch,
             commit=commit,
             location=f"{self.transform_file}::{self.transform_class}",

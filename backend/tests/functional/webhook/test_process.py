@@ -174,9 +174,9 @@ class TestWebhookProcess(TestInfrahubApp):
             event_payload=BRANCH_CREATED_PAYLOAD,
         )
 
-        await webhook.prepare(data={}, context=context, client=client)
+        payload = await webhook.compute_payload(data={}, context=context, client=client)
 
-        assert webhook.get_payload() == {
+        assert payload == {
             "ACCOUNT_ID": "182853f2-3a43-c7f9-3e84-c5152eff4b17",
             "BRANCH": None,
             "DATA": {},
