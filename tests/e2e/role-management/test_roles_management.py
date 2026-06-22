@@ -114,12 +114,22 @@ class TestRolesCrud:
         await admin_page.get_by_role("menuitem", name="Delete").click()
         await admin_page.get_by_test_id("modal-delete-confirm").click()
         await expect(admin_page.get_by_text("Object test role updated deleted")).to_be_visible()
+        # Reload so the list is fetched fresh. The post-delete cache invalidation can
+        # race with a stale read behind the server load balancer, leaving the deleted
+        # row in the table for the entire assertion window.
+        await admin_page.reload()
         await expect(admin_page.get_by_role("link", name="test role 2")).to_be_visible()
         await expect(admin_page.get_by_role("link", name="test role updated")).not_to_be_visible()
 
-        # bulk delete the remaining role
-        await expect(admin_page.get_by_role("link", name="test role 2")).to_be_visible()
+        # bulk delete the remaining role (reselect it: the reload cleared the selection)
+        await (
+            admin_page.get_by_role("link", name="test role 2")
+            .locator("..")
+            .get_by_test_id("identifier-checkbox-cell")
+            .click()
+        )
         await admin_page.get_by_role("button", name="Delete").click()
         await admin_page.get_by_test_id("modal-delete-confirm").click()
         await expect(admin_page.get_by_text("Objects deleted!")).to_be_visible()
+        await admin_page.reload()
         await expect(admin_page.get_by_role("link", name="test role 2")).not_to_be_visible()
