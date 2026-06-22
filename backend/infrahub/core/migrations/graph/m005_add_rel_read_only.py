@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class Migration005(InternalSchemaMigration):
     name: str = "005_add_rel_read_only"
+    description: str = "N/A"
     minimum_version: int = 4
 
     @classmethod

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class Migration004(InternalSchemaMigration):
     name: str = "004_node_add_attr_documentation"
+    description: str = "N/A"
     minimum_version: int = 3
 
     @classmethod

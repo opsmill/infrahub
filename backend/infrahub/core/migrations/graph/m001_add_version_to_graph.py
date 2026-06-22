@@ -27,6 +27,7 @@ class Migration001Query01(Query):
 
 class Migration001(GraphMigration):
     name: str = "001_add_version_to_graph"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration001Query01]
     minimum_version: int = 0
 

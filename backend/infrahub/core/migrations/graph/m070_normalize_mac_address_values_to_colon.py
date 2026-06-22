@@ -107,6 +107,10 @@ class Migration070(MigrationRequiringRebase):
     """
 
     name: str = "070_normalize_mac_address_values_to_colon"
+    description: str = (
+        "Rewrite stored MacAddress values to colon-separated uppercase form "
+        "and recompute any HFID or display_label that depends on them."
+    )
     minimum_version: int = 69
     update_batch_size: int = 1000
 

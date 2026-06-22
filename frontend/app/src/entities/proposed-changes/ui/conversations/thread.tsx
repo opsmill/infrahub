@@ -160,7 +160,6 @@ export const Thread = (props: tThread) => {
     <Card
       className={classNames("relative gap-2 rounded-md p-2", isResolved && "bg-gray-200")}
       data-testid="thread"
-      data-cy="thread"
     >
       {displayContext && getThreadTitle(thread)}
 

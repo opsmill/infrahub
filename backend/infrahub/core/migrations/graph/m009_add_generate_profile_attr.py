@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class Migration009(InternalSchemaMigration):
     name: str = "009_add_generate_profile_attr"
+    description: str = "N/A"
     minimum_version: int = 8
 
     @classmethod

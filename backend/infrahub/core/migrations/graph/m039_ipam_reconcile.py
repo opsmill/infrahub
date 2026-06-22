@@ -219,6 +219,7 @@ class Migration039(ArbitraryMigration):
     """
 
     name: str = "039_ipam_reconcile_updated"
+    description: str = "N/A"
     minimum_version: int = 38
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

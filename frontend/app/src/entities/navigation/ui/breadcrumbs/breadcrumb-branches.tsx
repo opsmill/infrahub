@@ -1,18 +1,18 @@
 import { Icon } from "@iconify-icon/react";
 import {
+  Autocomplete,
   Breadcrumb,
   BreadcrumbItem,
   Breadcrumbs,
   ListBox,
   ListBoxItem,
+  MenuTrigger,
   Popover,
   PopoverDialog,
 } from "@infrahub/ui";
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { MenuTrigger } from "@/shared/components/aria/menu";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { getBranchDetailsUrl } from "@/entities/branches/utils";

@@ -43,6 +43,7 @@ class Migration021(GraphMigration):
     """
 
     name: str = "021_replace_hierarchy"
+    description: str = "N/A"
     minimum_version: int = 20
     queries: Sequence[type[Query]] = [SetMissingHierarchyQuery]
 

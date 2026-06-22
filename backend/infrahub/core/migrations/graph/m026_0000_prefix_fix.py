@@ -22,6 +22,7 @@ log = get_logger()
 
 class Migration026(InternalSchemaMigration):
     name: str = "026_prefix_0000_fix"
+    description: str = "N/A"
     minimum_version: int = 25
     migrations: Sequence[SchemaMigration] = []
 

@@ -39,6 +39,13 @@ TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = BuiltinTriggerDefinition(
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
                 },
+                "changed_elements": {
+                    "__prefect_kind": "json",
+                    "value": {
+                        "__prefect_kind": "jinja",
+                        "template": "{{ event.payload['data']['changed_elements'] | default(none, true) | tojson }}",
+                    },
+                },
             },
         ),
         ExecuteWorkflow(
@@ -49,6 +56,13 @@ TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = BuiltinTriggerDefinition(
                 "context": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
+                },
+                "changed_elements": {
+                    "__prefect_kind": "json",
+                    "value": {
+                        "__prefect_kind": "jinja",
+                        "template": "{{ event.payload['data']['changed_elements'] | default(none, true) | tojson }}",
+                    },
                 },
             },
         ),

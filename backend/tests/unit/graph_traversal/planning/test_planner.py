@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.graph_traversal.planning.models import (
@@ -234,6 +236,79 @@ class TestUserFilters:
             user_filters=UserFilters(relationship_filter=frozenset({"a__b"})),
         )
         assert plan.is_empty
+
+
+class TestDefaultExcludedKinds:
+    """Implementers of the BuiltinIPNamespace generic are excluded unless re-included."""
+
+    @pytest.fixture
+    def vrf_bridge_schema(self) -> SchemaBranch:
+        """Alpha→Vrf→Omega where Vrf is the only bridge and inherits BuiltinIPNamespace."""
+        return build_schema_branch(
+            nodes=[
+                _node("Alpha", relationships=[_rel(name="rel_vrf", peer="TestingVrf", identifier="alpha__vrf")]),
+                _node(
+                    "Vrf",
+                    inherit_from=["BuiltinIPNamespace"],
+                    relationships=[_rel(name="rel_omega", peer="TestingOmega", identifier="vrf__omega")],
+                ),
+                _node("Omega"),
+            ],
+            generics=[GenericSchema(name="IPNamespace", namespace="Builtin")],
+        )
+
+    def test_default_filters_exclude_namespace_implementers(self, vrf_bridge_schema: SchemaBranch) -> None:
+        planner = make_planner(schema_branch=vrf_bridge_schema)
+        plan = planner.plan(
+            source_kind="TestingAlpha",
+            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingOmega"})),
+            max_depth=2,
+            user_filters=_default_filters(),
+        )
+        assert plan.is_empty
+        assert plan.excluded_kinds == frozenset({"TestingVrf"})
+
+    def test_included_kinds_with_concrete_implementer_re_includes_it(self, vrf_bridge_schema: SchemaBranch) -> None:
+        planner = make_planner(schema_branch=vrf_bridge_schema)
+        plan = planner.plan(
+            source_kind="TestingAlpha",
+            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingOmega"})),
+            max_depth=2,
+            user_filters=UserFilters(included_kinds=frozenset({"TestingVrf"})),
+        )
+        assert dump_adjacency(plan) == _adj(
+            ("TestingAlpha", "alpha__vrf", "TestingVrf"),
+            ("TestingVrf", "vrf__omega", "TestingOmega"),
+        )
+        assert plan.excluded_kinds == frozenset()
+
+    def test_included_kinds_with_generic_re_includes_every_implementer(self, vrf_bridge_schema: SchemaBranch) -> None:
+        planner = make_planner(schema_branch=vrf_bridge_schema)
+        plan = planner.plan(
+            source_kind="TestingAlpha",
+            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingOmega"})),
+            max_depth=2,
+            user_filters=UserFilters(included_kinds=frozenset({"BuiltinIPNamespace"})),
+        )
+        assert dump_adjacency(plan) == _adj(
+            ("TestingAlpha", "alpha__vrf", "TestingVrf"),
+            ("TestingVrf", "vrf__omega", "TestingOmega"),
+        )
+        assert plan.excluded_kinds == frozenset()
+
+    def test_included_kinds_does_not_override_explicit_excluded_kinds(self, vrf_bridge_schema: SchemaBranch) -> None:
+        planner = make_planner(schema_branch=vrf_bridge_schema)
+        plan = planner.plan(
+            source_kind="TestingAlpha",
+            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingOmega"})),
+            max_depth=2,
+            user_filters=UserFilters(
+                excluded_kinds=frozenset({"TestingVrf"}),
+                included_kinds=frozenset({"TestingVrf"}),
+            ),
+        )
+        assert plan.is_empty
+        assert plan.excluded_kinds == frozenset({"TestingVrf"})
 
 
 class TestDeterminism:

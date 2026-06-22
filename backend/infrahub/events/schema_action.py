@@ -1,12 +1,62 @@
 from typing import ClassVar
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
+from infrahub.core.models import SchemaDiff
 from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
 
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
+
+
+class ChangedElementsPayload(BaseModel):
+    """The schema elements added, removed, or changed by a single schema update.
+
+    Carried on a schema-update event so downstream recompute can be scoped to the
+    elements that actually changed. JSON-serializable so it survives transport
+    through workflow parameters. Absence (``None`` on the event) means the change
+    set could not be produced and recompute must fall back to processing everything.
+    """
+
+    added_kinds: list[str] = Field(default_factory=list, description="Object-type kinds newly added")
+    removed_kinds: list[str] = Field(default_factory=list, description="Object-type kinds removed")
+    changed_fields: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Kind to the attribute/relationship names changed on that kind",
+    )
+
+
+def build_changed_elements_payload(diff: SchemaDiff) -> ChangedElementsPayload:
+    """Build a ``ChangedElementsPayload`` from a ``SchemaDiff``.
+
+    The diff keys ``added`` / ``changed`` / ``removed`` by kind. For a changed
+    kind, attribute and relationship changes are grouped under nested
+    ``attributes`` / ``relationships`` buckets whose own ``added`` / ``changed``
+    / ``removed`` map the individual element names. Those names are flattened
+    here so a change to any read element is recorded; node-level scalar fields
+    (e.g. ``label``) are kept under their own name. No further filtering is
+    applied, so a cosmetic edit to a read element still counts as a change.
+    """
+    element_buckets = ("attributes", "relationships")
+    changed_fields: dict[str, list[str]] = {}
+    for kind, node_diff in diff.changed.items():
+        names: set[str] = set()
+        for bucket in (node_diff.added, node_diff.changed, node_diff.removed):
+            for field_name, nested in bucket.items():
+                if field_name in element_buckets and nested is not None:
+                    names.update(nested.added.keys())
+                    names.update(nested.changed.keys())
+                    names.update(nested.removed.keys())
+                else:
+                    names.add(field_name)
+        changed_fields[kind] = sorted(names)
+
+    return ChangedElementsPayload(
+        added_kinds=sorted(diff.added.keys()),
+        removed_kinds=sorted(diff.removed.keys()),
+        changed_fields=changed_fields,
+    )
 
 
 class SchemaUpdatedEvent(InfrahubEvent):
@@ -16,14 +66,11 @@ class SchemaUpdatedEvent(InfrahubEvent):
 
     branch_name: str = Field(..., description="The name of the branch")
     schema_hash: str = Field(..., description="Schema hash after the update")
+    changed_elements: ChangedElementsPayload | None = Field(
+        default=None, description="The schema elements changed by the update, when available"
+    )
 
     # NOTE
-    # We could add to the payload
-    # - Hash before and after the change
-    # - List of nodes and generics that have been modified
-    # - Diff of the change
-
-    # NOTE 2
     # Should schema_update be a branch event ?
     # if feels like the main resource should be the branch
 

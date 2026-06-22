@@ -64,4 +64,5 @@ export type GetReachableNodesParams = ContextParams & {
   maxDepth?: number;
   maxResults?: number;
   maxPaths?: number;
+  shortestPathsOnly?: boolean;
 };
