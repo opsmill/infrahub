@@ -364,10 +364,9 @@ exports[`fix ts error`] = {
       [99, 54, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
       [146, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node | PoolValue | null\'.\\n  Type \'NodeCore\' is not assignable to type \'Node\'.\\n    Types of property \'display_label\' are incompatible.\\n      Type \'null | string | undefined\' is not assignable to type \'string\'.\\n        Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
     ],
-    "src/shared/components/table/table.tsx:2375213391": [
-      [78, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"],
-      [84, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"],
-      [150, 35, 5, "tsc: Property \'value\' does not exist on type \'never\'.", "189936718"]
+    "src/shared/components/table/table.tsx:3990914339": [
+      [63, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"],
+      [69, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"]
     ],
     "src/shared/components/ui/alert.tsx:757342485": [
       [15, 12, 11, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "2602525471"]
