@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from infrahub.core import registry
@@ -104,14 +106,14 @@ async def test_get_resource_conflicting_prefixlen_raises(
 
     # An explicit prefixlen that conflicts with the existing reservation is rejected
     # rather than silently ignored.
-    with pytest.raises(ValidationError) as exc_info:
-        await pool.get_resource(
-            db=db, address_type="IpamIPAddress", identifier="item1", branch=default_branch, prefixlen=28
-        )
-    assert str(exc_info.value) == (
+    expected_error = (
         f"IPAddressPool: pool1 | This resource is already allocated as {first.get_attribute('address').value}; "
         "its prefix length cannot be changed, only /30 can be used."
     )
+    with pytest.raises(ValidationError, match=rf"^{re.escape(expected_error)}$"):
+        await pool.get_resource(
+            db=db, address_type="IpamIPAddress", identifier="item1", branch=default_branch, prefixlen=28
+        )
 
     # The same prefixlen, or none at all, stays idempotent.
     same = await pool.get_resource(
