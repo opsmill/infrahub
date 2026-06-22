@@ -18,7 +18,7 @@ from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_account, create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.graph_merger import GraphMerger
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.protocols import CoreValidator
@@ -42,11 +42,8 @@ if TYPE_CHECKING:
     from tests.adapters.message_bus import BusSimulator
 
 
-class ErroringBranchMerger(BranchMerger):
-    async def merge(
-        self,
-        at: str | Timestamp | None = None,
-    ) -> None:
+class ErroringGraphMerger(GraphMerger):
+    async def merge(self, at: Timestamp) -> None:
         raise ValueError("This will always fail")
 
 
@@ -434,7 +431,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         # Merge the proposed change and ensure everything looks good
         # -------------------------------------------------
         proposed_change_create.state.value = ProposedChangeState.MERGED.value
-        with patch("infrahub.core.branch.tasks.BranchMerger", new=ErroringBranchMerger):
+        with patch("infrahub.core.merge.builder.GraphMerger", new=ErroringGraphMerger):
             with pytest.raises(GraphQLError) as exc:
                 await proposed_change_create.save()
                 assert "Failed to merge branch 'failing_branch'" in exc.value.message

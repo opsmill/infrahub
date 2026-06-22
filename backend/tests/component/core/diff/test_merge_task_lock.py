@@ -17,11 +17,17 @@ from infrahub.core.branch.tasks import merge_branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
 
 
 class TestMergeTaskLock:
+    """Verify the flow-level merge lock and the skip-if-not-open gate.
+
+    `merge_branch` holds the global merge lock, loads the branch under it, and only runs the merge body
+    (`_do_merge_branch`) for an OPEN branch. These tests substitute the body so they exercise the real
+    lock + gate without running a full merge.
+    """
+
     @pytest.fixture(autouse=True)
     async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
         return
@@ -44,50 +50,33 @@ class TestMergeTaskLock:
             account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
         )
 
-    @staticmethod
-    async def _mock_do_merge(
-        db: InfrahubDatabase,
-        log: Any,  # noqa: ARG004
-        branch: Branch,
-        merge_write_blocker: Any,  # noqa: ARG004
-        context: Any,  # noqa: ARG004
-        proposed_change_id: str | None = None,  # noqa: ARG004
-    ) -> list:
-        branch.status = BranchStatus.MERGED
-        await branch.save(db=db)
-        registry.branch[branch.name] = branch
-        return []
-
-    @staticmethod
-    def _mock_event_service() -> AsyncMock:
-        mock_svc = AsyncMock()
-        mock_svc.send = AsyncMock()
-        return mock_svc
-
     async def test_concurrent_merges_same_branch_only_execute_once(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         source_branch: Branch,
-        workflow_local: WorkflowLocalExecution,
         dependency_provider: Provider,
         context: InfrahubContext,
     ) -> None:
-        """When two merges of the same branch run concurrently, _do_merge_branch is called only once."""
-        mock_do_merge_fn = AsyncMock(side_effect=self._mock_do_merge)
-        mock_get_event_svc = AsyncMock(return_value=self._mock_event_service())
+        """When two merges of the same branch run concurrently, the merge body executes only once."""
+
+        async def fake_merge_body(*, db: InfrahubDatabase, source_branch: Branch, **kwargs: Any) -> None:
+            source_branch.status = BranchStatus.MERGED
+            await source_branch.save(db=db)
+            registry.branch[source_branch.name] = source_branch
+
+        body_mock = AsyncMock(side_effect=fake_merge_body)
 
         with (
             dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-            patch("infrahub.core.branch.tasks._do_merge_branch", mock_do_merge_fn),
-            patch("infrahub.core.branch.tasks.get_event_service", mock_get_event_svc),
+            patch("infrahub.core.branch.tasks._do_merge_branch", body_mock),
         ):
             await asyncio.gather(
                 merge_branch(branch=source_branch.name, context=context),
                 merge_branch(branch=source_branch.name, context=context),
             )
 
-        mock_do_merge_fn.assert_awaited_once()
+        body_mock.assert_awaited_once()
 
         merged_branch = await Branch.get_by_name(db=db, name=source_branch.name)
         assert merged_branch.status is BranchStatus.MERGED
@@ -98,7 +87,6 @@ class TestMergeTaskLock:
         default_branch: Branch,
         source_branch: Branch,
         second_source_branch: Branch,
-        workflow_local: WorkflowLocalExecution,
         dependency_provider: Provider,
         context: InfrahubContext,
     ) -> None:
@@ -106,38 +94,28 @@ class TestMergeTaskLock:
         concurrent_count = 0
         max_concurrent = 0
 
-        async def tracking_mock_do_merge(
-            db: InfrahubDatabase,
-            log: Any,
-            branch: Branch,
-            merge_write_blocker: Any,
-            context: Any,
-            proposed_change_id: str | None = None,
-        ):
+        async def fake_merge_body(*, db: InfrahubDatabase, source_branch: Branch, **kwargs: Any) -> None:
             nonlocal concurrent_count, max_concurrent
             concurrent_count += 1
             max_concurrent = max(max_concurrent, concurrent_count)
             await asyncio.sleep(0.1)
             concurrent_count -= 1
-            branch.status = BranchStatus.MERGED
-            await branch.save(db=db)
-            registry.branch[branch.name] = branch
-            return []
+            source_branch.status = BranchStatus.MERGED
+            await source_branch.save(db=db)
+            registry.branch[source_branch.name] = source_branch
 
-        mock_do_merge_fn = AsyncMock(side_effect=tracking_mock_do_merge)
-        mock_get_event_svc = AsyncMock(return_value=self._mock_event_service())
+        body_mock = AsyncMock(side_effect=fake_merge_body)
 
         with (
             dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-            patch("infrahub.core.branch.tasks._do_merge_branch", mock_do_merge_fn),
-            patch("infrahub.core.branch.tasks.get_event_service", mock_get_event_svc),
+            patch("infrahub.core.branch.tasks._do_merge_branch", body_mock),
         ):
             await asyncio.gather(
                 merge_branch(branch=source_branch.name, context=context),
                 merge_branch(branch=second_source_branch.name, context=context),
             )
 
-        assert mock_do_merge_fn.await_count == 2
+        assert body_mock.await_count == 2
         assert max_concurrent == 1
 
         merged_1 = await Branch.get_by_name(db=db, name=source_branch.name)
