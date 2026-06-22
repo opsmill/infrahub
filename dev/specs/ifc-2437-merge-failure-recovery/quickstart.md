@@ -20,7 +20,9 @@ end-to-end. The implementation task breakdown is produced by `/speckit-tasks` in
    ```
 
    `status` MUST be `"MERGED"` (or the branch deleted, if `delete_branch_after_merge` is on);
-   `merge_started_at` MUST be `null`.
+   `merge_started_at` MUST still be populated (the merge's start time) — it is written when the
+   branch enters `MERGING` and deliberately left in place afterward, to be overwritten by the next
+   merge.
 4. While the merge is in flight (use a paused/long merge if needed), a write to the **default**
    branch MUST be rejected with the *transient* "merge in progress, retry shortly" message; the
    same write MUST succeed once the merge completes.
@@ -84,11 +86,13 @@ end-to-end. The implementation task breakdown is produced by `/speckit-tasks` in
 3. Answer **no** → the command exits with no data changes (verify status still `MERGE_FAILED`).
 4. Run again and confirm (or run `infrahub recover --yes`). The command MUST:
    - roll back the partial graph merge,
-   - reset the source branch to `OPEN` and clear `merge_started_at`,
+   - reset the source branch to `OPEN`, leaving `merge_started_at` in place as the record of the
+     failed merge (it is overwritten by the next merge, never cleared),
    - reset any associated proposed change to `OPEN`,
    - emit `merge.recovery.started` and `merge.recovery.completed` logs.
 5. Verify the source-branch graph state equals its pre-merge snapshot (graph diff is empty),
-   `status = "OPEN"`, `merge_started_at = null`, and the proposed change (if any) is `OPEN`.
+   `status = "OPEN"`, `merge_started_at` still populated (left in place), and the proposed change
+   (if any) is `OPEN`.
 6. Writes to the default branch MUST succeed again, and the branch MUST be re-mergeable — re-run the
    merge and confirm success (SC-009).
 7. Run `infrahub recover` a second time → it reports "nothing to recover" and exits without changes
