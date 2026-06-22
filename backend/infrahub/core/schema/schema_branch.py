@@ -767,6 +767,7 @@ class SchemaBranch:
         self.validate_default_filters()
         self.validate_parent_component()
         self.validate_human_friendly_id()
+        self.validate_optional_against_hfid_and_uniqueness()
         self.validate_required_relationships()
         self.validate_inherited_relationships_fields()
 
@@ -1126,6 +1127,45 @@ class SchemaBranch:
                             f"HFID of {node_schema.kind} refers to peer {related_schema.kind}"
                             f" with a non-unique combination of attributes {attrs_paths}"
                         )
+
+    def validate_optional_against_hfid_and_uniqueness(self) -> None:
+        """Ensure attributes referenced in human_friendly_id or uniqueness_constraints are always populated.
+
+        Attributes used in these constraints must either be mandatory (optional=False) or have a
+        default_value so that every instance is guaranteed to have a value for the attribute.
+
+        This validation is skipped when schema strict mode is disabled to allow deployments with
+        pre-existing violations to continue operating while they migrate their schemas.
+
+        Raises:
+            ValidationError: When an optional attribute with no default_value is referenced in a
+                human_friendly_id or uniqueness_constraint on the generic or an inheriting node.
+
+        """
+        if not config.SETTINGS.main.schema_strict_mode:
+            return
+
+        for name in self.generic_names_without_templates + self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            constrained_attr_names: set[str] = set()
+            if node_schema.human_friendly_id:
+                constrained_attr_names.update(hfid_path.split("__")[0] for hfid_path in node_schema.human_friendly_id)
+            if node_schema.uniqueness_constraints:
+                for constraint in node_schema.uniqueness_constraints:
+                    constrained_attr_names.update(constraint_path.split("__")[0] for constraint_path in constraint)
+
+            if not constrained_attr_names:
+                continue
+
+            for attr in node_schema.attributes:
+                if attr.name in constrained_attr_names and attr.optional and attr.default_value is None:
+                    raise ValidationError(
+                        f"Attribute '{attr.name}' of '{node_schema.kind}' is optional with no default_value but is "
+                        f"referenced in human_friendly_id or uniqueness_constraints. Attributes used in these "
+                        f"constraints must be mandatory or have a default_value. "
+                        f"To bypass this check while migrating your schema, set INFRAHUB_SCHEMA_STRICT_MODE=false."
+                    )
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}

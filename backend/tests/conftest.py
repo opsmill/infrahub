@@ -239,6 +239,35 @@ def query_limit_of_one() -> Generator[None, None, None]:
 
 
 @pytest.fixture
+def disable_schema_strict_mode() -> Generator[None, None, None]:
+    """Temporarily disable schema strict mode for a single test.
+
+    Use this for tests that intentionally load a schema which violates a strict-mode-only
+    invariant (for example an optional attribute referenced in a uniqueness_constraint or
+    human_friendly_id), instead of mutating the setting globally for the whole suite.
+    """
+    original = config.SETTINGS.main.schema_strict_mode
+    config.SETTINGS.main.schema_strict_mode = False
+    yield
+    config.SETTINGS.main.schema_strict_mode = original
+
+
+@pytest.fixture(scope="class")
+def enable_schema_strict_mode_class() -> Generator[None, None, None]:
+    """Enable schema strict mode for the duration of a test class.
+
+    The suite disables strict mode globally (see ``reload_settings_before_each_module``) because many
+    shared test schemas intentionally use optional attributes in uniqueness_constraints or
+    human_friendly_id. Tests that specifically assert strict-mode validation behavior use this fixture
+    to opt back in.
+    """
+    original = config.SETTINGS.main.schema_strict_mode
+    config.SETTINGS.main.schema_strict_mode = True
+    yield
+    config.SETTINGS.main.schema_strict_mode = original
+
+
+@pytest.fixture
 def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
     original_neo4j_runtime = db.default_neo4j_runtime
     db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
@@ -575,6 +604,10 @@ def reload_settings_before_each_module(tmpdir_factory: pytest.TempdirFactory) ->
     # Other settings
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
     config.SETTINGS.workflow.driver = config.WorkflowDriver.LOCAL
+    # Many shared test schemas intentionally place optional attributes in uniqueness_constraints or
+    # human_friendly_id, which the new strict-mode validation rejects. Disable strict mode globally for
+    # tests; tests that assert strict-mode behavior opt back in via `enable_schema_strict_mode_class`.
+    config.SETTINGS.main.schema_strict_mode = False
 
     storage_dir = tmpdir_factory.mktemp("storage")
     config.SETTINGS.storage.local.path_ = Path(storage_dir)

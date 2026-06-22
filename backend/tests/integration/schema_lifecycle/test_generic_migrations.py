@@ -50,7 +50,14 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                 {"name": "generic_attr_text", "kind": "Text", "optional": True, "order_weight": 1111},
                 {"name": "generic_attr_num", "kind": "Number", "optional": True, "order_weight": 2222},
                 {"name": "generic_required_attr", "kind": "Text", "optional": False},
-                {"name": "generic_unique_attr", "kind": "Text", "unique": True, "optional": True, "order_weight": 5555},
+                {
+                    "name": "generic_unique_attr",
+                    "kind": "Text",
+                    "unique": True,
+                    "optional": True,
+                    "order_weight": 5555,
+                    "default_value": "",
+                },
             ],
             "relationships": [
                 {
