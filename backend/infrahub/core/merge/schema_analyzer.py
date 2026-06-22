@@ -31,7 +31,6 @@ class MergeSchemaAnalyzer:
         self.destination_branch = destination_branch
         self.diff_repository = diff_repository
         self.schema_manager = schema_manager
-        self.migrations: list[SchemaUpdateMigrationInfo] = []
 
         self._source_schema: SchemaBranch | None = None
         self._destination_schema: SchemaBranch | None = None
@@ -113,8 +112,7 @@ class MergeSchemaAnalyzer:
     async def calculate_migrations(self, target_schema: SchemaBranch) -> list[SchemaUpdateMigrationInfo]:
         diff_3way = await self.get_3ways_diff_schema()
         validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)
-        self.migrations = validation.migrations
-        return self.migrations
+        return validation.migrations
 
     async def calculate_validations(self, target_schema: SchemaBranch) -> list[SchemaUpdateConstraintInfo]:
         diff_3way = await self.get_3ways_diff_schema()
