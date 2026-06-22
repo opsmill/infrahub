@@ -1,17 +1,9 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, Sheet } from "@infrahub/ui";
+import { Button, Menu, MenuItem, MenuTrigger, Popover, Sheet } from "@infrahub/ui";
 import { useState } from "react";
-import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuItemWithTooltip,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -50,47 +42,43 @@ export function ObjectActionsCell({
   return (
     <>
       <StickyRightCell>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              shape="square"
-              variant="ghost"
-              data-testid={`actions-cell-${objectLabel}`}
-            >
-              <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-            </Button>
-          </DropdownMenuTrigger>
+        <MenuTrigger>
+          <Button
+            size="sm"
+            shape="square"
+            variant="ghost"
+            data-testid={`actions-cell-${objectLabel}`}
+          >
+            <Icon icon="mdi:dots-vertical" className="text-gray-500" />
+          </Button>
 
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link to={getObjectDetailsUrl(objectKind, objectId)}>
+          <Popover placement="bottom end">
+            <Menu aria-label="Object actions">
+              <MenuItem href={getObjectDetailsUrl(objectKind, objectId)}>
                 <Icon icon="mdi:arrow-expand" className="text-base" />
                 View details
-              </Link>
-            </DropdownMenuItem>
+              </MenuItem>
 
-            <DropdownMenuItemWithTooltip
-              disabled={!isEditAllowed}
-              tooltipEnabled={!isEditAllowed}
-              tooltipContent={editTooltipMessage}
-              onClick={() => isEditAllowed && setShowEditForm(true)}
-            >
-              <Icon icon="mdi:edit-outline" className="text-base" />
-              Edit
-            </DropdownMenuItemWithTooltip>
+              <MenuItem
+                isDisabled={!isEditAllowed}
+                tooltip={editTooltipMessage}
+                onAction={() => setShowEditForm(true)}
+              >
+                <Icon icon="mdi:edit-outline" className="text-base" />
+                Edit
+              </MenuItem>
 
-            <DropdownMenuItemWithTooltip
-              disabled={!isDeleteAllowed}
-              tooltipEnabled={!isDeleteAllowed}
-              tooltipContent={deleteTooltipMessage}
-              onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
-            >
-              <Icon icon="mdi:delete-outline" className="text-base" />
-              Delete
-            </DropdownMenuItemWithTooltip>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <MenuItem
+                isDisabled={!isDeleteAllowed}
+                tooltip={deleteTooltipMessage}
+                onAction={() => setShowDeleteModal(true)}
+              >
+                <Icon icon="mdi:delete-outline" className="text-base" />
+                Delete
+              </MenuItem>
+            </Menu>
+          </Popover>
+        </MenuTrigger>
       </StickyRightCell>
 
       <Sheet isOpen={showEditForm} onOpenChange={() => setShowEditForm(false)}>

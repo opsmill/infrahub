@@ -1,13 +1,6 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, Tooltip } from "@infrahub/ui";
+import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 import { useState } from "react";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import type { Permission } from "@/entities/permission/types";
@@ -25,38 +18,31 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="sm"
-            shape="square"
-            variant="ghost"
-            data-testid={`actions-row-button-${objectLabel}`}
-            aria-label="Actions"
-          >
-            <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-          </Button>
-        </DropdownMenuTrigger>
+      <MenuTrigger>
+        <Button
+          size="sm"
+          shape="square"
+          variant="ghost"
+          data-testid={`actions-row-button-${objectLabel}`}
+          aria-label="Actions"
+        >
+          <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+        </Button>
 
-        <DropdownMenuContent align="end">
-          <Tooltip
-            message={!isDeleteAllowed ? permission.delete.message : undefined}
-            placement="left"
-            nonInteractiveTrigger
-          >
-            <div>
-              <DropdownMenuItem
-                disabled={!isDeleteAllowed}
-                onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
-                data-testid={"delete-row-button"}
-              >
-                <Icon icon="mdi:delete-outline" className="text-base" />
-                Delete
-              </DropdownMenuItem>
-            </div>
-          </Tooltip>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <Popover placement="bottom end">
+          <Menu aria-label="Actions">
+            <MenuItem
+              isDisabled={!isDeleteAllowed}
+              tooltip={permission.delete.message}
+              onAction={() => setShowDeleteModal(true)}
+              data-testid={"delete-row-button"}
+            >
+              <Icon icon="mdi:delete-outline" className="text-base" />
+              Delete
+            </MenuItem>
+          </Menu>
+        </Popover>
+      </MenuTrigger>
 
       <DeleteObjectModal
         objectKind={PROPOSED_CHANGE_OBJECT}
