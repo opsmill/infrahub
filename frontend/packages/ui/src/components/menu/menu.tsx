@@ -53,7 +53,7 @@ export const MenuItem = ({
         tooltip={tooltip}
         side={side}
         className={className}
-        textValue={textValue}
+        textValue={textValue ?? (typeof children === "string" ? children : undefined)}
         {...props}
       >
         {children}
