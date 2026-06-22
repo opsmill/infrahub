@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import ujson
 from infrahub_sdk import InfrahubClient  # noqa: TC002  needed for prefect flow
@@ -28,13 +28,15 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 }
 
 
-@flow(name="webhook-send", flow_run_name="Send webhook {webhook.name}", retries=3)
-async def webhook_send(webhook: Webhook, context: EventContext, event_data: dict) -> Response:
-    """Send an HTTP request to the webhook endpoint. Retries up to 3 times on failure."""
+@flow(name="webhook-send", flow_run_name="Send webhook {webhook_name}", retries=3)
+async def webhook_send(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:  # noqa: ARG001
+    """Resolve the webhook config, assign its headers, and POST the prepared payload. Retries up to 3 times."""
+    log = get_run_logger()
     http_service = get_http()
-    client = get_client()
-    response = await webhook.send(data=event_data, context=context, http_service=http_service, client=client)
+    webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
+    response = await webhook.send_payload(payload=payload, http_service=http_service)
     response.raise_for_status()
+    log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
     return response
 
 
@@ -79,18 +81,8 @@ async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubCli
     return CustomWebhook.from_object(obj=webhook_node, custom_headers=custom_headers)
 
 
-@flow(name="webhook-process", flow_run_name="Send webhook for {webhook_name}")
-async def webhook_process(
-    webhook_id: str,
-    webhook_name: str,  # noqa: ARG001
-    webhook_kind: str,
-    event_id: str,
-    event_type: str,
-    event_occured_at: str,
-    event_payload: dict,
-    branch_name: str | None = None,
-) -> None:
-    """Resolve a webhook's configuration from cache (or DB on miss) and send the HTTP request.
+async def _resolve_webhook(webhook_id: str, webhook_kind: str) -> Webhook:
+    """Return the webhook config from cache, or fetch it from the database and cache it.
 
     Raises:
         ValueError: When the cached webhook type is not a supported webhook kind.
@@ -100,27 +92,39 @@ async def webhook_process(
     client = get_client()
     cache = await get_cache()
 
-    await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
-
     webhook_data_str = await cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook_id}")
     if not webhook_data_str:
         log.info(f"Webhook {webhook_id} not found in cache")
         webhook_node = await client.get(kind=webhook_kind, id=webhook_id, prefetch_relationships=True)
         webhook = await convert_node_to_webhook(webhook_node=webhook_node, client=client)
-        webhook_data = webhook.to_cache()
         await cache.set(
-            key=f"{CACHE_KEY_PREFIX}:{webhook_id}", value=ujson.dumps(webhook_data), expires=KVTTL.TWO_HOURS
+            key=f"{CACHE_KEY_PREFIX}:{webhook_id}", value=ujson.dumps(webhook.to_cache()), expires=KVTTL.TWO_HOURS
         )
+        return webhook
 
-    else:
-        webhook_data = ujson.loads(webhook_data_str)
+    webhook_data = ujson.loads(webhook_data_str)
+    if webhook_data["webhook_type"] not in WEBHOOK_MAP:
+        raise ValueError(f"Unsupported webhook kind: {webhook_data['webhook_type']}")
+    return WEBHOOK_MAP[webhook_data["webhook_type"]].from_cache(webhook_data)
 
-        if webhook_data["webhook_type"] not in WEBHOOK_MAP:
-            raise ValueError(f"Unsupported webhook kind: {webhook_data['webhook_type']}")
 
-        webhook_class = WEBHOOK_MAP[webhook_data["webhook_type"]]
-        webhook = webhook_class.from_cache(webhook_data)
+@flow(name="webhook-process", flow_run_name="Send webhook for {webhook_name}")
+async def webhook_process(
+    webhook_id: str,
+    webhook_name: str,
+    webhook_kind: str,
+    event_id: str,
+    event_type: str,
+    event_occured_at: str,
+    event_payload: dict,
+    branch_name: str | None = None,
+) -> None:
+    """Resolve the webhook config, compute the payload once, and hand it to the send flow."""
+    client = get_client()
 
+    await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
+
+    webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
     webhook_context = EventContext.from_event(
         event_id=event_id,
         event_type=event_type,
@@ -128,5 +132,5 @@ async def webhook_process(
         event_payload=event_payload,
     )
     event_data = event_payload.get("data", {})
-    response = await webhook_send(webhook=webhook, context=webhook_context, event_data=event_data)
-    log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
+    payload = await webhook.compute_payload(data=event_data, context=webhook_context, client=client)
+    await webhook_send(webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload)

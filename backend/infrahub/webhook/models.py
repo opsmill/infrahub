@@ -304,12 +304,17 @@ class Webhook(BaseModel):
         await self._prepare_payload(data=data, context=context, client=client)
         self._assign_headers()
 
-    async def send(
-        self, data: dict[str, Any], context: EventContext, http_service: InfrahubHTTP, client: InfrahubClient
-    ) -> Response:
-        await self.prepare(data=data, context=context, client=client)
+    async def compute_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> Any:
+        """Build and return the payload to deliver, running any transform once."""
+        await self._prepare_payload(data=data, context=context, client=client)
+        return self._payload
+
+    async def send_payload(self, payload: Any, http_service: InfrahubHTTP) -> Response:
+        """Assign the headers for the given payload and POST it to the webhook endpoint."""
+        self._payload = payload
+        self._assign_headers()
         return await http_service.post(
-            url=self.url, json=self.get_payload(), headers=self._headers, verify=self.validate_certificates
+            url=self.url, json=payload, headers=self._headers, verify=self.validate_certificates
         )
 
     def get_payload(self) -> dict[str, Any]:
