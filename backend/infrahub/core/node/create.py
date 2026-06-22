@@ -15,6 +15,7 @@ from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.creation_context import NodeCreationContext
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
@@ -312,10 +313,13 @@ async def create_node(
     narrowed to that protocol.
 
     Raises:
-        ValueError: When the schema is a `GenericSchema` and cannot be instantiated.
+        ValueError: When the schema is a `GenericSchema` and cannot be instantiated, or when a
+            class that is not a node schema protocol is passed.
 
     """
     if isinstance(schema, type):
+        if not issubclass(schema, CoreNode):
+            raise ValueError(f"Invalid schema class provided: {schema!r}")
         schema = db.schema.get(name=schema.__name__, branch=branch)
     if isinstance(schema, GenericSchema):
         raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")

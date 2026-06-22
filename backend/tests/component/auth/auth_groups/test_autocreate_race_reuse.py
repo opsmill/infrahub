@@ -15,21 +15,25 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-POISON_NAME = "poison-grp"
+CONTESTED_NAME = "ops-admins"
 
 
-class _FailLookupNodeManager(NodeManager):
-    """NodeManager that raises while looking up one designated name; delegates everything else.
+class _LookupMissesOnceNodeManager(NodeManager):
+    """Returns no match on the first lookup of the contested name, then delegates.
 
-    Simulates a transient failure isolated to a single claim, independent of how creation is
-    locked or persisted.
+    Forces the create-race branch of find-or-create deterministically: the first lookup misses,
+    creation raises on the row that already exists, and the re-lookup finds it. Every other call
+    (the re-lookup, membership reads) goes to the real manager.
     """
+
+    _first_lookup_done = False
 
     @classmethod
     async def query(cls, *args: Any, **kwargs: Any) -> Any:
         filters = kwargs.get("filters")
-        if filters and filters.get("name__value") == POISON_NAME:
-            raise RuntimeError("simulated lookup failure for one claim")
+        if filters and filters.get("name__value") == CONTESTED_NAME and not cls._first_lookup_done:
+            cls._first_lookup_done = True
+            return []
         return await super().query(*args, **kwargs)
 
 
@@ -51,22 +55,27 @@ class _RecordingEmitter(AutoCreateEventEmitter):
         self.cap_values.append(cap_value)
 
 
-async def test_single_failing_claim_does_not_abort_assignment_and_emits_rejected_event(
+async def test_create_race_reuses_winning_group_without_emitting_a_second_event(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     autocreate_filter_enabled: None,
 ) -> None:
-    """A claim whose processing raises is logged and skipped; the remaining claims still apply.
+    """A claim whose group is created between the lookup and the create reuses the winning group.
 
-    The poison claim is processed first. Its lookup raises, the assignment continues, the
-    subsequent valid claim still produces its group and membership, and a rejected event is
-    recorded for the failing claim only.
+    The first lookup misses, creation raises a uniqueness violation against the already-existing
+    group, and the re-lookup reuses it: no duplicate group is written, no second creation event is
+    emitted, and the account is added to the existing group.
     """
+    winner = await Node.init(db=db, schema=CoreAccountGroup)
+    await winner.new(db=db, name=CONTESTED_NAME, origin="OktaProd")
+    await winner.save(db=db)
+
     account = await Node.init(db=db, schema=CoreAccount)
     await account.new(db=db, name="Pat Auto", account_type="User", password="pat-password")
     await account.save(db=db)
 
+    _LookupMissesOnceNodeManager._first_lookup_done = False
     emitter = _RecordingEmitter()
     service = AutoCreatedGroupsService(
         db=db,
@@ -74,27 +83,25 @@ async def test_single_failing_claim_does_not_abort_assignment_and_emits_rejected
         provider_name="AzureAD-corp",
         max_per_login=10,
         emitter=emitter,
-        node_manager=_FailLookupNodeManager,
+        node_manager=_LookupMissesOnceNodeManager,
     )
 
     granted = await service.assign(
-        claims=["LDAP/group/poison-grp", "LDAP/group/good-grp"],
+        claims=[f"LDAP/group/{CONTESTED_NAME}"],
         claim_filter=ClaimFilter(patterns=config.SETTINGS.security.auto_create_groups_filter_patterns),
     )
 
-    assert granted == ("good-grp",), "the valid claim must still be granted after the failing one"
+    assert granted == (CONTESTED_NAME,), "the contested claim must still grant membership via reuse"
 
-    poison_groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "poison-grp"})
-    assert poison_groups == [], "the failing claim must not have produced a group"
+    groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": CONTESTED_NAME})
+    assert len(groups) == 1, "the create race must not produce a duplicate group"
+    assert groups[0].id == winner.id, "the existing group must be reused, not replaced"
+    assert groups[0].origin.value == "OktaProd", "reuse must not overwrite the winning group's origin"
 
-    good_groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "good-grp"})
-    assert len(good_groups) == 1, "the valid claim after the failure must still create its group"
+    assert emitter.created_groups == [], "reuse on a create race must not emit a created event"
 
-    refreshed = await NodeManager.get_one(db=db, id=good_groups[0].id, prefetch_relationships=True)
+    refreshed = await NodeManager.get_one(db=db, id=winner.id, prefetch_relationships=True)
     members = await refreshed.get_relationship(name="members").get_peers(
         db=db, branch_agnostic=True, peer_type=CoreAccount
     )
-    assert account.id in members, "the account must be a member of the group from the valid claim"
-
-    assert emitter.rejected_claims == ["LDAP/group/poison-grp"], "only the failing claim must be rejected"
-    assert emitter.created_groups == ["good-grp"], "only the valid claim must produce a created event"
+    assert account.id in members, "the account must be added to the reused group"
