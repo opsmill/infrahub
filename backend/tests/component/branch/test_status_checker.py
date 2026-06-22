@@ -7,7 +7,11 @@ import pytest
 from infrahub.branch.status_checker import MERGE_IN_PROGRESS_MESSAGE, BranchStatusChecker
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.merge.write_blocker import MergeProtectionState, MergeWriteBlocker
+from infrahub.core.merge.write_blocker import (
+    MERGE_PROTECTED_CACHE_KEY,
+    MergeProtectionState,
+    MergeWriteBlocker,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError, MergeInProgressError
 from tests.adapters.cache import MemoryCache, UnreachableCache
@@ -129,3 +133,27 @@ class TestBranchStatusChecker:
         assert source_exc.value.merging_branch == "status-checker-db-merging"
 
         await checker.check(branch=open_branch)
+
+    # --- malformed cache value fails closed onto the durable DB status ---
+
+    async def test_malformed_key_with_merge_blocks_via_db(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, persisted_merging_branch: Branch
+    ) -> None:
+        """A corrupt protection key must not lift the block while a merge is genuinely in progress."""
+        cache = MemoryCache()
+        blocker = MergeWriteBlocker(cache=cache)
+        await cache.set(MERGE_PROTECTED_CACHE_KEY, "garbage-without-separator")
+        checker = _checker(db, blocker)
+
+        with pytest.raises(MergeInProgressError, match=MERGE_IN_PROGRESS_MESSAGE) as exc:
+            await checker.check(branch=default_branch_scope_class)
+        assert exc.value.merging_branch == "status-checker-db-merging"
+
+    async def test_malformed_key_no_merge_allows_default(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch
+    ) -> None:
+        """A corrupt key with no merge in the DB must not freeze the default branch."""
+        cache = MemoryCache()
+        blocker = MergeWriteBlocker(cache=cache)
+        await cache.set(MERGE_PROTECTED_CACHE_KEY, "garbage-without-separator")
+        await _checker(db, blocker).check(branch=default_branch_scope_class)

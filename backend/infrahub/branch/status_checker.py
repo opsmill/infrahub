@@ -49,9 +49,11 @@ class BranchStatusChecker:
           - target gate: the branch being written is the default branch (the only merge target) —
             rejected with the transient message, since it becomes writable again after the merge.
 
-        If the cache is unreachable, the exception is logged and the gate falls back to the durable
-        branch status in the database (the source of truth), so a cache outage blocks writes only when
-        a merge is genuinely in progress rather than freezing every default-branch write.
+        If the cache lookup fails — unreachable backend, or a present-but-corrupt value that cannot be
+        interpreted as "no merge in progress" — the gate falls back to the durable branch status in the
+        database (the source of truth) rather than failing open. A cache outage therefore blocks writes
+        only when a merge is genuinely in progress rather than freezing every default-branch write, and
+        a corrupt value can never silently lift the block while a merge is still underway.
 
         Raises:
             MergeInProgressError: if the branch is blocked by a merge in progress.
@@ -60,7 +62,7 @@ class BranchStatusChecker:
         try:
             protection = await self.merge_write_blocker.get()
         except Exception:
-            log.exception("merge-protection cache unreachable; falling back to branch status in the database")
+            log.exception("merge-protection cache lookup failed; falling back to branch status in the database")
             await self._check_merging_status_from_db(branch)
             return
 
