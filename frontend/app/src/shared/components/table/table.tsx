@@ -1,20 +1,10 @@
-import { Icon } from "@iconify-icon/react";
-import { Button, Tooltip } from "@infrahub/ui";
-import { isValidElement, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 import { classNames } from "@/shared/utils/common";
 
-import type { Permission } from "@/entities/permission/types";
-
-export type tRowValue = {
+type tRowValue = {
   value: unknown;
   display: ReactNode;
 };
@@ -24,7 +14,7 @@ export type tColumn = {
   label: string;
 };
 
-export type tRow = {
+type tRow = {
   link?: string;
   values: Record<string, string | number | tRowValue>;
 };
@@ -32,14 +22,10 @@ export type tRow = {
 type TableProps = {
   columns: tColumn[];
   rows: tRow[];
-  constructLink?: Function;
-  onDelete?: (row: tRow) => void;
-  onUpdate?: (row: tRow) => void;
   className?: string;
-  permission?: Permission;
 };
 
-export const Table = ({ columns, rows, onDelete, onUpdate, className, permission }: TableProps) => {
+export const Table = ({ columns, rows, className }: TableProps) => {
   return (
     <>
       <table
@@ -55,7 +41,6 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                 {column.label}
               </th>
             ))}
-            {(onUpdate || onDelete) && <th scope="col"></th>}
           </tr>
         </thead>
 
@@ -64,7 +49,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
             <tr
               key={index}
               className={classNames(
-                "h-[36px] border-gray-200 border-b",
+                "h-9 border-gray-200 border-b",
                 row.link ? "cursor-pointer hover:bg-gray-50" : ""
               )}
             >
@@ -88,49 +73,6 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                   </td>
                 );
               })}
-
-              {(onUpdate || onDelete) && (
-                <td className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Tooltip message="Actions">
-                        <Button
-                          variant="ghost"
-                          shape="square"
-                          className="p-4"
-                          data-testid="actions-row-button"
-                        >
-                          <Icon icon="mdi:dots-vertical" className="" />
-                        </Button>
-                      </Tooltip>
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuContent align="end">
-                      {onUpdate && (
-                        <DropdownMenuItem
-                          onClick={() => onUpdate(row)}
-                          disabled={!permission?.update?.isAllowed}
-                          data-testid="update-row-button"
-                        >
-                          <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
-
-                      {onDelete && (
-                        <DropdownMenuItem
-                          onClick={() => onDelete(row)}
-                          disabled={!permission?.delete?.isAllowed}
-                          data-testid="delete-row-button"
-                        >
-                          <Icon icon="mdi:trash-outline" className="text-red-500" />
-                          Delete
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
-              )}
             </tr>
           ))}
         </tbody>
@@ -147,10 +89,6 @@ const renderRowValue = (data: string | number | tRowValue): ReactNode => {
   if (typeof data === "string" || typeof data === "number") return data;
 
   if ("display" in data) return data.display as ReactNode;
-
-  if ("value" in data) return data.value as ReactNode;
-
-  if (isValidElement(data)) return data;
 
   return "-";
 };
