@@ -37,15 +37,15 @@ export const Default: Story = {
       <MenuSurface>
         <Menu aria-label="Simple menu">
           <MenuItem>
-            <PencilLineIcon className="size-3.5" />
+            <PencilLineIcon />
             <span>Edit</span>
           </MenuItem>
           <MenuItem>
-            <CopyIcon className="size-3.5" />
+            <CopyIcon />
             <span>Duplicate</span>
           </MenuItem>
           <MenuItem className="text-red-500">
-            <Trash2Icon className="size-3.5" />
+            <Trash2Icon />
             <span>Delete</span>
           </MenuItem>
         </Menu>
@@ -60,11 +60,11 @@ export const Default: Story = {
           </MenuSection>
           <MenuSection title="Manage">
             <MenuItem>
-              <PencilLineIcon className="size-3.5" />
+              <PencilLineIcon />
               <span>Edit</span>
             </MenuItem>
             <MenuItem>
-              <GroupIcon className="size-3.5" />
+              <GroupIcon />
               <span>Groups</span>
             </MenuItem>
           </MenuSection>
@@ -76,7 +76,7 @@ export const Default: Story = {
         <MenuSurface>
           <Menu aria-label="Menu with a disabled item">
             <MenuItem>
-              <PencilLineIcon className="size-3.5" />
+              <PencilLineIcon />
               <span>Edit</span>
             </MenuItem>
             <MenuItem
@@ -84,7 +84,7 @@ export const Default: Story = {
               tooltip="You don't have permission to delete this object"
               className="text-red-500"
             >
-              <Trash2Icon className="size-3.5" />
+              <Trash2Icon />
               <span>Delete</span>
             </MenuItem>
           </Menu>

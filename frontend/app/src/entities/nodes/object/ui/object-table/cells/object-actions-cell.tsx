@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover, Sheet } from "@infrahub/ui";
+import { PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -55,8 +56,8 @@ export function ObjectActionsCell({
           <Popover placement="bottom end">
             <Menu aria-label="Object actions">
               <MenuItem href={getObjectDetailsUrl(objectKind, objectId)}>
-                <Icon icon="mdi:arrow-expand" className="text-base" />
-                View details
+                <Icon icon="mdi:arrow-expand" />
+                <span>View details</span>
               </MenuItem>
 
               <MenuItem
@@ -64,17 +65,18 @@ export function ObjectActionsCell({
                 tooltip={editTooltipMessage}
                 onAction={() => setShowEditForm(true)}
               >
-                <Icon icon="mdi:edit-outline" className="text-base" />
-                Edit
+                <PencilLineIcon />
+                <span>Edit</span>
               </MenuItem>
 
               <MenuItem
                 isDisabled={!isDeleteAllowed}
                 tooltip={deleteTooltipMessage}
+                className="text-red-500"
                 onAction={() => setShowDeleteModal(true)}
               >
-                <Icon icon="mdi:delete-outline" className="text-base" />
-                Delete
+                <Trash2Icon />
+                <span>Delete</span>
               </MenuItem>
             </Menu>
           </Popover>

@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
+import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
@@ -38,17 +39,18 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
           <Popover placement="bottom end">
             <Menu aria-label="Branch actions">
               <MenuItem href={getBranchDetailsUrl(branch.name)}>
-                <Icon icon="mdi:arrow-expand" className="text-base" />
-                View details
+                <Icon icon="mdi:arrow-expand" />
+                <span>View details</span>
               </MenuItem>
 
               <MenuItem
                 isDisabled={!isDeleteAllowed}
                 tooltip={branch.is_default ? "Cannot delete the default branch" : "Login required"}
+                className="text-red-500"
                 onAction={() => setShowDeleteModal(true)}
               >
-                <Icon icon="mdi:delete-outline" className="text-base" />
-                Delete
+                <Trash2Icon />
+                <span>Delete</span>
               </MenuItem>
             </Menu>
           </Popover>

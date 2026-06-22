@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Popover as AriaPopover, Button, Menu, MenuItem, MenuTrigger, Sheet } from "@infrahub/ui";
+import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -82,8 +83,8 @@ export function RelationshipActionsCell({
                 tooltip={editTooltipMessage}
                 onAction={() => setShowEditForm(true)}
               >
-                <Icon icon="mdi:edit-outline" className="text-base" />
-                Edit
+                <PencilLineIcon />
+                <span>Edit</span>
               </MenuItem>
 
               {isDissociateAllowed && (
@@ -92,8 +93,8 @@ export function RelationshipActionsCell({
                   tooltip={editTooltipMessage}
                   onAction={() => setShowDissociateModal(true)}
                 >
-                  <Icon icon="mdi:link-variant-remove" className="text-base" />
-                  Dissociate
+                  <Icon icon="mdi:link-variant-remove" />
+                  <span>Dissociate</span>
                 </MenuItem>
               )}
             </Menu>

@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
+import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
@@ -34,11 +35,12 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
             <MenuItem
               isDisabled={!isDeleteAllowed}
               tooltip={permission.delete.message}
+              className="text-red-500"
               onAction={() => setShowDeleteModal(true)}
               data-testid={"delete-row-button"}
             >
-              <Icon icon="mdi:delete-outline" className="text-base" />
-              Delete
+              <Trash2Icon />
+              <span>Delete</span>
             </MenuItem>
           </Menu>
         </Popover>

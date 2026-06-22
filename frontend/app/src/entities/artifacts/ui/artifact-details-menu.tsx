@@ -103,7 +103,7 @@ export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
                 target="_blank"
                 rel="noreferrer"
               >
-                <BookTextIcon className="size-3.5" />
+                <BookTextIcon />
                 Documentation
               </MenuItem>
             )}

@@ -140,7 +140,7 @@ export function ObjectDetailsMenu({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <BookTextIcon className="size-3.5" />
+                  <BookTextIcon />
                   Documentation
                 </MenuItem>
               )}
@@ -161,7 +161,7 @@ export function ObjectDetailsMenu({
                 tooltip={editTooltipMessage}
                 onAction={() => setIsEditModalOpen(true)}
               >
-                <PencilLineIcon className="size-3.5" />
+                <PencilLineIcon />
                 <span>Edit</span>
               </MenuItem>
 
@@ -170,7 +170,7 @@ export function ObjectDetailsMenu({
                 tooltip={editTooltipMessage}
                 onAction={() => setIsManageGroupsDrawerOpen(true)}
               >
-                <GroupIcon className="size-3.5" />
+                <GroupIcon />
                 <span>Groups</span>
               </MenuItem>
 
@@ -189,7 +189,7 @@ export function ObjectDetailsMenu({
                 className="text-red-500"
                 onAction={() => setIsDeleteModalOpen(true)}
               >
-                <Trash2Icon className="size-3.5" />
+                <Trash2Icon />
                 <span>Delete</span>
               </MenuItem>
             </MenuSection>
