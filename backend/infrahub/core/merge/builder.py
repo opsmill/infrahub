@@ -45,6 +45,8 @@ async def build_branch_merge_orchestrator(
 
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
+    if logger is not None:
+        diff_coordinator.set_logger(logger)
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=source_branch)
     ipam_diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=source_branch)
 
