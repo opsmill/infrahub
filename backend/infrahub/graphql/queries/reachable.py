@@ -130,7 +130,7 @@ async def reachable_nodes_resolver(
                 branch=graphql_context.branch,
                 default_branch_name=registry.default_branch,
             ),
-            timeout_seconds=config.SETTINGS.database.graph_traversal_query_timeout,
+            timeout_seconds=config.SETTINGS.database.reachable_nodes_query_timeout,
         )
         try:
             reachable_data = await executor.run(
@@ -146,7 +146,7 @@ async def reachable_nodes_resolver(
         except QueryTimeoutError as exc:
             raise GraphQLError(
                 "Reachable-nodes traversal exceeded its time budget. Reduce max_depth, lower "
-                "max_results/max_paths, or add excluded_kinds/excluded_namespaces filters to narrow the search."
+                "max_results/max_paths, or narrow target_kinds to reduce the search space."
             ) from exc
 
     all_ids: set[str] = {source_id}
