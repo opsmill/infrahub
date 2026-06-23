@@ -111,6 +111,17 @@ The endpoint is branch-aware. Pass query variables as URL parameters.
 
 To cache transform output and tie it to a specific target object, define an artifact that uses this Transformation. See [Use artifacts](../artifacts/use).
 
+## Dependency tracking
+
+When a Python Transformation feeds an artifact, Infrahub regenerates that artifact only when a file the transform depends on changes. On import, Infrahub records the transform's dependency closure as every Git-tracked file in the directory that contains its `file_path`, including subdirectories — so a transform in `transforms/` picks up its sibling modules and any package nested under that directory. `.pyc` files, `__pycache__/`, and Git-ignored files are excluded. A change to any file in that directory regenerates the artifacts of definitions that use this Transformation.
+
+This is a directory-level heuristic, not import analysis, so two cases need attention:
+
+- **A transform at the repository root** has no containing directory to scope to, so its closure collapses to the single file. Keep the transform in a subdirectory to get directory-level tracking.
+- **Imports from another top-level package** — a helper in `shared/` that a transform under `transforms/` imports — fall outside the directory and aren't detected. A change to such a helper won't regenerate the artifacts unless you declare it with the [`watch` key](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) in `.infrahub.yml`.
+
+See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration) for how to read which change triggered a regeneration.
+
 ## Related
 
 - [Transformations](./overview) — concept and architecture
