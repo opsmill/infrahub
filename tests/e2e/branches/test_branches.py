@@ -48,11 +48,7 @@ class TestBranchesCreationDeletion:
 
     async def test_should_create_a_new_branch(self, admin_page: Page, new_branch_name: str) -> None:
         await admin_page.goto("/")
-<<<<<<< HEAD
         await admin_page.get_by_test_id("branch-selector-trigger").click()
-=======
-        await admin_page.get_by_role("button", name="main", exact=True).click()
->>>>>>> origin/release-1.10
         await admin_page.get_by_test_id("create-branch-button").click()
 
         # Form
@@ -67,11 +63,7 @@ class TestBranchesCreationDeletion:
 
     async def test_should_display_the_new_branch(self, admin_page: Page, existing_branch: str) -> None:
         await admin_page.goto("/")
-<<<<<<< HEAD
         await admin_page.get_by_test_id("branch-selector-trigger").click()
-=======
-        await admin_page.get_by_role("button", name="main", exact=True).click()
->>>>>>> origin/release-1.10
         await expect(admin_page.get_by_label("branch list")).to_contain_text(existing_branch)
 
         await admin_page.get_by_role("link", name="View all branches").click()
@@ -131,11 +123,7 @@ class TestBranchesCreationDeletion:
 
             await expect(admin_page.get_by_role("heading", name="Branches")).to_be_visible()
             assert "/branches" in admin_page.url
-<<<<<<< HEAD
             await admin_page.get_by_test_id("branch-selector-trigger").click()
-=======
-            await admin_page.get_by_role("button", name="main", exact=True).click()
->>>>>>> origin/release-1.10
             await expect(admin_page.get_by_label("branch list")).not_to_contain_text(branch)
         finally:
             with contextlib.suppress(Exception):
