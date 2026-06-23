@@ -41,6 +41,16 @@ BRANCH_CREATED_PAYLOAD: dict[str, Any] = {
 }
 
 
+@pytest.fixture
+def immediate_webhook_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run the webhook send retries without their production back-off.
+
+    A failing delivery exhausts its retries promptly instead of sleeping through the real
+    multi-hour schedule, keeping retry-path tests within the suite timeout.
+    """
+    monkeypatch.setattr("infrahub.webhook.tasks.process.WEBHOOK_SEND_RETRY_DELAYS", [0, 0, 0, 0])
+
+
 @pytest.fixture(scope="class")
 async def initial_dataset(
     db: InfrahubDatabase,
