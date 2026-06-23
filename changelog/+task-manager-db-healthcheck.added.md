@@ -1,1 +1,0 @@
-The `/api/health` endpoint now reports a dedicated `task_manager_db` dependency that checks the task manager's backing store through the task manager's readiness endpoint, so a backing-store outage is pinpointed instead of only surfacing as a degraded task manager.

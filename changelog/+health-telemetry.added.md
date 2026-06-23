@@ -1,1 +1,0 @@
-Anonymous telemetry now includes a point-in-time health snapshot of the backing services Infrahub depends on (database, message bus, cache, task manager, and task-manager database), so a degraded deployment can be observed remotely. A failure while gathering health never prevents the rest of the telemetry from being sent.
