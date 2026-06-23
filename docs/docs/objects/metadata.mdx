@@ -59,7 +59,7 @@ In GraphQL queries, object-level metadata is accessed via the `node_metadata` fi
 
 ```graphql
 {
-  BuiltinTag(order: {node_metadata: {created_at: DESC}}) {
+  BuiltinTag(order: {by: [{field: "node_metadata__created_at", direction: DESC}]}) {
     edges {
       node {
         name {

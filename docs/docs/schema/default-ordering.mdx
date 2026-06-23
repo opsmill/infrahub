@@ -111,7 +111,7 @@ A concrete node inherits a generic's `order_by` only when the node does not decl
 
 A query can pass an `order` argument to sort that one request differently. When it does, the `order` argument **fully replaces** the schema's `order_by` for that query - the two are not combined, and the schema default contributes no fallback tiebreaker.
 
-The query-time `order` argument uses the same entry grammar as the schema field. For the GraphQL details, see the ordering section of the queries guide.
+The query-time `order` argument expresses the same sort targets - attributes, relationship attributes, and object metadata - but in a structured form rather than the schema field's suffixed strings: each entry is a `{ field, direction }` object, where `direction` is a separate `ASC`/`DESC` value instead of an `__asc`/`__desc` suffix. For the GraphQL details, see the ordering section of the queries guide.
 
 <ReferenceLink title="Ordering results in GraphQL" url="../development-resources/graphql/queries-and-mutations#ordering-results" />
 

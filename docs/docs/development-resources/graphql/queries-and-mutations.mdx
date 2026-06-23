@@ -149,13 +149,17 @@ Every list query and every many-cardinality relationship field accepts an `order
 
 The `order` argument has the following fields:
 
-- `order_by: [String!]` - a list of sort entries using the same grammar as the schema `order_by` field: attribute paths (`name__value__desc`), relationship-attribute paths (`author__name__value`), and object metadata (`node_metadata__created_at__desc`). The trailing `__asc` / `__desc` is optional and defaults to ascending.
-- `node_metadata` - order by object-level metadata using the field-per-direction form, for example `{ created_at: DESC }`.
-- `disable: Boolean` - set to `true` to return results without any ordering.
+- `by: [OrderByItem!]` - an ordered list of sort entries. Each entry is an object with two fields:
+  - `field: String!` - what to sort on: an attribute path (`name__value`), a relationship-attribute path (`author__name__value`), or object metadata (`node_metadata__created_at` / `node_metadata__updated_at`). The field carries **no** direction suffix.
+  - `direction: OrderDirection` - `ASC` or `DESC`. Defaults to `ASC` when omitted.
 
-```graphql title="Order tags newest-first using order_by"
+  Entries apply in order, so the first is the primary sort, the second the tiebreaker, and so on.
+- `disable: Boolean` - set to `true` to return results without any ordering.
+- `node_metadata` *(deprecated)* - the legacy field-per-direction form, for example `{ created_at: DESC }`. Use `by` with the `node_metadata__created_at` / `node_metadata__updated_at` fields instead.
+
+```graphql title="Order tags newest-first"
 query {
-  BuiltinTag(order: { order_by: ["node_metadata__created_at__desc"] }) {
+  BuiltinTag(order: { by: [{ field: "node_metadata__created_at", direction: DESC }] }) {
     edges {
       node {
         name {
@@ -167,11 +171,11 @@ query {
 }
 ```
 
-The same result using the `node_metadata` form:
+Sort on more than one field - descending name, then ascending serial number as a tiebreaker. The `direction` on the second entry is omitted, so it defaults to `ASC`:
 
-```graphql title="Order tags newest-first using node_metadata"
+```graphql title="Order by multiple fields"
 query {
-  BuiltinTag(order: { node_metadata: { created_at: DESC } }) {
+  InfraDevice(order: { by: [{ field: "name__value", direction: DESC }, { field: "serial_number__value" }] }) {
     edges {
       node {
         name {
@@ -186,7 +190,7 @@ query {
 A few rules govern how `order` interacts with the schema default:
 
 - When `order` is provided, it **fully replaces** the schema's `order_by` for that query. The two are not combined, and the schema default contributes no fallback tiebreaker.
-- `order_by` and `node_metadata` cannot be set in the same `order` argument.
+- `by` cannot be combined with the deprecated `node_metadata` field in the same `order` argument.
 
 ## Mutations format
 
