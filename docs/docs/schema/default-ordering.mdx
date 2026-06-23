@@ -33,7 +33,7 @@ nodes:
         kind: TextArea
 ```
 
-An empty or absent `order_by` applies no schema-level ordering, the same as today.
+An empty or absent `order_by` applies no schema-level ordering.
 
 ## Entry grammar
 
@@ -129,12 +129,6 @@ The query-time `order` argument uses the same entry grammar as the schema field.
 ## `node_metadata` is a reserved name
 
 Because `node_metadata__` distinguishes metadata entries from attribute paths, `node_metadata` is a reserved attribute and relationship name. A schema that defines an attribute or relationship literally named `node_metadata` fails to load.
-
-:::warning Upgrade note
-
-If a schema in use before this release has an attribute or relationship named `node_metadata`, it will fail to load after upgrading. Rename the field to load the schema.
-
-:::
 
 ## Related concepts
 

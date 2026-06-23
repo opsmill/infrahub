@@ -149,9 +149,9 @@ Every list query and every many-cardinality relationship field accepts an `order
 
 The `order` argument has the following fields:
 
-- `order_by: [String!]` — a list of sort entries using the same grammar as the schema `order_by` field: attribute paths (`name__value__desc`), relationship-attribute paths (`author__name__value`), and object metadata (`node_metadata__created_at__desc`). The trailing `__asc` / `__desc` is optional and defaults to ascending.
-- `node_metadata` — order by object-level metadata using the field-per-direction form, for example `{ created_at: DESC }`.
-- `disable: Boolean` — set to `true` to return results without any ordering.
+- `order_by: [String!]` - a list of sort entries using the same grammar as the schema `order_by` field: attribute paths (`name__value__desc`), relationship-attribute paths (`author__name__value`), and object metadata (`node_metadata__created_at__desc`). The trailing `__asc` / `__desc` is optional and defaults to ascending.
+- `node_metadata` - order by object-level metadata using the field-per-direction form, for example `{ created_at: DESC }`.
+- `disable: Boolean` - set to `true` to return results without any ordering.
 
 ```graphql title="Order tags newest-first using order_by"
 query {
