@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
 from pydantic import Field, field_validator
 
@@ -22,8 +22,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
 if TYPE_CHECKING:
-    from neo4j.graph import Node as Neo4jNode
-
     from infrahub.database import InfrahubDatabase
 
 
@@ -187,7 +185,7 @@ class Branch(StandardNode):
         )
         await query.execute(db=db)
 
-        return [cls.from_db(node=cast("Neo4jNode", result.get("n"))) for result in query.get_results()]
+        return [cls.from_db(node=result.get_node("n")) for result in query.get_results()]
 
     @classmethod
     async def get_list_count(

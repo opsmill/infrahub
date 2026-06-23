@@ -136,6 +136,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/field-visibility', label: 'Field visibility' },
             { type: 'doc', id: 'schema/display_label', label: 'Display labels' },
             { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
+            { type: 'doc', id: 'schema/default-ordering', label: 'Default ordering' },
             { type: 'doc', id: 'menu/overview', label: 'Menu customization' },
           ],
         },
@@ -448,6 +449,16 @@ const sidebars: SidebarsConfig = {
                 { type: 'doc', id: 'deploy-manage/user-management/sso/advanced-sso', label: 'Advanced SSO configuration' },
               ],
             },
+            // LDAP hub + spokes
+            {
+              type: 'category',
+              label: 'LDAP',
+              link: { type: 'doc', id: 'deploy-manage/user-management/ldap/overview' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/user-management/ldap/configure-ldap', label: 'Configure LDAP authentication' },
+                { type: 'doc', id: 'deploy-manage/user-management/ldap/advanced-ldap', label: 'Advanced LDAP configuration' },
+              ],
+            },
             // Permissions & Roles hub + spoke (PR 13)
             {
               type: 'category',
@@ -582,9 +593,11 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'reference/sso', label: 'SSO Reference' },
+            { type: 'doc', id: 'reference/ldap', label: 'LDAP Reference' },
           ],
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
+        { type: 'doc', id: 'reference/error-catalogue', label: 'Error Catalogue' },
       ],
     },
 
@@ -641,6 +654,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 { type: 'doc', id: 'release-notes/infrahub/docs-restructure', label: 'Documentation restructure' },
+                'release-notes/infrahub/release-1_10_0',
                 'release-notes/infrahub/release-1_9_9',
                 'release-notes/infrahub/release-1_9_8',
                 'release-notes/infrahub/release-1_9_7',

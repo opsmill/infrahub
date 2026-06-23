@@ -1,8 +1,8 @@
+import { Card, type CardProps } from "@infrahub/ui/card";
 import type { HTMLAttributes, ReactNode } from "react";
 
 import { Retry } from "@/shared/components/buttons/retry";
 import { Badge } from "@/shared/components/ui/badge";
-import { Card, type CardProps } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
 const ContentRoot = ({ className, ...props }: HTMLAttributes<HTMLElement>) => {
@@ -50,7 +50,7 @@ export const ContentTitle = ({
 };
 
 export const ContentCard = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("overflow-auto p-0", className)} {...props} />;
+  return <Card className={classNames("overflow-auto", className)} {...props} />;
 };
 
 export type ContentCardTitleProps = {

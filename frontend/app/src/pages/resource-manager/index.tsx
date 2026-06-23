@@ -17,7 +17,7 @@ const ResourceManagerPage = () => {
   }
 
   return (
-    <Content.Card className="flex flex-col">
+    <Content.Card>
       <ObjectItemsHeader schema={resourcePoolSchema} />
 
       <ObjectsManager schema={resourcePoolSchema} />

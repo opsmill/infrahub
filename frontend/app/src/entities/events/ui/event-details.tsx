@@ -1,6 +1,9 @@
 import type {
   AccountLoggedInEventType,
   AccountLoggedOutEventType,
+  GroupAutoCreateCappedEventType,
+  GroupAutoCreatedEventType,
+  GroupAutoCreateRejectedEventType,
 } from "@/shared/api/graphql/generated/types";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -41,6 +44,52 @@ const AccountLoggedOutEventDetails = ({ event }: { event: AccountLoggedOutEventT
       <PropertyRow title="Event Timestamp" value={<DateDisplay date={event.timestamp} />} />
       <PropertyRow title="Client IP" value={event.client_ip} />
       <PropertyRow title="User Agent" value={event.user_agent} />
+    </>
+  );
+};
+
+const GroupAutoCreatedEventDetails = ({ event }: { event: GroupAutoCreatedEventType }) => {
+  return (
+    <>
+      <PropertyRow title="Identity Provider" value={event.idp} />
+      <PropertyRow title="Protocol" value={event.protocol} />
+      <PropertyRow title="Triggering User" value={event.triggering_user_name} />
+      <PropertyRow title="Group Name" value={event.group_name} />
+      <PropertyRow title="Group ID" value={event.group_id} />
+      <PropertyRow title="Source Pattern" value={event.source_pattern} />
+      <PropertyRow title="Origin" value={event.origin_value} />
+    </>
+  );
+};
+
+const GroupAutoCreateRejectedEventDetails = ({
+  event,
+}: {
+  event: GroupAutoCreateRejectedEventType;
+}) => {
+  return (
+    <>
+      <PropertyRow title="Identity Provider" value={event.idp} />
+      <PropertyRow title="Protocol" value={event.protocol} />
+      <PropertyRow title="Triggering User" value={event.triggering_user_name} />
+      <PropertyRow title="Rejected Claim" value={event.rejected_claim_value} />
+    </>
+  );
+};
+
+const GroupAutoCreateCappedEventDetails = ({
+  event,
+}: {
+  event: GroupAutoCreateCappedEventType;
+}) => {
+  return (
+    <>
+      <PropertyRow title="Identity Provider" value={event.idp} />
+      <PropertyRow title="Protocol" value={event.protocol} />
+      <PropertyRow title="Triggering User" value={event.triggering_user_name} />
+      <PropertyRow title="Cap Value" value={event.cap_value} />
+      <PropertyRow title="Dropped Count" value={event.dropped_count} />
+      <PropertyRow title="Dropped Claims" value={event.dropped_claims.join(", ")} />
     </>
   );
 };
@@ -185,6 +234,18 @@ export const EventDetails = (props: EventType) => {
 
       {props.__typename === "AccountLoggedOutEventType" && (
         <AccountLoggedOutEventDetails event={props} />
+      )}
+
+      {props.__typename === "GroupAutoCreatedEventType" && (
+        <GroupAutoCreatedEventDetails event={props} />
+      )}
+
+      {props.__typename === "GroupAutoCreateRejectedEventType" && (
+        <GroupAutoCreateRejectedEventDetails event={props} />
+      )}
+
+      {props.__typename === "GroupAutoCreateCappedEventType" && (
+        <GroupAutoCreateCappedEventDetails event={props} />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch

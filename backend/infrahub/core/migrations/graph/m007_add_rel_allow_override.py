@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class Migration007(InternalSchemaMigration):
     name: str = "007_add_allow_override"
+    description: str = "N/A"
     minimum_version: int = 6
 
     @classmethod

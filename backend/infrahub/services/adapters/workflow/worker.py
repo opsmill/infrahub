@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
 
     from infrahub.context import InfrahubContext
+    from infrahub.events.models import EventContext
     from infrahub.tls.registry import TlsContextRegistry
     from infrahub.workflows.models import WorkflowDefinition
 
@@ -43,7 +44,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         expected_return: type[Return],
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
     ) -> Return: ...
@@ -53,7 +54,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         expected_return: None = ...,
-        context: InfrahubContext | None = ...,
+        context: InfrahubContext | EventContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
     ) -> Any: ...
@@ -63,7 +64,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         expected_return: type[Return] | None = None,  # noqa: ARG002
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
@@ -73,7 +74,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
 
         response: FlowRun = await run_deployment(
             name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags
-        )  # type: ignore[return-value, misc]
+        )  # type: ignore[misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
 
@@ -85,7 +86,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     async def submit_workflow(
         self,
         workflow: WorkflowDefinition,
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> WorkflowInfo:
@@ -97,5 +98,5 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
         tls_context = self._tls_registry.get(insecure=tls_insecure, ca_bundle=tls_ca_bundle)
         async with AsyncClientContext(httpx_settings={"verify": tls_context}):
-            flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[return-value, misc]
+            flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[misc]
         return WorkflowInfo.from_flow(flow_run=flow_run)

@@ -24,7 +24,7 @@ from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.workers.dependencies import get_installation_type
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices
 
@@ -37,6 +37,7 @@ class ConfigAPI(BaseModel):
     analytics: AnalyticsSettings
     experimental_features: ExperimentalFeaturesSettings
     sso: config.SSOInfo
+    ldap: config.LDAPInfo
     installation_type: str
     policy: config.PolicySettings
 
@@ -54,6 +55,11 @@ async def get_config() -> ConfigAPI:
         analytics=config.SETTINGS.analytics,
         experimental_features=config.SETTINGS.experimental_features,
         sso=config.SETTINGS.security.public_sso_config,
+        ldap=config.LDAPInfo(
+            enabled=config.SETTINGS.ldap.admin_enabled,
+            display_label=config.SETTINGS.ldap.display_label,
+            icon=config.SETTINGS.ldap.icon,
+        ),
         installation_type=get_installation_type(),
         policy=config.SETTINGS.policy,
     )

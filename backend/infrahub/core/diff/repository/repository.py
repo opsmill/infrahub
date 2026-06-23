@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Generator, Iterable
+from typing import TYPE_CHECKING, AsyncGenerator, Generator, Iterable
 
 from neo4j.exceptions import TransientError
 
@@ -30,7 +30,9 @@ from ..model.path import (
     TimeRange,
     TrackingId,
 )
+from ..query.affected_diff_nodes import AffectedDiffNodeUUIDsQuery
 from ..query.all_conflicts import EnrichedDiffAllConflictsQuery
+from ..query.conflicted_diff_nodes import ConflictedDiffNodesQuery
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
@@ -47,6 +49,9 @@ from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQu
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 
 log = get_logger()
 
@@ -547,6 +552,38 @@ class DiffRepository:
         await query.execute(db=self.db)
         for conflict_path, conflict_node in query.get_conflict_paths_and_nodes():
             yield (conflict_path, self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node))
+
+    async def get_conflicted_node_uuids(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId,
+    ) -> set[str]:
+        """Get UUIDs of DiffNodes that contain conflicts at any level."""
+        query = await ConflictedDiffNodesQuery.init(
+            db=self.db,
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id.serialize(),
+        )
+        await query.execute(db=self.db)
+        return query.get_conflict_uuids()
+
+    async def get_affected_node_uuids(
+        self,
+        source_branch: "Branch",
+        target_branch: "Branch",
+        at: Timestamp,
+        tracking_id: TrackingId,
+    ) -> list[str]:
+        """Get all node UUIDs from the diff graph for metadata updates."""
+        query = await AffectedDiffNodeUUIDsQuery.init(
+            db=self.db,
+            branch=source_branch,
+            at=at,
+            target_branch=target_branch,
+            tracking_id=tracking_id.serialize(),
+        )
+        await query.execute(db=self.db)
+        return query.get_node_uuids()
 
     async def get_node_field_summaries(
         self, diff_branch_name: str, tracking_id: TrackingId | None = None, diff_id: str | None = None

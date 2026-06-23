@@ -10,7 +10,7 @@ import { Table, type tColumn } from "@/shared/components/table/table";
 import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
 import { Pagination } from "@/shared/components/ui/pagination";
-import { SEARCH_ANY_FILTER, TASK_TAB } from "@/shared/config/constants";
+import { SEARCH_ANY_FILTER } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 import useFilters from "@/shared/hooks/useFilters";
 
@@ -106,10 +106,8 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
       return constructPath(`/tasks/${id}`);
     }
 
-    return constructPath(pathname, [
-      { name: QSP.TAB, value: TASK_TAB },
-      { name: QSP.TASK_ID, value: id },
-    ]);
+    // pathname already ends in /tasks (parent route is the tasks tab); append /:taskId
+    return constructPath(`${pathname.replace(/\/$/, "")}/${id}`);
   };
 
   const rows = data?.map((task) => {
@@ -123,7 +121,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
           display: task.branch,
         },
         state: {
-          display: getStateBadge[task.state!],
+          display: task.state ? getStateBadge[task.state] : null,
         },
         related_nodes: {
           display: (
@@ -132,12 +130,12 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
               render={(item) => {
                 if (typeof item === "string") return null;
 
-                if (!item.id) return null;
+                if (!item.id || !item.kind) return null;
 
                 return (
                   <Link
                     key={item.id}
-                    to={getObjectDetailsUrl(item.kind!, item.id, [
+                    to={getObjectDetailsUrl(item.kind, item.id, [
                       { name: QSP.BRANCH, value: task.branch },
                     ])}
                   >

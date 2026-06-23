@@ -170,10 +170,7 @@ class InfrahubDockerCompose(DockerCompose):
                     "PREFECT__SERVER_WEBSERVER_ONLY": "true",
                     "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
                     "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
-                    "PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED": "false",
-                    "PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED": "false",
+                    "PREFECT_SERVER_DOCKET_URL": "redis://cache:6379/2",
                 }
             )
 
@@ -277,7 +274,6 @@ class InfrahubDockerCompose(DockerCompose):
             up_cmd.append(service_name)
         self._run_command(cmd=up_cmd)
 
-    # TODO would be good to the support for project_name upstream
     @cached_property
     def compose_command_property(self) -> list[str]:
         docker_compose_cmd = [self.docker_command_path or "docker", "compose"]

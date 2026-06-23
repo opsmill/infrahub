@@ -31,9 +31,13 @@ const getDeleteObjectsQuery = (objects: Array<ObjectParam>) => {
   return jsonToGraphQLQuery(query);
 };
 
+export interface DeleteObjectsContext {
+  processErrorMessage?: (message: string) => void;
+}
+
 export interface DeleteObjectsFromApiParams extends BranchContextParams {
   objects: Array<ObjectParam>;
-  context: Record<string, any>;
+  context: DeleteObjectsContext;
 }
 
 export function deleteObjectsFromApi({ objects, branchName, context }: DeleteObjectsFromApiParams) {

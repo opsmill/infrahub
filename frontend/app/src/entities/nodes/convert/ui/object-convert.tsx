@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Card, CardHeader } from "@infrahub/ui/card";
 import { useState } from "react";
 
 import { Row } from "@/shared/components/container";
@@ -6,7 +7,6 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
 
 import ConvertForm from "@/entities/nodes/convert/ui/convert-form";
@@ -41,7 +41,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
   }
 
   return (
-    <Content.Card className="flex flex-col">
+    <Content.Card>
       <Content.CardTitle
         title="Object convert type"
         description={
@@ -53,11 +53,11 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
       />
 
       <div className="grid grid-cols-2 gap-2 overflow-auto p-2">
-        <Card className="col-span-0 p-0" data-testid="convert-source">
-          <CardWithBorder.Title>
+        <Card className="col-span-0" data-testid="convert-source">
+          <CardHeader>
             <h3 className="font-normal">SOURCE</h3>
             <h4 className="leading-10">{objectSchema.label}</h4>
-          </CardWithBorder.Title>
+          </CardHeader>
 
           <ObjectDataDisplay
             objectSchema={objectSchema}
@@ -67,8 +67,8 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
           />
         </Card>
 
-        <Card className="col-span-1 p-0">
-          <CardWithBorder.Title>
+        <Card className="col-span-1">
+          <CardHeader>
             <h3 className="font-normal">DESTINATION</h3>
             <Combobox open={isOpen} onOpenChange={setIsOpen}>
               <ComboboxTrigger>
@@ -91,7 +91,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
                 />
               </ComboboxContent>
             </Combobox>
-          </CardWithBorder.Title>
+          </CardHeader>
 
           {targetSchema ? (
             <ConvertForm

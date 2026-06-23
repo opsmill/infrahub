@@ -1,0 +1,14 @@
+---
+queries:
+  - name: report_query
+    file_path: "queries/report.gql"
+
+jinja2_transforms:
+  - name: well_formed_report
+    description: "Well-formed transform whose template has a transitive include"
+    query: "report_query"
+    template_path: "templates/report.j2"
+  - name: broken_report
+    description: "Transform whose template has a syntax error"
+    query: "report_query"
+    template_path: "templates/broken.j2"

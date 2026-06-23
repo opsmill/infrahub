@@ -9,6 +9,8 @@ import yaml
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
+
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.node import InfrahubNode, RelatedNode, RelationshipManager
@@ -28,7 +30,7 @@ class TestProfiles(TestInfrahubDockerClient):
         node_id: str,
         attribute: str,
         expected_value: str | int | None,
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         for _ in range(max_retries):
             node = await client.get(kind=kind, id=node_id, property=True)
@@ -48,7 +50,7 @@ class TestProfiles(TestInfrahubDockerClient):
         node_id: str,
         attribute: str,
         expected_source_id: str | None,
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         """Poll until the attribute's source.id matches the expected value."""
 
@@ -76,7 +78,7 @@ class TestProfiles(TestInfrahubDockerClient):
         attribute: str,
         expected_value: str | int | None,
         expected_source_id: str | None,
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         """Poll for both the attribute value and its profile source to match."""
         await self.wait_for_attribute_value(
@@ -103,7 +105,7 @@ class TestProfiles(TestInfrahubDockerClient):
         node_id: str,
         relationship: str,
         expected_peer_id: str | None,
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         for _ in range(max_retries):
             node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])
@@ -125,7 +127,7 @@ class TestProfiles(TestInfrahubDockerClient):
         node_id: str,
         relationship: str,
         expected_is_from_profile: bool,
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         """Poll until the relationship's `is_from_profile` flag matches."""
         for _ in range(max_retries):
@@ -150,7 +152,7 @@ class TestProfiles(TestInfrahubDockerClient):
         relationship: str,
         expected_peer_id: str | None,
         expected_is_from_profile: bool,
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         """Poll for both the relationship peer and its profile provenance."""
         await self.wait_for_relationship_peer(
@@ -177,7 +179,7 @@ class TestProfiles(TestInfrahubDockerClient):
         node_id: str,
         relationship: str,
         expected_peer_ids: set[str],
-        max_retries: int = 20,
+        max_retries: int = PREFECT_EVENT_WAIT_SECONDS,
     ) -> None:
         for _ in range(max_retries):
             node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])

@@ -16,6 +16,7 @@ class AuthMethod(InfrahubStringEnum):
     PASSWORD = "password"
     OAUTH2 = "oauth2"
     OIDC = "oidc"
+    LDAP = "ldap"
 
 
 class AccountLoggedInEvent(InfrahubEvent):

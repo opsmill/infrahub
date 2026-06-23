@@ -105,6 +105,8 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_RETRY_JITTER_MAX` | Maximum jitter in seconds added to retry delay to avoid thundering herd. | number | 0.1 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` | Maximum number of concurrent queries that can run (0 means unlimited). | integer | 0 |
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` | Delay to add when max_concurrent_queries is reached. | number | 0.01 |
+| `INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for point-to-point path-traversal queries; the query is aborted once it is exceeded. | number | 75 |
+| `INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for reachable-nodes queries; the query is aborted once it is exceeded. | number | 75 |
 
 ## Broker
 
@@ -201,7 +203,9 @@ Configuration settings for the message bus.
 | `INFRAHUB_SECURITY_OIDC_PROVIDERS` | The selected OIDC providers | array[string] | None |
 | `INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS` | None | object | Check nested parameters |
 | `INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS` | Indicates if untrusted Jinja2 filters should be disallowed for computed attributes | boolean | True |
-| `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group to which users authenticated via SSO will belong if not provided by identity provider | None | None |
+| `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group assigned to an SSO user on their first login when the identity provider supplies no group claims. Applied only when the account is first created; it is not re-applied on subsequent logins, so removing a user from this group is not undone. | None | None |
+| `INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER` | Regex(es) that decide which external identity-provider group claims become Infrahub groups. Accepts one regex or a list; the first matching pattern wins. Use a named capture group `(?P<name>...)` to set the group name; otherwise the full claim is used. Leave empty to disable auto-creation. | None | None |
+| `INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_MAX_PER_LOGIN` | Maximum number of groups that can be auto-created during a single login. Once reached, further new groups are skipped (with a warning) but the login still succeeds. Adding the user to groups that already exist is not limited. | integer | 50 |
 | `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` | When enabled, an SSO login that has no linked identity and matches an existing account by display name claims that account, as long as it has not already been linked to another identity. When disabled, such a login always provisions a separate account instead of reusing an existing one. | boolean | True |
 
 ### INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
@@ -211,6 +215,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_GOOGLE_ICON` | None | string | mdi:google |
 | `INFRAHUB_OAUTH2_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_GOOGLE_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_GOOGLE_AUTHORIZATION_URL` | None | string | https://accounts.google.com/o/oauth2/auth |
@@ -223,6 +228,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_PROVIDER1_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OAUTH2_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_PROVIDER1_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_AUTHORIZATION_URL` | None | string | None |
@@ -233,6 +239,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_PROVIDER2_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OAUTH2_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OAUTH2_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OAUTH2_PROVIDER2_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_AUTHORIZATION_URL` | None | string | None |
@@ -250,6 +257,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_GOOGLE_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_GOOGLE_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_GOOGLE_DISCOVERY_URL` | None | string | https://accounts.google.com/.well-known/openid-configuration |
@@ -261,6 +269,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER1_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER1_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
@@ -270,10 +279,42 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER2_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER2_GROUPS_CLAIM` | Top-level key in the IdP claim payload from which the user's groups are read. Defaults to `groups`. Set per provider when your IdP emits group memberships under a different claim name (e.g., `roles`). | string | groups |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER2_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
 | `INFRAHUB_OIDC_PROVIDER2_SCOPES` | None | array[string] | None |
+
+## Ldap
+
+LDAP authentication configuration.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_LDAP_ENABLED` | Enable LDAP authentication on this deployment. When turned off, new LDAP sign-ins are refused; existing sessions are unaffected. | boolean | False |
+| `INFRAHUB_LDAP_SERVERS` | Comma-separated list of LDAP server URIs (e.g. `ldaps://dc1.example.com:636,ldaps://dc2.example.com:636`). Each entry is tried in declaration order, falling through to the next when one is unreachable, so list a primary first and any standby replicas after it for high availability. URIs must use the `ldap` or `ldaps` scheme. | array[string] | None |
+| `INFRAHUB_LDAP_SERVICE_ACCOUNT_DN` | Distinguished name of the directory account used to look up users before verifying their credentials. | None | None |
+| `INFRAHUB_LDAP_SERVICE_ACCOUNT_PASSWORD` | Password for the service account used during the user lookup.  | None | None |
+| `INFRAHUB_LDAP_USER_SEARCH_BASE` | Distinguished name of the directory subtree where user entries are stored, e.g. `OU=Users,DC=corp,DC=example,DC=com`. | None | None |
+| `INFRAHUB_LDAP_USER_SEARCH_FILTER` | LDAP filter used to locate a user entry by their sign-in name. The `{username}` placeholder is substituted at sign-in time with the user-supplied login name and is safely escaped to prevent filter injection. If left empty, a default is generated from the configured username attribute (`attribute_username`), so changing the username attribute keeps the filter aligned automatically. | None | None |
+| `INFRAHUB_LDAP_ATTRIBUTE_USERNAME` | Name of the LDAP attribute that holds a user's sign-in name. Defaults to `sAMAccountName` (typical on Active Directory); `uid` is typical on OpenLDAP. | string | sAMAccountName |
+| `INFRAHUB_LDAP_ATTRIBUTE_DISPLAY_NAME` | Name of the LDAP attribute that holds a user's human-readable display name. | string | displayName |
+| `INFRAHUB_LDAP_ATTRIBUTE_DISABLED` | Name of an LDAP attribute that signals whether an account is disabled. Defaults to `userAccountControl` (Active Directory's mechanism). Leave empty for directories that do not expose an equivalent attribute; the disabled-account check is then skipped. | None | userAccountControl |
+| `INFRAHUB_LDAP_ATTRIBUTE_DISABLED_BITMASK` | When `attribute_disabled` is set, the integer value of that attribute is treated as a bitmask; the account is considered disabled if any of these bits are set. Default `0x2` matches Active Directory's standard 'account disabled' flag. | integer | 2 |
+| `INFRAHUB_LDAP_GROUP_ENABLED` | Enable directory group resolution. When turned off, users sign in successfully but receive no permissions until they are assigned to local groups manually. When turned on, `group_base_dn` must be set. | boolean | False |
+| `INFRAHUB_LDAP_GROUP_BASE_DN` | Distinguished name of the directory subtree where group entries are stored, e.g. `OU=Groups,DC=corp,DC=example,DC=com`. Required when `group_enabled` is true. | None | None |
+| `INFRAHUB_LDAP_GROUP_FILTER` | LDAP filter used to look up the groups a user belongs to. The `{user_dn}` placeholder is substituted with the user's distinguished name at sign-in time and is safely escaped to prevent filter injection. | string | (member=\{user_dn\}) |
+| `INFRAHUB_LDAP_GROUP_NAME_ATTRIBUTE` | Name of the LDAP attribute on group entries that is read as the group's name. The value is matched against local group names to grant the user the matching permissions. | string | cn |
+| `INFRAHUB_LDAP_GROUP_STRATEGY` | How nested-group memberships are resolved. `ad_in_chain` uses Active Directory's transitive-membership search to retrieve all nested groups in a single query; it is the fastest option against AD. `bfs` walks group memberships level by level and works against any LDAP-compatible directory. | string (bfs, ad_in_chain) | bfs |
+| `INFRAHUB_LDAP_GROUP_BFS_MAX_DEPTH` | Maximum number of nesting levels to traverse when `group_strategy` is `bfs`. Has no effect for other strategies. Cycles in the group structure are detected automatically. Minimum value is 10. | integer | 16 |
+| `INFRAHUB_LDAP_TLS_ENABLED` | Use an encrypted connection to the LDAP server. Pair with `ldaps://` server URIs, or set `tls_starttls = true` to upgrade plain `ldap://` connections. | boolean | False |
+| `INFRAHUB_LDAP_TLS_STARTTLS` | Upgrade a plain `ldap://` connection to TLS using STARTTLS instead of connecting via `ldaps://`. | boolean | False |
+| `INFRAHUB_LDAP_TLS_CA_BUNDLE` | PEM-encoded certificate authority bundle used to verify the LDAP server's TLS certificate. May be a path to a file or the PEM contents directly. Checked at startup. | None | None |
+| `INFRAHUB_LDAP_TLS_INSECURE` | Skip TLS certificate validation. Test and development environments only; never enable in production. | boolean | False |
+| `INFRAHUB_LDAP_TLS_MINIMUM_VERSION` | Minimum TLS protocol version accepted when connecting to an LDAP server. | string (TLSv1.2, TLSv1.3) | TLSv1.2 |
+| `INFRAHUB_LDAP_PER_SERVER_TIMEOUT` | Maximum time, in seconds, to wait for an LDAP server to respond before treating it as unreachable and trying the next configured server. | number | 10.0 |
+| `INFRAHUB_LDAP_DISPLAY_LABEL` | Text shown on the LDAP sign-in button on the login page. | string | Sign in with LDAP |
+| `INFRAHUB_LDAP_ICON` | Icon shown on the LDAP sign-in button on the login page. | string | mdi:account-key-outline |
 
 ## Storage
 

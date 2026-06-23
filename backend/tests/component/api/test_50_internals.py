@@ -36,6 +36,7 @@ async def test_config_endpoint(
         "analytics",
         "experimental_features",
         "installation_type",
+        "ldap",
         "logging",
         "main",
         "policy",

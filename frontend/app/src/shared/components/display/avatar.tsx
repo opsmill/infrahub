@@ -1,7 +1,7 @@
+import { Spinner } from "@infrahub/ui";
 import { cva, type VariantProps } from "class-variance-authority";
 import type React from "react";
 
-import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 
 export const initials = (name: string) =>

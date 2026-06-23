@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@infrahub/ui";
 import { ListTreeIcon } from "lucide-react";
 import React from "react";
 import { Collection } from "react-aria-components";
 import { Link } from "react-router";
 
-import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@/shared/components/aria/tree";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";

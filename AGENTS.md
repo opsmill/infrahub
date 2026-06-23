@@ -114,6 +114,8 @@ cd docs && npm run build              # Build documentation
 
 - `backend/infrahub/core/schema/generated/` – Schema definitions
 - `backend/infrahub/core/protocols.py` – Protocol definitions
+- `backend/infrahub/generators/graphql_queries/*.py` – Pydantic types generated from `.gql` query files
+- `backend/infrahub/computed_attribute/graphql_queries/*.py` – Pydantic types generated from `.gql` query files
 - `frontend/app/src/shared/api/graphql/generated/` – GraphQL types
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
@@ -132,7 +134,7 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Always Do
 
-- Before modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain
+- Before diagnosing _or_ modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)

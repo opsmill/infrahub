@@ -2,6 +2,83 @@
 title: Group events
 ---
 
+## Group Auto Create Capped Event
+
+**Type**: infrahub.group.auto_create_capped
+**Description**: Emitted at most once per login when the per-login cap on new-group creation is reached.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **idp** | Configured name of the originating identity provider |
+| **triggering_user_id** | The account whose login produced the event |
+| **triggering_user_name** | Login identifier of the triggering account |
+| **protocol** | Authentication protocol used for the login |
+| **cap_value** | Configured per-login cap value |
+| **dropped_claims** | Verbatim, per-entry length-truncated dropped claims |
+| **dropped_count** | Total count of dropped claims for this login |
+
+## Group Auto Create Rejected Event
+
+**Type**: infrahub.group.auto_create_rejected
+**Description**: Emitted when a matched claim's effective name fails identifier validation.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **idp** | Configured name of the originating identity provider |
+| **triggering_user_id** | The account whose login produced the event |
+| **triggering_user_name** | Login identifier of the triggering account |
+| **protocol** | Authentication protocol used for the login |
+| **rejected_claim_value** | Verbatim, length-truncated rejected claim value |
+
+## Group Auto Created Event
+
+**Type**: infrahub.group.auto_created
+**Description**: Emitted exactly once per successful auto-creation of a new `CoreAccountGroup`.
+**Uses node_kind filter for webhooks**: `false`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **idp** | Configured name of the originating identity provider |
+| **triggering_user_id** | The account whose login produced the event |
+| **triggering_user_name** | Login identifier of the triggering account |
+| **protocol** | Authentication protocol used for the login |
+| **group_id** | UUID of the newly created group |
+| **group_name** | Local name of the new group |
+| **source_pattern** | Raw regex pattern from the configured filter that matched |
+| **origin_value** | Configured provider name written to the group's origin attribute |
+
 ## Group Member Added Event
 
 **Type**: infrahub.group.member_added

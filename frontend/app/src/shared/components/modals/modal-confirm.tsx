@@ -1,10 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Modal } from "@infrahub/ui";
 import type { ReactNode } from "react";
 import { Heading } from "react-aria-components";
 
-import { Modal } from "@/shared/components/aria/modal";
 import { Col, Row } from "@/shared/components/container";
-import { Button } from "@/shared/components/ui/button";
 
 interface ModalConfirmProps {
   isOpen: boolean;
@@ -42,10 +41,10 @@ export function ModalConfirm({
       </Col>
 
       <Row className="justify-end bg-gray-50 p-3">
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+        <Button variant="outline" onPress={() => onOpenChange(false)} isDisabled={isLoading}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={onConfirm} isLoading={isLoading} disabled={isLoading}>
+        <Button variant="primary" onPress={onConfirm} isPending={isLoading} isDisabled={isLoading}>
           Confirm
         </Button>
       </Row>

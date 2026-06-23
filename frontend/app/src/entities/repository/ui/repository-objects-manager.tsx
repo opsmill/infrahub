@@ -1,6 +1,7 @@
+import { Spinner } from "@infrahub/ui";
+
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import { Spinner } from "@/shared/components/ui/spinner";
 
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { REPOSITORY_GROUP } from "@/entities/repository/constants";

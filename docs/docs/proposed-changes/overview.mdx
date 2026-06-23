@@ -70,6 +70,36 @@ Infrahub will automatically run Transformations and generate artifacts as part o
 
 Learn more about [Transformations](../transformations/overview) and [Artifacts](../artifacts/overview).
 
+### Understanding artifact regeneration
+
+When a proposed change includes commits to a linked Git repository, Infrahub regenerates only the artifacts whose Transformation actually depends on a changed file. Each Transformation's dependency closure - the templates it includes for a Jinja2 Transformation, or the files in its package directory for a Python Transformation - is computed when the repository is imported and stored on the Transformation. A file change regenerates a definition's artifacts only when the changed file is in that definition's closure. A change to a GraphQL query the definition uses, or to the artifact definition itself, also triggers regeneration.
+
+Two repository-level rules also apply:
+
+- Editing a repository's `.infrahub.yml` regenerates the artifacts of every Transformation in that repository, because the manifest can change how any of them is built.
+- Read-only repositories follow the same rules as regular ones. Bumping a `CoreReadOnlyRepository` to a new pinned commit on the source branch regenerates the artifacts affected by that commit, even on branches where `sync_with_git` is disabled.
+
+#### Where to find the why trail
+
+Every regeneration decision is recorded in the proposed change pipeline's task log. This is the canonical place to see which file, query, or relationship change caused an artifact to regenerate: each entry names the affected definition and the precise cause. For example:
+
+```text
+Definition device-config (17e9c3b2-...): file templates/partials/header.j2 changed and is in this transform's dependency closure - all artifacts will regenerate.
+```
+
+When nothing regenerated for a definition the log says so as well, so you can confirm a quiet pipeline was intentional rather than a missed dependency.
+
+#### When a Transformation's dependencies are incomplete
+
+Infrahub cannot always detect every file a Transformation depends on. A Jinja2 template that pulls in a partial through a runtime variable (`{% include some_variable %}`), or a Python Transformation that imports a helper at runtime, leaves the auto-detected closure **incomplete**. Infrahub records this as `dependencies_complete = false` on the Transformation.
+
+While a Transformation's closure is incomplete, Infrahub cannot tell which file changes are relevant, so it conservatively regenerates that Transformation's artifacts on **any** file change in the repository: safe, but the noisy behavior the precise gate is meant to avoid. The task log explains each such fallback and names the Transformation, and the repository import log records every reference auto-detection could not resolve, naming the template and the location of the unresolved include.
+
+To restore precise regeneration, do one of the following, then commit so the closure recomputes on the next import:
+
+- **Rewrite the dynamic reference with a literal name** so auto-detection can follow it, for example replacing `{% include partial_name %}` with `{% include "partials/header.j2" %}`.
+- **Declare the missing files with `watch.files`** on the Transformation entry in `.infrahub.yml`. Listing the files, or the directory that contains them, both adds them to the closure and marks the closure complete. See [declaring extra dependencies](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch).
+
 ### Generator integration
 
 Infrahub will automatically run Generators as part of the proposed change workflow.

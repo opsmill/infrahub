@@ -47,14 +47,19 @@ export function useRelationships(
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
+  const isEnabled = typeof config?.enabled === "boolean" ? config.enabled : undefined;
+
   const {
     data: totalCount,
     isSuccess: isCountSuccess,
     isError: isCountError,
-  } = useObjectsCount({
-    objectKind: params.peer,
-    filters: params.search ? [{ name: "any__value", value: params.search }] : undefined,
-  });
+  } = useObjectsCount(
+    {
+      objectKind: params.peer,
+      filters: params.search ? [{ name: "any__value", value: params.search }] : undefined,
+    },
+    { enabled: isEnabled }
+  );
 
   return useInfiniteQuery({
     ...getRelationshipsInfiniteQueryOptions(

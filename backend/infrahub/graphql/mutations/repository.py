@@ -214,7 +214,9 @@ class ProcessRepository(Mutation):
             infrahub_branch_name=branch.name,
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, context=graphql_context.get_context(), parameters={"model": model}
+            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS,
+            context=graphql_context.get_context(),
+            parameters={"model": model},
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)

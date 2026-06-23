@@ -1,3 +1,4 @@
+import { Spinner } from "@infrahub/ui";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -5,7 +6,6 @@ import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 import Content from "@/shared/components/layout/content";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 
@@ -38,7 +38,7 @@ function IpamNamespaceListPage({ namespaceSchema, permission }: IpNamespaceListP
   const isLoading = isPending || isFetchingNextPage;
 
   return (
-    <Content.Card className="flex h-full flex-col gap-0 overflow-hidden">
+    <Content.Card className="h-full gap-0 overflow-hidden">
       <div className="flex h-14 shrink-0 items-center border-gray-200 border-b px-2">
         <FilterSearchInput schema={namespaceSchema} />
 

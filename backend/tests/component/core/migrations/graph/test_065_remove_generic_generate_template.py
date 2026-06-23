@@ -6,6 +6,7 @@ from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations.graph.m065_remove_generic_generate_template import Migration065
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationInput
+from infrahub.core.models import HashableModelDiff
 from infrahub.core.path import SchemaPath
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -63,8 +64,14 @@ async def migration_065_data(
     gt_attr = generate_template_attr.duplicate()
     gt_attr.id = None
     schema_generic_def.attributes.append(gt_attr)
-    await registry.schema.update_node_in_db(
-        node=schema_generic_def, branch=default_branch, db=db, at=Timestamp(), user_id="migration-test"
+    diff = HashableModelDiff(changed={"attributes": HashableModelDiff(added={"generate_template": None})})
+    await registry.schema.update_node_in_db_based_on_diff(
+        db=db,
+        node=schema_generic_def,
+        diff=diff,
+        branch=default_branch,
+        at=Timestamp(),
+        user_id="migration-test",
     )
 
 

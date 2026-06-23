@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 class TestProfileTokensNotAdmin:
     async def test_should_not_access_profile_tokens(self, page: Page) -> None:
-        await page.goto("/profile?tab=tokens")
+        await page.goto("/profile/tokens")
         await expect(page.get_by_text("Open Proposed changes", exact=True)).to_be_visible()
 
 

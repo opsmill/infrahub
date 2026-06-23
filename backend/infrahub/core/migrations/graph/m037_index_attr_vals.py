@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.constants.database import IndexType
 from infrahub.core.attribute import MAX_STRING_LENGTH
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.database.index import IndexItem
 from infrahub.database.neo4j import IndexManagerNeo4j
@@ -455,13 +455,14 @@ class Migration037(ArbitraryMigration):
     """
 
     name: str = "037_index_attr_vals"
+    description: str = "N/A"
     minimum_version: int = 36
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:  # noqa: PLR0915
-        console = get_migration_console()
+        console = migration_input.console
         db = migration_input.db
         result = MigrationResult()
 

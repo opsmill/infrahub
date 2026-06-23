@@ -7,6 +7,7 @@ import { classNames } from "@/shared/utils/common";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 
@@ -17,6 +18,8 @@ export interface PeerInputProps extends Omit<PopoverTriggerProps, "value" | "onC
   value: Node | null;
   options?: Array<Node>;
   parent?: { name?: string; value?: string };
+  filterItem?: (node: RelationshipNode) => boolean;
+  allowCreate?: boolean;
 }
 
 export const PeerInput = ({
@@ -26,6 +29,8 @@ export const PeerInput = ({
   options,
   peer,
   parent,
+  filterItem,
+  allowCreate = true,
   ...props
 }: PeerInputProps) => {
   const [open, setOpen] = React.useState(false);
@@ -47,13 +52,15 @@ export const PeerInput = ({
       <ComboboxContent>
         <RelationshipComboboxList
           peer={peer}
+          value={value}
+          filterItem={filterItem}
           onSelect={(newValue) => {
             onChange(newValue);
             setOpen(false);
           }}
         />
 
-        {!options && (
+        {!options && allowCreate && (
           <AddRelationshipAction
             peer={peer}
             onSuccess={(value) => {

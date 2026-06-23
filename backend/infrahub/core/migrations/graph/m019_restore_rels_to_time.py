@@ -228,6 +228,7 @@ class Migration019(GraphMigration):
     """
 
     name: str = "019_fix_edges_state"
+    description: str = "N/A"
     minimum_version: int = 18
     queries: Sequence[type[Query]] = [FixBranchAwareEdgesQuery, SetMissingToTimeQuery, DeleteNodesRelsQuery]
 

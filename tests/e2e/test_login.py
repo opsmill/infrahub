@@ -95,7 +95,9 @@ class TestLoginNotLoggedIn:
         await page.get_by_label("Password").fill("wrong password")
         await page.get_by_role("button", name="Log in").click()
 
-        await expect(page.locator("#alert-error-sign-in")).to_contain_text("Invalid username or password")
+        await expect(page.locator("#alert-error-sign-in-invalid_credentials")).to_contain_text(
+            "Invalid username or password"
+        )
 
     async def test_redirect_to_initial_page_after_login(
         self, page: Page, data_scenario_branches: ScenarioBranchesHandle

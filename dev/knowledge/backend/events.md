@@ -33,7 +33,7 @@ Events are organized by domain in `backend/infrahub/events/`:
 |--------|--------|------|
 | Node | `NodeCreatedEvent`, `NodeUpdatedEvent`, `NodeDeletedEvent` | `node_action.py` |
 | Branch | `BranchCreatedEvent`, `BranchDeletedEvent`, `BranchMergedEvent`, `BranchRebasedEvent` | `branch_action.py` |
-| Group | `GroupMemberAddedEvent`, `GroupMemberRemovedEvent` | `group_action.py` |
+| Group | `GroupMemberAddedEvent`, `GroupMemberRemovedEvent`, `GroupAutoCreatedEvent`, `GroupAutoCreateRejectedEvent`, `GroupAutoCreateCappedEvent` | `group_action.py` |
 | Schema | `SchemaUpdatedEvent` | `schema_action.py` |
 | Artifact | `ArtifactCreatedEvent`, `ArtifactUpdatedEvent` | `artifact_action.py` |
 | Validator | `ValidatorStartedEvent`, `ValidatorPassedEvent`, `ValidatorFailedEvent` | `validator_action.py` |
@@ -94,5 +94,6 @@ Events can be queried through:
 
 - [ADR-0002: Prefect Events System](../../adr/0002-events-system.md) - Why we use Prefect Events
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
+- [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
 - [Backend Architecture](architecture.md) - Overall backend structure

@@ -182,6 +182,79 @@ Available dependencies:
 - `get_event_service()`: Event emission service
 - `get_component()`: Component registry access
 
+## Read Query Optimization in Prefect Tasks
+
+When a flow only needs a few fields from a node (e.g. `id`, `name`, `status`), avoid `client.all()`, `client.filters()`, or `client.get(prefetch_relationships=True)` — they fetch the full object graph. Use a targeted `execute_graphql()` call instead.
+
+### Pattern: typed query model
+
+Each domain that needs optimized reads defines a Pydantic query model co-located in its `models.py` (or `queries.py` for large files):
+
+```python
+from typing import Any, ClassVar
+from infrahub_sdk.graphql import Query
+from pydantic import BaseModel, ConfigDict
+
+
+class MyNodeResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    id: str
+    name: str
+
+
+class MyNodeQuery(BaseModel):
+    query_name: ClassVar[str] = "MyFetchNodes"
+    kind: str  # or hardcoded if always the same type
+
+    def render_query(self) -> str:
+        query = Query(
+            name=self.query_name,
+            query={self.kind: {"edges": {"node": {"id": None, "name": {"value": None}}}}},
+        )
+        return query.render()
+
+    def parse_response(self, response: dict[str, Any]) -> list[MyNodeResult]:
+        result: list[MyNodeResult] = []
+        if kind_payload := response.get(self.kind):
+            for edge in kind_payload.get("edges", []):
+                if node := edge.get("node"):
+                    node_id = node.get("id")
+                    name = (node.get("name") or {}).get("value")
+                    if node_id and name:
+                        result.append(MyNodeResult(id=node_id, name=name))
+        return result
+```
+
+Call it in the flow:
+
+```python
+client = get_client()
+q = MyNodeQuery(kind="CoreTag")
+response = await client.execute_graphql(query=q.render_query(), branch_name=branch_name)
+nodes = q.parse_response(response=response)
+```
+
+### When to use each approach
+
+| Situation | Approach |
+|-----------|----------|
+| Need only `id` (fan-out pattern) | Subclass `NodeIDQuery` from `infrahub.core.query.node_query` |
+| Need a few scalar/relationship fields, read-only | Standalone query model with `execute_graphql()` |
+| Need to mutate the fetched node afterwards | Keep `client.get()` / `client.filters()` with `include=[...]` to narrow fetched fields; use `do_full_update=False` on `.update()` |
+
+### Existing query model base
+
+`NodeIDQuery` in `backend/infrahub/core/query/node_query.py` is the base class for queries that only need the `id` field. Subclass it with a unique `query_name: ClassVar[str]` for each domain:
+
+```python
+from infrahub.core.query.node_query import NodeIDQuery
+
+class DisplayLabelNodeIDQuery(NodeIDQuery):
+    query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"
+```
+
+Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
+
 ## Key Locations
 
 | Component | Location |

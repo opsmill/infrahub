@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,10 +29,11 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            size="square"
+            size="sm"
+            shape="square"
             variant="ghost"
-            className="size-6"
             data-testid={`actions-row-button-${objectLabel}`}
+            aria-label="Actions"
           >
             <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
           </Button>

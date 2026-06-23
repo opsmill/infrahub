@@ -381,6 +381,39 @@ Configure your identity provider application to include group information in the
 Refer to your provider's documentation for instructions on "group claims" or "configuring OAuth2/OIDC group mappings".
 :::
 
+##### Customizing the groups claim key
+
+By default, Infrahub reads the user's groups from a top-level `groups` key in the identity provider's claim payload (the OAuth2 userinfo response, the OIDC userinfo response, or the decoded OIDC `id_token`). If your identity provider emits group memberships under a different key — for example `roles` or `memberships` — set the `groups_claim` field on the provider settings.
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="infrahub-toml" default>
+
+```toml
+[security.oidc_provider_settings.provider1]
+client_id     = "infrahub-client"
+client_secret = "..."
+discovery_url = "https://idp.example.com/.well-known/openid-configuration"
+groups_claim  = "roles"
+```
+
+</TabItem>
+<TabItem value="environment-variables">
+
+```bash
+# OIDC provider
+export INFRAHUB_OIDC_PROVIDER1_GROUPS_CLAIM='roles'
+
+# OAuth2 provider
+export INFRAHUB_OAUTH2_PROVIDER1_GROUPS_CLAIM='roles'
+```
+
+</TabItem>
+</Tabs>
+
+:::info
+The value of `groups_claim` is matched literally against the top-level keys of the claim payload — no path expressions, no namespace expansion, no case-folding. The same key is used at all three extraction points (OAuth2 userinfo, OIDC userinfo, OIDC `id_token`).
+:::
+
 #### Step 2: Create corresponding groups in Infrahub
 
 Create groups in Infrahub that match the groups sent by your identity provider.

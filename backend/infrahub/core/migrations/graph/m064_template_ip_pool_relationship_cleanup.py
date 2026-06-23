@@ -11,7 +11,6 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 
 from .load_schema_branch import get_or_load_schema_branch
@@ -20,8 +19,6 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-console = get_migration_console()
 
 IP_POOL_KINDS = {InfrahubKind.IPADDRESSPOOL, InfrahubKind.IPPREFIXPOOL}
 
@@ -35,6 +32,7 @@ class Migration064(MigrationRequiringRebase):
     """
 
     name: str = "064_template_pool_relationship_cleanup"
+    description: str = "N/A"
     minimum_version: int = 63
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

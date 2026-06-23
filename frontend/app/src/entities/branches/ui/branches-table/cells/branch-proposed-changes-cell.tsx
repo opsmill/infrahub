@@ -1,10 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, Spinner } from "@infrahub/ui";
 import { Link } from "react-router";
 
 import { Row } from "@/shared/components/container";
 import { TableCell } from "@/shared/components/table/table-cell";
-import { LinkButton } from "@/shared/components/ui/button";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -59,10 +58,10 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
         <LinkButton
           variant="outline"
           size="sm"
-          to={detailUrl}
-          className="max-w-40 rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
+          href={detailUrl}
+          className="max-w-40 rounded-full pr-2.5 data-hovered:border-custom-blue-700 data-hovered:underline"
         >
-          <Icon icon={getSchemaIcon(schema)} className="mr-1 shrink-0 text-custom-blue-800" />
+          <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-custom-blue-800" />
           <span className="truncate">{firstPC.node.name.value}</span>
         </LinkButton>
 

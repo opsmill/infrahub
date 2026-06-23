@@ -133,6 +133,7 @@ class Migration041(ArbitraryMigration):
     """
 
     name: str = "041_deleted_dup_edges"
+    description: str = "N/A"
     minimum_version: int = 40
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

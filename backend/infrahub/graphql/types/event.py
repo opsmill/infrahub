@@ -68,12 +68,30 @@ class BranchEventTypeFilter(InputObjectType):
     branches = List(NonNull(String), required=True, description="Name of impacted branches")
 
 
+class GroupAutoCreateEventTypeFilter(InputObjectType):
+    idp = List(
+        NonNull(String),
+        required=False,
+        description="Filter by the configured identity-provider name",
+    )
+    protocol = List(
+        NonNull(String),
+        required=False,
+        description="Filter by authentication protocol",
+    )
+
+
 class EventTypeFilter(InputObjectType):
     branch_merged = Field(
         BranchEventTypeFilter, required=False, description="Filters specific to infrahub.branch.merged events"
     )
     branch_rebased = Field(
         BranchEventTypeFilter, required=False, description="Filters specific to infrahub.branch.rebased events"
+    )
+    group_auto_create = Field(
+        GroupAutoCreateEventTypeFilter,
+        required=False,
+        description='Filters specific to "infrahub.group.auto_create[...]" events',
     )
 
 
@@ -239,6 +257,52 @@ class GroupEvent(ObjectType):
     ancestors = List(NonNull(RelatedNode), required=True, description="Ancestor groups of this impacted group")
 
 
+# ---------------------------------------
+# Group auto-create events
+# ---------------------------------------
+class GroupAutoCreatedEventType(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    idp = String(required=True, description="Configured name of the originating identity provider")
+    triggering_user_id = String(required=True, description="UUID of the account whose login produced the event")
+    triggering_user_name = String(required=True, description="Login identifier of the triggering account")
+    protocol = String(required=True, description="Authentication protocol used for the login")
+    group_id = String(required=True, description="UUID of the newly created group")
+    group_name = String(required=True, description="Local name of the new group")
+    source_pattern = String(required=True, description="Raw regex pattern from the configured filter that matched")
+    origin_value = String(required=True, description="Configured provider name written to the group's origin attribute")
+    payload = Field(GenericScalar, required=True)
+
+
+class GroupAutoCreateRejectedEventType(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    idp = String(required=True, description="Configured name of the originating identity provider")
+    triggering_user_id = String(required=True, description="UUID of the account whose login produced the event")
+    triggering_user_name = String(required=True, description="Login identifier of the triggering account")
+    protocol = String(required=True, description="Authentication protocol used for the login")
+    rejected_claim_value = String(required=True, description="Verbatim, length-truncated rejected claim value")
+    payload = Field(GenericScalar, required=True)
+
+
+class GroupAutoCreateCappedEventType(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    idp = String(required=True, description="Configured name of the originating identity provider")
+    triggering_user_id = String(required=True, description="UUID of the account whose login produced the event")
+    triggering_user_name = String(required=True, description="Login identifier of the triggering account")
+    protocol = String(required=True, description="Authentication protocol used for the login")
+    cap_value = Int(required=True, description="Configured per-login cap value")
+    dropped_claims = List(
+        NonNull(String), required=True, description="Verbatim, per-entry length-truncated dropped claims"
+    )
+    dropped_count = Int(required=True, description="Total count of dropped claims for this login")
+    payload = Field(GenericScalar, required=True)
+
+
 class StandardEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
@@ -260,6 +324,9 @@ EVENT_TYPES: dict[str, type[ObjectType]] = {
     events.BranchDeletedEvent.event_name: BranchDeletedEvent,
     events.GroupMemberAddedEvent.event_name: GroupEvent,
     events.GroupMemberRemovedEvent.event_name: GroupEvent,
+    events.GroupAutoCreatedEvent.event_name: GroupAutoCreatedEventType,
+    events.GroupAutoCreateRejectedEvent.event_name: GroupAutoCreateRejectedEventType,
+    events.GroupAutoCreateCappedEvent.event_name: GroupAutoCreateCappedEventType,
     events.ProposedChangeApprovedEvent.event_name: ProposedChangeReviewEvent,
     events.ProposedChangeApprovalRevokedEvent.event_name: ProposedChangeReviewRevokedEvent,
     events.ProposedChangeRejectedEvent.event_name: ProposedChangeReviewEvent,

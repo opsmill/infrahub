@@ -1,0 +1,73 @@
+---
+title: LDAP authentication
+---
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+import ReferenceLink from "../../../../src/components/Card";
+
+# LDAP authentication <EnterpriseBadge />
+
+With LDAP authentication, users sign in to Infrahub with the credentials from your existing directory — Active Directory, OpenLDAP, or any RFC 4510-compliant LDAP server. Use it when your organization manages identities in a central directory and does not run an OIDC or OAuth2 identity provider.
+
+:::info Enterprise Edition
+
+LDAP authentication is available exclusively in the Enterprise Edition. The Community Edition includes the configuration model but rejects LDAP sign-ins with an enterprise-required error. See [Community vs enterprise](../../../overview/community-vs-enterprise.mdx) for details.
+
+:::
+
+## When to use LDAP
+
+Use LDAP authentication when your directory is the system of record for identity and you want Infrahub access to follow it directly:
+
+- Infrahub access tracks the Active Directory or LDAP groups you already maintain — group membership in the directory maps to permissions in Infrahub.
+- There is no separate set of Infrahub credentials to provision, rotate, or revoke. Joiner, mover, and leaver changes flow through your existing directory processes.
+- Users sign in with the directory credentials they already have, with no parallel local accounts to keep in step.
+
+Infrahub also supports single sign-on through OIDC and OAuth2. OIDC remains the recommended path when an identity provider is available, because it standardizes identity information and supports modern security features such as PKCE. LDAP is the direct-to-directory option for organizations that run a directory but no OIDC or OAuth2 identity provider.
+
+## How LDAP fits with other authentication methods
+
+LDAP runs alongside local accounts and SSO — all configured methods stay active at the same time. When LDAP is enabled, the login page shows an LDAP sign-in button next to the local login form and any SSO buttons.
+
+A successful LDAP sign-in produces the same session as a local or SSO login, so downstream behavior — tokens, permissions, and the activity log — is identical regardless of how the user authenticated.
+
+| Method | Choose when | Credentials live in |
+|--------|-------------|---------------------|
+| Local accounts | No central directory, small teams, or break-glass access kept for when the directory or identity provider is unreachable | Infrahub |
+| LDAP | A directory (Active Directory, OpenLDAP) is your source of truth for identity and you do not run an identity provider | Your directory |
+| SSO (OIDC / OAuth2) | You run an identity provider and want federation and features such as MFA and PKCE | Your identity provider |
+
+## How authentication works
+
+On each LDAP sign-in, Infrahub:
+
+1. Binds to the directory with a configured service account and searches the user subtree for the entry matching the sign-in name.
+2. Re-binds as the located user with the supplied password to verify the credentials.
+3. Creates a local account on first sign-in (auto-provisioning), mapping directory attributes to the account's name and display label.
+4. Resolves the user's directory groups and maps them to local groups by name, when group resolution is enabled.
+5. Issues a session.
+
+Multiple directory servers can be configured for high availability, and connections can be encrypted with LDAPS or STARTTLS.
+
+## Account lifecycle
+
+Infrahub resolves identity and group membership on every sign-in rather than syncing the directory in the background. Plan for a few consequences:
+
+- **Provisioning is lazy.** A local account is created the first time a directory user signs in, not when they are added to the directory.
+- **Permission changes apply at the next sign-in.** Because groups resolve on each sign-in, a directory group change takes effect the next time the user authenticates — not immediately. Removing a user from a directory group does not revoke an already-active Infrahub session.
+- **Removal blocks future sign-ins but does not delete the account.** When a user is removed or disabled in the directory, their next sign-in fails — the service-account lookup no longer finds them, or the disabled-account check rejects the bind. Infrahub does not delete the local account or end active sessions on its own. To revoke access ahead of the directory change, disable or remove the local account under `Admin` > `Users and Permissions` > `Accounts`.
+
+## Supported directories
+
+The implementation works against any RFC 4510-compliant LDAP server. The attribute defaults are tuned for Active Directory (`sAMAccountName` for the sign-in name, `userAccountControl` for disabled-account detection), and every attribute is configurable for directories such as OpenLDAP that use different conventions (`uid`, `posixGroup`).
+
+## LDAP guides
+
+- [Configure LDAP authentication](./configure-ldap.mdx) — connect Infrahub to your directory and validate sign-in
+- [Advanced LDAP configuration](./advanced-ldap.mdx) — group resolution, nested groups, failover, and TLS hardening
+
+## Related resources
+
+- [Authentication](../authentication.mdx)
+- [Single sign-on (SSO)](../sso/overview.mdx)
+- [LDAP reference](../../../reference/ldap.mdx)
+- [Permissions and roles](../permissions-roles/overview.mdx)

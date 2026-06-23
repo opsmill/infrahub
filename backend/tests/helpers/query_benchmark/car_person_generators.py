@@ -120,7 +120,7 @@ class CarWithDiffInSecondBranchGenerator(CarGenerator):
         # that were created by prior calls to `load_data`
         car_schema = registry.schema.get_node_schema(name="TestCar", branch=self.diff_branch)
         car_nodes = await NodeManager.query(db=self.db, schema=car_schema, branch=self.diff_branch)
-        new_car_nodes = [car_node for car_node in car_nodes if car_node.name.value in new_cars]
+        new_car_nodes = [car_node for car_node in car_nodes if car_node.name.value in new_cars]  # type: ignore[attr-defined]
 
         nb_diff = max(int(nb_elements * self.diff_ratio), 1)
 
@@ -128,19 +128,19 @@ class CarWithDiffInSecondBranchGenerator(CarGenerator):
         car_nodes_updatable = new_car_nodes
         car_nodes_to_update = random.choices(car_nodes_updatable, k=nb_diff)
         for i, car_node in enumerate(car_nodes_to_update):
-            car_node.name.value = f"updated-car-{str(uuid.uuid4())[:8]}"
+            car_node.name.value = f"updated-car-{str(uuid.uuid4())[:8]}"  # type: ignore[attr-defined]
 
             # Permute engines among car nodes to update, so it keeps one-to-one relationship between cars-engines
-            new_engine = car_nodes_to_update[(i + 1) % len(car_nodes_to_update)].engine
-            car_node.engine.update(db=self.db, data=new_engine)
+            new_engine = car_nodes_to_update[(i + 1) % len(car_nodes_to_update)].engine  # type: ignore[attr-defined]
+            car_node.engine.update(db=self.db, data=new_engine)  # type: ignore[attr-defined]
 
             # Update one-to-many relationship
             new_owner = random.choice([self.persons[person_name] for person_name in self.persons])
-            car_node.owner.update(db=self.db, data=new_owner)
+            car_node.owner.update(db=self.db, data=new_owner)  # type: ignore[attr-defined]
 
             # Update many-to-many relationship
             new_drivers = random.choices([self.persons[person_name] for person_name in self.persons])
-            car_node.drivers.update(db=self.db, data=new_drivers)
+            car_node.drivers.update(db=self.db, data=new_drivers)  # type: ignore[attr-defined]
 
             await car_node.save(db=self.db)
 

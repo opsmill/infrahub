@@ -40,6 +40,7 @@ class Migration052(GraphMigration):
     """
 
     name: str = "052_fix_global_branch_level"
+    description: str = "N/A"
     minimum_version: int = 51
     queries: Sequence[type[Query]] = [FixGlobalBranchLevelQuery]
 

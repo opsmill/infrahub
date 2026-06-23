@@ -8,7 +8,8 @@ import pytest
 from prefect import flow
 
 from infrahub import config
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -261,7 +262,7 @@ class TestProposedChange(TestInfrahubApp):
             source_branch_sync_with_git=True,
             destination_branch="main",
             proposed_change=prepare_proposed_change,
-            branch_diff=ProposedChangeBranchDiff(pipeline_id=pipeline_id, repositories=[], subscribers=[]),
+            branch_diff=ProposedChangeBranchDiff(pipeline_id=pipeline_id, repositories=[]),
             refresh_artifacts=True,
             do_repository_checks=True,
         )

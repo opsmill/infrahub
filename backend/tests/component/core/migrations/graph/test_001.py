@@ -1,6 +1,6 @@
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core.migrations.graph import Migration001
+from infrahub.core.migrations.graph.m001_add_version_to_graph import Migration001
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.database import InfrahubDatabase
 

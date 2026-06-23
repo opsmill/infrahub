@@ -16,7 +16,7 @@ from infrahub.core.migrations.query.path_details import (
     GetResultMapQuery,
 )
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
 
@@ -57,6 +57,7 @@ class Migration046(ArbitraryMigration):
     """
 
     name: str = "046_fill_agnostic_hfid_display_labels"
+    description: str = "N/A"
     minimum_version: int = 45
     update_batch_size: int = 1000
 
@@ -142,7 +143,7 @@ class Migration046(ArbitraryMigration):
 
     async def _do_execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
-        console = get_migration_console()
+        console = migration_input.console
         result = MigrationResult()
 
         root_node = await get_root_node(db=db, initialize=False)
