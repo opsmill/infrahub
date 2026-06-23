@@ -88,6 +88,17 @@ The endpoint is branch-aware. Pass query variables as URL parameters.
 
 To cache rendered output and tie it to a specific target object, define an artifact that uses this Transformation. See [Use artifacts](../artifacts/use).
 
+## Dependency tracking
+
+When a Jinja2 Transformation feeds an artifact, Infrahub regenerates that artifact only when a file the template depends on changes. On import, Infrahub walks the template and records every other template it reaches through static `{% include %}`, `{% import %}`, and `{% extends %}` directives, following them transitively. A change to any template in that set regenerates the artifacts of definitions that use this Transformation.
+
+Static directives resolve automatically. A dynamic reference — where the template name comes from a variable, as in `{% include partial_name %}` — can't be followed at import time. Infrahub then marks the Transformation's dependency closure incomplete and falls back to regenerating its artifacts on **any** file change in the repository. To keep regeneration precise, either:
+
+- Replace the variable with a literal name, for example `{% include "partials/header.j2" %}`, or
+- Declare the templates the dynamic reference can resolve to with the [`watch` key](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) in `.infrahub.yml`.
+
+See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration) for how to read which change triggered a regeneration.
+
 ## Related
 
 - [Transformations](./overview) — concept and architecture

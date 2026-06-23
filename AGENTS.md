@@ -134,7 +134,7 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Always Do
 
-- Before modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain
+- Before diagnosing _or_ modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
