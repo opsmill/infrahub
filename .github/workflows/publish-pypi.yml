@@ -45,7 +45,7 @@ jobs:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
 
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
 
