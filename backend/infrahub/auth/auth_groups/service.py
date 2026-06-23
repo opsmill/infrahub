@@ -1,12 +1,13 @@
 """Find-or-create local account groups for one external login's matched claims.
 
 For each effective name yielded by the configured claim filter, the corresponding
-account group is either looked up or created atomically, and the logging-in account is
-added as a member. Concurrent first-logins for the same brand-new claim are serialized through
-the injected lock registry so exactly one row is produced per name. On creation, the configured
-provider name is written verbatim to the new group's `origin` attribute; on reuse, `origin` is
-left untouched. Names that fail the local-name invariants (empty / whitespace-only) are logged
-and skipped; the login completes.
+account group is either looked up or created, and the logging-in account is added as a member.
+Creation goes through the shared node-creation path, so the name uniqueness constraint is
+enforced under the same object lock as every other group mutation; a concurrent creation that
+wins the race is reused rather than duplicated. On creation, the configured provider name is
+written verbatim to the new group's `origin` attribute; on reuse, `origin` is left untouched.
+Names that fail the local-name invariants (empty / whitespace-only) are logged and skipped; the
+login completes.
 
 A per-login cap bounds how many new groups one login can spawn. Memberships to already-existing
 groups do NOT consume cap budget. Once the cap is reached, every subsequent matching claim that
@@ -21,15 +22,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable
 
+from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
+from infrahub.core.node.create import create_node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
+from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
-    from infrahub.lock import InfrahubLockRegistry
 
     from .emitter import AutoCreateEventEmitter
     from .filter import ClaimFilter
@@ -59,7 +62,6 @@ class AutoCreatedGroupsService:
         db: InfrahubDatabase,
         account: CoreAccount,
         provider_name: str,
-        lock_registry: InfrahubLockRegistry,
         max_per_login: int,
         emitter: AutoCreateEventEmitter,
         node_manager: type[NodeManager] = NodeManager,
@@ -67,7 +69,6 @@ class AutoCreatedGroupsService:
         self._db = db
         self._account = account
         self._provider_name = provider_name
-        self._lock_registry = lock_registry
         self._max_per_login = max_per_login
         self._emitter = emitter
         self._node_manager = node_manager
@@ -82,6 +83,10 @@ class AutoCreatedGroupsService:
         New-creation work is bounded by the per-login cap configured at construction. When the
         budget is exhausted, claims that would require a brand-new group are silently dropped.
         Existing-group reuse continues uncapped.
+
+        A claim whose persistence fails is isolated: the error is logged, a rejected event is
+        emitted, and the remaining claims are still applied. One failing claim never aborts the
+        login or drops the other groups.
 
         Returns the effective names that resulted in a successful membership, in matching order.
         An empty tuple means auto-creation produced no memberships.
@@ -111,32 +116,42 @@ class AutoCreatedGroupsService:
                 continue
             seen.add(name)
 
-            if new_creations < self._max_per_login:
-                result = await self._find_or_create(name=name, source_pattern=match.source_pattern)
-                group = result.group
-                if group is None:
-                    continue
-                if result.was_created:
-                    new_creations += 1
-            else:
-                # Cap exhausted: only allow reuse of an existing row. A claim that would
-                # require a fresh creation is dropped.
-                existing = await self._lookup_by_name(name)
-                if existing is None:
-                    log.info(
-                        "auth_groups.skip_claim_over_per_login_cap",
-                        provider_name=self._provider_name,
-                        effective_name=name,
-                        max_per_login=self._max_per_login,
-                    )
-                    dropped.append(claim)
-                    continue
-                group = self._reuse_or_skip(name, existing)
-                if group is None:
-                    continue
+            try:
+                if new_creations < self._max_per_login:
+                    result = await self._find_or_create(name=name, source_pattern=match.source_pattern)
+                    group = result.group
+                    if group is None:
+                        continue
+                    if result.was_created:
+                        new_creations += 1
+                else:
+                    # Cap exhausted: only allow reuse of an existing row. A claim that would
+                    # require a fresh creation is dropped.
+                    existing = await self._lookup_by_name(name)
+                    if existing is None:
+                        log.info(
+                            "auth_groups.skip_claim_over_per_login_cap",
+                            provider_name=self._provider_name,
+                            effective_name=name,
+                            max_per_login=self._max_per_login,
+                        )
+                        dropped.append(claim)
+                        continue
+                    group = self._reuse_or_skip(name, existing)
+                    if group is None:
+                        continue
 
-            if await self._add_member(group):
-                granted.append(name)
+                if await self._add_member(group):
+                    granted.append(name)
+            except Exception:
+                # One claim's persistence failing must not abort the login: log it, record a rejected
+                # event, and keep applying the remaining claims.
+                log.exception(
+                    "auth_groups.claim_processing_failed",
+                    provider_name=self._provider_name,
+                    effective_name=name,
+                )
+                await self._emitter.claim_rejected(claim=claim)
 
         if dropped:
             await self._emitter.cap_breached(cap_value=self._max_per_login, dropped_claims=dropped)
@@ -145,23 +160,35 @@ class AutoCreatedGroupsService:
     async def _find_or_create(self, *, name: str, source_pattern: str) -> FindOrCreateResult:
         """Find a `CoreAccountGroup` named `name`, or create one with `origin = provider_name`.
 
-        Serialized through the distributed lock registry under the `auto-create-group` namespace.
+        Creation goes through the shared node-creation path, so the name uniqueness constraint is
+        enforced under the same object lock as every other group mutation. A concurrent creation
+        that wins the race surfaces here as a uniqueness violation and is resolved by reusing the
+        group that won.
+
+        Raises:
+            ValidationError: when creation fails and no reusable group can be found afterwards.
+
         """
         existing = await self._lookup_by_name(name)
         if existing is not None:
             return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
 
-        lock_key = f"auto-create-group:{name}"
-        async with self._lock_registry.get(name=lock_key, namespace="auto-create-group"):
+        branch = await registry.get_branch(db=self._db)
+        try:
+            group = await create_node(
+                data={"name": name, "origin": self._provider_name},
+                db=self._db,
+                branch=branch,
+                schema=CoreAccountGroup,
+            )
+        except ValidationError:
             existing = await self._lookup_by_name(name)
-            if existing is not None:
-                return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
+            if existing is None:
+                raise
+            return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
 
-            group = await Node.init(db=self._db, schema=CoreAccountGroup)
-            await group.new(db=self._db, name=name, origin=self._provider_name)
-            await group.save(db=self._db)
-            await self._emitter.created(group=group, source_pattern=source_pattern)
-            return FindOrCreateResult(group=group, was_created=True)
+        await self._emitter.created(group=group, source_pattern=source_pattern)
+        return FindOrCreateResult(group=group, was_created=True)
 
     async def _lookup_by_name(self, name: str) -> Node | None:
         """Return any `CoreGroup`-derived row named `name`, or None."""

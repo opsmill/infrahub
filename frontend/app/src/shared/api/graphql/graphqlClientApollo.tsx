@@ -232,6 +232,11 @@ const graphqlClient = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache(),
   defaultOptions,
+  // Apollo is a transport-only layer here: queries run imperatively via
+  // graphqlClient.query (no Apollo hooks/cache) and are fronted by TanStack
+  // Query, which owns caching and request deduplication by queryKey. Disable
+  // Apollo's own in-flight dedup so TanStack is the single dedup authority.
+  queryDeduplication: false,
 });
 
 export default graphqlClient;

@@ -1272,6 +1272,17 @@ def _run_generator(instance_id: str | None, managed_branch: bool, impacted_insta
 _TRIGGERING_DIFF_ACTIONS = {DiffAction.ADDED.value, DiffAction.UPDATED.value}
 
 
+def _is_triggering_action(action: str) -> bool:
+    """Return True for diff actions that should trigger artifact regeneration.
+
+    ``get_diff_summary`` serialises a node/element action as the GraphQL enum *name*
+    (uppercase, e.g. ``"UPDATED"``/``"ADDED"``), whereas ``DiffAction.*.value`` is
+    lowercase. The comparison must therefore be case-insensitive: a literal
+    ``action in _TRIGGERING_DIFF_ACTIONS`` silently never matches real diff data.
+    """
+    return action.lower() in _TRIGGERING_DIFF_ACTIONS
+
+
 @dataclass(frozen=True, kw_only=True, slots=True)
 class PredicateOutcome:
     """The verdict of a regeneration predicate plus the diagnostic explaining it.
@@ -1304,7 +1315,7 @@ def _query_changed(
     leaves the definition broken and there is nothing to regenerate against.
     """
     matched = any(
-        entry["id"] == definition.query_id and entry["action"] in _TRIGGERING_DIFF_ACTIONS for entry in diff_summary
+        entry["id"] == definition.query_id and _is_triggering_action(entry["action"]) for entry in diff_summary
     )
     if not matched:
         return PredicateOutcome(matched=False)
@@ -1340,7 +1351,7 @@ def _definition_changed(
         (
             entry
             for entry in diff_summary
-            if entry["id"] == definition.definition_id and entry["action"] in _TRIGGERING_DIFF_ACTIONS
+            if entry["id"] == definition.definition_id and _is_triggering_action(entry["action"])
         ),
         None,
     )
@@ -1348,7 +1359,7 @@ def _definition_changed(
         return PredicateOutcome(matched=False)
 
     changed_fields = ", ".join(
-        element["name"] for element in matched_entry["elements"] if element["action"] in _TRIGGERING_DIFF_ACTIONS
+        element["name"] for element in matched_entry["elements"] if _is_triggering_action(element["action"])
     )
     detail = f"definition node was modified ({changed_fields})" if changed_fields else "definition node was modified"
     return PredicateOutcome(

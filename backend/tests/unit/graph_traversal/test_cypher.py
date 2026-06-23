@@ -45,11 +45,15 @@ def _build_renderer() -> GraphTraversalCypherRenderer:
 
 
 def _render_by_id(*, max_paths: int = 100) -> None:
-    _build_renderer().render_shortest_path_by_id(
+    _build_renderer().render_canonical_join(
         plan=_empty_plan(),
         source_id="src-uuid",
+        target_id="dst-uuid",
+        left_len=1,
+        right_len=1,
+        tier_middles=["mid-uuid"],
+        tier_limit=max_paths,
         at=Timestamp(),
-        max_paths=max_paths,
     )
 
 

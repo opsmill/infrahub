@@ -17,7 +17,12 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
-from infrahub.core.schema.order_by import OrderByTargetKind, ParsedOrderByEntry, parse_order_by_entry
+from infrahub.core.schema.order_by import (
+    OrderByTargetKind,
+    ParsedOrderByEntry,
+    parse_order_by_entry,
+    parse_order_by_path,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
 from infrahub.log import get_logger
@@ -862,14 +867,14 @@ RETURN updated_at, updated_by
         if self.requested_order and self.requested_order.disable:
             return
 
-        if self.requested_order and self.requested_order.order_by:
+        if self.requested_order and self.requested_order.by:
             await self._emit_peer_order_entries(
                 db=db,
                 peer_schema=peer_schema,
                 branch_filter=branch_filter,
                 entries=[
-                    parse_order_by_entry(entry=entry, node_schema=peer_schema)
-                    for entry in self.requested_order.order_by
+                    parse_order_by_path(field=entry.field, direction=entry.direction, node_schema=peer_schema)
+                    for entry in self.requested_order.by
                 ],
             )
             return

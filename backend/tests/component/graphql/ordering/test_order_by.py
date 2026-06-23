@@ -17,7 +17,7 @@ from tests.helpers.graphql import graphql
 @dataclass(frozen=True)
 class OrderByCase:
     name: str
-    order_by: list[str]
+    by: list[dict[str, str]]
     expected_names: list[str]
 
 
@@ -28,8 +28,8 @@ class OrderByErrorCase:
     error_substring: str
 
 
-class TestRootOrderByString:
-    """Root-level GraphQL `order: {order_by: [...]}` against a single dataset."""
+class TestRootOrderBy:
+    """Root-level GraphQL `order: {by: [...]}` against a single dataset."""
 
     @pytest.fixture(scope="class")
     async def dataset(
@@ -49,38 +49,38 @@ class TestRootOrderByString:
     cases = [
         OrderByCase(
             name="attribute-asc",
-            order_by=["name__value__asc"],
+            by=[{"field": "name__value", "direction": "ASC"}],
             expected_names=["aardvark", "koala", "pangolin", "zebra"],
         ),
         OrderByCase(
             name="attribute-desc",
-            order_by=["name__value__desc"],
+            by=[{"field": "name__value", "direction": "DESC"}],
             expected_names=["zebra", "pangolin", "koala", "aardvark"],
         ),
         OrderByCase(
             name="attribute-default-direction",
-            order_by=["name__value"],
+            by=[{"field": "name__value"}],
             expected_names=["aardvark", "koala", "pangolin", "zebra"],
         ),
         OrderByCase(
             name="metadata-created-asc",
-            order_by=["node_metadata__created_at__asc"],
+            by=[{"field": "node_metadata__created_at", "direction": "ASC"}],
             expected_names=["koala", "aardvark", "pangolin", "zebra"],
         ),
         OrderByCase(
             name="metadata-created-desc",
-            order_by=["node_metadata__created_at__desc"],
+            by=[{"field": "node_metadata__created_at", "direction": "DESC"}],
             expected_names=["zebra", "pangolin", "aardvark", "koala"],
         ),
         OrderByCase(
             name="mixed-level-asc-then-name-desc",
-            order_by=["level__value__asc", "name__value__desc"],
+            by=[{"field": "level__value", "direction": "ASC"}, {"field": "name__value", "direction": "DESC"}],
             expected_names=["pangolin", "koala", "zebra", "aardvark"],
         ),
     ]
 
     @pytest.mark.parametrize("case", cases, ids=lambda c: c.name)
-    async def test_order_by_string(
+    async def test_order_by(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -100,7 +100,7 @@ class TestRootOrderByString:
             source=query,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={"order": {"order_by": case.order_by}},
+            variable_values={"order": {"by": case.by}},
         )
 
         assert result.errors is None
@@ -109,31 +109,60 @@ class TestRootOrderByString:
         actual_in_dataset = [n for n in names if n in dataset]
         assert actual_in_dataset == case.expected_names
 
+    async def test_order_by_deprecated_node_metadata(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        dataset: list[str],
+    ) -> None:
+        """The deprecated `node_metadata` form keeps working alongside `by`."""
+        query = """
+        query($order: OrderInput) {
+            TestCriticality(order: $order) {
+                edges { node { name { value } } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"order": {"node_metadata": {"created_at": "DESC"}}},
+        )
+
+        assert result.errors is None
+        assert result.data
+        names = [edge["node"]["name"]["value"] for edge in result.data["TestCriticality"]["edges"]]
+        actual_in_dataset = [n for n in names if n in dataset]
+        assert actual_in_dataset == ["zebra", "pangolin", "aardvark", "koala"]
+
     error_cases = [
         OrderByErrorCase(
             name="unknown-field",
-            order_input={"order_by": ["does_not_exist__value__asc"]},
+            order_input={"by": [{"field": "does_not_exist__value", "direction": "ASC"}]},
             error_substring="attribute 'does_not_exist' not defined on this schema",
         ),
         OrderByErrorCase(
             name="invalid-direction-token",
-            order_input={"order_by": ["name__value__bogus"]},
-            error_substring="Direction must be 'asc' or 'desc'",
+            order_input={"by": [{"field": "name__value", "direction": "bogus"}]},
+            error_substring="OrderDirection",
         ),
         OrderByErrorCase(
             name="missing-property-segment",
-            order_input={"order_by": ["name__asc"]},
-            error_substring="Property segment is missing",
+            order_input={"by": [{"field": "name", "direction": "ASC"}]},
+            error_substring="invalid attribute path",
         ),
         OrderByErrorCase(
             name="both-forms-set",
-            order_input={"node_metadata": {"created_at": "ASC"}, "order_by": ["name__value"]},
-            error_substring="Cannot combine 'node_metadata' and 'order_by'",
+            order_input={"node_metadata": {"created_at": "ASC"}, "by": [{"field": "name__value"}]},
+            error_substring="Cannot combine the deprecated 'node_metadata' and 'by'",
         ),
     ]
 
     @pytest.mark.parametrize("case", error_cases, ids=lambda c: c.name)
-    async def test_order_by_string_validation_errors(
+    async def test_order_by_validation_errors(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -166,8 +195,8 @@ class CarPersonDataset:
     car_names: list[str]
 
 
-class TestManyRelationshipOrderByString:
-    """Many-relationship GraphQL `order: {order_by: [...]}` against a single dataset."""
+class TestManyRelationshipOrderBy:
+    """Many-relationship GraphQL `order: {by: [...]}` against a single dataset."""
 
     @pytest.fixture(scope="class", autouse=True)
     async def _schema(
@@ -222,55 +251,58 @@ class TestManyRelationshipOrderByString:
     cases = [
         OrderByCase(
             name="attribute-asc",
-            order_by=["name__value__asc"],
+            by=[{"field": "name__value", "direction": "ASC"}],
             expected_names=["aardvark-car", "pangolin-car", "zeta-car"],
         ),
         OrderByCase(
             name="attribute-desc",
-            order_by=["name__value__desc"],
+            by=[{"field": "name__value", "direction": "DESC"}],
             expected_names=["zeta-car", "pangolin-car", "aardvark-car"],
         ),
         OrderByCase(
             name="relationship-attribute-asc",
-            order_by=["driver__name__value__asc"],
+            by=[{"field": "driver__name__value", "direction": "ASC"}],
             expected_names=["aardvark-car", "pangolin-car", "zeta-car"],
         ),
         OrderByCase(
             name="relationship-attribute-desc",
-            order_by=["driver__name__value__desc"],
+            by=[{"field": "driver__name__value", "direction": "DESC"}],
             expected_names=["zeta-car", "pangolin-car", "aardvark-car"],
         ),
         OrderByCase(
             name="metadata-created-asc",
-            order_by=["node_metadata__created_at__asc"],
+            by=[{"field": "node_metadata__created_at", "direction": "ASC"}],
             expected_names=["zeta-car", "aardvark-car", "pangolin-car"],
         ),
         OrderByCase(
             name="metadata-created-desc",
-            order_by=["node_metadata__created_at__desc"],
+            by=[{"field": "node_metadata__created_at", "direction": "DESC"}],
             expected_names=["pangolin-car", "aardvark-car", "zeta-car"],
         ),
         OrderByCase(
             # nbr_seats: aardvark=2, zeta=4, pangolin=4; tiebreaker by name asc
             name="combo-nbr_seats-asc-then-name-asc",
-            order_by=["nbr_seats__value__asc", "name__value__asc"],
+            by=[{"field": "nbr_seats__value", "direction": "ASC"}, {"field": "name__value", "direction": "ASC"}],
             expected_names=["aardvark-car", "pangolin-car", "zeta-car"],
         ),
         OrderByCase(
             name="combo-nbr_seats-desc-then-name-desc",
-            order_by=["nbr_seats__value__desc", "name__value__desc"],
+            by=[{"field": "nbr_seats__value", "direction": "DESC"}, {"field": "name__value", "direction": "DESC"}],
             expected_names=["zeta-car", "pangolin-car", "aardvark-car"],
         ),
         OrderByCase(
             # Cross-kind combo: rel-attribute primary, metadata secondary.
             name="combo-driver-name-asc-then-created-desc",
-            order_by=["driver__name__value__asc", "node_metadata__created_at__desc"],
+            by=[
+                {"field": "driver__name__value", "direction": "ASC"},
+                {"field": "node_metadata__created_at", "direction": "DESC"},
+            ],
             expected_names=["aardvark-car", "pangolin-car", "zeta-car"],
         ),
     ]
 
     @pytest.mark.parametrize("case", cases, ids=lambda c: c.name)
-    async def test_order_by_string(
+    async def test_order_by(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -296,7 +328,7 @@ class TestManyRelationshipOrderByString:
             source=query,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={"owner_id": dataset.owner_id, "order": {"order_by": case.order_by}},
+            variable_values={"owner_id": dataset.owner_id, "order": {"by": case.by}},
         )
 
         assert result.errors is None
@@ -306,8 +338,8 @@ class TestManyRelationshipOrderByString:
         assert names == case.expected_names
 
 
-class TestHierarchyOrderByString:
-    """Hierarchical descendants `order: {order_by: [...]}` against a single dataset.
+class TestHierarchyOrderBy:
+    """Hierarchical descendants `order: {by: [...]}` against a single dataset.
 
     The fixture assigns racks alternating `status` values (r1=online, r2=offline) while sites
     keep the default ("online"); combo cases below rely on that to exercise multi-key ordering
@@ -317,38 +349,41 @@ class TestHierarchyOrderByString:
     cases = [
         OrderByCase(
             name="attribute-asc",
-            order_by=["name__value__asc"],
+            by=[{"field": "name__value", "direction": "ASC"}],
             expected_names=["london", "london-r1", "london-r2", "paris", "paris-r1", "paris-r2"],
         ),
         OrderByCase(
             name="attribute-desc",
-            order_by=["name__value__desc"],
+            by=[{"field": "name__value", "direction": "DESC"}],
             expected_names=["paris-r2", "paris-r1", "paris", "london-r2", "london-r1", "london"],
         ),
         OrderByCase(
             name="metadata-created-asc",
-            order_by=["node_metadata__created_at__asc"],
+            by=[{"field": "node_metadata__created_at", "direction": "ASC"}],
             expected_names=["paris", "paris-r1", "paris-r2", "london", "london-r1", "london-r2"],
         ),
         OrderByCase(
             name="metadata-created-desc",
-            order_by=["node_metadata__created_at__desc"],
+            by=[{"field": "node_metadata__created_at", "direction": "DESC"}],
             expected_names=["london-r2", "london-r1", "london", "paris-r2", "paris-r1", "paris"],
         ),
         OrderByCase(
             name="combo-status-asc-then-name-asc",
-            order_by=["status__value__asc", "name__value__asc"],
+            by=[{"field": "status__value", "direction": "ASC"}, {"field": "name__value", "direction": "ASC"}],
             expected_names=["london-r2", "paris-r2", "london", "london-r1", "paris", "paris-r1"],
         ),
         OrderByCase(
             name="combo-status-desc-then-created-asc",
-            order_by=["status__value__desc", "node_metadata__created_at__asc"],
+            by=[
+                {"field": "status__value", "direction": "DESC"},
+                {"field": "node_metadata__created_at", "direction": "ASC"},
+            ],
             expected_names=["paris", "paris-r1", "london", "london-r1", "paris-r2", "london-r2"],
         ),
     ]
 
     @pytest.mark.parametrize("case", cases, ids=lambda c: c.name)
-    async def test_descendants_order_by_string(
+    async def test_descendants_order_by(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -375,7 +410,7 @@ class TestHierarchyOrderByString:
             source=query,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={"region_id": europe.id, "order": {"order_by": case.order_by}},
+            variable_values={"region_id": europe.id, "order": {"by": case.by}},
         )
 
         assert result.errors is None

@@ -18772,8 +18772,8 @@ export type MacAddress = AttributeInterface & {
  * Order input restricted to node metadata fields.
  *
  * Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
- * surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
- * string grammar or a `disable` toggle.
+ * surface is limited to `created_at` / `updated_at` and does not accept the broader `by`
+ * field grammar or a `disable` toggle.
  */
 export type MetadataOrderInput = {
   /** Order settings for branch metadata */
@@ -22877,6 +22877,13 @@ export type ObjectPermissionNode = {
   node: ObjectPermission;
 };
 
+export type OrderByItem = {
+  /** Sort direction (default ASC) */
+  direction?: InputMaybe<OrderDirection>;
+  /** Field to order by: an attribute (`name__value`), a relationship attribute (`owner__name__value`), or node metadata (`node_metadata__created_at`). The field carries no direction suffix; use `direction` for that. */
+  field: Scalars['String']['input'];
+};
+
 /** An enumeration. */
 export const OrderDirection = {
   ASC: 'ASC',
@@ -22885,11 +22892,14 @@ export const OrderDirection = {
 
 export type OrderDirection = typeof OrderDirection[keyof typeof OrderDirection];
 export type OrderInput = {
+  /** Ordered list of fields to order results by. When provided, fully replaces the schema's `order_by`. Cannot be combined with the deprecated `node_metadata` in the same input. */
+  by?: InputMaybe<Array<OrderByItem>>;
   disable?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Order settings for branch metadata */
+  /**
+   * Order settings for node metadata
+   * @deprecated Use `by` with the `node_metadata__created_at` / `node_metadata__updated_at` fields instead.
+   */
   node_metadata?: InputMaybe<InfrahubNodeMetadataOrder>;
-  /** Ordering overrides support attributes (`name__value__desc`), relationship attributes (`owner__name__value`), or node metadata (`node_metadata__created_at__desc`). The trailing `__asc`/`__desc` is optional (default is ascending). When provided, fully replaces the schema's `order_by`. Cannot be combined with `node_metadata` in the same input. */
-  order_by?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 /** IPv4 or IPv6 address */
@@ -23722,7 +23732,7 @@ export type PathTraversalInput = {
   included_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Filter to only traverse through nodes of these kinds */
   kind_filter?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Maximum number of node hops (default: 5, max: 20) */
+  /** Maximum number of node hops (default: 5, max: 30) */
   max_depth?: InputMaybe<Scalars['Int']['input']>;
   /** Maximum number of paths to return (default: 10, max: 100) */
   max_paths?: InputMaybe<Scalars['Int']['input']>;
@@ -37241,7 +37251,7 @@ export type ReachableNodeType = {
 };
 
 export type ReachableNodesInput = {
-  /** Maximum traversal depth (default: 5, max: 20) */
+  /** Maximum traversal depth (default: 5, max: 30) */
   max_depth?: InputMaybe<Scalars['Int']['input']>;
   /** Maximum total paths returned across all discovered terminals (default: 500, max: 5000) */
   max_paths?: InputMaybe<Scalars['Int']['input']>;
