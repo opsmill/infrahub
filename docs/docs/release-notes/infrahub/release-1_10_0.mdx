@@ -138,7 +138,7 @@ jinja2_transforms:
         - "templates/macros/common.j2"
 ```
 
-The rollout is self-healing: transforms imported before the upgrade keep working unchanged and conservatively regenerate on any file change in their repository until their next import, after which they switch to the precise behavior automatically - no manual migration. Read-only repositories now participate fully even when `sync_with_git` is `False`.
+The rollout is self-healing: Transformations imported before the upgrade keep working unchanged and conservatively regenerate on any file change in their repository until their next import, after which they switch to the precise behavior automatically - no manual migration. Read-only repositories now participate fully even when `sync_with_git` is `False`.
 
 ### Faster, more reliable branch merges
 
@@ -148,7 +148,7 @@ The merge of a branch or Proposed Change has been reworked along three axes:
 - **Stability** - removing the step-by-step in-memory serialization eliminates a class of failure modes that could leave an instance in a hard-to-recover state. A specific correctness fix: the merge can now correctly delete an object whose kind or inheritance was changed on the default branch after the merging branch forked.
 - **Failure handling** - `infrahub upgrade` no longer overwrites the status of branches in a terminal state (`MERGED`, `DELETING`), so they no longer reappear as `NEED_UPGRADE_REBASE` after an upgrade.
 
-Generator dispatch within a Proposed Change is also more precise: a generator instance is now only re-run when the diff touches a field its GraphQL query actually reads, rather than for every instance that merely shares a relationship target with a changed node.
+Generator dispatch within a Proposed Change is also more precise: a Generator instance is now only re-run when the diff touches a field its GraphQL query actually reads, rather than for every instance that merely shares a relationship target with a changed node.
 
 ### Reworked database migration experience
 
@@ -158,8 +158,8 @@ Database migrations - run on upgrade via `infrahub db migrate` - are now far mor
 
 Two structural improvements make the web UI faster and more predictable:
 
-- **Path-based tab navigation** - tabs on the Profile, Branch details, Proposed change, and Object details pages are now in the URL path (`/profile/tokens`, `/branches/foo/data`, `/proposed-changes/abc/checks`, `/objects/CoreTag/abc/members`) instead of a `?tab=` query parameter. Each tab is deep-linkable and bookmarkable, browser back/forward moves between tabs as distinct history entries, and each tab's content is lazy-loaded. Old `?tab=` bookmarks still load the page but land on its default tab - re-bookmark from the new URL.
-- **Unified data-fetching layer** - the UI now uses a single library (TanStack Query) for all GraphQL access, where it previously mixed two with caching disabled. Lists, detail pages, and forms share one caching layer, so returning to a page you just visited reuses the data instead of refetching, and the JavaScript bundle is smaller. No user action is required and there are no URL changes.
+- **Path-based tab navigation** - tabs on the Profile, Branch details, Proposed change, and Object details pages are now in the URL path (`/profile/tokens`, `/branches/foo/data`, `/proposed-changes/abc/checks`, `/objects/CoreTag/abc/members`) instead of a `?tab=` query parameter. Each tab is deep-linkable and can be bookmarked, browser back/forward moves between tabs as distinct history entries, and each tab's content is lazy-loaded. Old `?tab=` bookmarks still load the page but land on its default tab - re-bookmark from the new URL.
+- **Unified data-fetching layer** - the UI now uses a single library (TanStack Query) for all GraphQL access, where it previously mixed two with caching disabled. Lists, detail pages, and forms share one caching layer, so returning to a page you just visited reuses the data instead of fetching it again, and the JavaScript bundle is smaller. No user action is required and there are no URL changes.
 
 The account token list page was also redesigned for a cleaner, more readable layout.
 
@@ -183,7 +183,7 @@ Infrahub AI Skills give an AI assistant built-in Infrahub expertise, so a team c
 
 - **A full set of skills** — build and manage schemas, objects, checks, generators, transforms, and menus; analyze a live instance; audit a repository; and import data, each driven from natural language.
 - **Branch-first by default** — every data change opens on a branch, so AI-assisted work follows the same review flow as any other change.
-- **More efficient generators** — a generator can build related objects from a single query response instead of one request per object.
+- **More efficient generators** — a Generator can build related objects from a single query response instead of one request per object.
 - **Operational support** — a diagnostics skill collects a redacted support bundle, and a `reporting-issues` skill files sanitized bug reports and feature requests in the right repository.
 - **`CoreFileObject` support** — work with file-bearing nodes.
 
@@ -191,7 +191,7 @@ A documentation site covers installation and each skill. [Release notes](https:/
 
 ### Infrahub MCP server
 
-The Infrahub MCP server lets AI assistants and LLMs (Claude Desktop/Code, Cursor, custom agents) work with Infrahub over the Model Context Protocol, and it is now ready to run in production as a shared service.
+The Infrahub MCP server lets AI assistants and a LLM (Claude Desktop/Code, Cursor, custom agents) work with Infrahub over the Model Context Protocol, and it is now ready to run in production as a shared service.
 
 - **Query and change data** — query Infrahub data and open Proposed Changes for review from any MCP-compatible client.
 - **Self-correcting queries** — error responses include schema hints, so an agent can fix an invalid query and retry instead of failing.
@@ -388,7 +388,7 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
 ### Changed
 
 - **Breaking:** GraphQL error responses now carry a stable string code in `extensions.code` (e.g. `"NODE_NOT_FOUND"`, `"AUTHENTICATION_REQUIRED"`) and a typed `extensions.data` payload, plus a new integer `extensions.http_status`. Previously `extensions.code` was an integer mirroring the HTTP status. Consumers reading the integer code (most commonly on the `/graphql` auth-short-circuit path) must migrate to switching on the string code; numeric checks now read `extensions.http_status`. REST `/api/...` responses are unchanged.
-- HFID attribute values are now indexed in Neo4j for faster lookups. A migration normalizes existing HFID values to consistent all-string format and adds database indexes. The HFID lookup query has been simplified to match directly on the stored value instead of reconstructing per-field filters.
+- HFID attribute values are now indexed in Neo4j for faster lookup. A migration normalizes existing HFID values to consistent all-string format and adds database indexes. The HFID lookup query has been simplified to match directly on the stored value instead of reconstructing per-field filters.
 - Improve merge performance by moving the logic to the database level
 - Improved design of the account token list page
 - Prefect task read queries optimized to fetch only required fields. `client.all()` and `client.filters()` calls replaced with targeted `execute_graphql()` queries in `display_labels`, `hfid`, `computed_attribute`, `git`, and `generators` tasks, significantly reducing data transfer per workflow execution.
@@ -415,8 +415,8 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
   - `CoreAction`
   - `CoreNodeTriggerMatch`
 - Tab navigation on detail pages (Profile, Branch details, Proposed change, Object details) now uses URL path segments (`/profile/tokens`, `/branches/foo/data`, `/proposed-changes/abc/checks`, `/objects/CoreTag/abc/members`) instead of `?tab=` query parameters. Browser back/forward navigates between tabs as distinct history entries, and each tab's content is lazy-loaded per route. Bookmarks to old `?tab=` URLs render the default tab.
-- The web UI's data-fetching layer has been unified on TanStack Query. Previously the frontend mixed two libraries (Apollo and TanStack) for talking to the GraphQL API, with caching disabled globally. Lists, detail pages and forms now share a single caching layer, so navigating back to a page you just visited reuses the data instead of refetching it, and the JavaScript bundle is smaller. No user action is required and there are no URL changes from this update.
-- When a proposed change includes commits to a linked repository, Infrahub now regenerates only the artifacts whose transform source, GraphQL query, or artifact definition was actually affected by the change, instead of regenerating every artifact in the repository. Each regeneration decision is recorded in the proposed change's task log, naming the file, query, or definition field that triggered it. Transforms imported before this change keep working unchanged and adopt the precise behavior automatically on their next import; until then they conservatively regenerate on any file change in their repository.
+- The data-fetching layer in the UI has been unified on TanStack Query. Previously the frontend mixed two libraries (Apollo and TanStack) for talking to the GraphQL API, with caching disabled globally. Lists, detail pages and forms now share a single caching layer, so navigating back to a page you just visited reuses the data instead of it again, and the JavaScript bundle is smaller. No user action is required and there are no URL changes from this update.
+- When a proposed change includes commits to a linked repository, Infrahub now regenerates only the artifacts whose transform source, GraphQL query, or artifact definition was actually affected by the change, instead of regenerating every artifact in the repository. Each regeneration decision is recorded in the proposed change's task log, naming the file, query, or definition field that triggered it. Transformations imported before this change keep working unchanged and adopt the precise behavior automatically on their next import; until then they conservatively regenerate on any file change in their repository.
 
   For dependencies Infrahub cannot detect automatically, such as templates pulled in dynamically or helper modules imported at runtime, you can declare extra files with a new optional `watch:` key on `jinja2_transforms` and `python_transforms` entries in `.infrahub.yml`. Changes to a declared file or directory then trigger regeneration of that transform's artifacts.
 
@@ -428,7 +428,7 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
 - Stop object-type conversion of agnostic nodes with aware attributes from re-opening merged or deleting branches. The "needs rebase" status now only applies to non-terminal branches. ([#9103](https://github.com/opsmill/infrahub/issues/9103))
 - Prevent duplicated Node, Generic, Attribute, and Relationship schemas from being created in the case of a worker's in-memory schema cache being stale while updating schemas. ([#9250](https://github.com/opsmill/infrahub/issues/9250))
 - Fix a bug in the merge logic that prevented the merge operation from deleting an object that had its kind or inheritance updated on the default branch after the branch being merged forked. ([#9283](https://github.com/opsmill/infrahub/issues/9283))
-- Within a proposed change, generator instances are now only re-run when the diff touches a field that the generator's GraphQL query actually reads. Previously a generator was dispatched for every instance sharing a relationship target with a changed node, even when the change touched no field the query depended on. ([#9378](https://github.com/opsmill/infrahub/issues/9378))
+- Within a proposed change, Generator instances are now only re-run when the diff touches a field that the Generator's GraphQL query actually reads. Previously a Generator was dispatched for every instance sharing a relationship target with a changed node, even when the change touched no field the query depended on. ([#9378](https://github.com/opsmill/infrahub/issues/9378))
 - Fix the "Resource Pool" tab on the IP prefix detail view so that it now lists both `CoreIPPrefixPool` and `CoreIPAddressPool` pools that have the prefix as a resource. A new `CoreIPPool` generic groups the two pool types and the `BuiltinIPPrefix.resource_pool` relationship now points at it. A database migration retroactively consolidates the IP pool ↔ IP prefix relationships.
 
   **Breaking change for GraphQL clients.** Because `BuiltinIPPrefix.resource_pool` now returns the abstract `CoreIPPool` generic (instead of the concrete `CoreIPAddressPool`), any existing GraphQL queries that selected fields directly under `resource_pool` will need to be updated to use inline fragments for fields that are specific to `CoreIPAddressPool` or `CoreIPPrefixPool`. For example:
