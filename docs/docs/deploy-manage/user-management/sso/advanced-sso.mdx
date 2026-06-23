@@ -110,9 +110,6 @@ The default group is assigned only on a user's **first** login, when their accou
 
 On every SSO login, each provider-supplied claim is matched against the configured filter. The first matching pattern derives an **effective name** — either from a `(?P<name>...)` named capture group or, when the pattern has no named capture, from the full matched claim. Infrahub then finds-or-creates a `CoreAccountGroup` with that name and adds the logging-in account as a member. A claim that does not match the filter is ignored.
 
-<Tabs groupId="config-method" queryString>
-<TabItem value="environment-variables" default>
-
 #### Configure the filter
 
 <Tabs groupId="config-method" queryString>
