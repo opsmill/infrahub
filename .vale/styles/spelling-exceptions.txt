@@ -262,6 +262,7 @@ walkthroughs
 whitespace
 widget's
 Widget's
+worktree
 worktrees
 Yaml
 YAML
