@@ -64,3 +64,9 @@ class RedisCache(InfrahubCache):
 
     async def close_connection(self) -> None:
         await self.connection.aclose()
+
+    async def is_healthy(self) -> bool:
+        try:
+            return await self.connection.ping()
+        except Exception:
+            return False

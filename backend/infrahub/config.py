@@ -546,6 +546,13 @@ class GitSettings(BaseSettings):
         return self
 
 
+class HealthSettings(BaseSettings):
+    """Settings for the health check endpoint."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_HEALTH_")
+    check_timeout: int = Field(default=3, ge=1, description="Per-dependency health check timeout in seconds")
+
+
 class HTTPSettings(BaseSettings):
     """The HTTP settings control how Infrahub interacts with external HTTP servers. This can be things like webhooks and OAuth2 providers."""
 
@@ -1543,6 +1550,10 @@ class ConfiguredSettings:
         return self.active_settings.git
 
     @property
+    def health(self) -> HealthSettings:
+        return self.active_settings.health
+
+    @property
     def http(self) -> HTTPSettings:
         return self.active_settings.http
 
@@ -1619,6 +1630,7 @@ class Settings(BaseSettings):
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
     dev: DevelopmentSettings = DevelopmentSettings()
+    health: HealthSettings = HealthSettings()
     http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()

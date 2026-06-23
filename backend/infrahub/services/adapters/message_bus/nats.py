@@ -81,6 +81,12 @@ class NATSMessageBus(InfrahubMessageBus):
     async def shutdown(self) -> None:
         await self.connection.drain()
 
+    async def is_healthy(self) -> bool:
+        try:
+            return self.connection.is_connected
+        except Exception:
+            return False
+
     async def on_callback(self, message: nats.aio.msg.Msg) -> None:
         if is_instrumentation_enabled() and message.headers:
             ctx = propagate.extract(message.headers)

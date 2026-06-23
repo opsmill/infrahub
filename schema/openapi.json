@@ -614,6 +614,34 @@
                 }
             }
         },
+        "/api/health": {
+            "get": {
+                "summary": "Health",
+                "operationId": "health_api_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/config": {
             "get": {
                 "summary": "Get Config",
@@ -4568,6 +4596,45 @@
                 ],
                 "title": "ConfigAPI"
             },
+            "DependencyHealth": {
+                "properties": {
+                    "name": {
+                        "$ref": "#/components/schemas/DependencyName"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/DependencyStatus"
+                    },
+                    "error": {
+                        "$ref": "#/components/schemas/ErrorCategory",
+                        "default": "none"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "status"
+                ],
+                "title": "DependencyHealth"
+            },
+            "DependencyName": {
+                "type": "string",
+                "enum": [
+                    "database",
+                    "message_bus",
+                    "cache",
+                    "task_manager",
+                    "task_manager_db"
+                ],
+                "title": "DependencyName"
+            },
+            "DependencyStatus": {
+                "type": "string",
+                "enum": [
+                    "up",
+                    "down"
+                ],
+                "title": "DependencyStatus"
+            },
             "DiffAction": {
                 "type": "string",
                 "enum": [
@@ -4668,6 +4735,18 @@
                     "feature"
                 ],
                 "title": "EnterpriseRequiredResponse"
+            },
+            "ErrorCategory": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "timeout",
+                    "connection_refused",
+                    "connection_closed",
+                    "not_initialized",
+                    "unknown_error"
+                ],
+                "title": "ErrorCategory"
             },
             "ExperimentalFeaturesSettings": {
                 "properties": {
@@ -5043,6 +5122,32 @@
                     "absent"
                 ],
                 "title": "HashableModelState"
+            },
+            "HealthResponse": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/OverallStatus"
+                    },
+                    "checks": {
+                        "items": {
+                            "$ref": "#/components/schemas/DependencyHealth"
+                        },
+                        "type": "array",
+                        "title": "Checks"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "checks",
+                    "timestamp"
+                ],
+                "title": "HealthResponse"
             },
             "InfoAPI": {
                 "properties": {
@@ -5995,6 +6100,14 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "NumberPoolParameters"
+            },
+            "OverallStatus": {
+                "type": "string",
+                "enum": [
+                    "healthy",
+                    "unhealthy"
+                ],
+                "title": "OverallStatus"
             },
             "PasswordCredential": {
                 "properties": {

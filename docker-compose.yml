@@ -81,6 +81,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_GIT_USER_EMAIL: ${INFRAHUB_GIT_USER_EMAIL:-infrahub@opsmill.com}
   INFRAHUB_GIT_USER_NAME: ${INFRAHUB_GIT_USER_NAME:-Infrahub}
   INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT: ${INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT:-false}
+  INFRAHUB_HEALTH_CHECK_TIMEOUT: ${INFRAHUB_HEALTH_CHECK_TIMEOUT:-3}
   INFRAHUB_HTTP_TIMEOUT: ${INFRAHUB_HTTP_TIMEOUT:-10}
   INFRAHUB_HTTP_TLS_CA_BUNDLE:
   INFRAHUB_HTTP_TLS_INSECURE: ${INFRAHUB_HTTP_TLS_INSECURE:-false}
@@ -290,6 +291,8 @@ services:
       cache:
         condition: service_healthy
       task-manager:
+        condition: service_healthy
+      task-manager-db:
         condition: service_healthy
     environment:
       <<: [*infrahub_config, *infrahub_sso]

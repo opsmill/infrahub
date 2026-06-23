@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, overload
 
+from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
@@ -82,6 +83,14 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
             raise RuntimeError(response.state.message)
 
         return await response.state.result(raise_on_failure=True)
+
+    async def is_healthy(self) -> bool:
+        try:
+            async with get_client(sync_client=False) as client:
+                await client.read_work_pools()
+            return True
+        except Exception:
+            return False
 
     async def submit_workflow(
         self,

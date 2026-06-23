@@ -34,10 +34,12 @@ from infrahub.workers.dependencies import (
     build_client,
     build_database,
     build_message_bus,
+    build_task_manager_db_probe,
     build_workflow,
     clear_singletons,
 )
 from tests.adapters.cache import MemoryCache
+from tests.adapters.health import HealthyProbe
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
@@ -152,7 +154,12 @@ class TestInfrahubAppBase(TestInfrahub):
         # rebuilds them against the current db_class.
         clear_singletons()
 
-        with dependency_provider.scope(build_database, _db):
+        # The test stack has no Postgres backing store, so override the task-manager DB probe
+        # with a healthy stub; the real probe is covered by unit tests.
+        with (
+            dependency_provider.scope(build_database, _db),
+            dependency_provider.scope(build_task_manager_db_probe, lambda: HealthyProbe().is_healthy),
+        ):
             try:
                 async with lifespan(app):
                     yield InfrahubTestClient(app=app, base_url="http://testserver")

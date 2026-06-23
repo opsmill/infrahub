@@ -78,3 +78,10 @@ class InfrahubMessageBus(ABC):
             message.meta.correlation_id = initiator.meta.correlation_id
             routing_key = initiator.meta.reply_to or ""
             await self.reply(message, routing_key=routing_key)
+
+    async def is_healthy(self) -> bool:
+        """Check if the message bus service is reachable.
+
+        Default implementation returns False. Concrete adapters should override.
+        """
+        return False

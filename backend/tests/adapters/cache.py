@@ -26,3 +26,6 @@ class MemoryCache(InfrahubCache):
         return True
 
     async def close_connection(self) -> None: ...
+
+    async def is_healthy(self) -> bool:
+        return True

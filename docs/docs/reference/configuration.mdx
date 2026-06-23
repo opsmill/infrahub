@@ -72,6 +72,14 @@ The development settings are only relevant for local development.
 | `INFRAHUB_DEV_ALLOW_ENTERPRISE_CONFIGURATION` | Allow enterprise configuration in development mode, this will not enable the features just allow the configuration. | boolean | False |
 | `INFRAHUB_DEV_GIT_CREDENTIAL_HELPER` | Location of git credential helper | string | infrahub-git-credential |
 
+## Health
+
+Settings for the health check endpoint.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_HEALTH_CHECK_TIMEOUT` | Per-dependency health check timeout in seconds | integer | 3 |
+
 ## Http
 
 The HTTP settings control how Infrahub interacts with external HTTP servers. This can be things like webhooks and OAuth2 providers.

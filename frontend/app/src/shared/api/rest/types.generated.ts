@@ -164,6 +164,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health */
+        get: operations["health_api_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/config": {
         parameters: {
             query?: never;
@@ -1445,6 +1462,23 @@ export interface components {
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
         };
+        /** DependencyHealth */
+        DependencyHealth: {
+            name: components["schemas"]["DependencyName"];
+            status: components["schemas"]["DependencyStatus"];
+            /** @default none */
+            error: components["schemas"]["ErrorCategory"];
+        };
+        /**
+         * DependencyName
+         * @enum {string}
+         */
+        DependencyName: "database" | "message_bus" | "cache" | "task_manager" | "task_manager_db";
+        /**
+         * DependencyStatus
+         * @enum {string}
+         */
+        DependencyStatus: "up" | "down";
         /**
          * DiffAction
          * @enum {string}
@@ -1477,6 +1511,11 @@ export interface components {
             /** Message */
             message?: string | null;
         };
+        /**
+         * ErrorCategory
+         * @enum {string}
+         */
+        ErrorCategory: "none" | "timeout" | "connection_refused" | "connection_closed" | "not_initialized" | "unknown_error";
         /** ExperimentalFeaturesSettings */
         ExperimentalFeaturesSettings: {
             /**
@@ -1639,6 +1678,17 @@ export interface components {
          * @enum {string}
          */
         HashableModelState: "present" | "absent";
+        /** HealthResponse */
+        HealthResponse: {
+            status: components["schemas"]["OverallStatus"];
+            /** Checks */
+            checks: components["schemas"]["DependencyHealth"][];
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+        };
         /** InfoAPI */
         InfoAPI: {
             /** Deployment Id */
@@ -2101,6 +2151,11 @@ export interface components {
              */
             number_pool_id?: string | null;
         };
+        /**
+         * OverallStatus
+         * @enum {string}
+         */
+        OverallStatus: "healthy" | "unhealthy";
         /** PasswordCredential */
         PasswordCredential: {
             /**
@@ -2910,6 +2965,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_api_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
                 };
             };
         };

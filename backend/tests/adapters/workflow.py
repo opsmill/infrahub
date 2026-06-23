@@ -19,6 +19,9 @@ class WorkflowRecorder(InfrahubWorkflow):
         self.execute_calls: list[dict[str, Any]] = []
         self.submit_calls: list[dict[str, Any]] = []
 
+    async def is_healthy(self) -> bool:
+        return True
+
     async def execute_workflow(
         self,
         workflow: WorkflowDefinition,
