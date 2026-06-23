@@ -58,7 +58,7 @@ When a user signs in through SSO, Infrahub maps the group claims your identity p
 Group memberships derived from provider claims are evaluated on **every** login and are **additive**: each login adds the user to the groups their claims map to. Infrahub never removes a user from a group based on claims — if a group is dropped from the provider, that removal is **not** synced automatically. If an administrator removes a user from a group that still appears in provider claims, the user is added back on the next login. Revoking group membership permanently requires updating provider claims and removing membership in Infrahub.
 All three rely on your identity provider sending group information in the first place. Configure that first, then pick an approach. [How Infrahub resolves membership](#how-infrahub-resolves-membership) explains how the approaches interact on each login.
 
-The [default group](#step-3-configure-default-group-assignment-optional) is the one exception: it is applied only on a user's first login, not on every login.
+The [default group](#set-a-default-group) is the one exception: it is applied only on a user's first login, not on every login.
 :::
 
 ### Send group claims from your identity provider
