@@ -1,1 +1,0 @@
-Concurrent imports of the same repository no longer race to create the same object and fail on a name uniqueness constraint, which could leave the repository out of sync. The graph-changing phase of a repository import is now serialized under the repository lock.

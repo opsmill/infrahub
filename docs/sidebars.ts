@@ -641,6 +641,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 { type: 'doc', id: 'release-notes/infrahub/docs-restructure', label: 'Documentation restructure' },
+                'release-notes/infrahub/release-1_9_9',
                 'release-notes/infrahub/release-1_9_8',
                 'release-notes/infrahub/release-1_9_7',
                 'release-notes/infrahub/release-1_9_6',
