@@ -20,6 +20,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
@@ -291,7 +292,7 @@ async def local_services(db: InfrahubDatabase, dependency_provider: Provider) ->
         dependency_provider.scope(build_message_bus, lambda: message_bus),
         dependency_provider.scope(build_workflow, lambda: workflow),
     ):
-        yield await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow)
+        yield await InfrahubServices.new(message_bus=message_bus, database=db, workflow=workflow, cache=MemoryCache())
 
 
 async def test_branch_delete(

@@ -238,6 +238,68 @@
         "type": "object"
       }
     },
+    "BRANCH_ALREADY_MERGED": {
+      "description": "The target branch has been merged and is permanently read-only.",
+      "stability": "stable",
+      "http_status": 400,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "branch_name": {
+            "title": "Branch Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_name"
+        ],
+        "title": "BranchAlreadyMergedData",
+        "type": "object"
+      }
+    },
+    "BRANCH_NEEDS_REBASE": {
+      "description": "The target branch must be rebased before it accepts new changes.",
+      "stability": "stable",
+      "http_status": 400,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "branch_name": {
+            "title": "Branch Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_name"
+        ],
+        "title": "BranchNeedsRebaseData",
+        "type": "object"
+      }
+    },
+    "MERGE_IN_PROGRESS": {
+      "description": "The write was rejected because a branch merge is in progress. The block is transient; retry once the merge completes.",
+      "stability": "evolving",
+      "http_status": 423,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "branch_name": {
+            "title": "Branch Name",
+            "type": "string"
+          },
+          "merging_branch": {
+            "title": "Merging Branch",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_name",
+          "merging_branch"
+        ],
+        "title": "MergeInProgressData",
+        "type": "object"
+      }
+    },
     "UNDEFINED_ERROR": {
       "description": "An error not yet covered by the catalogue. Its occurrence indicates a catalogue gap and should be triaged.",
       "stability": "stable",

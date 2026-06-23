@@ -10,7 +10,7 @@ from .shared import (
     PYTHON_PRIMITIVE_MAP,
     execute_command,
 )
-from .utils import ESCAPED_REPO_PATH
+from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 MAIN_DIRECTORY = "backend"
 NAMESPACE = "BACKEND"
@@ -334,7 +334,7 @@ def export_error_catalogue(context: Context, output: str = "schema/error-catalog
 
     destination = Path(output)
     if not destination.is_absolute():
-        destination = Path(ESCAPED_REPO_PATH) / destination
+        destination = REPO_BASE / destination
 
     written = write_catalogue(destination)
     print(f" - [{NAMESPACE}] Wrote error catalogue to {written}")
