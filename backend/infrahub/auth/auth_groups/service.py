@@ -27,7 +27,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.create import create_node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import UniquenessViolationError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -166,7 +166,8 @@ class AutoCreatedGroupsService:
         group that won.
 
         Raises:
-            ValidationError: when creation fails and no reusable group can be found afterwards.
+            UniquenessViolationError: when the create races and no reusable group can be found afterwards.
+            ValidationError: when creation fails for any other reason; such errors are not treated as a race.
 
         """
         existing = await self._lookup_by_name(name)
@@ -181,7 +182,7 @@ class AutoCreatedGroupsService:
                 branch=branch,
                 schema=CoreAccountGroup,
             )
-        except ValidationError:
+        except UniquenessViolationError:
             existing = await self._lookup_by_name(name)
             if existing is None:
                 raise
