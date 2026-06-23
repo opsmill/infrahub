@@ -18,6 +18,7 @@ import {
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
+import { MAX_TRAVERSAL_DEPTH } from "../../domain/path-traversal.constants";
 import { ObjectPicker } from "../object-picker";
 import { isVisibleNamespace } from "../utils";
 import type { PathModeFormValues } from "./use-path-mode-params";
@@ -90,7 +91,10 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                   rules={{
                     required: "Max depth is required",
                     min: { value: 1, message: "Must be ≥ 1" },
-                    max: { value: 20, message: "Must be ≤ 20" },
+                    max: {
+                      value: MAX_TRAVERSAL_DEPTH,
+                      message: `Must be ≤ ${MAX_TRAVERSAL_DEPTH}`,
+                    },
                   }}
                   render={({ field }) => (
                     <>
@@ -99,7 +103,7 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                         <Input
                           type="number"
                           min={1}
-                          max={20}
+                          max={MAX_TRAVERSAL_DEPTH}
                           value={(field.value as number) ?? ""}
                           onChange={(e) => {
                             const value = e.target.valueAsNumber;

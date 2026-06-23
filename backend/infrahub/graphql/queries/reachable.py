@@ -48,7 +48,7 @@ class ReachableNodesResultType(ObjectType):
 class ReachableNodesInput(InputObjectType):
     source_id = String(required=True, description="UUID of the source node")
     target_kinds = List(of_type=NonNull(String), required=True, description="Node kinds to search for")
-    max_depth = Int(required=False, default_value=5, description="Maximum traversal depth (default: 5, max: 20)")
+    max_depth = Int(required=False, default_value=5, description="Maximum traversal depth (default: 5, max: 30)")
     max_results = Int(
         required=False,
         default_value=50,
@@ -130,7 +130,7 @@ async def reachable_nodes_resolver(
                 branch=graphql_context.branch,
                 default_branch_name=registry.default_branch,
             ),
-            timeout_seconds=config.SETTINGS.database.graph_traversal_query_timeout,
+            timeout_seconds=config.SETTINGS.database.reachable_nodes_query_timeout,
         )
         try:
             reachable_data = await executor.run(
@@ -146,7 +146,7 @@ async def reachable_nodes_resolver(
         except QueryTimeoutError as exc:
             raise GraphQLError(
                 "Reachable-nodes traversal exceeded its time budget. Reduce max_depth, lower "
-                "max_results/max_paths, or add excluded_kinds/excluded_namespaces filters to narrow the search."
+                "max_results/max_paths, or narrow target_kinds to reduce the search space."
             ) from exc
 
     all_ids: set[str] = {source_id}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -160,6 +161,25 @@ class TransformPythonInformation(BaseModel):
     dependencies_complete: bool = False
 
 
+@dataclass
+class ObjectImportPlan:
+    """The desired state of a branch's objects, built by reading the pinned commit worktree.
+
+    Holds no graph state, only what was read from disk, so it can be built without serialization and
+    then applied to the graph under the repository lock.
+    """
+
+    infrahub_branch_name: str
+    commit: str
+    config_file: InfrahubRepositoryConfig
+    query_strings: dict[str, str]
+    transform_definitions: list[TransformPythonInformation]
+    jinja2_definitions: dict[str, InfrahubRepositoryJinja2]
+    check_definitions: list[CheckDefinitionInformation]
+    generator_definitions: list[InfrahubGeneratorDefinitionConfig]
+    artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
+
+
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
 
@@ -211,6 +231,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_objects_from_files(
         self, infrahub_branch_name: str, git_branch_name: str | None = None, commit: str | None = None
     ) -> None:
+        plan = await self.build_import_plan(
+            infrahub_branch_name=infrahub_branch_name, git_branch_name=git_branch_name, commit=commit
+        )
+        await self.apply_import_plan(plan)
+
+    async def build_import_plan(
+        self, infrahub_branch_name: str, git_branch_name: str | None = None, commit: str | None = None
+    ) -> ObjectImportPlan:
+        """Build the desired state of a branch's objects by reading the pinned commit worktree.
+
+        Performs no graph mutation other than recording that a sync is in progress, so the expensive
+        worktree reads and module imports do not need to be serialized against concurrent imports.
+        """
         if not commit:
             commit = self.get_commit_value(branch_name=git_branch_name or infrahub_branch_name)
 
@@ -219,47 +252,88 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self.create_commit_worktree(commit)
         await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
 
+        try:
+            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
+            query_strings = await self._build_graphql_query_definitions(commit=commit, config_file=config_file)
+            transform_definitions = await self._build_python_transform_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
+            jinja2_definitions = await self._build_jinja2_transform_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
+            check_definitions = await self._build_python_check_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
+            generator_definitions = await self._build_generator_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
+            artifact_definitions = await self._build_artifact_definitions(
+                branch_name=infrahub_branch_name, config_file=config_file
+            )
+        except Exception:
+            await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.ERROR_IMPORT)
+            raise
+
+        return ObjectImportPlan(
+            infrahub_branch_name=infrahub_branch_name,
+            commit=commit,
+            config_file=config_file,
+            query_strings=query_strings,
+            transform_definitions=transform_definitions,
+            jinja2_definitions=jinja2_definitions,
+            check_definitions=check_definitions,
+            generator_definitions=generator_definitions,
+            artifact_definitions=artifact_definitions,
+        )
+
+    async def apply_import_plan(self, plan: ObjectImportPlan) -> None:
+        """Apply a previously built plan to the graph: schema, queries, transforms, objects, definitions.
+
+        Performs every graph mutation of the import, so it must run serialized against any concurrent
+        import of the same repository.
+        """
         sync_status = RepositorySyncStatus.IN_SYNC
         error: Exception | None = None
 
         try:
-            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
-            await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
-            if config_file.schemas:
-                await self.sdk.schema.all(branch=infrahub_branch_name, refresh=True)
-            await self.import_all_graphql_query(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            await self.import_schema_files(
+                branch_name=plan.infrahub_branch_name, commit=plan.commit, config_file=plan.config_file
             )  # type: ignore[call-overload]
+            if plan.config_file.schemas:
+                await self.sdk.schema.all(branch=plan.infrahub_branch_name, refresh=True)
+            await self._apply_graphql_query_definitions(
+                branch_name=plan.infrahub_branch_name, local_queries=plan.query_strings
+            )
             # Transforms must be registered before objects so that an object referencing a transform
             # defined in the same repository resolves during import.
-            await self.import_python_transforms(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
-            await self.import_jinja2_transforms(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
+            await self._apply_python_transform_definitions(
+                branch_name=plan.infrahub_branch_name, definitions=plan.transform_definitions
+            )
+            await self._apply_jinja2_transform_definitions(
+                branch_name=plan.infrahub_branch_name, local_transforms=plan.jinja2_definitions
+            )
             await self.import_objects(
-                branch_name=infrahub_branch_name,
-                commit=commit,
-                config_file=config_file,
+                branch_name=plan.infrahub_branch_name,
+                commit=plan.commit,
+                config_file=plan.config_file,
             )  # type: ignore[call-overload]
             # Checks, generators and artifact definitions are imported after objects because their
             # targets reference groups that are defined as objects in the repository.
-            await self.import_python_check_definitions(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
-            await self.import_generator_definitions(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
-            await self.import_artifact_definitions(
-                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-            )  # type: ignore[call-overload]
+            await self._apply_python_check_definitions(
+                branch_name=plan.infrahub_branch_name, definitions=plan.check_definitions
+            )
+            await self._apply_generator_definitions(
+                branch_name=plan.infrahub_branch_name, definitions=plan.generator_definitions
+            )
+            await self._apply_artifact_definitions(
+                branch_name=plan.infrahub_branch_name, local_artifact_defs=plan.artifact_definitions
+            )
 
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
             error = exc
 
-        await self._update_sync_status(branch_name=infrahub_branch_name, status=sync_status)
+        await self._update_sync_status(branch_name=plan.infrahub_branch_name, status=sync_status)
 
         if error:
             raise error
@@ -267,12 +341,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if self.reinitialized:
             return
 
-        infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
+        infrahub_branch = registry.get_branch_from_registry(branch=plan.infrahub_branch_name)
         event_context = InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             CommitUpdatedEvent(
-                commit=commit,
+                commit=plan.commit,
                 repository_name=self.name,
                 repository_id=str(self.id),
                 meta=EventMeta(branch=infrahub_branch, context=event_context),
@@ -286,17 +360,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         commit: str,
         config_file: InfrahubRepositoryConfig,
     ) -> None:
+        local_transforms = await self._build_jinja2_transform_definitions(
+            branch_name=branch_name, commit=commit, config_file=config_file
+        )
+        await self._apply_jinja2_transform_definitions(branch_name=branch_name, local_transforms=local_transforms)
+
+    async def _build_jinja2_transform_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> dict[str, InfrahubRepositoryJinja2]:
+        """Build the desired Jinja2 transform definitions from the repository config.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+        """
         log = get_run_logger()
 
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
         worktree = self.get_worktree(identifier=commit or branch_name)
-
-        transforms_in_graph = {
-            transform.name.value: transform
-            for transform in await self.sdk.filters(
-                kind=CoreTransformJinja2, branch=branch_name, repository__ids=[str(self.id)]
-            )
-        }
 
         local_transforms: dict[str, InfrahubRepositoryJinja2] = {}
 
@@ -330,14 +409,33 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 dependencies_complete=closure.complete,
                 **config_transform.model_dump(),
             )
+            local_transforms[transform.name] = transform
 
-            # Query the GraphQL query and (eventually) replace the name with the ID
+        return local_transforms
+
+    async def _apply_jinja2_transform_definitions(
+        self, branch_name: str, local_transforms: dict[str, InfrahubRepositoryJinja2]
+    ) -> None:
+        """Reconcile the desired Jinja2 transform definitions against the graph: create, update, delete.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        # Resolve each query reference to its node id now that the queries have been applied.
+        for transform in local_transforms.values():
             graphql_query = await self.sdk.get(
                 kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
             )
             transform.query = graphql_query.id
 
-            local_transforms[transform.name] = transform
+        transforms_in_graph = {
+            transform.name.value: transform
+            for transform in await self.sdk.filters(
+                kind=CoreTransformJinja2, branch=branch_name, repository__ids=[str(self.id)]
+            )
+        }
 
         present_in_both, only_graph, only_local = compare_lists(
             list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
@@ -412,15 +510,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         commit: str,  # noqa: ARG002
         config_file: InfrahubRepositoryConfig,
     ) -> None:
+        local_artifact_defs = await self._build_artifact_definitions(branch_name=branch_name, config_file=config_file)
+        await self._apply_artifact_definitions(branch_name=branch_name, local_artifact_defs=local_artifact_defs)
+
+    async def _build_artifact_definitions(
+        self, branch_name: str, config_file: InfrahubRepositoryConfig
+    ) -> dict[str, InfrahubRepositoryArtifactDefinitionConfig]:
+        """Build the desired artifact definitions from the repository config.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+        """
         log = get_run_logger()
         schema = await self.sdk.schema.get(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name)
-
-        artifact_defs_in_graph = {
-            artdef.name.value: artdef
-            for artdef in await self.sdk.filters(
-                kind=CoreArtifactDefinition, branch=branch_name, prefetch_relationships=True, populate_store=True
-            )
-        }
 
         local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
 
@@ -440,6 +541,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 continue
 
             local_artifact_defs[artdef.name] = artdef
+
+        return local_artifact_defs
+
+    async def _apply_artifact_definitions(
+        self, branch_name: str, local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
+    ) -> None:
+        """Reconcile the desired artifact definitions against the graph by creating and updating.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        artifact_defs_in_graph = {
+            artdef.name.value: artdef
+            for artdef in await self.sdk.filters(
+                kind=CoreArtifactDefinition, branch=branch_name, prefetch_relationships=True, populate_store=True
+            )
+        }
 
         present_in_both, _, only_local = compare_lists(
             list1=list(artifact_defs_in_graph.keys()), list2=list(local_artifact_defs.keys())
@@ -655,6 +775,20 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             Error: When rendering a configured GraphQL query template fails (from infrahub_sdk).
 
         """
+        local_queries = await self._build_graphql_query_definitions(commit=commit, config_file=config_file)
+        await self._apply_graphql_query_definitions(branch_name=branch_name, local_queries=local_queries)
+
+    async def _build_graphql_query_definitions(
+        self, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> dict[str, str]:
+        """Render the desired GraphQL queries from the pinned commit worktree.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            Error: When rendering a configured GraphQL query template fails (from infrahub_sdk).
+
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
@@ -670,6 +804,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             except InfrahubSdkError as exc:
                 log.error(f"Query '{query_config.name}': {exc}")
                 raise
+
+        return local_queries
+
+    async def _apply_graphql_query_definitions(self, branch_name: str, local_queries: dict[str, str]) -> None:
+        """Reconcile the desired GraphQL queries against the graph by creating, updating and deleting.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
 
         if not local_queries:
             return
@@ -721,6 +865,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_python_check_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        definitions = await self._build_python_check_definitions(
+            branch_name=branch_name, commit=commit, config_file=config_file
+        )
+        await self._apply_python_check_definitions(branch_name=branch_name, definitions=definitions)
+
+    async def _build_python_check_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> list[CheckDefinitionInformation]:
+        """Build the desired check definitions by reading the pinned commit worktree.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            ModuleNotFoundError: When a check module cannot be imported.
+
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
@@ -730,7 +890,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if str(self.directory_root) not in sys.path:
             sys.path.append(str(self.directory_root))
 
-        checks = []
+        checks: list[CheckDefinitionInformation] = []
         log.info(f"Found {len(config_file.check_definitions)} check definitions in the repository")
         for check in config_file.check_definitions:
             log.debug(f"{self.name}, file={check.file_path}")
@@ -748,14 +908,33 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
             checks.extend(
                 await self.get_check_definition(
-                    branch_name=branch_name,
                     module=module,
                     file_path=file_info.relative_path_file,
                     check_definition=check,
                 )  # type: ignore[call-overload]
             )
 
-        local_check_definitions = {check.name: check for check in checks}
+        return checks
+
+    async def _apply_python_check_definitions(
+        self, branch_name: str, definitions: list[CheckDefinitionInformation]
+    ) -> None:
+        """Reconcile the desired check definitions against the graph by creating, updating and deleting.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        local_check_definitions = {check.name: check for check in definitions}
+
+        # Resolve each query reference to its node id now that the queries have been applied.
+        for check in local_check_definitions.values():
+            graphql_query = await self.sdk.get(
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check.query), populate_store=True
+            )
+            check.query = str(graphql_query.id)
+
         check_definition_in_graph = {
             check.name.value: check
             for check in await self.sdk.filters(
@@ -792,12 +971,24 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_generator_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        definitions = await self._build_generator_definitions(
+            branch_name=branch_name, commit=commit, config_file=config_file
+        )
+        await self._apply_generator_definitions(branch_name=branch_name, definitions=definitions)
+
+    async def _build_generator_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> list[InfrahubGeneratorDefinitionConfig]:
+        """Build the desired generator definitions by reading the pinned commit worktree.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        generators = []
+        generators: list[InfrahubGeneratorDefinitionConfig] = []
         log.info(f"Found {len(config_file.generator_definitions)} generator definitions in the repository")
 
         for generator in config_file.generator_definitions:
@@ -811,7 +1002,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
             generators.append(generator)
 
-        local_generator_definitions = {generator.name: generator for generator in generators}
+        return generators
+
+    async def _apply_generator_definitions(
+        self, branch_name: str, definitions: list[InfrahubGeneratorDefinitionConfig]
+    ) -> None:
+        """Reconcile the desired generator definitions against the graph by creating, updating and deleting.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        local_generator_definitions = {generator.name: generator for generator in definitions}
         generator_definition_in_graph = {
             generator.name.value: generator
             for generator in await self.sdk.filters(
@@ -884,6 +1087,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_python_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        definitions = await self._build_python_transform_definitions(
+            branch_name=branch_name, commit=commit, config_file=config_file
+        )
+        await self._apply_python_transform_definitions(branch_name=branch_name, definitions=definitions)
+
+    async def _build_python_transform_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> list[TransformPythonInformation]:
+        """Build the desired transform definitions by reading the pinned commit worktree.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            ModuleNotFoundError: When a transform module cannot be imported.
+
+        """
         log = get_run_logger()
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
@@ -918,7 +1137,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
             transforms.extend(
                 await self.get_python_transforms(
-                    branch_name=branch_name,
                     module=module,
                     file_path=file_info.relative_path_file,
                     transform=transform,
@@ -927,7 +1145,26 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 )  # type: ignore[call-overload]
             )
 
-        local_transform_definitions = {transform.name: transform for transform in transforms}
+        return transforms
+
+    async def _apply_python_transform_definitions(
+        self, branch_name: str, definitions: list[TransformPythonInformation]
+    ) -> None:
+        """Reconcile the desired transform definitions against the graph by creating, updating and deleting.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+        local_transform_definitions = {transform.name: transform for transform in definitions}
+
+        # Resolve each query reference to its node id now that the queries have been applied.
+        for transform in local_transform_definitions.values():
+            graphql_query = await self.sdk.get(
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
+            )
+            transform.query = str(graphql_query.id)
+
         transform_definition_in_graph = {
             transform.name.value: transform
             for transform in await self.sdk.filters(
@@ -1041,7 +1278,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)
     async def get_check_definition(
         self,
-        branch_name: str,
         module: types.ModuleType,
         file_path: str,
         check_definition: InfrahubCheckDefinitionConfig,
@@ -1054,9 +1290,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         check_class = getattr(module, check_definition.class_name)
 
         try:
-            graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check_class.query), populate_store=True
-            )
             checks.append(
                 CheckDefinitionInformation(
                     name=check_definition.name,
@@ -1064,7 +1297,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     class_name=check_definition.class_name,
                     check_class=check_class,
                     file_path=file_path,
-                    query=str(graphql_query.id),
+                    query=str(check_class.query),
                     timeout=check_class.timeout,
                     parameters=check_definition.parameters,
                     targets=check_definition.targets,
@@ -1081,7 +1314,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)
     async def get_python_transforms(
         self,
-        branch_name: str,
         module: types.ModuleType,
         file_path: str,
         transform: InfrahubPythonTransformConfig,
@@ -1094,9 +1326,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         transforms = []
         transform_class = getattr(module, transform.class_name)
-        graphql_query = await self.sdk.get(
-            kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform_class.query), populate_store=True
-        )
         try:
             transforms.append(
                 TransformPythonInformation(
@@ -1105,7 +1334,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     class_name=transform.class_name,
                     transform_class=transform_class,
                     file_path=file_path,
-                    query=str(graphql_query.id),
+                    query=str(transform_class.query),
                     timeout=transform_class.timeout,
                     convert_query_response=transform.convert_query_response,
                     description=transform.description,

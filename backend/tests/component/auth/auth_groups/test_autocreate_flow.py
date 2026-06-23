@@ -208,6 +208,44 @@ class TestAutoCreationWhenFilterEnabled:
         matched = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "matched-y"})
         assert len(matched) == 1
 
+    async def test_claim_colliding_with_non_account_group_is_skipped(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_enabled: None,
+    ) -> None:
+        """A claim whose effective name is already held by a non-AccountGroup kind is skipped.
+
+        The find-or-create lookup spans all group kinds. When the name already belongs to a
+        different group kind (here a standard group), the claim is skipped: no AccountGroup is
+        created and the unrelated group's membership is left untouched. The login still succeeds.
+        """
+        standard_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+        await standard_group.new(db=db, name="collision-target")
+        await standard_group.save(db=db)
+
+        identity = make_identity(sub="sub-collision-001", display_name="Quinn Collision")
+
+        auth_result = await signin_sso_account(
+            db=db, external_identity=identity, sso_groups=["LDAP/group/collision-target"]
+        )
+
+        assert auth_result.token.access_token, "login must succeed despite the name collision"
+        assert (
+            await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "collision-target"}) == []
+        ), "no AccountGroup may be created when the name is already held by another group kind"
+
+        refreshed = await NodeManager.get_one(db=db, id=standard_group.id, prefetch_relationships=True)
+        members = await refreshed.get_relationship(name="members").get_peers(
+            db=db, branch_agnostic=True, peer_type=CoreAccount
+        )
+        accounts = await NodeManager.query(
+            db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Quinn Collision"}
+        )
+        assert len(accounts) == 1
+        assert accounts[0].id not in members, "the colliding standard group must not gain the account as a member"
+
 
 class TestAutoCreationWhenFilterDisabled:
     """Behavior of the SSO sign-in path when `auto_create_groups_filter` is unset / empty."""

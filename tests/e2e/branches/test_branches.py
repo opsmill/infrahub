@@ -58,7 +58,7 @@ class TestBranchesCreationDeletion:
         await admin_page.get_by_role("button", name="Create a new branch").click()
 
         # After submit
-        await expect(admin_page.get_by_role("button", name=new_branch_name)).to_be_visible()
+        await expect(admin_page.get_by_role("button", name=new_branch_name, exact=True)).to_be_visible()
         await expect(admin_page).to_have_url(re.compile(rf".*?branch={new_branch_name}"))
 
     async def test_should_display_the_new_branch(self, admin_page: Page, existing_branch: str) -> None:

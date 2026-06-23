@@ -51,7 +51,7 @@ class TestBranchSelectorNotLoggedIn:
         await expect(branch_list.get_by_role("option", name="atl1-delete-upstream")).to_be_visible()
         await expect(branch_list.get_by_role("option", name="main default")).to_be_hidden()
         await branch_list.get_by_role("option", name="atl1-delete-upstream").click()
-        await expect(page.get_by_role("button", name="atl1-delete-upstream")).to_be_visible()
+        await expect(page.get_by_role("button", name="atl1-delete-upstream", exact=True)).to_be_visible()
 
 
 class TestBranchSelectorLoggedInAsAdmin:
