@@ -1,7 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
 
-import type { MutationConfig } from "@/shared/api/types";
+import type { BranchContextParams, MutationConfig } from "@/shared/api/types";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type ReimportLastCommitParams,
   reimportLastCommit,
@@ -14,10 +15,12 @@ export const REIMPORT_LAST_COMMIT_MUTATION_KEY = ["repository", "reimport-last-c
 export function useReimportLastCommitMutation(
   config?: Omit<ReimportLastCommitProps, "mutationFn">
 ) {
+  const { currentBranch } = useCurrentBranch();
+
   return useMutation({
     mutationKey: REIMPORT_LAST_COMMIT_MUTATION_KEY,
-    mutationFn: (params: ReimportLastCommitParams) => {
-      return reimportLastCommit(params);
+    mutationFn: (params: Omit<ReimportLastCommitParams, keyof BranchContextParams>) => {
+      return reimportLastCommit({ branchName: currentBranch.name, ...params });
     },
     ...config,
   });
