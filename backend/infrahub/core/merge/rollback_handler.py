@@ -21,9 +21,8 @@ class MergeRollbackHandler:
     """Best-effort in-process rollback of a failed merge.
 
     Returns True only when every sub-step succeeds and the branch is fully restored to OPEN. On any
-    sub-step failure it returns False and deliberately leaves the write-protection key set (branch stays
-    MERGING) so out-of-process recovery can take over rather than reopening a partially-recovered state.
-    Never raises.
+    sub-step failure it returns False and leaves the partially-recovered state for out-of-process
+    recovery (or an operator) to reconcile. Never raises.
     """
 
     def __init__(
@@ -75,12 +74,7 @@ class MergeRollbackHandler:
             await branch.save(db=self.db, user_id=user_id)
             registry.branch[branch.name] = branch
         except Exception:
-            # Report a failed rollback rather than a clean one on a partially-restored state, so
-            # recovery takes over. If the key delete failed, the branch is still MERGING with the key
-            # set; if the delete succeeded but the OPEN flip did not, the branch is still durably
-            # MERGING, which recovery still detects (its rollback is idempotent over already-reverted
-            # data). Never raise: raising here would mask the original merge error that triggered the
-            # rollback.
+            # Never raise: raising here would mask the original merge error that triggered the rollback.
             self.log.exception("Branch state restore failed during merge rollback")
             return False
 
