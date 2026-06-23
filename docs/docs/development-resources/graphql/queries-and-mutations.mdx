@@ -143,6 +143,55 @@ query {
 }
 ```
 
+## Ordering results
+
+Every list query and every many-cardinality relationship field accepts an `order` argument to control the sort order of the objects returned. When `order` is omitted, the results use the schema's [default ordering](../../schema/default-ordering).
+
+The `order` argument has the following fields:
+
+- `by: [OrderByItem!]` - an ordered list of sort entries. Each entry is an object with two fields:
+  - `field: String!` - what to sort on: an attribute path (`name__value`), a relationship-attribute path (`author__name__value`), or object metadata (`node_metadata__created_at` / `node_metadata__updated_at`). The field carries **no** direction suffix.
+  - `direction: OrderDirection` - `ASC` or `DESC`. Defaults to `ASC` when omitted.
+
+  Entries apply in order, so the first is the primary sort, the second the tiebreaker, and so on.
+- `disable: Boolean` - set to `true` to return results without any ordering.
+- `node_metadata` *(deprecated)* - the legacy field-per-direction form, for example `{ created_at: DESC }`. Use `by` with the `node_metadata__created_at` / `node_metadata__updated_at` fields instead.
+
+```graphql title="Order tags newest-first"
+query {
+  BuiltinTag(order: { by: [{ field: "node_metadata__created_at", direction: DESC }] }) {
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Sort on more than one field - descending name, then ascending serial number as a tiebreaker. The `direction` on the second entry is omitted, so it defaults to `ASC`:
+
+```graphql title="Order by multiple fields"
+query {
+  InfraDevice(order: { by: [{ field: "name__value", direction: DESC }, { field: "serial_number__value" }] }) {
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+A few rules govern how `order` interacts with the schema default:
+
+- When `order` is provided, it **fully replaces** the schema's `order_by` for that query. The two are not combined, and the schema default contributes no fallback tiebreaker.
+- `by` cannot be combined with the deprecated `node_metadata` field in the same `order` argument.
+
 ## Mutations format
 
 The format of the mutation to `Create`, `Update` and `Upsert` an object has some similarities with the query format. The format will be slightly different for:

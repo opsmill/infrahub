@@ -260,11 +260,15 @@ The `order_weight` property controls the position of attributes and relationship
 
 <ReferenceLink title="Full order weight reference" url="./order-weight" />
 
+To control the order of the objects within a list — which object appears first — rather than the order of fields, use the node's `order_by` field.
+
+<ReferenceLink title="Default ordering" url="./default-ordering" />
+
 ## Reserved namespaces and attribute names
 
 Some namespaces like `Core`, `Infrahub`, `Profile`, and `Builtin` are reserved and can't be used by users to define new Nodes and Generics.
 
-In a similar fashion, some attribute names can't be used, like `attribute` or `relationship`.
+In a similar fashion, some attribute names can't be used, like `attribute` or `relationship`. `node_metadata` is also reserved, because it is the prefix used to sort by object metadata in [`order_by`](./default-ordering).
 
 ## Related concepts
 
