@@ -1,0 +1,41 @@
+---
+title: Release 1.9.9
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.9.9</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>June 23rd, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.9.9](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.9.9)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Upgraded GitPython to 3.1.50 to address GHSA-mv93-w799-cj2w, a configuration-injection vulnerability that could lead to arbitrary code execution via crafted `git config` section names.
+
+### Added
+
+- Added a link in the Proposed Change "Checks" tab from each artifact validator to the originating `CoreArtifactDefinition`, so users can navigate directly to the definition that produced the check.
+
+### Fixed
+
+- Importing a Git repository now succeeds even when one of its branches has a merge conflict against the default branch. The conflicting branch is imported as-is and a warning is logged; the conflict is reported when a user later attempts to merge the branch. ([#2293](https://github.com/opsmill/infrahub/issues/2293))
+- Fixed the unclear error message shown when picking a time earlier than the Infrahub instance was created. ([#4076](https://github.com/opsmill/infrahub/issues/4076))
+- Narrowed the git repository lock so it only guards on-disk git working-copy mutations (clone, fetch, worktree creation) and no longer wraps importing repository objects into the graph. ([#6639](https://github.com/opsmill/infrahub/issues/6639))
+- Added a refresh button to the artifact detail page so regenerated artifact content can be reloaded in place, without requiring a full browser refresh. ([#9335](https://github.com/opsmill/infrahub/issues/9335))
+- Fixed git repository synchronization so that a failure on one branch no longer prevents the other branches from being synchronized. ([#9463](https://github.com/opsmill/infrahub/issues/9463))
+- Fixed the file action reported by the repository diff so a file added on a branch is labelled `added` (and a deleted file `removed`) instead of being inverted in `GET /api/diff/files` and the Proposed Change Files tab. ([#9530](https://github.com/opsmill/infrahub/issues/9530))
+- Rebasing a branch now only requires the `global:rebase_branch:allow_all` permission. Previously the default-branch permission check ran ahead of the rebase check and also demanded `global:edit_default_branch:allow_all`, so users granted only the rebase permission were denied with "You are not allowed to change data in the default branch". ([#9604](https://github.com/opsmill/infrahub/issues/9604))
+- Fixed the repository **Import latest commit** and **Reimport current commit** actions running against `main` instead of the branch currently selected in the UI. ([#9653](https://github.com/opsmill/infrahub/issues/9653))
+- Computed attribute updates no longer raise a `ValueError` when `PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES` is set to `1`. The workflow submission chunk size is now floored at 1.
+- Concurrent imports of the same repository no longer race to create the same object and fail on a name uniqueness constraint, which could leave the repository out of sync. The graph-changing phase of a repository import is now serialized under the repository lock.
+- Repository synchronization now resolves both a new repository's initial import and the pinned worker-pool commit from the repository's Git default branch rather than Infrahub's default branch name, fixing repositories whose Git default branch differs and staging-branch syncs.
