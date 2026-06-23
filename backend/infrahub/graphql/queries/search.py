@@ -7,11 +7,15 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import is_valid_uuid
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core import registry
+from infrahub.core.account import ObjectPermission
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import IPParentPrefixLookupQuery
 from infrahub.core.query.node import NodeGetListByAttributeValueQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.permissions.constants import PermissionDecisionFlag
+from infrahub.utils import extract_camelcase_words
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -22,6 +26,15 @@ if TYPE_CHECKING:
 class Node(ObjectType):
     id = Field(String, required=True)
     kind = Field(String, required=True, description="The node kind")
+    display_label = Field(String, required=False, description="Human-readable label for the node")
+    target_kind = Field(
+        String,
+        required=False,
+        description=(
+            "If kind is SchemaNode/SchemaGeneric, target_kind is set to the name of the "
+            "schema the record describes (eg BuiltinTag)."
+        ),
+    )
 
 
 class NodeEdge(ObjectType):
@@ -118,6 +131,40 @@ def _try_parse_ip_or_prefix(
     return None
 
 
+# Schema and Internal namespace nodes are system metadata that any caller may reference,
+# so they are exempt from object-level view permission checks.
+_PERMISSION_EXEMPT_NAMESPACES = ("Schema", "Internal")
+
+
+def _account_can_view(graphql_context: GraphqlContext, kind: str) -> bool:
+    """Tell whether the active account is allowed to view nodes of the given kind.
+
+    Returns True when the context carries no permission manager (no account attached,
+    e.g. internal or unauthenticated calls), so nothing is filtered in that case.
+    Schema and Internal namespace nodes are system metadata and are always viewable.
+    """
+    permissions = graphql_context.permissions
+    if permissions is None:
+        return True
+
+    extracted_words = extract_camelcase_words(kind)
+    if extracted_words[0] in _PERMISSION_EXEMPT_NAMESPACES:
+        return True
+
+    required_decision = (
+        PermissionDecisionFlag.ALLOW_DEFAULT
+        if graphql_context.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+        else PermissionDecisionFlag.ALLOW_OTHER
+    )
+    permission = ObjectPermission(
+        namespace=extracted_words[0],
+        name="".join(extracted_words[1:]),
+        action="view",
+        decision=required_decision,
+    )
+    return permissions.has_permission(permission=permission)
+
+
 async def search_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
@@ -137,7 +184,19 @@ async def search_resolver(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
         if matching:
-            results.append({"id": matching.id, "kind": matching.get_kind()})
+            kind = matching.get_kind()
+            # A UUID lookup returns a single explicitly-requested object, so the view
+            # permission is enforced here rather than after a limited result window.
+            if _account_can_view(graphql_context=graphql_context, kind=kind):
+                display_label = await matching.get_display_label(db=graphql_context.db)
+                node_entry: dict[str, str] = {"id": matching.id, "kind": kind, "display_label": display_label}
+                # For SchemaNode/SchemaGeneric records, expose the kind of the schema they describe
+                # so clients can link to that schema's page instead of the generic SchemaNode page.
+                if kind in ("SchemaNode", "SchemaGeneric"):
+                    namespace = matching.get_attribute("namespace").value
+                    name = matching.get_attribute("name").value
+                    node_entry["target_kind"] = f"{namespace}{name}"
+                results.append(node_entry)
     else:
         with contextlib.suppress(ValueError, ipaddress.AddressValueError):
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.

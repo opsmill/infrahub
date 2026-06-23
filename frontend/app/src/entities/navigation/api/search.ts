@@ -11,6 +11,8 @@ const SEARCH = graphql(`
         node {
           id
           kind
+          display_label
+          target_kind
         }
       }
       parent_prefixes {

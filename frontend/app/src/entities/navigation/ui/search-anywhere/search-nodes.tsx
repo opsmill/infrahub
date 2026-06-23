@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
 
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -20,6 +21,7 @@ import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaO
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -68,18 +70,55 @@ type NodesOptionsProps = {
 
 export const NodesOptions = ({ node }: NodesOptionsProps) => {
   const { schema } = useSchema(node.kind);
+
+  if (!schema) {
+    return <SchemaNodeResult node={node} />;
+  }
+
+  return <NodesOptionsDetails node={node} schema={schema} />;
+};
+
+const SchemaNodeResult = ({ node }: NodesOptionsProps) => {
+  const schemaKind = node.target_kind || node.kind;
+  const label = node.display_label || schemaKind;
+  const url = constructPath("/schema", [{ name: "kind", value: schemaKind }]);
+
+  return (
+    <SearchAnywhereItem to={url} value={url}>
+      <Icon icon="mdi:file-tree-outline" className="px-2 py-0.5 text-custom-blue-700 text-lg" />
+
+      <div className="grow overflow-auto text-sm">
+        <div className="flex justify-between">
+          <span className="mr-1 font-semibold text-custom-blue-800">{label}</span>
+
+          <div className="inline-flex items-center gap-1">
+            <Badge variant="blue" className="py-0 text-xxs">
+              Schema
+            </Badge>
+            <span className="mr-2 font-medium text-xxs">{schemaKind}</span>
+          </div>
+        </div>
+      </div>
+    </SearchAnywhereItem>
+  );
+};
+
+type NodesOptionsDetailsProps = {
+  node: ObjectResult;
+  schema: ModelSchema;
+};
+
+const NodesOptionsDetails = ({ node, schema }: NodesOptionsDetailsProps) => {
   const {
     data: objectDetailsData,
     isPending,
     error,
   } = useGetObject({
-    objectSchema: schema!,
+    objectSchema: schema,
     objectId: node.id,
     getRelationshipsVisible: (relationships) =>
       relationships.filter((rel) => rel.cardinality === "one"),
   });
-
-  if (!schema) return null;
 
   if (isPending) return <SearchResultNodeSkeleton />;
 

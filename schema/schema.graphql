@@ -10940,9 +10940,15 @@ type NestedPaginatedProfileIpamNamespace {
 }
 
 type Node {
+  """Human-readable label for the node"""
+  display_label: String
   id: String!
   """The node kind"""
   kind: String!
+  """
+  If kind is SchemaNode/SchemaGeneric, target_kind is set to the name of the schema the record describes (eg BuiltinTag).
+  """
+  target_kind: String
 }
 
 type NodeEdge {

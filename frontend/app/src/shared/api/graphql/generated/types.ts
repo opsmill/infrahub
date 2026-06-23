@@ -17075,7 +17075,7 @@ export type GenericPoolInput = {
 
 export type GraphQlQueryReport = {
   __typename: 'GraphQLQueryReport';
-  /** True if every operation in the submitted query resolves to uniquely identifiable nodes (via a required ids argument or a required field matching the model uniqueness constraints). When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change. */
+  /** True if every operation in the submitted query resolves to uniquely identifiable nodes. An operation resolves uniquely when it filters by a required ids or hfid argument, or when every component of at least one of the model's uniqueness constraints is pinned by a required, single-valued argument. When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change. */
   targets_unique_nodes: Scalars['Boolean']['output'];
 };
 
@@ -22482,9 +22482,13 @@ export type NestedPaginatedProfileIpamNamespace = {
 
 export type Node = {
   __typename: 'Node';
+  /** Human-readable label for the node */
+  display_label: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   /** The node kind */
   kind: Scalars['String']['output'];
+  /** If kind is SchemaNode/SchemaGeneric, target_kind is set to the name of the schema the record describes (eg BuiltinTag). */
+  target_kind: Maybe<Scalars['String']['output']>;
 };
 
 export type NodeEdge = {
@@ -37222,7 +37226,7 @@ export type Get_Core_ValidatorsQueryVariables = Exact<{
 
 
 export type Get_Core_ValidatorsQuery = { CoreValidator: { __typename: 'PaginatedCoreValidator', edges: Array<{ __typename: 'EdgedCoreValidator', node:
-        | { __typename: 'CoreArtifactValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+        | { __typename: 'CoreArtifactValidator', id: string, display_label: string | null, definition: { __typename: 'NestedEdgedCoreArtifactDefinition', node: { __typename: 'CoreArtifactDefinition', id: string, display_label: string | null } | null }, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
                 | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
                 | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
                 | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
@@ -37435,7 +37439,7 @@ export type SearchQueryVariables = Exact<{
 }>;
 
 
-export type SearchQuery = { InfrahubSearchAnywhere: { __typename: 'NodeEdges', count: number, edges: Array<{ __typename: 'NodeEdge', node: { __typename: 'Node', id: string, kind: string } }>, parent_prefixes: Array<{ __typename: 'NodeEdge', node: { __typename: 'Node', id: string, kind: string } }> | null } };
+export type SearchQuery = { InfrahubSearchAnywhere: { __typename: 'NodeEdges', count: number, edges: Array<{ __typename: 'NodeEdge', node: { __typename: 'Node', id: string, kind: string, display_label: string | null, target_kind: string | null } }>, parent_prefixes: Array<{ __typename: 'NodeEdge', node: { __typename: 'Node', id: string, kind: string } }> | null } };
 
 export type Convert_Object_MutationMutationVariables = Exact<{
   nodeId: Scalars['String']['input'];
