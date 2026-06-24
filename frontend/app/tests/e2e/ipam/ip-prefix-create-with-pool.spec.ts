@@ -35,4 +35,37 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
       .fill("203.111.0.248/29");
     await expect(page.getByText("prefix from pool")).toBeVisible();
   });
+
+  test("create an ip prefix using a pool with a custom prefix length", async ({ page, request }) => {
+    const branchName = generateRandomBranchName("ip-prefix-pool-prefixlen");
+    await createBranchAPI(request, branchName);
+
+    try {
+      await page.goto(`ipam?branch=${branchName}`);
+      await page.getByTestId("create-object-button").click();
+
+      await page.getByTestId("select-open-pool-option-button").click();
+      await page.getByRole("option", { name: "External prefixes pool" }).click();
+      await expect(page.getByLabel("Prefix *")).toContainText("Allocated by pool");
+
+      // The pool's default prefix length is surfaced as a placeholder.
+      await expect(page.getByTestId("pool-prefix-length-input")).toHaveAttribute(
+        "placeholder",
+        "29"
+      );
+
+      // Override the pool's default prefix length with a smaller subnet size.
+      await page.getByTestId("pool-prefix-length-input").fill("30");
+
+      await page
+        .getByRole("textbox", { name: "Description" })
+        .fill("prefix from pool with custom size");
+      await page.getByRole("button", { name: "Save" }).click();
+
+      // The allocation honours the typed prefix length rather than the pool default.
+      await expect(page.getByText(/IP Prefix 203\.111\.\d+\.\d+\/30 created/)).toBeVisible();
+    } finally {
+      await deleteBranchAPI(request, branchName);
+    }
+  });
 });
