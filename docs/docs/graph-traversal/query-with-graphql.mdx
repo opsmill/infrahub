@@ -76,6 +76,44 @@ Both queries run against the branch and point in time from your request context.
 specific branch or timestamp, set the branch header or `at` parameter as you would for any
 Infrahub GraphQL query.
 
+## Use the Python SDK
+
+The [Python SDK](pathname:///python-sdk/guides/graph_traversal) wraps both queries in
+client methods, available in asynchronous and synchronous form (Infrahub 1.10 or later):
+
+- `traverse_paths(source, destination, ...)` — Path mode. Returns a result with `.paths` (each
+  exposing `.hops`) and `.count`.
+- `reachable_nodes(source, target_kinds, ...)` — Dependency mode. Returns `.dependencies`, each
+  with the reachable node, its depth, and the full path.
+- `path_exists(source, destination, ...)` — a boolean connectivity check.
+
+```python
+result = await client.traverse_paths(source=device_a, destination=device_b, max_depth=5)
+
+if await client.path_exists(source=device_a, destination=core_router):
+    ...
+```
+
+See the [SDK graph traversal guide](pathname:///python-sdk/guides/graph_traversal)
+for the full method reference.
+
+## Use traversal in a check
+
+Because the SDK exposes traversal, an Infrahub [check](../checks/overview.mdx) can validate
+structural requirements that span relationships and fail a
+[proposed change](../proposed-changes/overview.mdx) when they are not met:
+
+- **Connectivity** — assert that two objects stay connected, for example that every site keeps a
+  redundant path to the core, using `path_exists` or `traverse_paths`.
+- **Isolation** — assert that two objects are *not* connected, for example that a production device
+  and a lab device share no path.
+- **Dependency analysis** — use `reachable_nodes` to find everything that depends on an object and
+  validate it against a policy.
+
+Traversal is branch- and time-aware, so a check evaluates connectivity on the proposed change's
+branch and catches violations before the change merges. See
+[Build a check](../academy/tutorials/build-a-check.mdx) to set one up.
+
 ## Full argument reference
 
 For all arguments, defaults, limits, and filter semantics, see the

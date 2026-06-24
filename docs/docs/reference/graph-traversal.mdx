@@ -31,7 +31,9 @@ Reference for the `InfrahubPathTraversal` and `InfrahubReachableNodes` GraphQL q
 | `excluded_kinds` | [String] | All kinds excluded in this traversal |
 
 Each `PathResultType` has `depth` (number of edges) and `hops` — an ordered list where each hop
-has a `node` and (except the first) a `relationship` with `from_label` and `to_label`.
+has a `node` and (except the first) a `relationship`. Each `node` (`PathNodeType`) exposes `id`,
+`kind`, `label`, `display_label`, and `hfid`. Each `relationship` (`PathRelationshipType`) exposes
+`from_rel`, `from_label`, `to_rel`, `to_label`, and `kind`.
 
 ---
 
@@ -80,5 +82,6 @@ Use `excluded_namespaces` or `excluded_kinds` to add further exclusions.
 | `At least one target kind is required` | `target_kinds` is empty | Provide at least one kind |
 | `Unknown target kind: <kind>` | Kind not found in schema | Check the kind name against your schema |
 | `Source node not found: <id>` | UUID does not exist on this branch | Verify the UUID and branch |
+| `Destination node not found: <id>` | Destination UUID does not exist on this branch | Verify the UUID and branch |
 | `max_paths must be in [1, 100]` | Out of range for Path mode | Use a value between 1 and 100 |
 | Query timed out | Search space too large | Reduce `max_depth`, lower `max_paths`/`max_results`, or narrow with kind/namespace filters |
