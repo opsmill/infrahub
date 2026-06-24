@@ -528,7 +528,7 @@ REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
 
 WEBHOOK_PROCESS = WorkflowDefinition(
     name="webhook-process",
-    type=WorkflowType.USER,
+    type=WorkflowType.INTERNAL,
     module="infrahub.webhook.tasks.process",
     function="webhook_process",
 )
