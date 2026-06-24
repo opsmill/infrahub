@@ -10,7 +10,7 @@ compatibility: Requires the project to use Towncrier for changelog management �
 
 [Towncrier](https://towncrier.readthedocs.io/) assembles the changelog from per-change "fragment" files — one small file per change, collected and rendered at release time. This skill applies to any project that uses Towncrier. Every issue fix or new feature should ship with a fragment, written short and user-facing: describe *what* changed, not how it was implemented.
 
-**Core rule:** always create fragments with `towncrier create`, never hand-write them. The command derives the location and naming from the Towncrier config and places the fragment correctly no matter which directory you run it from.
+**Core rule:** always create fragments with `towncrier create`, never hand-write them. The command derives the location and naming from the Towncrier config and places the fragment correctly from anywhere in the repo.
 
 ## When to Use
 
@@ -28,7 +28,7 @@ uv run towncrier create -c "content of changelog entry" ${ISSUE}.${TYPE}.md
 
 These commands use `uv run`, which runs the project's pinned Towncrier and is the convention across these Python projects. If your project doesn't use uv, drop the prefix (`towncrier create ...`) or use its runner (e.g. `poetry run towncrier ...`).
 
-- **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+deps-update`).
+- **ISSUE** — issue ID, or `+` when no issue exists (e.g. `+pnpm-workspaces`).
 - **TYPE** — one of the change types below.
 
 | Type | Use For |
@@ -39,15 +39,17 @@ These commands use `uv run`, which runs the project's pinned Towncrier and is th
 | `removed` | Now removed features |
 | `fixed` | Bug fixes |
 | `security` | Security vulnerabilities |
-| `housekeeping` | Internal maintenance, dependencies, tooling |
+| `housekeeping` | Internal maintenance and tooling (build, CI, dev scripts) |
 
-The available types come from the project's Towncrier config (`[tool.towncrier]`); the set above is the common default.
+The available types come from the project's Towncrier config (`[tool.towncrier]`); the set above is the common default. How a project classifies some changes is project-specific — dependency-version bumps in particular land under `changed` in some projects and `housekeeping` in others, so follow the project's changelog guide rather than assuming.
 
 ## Fragment Location
 
 Fragments live in the directory Towncrier is configured to use (its `directory` setting — commonly the repo-root `changelog/` or `newsfragments/`). `towncrier create` puts them there automatically — don't move them or hand-place them.
 
 In a monorepo, they do **not** belong in a sub-package directory such as `backend/changelog/` or `frontend/changelog/`. A fragment found there was hand-written in the wrong place and must move to the configured directory.
+
+Exception: a nested package with its *own* Towncrier config (e.g. a submodule like Infrahub's `python_sdk`) keeps its own fragments in that package's configured directory — those stay put and must not be moved to the root.
 
 ## Writing Good Messages
 
@@ -67,7 +69,7 @@ uv run towncrier create -c "Fixed sidebar collapse issue" 1234.fixed.md
 uv run towncrier create -c "Added breadcrumb navigation for hierarchical schemas" 7549.added.md
 
 # Housekeeping without an issue
-uv run towncrier create -c "Updated dependencies to latest versions" +deps-update.housekeeping.md
+uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnpm-workspaces.housekeeping.md
 ```
 
 ## Common Mistakes
