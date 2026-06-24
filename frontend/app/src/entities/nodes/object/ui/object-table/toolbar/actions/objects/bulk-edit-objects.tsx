@@ -49,6 +49,7 @@ export function BulkEditObjects({ selectedRows }: BulkEditObjectsProps) {
         <GroupPanelBody>
           <NodeForm
             isBulkUpdate
+            className="p-4"
             schema={selectedSchema}
             onSubmit={({ fields, formData }) => {
               const updatedObject = getUpdateMutationFromFormData({ formData, fields });

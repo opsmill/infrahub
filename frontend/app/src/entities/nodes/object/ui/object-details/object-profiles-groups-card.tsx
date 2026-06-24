@@ -257,11 +257,7 @@ function GroupsList({ objectData, objectSchema, permission }: GroupsListProps) {
           title="Manage groups"
           subtitle="Add and unassign groups"
         />
-        <GroupsManager
-          schema={objectSchema}
-          objectId={objectData.id}
-          className="overflow-auto p-4"
-        />
+        <GroupsManager schema={objectSchema} objectId={objectData.id} />
       </Sheet>
     </>
   );
