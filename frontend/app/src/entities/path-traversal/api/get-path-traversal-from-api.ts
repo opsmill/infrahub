@@ -64,6 +64,7 @@ export async function getPathTraversalFromApi(params: GetPathTraversalParams) {
         source: nodeFields,
         destination: nodeFields,
         count: true,
+        truncated_at_depth: true,
       },
     },
   });

@@ -29,6 +29,12 @@ export type PathTraversalResponse = {
   source: PathNode;
   destination: PathNode;
   count: number;
+  /**
+   * Null when the search completed. Otherwise the depth at which it ran out of
+   * budget: the returned paths are complete only for depths below this value,
+   * and deeper paths may exist.
+   */
+  truncated_at_depth: number | null;
 };
 
 export type ReachableNode = {
