@@ -9069,8 +9069,8 @@ type MacAddress implements AttributeInterface {
 Order input restricted to node metadata fields.
 
 Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
-surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
-string grammar or a `disable` toggle.
+surface is limited to `created_at` / `updated_at` and does not accept the broader `by`
+field grammar or a `disable` toggle.
 """
 input MetadataOrderInput {
   """Order settings for branch metadata"""
@@ -11315,6 +11315,15 @@ type ObjectPermissionNode {
   node: ObjectPermission!
 }
 
+input OrderByItem {
+  """Sort direction (default ASC)"""
+  direction: OrderDirection = ASC
+  """
+  Field to order by: an attribute (`name__value`), a relationship attribute (`owner__name__value`), or node metadata (`node_metadata__created_at`). The field carries no direction suffix; use `direction` for that.
+  """
+  field: String!
+}
+
 """An enumeration."""
 enum OrderDirection {
   ASC
@@ -11322,13 +11331,13 @@ enum OrderDirection {
 }
 
 input OrderInput {
+  """
+  Ordered list of fields to order results by. When provided, fully replaces the schema's `order_by`. Cannot be combined with the deprecated `node_metadata` in the same input.
+  """
+  by: [OrderByItem!]
   disable: Boolean
-  """Order settings for branch metadata"""
-  node_metadata: InfrahubNodeMetadataOrder = null
-  """
-  Ordering overrides support attributes (`name__value__desc`), relationship attributes (`owner__name__value`), or node metadata (`node_metadata__created_at__desc`). The trailing `__asc`/`__desc` is optional (default is ascending). When provided, fully replaces the schema's `order_by`. Cannot be combined with `node_metadata` in the same input.
-  """
-  order_by: [String!]
+  """Order settings for node metadata"""
+  node_metadata: InfrahubNodeMetadataOrder @deprecated(reason: "Use `by` with the `node_metadata__created_at` / `node_metadata__updated_at` fields instead.")
 }
 
 """IPv4 or IPv6 address"""
@@ -12088,19 +12097,27 @@ type PathResultType {
 input PathTraversalInput {
   """UUID of the end node"""
   destination_id: String!
-  """Specific node kinds to exclude from traversal paths."""
+  """
+  Specific node kinds to exclude from traversal paths. Unioned with the default excluded kinds (BuiltinIPNamespace and all kinds inheriting it); the defaults can be re-included via included_kinds.
+  """
   excluded_kinds: [String!]
   """
   Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input.
   """
   excluded_namespaces: [String!]
+  """
+  Kinds excluded by default (BuiltinIPNamespace and all kinds inheriting it) to re-include in traversal paths. Passing the generic re-includes every implementer. Has no effect on kinds passed in excluded_kinds in the same request.
+  """
+  included_kinds: [String!]
   """Filter to only traverse through nodes of these kinds"""
   kind_filter: [String!]
-  """Maximum number of node hops (default: 5, max: 20)"""
+  """Maximum number of node hops (default: 5, max: 30)"""
   max_depth: Int = 5
   """Maximum number of paths to return (default: 10, max: 100)"""
   max_paths: Int = 10
-  """Filter to only follow relationships with these names"""
+  """
+  Filter to only follow relationships with these identifiers (the relationship's schema identifier, e.g. `device__interface`), not relationship names (e.g. `interfaces`).
+  """
   relationship_filter: [String!]
   """UUID of the start node"""
   source_id: String!
@@ -12111,7 +12128,13 @@ type PathTraversalResultType {
   count: Int!
   """The end node"""
   destination: PathNodeType!
-  """Paths found, ordered shortest first"""
+  """
+  Concrete node kinds excluded from this traversal: the default exclusions plus the requested excluded_kinds, minus included_kinds.
+  """
+  excluded_kinds: [String!]!
+  """
+  Paths found, ordered shortest first. Only the shortest path through each intermediate node is returned; longer routes through the same intermediate are omitted.
+  """
   paths: [PathResultType!]!
   """The start node"""
   source: PathNodeType!
@@ -24862,7 +24885,9 @@ type Query {
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!
-  """Find all shortest paths between two nodes in the graph"""
+  """
+  Find the shortest path(s) between two nodes — the shortest route through each intermediate node, up to max_paths.
+  """
   InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
   """Find all nodes of specified kinds reachable from a source node"""
@@ -25668,7 +25693,7 @@ type ReachableNodeType {
 }
 
 input ReachableNodesInput {
-  """Maximum traversal depth (default: 5, max: 20)"""
+  """Maximum traversal depth (default: 5, max: 30)"""
   max_depth: Int = 5
   """
   Maximum total paths returned across all discovered terminals (default: 500, max: 5000)
@@ -25678,6 +25703,10 @@ input ReachableNodesInput {
   Maximum number of distinct terminal nodes to discover (default: 50, max: 200)
   """
   max_results: Int = 50
+  """
+  When true (default), return only the shortest path(s) to each reachable target. When false, return every path to each target within max_depth that meets the filters.
+  """
+  shortest_paths_only: Boolean = true
   """UUID of the source node"""
   source_id: String!
   """Node kinds to search for"""

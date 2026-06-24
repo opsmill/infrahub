@@ -1,14 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, Tooltip } from "@infrahub/ui";
+import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
+import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
@@ -33,49 +26,35 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
   return (
     <>
       <StickyRightCell className="h-auto min-h-14">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              shape="square"
-              variant="ghost"
-              data-testid={`branch-actions-cell-${branch.name}`}
-            >
-              <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-            </Button>
-          </DropdownMenuTrigger>
+        <MenuTrigger>
+          <Button
+            size="sm"
+            shape="square"
+            variant="ghost"
+            data-testid={`branch-actions-cell-${branch.name}`}
+          >
+            <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+          </Button>
 
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link to={getBranchDetailsUrl(branch.name)}>
-                <Icon icon="mdi:arrow-expand" className="text-base" />
-                View details
-              </Link>
-            </DropdownMenuItem>
+          <Popover placement="bottom end">
+            <Menu aria-label="Branch actions">
+              <MenuItem href={getBranchDetailsUrl(branch.name)}>
+                <Icon icon="mdi:arrow-expand" />
+                <span>View details</span>
+              </MenuItem>
 
-            <Tooltip
-              message={
-                isDeleteAllowed
-                  ? undefined
-                  : branch.is_default
-                    ? "Cannot delete the default branch"
-                    : "Login required"
-              }
-              placement="left"
-              nonInteractiveTrigger
-            >
-              <div>
-                <DropdownMenuItem
-                  disabled={!isDeleteAllowed}
-                  onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
-                >
-                  <Icon icon="mdi:delete-outline" className="text-base" />
-                  Delete
-                </DropdownMenuItem>
-              </div>
-            </Tooltip>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <MenuItem
+                isDisabled={!isDeleteAllowed}
+                tooltip={branch.is_default ? "Cannot delete the default branch" : "Login required"}
+                className="text-red-500"
+                onAction={() => setShowDeleteModal(true)}
+              >
+                <Trash2Icon />
+                <span>Delete</span>
+              </MenuItem>
+            </Menu>
+          </Popover>
+        </MenuTrigger>
       </StickyRightCell>
 
       <ModalDeleteBranch

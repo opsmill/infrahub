@@ -57,6 +57,7 @@ class Migration046(ArbitraryMigration):
     """
 
     name: str = "046_fill_agnostic_hfid_display_labels"
+    description: str = "N/A"
     minimum_version: int = 45
     update_batch_size: int = 1000
 

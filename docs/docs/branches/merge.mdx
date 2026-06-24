@@ -19,6 +19,35 @@ This approach provides several benefits:
 
 This merge strategy aligns with Infrahub's focus on the current state of infrastructure rather than the historical evolution of individual files, making it particularly well-suited for infrastructure management workflows.
 
+## During the merge
+
+While a merge is running, Infrahub temporarily blocks writes to keep the data consistent:
+
+- **The source branch** (the branch being merged) rejects all modifications. It transitions to the frozen state once the merge completes.
+- **The default branch** (the merge target) rejects modifications until the merge finishes, then becomes writable again.
+- **All other branches** remain fully writable.
+- Creating a new branch, or deleting a branch that is not involved in the merge, is always allowed.
+- Starting another merge or rebase is rejected while a merge is in progress.
+
+A blocked write fails with the message `A merge is currently in progress; writes are temporarily blocked. Please retry shortly.` The GraphQL error carries the structured code `MERGE_IN_PROGRESS` (HTTP status 423) in its `extensions`, along with the branch being written and the branch being merged:
+
+```json
+{
+  "extensions": {
+    "code": "MERGE_IN_PROGRESS",
+    "http_status": 423,
+    "data": {
+      "branch_name": "main",
+      "merging_branch": "my-feature-branch"
+    }
+  }
+}
+```
+
+:::info
+The block on the default branch is transient. Clients and automation should match on the `MERGE_IN_PROGRESS` error code and retry after a short delay rather than treating the failure as permanent. See the [error catalogue](../reference/error-catalogue.mdx) for the full error contract.
+:::
+
 ## After the merge
 
 After a successful merge, the source branch is automatically **frozen**:

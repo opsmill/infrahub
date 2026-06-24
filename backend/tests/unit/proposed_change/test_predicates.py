@@ -62,9 +62,12 @@ def _node_diff(
     *,
     node_id: str,
     kind: str = "CoreGraphQLQuery",
-    action: str = "updated",
+    action: str = "UPDATED",
     elements: list[NodeDiffElement] | None = None,
 ) -> NodeDiff:
+    # ``action`` is the uppercase GraphQL enum name as emitted by ``get_diff_summary``
+    # (e.g. "UPDATED"/"ADDED"), NOT the lowercase ``DiffAction.*.value``. Fixtures must
+    # mirror production casing or the predicates' case-insensitive match goes untested.
     return NodeDiff(
         branch="main",
         kind=kind,
@@ -90,22 +93,22 @@ QUERY_CHANGED_CASES: list[QueryChangedCase] = [
     ),
     QueryChangedCase(
         name="updated_query_is_true",
-        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="updated")],
+        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="UPDATED")],
         expected=True,
     ),
     QueryChangedCase(
         name="added_query_is_true",
-        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="added")],
+        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="ADDED")],
         expected=True,
     ),
     QueryChangedCase(
         name="unchanged_action_is_false",
-        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="unchanged")],
+        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="UNCHANGED")],
         expected=False,
     ),
     QueryChangedCase(
         name="removed_action_is_false",
-        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="removed")],
+        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="REMOVED")],
         expected=False,
     ),
     QueryChangedCase(
@@ -174,22 +177,22 @@ DEFINITION_CHANGED_CASES: list[DefinitionChangedCase] = [
     ),
     DefinitionChangedCase(
         name="updated_definition_is_true",
-        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="updated")],
+        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="UPDATED")],
         expected=True,
     ),
     DefinitionChangedCase(
         name="added_definition_is_true",
-        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="added")],
+        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="ADDED")],
         expected=True,
     ),
     DefinitionChangedCase(
         name="unchanged_action_is_false",
-        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="unchanged")],
+        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="UNCHANGED")],
         expected=False,
     ),
     DefinitionChangedCase(
         name="removed_action_is_false",
-        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="removed")],
+        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="REMOVED")],
         expected=False,
     ),
     DefinitionChangedCase(

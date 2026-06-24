@@ -24,6 +24,7 @@ operations_without_flows = [
     "event.node.mutated",
     "refresh.registry.branches",
     "refresh.registry.rebased_branch",
+    "refresh.settings.response_delay",
     "trigger.webhook.actions",
     "git.file.get",
 ]

@@ -25,13 +25,8 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
       });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change closed!"} />);
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occurred while closing the propsoed change"}
-        />
-      );
+    onError: (error) => {
+      toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
     },
   });
 

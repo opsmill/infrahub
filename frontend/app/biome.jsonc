@@ -14,8 +14,7 @@
       "!test-results",
       "!tests/e2e/.auth",
       "!src/shared/api/rest/types.generated.ts",
-      "!src/shared/api/graphql/generated",
-      "!src/shared/api/errors/catalogue.generated.ts"
+      "!src/shared/api/graphql/generated"
     ]
   },
   "formatter": {
@@ -105,10 +104,7 @@
         "useUniqueElementIds": "off"
       },
       "nursery": {
-        "useFind": "error",
-        "useExhaustiveSwitchCases": "off",
-        "noUnnecessaryConditions": "off",
-        "noShadow": "off"
+        "useExhaustiveSwitchCases": "off"
       },
       "performance": {
         "noAccumulatingSpread": "off",
@@ -163,6 +159,8 @@
         "noGlobalIsNan": "off",
         "noImplicitAnyLet": "off",
         "noReactSpecificProps": "off",
+        "noShadow": "off",
+        "noUnnecessaryConditions": "off",
         "useIterableCallbackReturn": "off",
         "noSkippedTests": "off",
         "useAwait": "off"

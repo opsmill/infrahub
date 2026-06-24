@@ -9,7 +9,8 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.graph_merger import GraphMerger
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.node import Node
 from tests.constants import TestKind
 from tests.helpers.db_validation import verify_graph
@@ -17,10 +18,13 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
     from tests.adapters.message_bus import BusSimulator
 
 
@@ -33,24 +37,43 @@ mutation($branch: String!) {
 """
 
 
-class BrokenBranchMerger:
+class BrokenGraphMerger:
     def __init__(self, *args, **kwargs) -> None:
-        self.real_merger = BranchMerger(*args, **kwargs)
+        self.real_merger = GraphMerger(*args, **kwargs)
         self.real_merge_graph = self.real_merger.diff_merger.merge_graph
         self.real_merger.diff_merger.merge_graph = self.merge_graph  # type: ignore
 
-    async def merge(self, at: Timestamp | None = None) -> None:
+    @property
+    def destination_branch(self) -> Branch:
+        # Forwarded so the merge task's rollback path can restore the destination branch's schema.
+        return self.real_merger.destination_branch
+
+    async def merge(self, at: Timestamp) -> None:
         await self.real_merger.merge(at=at)
 
     async def merge_graph(self, at: Timestamp) -> Never:
         await self.real_merge_graph(at=at)
         raise ValueError("This is broken on purpose")
 
-    async def rollback(self) -> None:
-        await self.real_merger.rollback()
+    async def rollback(self, at: Timestamp) -> None:
+        await self.real_merger.rollback(at=at)
 
 
 class TestBranchMergeRollback(TestInfrahubApp):
+    @pytest.fixture(autouse=True)
+    async def clear_merge_protection(self, service: InfrahubServices) -> AsyncGenerator[None, None]:
+        """Clear the merge-protection key around this test.
+
+        This test deliberately fails a merge, and the merge flow holds the shared merge:protected key
+        on an incomplete rollback so recovery can take over. The integration suite runs against a real
+        shared cache with no key expiry, so a leaked key would block writes in every later test.
+        Clearing it on setup and teardown keeps this test from inheriting or leaking that state.
+        """
+        blocker = MergeWriteBlocker(cache=service.cache)
+        await blocker.delete()
+        yield
+        await blocker.delete()
+
     @pytest.fixture(scope="class")
     async def initial_dataset(
         self,
@@ -144,7 +167,7 @@ class TestBranchMergeRollback(TestInfrahubApp):
         # Capture the branch's pre-merge `branched_from` so we can verify rollback restored it.
         pre_merge_branched_from = branch1.branched_from
 
-        with patch("infrahub.core.branch.tasks.BranchMerger", new=BrokenBranchMerger):
+        with patch("infrahub.core.merge.builder.GraphMerger", new=BrokenGraphMerger):
             with pytest.raises(GraphQLError) as exc:
                 await client.execute_graphql(query=BRANCH_MERGE, variables={"branch": branch1.name})
 

@@ -5,7 +5,10 @@ from pydantic import BaseModel, ConfigDict
 
 from infrahub.exceptions import (
     AuthorizationError,
+    BranchAlreadyMergedError,
+    BranchNeedsRebaseError,
     BranchNotFoundError,
+    MergeInProgressError,
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
@@ -21,7 +24,10 @@ from .payloads import (
     AttributeInvalidTypeData,
     AttributeRequiredData,
     AuthenticationRequiredData,
+    BranchAlreadyMergedData,
+    BranchNeedsRebaseData,
     BranchNotFoundData,
+    MergeInProgressData,
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
@@ -130,6 +136,39 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
                 http_status=422,
                 payload_model=SchemaNotFoundData,
                 exception_class=SchemaNotFoundError,
+            ),
+        ),
+        (
+            "BRANCH_ALREADY_MERGED",
+            CatalogueEntry(
+                description="The target branch has been merged and is permanently read-only.",
+                stability="stable",
+                http_status=400,
+                payload_model=BranchAlreadyMergedData,
+                exception_class=BranchAlreadyMergedError,
+            ),
+        ),
+        (
+            "BRANCH_NEEDS_REBASE",
+            CatalogueEntry(
+                description="The target branch must be rebased before it accepts new changes.",
+                stability="stable",
+                http_status=400,
+                payload_model=BranchNeedsRebaseData,
+                exception_class=BranchNeedsRebaseError,
+            ),
+        ),
+        (
+            "MERGE_IN_PROGRESS",
+            CatalogueEntry(
+                description=(
+                    "The write was rejected because a branch merge is in progress. "
+                    "The block is transient; retry once the merge completes."
+                ),
+                stability="evolving",
+                http_status=423,
+                payload_model=MergeInProgressData,
+                exception_class=MergeInProgressError,
             ),
         ),
         (

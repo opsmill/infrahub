@@ -35,7 +35,8 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
     await test.step("Verify profile creation success", async () => {
       await expect(
-        page.locator("#alert-success-BuiltinTag-created").getByText("BuiltinTag created")
+        // The toast id carries the created node's uuid suffix, so prefix-match it.
+        page.locator('[id^="alert-success-BuiltinTag-created"]').getByText("BuiltinTag created")
       ).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" })).toBeVisible();
     });
@@ -94,7 +95,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Verify object creation", async () => {
-      await expect(page.locator("#alert-success-Tag-created")).toContainText("Tag created");
+      await expect(page.locator('[id^="alert-success-Tag-created"]')).toContainText("Tag created");
       await page.getByRole("link", { name: "tag with profile" }).click();
     });
 

@@ -14,37 +14,41 @@ import { cn, tv } from "tailwind-variants";
 
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
-const listBoxLayoutOptions = { rowHeight: 30, loaderHeight: 30, padding: 4 };
-
-export function ListBoxVirtualizer({ children }: { children: React.ReactNode }) {
-  return (
-    <Virtualizer layout={ListLayout} layoutOptions={listBoxLayoutOptions}>
-      {children}
-    </Virtualizer>
-  );
-}
+const DEFAULT_ROW_HEIGHT = 30;
 
 export type SelectionIndicator = "checkmark" | "highlight" | "none";
 
 const SelectionIndicatorContext = React.createContext<SelectionIndicator>("checkmark");
 
+const listBoxStyles = tv({
+  base: "no-scrollbar max-h-[inherit] overflow-auto outline-hidden",
+  variants: {
+    // The 4px inset is baked in here so call sites never add `p-1` themselves.
+    // When virtualized it comes from the Virtualizer's layoutOptions.padding instead
+    // CSS padding on the scroll container desyncs the virtualizer's absolute layout math and clips the last rows.
+    virtualized: { false: "p-1" },
+  },
+});
+
 export interface ListBoxProps<T> extends AriaListBoxProps<T> {
   emptyMessage?: React.ReactNode;
   selectionIndicator?: SelectionIndicator;
+  virtualized?: boolean;
 }
 
 export function ListBox<T extends object>({
   className,
   emptyMessage,
   selectionIndicator = "checkmark",
+  virtualized = false,
   ...props
 }: ListBoxProps<T>) {
-  return (
+  const listBox = (
     <SelectionIndicatorContext.Provider value={selectionIndicator}>
       <AriaListBox
         shouldFocusOnHover
         className={composeAriaClassName(className, (resolvedClassName) =>
-          cn("no-scrollbar max-h-[inherit] overflow-auto", resolvedClassName),
+          cn(listBoxStyles({ virtualized }), resolvedClassName),
         )}
         renderEmptyState={
           emptyMessage === undefined
@@ -54,6 +58,23 @@ export function ListBox<T extends object>({
         {...props}
       />
     </SelectionIndicatorContext.Provider>
+  );
+
+  if (!virtualized) {
+    return listBox;
+  }
+
+  return (
+    <Virtualizer
+      layout={ListLayout}
+      layoutOptions={{
+        rowHeight: DEFAULT_ROW_HEIGHT,
+        loaderHeight: DEFAULT_ROW_HEIGHT,
+        padding: 4,
+      }}
+    >
+      {listBox}
+    </Virtualizer>
   );
 }
 

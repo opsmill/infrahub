@@ -34,17 +34,8 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         />
       );
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={
-            hasApproved
-              ? "An error occurred while canceling the approval"
-              : "An error occurred while approving"
-          }
-        />
-      );
+    onError: (error) => {
+      toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
     },
   });
 

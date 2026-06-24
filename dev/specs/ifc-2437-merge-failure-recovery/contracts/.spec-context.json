@@ -1,0 +1,10 @@
+{
+  "workflow": "speckit",
+  "specName": "contracts",
+  "branch": "contracts",
+  "selectedAt": "2026-04-29T22:58:41.413Z",
+  "currentStep": "specify",
+  "status": "draft",
+  "stepHistory": {},
+  "transitions": []
+}

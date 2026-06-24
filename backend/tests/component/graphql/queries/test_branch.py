@@ -786,16 +786,16 @@ class TestBranchQuery(TestInfrahubApp):
         assert len(result.errors) > 0
         assert "created_at" in str(result.errors[0]) or "updated_at" in str(result.errors[0])
 
-    async def test_order_by_rejects_order_by_string_field(
+    async def test_order_by_rejects_by_field(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         service: InfrahubServices,
     ) -> None:
-        """Branch's MetadataOrderInput does not expose `order_by`, so the field is unknown to the schema."""
+        """Branch's MetadataOrderInput does not expose `by`, so the field is unknown to the schema."""
         query = """
         query {
-            InfrahubBranch(order: {order_by: ["node_metadata__created_at__asc"]}) {
+            InfrahubBranch(order: {by: [{field: "node_metadata__created_at", direction: ASC}]}) {
                 edges { node { name { value } } }
             }
         }
@@ -809,7 +809,7 @@ class TestBranchQuery(TestInfrahubApp):
         )
 
         assert result.errors is not None
-        assert any("order_by" in str(err.message) for err in result.errors)
+        assert any("by" in str(err.message) for err in result.errors)
 
     async def test_filter_by_status(
         self,

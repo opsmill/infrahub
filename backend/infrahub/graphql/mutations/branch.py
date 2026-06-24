@@ -7,12 +7,14 @@ from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
+from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, ValidationError
@@ -149,6 +151,14 @@ class BranchDelete(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+
+        # Branch deletes are exempt from the merge write gate, but must verify that the branch being deleted is
+        # not the one being merged
+        merge_write_blocker = MergeWriteBlocker(cache=graphql_context.active_service.cache)
+        await BranchStatusChecker(db=graphql_context.db, merge_write_blocker=merge_write_blocker).check_merging_status(
+            branch=obj
+        )
+
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         parameters = {

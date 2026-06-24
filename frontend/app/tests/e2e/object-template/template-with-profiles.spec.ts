@@ -120,7 +120,10 @@ test.describe("/object-template - Template with Profiles", () => {
     });
 
     await test.step("Navigate to object details", async () => {
-      await expect(page.locator("#alert-success-Device-created")).toContainText("Device created");
+      // The toast id carries the created node's uuid suffix, so prefix-match it.
+      await expect(page.locator('[id^="alert-success-Device-created"]')).toContainText(
+        "Device created"
+      );
       await page.getByRole("link", { name: "spine-router-01" }).click();
     });
 

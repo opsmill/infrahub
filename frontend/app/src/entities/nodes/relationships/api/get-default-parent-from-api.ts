@@ -70,7 +70,6 @@ export const getDefaultParentFromApi = ({
     context: {
       branch: branchName,
       date: atDate,
-      queryDeduplication: false,
       processErrorMessage: () => {},
     },
   });

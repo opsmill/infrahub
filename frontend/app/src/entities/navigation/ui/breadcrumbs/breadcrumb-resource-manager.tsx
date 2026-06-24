@@ -1,4 +1,5 @@
 import {
+  Autocomplete,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbItemError,
@@ -7,7 +8,7 @@ import {
   Button,
   ListBox,
   ListBoxItem,
-  ListBoxVirtualizer,
+  MenuTrigger,
   Popover,
   PopoverDialog,
 } from "@infrahub/ui";
@@ -15,8 +16,6 @@ import { ChevronsUpDownIcon } from "lucide-react";
 import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Col, Row } from "@/shared/components/container";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
@@ -93,19 +92,17 @@ function ResourceSelector({
             <PopoverDialog>
               {({ close }) => (
                 <Autocomplete>
-                  <ListBoxVirtualizer>
-                    <ListBox items={resources} onAction={close}>
-                      {(resource) => (
-                        <ListBoxItem
-                          href={constructPath(
-                            `/resource-manager/${resourcePoolId}/resources/${resource.id}`
-                          )}
-                        >
-                          {resource.display_label}
-                        </ListBoxItem>
-                      )}
-                    </ListBox>
-                  </ListBoxVirtualizer>
+                  <ListBox virtualized items={resources} onAction={close}>
+                    {(resource) => (
+                      <ListBoxItem
+                        href={constructPath(
+                          `/resource-manager/${resourcePoolId}/resources/${resource.id}`
+                        )}
+                      >
+                        {resource.display_label}
+                      </ListBoxItem>
+                    )}
+                  </ListBox>
                 </Autocomplete>
               )}
             </PopoverDialog>

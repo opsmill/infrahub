@@ -224,6 +224,7 @@ class Migration047(MigrationRequiringRebase):
     """
 
     name: str = "047_backfill_or_null_display_label"
+    description: str = "N/A"
     minimum_version: int = 46
     update_batch_size: int = 1000
     # skip these b/c the attributes on these schema-related nodes are used to define the values included in

@@ -230,6 +230,7 @@ class Migration044(MigrationRequiringRebase):
     """Backfill `human_friendly_id` and `display_label` attributes for nodes with schemas that define them."""
 
     name: str = "044_backfill_hfid_display_label_in_db"
+    description: str = "N/A"
     minimum_version: int = 43
     update_batch_size: int = 1000
     # skip these b/c the attributes on these schema-related nodes are used to define the values included in

@@ -72,13 +72,16 @@ def make_node_diff(
     kind: str,
     branch: str,
     field_names: list[str],
-    action: str = "updated",
+    action: str = "UPDATED",
     element_type: str = DiffElementType.ATTRIBUTE.value,
 ) -> NodeDiff:
     """Build a NodeDiff for use in diff summary cache.
 
     `element_type` accepts the raw diff value (e.g. "RELATIONSHIP_ONE") so tests can reproduce a
     relationship endpoint flip exactly as the diff summary emits it.
+
+    `action` is the uppercase GraphQL enum name as emitted by `get_diff_summary`
+    ("UPDATED"/"ADDED"/...), not the lowercase `DiffAction.*.value`.
     """
     return NodeDiff(
         branch=branch,
@@ -90,7 +93,7 @@ def make_node_diff(
             NodeDiffElement(
                 name=field_name,
                 element_type=element_type,
-                action="updated",
+                action="UPDATED",
                 summary=NodeDiffSummary(added=0, updated=1, removed=0),
             )
             for field_name in field_names

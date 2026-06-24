@@ -31,6 +31,7 @@ class Migration038(InternalSchemaMigration):
     """
 
     name: str = "038_prefix_0000_fix"
+    description: str = "N/A"
     minimum_version: int = 37
     migrations: Sequence[SchemaMigration] = []
 

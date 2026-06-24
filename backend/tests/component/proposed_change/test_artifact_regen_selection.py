@@ -44,7 +44,12 @@ query GetPythonDevice($ids: [ID!]!) {
 # helper picked up by the package-directory floor. The repository manifest is part of
 # every closure.
 JINJA_DEPENDENCIES = [".infrahub.yml", "partials/header.j2", "templates/device.j2"]
-PYTHON_DEPENDENCIES = [".infrahub.yml", "transforms/foo/foo.py", "transforms/foo/helpers.py"]
+PYTHON_DEPENDENCIES = [
+    ".infrahub.yml",
+    "transforms/foo/__init__.py",
+    "transforms/foo/foo.py",
+    "transforms/foo/helpers.py",
+]
 
 ARTIFACT_SCHEMA = SchemaRoot(
     nodes=[

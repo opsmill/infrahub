@@ -1,5 +1,14 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, type ButtonProps, Popover, Sheet } from "@infrahub/ui";
+import {
+  Button,
+  type ButtonProps,
+  Menu,
+  MenuItem,
+  MenuSection,
+  MenuTrigger,
+  Popover,
+  Sheet,
+} from "@infrahub/ui";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
@@ -10,15 +19,8 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import {
-  CopyToClipboardMenuItem,
-  Menu,
-  MenuItem,
-  MenuItemWithTooltip,
-  MenuSection,
-  MenuTrigger,
-} from "@/shared/components/aria/menu";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
@@ -138,7 +140,7 @@ export function ObjectDetailsMenu({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <BookTextIcon className="size-3.5" />
+                  <BookTextIcon />
                   Documentation
                 </MenuItem>
               )}
@@ -154,46 +156,42 @@ export function ObjectDetailsMenu({
             )}
 
             <MenuSection title="Manage">
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 onAction={() => setIsEditModalOpen(true)}
               >
-                <PencilLineIcon className="size-3.5" />
+                <PencilLineIcon />
                 <span>Edit</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 onAction={() => setIsManageGroupsDrawerOpen(true)}
               >
-                <GroupIcon className="size-3.5" />
+                <GroupIcon />
                 <span>Groups</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
+                tooltip={editTooltipMessage}
                 href={constructPath(`/objects/${objectData.__typename}/${objectData.id}/convert`)}
               >
                 <Icon icon="mdi:swap-horizontal" className="size-3" />
                 Convert object type
-              </MenuItemWithTooltip>
+              </MenuItem>
 
-              <MenuItemWithTooltip
+              <MenuItem
                 isDisabled={!isDeleteAllowed}
-                tooltipEnabled={!isDeleteAllowed}
-                tooltipContent={deleteTooltipMessage}
+                tooltip={deleteTooltipMessage}
                 className="text-red-500"
                 onAction={() => setIsDeleteModalOpen(true)}
               >
-                <Trash2Icon className="size-3.5" />
+                <Trash2Icon />
                 <span>Delete</span>
-              </MenuItemWithTooltip>
+              </MenuItem>
             </MenuSection>
           </Menu>
         </Popover>

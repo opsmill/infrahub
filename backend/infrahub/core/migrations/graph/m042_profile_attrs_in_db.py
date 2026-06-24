@@ -76,6 +76,7 @@ class Migration042(MigrationRequiringRebase):
     """
 
     name: str = "042_profile_attrs_in_db"
+    description: str = "N/A"
     minimum_version: int = 41
 
     def _get_profile_applier(self, db: InfrahubDatabase, branch: Branch) -> NodeProfilesApplier:

@@ -1,0 +1,173 @@
+---
+title: Advanced LDAP configuration
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Advanced LDAP configuration <EnterpriseBadge />
+
+These options extend a working LDAP setup with directory group resolution, nested-group handling, server failover, and stricter TLS. Configure the connection and user lookup first — see [Configure LDAP authentication](./configure-ldap.mdx).
+
+## Resolve directory groups
+
+With group resolution enabled, Infrahub looks up the groups a user belongs to and grants the permissions of the local groups whose names match. Group names are matched against **existing** local groups: create the matching `CoreAccountGroup`s first, or auto-create them (see [Auto-create groups](#auto-create-groups-from-ldap)).
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+export INFRAHUB_LDAP_GROUP_ENABLED=true
+export INFRAHUB_LDAP_GROUP_BASE_DN="OU=Groups,DC=corp,DC=example,DC=com"
+
+# Group-name attribute, matched against local group names
+export INFRAHUB_LDAP_GROUP_NAME_ATTRIBUTE="cn"
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[ldap]
+group_enabled = true
+group_base_dn = "OU=Groups,DC=corp,DC=example,DC=com"
+
+# Group-name attribute, matched against local group names
+group_name_attribute = "cn"
+```
+
+</TabItem>
+</Tabs>
+
+The group lookup filter defaults to `(member={user_dn})`. The `{user_dn}` placeholder is substituted with the user's distinguished name at sign-in time and escaped to prevent filter injection. Override it with `group_filter` for directories that record membership differently.
+
+:::info
+When group resolution is turned off, users sign in successfully but receive no permissions until they are assigned to local groups manually.
+:::
+
+## Nested groups
+
+Directories often nest groups inside other groups. Choose how Infrahub resolves transitive memberships with `group_strategy`:
+
+| Strategy | How it resolves nesting | Use when |
+|----------|-------------------------|----------|
+| `bfs` (default) | Walks group membership level by level | Any LDAP-compatible directory |
+| `ad_in_chain` | Uses Active Directory's transitive-membership search to retrieve all nested groups in one query | Active Directory, where it is the fastest option |
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+export INFRAHUB_LDAP_GROUP_STRATEGY="ad_in_chain"
+
+# bfs only: how many nesting levels to traverse (minimum 10)
+export INFRAHUB_LDAP_GROUP_BFS_MAX_DEPTH=16
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[ldap]
+group_strategy = "ad_in_chain"
+
+# bfs only: how many nesting levels to traverse (minimum 10)
+group_bfs_max_depth = 16
+```
+
+</TabItem>
+</Tabs>
+
+`group_bfs_max_depth` applies only to the `bfs` strategy. Cycles in the group structure are detected automatically. Raise it above the default of 16 only when groups nest deeper than that — common in large Active Directory forests with deeply nested organizational units. The `ad_in_chain` strategy has no depth limit but is available only against Active Directory.
+
+## Auto-create groups from LDAP
+
+By default, only directory groups that already exist as local groups take effect. Infrahub can instead create local groups on demand from the directory group names a user belongs to, so administrators do not have to mirror every directory group manually. The feature is opt-in and scoped by a regular-expression filter.
+
+The same mechanism handles SSO claims and LDAP group names. For configuration — the filter syntax, the per-login cap, the `origin` provenance attribute, and the audit events — see [Auto-create groups from claims](../sso/advanced-sso.mdx#auto-create-groups-from-claims).
+
+## Multiple servers and failover
+
+List several server URIs to tolerate an unreachable directory. Infrahub tries them in declaration order, falling through to the next when one does not respond within `per_server_timeout`.
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+export INFRAHUB_LDAP_SERVERS="ldaps://dc1.corp.example.com:636,ldaps://dc2.corp.example.com:636"
+
+# Seconds to wait for a server before trying the next
+export INFRAHUB_LDAP_PER_SERVER_TIMEOUT=10
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[ldap]
+servers = ["ldaps://dc1.corp.example.com:636", "ldaps://dc2.corp.example.com:636"]
+
+# Seconds to wait for a server before trying the next
+per_server_timeout = 10
+```
+
+</TabItem>
+</Tabs>
+
+## Tune for large directories
+
+In directories with many entries, keep each sign-in lookup fast and predictable:
+
+- **Scope `user_search_base` (and `group_base_dn`) to the narrowest subtree** that contains the relevant entries, so each search examines fewer objects.
+- **Index the sign-in attribute** (`attribute_username`, such as `sAMAccountName` or `uid`) on the directory side. An attribute that is not indexed forces a full scan on every sign-in.
+- **Account for `per_server_timeout` during failover.** Each unreachable server is given the full timeout before Infrahub moves to the next, so a sign-in attempt can wait up to `per_server_timeout` × the number of unreachable servers. Keep the timeout tight enough that failover stays within an acceptable sign-in latency.
+
+## Harden the TLS connection
+
+For production, verify the directory's certificate against a trusted authority and set a minimum protocol version.
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+export INFRAHUB_LDAP_TLS_ENABLED=true
+
+# Path to a PEM bundle, or the PEM contents directly; checked at startup
+export INFRAHUB_LDAP_TLS_CA_BUNDLE="/etc/infrahub/ldap-ca.pem"
+export INFRAHUB_LDAP_TLS_MINIMUM_VERSION="TLSv1.2"
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[ldap]
+tls_enabled = true
+
+# Path to a PEM bundle, or the PEM contents directly; checked at startup
+tls_ca_bundle = "/etc/infrahub/ldap-ca.pem"
+tls_minimum_version = "TLSv1.2"
+```
+
+</TabItem>
+</Tabs>
+
+:::warning
+`tls_insecure` skips certificate validation entirely. Restrict it to test and development environments; never enable it in production.
+:::
+
+### Choose LDAPS or STARTTLS
+
+Both modes give you an encrypted connection; pick one based on the port your directory exposes:
+
+- **LDAPS (implicit TLS)** — connect to `ldaps://` URIs on port 636. TLS is established before any LDAP traffic.
+- **STARTTLS** — connect to plain `ldap://` URIs on port 389 and set `tls_starttls = true` to upgrade the connection in place.
+
+Infrahub rejects contradictory combinations at startup: `tls_starttls` cannot be paired with an `ldaps://` URI, and `tls_insecure` cannot be combined with a `tls_ca_bundle`.
+
+## Related resources
+
+- [LDAP authentication overview](./overview.mdx)
+- [Configure LDAP authentication](./configure-ldap.mdx)
+- [LDAP reference](../../../reference/ldap.mdx)
+- [Permissions and roles](../permissions-roles/overview.mdx)

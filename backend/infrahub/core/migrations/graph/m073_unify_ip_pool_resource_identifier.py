@@ -288,6 +288,7 @@ class Migration073(ArbitraryMigration):
     """
 
     name: str = "073_unify_ip_pool_resource_identifier"
+    description: str = "Unify CoreIPPrefixPool and CoreIPAddressPool resource relationships under a single ippool__resource identifier."
     minimum_version: int = 72
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:

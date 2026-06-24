@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from infrahub import config
 from infrahub.auth.auth import authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
 from infrahub.auth.session import AccountSession  # noqa: TC001
+from infrahub.branch.query_time_validator import BranchQueryTimeValidator
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.registry import registry
@@ -82,7 +83,11 @@ async def get_branch_params(
     branch = await registry.get_branch(db=db, branch=branch_name)
     request.state.branch_name = branch.name
 
-    return BranchParams(branch=branch, at=Timestamp(at))
+    at_ts = Timestamp(at)
+    if at is not None:
+        BranchQueryTimeValidator(registry=registry).validate(branch=branch, at=at_ts)
+
+    return BranchParams(branch=branch, at=at_ts)
 
 
 async def get_branch_dep(

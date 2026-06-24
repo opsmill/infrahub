@@ -21,6 +21,7 @@ export function DependenciesModeMain({
       maxDepth: params.depth,
       maxResults: params.maxResults,
       maxPaths: params.maxPaths,
+      shortestPathsOnly: params.shortestPathsOnly,
     },
     { enabled: !!params.source && params.targetKinds.length > 0 }
   );

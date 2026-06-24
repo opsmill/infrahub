@@ -32,6 +32,7 @@ TerminalPredicate = TerminalById | TerminalByKinds
 class UserFilters:
     kind_filter: frozenset[str] = field(default_factory=frozenset)
     excluded_kinds: frozenset[str] = field(default_factory=frozenset)
+    included_kinds: frozenset[str] = field(default_factory=frozenset)
     excluded_namespaces: frozenset[str] = field(default_factory=lambda: frozenset(DEFAULT_EXCLUDED_NAMESPACES))
     relationship_filter: frozenset[str] = field(default_factory=frozenset)
 
@@ -42,6 +43,7 @@ class UserFilters:
     ) -> UserFilters:
         kind_filter = frozenset(getattr(data, "kind_filter", None) or ())
         excluded_kinds = frozenset(getattr(data, "excluded_kinds", None) or ())
+        included_kinds = frozenset(getattr(data, "included_kinds", None) or ())
         relationship_filter = frozenset(getattr(data, "relationship_filter", None) or ())
 
         excluded_namespaces = frozenset(DEFAULT_EXCLUDED_NAMESPACES)
@@ -52,6 +54,7 @@ class UserFilters:
         return cls(
             kind_filter=kind_filter,
             excluded_kinds=excluded_kinds,
+            included_kinds=included_kinds,
             excluded_namespaces=excluded_namespaces,
             relationship_filter=relationship_filter,
         )
@@ -71,11 +74,16 @@ class Plan:
       ``terminal_predicate``.
     - ``min_depth_to_terminal`` is the per-kind minimum hop count to reach a
       terminal-matching end_kind through the accumulated adjacency.
+
+    ``excluded_kinds`` is the concrete kind set that was excluded while
+    building the plan: the default exclusions plus the requested ones,
+    minus the re-included ones, all expanded to concrete kinds.
     """
 
     source_kind: str
     terminal_predicate: TerminalPredicate
     max_depth: int
+    excluded_kinds: frozenset[str] = field(default_factory=frozenset)
     _adjacency: dict[str, dict[str, set[str]]] = field(default_factory=dict, init=False, repr=False)
     _min_depth_to_terminal: dict[str, int] = field(default_factory=dict, init=False, repr=False)
 

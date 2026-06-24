@@ -1,12 +1,19 @@
 from collections.abc import Generator
+from typing import Any
 
 import pytest
+from fast_depends import Provider
 from fastapi.testclient import TestClient
 
 from infrahub import config
 from infrahub.api import internal
 from infrahub.core.branch import Branch
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus.messages import RefreshSettingsResponseDelay
+from infrahub.message_bus.operations.refresh import settings as refresh_settings
+from infrahub.workers.dependencies import build_message_bus
+from tests.conftest import TestHelper
 from tests.helpers.fixtures import get_fixtures_dir
 
 
@@ -142,3 +149,55 @@ async def test_no_search_docs(client: TestClient, no_search_index_path: None) ->
         "data": None,
         "errors": [{"message": "documentation index not found", "extensions": {"code": 404}}],
     }
+
+
+@pytest.fixture
+def recorder_bus(helper: TestHelper, dependency_provider: Provider) -> Generator[Any, None, None]:
+    original = config.OVERRIDE.message_bus
+    bus = helper.get_message_bus_recorder()
+    config.OVERRIDE.message_bus = bus
+    with dependency_provider.scope(build_message_bus, lambda: bus):
+        yield bus
+    config.OVERRIDE.message_bus = original
+
+
+async def test_response_delay_endpoint_broadcasts(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    register_core_models_schema: None,
+    create_test_admin: Node,
+    recorder_bus: Any,
+) -> None:
+    with client:
+        response = client.post("/api/response-delay", headers=admin_headers, json={"response_delay": 1})
+
+    assert response.status_code == 200
+    assert response.json() == {"response_delay": 1}
+
+    published = recorder_bus.messages_per_routing_key.get("refresh.settings.response_delay")
+    assert published
+    assert published[0].response_delay == 1
+
+
+async def test_response_delay_endpoint_requires_super_admin(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    register_core_models_schema: None,
+) -> None:
+    with client:
+        response = client.post("/api/response-delay", headers=client_headers, json={"response_delay": 1})
+
+    assert response.status_code in (401, 403)
+
+
+async def test_response_delay_message_updates_settings() -> None:
+    original = config.SETTINGS.miscellaneous.response_delay
+    try:
+        await refresh_settings.response_delay(message=RefreshSettingsResponseDelay(response_delay=2))
+        assert config.SETTINGS.miscellaneous.response_delay == 2
+    finally:
+        config.SETTINGS.miscellaneous.response_delay = original

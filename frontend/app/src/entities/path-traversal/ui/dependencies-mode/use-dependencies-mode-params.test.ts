@@ -11,6 +11,7 @@ describe("paramsToFormValues", () => {
         depth: 8,
         maxResults: 100,
         maxPaths: 1000,
+        shortestPathsOnly: true,
         selectedIndex: 0,
       })
     ).toEqual({
@@ -19,6 +20,7 @@ describe("paramsToFormValues", () => {
       maxDepth: 8,
       maxResults: 100,
       maxPaths: 1000,
+      shortestPathsOnly: true,
     });
   });
 });
@@ -32,6 +34,7 @@ describe("formValuesToParams", () => {
         maxDepth: 3,
         maxResults: 100,
         maxPaths: 1000,
+        shortestPathsOnly: false,
       })
     ).toEqual({
       source: "src-id",
@@ -39,6 +42,7 @@ describe("formValuesToParams", () => {
       depth: 3,
       maxResults: 100,
       maxPaths: 1000,
+      shortestPathsOnly: false,
       selectedIndex: 0,
     });
   });

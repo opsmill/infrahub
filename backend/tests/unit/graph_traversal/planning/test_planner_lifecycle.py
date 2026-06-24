@@ -60,6 +60,40 @@ class TestMaxDepthValidation:
             )
 
 
+class TestFilterKindValidation:
+    def test_default_excluded_kinds_absent_from_schema_do_not_raise(self) -> None:
+        # Toy schemas don't register the BuiltinIPNamespace generic; the
+        # defaults are planner-internal and must not trip kind validation.
+        planner = make_planner(schema_branch=_real_schema_with_single_kind())
+        plan = planner.plan(
+            source_kind="TestingReal",
+            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingReal"})),
+            max_depth=5,
+            user_filters=UserFilters(),
+        )
+        assert plan.is_empty
+
+    def test_excluded_kinds_with_unknown_kind_raises_value_error(self) -> None:
+        planner = make_planner(schema_branch=_real_schema_with_single_kind())
+        with pytest.raises(ValueError, match="excluded_kinds kind 'NotInSchema' not in schema"):
+            planner.plan(
+                source_kind="TestingReal",
+                terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingReal"})),
+                max_depth=5,
+                user_filters=UserFilters(excluded_kinds=frozenset({"NotInSchema"})),
+            )
+
+    def test_included_kinds_with_unknown_kind_raises_value_error(self) -> None:
+        planner = make_planner(schema_branch=_real_schema_with_single_kind())
+        with pytest.raises(ValueError, match="included_kinds kind 'NotInSchema' not in schema"):
+            planner.plan(
+                source_kind="TestingReal",
+                terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingReal"})),
+                max_depth=5,
+                user_filters=UserFilters(included_kinds=frozenset({"NotInSchema"})),
+            )
+
+
 class TestTerminalKindValidation:
     def test_terminal_by_id_kind_not_in_schema_raises_value_error(self) -> None:
         planner = make_planner(schema_branch=_real_schema_with_single_kind())

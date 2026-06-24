@@ -1,0 +1,9 @@
+query report_query {
+  CoreRepository {
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}

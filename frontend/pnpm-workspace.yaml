@@ -13,18 +13,18 @@ allowBuilds:
 # Single source of truth for cross-workspace versions. Reference from package.json
 # with `"<dep>": "catalog:"`. Add a dep here only if it's used by more than one workspace member.
 catalog:
-  "@tailwindcss/vite": ^4.3.0
-  "@types/node": ^25.9.2
+  "@tailwindcss/vite": ^4.3.1
+  "@types/node": ^25.9.3
   "@types/react": ^19.2.17
   "@types/react-dom": ^19.2.3
   "@vitejs/plugin-react": ^6.0.2
   babel-plugin-react-compiler: ^1.0.0
-  lucide-react: ^1.17.0
+  lucide-react: ^1.21.0
   react: ^19.2.7
   react-aria-components: ^1.18.0
   react-dom: ^19.2.7
   tailwind-merge: ^3.6.0
-  tailwindcss: ^4.3.0
+  tailwindcss: ^4.3.1
   typescript: ^5.9.3
   vite: ^8.0.16
 

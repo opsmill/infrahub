@@ -50,6 +50,19 @@ class BranchNotFoundData(PayloadBase):
     branch_name: str
 
 
+class BranchAlreadyMergedData(PayloadBase):
+    branch_name: str
+
+
+class BranchNeedsRebaseData(PayloadBase):
+    branch_name: str
+
+
+class MergeInProgressData(PayloadBase):
+    branch_name: str
+    merging_branch: str
+
+
 class SchemaNotFoundData(PayloadBase):
     kind: str
 

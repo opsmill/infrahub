@@ -136,6 +136,7 @@ class Migration048(ArbitraryMigration):
     """
 
     name: str = "048_undelete_rel_props"
+    description: str = "N/A"
     minimum_version: int = 47
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

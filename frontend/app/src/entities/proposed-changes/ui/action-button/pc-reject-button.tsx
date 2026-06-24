@@ -32,17 +32,8 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         />
       );
     },
-    onError: () => {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={
-            hasRejected
-              ? "An error occurred while canceling the rejection"
-              : "An error occurred while rejecting proposed change"
-          }
-        />
-      );
+    onError: (error) => {
+      toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
     },
   });
 

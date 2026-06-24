@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { use, useEffect, useState } from "react";
 
-import { Button } from "../button/button";
 import { DismissGuardContext } from "../../hooks/use-dissmiss-guard";
+import { Button } from "../button/button";
 import { Sheet } from "./sheet";
 
 const meta: Meta<typeof Sheet> = {
@@ -124,8 +124,8 @@ export const Playground: Story = {
       <div className="flex flex-col gap-3">
         <h2 className="font-medium text-base text-stone-900">Sheet</h2>
         <p className="text-neutral-600 text-sm">
-          A side panel anchored to the right edge of the viewport. Toggle the isOpen control to
-          open and close it.
+          A side panel anchored to the right edge of the viewport. Toggle the isOpen control to open
+          and close it.
         </p>
       </div>
     </Sheet>

@@ -290,6 +290,7 @@ class Migration062(MigrationRequiringRebase):
     """Recompute display_label for all permission nodes (CoreObjectPermission and CoreGlobalPermission)."""
 
     name: str = "062_recompute_permission_display_labels"
+    description: str = "N/A"
     minimum_version: int = 61
     update_batch_size: int = 1000
 

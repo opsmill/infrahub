@@ -10,6 +10,10 @@ from structlog.dev import plain_traceback
 if TYPE_CHECKING:
     from structlog.types import Processor
 
+# Any logger that may flow through the application: the structlog logger returned by get_logger, or a
+# stdlib logger / adapter (e.g. a Prefect flow-run logger). Used where a component accepts either.
+InfrahubLogger = logging.Logger | logging.LoggerAdapter[logging.Logger] | structlog.stdlib.BoundLogger
+
 INFRAHUB_PRODUCTION = TypeAdapter(bool).validate_python(os.environ.get("INFRAHUB_PRODUCTION", "true"))
 INFRAHUB_LOG_LEVEL = os.environ.get("INFRAHUB_LOG_LEVEL", "INFO")
 

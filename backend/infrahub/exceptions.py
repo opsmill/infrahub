@@ -311,6 +311,14 @@ class QueryError(Error):
         """
 
 
+class QueryTimeoutError(Error):
+    HTTP_CODE: int = 504
+
+    def __init__(self, message: str = "The query exceeded its execution time budget.") -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
 class QueryValidationError(Error):
     HTTP_CODE = 400
 
@@ -417,6 +425,16 @@ class BranchAlreadyMergedError(BranchStatusError): ...
 
 
 class BranchNeedsRebaseError(BranchStatusError): ...
+
+
+class MergeInProgressError(BranchStatusError):
+    """Write rejected because a merge is in progress on `merging_branch`."""
+
+    HTTP_CODE: int = 423
+
+    def __init__(self, identifier: str, message: str, merging_branch: str) -> None:
+        self.merging_branch = merging_branch
+        super().__init__(identifier=identifier, message=message)
 
 
 class EnterpriseRequiredError(Error):

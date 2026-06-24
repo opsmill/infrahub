@@ -74,12 +74,39 @@ async def validate_prerequisites(db: InfrahubDatabase) -> bool:
 async def upgrade_cmd(
     ctx: typer.Context,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-    check: bool = typer.Option(False, help="Check the state of the system without upgrading."),
-    rebase_branches: bool = typer.Option(False, help="Rebase and apply migrations to branches if required."),
-    interactive: bool = typer.Option(
-        False, help="Use interactive prompt to accept or deny rebase of individual branches."
+    check: bool = typer.Option(
+        False,
+        help=(
+            "Report what the upgrade would do without writing anything to the database. "
+            "Shows pending migrations and their types, whether the core schema needs an "
+            "update, and which open branches need rebase."
+        ),
     ),
-    verbose: bool = typer.Option(False, help="Show detailed internal output from migrations and rebase."),
+    rebase_branches: bool = typer.Option(
+        False,
+        help=(
+            "Automatically rebase every open branch that needs it after migrations run. "
+            "Without this flag, the upgrade reports which branches need rebase and stops; "
+            "rebase them manually later or re-run with this flag."
+        ),
+    ),
+    interactive: bool = typer.Option(
+        False,
+        help=(
+            "When combined with --rebase-branches, prompt y/N before rebasing each branch. "
+            "Has no effect without --rebase-branches."
+        ),
+    ),
+    verbose: bool = typer.Option(
+        False,
+        help=(
+            "Also show internal infrahub and prefect logger output "
+            "(schema-loader warnings, validator messages, workflow-client logs) "
+            "from migrations and rebase that is suppressed by default. "
+            "Per-step and per-migration progress messages are always shown "
+            "and are not controlled by this flag."
+        ),
+    ),
 ) -> None:
     """Upgrade Infrahub to the latest version.
 

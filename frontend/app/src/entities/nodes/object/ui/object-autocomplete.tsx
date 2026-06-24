@@ -1,9 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-import { ListBox, ListBoxItem, ListBoxLoadMoreItem, ListBoxVirtualizer } from "@infrahub/ui";
+import { Autocomplete, ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@infrahub/ui";
 import React from "react";
 import { Collection } from "react-aria-components";
 
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { debounce } from "@/shared/utils/common";
 
@@ -33,7 +32,7 @@ export function ObjectAutocomplete({
   if (isPending) {
     return (
       <Autocomplete onInputChange={setSearchDebounced}>
-        <ListBox className="p-1">
+        <ListBox>
           <ListBoxLoadMoreItem isLoading />
         </ListBox>
       </Autocomplete>
@@ -46,30 +45,28 @@ export function ObjectAutocomplete({
 
   return (
     <Autocomplete onInputChange={setSearchDebounced}>
-      <ListBoxVirtualizer>
-        <ListBox className={className} emptyMessage="No result found">
-          <Collection items={flatData}>
-            {(node) => {
-              const { schema } = getSchema(node.__typename);
-              const nodeLabel = getNodeLabel(node);
+      <ListBox virtualized className={className} emptyMessage="No result found">
+        <Collection items={flatData}>
+          {(node) => {
+            const { schema } = getSchema(node.__typename);
+            const nodeLabel = getNodeLabel(node);
 
-              return (
-                <ListBoxItem
-                  textValue={nodeLabel}
-                  href={getObjectDetailsUrl(node.__typename, node.id)}
-                >
-                  <Icon icon={getSchemaIcon(schema)} />
-                  <span className="truncate">{nodeLabel}</span>
-                </ListBoxItem>
-              );
-            }}
-          </Collection>
+            return (
+              <ListBoxItem
+                textValue={nodeLabel}
+                href={getObjectDetailsUrl(node.__typename, node.id)}
+              >
+                <Icon icon={getSchemaIcon(schema)} />
+                <span className="truncate">{nodeLabel}</span>
+              </ListBoxItem>
+            );
+          }}
+        </Collection>
 
-          {hasNextPage && (
-            <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />
-          )}
-        </ListBox>
-      </ListBoxVirtualizer>
+        {hasNextPage && (
+          <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />
+        )}
+      </ListBox>
     </Autocomplete>
   );
 }

@@ -17,6 +17,7 @@ from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import BranchStatusError, NodeNotFoundError, ValidationError
@@ -78,7 +79,9 @@ async def generate_artifact(
     context: InfrahubContext = Depends(get_context),
 ) -> None:
     try:
-        BranchStatusChecker().check(branch=branch_params.branch)
+        await BranchStatusChecker(
+            db=db, merge_write_blocker=MergeWriteBlocker(cache=request.app.state.service.cache)
+        ).check(branch=branch_params.branch)
     except BranchStatusError as err:
         raise ValidationError(input_value=str(err)) from err
 

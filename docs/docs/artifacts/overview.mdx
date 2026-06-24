@@ -82,6 +82,16 @@ A Transformation can reference and include the rendered content of other artifac
 
 For step-by-step instructions, see [Composing artifact content](./content-composition.mdx).
 
+## When artifacts regenerate
+
+An artifact is the cached output of a Transformation, so Infrahub regenerates it when its inputs change. Three kinds of change trigger regeneration:
+
+- **The target's data changes** — a node read by the artifact's GraphQL query is modified, so that target's artifact is regenerated.
+- **A new target joins the group** — an artifact is generated for the new member; existing artifacts are left untouched.
+- **The definition's code or configuration changes** — when a proposed change commits to a linked repository, Infrahub regenerates an artifact only if the change touches that definition's GraphQL query, its Transformation's [dependency closure](../transformations/overview#dependency-tracking-and-regeneration), or the artifact definition itself. An unrelated commit — a README edit, or a helper no Transformation uses — regenerates nothing.
+
+Every regeneration decision during a proposed change is recorded in the pipeline's task log, naming the file, query, or field that triggered it. See [Understanding artifact regeneration](../proposed-changes/overview#understanding-artifact-regeneration).
+
 ## How artifacts relate to other features
 
 - **[Transformations](../transformations/overview)** define the logic that produces an artifact's content; an artifact is the cached output of a Transformation for a specific target.

@@ -108,6 +108,7 @@ class Migration072(ArbitraryMigration):
     """
 
     name: str = "072_index_hfid_values"
+    description: str = "Index HFID attribute values and normalize them to a list-of-strings format."
     minimum_version: int = 71
     update_batch_size: int = 1000
 

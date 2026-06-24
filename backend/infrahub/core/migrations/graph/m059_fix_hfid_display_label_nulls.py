@@ -125,6 +125,7 @@ class Migration059(MigrationRequiringRebase):
     """
 
     name: str = "059_fix_hfid_display_label_nulls"
+    description: str = "N/A"
     minimum_version: int = 58
     update_batch_size: int = 100
 

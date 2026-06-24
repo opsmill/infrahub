@@ -8,7 +8,6 @@ from prefect.server.api.server import create_app
 
 from . import events
 from .bootstrap import init_prefect
-from .patches import apply_patches
 
 GLOBAL_TASKMGR_INIT_LOCK = "global.taskmgr.init"
 
@@ -33,8 +32,6 @@ async def _init_prefect() -> None:
 
 
 def create_infrahub_prefect() -> FastAPI:
-    apply_patches()
-
     if (
         os.getenv("PREFECT_API_BLOCKS_REGISTER_ON_START") == "false"
         and os.getenv("PREFECT_API_DATABASE_MIGRATE_ON_START") == "false"

@@ -1,18 +1,12 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, Sheet } from "@infrahub/ui";
+import { Popover as AriaPopover, Button, Menu, MenuItem, MenuTrigger, Sheet } from "@infrahub/ui";
+import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { TableCell } from "@/shared/components/table/table-cell";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuItemWithTooltip,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
@@ -65,49 +59,47 @@ export function RelationshipActionsCell({
     <Popover open={showPropertiesModal} onOpenChange={setShowPropertiesModal}>
       <TableCell className="sticky right-0 -ml-px size-10 items-center justify-center border-gray-200 border-l bg-white">
         <div className="pointer-events-none absolute top-0 bottom-0 -left-4 w-4 bg-linear-to-r from-transparent to-gray-300/30" />
-        <DropdownMenu>
+        <MenuTrigger>
           <PopoverAnchor>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="sm"
-                shape="square"
-                variant="ghost"
-                data-testid={`actions-cell-${relationshipLabel}`}
-              >
-                <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-              </Button>
-            </DropdownMenuTrigger>
+            <Button
+              size="sm"
+              shape="square"
+              variant="ghost"
+              data-testid={`actions-cell-${relationshipLabel}`}
+            >
+              <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+            </Button>
           </PopoverAnchor>
 
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setShowPropertiesModal(true)}>
-              <Icon icon="mdi:info-outline" className="text-base" />
-              View properties
-            </DropdownMenuItem>
+          <AriaPopover placement="bottom end">
+            <Menu aria-label="Relationship actions">
+              <MenuItem onAction={() => setShowPropertiesModal(true)}>
+                <Icon icon="mdi:info-outline" className="text-base" />
+                View properties
+              </MenuItem>
 
-            <DropdownMenuItemWithTooltip
-              disabled={!isEditAllowed}
-              tooltipEnabled={!isEditAllowed}
-              tooltipContent={editTooltipMessage}
-              onClick={() => isEditAllowed && setShowEditForm(true)}
-            >
-              <Icon icon="mdi:edit-outline" className="text-base" />
-              Edit
-            </DropdownMenuItemWithTooltip>
-
-            {isDissociateAllowed && (
-              <DropdownMenuItemWithTooltip
-                disabled={!isEditAllowed}
-                tooltipEnabled={!isEditAllowed}
-                tooltipContent={editTooltipMessage}
-                onClick={() => isEditAllowed && setShowDissociateModal(true)}
+              <MenuItem
+                isDisabled={!isEditAllowed}
+                tooltip={editTooltipMessage}
+                onAction={() => setShowEditForm(true)}
               >
-                <Icon icon="mdi:link-variant-remove" className="text-base" />
-                Dissociate
-              </DropdownMenuItemWithTooltip>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <PencilLineIcon />
+                <span>Edit</span>
+              </MenuItem>
+
+              {isDissociateAllowed && (
+                <MenuItem
+                  isDisabled={!isEditAllowed}
+                  tooltip={editTooltipMessage}
+                  onAction={() => setShowDissociateModal(true)}
+                >
+                  <Icon icon="mdi:link-variant-remove" />
+                  <span>Dissociate</span>
+                </MenuItem>
+              )}
+            </Menu>
+          </AriaPopover>
+        </MenuTrigger>
       </TableCell>
 
       <PopoverContent>

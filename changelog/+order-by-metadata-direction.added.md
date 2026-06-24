@@ -1,11 +1,12 @@
-Schema `order_by` entries can now reference object-level metadata and carry an explicit direction suffix:
+The GraphQL `order` argument now uses a single, structured interface for ordering results:
 
-- `node_metadata__created_at` and `node_metadata__updated_at` order by object-level timestamps.
-- Any entry may end with `__asc` or `__desc` (e.g. `name__value__desc`, `node_metadata__created_at__desc`). Without a suffix, ascending order is assumed.
-- The new grammar is honored consistently across top-level object listings, relationship-peer listings, and hierarchy listings. A UUID tiebreaker is always appended so ordering is stable across paths.
+- `order: {by: [{field: "name__value", direction: ASC}, {field: "node_metadata__created_at", direction: DESC}]}`
+- `field` is an attribute (`name__value`), a relationship attribute (`owner__name__value`), or node metadata (`node_metadata__created_at` / `node_metadata__updated_at`). It no longer carries a trailing `__asc`/`__desc` suffix.
+- `direction` is an enum (`ASC` / `DESC`) and defaults to `ASC` when omitted.
+- When provided, `by` fully replaces the schema's `order_by` default. It works at the root level, on many-relationship fields, and on hierarchical (`ancestors` / `descendants`) relationships.
 
-Behavior change: a query-time `order` argument now fully replaces the schema-level `order_by` default instead of being layered on top of it.
+The `node_metadata` field on the `order` argument is deprecated; order by metadata through `by` using the `node_metadata__created_at` / `node_metadata__updated_at` fields instead. `node_metadata` cannot be combined with `by` in the same input.
 
-GraphQL `order` argument accepts an `order_by: [String!]` list using the same grammar as the schema's `order_by` field. This works at the root level, on many-relationship fields, and on hierarchical (`ancestors` / `descendants`) relationships. `order_by` cannot be combined with the legacy `node_metadata` form in the same argument.
+Schema-level `order_by` entries are unchanged and still reference object-level metadata (`node_metadata__created_at`) with an optional `__asc`/`__desc` suffix. A UUID tiebreaker is always appended so ordering is stable across paths.
 
-Breaking change: `node_metadata` is now a reserved attribute and relationship name. Schemas that literally use `node_metadata` as an attribute or relationship name will fail to load and must rename the offending element.
+Breaking change: `node_metadata` is a reserved attribute and relationship name. Schemas that literally use `node_metadata` as an attribute or relationship name will fail to load and must rename the offending element.

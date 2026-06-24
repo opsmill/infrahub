@@ -202,6 +202,23 @@ async def test_resolver_raises_for_unknown_target_kind(
     assert errors[0].message == f"Unknown target kind: {bogus_kind}"
 
 
+async def test_resolver_rejects_max_paths_below_minimum(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    car_with_owner_and_driver: tuple[Node, Node, Node],
+) -> None:
+    car, _owner, _driver = car_with_owner_and_driver
+    default_branch.update_schema_hash()
+
+    variables = {"data": {"source_id": car.id, "target_kinds": ["TestPerson"], "max_paths": 0}}
+
+    _data, errors = await _run_resolver(db=db, branch=default_branch, session=session_admin, variables=variables)
+    assert errors is not None
+    assert errors[0].message == "max_paths must be >= 1, got 0"
+
+
 async def test_resolver_respects_session_permissions(
     db: InfrahubDatabase,
     default_branch: Branch,

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from graphene import Boolean, DateTime, Field, InputObjectType, List, NonNull, ObjectType, String
+from graphene import Boolean, DateTime, Field, InputField, InputObjectType, List, NonNull, ObjectType, String
 
+from infrahub.constants.enums import OrderDirection
 from infrahub.graphql.types.enums import InfrahubOrderDirection
 
 
@@ -10,22 +11,35 @@ class InfrahubNodeMetadataOrder(InputObjectType):
     updated_at = Field(InfrahubOrderDirection, required=False, description="Order by updated timestamp")
 
 
-_ORDER_BY_DESCRIPTION = (
-    "Ordering overrides support attributes (`name__value__desc`), "
-    "relationship attributes (`owner__name__value`), or "
-    "node metadata (`node_metadata__created_at__desc`). The trailing "
-    "`__asc`/`__desc` is optional (default is ascending). When provided, "
-    "fully replaces the schema's `order_by`. Cannot be combined with "
-    "`node_metadata` in the same input."
+_ORDER_BY_FIELD_DESCRIPTION = (
+    "Field to order by: an attribute (`name__value`), a relationship attribute "
+    "(`owner__name__value`), or node metadata (`node_metadata__created_at`). "
+    "The field carries no direction suffix; use `direction` for that."
 )
+
+_ORDER_BY_DESCRIPTION = (
+    "Ordered list of fields to order results by. When provided, fully replaces the schema's "
+    "`order_by`. Cannot be combined with the deprecated `node_metadata` in the same input."
+)
+
+_NODE_METADATA_DEPRECATION = (
+    "Use `by` with the `node_metadata__created_at` / `node_metadata__updated_at` fields instead."
+)
+
+
+class OrderByItem(InputObjectType):
+    field = String(required=True, description=_ORDER_BY_FIELD_DESCRIPTION)
+    direction = InfrahubOrderDirection(
+        required=False, default_value=OrderDirection.ASC.value, description="Sort direction (default ASC)"
+    )
 
 
 class MetadataOrderInput(InputObjectType):
     """Order input restricted to node metadata fields.
 
     Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
-    surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
-    string grammar or a `disable` toggle.
+    surface is limited to `created_at` / `updated_at` and does not accept the broader `by`
+    field grammar or a `disable` toggle.
     """
 
     node_metadata = Field(InfrahubNodeMetadataOrder, required=False, description="Order settings for branch metadata")
@@ -33,8 +47,13 @@ class MetadataOrderInput(InputObjectType):
 
 class OrderInput(InputObjectType):
     disable = Boolean(required=False)
-    node_metadata = Field(InfrahubNodeMetadataOrder, required=False, description="Order settings for branch metadata")
-    order_by = List(NonNull(String), required=False, description=_ORDER_BY_DESCRIPTION)
+    node_metadata = InputField(
+        InfrahubNodeMetadataOrder,
+        required=False,
+        description="Order settings for node metadata",
+        deprecation_reason=_NODE_METADATA_DEPRECATION,
+    )
+    by = List(NonNull(OrderByItem), required=False, description=_ORDER_BY_DESCRIPTION)
 
 
 class InfrahubStandardNodeMetaData(ObjectType):

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES
+from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES, MAX_DEPTH, MIN_DEPTH
 from infrahub.graph_traversal.planning.models import (
     Plan,
     TerminalById,
@@ -57,19 +57,19 @@ class TestPlan:
         assert plan.get_min_depth_to_terminal_for_kind("C") == 1
 
     def test_rejects_max_depth_below_minimum(self) -> None:
-        with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
+        with pytest.raises(ValueError, match=rf"Plan.max_depth must be in \[{MIN_DEPTH}, {MAX_DEPTH}\]"):
             Plan(
                 source_kind="A",
                 terminal_predicate=TerminalById(node_id="uuid", kind="B"),
-                max_depth=0,
+                max_depth=MIN_DEPTH - 1,
             )
 
     def test_rejects_max_depth_above_maximum(self) -> None:
-        with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
+        with pytest.raises(ValueError, match=rf"Plan.max_depth must be in \[{MIN_DEPTH}, {MAX_DEPTH}\]"):
             Plan(
                 source_kind="A",
                 terminal_predicate=TerminalById(node_id="uuid", kind="B"),
-                max_depth=21,
+                max_depth=MAX_DEPTH + 1,
             )
 
     def test_plan_with_no_hops_is_empty(self) -> None:
@@ -88,6 +88,7 @@ class FakeGraphqlInput:
     name: str
     kind_filter: list[str] | None = None
     excluded_kinds: list[str] | None = None
+    included_kinds: list[str] | None = None
     excluded_namespaces: list[str] | None = None
     relationship_filter: list[str] | None = None
 
@@ -97,6 +98,7 @@ class TestUserFilters:
         filters = UserFilters.from_graphql_input(None)
         assert filters.kind_filter == frozenset()
         assert filters.excluded_kinds == frozenset()
+        assert filters.included_kinds == frozenset()
         assert filters.relationship_filter == frozenset()
         assert filters.excluded_namespaces == frozenset(DEFAULT_EXCLUDED_NAMESPACES)
 
@@ -117,14 +119,21 @@ class TestUserFilters:
             name="all_filters",
             kind_filter=["InfraDevice"],
             excluded_kinds=["TestThing"],
+            included_kinds=["IpamNamespace"],
             excluded_namespaces=["Foo"],
             relationship_filter=["primary_tag"],
         )
         filters = UserFilters.from_graphql_input(data)
         assert filters.kind_filter == frozenset({"InfraDevice"})
         assert filters.excluded_kinds == frozenset({"TestThing"})
+        assert filters.included_kinds == frozenset({"IpamNamespace"})
         assert filters.excluded_namespaces == frozenset({"Foo"}) | frozenset(DEFAULT_EXCLUDED_NAMESPACES)
         assert filters.relationship_filter == frozenset({"primary_tag"})
+
+    def test_from_graphql_input_with_empty_included_kinds_yields_empty_set(self) -> None:
+        data = FakeGraphqlInput(name="empty_included", included_kinds=[])
+        filters = UserFilters.from_graphql_input(data)
+        assert filters.included_kinds == frozenset()
 
     def test_from_graphql_input_handles_object_without_filter_fields(self) -> None:
         """ReachableNodesInput has none of the filter fields; getattr-defaults handle it."""
@@ -136,5 +145,6 @@ class TestUserFilters:
         filters = UserFilters.from_graphql_input(MinimalInput(source_id="x"))
         assert filters.kind_filter == frozenset()
         assert filters.excluded_kinds == frozenset()
+        assert filters.included_kinds == frozenset()
         assert filters.relationship_filter == frozenset()
         assert filters.excluded_namespaces == frozenset(DEFAULT_EXCLUDED_NAMESPACES)

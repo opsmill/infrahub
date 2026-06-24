@@ -100,7 +100,6 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     await service.initialize_workflow(is_initial_setup=is_initial_setup)
 
     application.state.service = service
-    application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
 
     if enable_scheduler:
         await service.scheduler.start_schedule()

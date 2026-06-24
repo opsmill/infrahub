@@ -1,3 +1,4 @@
+import { Checkbox } from "@infrahub/ui";
 import type { UseFormReturn } from "react-hook-form";
 
 import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
@@ -17,6 +18,7 @@ import {
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
+import { MAX_TRAVERSAL_DEPTH } from "../../domain/path-traversal.constants";
 import { ObjectPicker } from "../object-picker";
 import { isVisibleNamespace } from "../utils";
 import type { DependenciesModeFormValues } from "./use-dependencies-mode-params";
@@ -79,7 +81,7 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
               rules={{
                 required: "Max depth is required",
                 min: { value: 1, message: "Must be ≥ 1" },
-                max: { value: 20, message: "Must be ≤ 20" },
+                max: { value: MAX_TRAVERSAL_DEPTH, message: `Must be ≤ ${MAX_TRAVERSAL_DEPTH}` },
               }}
               render={({ field }) => (
                 <div className="space-y-1">
@@ -88,7 +90,7 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                     <Input
                       type="number"
                       min={1}
-                      max={20}
+                      max={MAX_TRAVERSAL_DEPTH}
                       value={(field.value as number) ?? ""}
                       onChange={(e) => {
                         const value = e.target.valueAsNumber;
@@ -104,13 +106,13 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
             <FormField
               name="maxResults"
               rules={{
-                required: "Max results is required",
+                required: "Max targets is required",
                 min: { value: 1, message: "Must be ≥ 1" },
                 max: { value: 200, message: "Must be ≤ 200" },
               }}
               render={({ field }) => (
                 <div className="space-y-1">
-                  <FormLabel>Max Results</FormLabel>
+                  <FormLabel>Max Targets</FormLabel>
                   <FormInput>
                     <Input
                       type="number"
@@ -151,6 +153,27 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                     />
                   </FormInput>
                   <FormMessage />
+                </div>
+              )}
+            />
+
+            <FormField
+              name="shortestPathsOnly"
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <FormInput>
+                      <Checkbox
+                        isSelected={Boolean(field.value)}
+                        onChange={(isSelected) => field.onChange(isSelected)}
+                      />
+                    </FormInput>
+                    <FormLabel className="cursor-pointer">Shortest paths only</FormLabel>
+                  </div>
+                  <p className="text-gray-500 text-xs">
+                    Only return the shortest path(s) to each target. Uncheck to return every path
+                    within the max depth.
+                  </p>
                 </div>
               )}
             />
