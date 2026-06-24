@@ -1,0 +1,71 @@
+---
+title: Graph Traversal
+---
+
+Use Graph Traversal to navigate the relationships in your infrastructure data — trace every path
+between two objects, or find everything that depends on a given object across your entire graph.
+
+:::info Infrahub version
+Graph Traversal was released in 1.10.
+:::
+
+## Two modes
+
+Graph Traversal has two modes, each suited to a different question.
+
+**Path mode** — select a source and destination object to see every path between them, ordered
+shortest first, with the hop count for each route. Use it when you know both ends and want to
+understand how they connect.
+
+**Dependency mode** — select a source object and the kinds of object you care about to find every
+reachable object of those kinds. Use it when you know the starting point but not the endpoints —
+for blast-radius analysis, impact assessment, or dependency discovery.
+
+## When to use each mode
+
+| Goal | Mode | You provide | Result |
+|---|---|---|---|
+| Trace the connection between two known objects | Path | A source and a destination object | Every path between them, with hop counts |
+| Find what an object affects or depends on | Dependency | A source object and one or more target kinds | Every reachable object of those kinds, with the path from the source to each |
+
+Use Path mode when you know both ends — for example, tracing connectivity between two devices
+while investigating packet loss. Use Dependency mode when you know the starting point but not the
+endpoints — for example, finding every service that depends on a circuit before a maintenance
+window.
+
+## Branch and time context
+
+When you run Graph Traversal on a branch, the results reflect that branch's state rather than the
+default branch. Run it against a point in time to see relationships as they were then.
+
+## Permissions
+
+Graph Traversal applies your view permissions. If you cannot view a kind of object, paths through
+that kind are excluded — so you never see objects outside your access.
+
+## What's included in results
+
+By default, your results skip Infrahub's internal data model and stay focused on your
+infrastructure. Nodes in the `Core`, `Internal`, `Builtin`, `Lineage`, `Profile`, and `Template`
+namespaces are excluded, along with `BuiltinIPNamespace` and the kinds that inherit it. To widen
+or narrow this, use the namespace and kind filters in the GraphQL API — see the
+[Graph Traversal reference](../reference/graph-traversal.mdx).
+
+## Where you can use it
+
+| Surface | Access |
+|---|---|
+| Web interface | **Object Management → Path Traversal**; or **Find paths** in any object's Actions menu |
+| GraphQL API | `InfrahubPathTraversal` and `InfrahubReachableNodes` — see [Query traversal with GraphQL](./query-with-graphql.mdx) |
+| Python SDK | `traverse_paths`, `reachable_nodes`, and `path_exists` — see the [SDK graph traversal guide](pathname:///python-sdk/guides/graph_traversal) |
+| MCP server | Coming soon |
+
+Because Graph Traversal is also available through the MCP server, an AI agent can trace the same
+relationships you rely on, grounded in your real data model.
+
+## Related resources
+
+- [Relationships](../schema/relationships.mdx)
+- [Trace a path](./trace-a-path.mdx)
+- [Analyze dependencies](./analyze-dependencies.mdx)
+- [Graph Traversal reference](../reference/graph-traversal.mdx)
