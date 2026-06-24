@@ -12,19 +12,24 @@ Results are ordered shortest first, with the hop count for each route.
 
 ## Find paths between two objects
 
-1. Open **Graph Traversal** from the main navigation.
-2. Select the **Path** tab if it is not already active.
-3. In **Source Object**, search for and select the starting object.
-4. In **Destination Object**, search for and select the ending object.
+From the left navigation, open **Object Management** and select **Path Traversal**.
+
+![Path Traversal in the Object Management menu](../media/graph-traversal/path-traversal-menu.png)
+
+1. Select the **Path** tab if it is not already active.
+2. In **Source Object**, search for and select the starting object.
+3. In **Destination Object**, search for and select the ending object.
    - To swap source and destination, select **⇅ Swap**.
-5. Optionally, expand **Search options** to adjust:
+4. Optionally, expand **Search options** to adjust:
    - **Max Depth** — maximum hops to traverse (default: 5, max: 30).
    - **Max Paths** — maximum paths to return (default: 10, max: 100).
    - **Kinds to include** — limit traversal to objects of these kinds only.
    - **Kinds to exclude** — skip objects of these kinds during traversal.
-6. Select **Find Paths**.
+5. Select **Find Paths**.
 
 ## Read the results
+
+![Path Traversal showing the highlighted path between two leaf devices across different pods, with the list of paths in the side panel](../media/graph-traversal/path-traversal.png)
 
 The sidebar shows the number of paths found. Each path includes its hop count and the sequence of
 objects from source to destination.
@@ -43,8 +48,10 @@ graph.
 
 ## Start from an object's detail page
 
-On any object's detail page, select **Find paths** from the **Actions** menu. Graph Traversal
+On any object's detail page, select **Find paths** from the **Actions** menu. Path Traversal
 opens with that object pre-selected as the source.
+
+![The Find paths entry in an object's Actions menu](../media/graph-traversal/find-paths-action.png)
 
 ## Troubleshooting
 
