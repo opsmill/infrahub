@@ -37,16 +37,11 @@ export interface SelectListProps<T> extends AriaListBoxProps<T> {
 
 export function SelectList<T extends object>({
   matchTriggerWidth = true,
-  className,
   ...props
 }: SelectListProps<T>) {
   return (
     <Popover matchTriggerWidth={matchTriggerWidth}>
-      <ListBox
-        selectionMode="single"
-        className={composeAriaClassName(className, "p-1")}
-        {...props}
-      />
+      <ListBox selectionMode="single" {...props} />
     </Popover>
   );
 }

@@ -24,7 +24,7 @@ const Frame = ({ children }: { children: React.ReactNode }) => (
 );
 
 const fruitList = () => (
-  <ListBox aria-label="Fruits" className="max-h-60 p-1" emptyMessage="No result found">
+  <ListBox aria-label="Fruits" className="max-h-60" emptyMessage="No result found">
     {fruits.map((fruit) => (
       <ListBoxItem key={fruit} textValue={fruit}>
         {fruit}

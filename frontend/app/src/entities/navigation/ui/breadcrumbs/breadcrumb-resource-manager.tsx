@@ -8,7 +8,6 @@ import {
   Button,
   ListBox,
   ListBoxItem,
-  ListBoxVirtualizer,
   MenuTrigger,
   Popover,
   PopoverDialog,
@@ -93,19 +92,17 @@ function ResourceSelector({
             <PopoverDialog>
               {({ close }) => (
                 <Autocomplete>
-                  <ListBoxVirtualizer>
-                    <ListBox items={resources} onAction={close}>
-                      {(resource) => (
-                        <ListBoxItem
-                          href={constructPath(
-                            `/resource-manager/${resourcePoolId}/resources/${resource.id}`
-                          )}
-                        >
-                          {resource.display_label}
-                        </ListBoxItem>
-                      )}
-                    </ListBox>
-                  </ListBoxVirtualizer>
+                  <ListBox virtualized items={resources} onAction={close}>
+                    {(resource) => (
+                      <ListBoxItem
+                        href={constructPath(
+                          `/resource-manager/${resourcePoolId}/resources/${resource.id}`
+                        )}
+                      >
+                        {resource.display_label}
+                      </ListBoxItem>
+                    )}
+                  </ListBox>
                 </Autocomplete>
               )}
             </PopoverDialog>

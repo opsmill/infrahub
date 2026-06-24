@@ -76,7 +76,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
               selectionIndicator="highlight"
               selectedKeys={selectedField ? [selectedField] : []}
               onAction={handleAction}
-              className="max-h-72 p-1"
+              className="max-h-72"
             >
               {fields.map((field) => {
                 const name = getFilterDefinitionName(field);
