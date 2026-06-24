@@ -10,7 +10,7 @@ How to run the two layers and the scenarios that validate them. "Counting layer"
 uv sync --all-groups
 
 # Counting layer (deterministic; graph DB via testcontainers; no task worker)
-uv run pytest backend/tests/scale/merge_recompute/test_merge_recompute_counts.py -q
+uv run pytest backend/tests/component/merge_recompute/test_merge_recompute_counts.py -q
 
 # Timing layer (full distributed stack + real task worker; on demand, long)
 uv run pytest backend/tests/integration_docker/test_merge_recompute_timing.py -q
@@ -25,7 +25,7 @@ uv run pytest backend/tests/integration_docker/test_computed_attributes.py backe
 ### A. Counts at a single scale (P1, FR-003)
 - **Given** a branch seeded with K changed nodes across kinds carrying computed attributes, display labels, and HFIDs,
 - **When** the counting layer merges it,
-- **Then** it reports node events by type (the fan-out cardinality) and asserts the expected counts for K; recompute is Prefect-dispatched and not counted here (it is observed as executed runs in the timing layer). An optional derived expected-recompute count MAY also be reported.
+- **Then** it reports node events by type (the fan-out cardinality) and asserts the expected counts for K; recompute is Prefect-dispatched and not counted here (it is observed as executed runs in the timing layer). A derived expected-recompute estimate is also reported (cross-checked by the timing layer, which is authoritative).
 
 ### B. Growth across scales (P1, FR-006/007, SC-002)
 - **Given** runs at ~10, ~100, ~1000+ changed nodes,

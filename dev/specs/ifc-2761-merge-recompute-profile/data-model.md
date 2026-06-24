@@ -13,13 +13,13 @@ No persisted (Neo4j) model changes. These are in-memory measurement records (fro
 class RecomputeCounts:
     changed_nodes: int                      # the independent variable for this run
     node_events: dict[str, int]             # event type ("created"/"updated"/"deleted") -> count (the fan-out driver)
-    expected_recompute: dict[str, int]      # OPTIONAL derived: family -> predicted recompute targets, from applying the match logic in-process
+    expected_recompute: dict[str, int]      # derived: family -> predicted recompute targets, from applying the match logic in-process
     # convenience totals
     total_node_events: int
-    total_expected_recompute: int           # 0 if the derived prediction is not computed
+    total_expected_recompute: int           # the in-process recompute-multiplier estimate
 ```
 
-`node_events` (by type) is the counting layer's primary, always-recorded signal: it is the fan-out cardinality that drives recompute. `expected_recompute` is an optional in-process prediction (apply the dependency/automation match logic to the emitted events) bucketed per derived-value family (computed attribute, display label, HFID). The counting layer does **not** record actual recompute submissions: on the merge path those are dispatched by the event-to-automation engine, not issued synchronously by the merge flow, so they are not observable by intercepting the merge's own workflow calls. The **executed** recompute count lives in `CostCenterTiming.recompute_flow_runs` (timing layer).
+`node_events` (by type) is the counting layer's primary, always-recorded signal — but note it is ≈ the changed-node count by construction. `expected_recompute` is the in-process prediction of the recompute multiplier (apply the dependency/automation match logic to the emitted events, bucketed per derived-value family); it is the counting layer's only recompute signal (an estimate; the timing layer's executed count is authoritative) and reimplements Prefect matching, so it must be cross-checked against the timing layer. The counting layer does **not** record actual recompute submissions: on the merge path those are dispatched by the event-to-automation engine, not issued synchronously by the merge flow, so they are not observable by intercepting the merge's own workflow calls. The **executed** recompute count lives in `CostCenterTiming.recompute_flow_runs` (timing layer).
 
 ### `CostCenterTiming` (timing layer)
 
@@ -64,8 +64,8 @@ class FindingsReport:
 ```text
 synthetic dataset (N changed nodes, kinds with computed attr + display label + HFID)
         │
-        ├── counting layer  (merge/rebase + BusRecorder, no worker; WorkflowRecorder neutralizes the merge's own orchestration workflows)
-        │        └── RecomputeCounts  (node events by type [primary]; optional derived expected-recompute by family)
+        ├── counting layer  (merge/rebase + MemoryInfrahubEvent event recorder, no worker; WorkflowRecorder neutralizes the merge's own orchestration workflows)
+        │        └── RecomputeCounts  (node events by type [primary]; derived expected-recompute by family)
         │
         └── timing layer    (merge on full stack + real worker)
                  └── CostCenterTiming  (critical path, migration, best-effort commit, executed recompute runs + window)
