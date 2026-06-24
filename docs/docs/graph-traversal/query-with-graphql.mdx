@@ -1,0 +1,154 @@
+---
+title: Query traversal with GraphQL
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Both Graph Traversal modes are available programmatically — as GraphQL queries
+(`InfrahubPathTraversal` for Path mode and `InfrahubReachableNodes` for Dependency mode) and
+through the [Python SDK](pathname:///python-sdk/guides/graph_traversal). Use them to integrate
+traversal into scripts, pipelines, or checks.
+
+## Path mode: find paths between two objects
+
+<Tabs groupId="interface" queryString>
+<TabItem value="graphql" label="GraphQL" default>
+
+```graphql
+query PathBetweenTwoObjects {
+  InfrahubPathTraversal(
+    data: {
+      source_id: "<source-uuid>"
+      destination_id: "<destination-uuid>"
+      max_depth: 5
+    }
+  ) {
+    count
+    paths {
+      depth
+      hops {
+        node {
+          kind
+          display_label
+        }
+        relationship {
+          from_label
+          to_label
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="sdk" label="Python SDK">
+
+```python
+from infrahub_sdk import InfrahubClient
+
+client = InfrahubClient()
+
+result = await client.traverse_paths(
+    source="<source-uuid>",
+    destination="<destination-uuid>",
+    max_depth=5,
+)
+
+print(result.count)
+for path in result.paths:
+    for hop in path.hops:
+        print(hop.node.kind, hop.node.display_label)
+```
+
+</TabItem>
+</Tabs>
+
+`count` is the number of paths found. Each path contains an ordered list of `hops` from source to
+destination, each with the node visited and the relationship traversed to reach it.
+
+## Dependency mode: find reachable objects
+
+<Tabs groupId="interface" queryString>
+<TabItem value="graphql" label="GraphQL" default>
+
+```graphql
+query DependenciesOfAnObject {
+  InfrahubReachableNodes(
+    data: {
+      source_id: "<source-uuid>"
+      target_kinds: ["InfraService"]
+      max_depth: 5
+    }
+  ) {
+    count
+    dependencies {
+      depth
+      node {
+        kind
+        display_label
+      }
+      path {
+        depth
+        hops {
+          node { kind display_label }
+        }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem value="sdk" label="Python SDK">
+
+```python
+result = await client.reachable_nodes(
+    source="<source-uuid>",
+    target_kinds=["InfraService"],
+    max_depth=5,
+)
+
+print(result.count)
+for dependency in result.dependencies:
+    print(dependency.depth, dependency.node.display_label)
+```
+
+</TabItem>
+</Tabs>
+
+`count` is the number of dependency entries returned — one per reachable node. Each entry includes
+the `depth` from the source, the reachable `node`, and the full `path` back to the source.
+
+The SDK also provides `path_exists(source, destination, ...)` for a quick boolean connectivity
+check. All three methods work in asynchronous and synchronous form and require Infrahub 1.10 or
+later — see the [SDK graph traversal guide](pathname:///python-sdk/guides/graph_traversal).
+
+## Branch and time context
+
+Both queries run against the branch and point in time from your request context. To query a
+specific branch or timestamp, set the branch header or `at` parameter as you would for any
+Infrahub GraphQL query.
+
+## Use traversal in a check
+
+Because the SDK exposes traversal, an Infrahub [check](../checks/overview.mdx) can validate
+structural requirements that span relationships and fail a
+[proposed change](../proposed-changes/overview.mdx) when they are not met:
+
+- **Connectivity** — assert that two objects stay connected, for example that every site keeps a
+  redundant path to the core, using `path_exists` or `traverse_paths`.
+- **Isolation** — assert that two objects are *not* connected, for example that a production device
+  and a lab device share no path.
+- **Dependency analysis** — use `reachable_nodes` to find everything that depends on an object and
+  validate it against a policy.
+
+Traversal is branch- and time-aware, so a check evaluates connectivity on the proposed change's
+branch and catches violations before the change merges. See
+[Build a check](../academy/tutorials/build-a-check.mdx) to set one up.
+
+## Full argument reference
+
+For all arguments, defaults, limits, and filter semantics, see the
+[Graph Traversal reference](../reference/graph-traversal.mdx).

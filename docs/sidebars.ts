@@ -207,6 +207,16 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'object-templates/allocate-resources-from-pools', label: 'Allocate resources from pools' },
           ],
         },
+        {
+          type: 'category',
+          label: 'Graph Traversal',
+          link: { type: 'doc', id: 'graph-traversal/overview' }, // hub
+          items: [
+            'graph-traversal/trace-a-path',
+            'graph-traversal/analyze-dependencies',
+            'graph-traversal/query-with-graphql',
+          ],
+        },
       ],
     },
 
@@ -598,6 +608,7 @@ const sidebars: SidebarsConfig = {
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
         { type: 'doc', id: 'reference/error-catalogue', label: 'Error Catalogue' },
+        { type: 'doc', id: 'reference/graph-traversal', label: 'Graph Traversal' },
       ],
     },
 
