@@ -21,6 +21,8 @@ export type PoolValue = {
     name: string;
     kind: string;
     prefixlen?: number;
+    /** Pool default prefix length, routed to the field's source metadata (not sent). */
+    defaultPrefixLength?: number | null;
   };
 };
 

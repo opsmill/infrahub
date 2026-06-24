@@ -41,6 +41,7 @@ export const updateAttributeFieldValue = (
         id: newValue.from_pool.id,
         kind: newValue.from_pool.kind,
         label: newValue.from_pool.name,
+        defaultPrefixLength: newValue.from_pool.defaultPrefixLength ?? null,
       },
       value: {
         from_pool: {
@@ -74,6 +75,7 @@ export const updateRelationshipFieldValue = (
         id: newValue.from_pool.id,
         kind: newValue.from_pool.kind,
         label: newValue.from_pool.name,
+        defaultPrefixLength: newValue.from_pool.defaultPrefixLength ?? null,
       },
       value: {
         from_pool: {

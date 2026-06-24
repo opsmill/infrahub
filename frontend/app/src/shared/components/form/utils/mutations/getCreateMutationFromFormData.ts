@@ -28,7 +28,7 @@ export const getCreateMutationFromFormData = (
       }
       const fromPoolField = field.pool?.fromPoolRelationshipName;
       if ("from_pool" in fieldData.value) {
-        const fromPool = buildFromPoolPayload(fieldData.value.from_pool);
+        const fromPool = buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind);
         if (fromPoolField) {
           return { ...acc, [fromPoolField]: fromPool };
         }
@@ -111,7 +111,9 @@ export const getCreateMutationFromFormDataOnly = (
       if ("from_pool" in fieldData.value) {
         return {
           ...acc,
-          [fieldName]: { from_pool: buildFromPoolPayload(fieldData.value.from_pool) },
+          [fieldName]: {
+            from_pool: buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind),
+          },
         };
       }
       return { ...acc, [fieldName]: fieldData.value };

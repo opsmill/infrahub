@@ -38,17 +38,21 @@ describe("updateRelationshipFieldValue - from-pool", () => {
           name: "Management addresses pool",
           kind: "CoreIPAddressPool",
           prefixlen: 16,
+          defaultPrefixLength: 8,
         },
       },
       original
     );
 
+    // The pool default is kept on the source (for the placeholder) but never in the
+    // value, which carries only what the mutation sends (id + the typed prefixlen).
     expect(result).toEqual({
       source: {
         type: "pool",
         id: "management",
         kind: "CoreIPAddressPool",
         label: "Management addresses pool",
+        defaultPrefixLength: 8,
       },
       value: { from_pool: { id: "management", prefixlen: 16 } },
     });
@@ -87,17 +91,21 @@ describe("updateAttributeFieldValue - from-pool", () => {
           name: "Management addresses pool",
           kind: "CoreIPAddressPool",
           prefixlen: 16,
+          defaultPrefixLength: 8,
         },
       },
       original
     );
 
+    // The pool default is kept on the source (for the placeholder) but never in the
+    // value, which carries only what the mutation sends (id + the typed prefixlen).
     expect(result).toEqual({
       source: {
         type: "pool",
         id: "management",
         kind: "CoreIPAddressPool",
         label: "Management addresses pool",
+        defaultPrefixLength: 8,
       },
       value: { from_pool: { id: "management", prefixlen: 16 } },
     });

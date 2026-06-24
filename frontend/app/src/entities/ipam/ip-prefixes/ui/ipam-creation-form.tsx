@@ -95,10 +95,21 @@ function IpamCreationForm(props: IpamCreationFormProps) {
         const allocateMutationName = getAllocateMutationNameFromSchema(props.schema);
 
         if (fieldDataForIpField?.source?.type === "pool" && allocateMutationName) {
+          // A pending from-pool allocation can carry a user-entered prefix length: the
+          // new address's mask for an address pool, or the carved-out subnet size for a
+          // prefix pool. Both map to the allocation mutation's `prefix_length` argument.
+          const pendingFromPool =
+            fieldDataForIpField.value &&
+            typeof fieldDataForIpField.value === "object" &&
+            "from_pool" in fieldDataForIpField.value
+              ? fieldDataForIpField.value.from_pool
+              : null;
+
           await allocateResource.mutateAsync(
             {
               poolGetResourceMutationName: allocateMutationName,
               poolId: fieldDataForIpField.source.id,
+              prefixLength: pendingFromPool?.prefixlen ?? null,
               data: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
             },
             {

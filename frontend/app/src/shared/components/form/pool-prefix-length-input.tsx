@@ -6,6 +6,8 @@ import { classNames } from "@/shared/utils/common";
 export interface PoolPrefixLengthInputProps {
   value: number | null | undefined;
   invalid?: boolean;
+  /** Pool's default prefix length, shown as a hint of the mask used when left blank. */
+  placeholder?: number | null;
   onChange: (value: number | null) => void;
 }
 
@@ -13,9 +15,15 @@ export interface PoolPrefixLengthInputProps {
  * Compact inline editor for a from-pool allocation's prefix-length override. It is a
  * plain controlled number input; the surrounding pool field decides when it is shown
  * and owns how its value is validated and persisted. Clearing emits `null` (rather
- * than `undefined`) so react-hook-form actually writes the empty state.
+ * than `undefined`) so react-hook-form actually writes the empty state. When left
+ * blank, the pool's default prefix length is shown as a placeholder.
  */
-export function PoolPrefixLengthInput({ value, invalid, onChange }: PoolPrefixLengthInputProps) {
+export function PoolPrefixLengthInput({
+  value,
+  invalid,
+  placeholder,
+  onChange,
+}: PoolPrefixLengthInputProps) {
   const handleChange = (raw: string) => {
     if (raw === "") {
       onChange(null);
@@ -39,6 +47,7 @@ export function PoolPrefixLengthInput({ value, invalid, onChange }: PoolPrefixLe
       <Input
         value={value ?? ""}
         onChange={(event) => handleChange(event.target.value)}
+        placeholder={placeholder == null ? undefined : String(placeholder)}
         inputMode="numeric"
         aria-label="Prefix length"
         data-testid="pool-prefix-length-input"

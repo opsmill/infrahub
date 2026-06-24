@@ -41,7 +41,7 @@ export const getUpdateMutationFromFormData = ({
           typeof fieldData.value === "object" &&
           "from_pool" in fieldData.value
         ) {
-          const fromPool = buildFromPoolPayload(fieldData.value.from_pool);
+          const fromPool = buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind);
           if (fromPoolField) {
             const clearField =
               field.type === "relationship"

@@ -26,6 +26,12 @@ export type PoolSource = {
   kind: string;
   id: string;
   fromTemplate?: boolean;
+  /**
+   * Pool's default prefix length, captured from the pool option at selection time and
+   * shown as a placeholder on the prefix-length override. Display-only metadata — it is
+   * never serialized into the mutation (the value's `from_pool` carries only id/prefixlen).
+   */
+  defaultPrefixLength?: number | null;
 };
 
 export type ProfileSource = {

@@ -55,13 +55,12 @@ export function PoolSelect({
     }
   }, [poolKind, poolDefaultAllocatedObjectKind]);
 
-  // The prefix-length override only applies to a pending IP address allocation (a
-  // resolved address can't be re-allocated with a new mask). It is its own form field,
-  // nested at the allocation's `from_pool.prefixlen`, so it owns its validation/error.
+  // The prefix-length override only applies to a pending allocation (a resolved value
+  // can't be re-allocated with a new mask). It is its own form field, nested at the
+  // allocation's `from_pool.prefixlen`, so it owns its validation/error.
   //
-  // Address pools only: the IP prefix pool from-pool input takes `size`, not
-  // `prefixlen`, so offering this field for prefix pools would send a value the API
-  // rejects. Supporting prefix pools is a separate enhancement.
+  // Offered for both IP address pools (sets the new address's mask) and IP prefix pools
+  // (sets the size of the carved-out subnet); both map to the allocation's prefix length.
   const pendingFromPool =
     value.source?.type === "pool" &&
     value.value &&
@@ -69,7 +68,14 @@ export function PoolSelect({
     "from_pool" in value.value
       ? value.value.from_pool
       : null;
-  const showPrefixLength = !!pendingFromPool && poolKind === IP_ADDRESS_POOL;
+  const showPrefixLength =
+    !!pendingFromPool && (poolKind === IP_ADDRESS_POOL || poolKind === IP_PREFIX_POOL);
+
+  // The pool's default prefix length is shown as a placeholder so the user can see which
+  // mask a blank override will allocate. It is captured from the pool option at selection
+  // time and carried on the field's source, so no extra fetch is needed here.
+  const defaultPrefixLength =
+    value.source?.type === "pool" ? value.source.defaultPrefixLength : null;
 
   return (
     <>
@@ -93,6 +99,7 @@ export function PoolSelect({
             <PoolPrefixLengthInput
               value={field.value}
               invalid={!!fieldState.error}
+              placeholder={defaultPrefixLength}
               onChange={field.onChange}
             />
           )}
@@ -110,7 +117,12 @@ export function PoolSelect({
               // relationship/attribute input or the reset action.
               if (selectedPoolId !== pool.id) {
                 onChange({
-                  from_pool: { id: pool.id, name: pool.display_label, kind: pool.__typename },
+                  from_pool: {
+                    id: pool.id,
+                    name: pool.display_label,
+                    kind: pool.__typename,
+                    defaultPrefixLength: pool.default_prefix_length?.value ?? null,
+                  },
                 });
                 // No prefixlen is sent unless the user types an override: allocation is
                 // idempotent, so re-selecting a pool that already holds a reservation can't

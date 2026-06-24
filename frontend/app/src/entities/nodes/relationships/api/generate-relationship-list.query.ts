@@ -2,6 +2,8 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import type { PaginationParams } from "@/shared/api/types";
 
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+
 export type GenerateRelationshipListQueryParams = PaginationParams & {
   peer: string;
   parent?: { name: string; value: string };
@@ -37,6 +39,11 @@ export const generateRelationshipListQuery = ({
             hfid: true,
             display_label: true,
             __typename: true,
+            // IP address and IP prefix pools expose a default prefix length, surfaced as
+            // a placeholder on the from-pool allocation's prefix-length override.
+            ...((peer === IP_ADDRESS_POOL || peer === IP_PREFIX_POOL) && {
+              default_prefix_length: { value: true },
+            }),
           },
         },
       },

@@ -18,6 +18,16 @@ describe("PoolPrefixLengthInput", () => {
     await expect.element(component.getByTestId("pool-prefix-length-input")).toHaveValue("");
   });
 
+  test("shows the pool default prefix length as a placeholder", async () => {
+    const component = await render(
+      <PoolPrefixLengthInput value={undefined} placeholder={16} onChange={() => {}} />
+    );
+
+    await expect
+      .element(component.getByTestId("pool-prefix-length-input"))
+      .toHaveAttribute("placeholder", "16");
+  });
+
   test("emits the entered number", async () => {
     const onChange = vi.fn<(value: number | null) => void>();
     const component = await render(<PoolPrefixLengthInput value={undefined} onChange={onChange} />);
