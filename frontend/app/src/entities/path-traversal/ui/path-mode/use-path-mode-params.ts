@@ -1,4 +1,10 @@
-import { parseAsInteger, parseAsNativeArrayOf, parseAsString, useQueryStates } from "nuqs";
+import {
+  parseAsBoolean,
+  parseAsInteger,
+  parseAsNativeArrayOf,
+  parseAsString,
+  useQueryStates,
+} from "nuqs";
 
 export const PATH_MODE_PARAMS = {
   source: parseAsString.withDefault(""),
@@ -7,6 +13,7 @@ export const PATH_MODE_PARAMS = {
   maxPaths: parseAsInteger.withDefault(10),
   kindFilter: parseAsNativeArrayOf(parseAsString).withDefault([]),
   excludedKinds: parseAsNativeArrayOf(parseAsString).withDefault([]),
+  shortestPathsOnly: parseAsBoolean.withDefault(true),
   selectedPath: parseAsInteger.withDefault(0),
 } as const;
 
@@ -17,6 +24,7 @@ export type PathModeParams = {
   maxPaths: number;
   kindFilter: string[];
   excludedKinds: string[];
+  shortestPathsOnly: boolean;
   selectedPath: number;
 };
 
@@ -27,6 +35,7 @@ export type PathModeFormValues = {
   maxPaths: number;
   kindFilter: string[];
   excludedKinds: string[];
+  shortestPathsOnly: boolean;
 };
 
 export function paramsToFormValues(p: PathModeParams): PathModeFormValues {
@@ -37,6 +46,7 @@ export function paramsToFormValues(p: PathModeParams): PathModeFormValues {
     maxPaths: p.maxPaths,
     kindFilter: p.kindFilter,
     excludedKinds: p.excludedKinds,
+    shortestPathsOnly: p.shortestPathsOnly,
   };
 }
 
@@ -48,6 +58,7 @@ export function formValuesToParams(v: PathModeFormValues): Partial<PathModeParam
     maxPaths: v.maxPaths,
     kindFilter: v.kindFilter,
     excludedKinds: v.excludedKinds,
+    shortestPathsOnly: v.shortestPathsOnly,
     selectedPath: 0,
   };
 }

@@ -56,6 +56,7 @@ export type GetPathTraversalParams = ContextParams & {
   kindFilter?: string[];
   relationshipFilter?: string[];
   excludedKinds?: string[];
+  shortestPathsOnly?: boolean;
 };
 
 export type GetReachableNodesParams = ContextParams & {

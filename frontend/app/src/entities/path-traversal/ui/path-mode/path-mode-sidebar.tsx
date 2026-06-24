@@ -28,6 +28,7 @@ export function PathModeSidebar() {
       maxPaths: params.maxPaths,
       kindFilter: params.kindFilter,
       excludedKinds: params.excludedKinds,
+      shortestPathsOnly: params.shortestPathsOnly,
     },
     { enabled: !!params.source && !!params.destination }
   );
