@@ -63,6 +63,11 @@ class MergeInProgressData(PayloadBase):
     merging_branch: str
 
 
+class MergeRecoveryRequiredData(PayloadBase):
+    branch_name: str
+    merging_branch: str
+
+
 class SchemaNotFoundData(PayloadBase):
     kind: str
 

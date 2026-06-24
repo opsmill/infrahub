@@ -468,6 +468,26 @@ class MergeInProgressError(BranchStatusError):
         super().__init__(identifier=identifier, message=message)
 
 
+class MergeRecoveryRequiredError(BranchStatusError):
+    """Write rejected because a failed merge needs operator recovery.
+
+    `merging_branch` is the source branch that was being merged (the one whose merge died), matching
+    `MergeInProgressError`; `identifier` is the branch the rejected write targeted (the source branch
+    itself or the default branch).
+
+    Deliberately a sibling of MergeInProgressError, not a subclass: the error-catalogue resolver
+    walks the MRO to map an exception to a code, so subclassing would make this resolve to the
+    transient MERGE_IN_PROGRESS code and be indistinguishable from a retryable in-progress merge.
+    This is the durable, non-retryable signal that an administrator must run `infrahub recover`.
+    """
+
+    HTTP_CODE: int = 423
+
+    def __init__(self, identifier: str, message: str, merging_branch: str) -> None:
+        self.merging_branch = merging_branch
+        super().__init__(identifier=identifier, message=message)
+
+
 class EnterpriseRequiredError(Error):
     """Raised when a community deployment invokes an Enterprise-gated feature.
 
