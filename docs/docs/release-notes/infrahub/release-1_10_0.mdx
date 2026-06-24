@@ -100,11 +100,11 @@ nodes:
         kind: Text
 ```
 
-The same grammar is available at query time through the GraphQL `order` argument, which accepts an `order_by: [String!]` list at the root level, on many-relationship fields, and on hierarchical relationships:
+The same grammar is available at query time through the GraphQL `order` argument, which accepts an `by: [OrderByItem!]` list at the root level:
 
 ```graphql
 query {
-  DocumentationNote(order: { order_by: ["node_metadata__created_at__desc"] }) {
+  DocumentationNote(order: { by: [{field: "node_metadata__created_at", direction: DESC}]}) {
     edges { node { title { value } } }
   }
 }
@@ -124,7 +124,7 @@ member_of_groups_for_instances:
 
 ### Smarter artifact regeneration on repository changes
 
-When a Proposed Change includes commits to a linked repository, Infrahub now regenerates **only the artifacts whose transform source, GraphQL query, or artifact definition was actually affected** by the change - instead of regenerating every artifact in the repository. A typo fixed in an unrelated README no longer triggers a regeneration sweep across thousands of nodes. Each regeneration decision is recorded in the Proposed Change's task log, naming the file, query, or definition field that triggered it.
+When a Proposed Change includes commits to a linked repository, Infrahub now regenerates **only the artifacts whose transform source, GraphQL query, or artifact definition was actually affected** by the change - instead of regenerating every artifact in the repository. A typo fixed in an unrelated README no longer triggers a regeneration sweep across thousands of nodes.
 
 Detection automatically follows Jinja2 transitive includes (`{% include %}`, `{% import %}`, `{% extends %}`) and a Python transform's package directory. For dependencies Infrahub cannot detect automatically - templates loaded dynamically, or helper modules imported at runtime - you can declare extra files with a new optional `watch:` key on `jinja2_transforms` and `python_transforms` entries in `.infrahub.yml`. Track dependencies explicitly for both `Python` and `Jinja2` transforms. 
 
