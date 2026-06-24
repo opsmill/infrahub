@@ -28,8 +28,8 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 }
 
 
-# 0s, 1m, 30m, 6h
-WEBHOOK_SEND_RETRY_DELAYS: list[float] = [0, 60, 1800, 21600]
+WEBHOOK_SEND_RETRIES: int = 3
+WEBHOOK_SEND_RETRY_DELAY_SECONDS: float = 120  # fixed 2m delay between attempts
 
 
 @task(name="webhook-post", task_run_name="Send webhook {webhook_name}", cache_policy=NONE)
@@ -42,14 +42,18 @@ async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, pa
     return response
 
 
-@flow(name="webhook-send", flow_run_name="Send webhook {webhook_name}")
+@flow(
+    name="webhook-send",
+    flow_run_name="Send webhook {webhook_name}",
+    retries=WEBHOOK_SEND_RETRIES,
+    retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAY_SECONDS,
+)
 async def webhook_send(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:
-    """Send the webhook delivery, retrying the POST on failure."""
+    """Send the webhook delivery, retrying the whole send on failure."""
     log = get_run_logger()
-    send = webhook_post.with_options(
-        retries=len(WEBHOOK_SEND_RETRY_DELAYS), retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAYS
+    response = await webhook_post(
+        webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload
     )
-    response = await send(webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload)
     log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
     return response
 
