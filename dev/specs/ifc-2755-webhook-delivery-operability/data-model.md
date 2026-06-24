@@ -40,7 +40,7 @@ class TaskNodeInterface(Interface):
 class TaskNode(ObjectType):
     class Meta:
         interfaces = (TaskNodeInterface,)
-    # node-specific fields (related_nodes, logs, deprecated related_node*)
+    # node-specific fields: only the deprecated related_node / related_node_kind accessors
 
 class WebhookDeliveryTask(ObjectType):
     class Meta:

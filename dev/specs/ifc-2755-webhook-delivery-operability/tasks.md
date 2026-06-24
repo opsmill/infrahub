@@ -184,7 +184,7 @@ Models/pure components → flow/serializer wiring → tests → frontend query �
 
 ```bash
 # Independent backend components:
-Task: "CapturedHeaders redaction in backend/infrahub/webhook/models.py"      # T012
+Task: "CapturedHeaders redaction in backend/infrahub/webhook/capture.py"     # T012
 Task: "CapturedHttp artifact builder in backend/infrahub/webhook/capture.py" # T014
 
 # After capture + read-back wired, run the tests in parallel:
