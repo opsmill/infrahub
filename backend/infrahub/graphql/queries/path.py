@@ -9,7 +9,7 @@ from graphql import GraphQLError
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import QueryTimeoutError, SchemaNotFoundError
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
@@ -339,11 +339,6 @@ async def path_traversal_resolver(
             truncated_at_depth = result.truncated_at_depth
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
-        except QueryTimeoutError as exc:
-            raise GraphQLError(
-                "Path traversal exceeded its time budget. Reduce max_depth, lower max_paths, "
-                "or add excluded_kinds/excluded_namespaces filters to narrow the search."
-            ) from exc
 
     all_node_ids: set[str] = {source_id, destination_id}
     for path_data in path_data_list:
