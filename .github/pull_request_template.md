@@ -67,7 +67,7 @@ Closes <!-- #issue -->
 ## Checklist
 
 - [ ] Tests added/updated
-- [ ] [Changelog entry](../dev/skills/creating-changelog-entries/SKILL.md) added (`uv run towncrier create ...`)
+- [ ] [Changelog entry](../.agents/skills/creating-changelog-entries/SKILL.md) added (`uv run towncrier create ...`)
 - [ ] External docs updated (if user-facing or ops-facing change)
 - [ ] Internal .md docs updated (internal knowledge and AI code tools knowledge)
 - [ ] I have reviewed AI generated content
