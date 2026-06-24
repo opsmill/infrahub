@@ -72,6 +72,12 @@ export {
   SelectTrigger,
 } from "./components/select/select";
 export { Sheet, type SheetProps } from "./components/sheet/sheet";
+export {
+  SortableItem,
+  type SortableItemProps,
+  SortableList,
+  type SortableListProps,
+} from "./components/sortable-list/sortable-list";
 export { Spinner, type SpinnerProps } from "./components/spinner/spinner";
 export { Tooltip, type TooltipProps } from "./components/tooltip/tooltip";
 export {
