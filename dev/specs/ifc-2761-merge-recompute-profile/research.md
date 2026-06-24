@@ -9,8 +9,8 @@ Grounded in the current `develop` tree. File:line anchors are pointers, not cont
 **Decision**: build two layers — a deterministic counting layer and a real-stack timing layer. Do not try to get both from one setup.
 
 **Rationale**: `WorkflowRecorder` (`backend/tests/adapters/workflow.py`) records every `submit_workflow` call and returns a fake `WorkflowInfo` **without submitting to Prefect** — so it counts submissions precisely but the recompute never runs, and no flow-run timing exists. Conversely, real wall-clock requires a running task worker, which makes counts non-deterministic (timing, retries, ordering). So:
-- Counting layer uses recorders → exact counts of node events and recompute submissions, deterministic, no worker.
-- Timing layer uses the real stack → real wall-clock, attributed from Prefect flow-run timestamps.
+- Counting layer uses an event-service recorder → exact counts of emitted node events (plus an in-process derived recompute estimate), deterministic, no worker. It does **not** observe Prefect-submitted recompute (see R5).
+- Timing layer uses the real stack → real wall-clock and the authoritative executed-recompute count, attributed from Prefect flow-run timestamps.
 
 **Alternatives considered**: a single full-stack run that both counts and times — rejected: counts become flaky and the worker adds latency that pollutes the cardinality signal, which is the most decisive finding.
 
@@ -18,39 +18,53 @@ Grounded in the current `develop` tree. File:line anchors are pointers, not cont
 
 **Decision**: invoke the flows directly — `merge_branch(branch=..., context=...)` and `rebase_branch(...)` from `backend/infrahub/core/branch/tasks.py` — for the counting layer; use the GraphQL `BranchMerge`/`BranchRebase` mutations for the timing layer on the real stack.
 
-**Evidence**: direct task invocation is the established component pattern (`backend/tests/component/core/diff/test_merge_task_lock.py`, `backend/tests/component/core/test_branch_rebase.py`); GraphQL mutation driving is the integration pattern (`backend/tests/integration/diff/test_diff_rebase.py`, `BranchMerge`/`BranchRebase`). Merge emits the per-node events at `tasks.py:313-327`; rebase at `:259-275`.
+**Evidence**: the real pre-compute-diff-then-merge pattern is in `backend/tests/component/core/changelog/test_diff.py` and `test_branch_merge.py` (compute the enriched diff via `diff_coordinator.update_branch_diff`, then merge). **Caution (was F2)**: `backend/tests/component/core/diff/test_merge_task_lock.py` MOCKS `_do_merge_branch` (`patch("...tasks._do_merge_branch")`) — it does not drive a real merge and must not be used as the model. GraphQL mutation driving is the integration pattern (`backend/tests/integration/diff/test_diff_rebase.py`, `BranchMerge`/`BranchRebase`). Merge emits the per-node events at `tasks.py:313-327`; rebase at `:259-275`.
+
+**Feasibility note (was F5)**: running `merge_branch` without a task worker requires the enriched branch diff to be tracked first (it loads `diff_repository.get_one(tracking_id=BranchTrackingId(name=branch.name))`, `tasks.py:402-403`), so the harness must compute the tracked diff via `diff_coordinator.update_branch_diff` before calling the flow — it is not "seed and call merge." No existing test drives the real `merge_branch` flow end-to-end with real events, so this is first-time wiring: confirm a data-only merge completes with `WorkflowRecorder` neutralizing the orchestration submissions and `MemoryInfrahubEvent` (R4) recording the node events without dispatching them.
 
 ## R3. Seeding a synthetic branch at scale
 
-**Decision**: reuse the scale stagers (`backend/tests/scale/common/stagers.py`) and/or SDK batch creation (`client.create_batch()`, as in `backend/tests/benchmark/intensive/test_batch_create.py`) to create N nodes on a branch, then mutate them so they appear in the merge diff. Parameterize N across the chosen scales.
+**Decision**: seed N nodes on a branch then mutate them so they appear in the merge diff, parameterizing N across the chosen scales. In the counting layer (graph DB only, no API server) use async `Node.new/save` against the `db` fixture; the timing layer (full stack) may use the SDK batch (`client.create_batch()`, as in `backend/tests/benchmark/intensive/test_batch_create.py`). The sync Locust scale stagers (`backend/tests/scale/common/stagers.py`) are a reference only.
 
 **Rationale**: these are the existing bulk-seed patterns; building a third would violate Constitution VII. The changed-node count is the independent variable, so the dataset must let "nodes created" and "nodes changed on the branch" vary.
 
-**Schema**: reuse a fixture carrying all three derived-value families. `backend/tests/integration_docker/test_computed_attributes.py` exercises a kind with computed attribute + display_label + hfid together (the `TestingTShirt` style); the `car`/`person` helpers (`backend/tests/helpers/schema/`) carry display_label and human_friendly_id; `car_person_schema_computed_attr` adds a computed attribute. **OPEN**: confirm or assemble one fixture kind that carries all three plus a relationship peer read, so cross-node automations are exercised too.
+**Note (was F4/F7)**: `stagers.py` uses the **synchronous** client (Locust). The component counting layer has only the graph `db` fixture (no API server), so `client.create_batch()` is not available there either — seed via async `Node.new/save` against `db` (as component tests do). Reserve `client.create_batch()` for the timing layer (full stack).
 
-## R4. Counting node events emitted by a merge
+**Schema (was F3)**: assemble the fixture; do not assume an existing one fits. The `tshirt.py` helper has a computed attribute + display_label but **no HFID**, and the all-three `TestingTShirt` (`test_files/computed_tshirt.yml`) uses a `TransformPython` computed attribute that needs the worker/repo (full stack) — unusable in the no-worker counting layer. Build a Python `NodeSchema` carrying a **Jinja2** computed attribute + display label + HFID + a relationship peer read so cross-node automations are exercised without a transform.
 
-**Decision**: capture emitted events with the message-bus recorder (`BusRecorder`, `backend/tests/adapters/message_bus.py`) injected via `config.OVERRIDE.message_bus`, and count `NodeCreated/Updated/DeletedEvent` by type. Merge sends events through `get_event_service().send()` (`tasks.py:325-327`), which publishes to the bus.
+## R4. Counting node events emitted by a merge — use the event-service recorder, not the bus
 
-**OPEN**: confirm the cleanest recording point — the message-bus recorder vs an event-service-level recorder. The event service fans to both bus and Prefect (`services/adapters/event/__init__.py`); for counting we only need one faithful tap. Resolve during implementation; does not change the metric.
+**Decision**: capture emitted events with the **event-service recorder** `MemoryInfrahubEvent` (`backend/tests/adapters/event.py`), which appends every event to `self.events`; count `NodeCreated/Updated/DeletedEvent` by type.
 
-## R5. Counting recompute submissions
+**Why not `BusRecorder` (corrects an earlier wrong assumption)**: node events carry **no bus messages**. `NodeMutatedEvent` does not override `get_messages()` and the base returns `[]` (`events/node_action.py:16`, `events/models.py:183`), so `InfrahubEventService._send_bus` is a no-op for them; they reach only Prefect via `_send_prefect` → `emit_event` (`services/adapters/event/__init__.py`). A `BusRecorder` would record nothing. The event-service tap is required.
 
-**Decision**: inject `WorkflowRecorder` (via `config.OVERRIDE.workflow` + the dependency provider, the established pattern) and count `submit_workflow` calls bucketed by workflow definition: the per-node compute workflows and the per-kind `TRIGGER_UPDATE_*` workflows for computed attributes, display labels, and HFIDs.
+**Injection**: there is **no** `config.OVERRIDE.event_service` (`config.Override` exposes only `message_bus`, `cache`, `workflow`, `config.py:1495`) and `build_event_service()` ignores overrides (`workers/dependencies.py:121-124`). Inject through the dependency-provider scope — `dependency_provider.scope(build_event_service, lambda: recorder)` — the same mechanism `WorkflowRecorder` uses for `build_workflow`. `merge_branch` resolves the service via `get_event_service()` DI (`tasks.py:325`), so the scope applies. `MemoryInfrahubEvent.send` does not forward to Prefect, so recompute is not triggered in this layer (correct for counting).
 
-**Caveat (load-bearing)**: with the recorder in place the recompute does not execute, and crucially the **event-to-automation matching happens in Prefect**, not in `merge_branch`. So the counting layer measures the events emitted and any submissions made synchronously in the flow; the count of recompute flow-runs that Prefect's automations would spawn from those events is measured in the timing layer (R6). The counting layer's primary signal is therefore "node events emitted, by kind and field" — which is the fan-out cardinality — plus any direct submissions. This distinction must be stated explicitly in the findings so the two layers are not conflated.
+## R5. What the counting layer can and cannot measure
+
+**Decision**: the counting layer's deterministic signal is **emitted node events, by type and changed field** (via `MemoryInfrahubEvent`, R4). `WorkflowRecorder` is retained only to neutralize the merge's own orchestration workflows (post-process, IPAM reconciliation), which the merge submits directly; it does **not** see the per-node recompute.
+
+**The raw event count is largely known a priori**: merge emits exactly one node event per changed node (`tasks.py:313-323`), so node events ≈ changed-node count by construction. That is a useful sanity check and gives the per-field breakdown, but it is not itself a new finding.
+
+**The recompute multiplier is the real unknown** (emitted events × matching automations → recompute runs) and is **not** observable in this layer: recompute is dispatched by Prefect automations reacting to the events, and `MemoryInfrahubEvent` swallows the events (no Prefect emit). Two ways to obtain it:
+- **Derived (in-process)** — apply the same dependency/automation match logic to the emitted events to predict recompute targets per family. Cheap and deterministic, but reimplements Prefect matching (divergence risk). This is the counting layer's real value-add — an estimate, cross-checked by the timing layer, which remains authoritative.
+- **Executed (timing layer, R6)** — the authoritative count from Prefect flow-runs.
+
+**Alternative to evaluate during implementation**: record events **and** forward them (a `MemoryInfrahubEvent` subclass calling `super().send()`) against a real Prefect server with automations configured but **no task worker** — Prefect then *creates* the recompute flow-runs (the multiplier) without executing them, yielding the submission count cheaply and deterministically without reimplementing matching. Heavier than graph-DB-only, lighter than the full timing stack.
+
+**Consequence**: the counting layer is not solely decisive. It gives cardinality + a derived (or no-worker-observed) recompute estimate; the timing layer remains the authority on executed counts and wall-clock. The findings must keep the three quantities distinct: emitted events, derived expected recompute, executed recompute.
 
 ## R6. Attributing wall-clock on the real stack
 
 **Decision**: in the timing layer, measure:
 - **Merge critical path**: `time.perf_counter()` around the merge mutation/flow (the synchronous, in-transaction cost).
-- **Trailing recompute**: query Prefect flow runs created in the merge's time window via the task-manager flow-run API (`read_flow_runs` with `FlowRunFilterStartTime`/state filters, `backend/infrahub/task_manager/task.py`), filtered by the recompute deployment names and the branch/related-node tags; sum their durations and record count and span (first start to last finish = the degraded-instance window).
+- **Trailing recompute**: query Prefect flow runs via the task-manager flow-run API (`read_flow_runs` with `FlowRunFilterStartTime`/state filters, `backend/infrahub/task_manager/task.py`), filtered by the merge's **branch tag + recompute deployment names + start-time window**; sum their durations and record count and span (first start to last finish = the degraded-instance window). Note (was F4): the API supports only one related-node tag and AND-only tag matching (`task_manager/task.py:226-232`), so filtering by a seeded-node-id *set* is not possible — branch + deployment + window is the workable filter.
 - **Schema migrations**: isolate by comparing a schema-changing merge against a data-only merge of the same size (the diff is the migration cost), since both run through the same path.
 - **Database commit / merge internals**: use the existing DB query profiler (`InfrahubDatabaseProfiler`) and the lock-duration metric (`infrahub_lock_*`) where finer attribution is needed.
 
 **Evidence**: the integration_docker suite already waits on recompute terminal state via `client.task.count(TaskFilter(workflow=[...], related_node__ids=[...], state=terminal))` (`backend/tests/integration_docker/test_display_label_backfill.py`, `test_computed_attributes.py`, bound `PREFECT_EVENT_WAIT_SECONDS=60`). The same task/flow-run query surface yields the timings.
 
-**OPEN**: confirm the flow-run query can be filtered to exactly the recompute deployments for one merge run (by tag/time window) so concurrent activity is not double-counted. This is the riskiest measurement detail.
+**Resolved + residual risk**: the flow-run query cannot target a node-id set (single related node, AND-only tags), so use branch + deployment + start-time window. To avoid double-counting concurrent activity, run the timed merge on a dedicated branch with no other workflow traffic. Validating this filter is still the riskiest measurement step.
 
 ## R7. Reporting and reproducibility
 
@@ -64,6 +78,11 @@ Grounded in the current `develop` tree. File:line anchors are pointers, not cont
 
 ## Open items carried into tasks
 
-- R3: assemble/confirm a single synthetic kind carrying computed attribute + display label + HFID + a cross-node relationship read.
-- R4: pick the event-recording tap (bus vs event-service).
-- R6: confirm precise flow-run attribution for one merge run (tag/time-window filter).
+- R5: decide between the in-process derived multiplier and the Prefect-no-worker variant for the recompute estimate.
+- R6: validate the branch + deployment + start-time-window flow-run filter on a dedicated branch (a node-id-set filter is not supported).
+
+Resolved:
+- R2: drive via the real `diff_coordinator.update_branch_diff` + merge pattern (`test_merge_task_lock.py` mocks the merge — do not copy it); no existing test drives the real flow end-to-end, so budget for first-time wiring.
+- R3: assemble a Jinja2-only `NodeSchema` (computed attr + display label + HFID + relationship peer); existing all-three fixtures use a transform that needs the full stack.
+- R4: event-service recorder `MemoryInfrahubEvent` via dependency-provider scope; `BusRecorder` does not work for node events.
+- Placement: counting layer under `tests/component/merge_recompute/` (CI-collected), shared code under `tests/helpers/merge_recompute/`; `tests/scale/` is Locust, not CI.
