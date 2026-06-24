@@ -78,11 +78,7 @@ export function GroupsManager({ className, schema, objectId }: GroupsManagerProp
         </Button>
       )}
 
-      <ObjectGroupsList
-        objectId={objectId}
-        groups={filteredVisibleGroups}
-        className="grow overflow-auto"
-      />
+      <ObjectGroupsList objectId={objectId} groups={filteredVisibleGroups} />
     </Col>
   );
 }

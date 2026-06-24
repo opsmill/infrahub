@@ -133,12 +133,5 @@ export const ProposedChangeEditForm = ({
     }
   }
 
-  return (
-    <DynamicForm
-      onSubmit={onSubmit}
-      onCancel={onCancel}
-      fields={fields}
-      className="overflow-auto p-4"
-    />
-  );
+  return <DynamicForm onSubmit={onSubmit} onCancel={onCancel} fields={fields} />;
 };
