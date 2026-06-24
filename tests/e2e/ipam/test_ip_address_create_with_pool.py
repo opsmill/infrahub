@@ -12,7 +12,7 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import generate_random_branch_name, select_pool
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_sites_b
@@ -38,8 +38,7 @@ class TestAllocateIpAddressWithPool:
         await admin_page.goto(f"/ipam/ip_addresses?branch={branch}")
         await admin_page.get_by_test_id("create-object-button").click()
 
-        await admin_page.get_by_test_id("select-open-pool-option-button").click()
-        await admin_page.get_by_role("option", name="Management addresses pool").click()
+        await select_pool(admin_page, "Management addresses pool")
         await expect(admin_page.get_by_label("Address *")).to_contain_text("Allocated by pool")
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("Management addresses pool")
         await admin_page.get_by_label("Description").fill("address from pool")
@@ -59,8 +58,7 @@ class TestAllocateIpAddressWithPool:
         await admin_page.goto(f"/ipam/ip_addresses?branch={branch}")
         await admin_page.get_by_test_id("create-object-button").click()
 
-        await admin_page.get_by_test_id("select-open-pool-option-button").click()
-        await admin_page.get_by_role("option", name="Management addresses pool").click()
+        await select_pool(admin_page, "Management addresses pool")
         await expect(admin_page.get_by_label("Address *")).to_contain_text("Allocated by pool")
 
         # The pool's default prefix length is surfaced as a placeholder.

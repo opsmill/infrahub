@@ -21,7 +21,7 @@ import contextlib
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import generate_random_branch_name, select_pool
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_sites_a
@@ -153,8 +153,7 @@ class TestObjectRelationships:
         )
         await admin_page.get_by_text("Ip Addresses0").click()
         await admin_page.get_by_test_id("open-relationship-form-button").click()
-        await admin_page.get_by_test_id("select-open-pool-option-button").click()
-        await admin_page.get_by_role("option", name="Loopbacks pool").click()
+        await select_pool(admin_page, "Loopbacks pool")
         await expect(admin_page.get_by_test_id("source-pool-badge")).to_contain_text("Loopbacks pool")
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("Association with IpamIPAddress added")).to_be_visible()
