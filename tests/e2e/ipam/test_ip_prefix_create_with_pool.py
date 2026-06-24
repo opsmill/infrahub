@@ -9,6 +9,7 @@ data_scenario_branches (the full dataset): the asserted next-free prefix
 from __future__ import annotations
 
 import contextlib
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -54,3 +55,24 @@ class TestAllocateIpPrefixWithPool:
             .fill("203.111.0.248/29")
         )
         await expect(admin_page.get_by_text("prefix from pool")).to_be_visible()
+
+    async def test_create_an_ip_prefix_using_a_pool_with_a_custom_prefix_length(
+        self, admin_page: Page, branch: str
+    ) -> None:
+        await admin_page.goto(f"/ipam?branch={branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
+
+        await admin_page.get_by_test_id("select-open-pool-option-button").click()
+        await admin_page.get_by_role("option", name="External prefixes pool").click()
+        await expect(admin_page.get_by_label("Prefix *")).to_contain_text("Allocated by pool")
+
+        # The pool's default prefix length is surfaced as a placeholder.
+        await expect(admin_page.get_by_test_id("pool-prefix-length-input")).to_have_attribute("placeholder", "29")
+
+        # Override the pool's default prefix length (/29) with a smaller subnet size.
+        await admin_page.get_by_test_id("pool-prefix-length-input").fill("30")
+        await admin_page.get_by_role("textbox", name="Description").fill("prefix from pool with custom size")
+        await admin_page.get_by_role("button", name="Save").click()
+
+        # The allocation honours the typed prefix length rather than the pool default.
+        await expect(admin_page.get_by_text(re.compile(r"IP Prefix 203\.111\.\d+\.\d+/30 created"))).to_be_visible()

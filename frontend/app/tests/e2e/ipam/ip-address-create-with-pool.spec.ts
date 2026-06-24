@@ -35,38 +35,4 @@ test.describe("/ipam - Allocate an ip address with pool", () => {
       .fill("172.16.0.31/16");
     await expect(page.getByText("address from pool")).toBeVisible();
   });
-
-  test("create an ip address using a pool with a custom prefix length", async ({
-    page,
-    request,
-  }) => {
-    const branchName = generateRandomBranchName("ip-address-pool-prefixlen");
-    await createBranchAPI(request, branchName);
-
-    try {
-      await page.goto(`ipam/ip_addresses?branch=${branchName}`);
-      await page.getByTestId("create-object-button").click();
-
-      await page.getByTestId("select-open-pool-option-button").click();
-      await page.getByRole("option", { name: "Management addresses pool" }).click();
-      await expect(page.getByLabel("Address *")).toContainText("Allocated by pool");
-
-      // The pool's default prefix length is surfaced as a placeholder.
-      await expect(page.getByTestId("pool-prefix-length-input")).toHaveAttribute(
-        "placeholder",
-        "16"
-      );
-
-      // Override the pool's default prefix length (/16) with a custom mask.
-      await page.getByTestId("pool-prefix-length-input").fill("24");
-
-      await page.getByLabel("Description").fill("address from pool with custom prefix");
-      await page.getByRole("button", { name: "Save" }).click();
-
-      // The allocation honours the typed prefix length rather than the pool default.
-      await expect(page.getByText(/IP Address 172\.16\.0\.\d+\/24 created/)).toBeVisible();
-    } finally {
-      await deleteBranchAPI(request, branchName);
-    }
-  });
 });
