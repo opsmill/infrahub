@@ -1,0 +1,79 @@
+---
+title: Explore topology and trace paths
+---
+
+The Topology Explorer is the visual interface for [graph traversal](./overview.mdx). It lets you discover how two objects connect, find everything that depends on an object, and read the result as an interactive graph. This guide walks through both modes and the controls available.
+
+Before you start, you need a running Infrahub instance with data loaded, and permission to read the objects you want to traverse.
+
+## Open the Topology Explorer
+
+Open the Topology Explorer from the main navigation menu under **Path Traversal**. The explorer opens with two modes you can switch between:
+
+- **Path mode** traces the paths between two specific objects.
+- **Dependency mode** finds the objects of chosen kinds that are reachable from a single source object.
+
+## Trace a path between two objects
+
+Use path mode to understand how two objects are connected.
+
+1. Select **Path mode**.
+2. Choose a **source** object and a **destination** object. You can search for an object by kind, or paste an object's ID directly.
+3. Run the traversal.
+
+The explorer renders the discovered paths as a graph: each object is a node and each relationship is an edge between two nodes, laid out automatically from source to destination. Paths are ordered shortest first. When several paths exist, you can highlight an individual path to isolate it, and step between paths from the keyboard.
+
+## Discover what depends on an object
+
+Use dependency mode to answer *"what depends on this object?"* — for example, the services affected if a device goes offline.
+
+1. Select **Dependency mode**.
+2. Choose a **source** object.
+3. Choose one or more **target kinds** — the kinds of object you want to discover.
+4. Run the traversal.
+
+The explorer returns every reachable object of the chosen kinds, with the shortest path from the source to each. The result is rendered as the same interactive graph, so you can trace each dependency back to the source.
+
+## Filter and bound a traversal
+
+Both modes let you narrow and bound a traversal so results stay relevant on large graphs:
+
+- **Filter by kind**: Restrict traversal to pass through (or stop at) specific object kinds.
+- **Filter by namespace**: Exclude additional namespaces beyond the always-excluded internal ones.
+- **Adjust depth and path limits**: Increase or decrease how many hops traversal follows and how many paths it returns.
+
+The internal namespaces `Core`, `Internal`, `Builtin`, `Lineage`, `Profile`, and `Template` are always excluded and cannot be re-included. For the exact parameters, defaults, and limits behind these controls, see the [graph traversal reference](./reference.mdx).
+
+## Trace from an object's detail page
+
+You do not have to start in the Topology Explorer. On an object's detail page, use the **Trace from this object** action to open the explorer pre-seeded with that object as the source. This is the quickest way to start a dependency analysis from an object you are already looking at.
+
+## What you'll see in edge cases
+
+- **No path found**: When no path connects the two objects within the depth and filters you set, the explorer returns an empty result and indicates that no path exists. Try increasing the depth or relaxing filters.
+- **Same source and destination**: The source and destination must be different objects. Choosing the same object for both is reported rather than traversed.
+- **An object no longer exists**: If a selected object cannot be found, the explorer reports which object was not found.
+- **Results hit the limit**: Highly connected graphs can produce more paths than the configured limit. Results are capped at the path limit (shortest first); narrow the traversal with filters or a lower depth to focus the result.
+
+## Use graph traversal in automation
+
+The Topology Explorer is the interactive entry point, but the same traversal is available programmatically. Over the GraphQL API and the [Python SDK](https://docs.infrahub.app/python-sdk/guides/graph_traversal) you can run the same queries from scripts, generators, and checks. See the [graph traversal reference](./reference.mdx#python-sdk) for the queries and the SDK methods.
+
+### Use graph traversal in a check
+
+Because traversal is available wherever the Python SDK runs, an Infrahub [check](../checks/overview.mdx) can use it to validate structural requirements that span relationships, then fail a [proposed change](../proposed-changes/overview.mdx) when they are not met. Common patterns are:
+
+- **Connectivity requirements**: Assert that two objects stay connected — for example, that every site keeps a redundant path to the core — using `path_exists` or `traverse_paths`.
+- **Isolation verification**: Assert that two objects are *not* connected, for example that a production device and a lab device share no path.
+- **Dependency analysis**: Use `reachable_nodes` to find everything that depends on an object and validate it against a policy.
+
+Because traversal is branch- and time-aware, a check evaluates connectivity on the branch of the proposed change, catching violations the change would introduce before it merges.
+
+See [Build a check](../academy/tutorials/build-a-check.mdx) to set up a check end to end, and the [SDK graph traversal guide](https://docs.infrahub.app/python-sdk/guides/graph_traversal) for the traversal methods.
+
+## Related
+
+- [Graph traversal](./overview.mdx) — concepts, modes, and branch and permission behavior
+- [Graph traversal reference](./reference.mdx) — the GraphQL queries, parameters, defaults, and limits
+- [Objects](../objects/overview.mdx) — what traversal walks between
+- [Relationships](../schema/relationships.mdx) — the typed links traversal follows

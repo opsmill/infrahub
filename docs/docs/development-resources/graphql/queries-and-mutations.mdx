@@ -250,3 +250,12 @@ In addition to the queries and the mutations automatically generated based on th
 - **Mutation**: `BranchRebase`, Rebase an existing branch with the main branch
 - **Mutation**: `BranchMerge`, Merge a branch into main
 - **Mutation**: `BranchValidate`, Validate if a branch has some conflicts
+
+## Graph traversal
+
+Two top-level queries let you walk relationships across the graph rather than fetching a single object at a time.
+
+- **Query**: `InfrahubPathTraversal`, Find the paths between two objects
+- **Query**: `InfrahubReachableNodes`, Find the objects of given kinds reachable from a source object
+
+See the [graph traversal reference](../../graph-traversal/reference.mdx) for their parameters, defaults, and limits.

@@ -1,0 +1,134 @@
+---
+title: Graph traversal reference
+---
+
+[Graph traversal](./overview.mdx) is exposed through two top-level GraphQL queries: `InfrahubPathTraversal` for path discovery and `InfrahubReachableNodes` for dependency discovery. This page is the authoritative reference for their parameters, defaults, limits, and results. Both queries are read-only, branch- and time-aware, and permission-safe.
+
+## InfrahubPathTraversal
+
+Finds the paths between two objects, shortest first. Only the shortest path through each intermediate object is returned; longer routes through the same intermediate are omitted.
+
+### Input
+
+The query takes a single `data` argument of type `PathTraversalInput`:
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `source_id` | `String` | Yes | — | ID of the start object. |
+| `destination_id` | `String` | Yes | — | ID of the end object. |
+| `max_depth` | `Int` | No | `5` | Maximum number of hops. Maximum value `30`. |
+| `max_paths` | `Int` | No | `10` | Maximum number of paths to return. Maximum value `100`. |
+| `kind_filter` | `[String!]` | No | — | Only traverse through objects of these kinds. |
+| `relationship_filter` | `[String!]` | No | — | Only follow relationships with these schema identifiers, for example `device__interface` — not relationship names such as `interfaces`. |
+| `excluded_namespaces` | `[String!]` | No | — | Additional namespaces to exclude. Added to the always-excluded set; the defaults cannot be opted out. |
+| `excluded_kinds` | `[String!]` | No | — | Additional object kinds to exclude. Added to the default excluded kinds. |
+| `included_kinds` | `[String!]` | No | — | Default-excluded kinds to re-include. Has no effect on kinds also passed in `excluded_kinds`. |
+
+### Result
+
+The query returns a `PathTraversalResultType`:
+
+- `paths`: The discovered paths, ordered shortest first. Each path has:
+  - `hops`: The ordered hops from source to destination. Each hop has a `node` and the `relationship` traversed to reach it (`null` on the first hop).
+  - `depth`: The number of relationships in the path.
+- `source`, `destination`: The start and end objects.
+- `count`: The total number of paths discovered.
+- `excluded_kinds`: The effective exclusions applied to this traversal — the defaults plus the requested `excluded_kinds`, minus `included_kinds`.
+
+Each object (`node`) reports its `id`, `kind`, `label`, `display_label`, and `hfid`. Each relationship reports `from_rel`, `from_label`, `to_rel`, `to_label`, and `kind`.
+
+### Example
+
+```graphql
+query {
+  InfrahubPathTraversal(data: { source_id: "<id-of-object-A>", destination_id: "<id-of-object-B>", max_depth: 5 }) {
+    count
+    paths {
+      depth
+      hops {
+        node {
+          kind
+          display_label
+        }
+        relationship {
+          kind
+          from_rel
+          to_rel
+        }
+      }
+    }
+  }
+}
+```
+
+## InfrahubReachableNodes
+
+Finds the objects of given kinds that are reachable from a single source object, with the shortest path to each. Use it for dependency, blast-radius, and impact analysis.
+
+### Input
+
+The query takes a single `data` argument of type `ReachableNodesInput`:
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `source_id` | `String` | Yes | — | ID of the source object. |
+| `target_kinds` | `[String!]` | Yes | — | The object kinds to search for. |
+| `max_depth` | `Int` | No | `5` | Maximum traversal depth. Maximum value `30`. |
+| `max_results` | `Int` | No | `50` | Maximum number of distinct reachable objects to discover. Maximum value `200`. |
+| `max_paths` | `Int` | No | `500` | Maximum total paths returned across all discovered objects. Maximum value `5000`. |
+| `shortest_paths_only` | `Boolean` | No | `true` | When `true`, return only the shortest path(s) to each reachable object. When `false`, return every path within `max_depth` that meets the filters. |
+
+### Result
+
+The query returns a `ReachableNodesResultType`:
+
+- `source`: The source object.
+- `dependencies`: The reachable objects of the requested kinds, one entry per object-and-path pair. Each entry has the reachable `node`, its `depth` (hops from the source), and the full `path` from the source to it.
+- `count`: The number of dependency entries returned.
+
+## Defaults and limits
+
+| Query | Parameter | Default | Maximum |
+|-------|-----------|---------|---------|
+| `InfrahubPathTraversal` | `max_depth` | `5` | `30` |
+| `InfrahubPathTraversal` | `max_paths` | `10` | `100` |
+| `InfrahubReachableNodes` | `max_depth` | `5` | `30` |
+| `InfrahubReachableNodes` | `max_results` | `50` | `200` |
+| `InfrahubReachableNodes` | `max_paths` | `500` | `5000` |
+
+## Excluded kinds and namespaces
+
+The namespaces `Core`, `Internal`, `Builtin`, `Lineage`, `Profile`, and `Template` are always excluded from traversal. The `excluded_namespaces` input only adds to this set; these defaults cannot be re-included.
+
+Objects of kind `BuiltinIPNamespace` (and every kind inheriting from it) are excluded by default. Use `included_kinds` to re-include them — passing the generic re-includes every implementer. The `excluded_kinds` input adds further kinds to exclude and takes precedence over `included_kinds` within the same request.
+
+## Python SDK
+
+The [Python SDK](https://docs.infrahub.app/python-sdk) exposes graph traversal through three client methods, available in both asynchronous and synchronous form. They require Infrahub 1.10 or later and raise `VersionNotSupportedError` against an older server.
+
+- `traverse_paths(source, destination, ...)`: Find the shortest path(s) between two objects. Accepts `max_depth`, `max_paths`, `kind_filter`, `relationship_filter`, `included_kinds`, and `excluded_kinds`, mirroring the `InfrahubPathTraversal` parameters above. Returns a result exposing `.paths` (each path exposes `.hops`) and `.count`.
+- `reachable_nodes(source, target_kinds, ...)`: Find reachable objects of given kinds. Accepts `max_depth`, `max_results`, and `shortest_paths_only`. Returns a result whose `.dependencies` list holds each reachable node, its `depth`, and the full `path`.
+- `path_exists(source, destination, ...)`: A boolean connectivity check between two objects. Accepts the same filter arguments as `traverse_paths`.
+
+The `source` and `destination` arguments accept either an object ID or an `InfrahubNode` instance. Returned `PathNode` objects expose `.id`, `.kind`, and `.display_label`, plus a `.fetch()` method to load the full object.
+
+```python
+result = await client.traverse_paths(source=device_a, destination=device_b, max_depth=5)
+for path in result.paths:
+    print(path.hops)
+
+if await client.path_exists(source=device_a, destination=core_router):
+    ...
+```
+
+See the [SDK graph traversal guide](https://docs.infrahub.app/python-sdk/guides/graph_traversal) for the full method reference and examples.
+
+## Availability
+
+Because traversal is exposed over GraphQL, the same queries are available to AI assistants through the Infrahub MCP server, letting agents reason about how objects in your infrastructure graph connect.
+
+## Related
+
+- [Graph traversal](./overview.mdx) — concepts and behavior
+- [Explore topology and trace paths](./topology-explorer.mdx) — the visual interface
+- [Queries & mutations](../development-resources/graphql/queries-and-mutations.mdx) — the schema-generated GraphQL queries

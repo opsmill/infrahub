@@ -1,0 +1,47 @@
+---
+title: Graph traversal
+---
+
+Infrahub stores your data as a graph, and graph traversal lets you walk that graph to answer questions about how objects connect. Rather than fetching a single object and its immediate relationships, traversal follows relationships across the whole model — physical cabling, logical dependencies, ownership, or any other relationship you have defined — to surface the objects that sit between or beyond a starting point.
+
+:::info
+
+Graph traversal is available since Infrahub 1.10.0.
+
+:::
+
+## How graph traversal works
+
+Traversal starts from one or more objects and follows their relationships, hop by hop, until it reaches a target or runs out of allowed depth. Infrahub exposes two ways to traverse, each answering a different question:
+
+- **Path discovery** answers *"how are these two objects connected?"* Given a start object and an end object, it returns the paths that link them, shortest first. This is useful for understanding a dependency chain or troubleshooting connectivity between two points.
+- **Dependency discovery** answers *"what depends on this object?"* Given one source object and a list of target kinds, it returns every reachable object of those kinds, together with the shortest path to each. This is useful for blast-radius and impact analysis, for example *"if this device goes offline, what is affected?"*.
+
+Both are read-only: traversal inspects the graph but never changes it.
+
+## Key concepts
+
+- **Path**: An ordered sequence of objects connected by relationships, from a start object to an end object.
+- **Hop**: A single step in a path — one object and the relationship traversed to reach it from the previous object. The first hop has no incoming relationship.
+- **Depth**: The number of relationships (edges) in a path. Traversal is bounded by a maximum depth so queries stay predictable on large graphs.
+- **Path limit**: The maximum number of paths a query returns, so a highly connected graph cannot produce an unbounded result.
+- **Shortest first**: Results are ordered shortest path first. For path discovery, only the shortest path through each intermediate object is returned; longer routes through the same intermediate are omitted.
+
+The exact defaults and limits for each of these are listed on the [graph traversal reference](./reference.mdx) page.
+
+## Branch and time awareness
+
+Traversal respects Infrahub's branching and temporal model. A query only follows relationships that are active on the current branch at the point in time being queried. The same traversal run against two different branches can therefore return different results, reflecting the state of the graph on each branch. See [branch awareness](../schema/branch-awareness.mdx) for how relationships behave across branches.
+
+## Permissions and excluded data
+
+Traversal is permission-safe. If a path would cross an object that the current user is not allowed to read, the entire path is dropped rather than partially revealed — traversal never leaks the existence of objects through paths.
+
+To keep results focused on your data, a set of internal namespaces is always excluded from traversal: `Core`, `Internal`, `Builtin`, `Lineage`, `Profile`, and `Template`. You can exclude additional namespaces or kinds per query, but these defaults cannot be re-included. See the [reference](./reference.mdx#excluded-kinds-and-namespaces) for the full exclusion rules.
+
+## What you can do with graph traversal
+
+- **[Explore topology and trace paths](./topology-explorer.mdx)** — Use the Topology Explorer to discover paths, find dependencies, and visualize results.
+- **[Graph traversal reference](./reference.mdx)** — Look up the GraphQL queries and Python SDK methods, their parameters, defaults, and limits.
+
+Traversal is available in the Topology Explorer UI, over the GraphQL API, through the [Python SDK](https://docs.infrahub.app/python-sdk/guides/graph_traversal), and to AI assistants over the MCP server. It operates on [objects](../objects/overview.mdx) and the [relationships](../schema/relationships.mdx) between them, so a clear schema makes traversal results easier to interpret.

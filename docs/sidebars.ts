@@ -152,6 +152,15 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
+          label: 'Graph traversal',
+          link: { type: 'doc', id: 'graph-traversal/overview' }, // hub
+          items: [
+            { type: 'doc', id: 'graph-traversal/topology-explorer', label: 'Explore topology and trace paths' },
+            { type: 'doc', id: 'graph-traversal/reference', label: 'Graph traversal reference' },
+          ],
+        },
+        {
+          type: 'category',
           label: 'IPAM',
           link: { type: 'doc', id: 'ipam/overview' },
           items: [
