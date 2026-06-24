@@ -129,6 +129,7 @@ livestream
 loopback
 Loopback
 Loopbacks
+loopless
 markdownlint
 Markdownlint
 max_concurrent_queries
