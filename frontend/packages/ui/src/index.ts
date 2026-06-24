@@ -33,7 +33,6 @@ export {
   type ListBoxItemProps,
   ListBoxLoadMoreItem,
   type ListBoxProps,
-  ListBoxVirtualizer,
   type SelectionIndicator,
 } from "./components/list-box/list-box";
 export {

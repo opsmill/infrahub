@@ -3,7 +3,6 @@ import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@infrahub/ui";
 import { Collection } from "react-aria-components";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
@@ -42,7 +41,7 @@ export function ObjectRelationshipList({
   return (
     <ListBox
       aria-label="object relationship list"
-      className={classNames("p-1", className)}
+      className={className}
       emptyMessage="No result found"
     >
       <Collection items={flatData}>
