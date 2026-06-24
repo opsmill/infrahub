@@ -337,11 +337,14 @@ class DatabaseSettings(BaseSettings):
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
     path_traversal_query_timeout: float = Field(
-        default=75,
+        default=30,
         ge=1,
         description=(
-            "Server-side transaction timeout in seconds for point-to-point path-traversal queries; "
-            "the query is aborted once it is exceeded."
+            "Server-side transaction timeout in seconds for each point-to-point path-traversal "
+            "query. Point-to-point traversal runs many small queries one depth at a time, so a "
+            "single query that exceeds this budget marks a doomed search: it is aborted and the "
+            "shallower paths found so far are returned with a truncation depth, rather than the "
+            "whole request failing."
         ),
     )
     reachable_nodes_query_timeout: float = Field(
