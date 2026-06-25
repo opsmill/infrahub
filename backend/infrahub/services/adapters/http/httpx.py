@@ -16,6 +16,25 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+class SSLErrorExtractor:
+    """Finds the SSL error buried in a transport exception's cause/context chain.
+
+    A failed TLS handshake reaches this layer wrapped in a transport-level error, with the
+    original ssl.SSLError preserved only in the chained context, so the chain has to be walked
+    to recognize a certificate problem rather than a generic connection failure.
+    """
+
+    def extract(self, exc: BaseException) -> ssl.SSLError | None:
+        seen: set[int] = set()
+        current: BaseException | None = exc
+        while current is not None and id(current) not in seen:
+            if isinstance(current, ssl.SSLError):
+                return current
+            seen.add(id(current))
+            current = current.__cause__ or current.__context__
+        return None
+
+
 class HttpxAdapter(InfrahubHTTP):
     """The HttpxAdapter is a generic interface for InfrahubHTTP.
 
@@ -27,8 +46,9 @@ class HttpxAdapter(InfrahubHTTP):
     and eventually proxy settings in one location.
     """
 
-    def __init__(self, tls_registry: TlsContextRegistry) -> None:
+    def __init__(self, tls_registry: TlsContextRegistry, ssl_error_extractor: SSLErrorExtractor) -> None:
         self._tls_registry = tls_registry
+        self._ssl_error_extractor = ssl_error_extractor
         self._settings: config.HTTPSettings | None = None
 
     @property
@@ -92,15 +112,17 @@ class HttpxAdapter(InfrahubHTTP):
                     timeout=self.settings.timeout,
                     **params,
                 )
-            except ssl.SSLCertVerificationError as exc:
-                log.info(f"TLS verification failed for connection to {url}")
-                raise HTTPServerSSLError(message=f"Unable to validate TLS certificate for connection to {url}") from exc
             except httpx.ReadTimeout as exc:
                 log.info(f"Connection timed out when trying to reach {url}")
                 raise HTTPServerTimeoutError(
                     message=f"Connection to {url} timed out after {self.settings.timeout}"
                 ) from exc
             except httpx.RequestError as exc:
+                if self._ssl_error_extractor.extract(exc) is not None:
+                    log.info(f"TLS verification failed for connection to {url}")
+                    raise HTTPServerSSLError(
+                        message=f"Unable to validate TLS certificate for connection to {url}"
+                    ) from exc
                 # Catch all error from httpx
                 log.warning(f"Unhandled HTTP error for {url} ({exc})")
                 raise HTTPServerError(message=f"Unknown http error when connecting to {url}") from exc

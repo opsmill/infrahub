@@ -9,7 +9,7 @@ from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.tls.registry import TlsContextRegistry
 
 from .adapters.event import InfrahubEventService
-from .adapters.http.httpx import HttpxAdapter
+from .adapters.http.httpx import HttpxAdapter, SSLErrorExtractor
 from .adapters.workflow.worker import WorkflowWorkerExecution
 from .scheduler import InfrahubScheduler
 
@@ -107,7 +107,7 @@ class InfrahubServices:
             component_type=component_type,
             scheduler=scheduler,
             event=event or InfrahubEventService(message_bus, log_forwarding=log_forwarding),
-            http=http or HttpxAdapter(tls_registry=TlsContextRegistry()),
+            http=http or HttpxAdapter(tls_registry=TlsContextRegistry(), ssl_error_extractor=SSLErrorExtractor()),
             log_forwarding=log_forwarding,
         )
 
