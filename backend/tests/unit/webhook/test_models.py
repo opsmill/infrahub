@@ -5,7 +5,13 @@ from uuid import UUID
 import pytest
 
 from infrahub.core.timestamp import Timestamp
-from infrahub.webhook.models import CustomWebhook, HeaderKind, StandardWebhook, WebhookHeader
+from infrahub.webhook.models import (
+    CustomWebhook,
+    HeaderKind,
+    StandardWebhook,
+    WebhookHeader,
+    WebhookHeaderResolutionError,
+)
 
 
 def test_standard_webhook() -> None:
@@ -116,8 +122,8 @@ def test_build_headers_resolves_environment_variable() -> None:
     assert headers["Accept"] == "application/json"
 
 
-def test_build_headers_skips_missing_environment_variable(caplog: pytest.LogCaptureFixture) -> None:
-    """Missing environment variable is skipped with a warning, no exception raised."""
+def test_build_headers_fails_on_missing_environment_variable(cleared_environment: None) -> None:
+    """A missing environment-sourced header fails the delivery instead of being silently skipped."""
     webhook = CustomWebhook(
         name="test",
         url="http://test.com",
@@ -129,14 +135,11 @@ def test_build_headers_skips_missing_environment_variable(caplog: pytest.LogCapt
         ],
     )
 
-    with patch.dict("os.environ", {}, clear=True), caplog.at_level(logging.WARNING, logger="infrahub.webhook.models"):
-        headers = webhook._build_headers(payload=None)
-
-    assert "X-API-Key" not in headers
-    assert headers["X-Source"] == "infrahub"
-    assert "MISSING_VAR" in caplog.text
-    assert "X-API-Key" in caplog.text
-    assert "test" in caplog.text  # webhook name included in warning
+    with pytest.raises(
+        WebhookHeaderResolutionError,
+        match=r"^Webhook 'test': could not resolve header 'X-API-Key': Environment variable 'MISSING_VAR' not found$",
+    ):
+        webhook._build_headers(payload=None)
 
 
 def test_build_headers_warns_on_duplicate_keys(caplog: pytest.LogCaptureFixture) -> None:
