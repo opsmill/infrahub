@@ -1,0 +1,1 @@
+Merging a branch that changes a computed attribute, display label, or human-friendly ID template now refreshes those derived values on nodes that exist only on the target branch. Previously the merge applied the new schema without emitting a schema-update event, so the backfill never ran and the affected nodes kept stale values.
