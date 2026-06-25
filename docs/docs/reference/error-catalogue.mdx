@@ -4,11 +4,7 @@ title: Error Catalogue
 
 # Error Catalogue
 
-<<<<<<< HEAD
 **Catalogue version**: 1 — 13 codes
-=======
-**Catalogue version**: 1 — 10 codes
->>>>>>> origin/stable
 
 Every GraphQL error response carries an `extensions` block with a stable string `code`, the logical `http_status`, and a typed `data` payload. Switch on `code` rather than parsing the human-readable `message`, which is not part of the stable contract.
 
@@ -154,7 +150,6 @@ This code carries no `data` payload; `data` is always `{}`.
 }
 ```
 
-<<<<<<< HEAD
 ### BRANCH_ALREADY_MERGED
 
 The target branch has been merged and is permanently read-only.
@@ -221,8 +216,6 @@ The target branch must be rebased before it accepts new changes.
 }
 ```
 
-=======
->>>>>>> origin/stable
 ### BRANCH_NOT_FOUND
 
 The requested branch does not exist.
@@ -256,7 +249,6 @@ The requested branch does not exist.
 }
 ```
 
-<<<<<<< HEAD
 ### MERGE_IN_PROGRESS
 
 The write was rejected because a branch merge is in progress. The block is transient; retry once the merge completes.
@@ -292,8 +284,6 @@ The write was rejected because a branch merge is in progress. The block is trans
 }
 ```
 
-=======
->>>>>>> origin/stable
 ### NODE_NOT_FOUND
 
 The requested node does not exist in the database.

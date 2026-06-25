@@ -238,7 +238,6 @@
         "type": "object"
       }
     },
-<<<<<<< HEAD
     "BRANCH_ALREADY_MERGED": {
       "description": "The target branch has been merged and is permanently read-only.",
       "stability": "stable",
@@ -301,8 +300,6 @@
         "type": "object"
       }
     },
-=======
->>>>>>> origin/stable
     "UNDEFINED_ERROR": {
       "description": "An error not yet covered by the catalogue. Its occurrence indicates a catalogue gap and should be triaged.",
       "stability": "stable",
