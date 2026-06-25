@@ -137,6 +137,7 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook2: Node,
         webhook_deployment: None,
         dependency_provider: Provider,
+        immediate_webhook_retries: None,
     ) -> None:
         from infrahub.workers.dependencies import build_http_service
 
