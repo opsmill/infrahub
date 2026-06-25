@@ -14,16 +14,11 @@ from infrahub.errors.exceptions import (
 from infrahub.errors.validation import MultiFieldValidationError
 from infrahub.exceptions import (
     AuthorizationError,
-<<<<<<< HEAD
     BranchAlreadyMergedError,
     BranchNeedsRebaseError,
     BranchNotFoundError,
     Error,
     MergeInProgressError,
-=======
-    BranchNotFoundError,
-    Error,
->>>>>>> origin/stable
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
@@ -130,7 +125,6 @@ CASES = [
         expected_http_status=422,
         expected_data={"kind": "MissingKind"},
     ),
-<<<<<<< HEAD
     CodeCase(
         name="branch_already_merged",
         exc=BranchAlreadyMergedError(identifier="feature-branch", message="Branch 'feature-branch' has been merged"),
@@ -156,8 +150,6 @@ CASES = [
         expected_http_status=423,
         expected_data={"branch_name": "main", "merging_branch": "feature-branch"},
     ),
-=======
->>>>>>> origin/stable
 ]
 
 

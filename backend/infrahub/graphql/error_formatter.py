@@ -15,14 +15,10 @@ from infrahub.errors.payloads import (
     AttributeInvalidTypeData,
     AttributeRequiredData,
     AuthenticationRequiredData,
-<<<<<<< HEAD
     BranchAlreadyMergedData,
     BranchNeedsRebaseData,
     BranchNotFoundData,
     MergeInProgressData,
-=======
-    BranchNotFoundData,
->>>>>>> origin/stable
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
@@ -31,16 +27,11 @@ from infrahub.errors.payloads import (
 )
 from infrahub.exceptions import (
     AuthorizationError,
-<<<<<<< HEAD
     BranchAlreadyMergedError,
     BranchNeedsRebaseError,
     BranchNotFoundError,
     Error,
     MergeInProgressError,
-=======
-    BranchNotFoundError,
-    Error,
->>>>>>> origin/stable
     NodeNotFoundError,
     SchemaNotFoundError,
 )
@@ -91,15 +82,12 @@ def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
             )
         case "BRANCH_NOT_FOUND" if isinstance(exc, BranchNotFoundError):
             payload = BranchNotFoundData(branch_name=exc.identifier)
-<<<<<<< HEAD
         case "BRANCH_ALREADY_MERGED" if isinstance(exc, BranchAlreadyMergedError):
             payload = BranchAlreadyMergedData(branch_name=exc.identifier)
         case "BRANCH_NEEDS_REBASE" if isinstance(exc, BranchNeedsRebaseError):
             payload = BranchNeedsRebaseData(branch_name=exc.identifier)
         case "MERGE_IN_PROGRESS" if isinstance(exc, MergeInProgressError):
             payload = MergeInProgressData(branch_name=exc.identifier, merging_branch=exc.merging_branch)
-=======
->>>>>>> origin/stable
         case "SCHEMA_NOT_FOUND" if isinstance(exc, SchemaNotFoundError):
             payload = SchemaNotFoundData(kind=exc.identifier)
     return payload.model_dump(mode="json")

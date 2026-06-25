@@ -14,10 +14,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
-<<<<<<< HEAD
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
-=======
->>>>>>> origin/stable
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
@@ -426,14 +423,10 @@ async def trigger_update_jinja2_computed_attributes(
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup_jinja2(
-<<<<<<< HEAD
     context: EventContext,
     branch_name: str | None = None,
     event_name: str | None = None,
     changed_elements: ChangedElementsPayload | None = None,
-=======
-    context: EventContext, branch_name: str | None = None, event_name: str | None = None
->>>>>>> origin/stable
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:

@@ -5,14 +5,10 @@ from pydantic import BaseModel, ConfigDict
 
 from infrahub.exceptions import (
     AuthorizationError,
-<<<<<<< HEAD
     BranchAlreadyMergedError,
     BranchNeedsRebaseError,
     BranchNotFoundError,
     MergeInProgressError,
-=======
-    BranchNotFoundError,
->>>>>>> origin/stable
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
@@ -28,14 +24,10 @@ from .payloads import (
     AttributeInvalidTypeData,
     AttributeRequiredData,
     AuthenticationRequiredData,
-<<<<<<< HEAD
     BranchAlreadyMergedData,
     BranchNeedsRebaseData,
     BranchNotFoundData,
     MergeInProgressData,
-=======
-    BranchNotFoundData,
->>>>>>> origin/stable
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
@@ -147,7 +139,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
             ),
         ),
         (
-<<<<<<< HEAD
             "BRANCH_ALREADY_MERGED",
             CatalogueEntry(
                 description="The target branch has been merged and is permanently read-only.",
@@ -181,8 +172,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
             ),
         ),
         (
-=======
->>>>>>> origin/stable
             "UNDEFINED_ERROR",
             CatalogueEntry(
                 description=(
