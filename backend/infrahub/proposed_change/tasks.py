@@ -180,7 +180,9 @@ async def _rerun_proposed_change_integrity_checks(
 
     # The schema integrity check reads the diff summary from the cache, so refresh it first.
     diff_summary = await get_client().get_diff_summary(branch=source_branch.name)
-    await set_diff_summary_cache(pipeline_id=branch_diff.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
+    await set_diff_summary_cache(
+        pipeline_id=branch_diff.pipeline_id, diff_summary=diff_summary, cache=await get_cache()
+    )
     schema_integrity_model = RequestProposedChangeSchemaIntegrity(
         proposed_change=proposed_change_id,
         source_branch=source_branch.name,
