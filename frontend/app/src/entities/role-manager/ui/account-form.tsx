@@ -98,11 +98,23 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
+    <Form form={form} onSubmit={handleSubmit}>
+      <InputField
+        name="name"
+        label="Name"
+        rules={{
+          required: true,
+          validate: {
+            required: isRequired,
+          },
+        }}
+      />
+
+      {!currentObject && (
         <InputField
-          name="name"
-          label="Name"
+          name="password"
+          label="Password"
+          type="password"
           rules={{
             required: true,
             validate: {
@@ -110,45 +122,31 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
             },
           }}
         />
+      )}
 
-        {!currentObject && (
-          <InputField
-            name="password"
-            label="Password"
-            type="password"
-            rules={{
-              required: true,
-              validate: {
-                required: isRequired,
-              },
-            }}
-          />
+      <InputField name="description" label="Description" />
+
+      <RelationshipManyField
+        name="member_of_groups"
+        label="Groups"
+        relationship={{
+          name: "member_of_groups",
+          peer: ACCOUNT_GROUP_OBJECT,
+          cardinality: "many",
+        }}
+        schema={schema}
+        defaultValue={memberDefaultValue}
+      />
+
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
         )}
 
-        <InputField name="description" label="Description" />
-
-        <RelationshipManyField
-          name="member_of_groups"
-          label="Groups"
-          relationship={{
-            name: "member_of_groups",
-            peer: ACCOUNT_GROUP_OBJECT,
-            cardinality: "many",
-          }}
-          schema={schema}
-          defaultValue={memberDefaultValue}
-        />
-
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
-
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };

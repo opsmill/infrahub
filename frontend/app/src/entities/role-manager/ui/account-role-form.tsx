@@ -102,67 +102,65 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <InputField
-          name="name"
-          label="Name"
-          rules={{
-            required: true,
-            validate: {
-              required: isRequired,
-            },
-          }}
-        />
+    <Form form={form} onSubmit={handleSubmit}>
+      <InputField
+        name="name"
+        label="Name"
+        rules={{
+          required: true,
+          validate: {
+            required: isRequired,
+          },
+        }}
+      />
 
-        <RelationshipManyField
-          name="groups"
-          label="Groups"
-          relationship={{
-            name: "groups",
-            peer: ACCOUNT_GROUP_OBJECT,
-            cardinality: "many",
-          }}
-          defaultValue={groups}
-        />
+      <RelationshipManyField
+        name="groups"
+        label="Groups"
+        relationship={{
+          name: "groups",
+          peer: ACCOUNT_GROUP_OBJECT,
+          cardinality: "many",
+        }}
+        defaultValue={groups}
+      />
 
-        <FormField
-          name="permissions"
-          render={({ field }) => {
-            const fieldData = field.value;
-            return (
-              <div className="flex flex-col gap-2">
-                <LabelFormField label="Permissions" fieldData={fieldData} />
+      <FormField
+        name="permissions"
+        render={({ field }) => {
+          const fieldData = field.value;
+          return (
+            <div className="flex flex-col gap-2">
+              <LabelFormField label="Permissions" fieldData={fieldData} />
 
-                <FormInput>
-                  <PermissionCombobox
-                    {...field}
-                    value={fieldData.value}
-                    onChange={(newValue) => {
-                      field.onChange(
-                        updateRelationshipFieldValue(
-                          newValue.length > 0 ? newValue : null,
-                          permissions
-                        )
-                      );
-                    }}
-                  />
-                </FormInput>
-              </div>
-            );
-          }}
-        />
+              <FormInput>
+                <PermissionCombobox
+                  {...field}
+                  value={fieldData.value}
+                  onChange={(newValue) => {
+                    field.onChange(
+                      updateRelationshipFieldValue(
+                        newValue.length > 0 ? newValue : null,
+                        permissions
+                      )
+                    );
+                  }}
+                />
+              </FormInput>
+            </div>
+          );
+        }}
+      />
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };

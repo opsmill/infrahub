@@ -115,57 +115,55 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
       ?.enum?.map((data) => ({ value: data as string, label: data as string })) ?? [];
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <InputField
-          name="name"
-          label="Name"
-          rules={{
-            required: true,
-            validate: {
-              required: isRequired,
-            },
-          }}
-        />
+    <Form form={form} onSubmit={handleSubmit}>
+      <InputField
+        name="name"
+        label="Name"
+        rules={{
+          required: true,
+          validate: {
+            required: isRequired,
+          },
+        }}
+      />
 
-        <InputField name="description" label="Description" />
+      <InputField name="description" label="Description" />
 
-        <InputField name="label" label="Label" />
+      <InputField name="label" label="Label" />
 
-        <DropdownField name="group_type" label="Type" items={typeOptions} />
+      <DropdownField name="group_type" label="Type" items={typeOptions} />
 
-        <RelationshipManyField
-          name="roles"
-          label="Roles"
-          relationship={{
-            name: "roles",
-            peer: ACCOUNT_ROLE_OBJECT,
-            cardinality: "many",
-          }}
-          defaultValue={roles}
-        />
+      <RelationshipManyField
+        name="roles"
+        label="Roles"
+        relationship={{
+          name: "roles",
+          peer: ACCOUNT_ROLE_OBJECT,
+          cardinality: "many",
+        }}
+        defaultValue={roles}
+      />
 
-        <RelationshipManyField
-          name="members"
-          label="Members"
-          relationship={{
-            name: "members",
-            peer: ACCOUNT_OBJECT,
-            cardinality: "many",
-          }}
-          defaultValue={members}
-        />
+      <RelationshipManyField
+        name="members"
+        label="Members"
+        relationship={{
+          name: "members",
+          peer: ACCOUNT_OBJECT,
+          cardinality: "many",
+        }}
+        defaultValue={members}
+      />
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };
