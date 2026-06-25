@@ -7,6 +7,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.webhook.tasks import process
 from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_INVALIDATE_HEADERS, WEBHOOK_PROCESS, WORKER_POOLS
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.constants import TestKind
@@ -39,6 +40,16 @@ BRANCH_CREATED_PAYLOAD: dict[str, Any] = {
         },
     }
 }
+
+
+@pytest.fixture
+def immediate_webhook_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run the webhook send retries without their production back-off.
+
+    A failing delivery exhausts its retries promptly instead of sleeping through the real
+    schedule, keeping retry-path tests within the suite timeout.
+    """
+    monkeypatch.setattr(process, "webhook_send", process.webhook_send.with_options(retry_delay_seconds=0))
 
 
 @pytest.fixture(scope="class")
