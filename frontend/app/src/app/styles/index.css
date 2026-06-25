@@ -6,7 +6,10 @@
 @config "../../../tailwind.config.js";
 @source "../../../../packages/schema-visualizer/src/**/*.{js,ts,jsx,tsx}";
 @source "../../../../packages/ui/src/**/*.{js,ts,jsx,tsx}";
+<<<<<<< HEAD
 @source "../../../../packages/graph/src/**/*.{js,ts,jsx,tsx}";
+=======
+>>>>>>> origin/stable
 
 @font-face {
   font-family: InterVariable;

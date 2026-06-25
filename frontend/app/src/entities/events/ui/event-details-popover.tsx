@@ -1,6 +1,13 @@
+<<<<<<< HEAD
 import { Popover, PopoverTrigger, ScrollArea } from "@infrahub/ui";
 import { InfoIcon } from "lucide-react";
 import { Button } from "react-aria-components";
+=======
+import { ScrollArea } from "@infrahub/ui";
+import { InfoIcon } from "lucide-react";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+>>>>>>> origin/stable
 
 import type { EventType } from "@/entities/events/types";
 

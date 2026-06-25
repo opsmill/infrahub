@@ -1,8 +1,13 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { Button, Tooltip } from "@infrahub/ui";
+=======
+import { Button } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { useNavigate } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";

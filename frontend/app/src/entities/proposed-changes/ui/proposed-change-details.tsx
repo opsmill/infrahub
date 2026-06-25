@@ -1,5 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { Card, CardContent, CardHeader, Tooltip } from "@infrahub/ui";
+=======
+import { Card, CardContent, CardHeader } from "@infrahub/ui/card";
+>>>>>>> origin/stable
 import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 
@@ -10,6 +14,10 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
+<<<<<<< HEAD
+=======
+import { Tooltip } from "@/shared/components/ui/tooltip";
+>>>>>>> origin/stable
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";

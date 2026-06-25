@@ -1,10 +1,25 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { Button, Menu, MenuItem, MenuTrigger, Popover, Sheet } from "@infrahub/ui";
 import { PencilLineIcon, Trash2Icon } from "lucide-react";
+=======
+import { Button } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
+<<<<<<< HEAD
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
+=======
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuItemWithTooltip,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+>>>>>>> origin/stable
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -43,6 +58,7 @@ export function ObjectActionsCell({
   return (
     <>
       <StickyRightCell>
+<<<<<<< HEAD
         <MenuTrigger>
           <Button
             size="sm"
@@ -52,6 +68,19 @@ export function ObjectActionsCell({
           >
             <Icon icon="mdi:dots-vertical" className="text-gray-500" />
           </Button>
+=======
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              shape="square"
+              variant="ghost"
+              data-testid={`actions-cell-${objectLabel}`}
+            >
+              <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
+            </Button>
+          </DropdownMenuTrigger>
+>>>>>>> origin/stable
 
           <Popover placement="bottom end">
             <Menu aria-label="Object actions">

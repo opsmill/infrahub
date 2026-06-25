@@ -79,7 +79,10 @@ export function KindMultiSelect({
                       size="xs"
                       shape="circle"
                       variant="ghost"
+<<<<<<< HEAD
                       preventFocusOnPress
+=======
+>>>>>>> origin/stable
                       onPress={() => toggle(kind)}
                       className="size-4 text-gray-500 data-hovered:text-gray-800"
                       aria-label="Remove"

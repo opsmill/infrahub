@@ -23,6 +23,7 @@ The package is published locally via the workspace and consumed in `frontend/app
 
 Source of truth: `frontend/packages/ui/src/index.ts`.
 
+<<<<<<< HEAD
 ## How the package is consumed (resolution + styling)
 
 - **Consumed from source, not built output.** `frontend/app` resolves `@infrahub/ui` to its TypeScript source — `package.json` `main` is `./src/index.ts` and the subpath exports point at `.tsx` files. The app's own Vite/Tailwind build compiles them. Consequence: the app never needs `@infrahub/ui` to be pre-built, and the package's own `pnpm build` (`tsc -b && vite build`) is independent of app builds and tests.
@@ -42,6 +43,8 @@ Source of truth: `frontend/packages/ui/src/index.ts`.
 
 Source of truth: `frontend/packages/graph/src/index.ts`. Adopted by `path-traversal`.
 
+=======
+>>>>>>> origin/stable
 ## When to consume from `@infrahub/ui`
 
 Always, for the components above. Do not reimplement them inline in feature code, even if it "feels lighter":

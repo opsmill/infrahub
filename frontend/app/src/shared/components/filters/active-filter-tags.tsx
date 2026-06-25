@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { Popover, ScrollArea } from "@infrahub/ui";
+=======
+import { ScrollArea } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { useRef, useState } from "react";
 import { type Selection, TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 

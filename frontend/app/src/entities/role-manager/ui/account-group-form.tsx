@@ -155,6 +155,7 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
         defaultValue={members}
       />
 
+<<<<<<< HEAD
       <Row className="justify-end">
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
@@ -165,5 +166,18 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
         <FormSubmit>Save</FormSubmit>
       </Row>
     </Form>
+=======
+        <Row className="justify-end">
+          {onCancel && (
+            <Button variant="outline" onPress={onCancel}>
+              Cancel
+            </Button>
+          )}
+
+          <FormSubmit>Save</FormSubmit>
+        </Row>
+      </Form>
+    </div>
+>>>>>>> origin/stable
   );
 };

@@ -42,8 +42,16 @@ if TYPE_CHECKING:
     from tests.adapters.message_bus import BusSimulator
 
 
+<<<<<<< HEAD
 class ErroringGraphMerger(GraphMerger):
     async def merge(self, at: Timestamp) -> None:
+=======
+class ErroringBranchMerger(BranchMerger):
+    async def merge(
+        self,
+        at: str | Timestamp | None = None,
+    ) -> None:
+>>>>>>> origin/stable
         raise ValueError("This will always fail")
 
 

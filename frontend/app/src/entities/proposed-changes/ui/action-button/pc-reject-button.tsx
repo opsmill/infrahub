@@ -1,8 +1,13 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { Button, Tooltip } from "@infrahub/ui";
+=======
+import { Button } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { Card, CardContent, CardHeader } from "@infrahub/ui";
+=======
+import { Card, CardContent, CardHeader } from "@infrahub/ui/card";
+>>>>>>> origin/stable
 import type React from "react";
 import { Link, type LinkProps } from "react-router";
 

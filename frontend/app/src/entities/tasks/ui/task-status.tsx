@@ -1,10 +1,18 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { LinkButton, type LinkButtonProps, Spinner, Tooltip } from "@infrahub/ui";
+=======
+import { LinkButton, type LinkButtonProps, Spinner } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { useQuery } from "@tanstack/react-query";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+<<<<<<< HEAD
+=======
+import { Tooltip } from "@/shared/components/aria/tooltip";
+>>>>>>> origin/stable
 import { Pulse } from "@/shared/components/ui/pulse";
 import { QSP } from "@/shared/config/qsp";
 

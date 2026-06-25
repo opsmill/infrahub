@@ -45,9 +45,15 @@ export function Modal({
 }: ModalProps) {
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={isDismissable}>
+<<<<<<< HEAD
       {({ state: { isOpen: isOpenOverlay } }) => (
         <Stacked group="modal" isStacked={isOpenOverlay}>
           {({ depth }) => (
+=======
+      {({ state: { isOpen: overlayIsOpen } }) => (
+        <Stacked isStacked={overlayIsOpen}>
+          {(depth) => (
+>>>>>>> origin/stable
             <AriaModal
               className={cn(
                 "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-200",
@@ -55,6 +61,10 @@ export function Modal({
                 "border border-neutral-100 bg-white/25 backdrop-blur",
                 "data-entering:zoom-in-80 data-entering:animate-in data-entering:duration-200 data-entering:ease-out",
                 "data-exiting:zoom-out-80 data-exiting:animate-out data-exiting:duration-150 data-exiting:ease-in",
+<<<<<<< HEAD
+=======
+                className,
+>>>>>>> origin/stable
               )}
               style={{
                 top: `${CENTER_PERCENT - depth * TOP_OFFSET_PER_LAYER}%`,

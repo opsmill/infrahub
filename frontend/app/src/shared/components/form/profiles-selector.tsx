@@ -94,7 +94,10 @@ export const ProfilesSelector = ({
                     size="xs"
                     shape="circle"
                     variant="ghost"
+<<<<<<< HEAD
                     preventFocusOnPress
+=======
+>>>>>>> origin/stable
                     onPress={() => {
                       handleRemove(profile);
                     }}

@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # In order for Chromatic to correctly determine baseline commits, tot access the full Git history graph.
       - name: Install pnpm

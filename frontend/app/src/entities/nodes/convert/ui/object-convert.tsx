@@ -1,5 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { Card, CardHeader } from "@infrahub/ui";
+=======
+import { Card, CardHeader } from "@infrahub/ui/card";
+>>>>>>> origin/stable
 import { useState } from "react";
 
 import { Row } from "@/shared/components/container";

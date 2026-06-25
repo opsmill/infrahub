@@ -10,10 +10,14 @@ from infrahub.errors.payloads import (
     AttributeInvalidTypeData,
     AttributeRequiredData,
     AuthenticationRequiredData,
+<<<<<<< HEAD
     BranchAlreadyMergedData,
     BranchNeedsRebaseData,
     BranchNotFoundData,
     MergeInProgressData,
+=======
+    BranchNotFoundData,
+>>>>>>> origin/stable
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
@@ -50,6 +54,7 @@ REQUIRED_CASES = [
         expected_required={"node_kind", "field_name", "constraint"},
     ),
     PayloadRequiredCase(name="branch_not_found", model=BranchNotFoundData, expected_required={"branch_name"}),
+<<<<<<< HEAD
     PayloadRequiredCase(name="branch_already_merged", model=BranchAlreadyMergedData, expected_required={"branch_name"}),
     PayloadRequiredCase(name="branch_needs_rebase", model=BranchNeedsRebaseData, expected_required={"branch_name"}),
     PayloadRequiredCase(
@@ -57,6 +62,8 @@ REQUIRED_CASES = [
         model=MergeInProgressData,
         expected_required={"branch_name", "merging_branch"},
     ),
+=======
+>>>>>>> origin/stable
     PayloadRequiredCase(name="schema_not_found", model=SchemaNotFoundData, expected_required={"kind"}),
     PayloadRequiredCase(name="undefined_error", model=UndefinedErrorData),
 ]

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { Card, CardContent } from "@infrahub/ui";
+=======
+import { Card, CardContent } from "@infrahub/ui/card";
+>>>>>>> origin/stable
 import { ChevronRightIcon } from "lucide-react";
 import React from "react";
 

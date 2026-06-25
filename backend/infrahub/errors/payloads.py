@@ -50,6 +50,7 @@ class BranchNotFoundData(PayloadBase):
     branch_name: str
 
 
+<<<<<<< HEAD
 class BranchAlreadyMergedData(PayloadBase):
     branch_name: str
 
@@ -63,6 +64,8 @@ class MergeInProgressData(PayloadBase):
     merging_branch: str
 
 
+=======
+>>>>>>> origin/stable
 class SchemaNotFoundData(PayloadBase):
     kind: str
 

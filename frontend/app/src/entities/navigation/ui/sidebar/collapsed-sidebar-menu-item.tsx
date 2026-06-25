@@ -1,5 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
+=======
+import { Button, type ButtonProps } from "@infrahub/ui";
+
+import { Tooltip } from "@/shared/components/aria/tooltip";
+>>>>>>> origin/stable
 
 export interface CollapsedSidebarMenuItemProps extends ButtonProps {
   tooltipContent: string;

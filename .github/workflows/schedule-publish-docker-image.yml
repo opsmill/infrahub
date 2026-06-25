@@ -22,7 +22,7 @@ jobs:
       date: ${{ steps.date.outputs.date }}
     steps:
       - name: Checkout development branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: develop
       - name: Set GIT ref
@@ -71,7 +71,7 @@ jobs:
       date: ${{ steps.date.outputs.date }}
     steps:
       - name: Checkout stable branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: stable
       - name: Set GIT ref

@@ -1,9 +1,18 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
+=======
+import { Button } from "@infrahub/ui";
+import { useState } from "react";
+
+import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+>>>>>>> origin/stable
 
 import type { GroupData } from "@/entities/groups/domain/types";
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";

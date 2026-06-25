@@ -1,5 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
+=======
+import { Button } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
@@ -75,10 +79,26 @@ export default function MetaDetailsTooltip({
   ];
 
   return (
+<<<<<<< HEAD
     <PopoverTrigger>
       <Button size="xs" shape="circle" variant="ghost" data-testid="view-metadata-button">
         <Icon icon="mdi:information-slab-circle-outline" />
       </Button>
+=======
+    <Popover>
+      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <Button
+          size="xs"
+          shape="circle"
+          variant="ghost"
+          className="text-gray-500 focus-visible:ring-0"
+          data-cy="metadata-button"
+          data-testid="view-metadata-button"
+        >
+          <Icon icon="mdi:information-slab-circle-outline" />
+        </Button>
+      </PopoverTrigger>
+>>>>>>> origin/stable
 
       <Popover data-testid="metadata-tooltip">
         {!!header && header}

@@ -14,10 +14,14 @@ from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
+<<<<<<< HEAD
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+=======
+from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE
+>>>>>>> origin/stable
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 
 if TYPE_CHECKING:

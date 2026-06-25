@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 import { Button, Tooltip } from "@infrahub/ui";
+=======
+import { Button } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { Trash2Icon } from "lucide-react";
 import React from "react";
+
+import { Tooltip } from "@/shared/components/aria/tooltip";
 
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import type { NodeCore } from "@/entities/nodes/types";

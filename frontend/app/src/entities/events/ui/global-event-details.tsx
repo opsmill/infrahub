@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { Card, CardHeader } from "@infrahub/ui";
+=======
+import { Card, CardHeader } from "@infrahub/ui/card";
+>>>>>>> origin/stable
 
 import type { EventType } from "@/entities/events/types";
 

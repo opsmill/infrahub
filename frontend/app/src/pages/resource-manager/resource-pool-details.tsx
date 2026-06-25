@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { Card, CardHeader } from "@infrahub/ui";
+=======
+import { Card, CardHeader } from "@infrahub/ui/card";
+>>>>>>> origin/stable
 import { Outlet, useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";

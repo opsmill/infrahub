@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { LinkButton, Popover, PopoverTrigger, Spinner } from "@infrahub/ui";
+=======
+import { LinkButton, Spinner } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { ChevronsUpDownIcon } from "lucide-react";
 import React from "react";
 import { Button as AriaButton } from "react-aria-components";

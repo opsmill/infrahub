@@ -1,6 +1,13 @@
+<<<<<<< HEAD
 import { Button, Tooltip } from "@infrahub/ui";
 import { Command } from "cmdk";
 
+=======
+import { Button } from "@infrahub/ui";
+import { Command } from "cmdk";
+
+import { Tooltip } from "@/shared/components/aria/tooltip";
+>>>>>>> origin/stable
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 

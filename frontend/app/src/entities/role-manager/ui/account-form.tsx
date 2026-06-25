@@ -145,8 +145,36 @@ export const AccountForm = ({ currentObject, onSuccess, onCancel }: AccountFormP
           </Button>
         )}
 
+<<<<<<< HEAD
         <FormSubmit>Save</FormSubmit>
       </Row>
     </Form>
+=======
+        <InputField name="description" label="Description" />
+
+        <RelationshipManyField
+          name="member_of_groups"
+          label="Groups"
+          relationship={{
+            name: "member_of_groups",
+            peer: ACCOUNT_GROUP_OBJECT,
+            cardinality: "many",
+          }}
+          schema={schema}
+          defaultValue={memberDefaultValue}
+        />
+
+        <Row className="justify-end">
+          {onCancel && (
+            <Button variant="outline" onPress={onCancel}>
+              Cancel
+            </Button>
+          )}
+
+          <FormSubmit>Save</FormSubmit>
+        </Row>
+      </Form>
+    </div>
+>>>>>>> origin/stable
   );
 };

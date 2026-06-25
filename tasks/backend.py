@@ -334,7 +334,11 @@ def export_error_catalogue(context: Context, output: str = "schema/error-catalog
 
     destination = Path(output)
     if not destination.is_absolute():
+<<<<<<< HEAD
         destination = REPO_BASE / destination
+=======
+        destination = Path(ESCAPED_REPO_PATH) / destination
+>>>>>>> origin/stable
 
     written = write_catalogue(destination)
     print(f" - [{NAMESPACE}] Wrote error catalogue to {written}")

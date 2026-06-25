@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { Card, CardContent } from "@infrahub/ui";
+=======
+import { Card, CardContent } from "@infrahub/ui/card";
+>>>>>>> origin/stable
 import { toast } from "react-toastify";
 
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";

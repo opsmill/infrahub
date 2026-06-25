@@ -427,6 +427,7 @@ class BranchAlreadyMergedError(BranchStatusError): ...
 class BranchNeedsRebaseError(BranchStatusError): ...
 
 
+<<<<<<< HEAD
 class MergeInProgressError(BranchStatusError):
     """Write rejected because a merge is in progress on `merging_branch`."""
 
@@ -437,6 +438,8 @@ class MergeInProgressError(BranchStatusError):
         super().__init__(identifier=identifier, message=message)
 
 
+=======
+>>>>>>> origin/stable
 class EnterpriseRequiredError(Error):
     """Raised when a community deployment invokes an Enterprise-gated feature.
 

@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+<<<<<<< HEAD
 import {
   Button,
   type ButtonProps,
@@ -9,6 +10,9 @@ import {
   Popover,
   Sheet,
 } from "@infrahub/ui";
+=======
+import { Button, type ButtonProps } from "@infrahub/ui";
+>>>>>>> origin/stable
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
@@ -19,8 +23,21 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
+<<<<<<< HEAD
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
+=======
+import {
+  CopyToClipboardMenuItem,
+  Menu,
+  MenuItem,
+  MenuItemWithTooltip,
+  MenuSection,
+  MenuTrigger,
+} from "@/shared/components/aria/menu";
+import { Popover } from "@/shared/components/aria/popover";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+>>>>>>> origin/stable
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";

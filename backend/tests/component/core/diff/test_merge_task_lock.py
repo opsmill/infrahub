@@ -13,7 +13,7 @@ from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.branch.tasks import merge_branch
+from infrahub.core.branch.tasks import MergeBranchResult, merge_branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -50,6 +50,28 @@ class TestMergeTaskLock:
             account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
         )
 
+<<<<<<< HEAD
+=======
+    @staticmethod
+    async def _mock_do_merge(
+        db: InfrahubDatabase,
+        log: Any,  # noqa: ARG004
+        branch: Branch,
+        context: Any,  # noqa: ARG004
+        proposed_change_id: str | None = None,  # noqa: ARG004
+    ) -> MergeBranchResult:
+        branch.status = BranchStatus.MERGED
+        await branch.save(db=db)
+        registry.branch[branch.name] = branch
+        return MergeBranchResult(node_events=[], schema_was_updated=False)
+
+    @staticmethod
+    def _mock_event_service() -> AsyncMock:
+        mock_svc = AsyncMock()
+        mock_svc.send = AsyncMock()
+        return mock_svc
+
+>>>>>>> origin/stable
     async def test_concurrent_merges_same_branch_only_execute_once(
         self,
         db: InfrahubDatabase,
@@ -100,9 +122,16 @@ class TestMergeTaskLock:
             max_concurrent = max(max_concurrent, concurrent_count)
             await asyncio.sleep(0.1)
             concurrent_count -= 1
+<<<<<<< HEAD
             source_branch.status = BranchStatus.MERGED
             await source_branch.save(db=db)
             registry.branch[source_branch.name] = source_branch
+=======
+            branch.status = BranchStatus.MERGED
+            await branch.save(db=db)
+            registry.branch[branch.name] = branch
+            return MergeBranchResult(node_events=[], schema_was_updated=False)
+>>>>>>> origin/stable
 
         body_mock = AsyncMock(side_effect=fake_merge_body)
 

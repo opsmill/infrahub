@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 import { Button, Tooltip } from "@infrahub/ui";
 
+=======
+import { Button } from "@infrahub/ui";
+
+import { Tooltip } from "@/shared/components/aria/tooltip";
+>>>>>>> origin/stable
 import { classNames } from "@/shared/utils/common";
 
 type tQuestionMark = {
