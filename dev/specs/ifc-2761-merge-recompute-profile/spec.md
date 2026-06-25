@@ -102,6 +102,7 @@ An engineer needs to re-run the profile later — to confirm a number, and to re
 ## Assumptions
 
 - The cost mechanism (one node event per changed node, matched against the per-node automations, each match submitting a recompute job) is established from the merge and rebase code; this work measures its magnitude, not its existence.
+- **Refined by profiling (see findings.md):** the "one event → one recompute job" model is incomplete. A node's own derived values recompute *inline* on save and create no asynchronous work; the asynchronous recompute fan-out is the *cross-node* case (a node that others read changes, so each reader recomputes). The cost therefore scales with the read-dependency structure, not the raw changed-node count. The harness profiles a cross-node change and keeps a same-node control.
 - Merge and rebase do not emit a schema-update event, so the schema-update backfill path is out of scope here (closed under IFC-2759); the relevant recompute on this path is the per-node data-driven fan-out.
 - Representative scale can be reproduced with synthetic data on the existing containerized test stack; absolute numbers will differ from production hardware, but growth shape and relative cost attribution are expected to transfer.
 - The coalescing redesign is explicitly out of scope and gated on these findings; this spec covers measurement only.

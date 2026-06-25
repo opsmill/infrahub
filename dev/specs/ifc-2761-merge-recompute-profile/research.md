@@ -78,8 +78,14 @@ Grounded in the current `develop` tree. File:line anchors are pointers, not cont
 
 ## Open items carried into tasks
 
-- R5: decide between the in-process derived multiplier and the Prefect-no-worker variant for the recompute estimate.
-- R6: validate the branch + deployment + start-time-window flow-run filter on a dedicated branch (a node-id-set filter is not supported).
+Both resolved during implementation:
+
+- R5 (recompute estimate): use the **in-process derived** estimate. It is computed from the schema dependency facades (`computed_attributes.get_impacted_jinja2_targets`, `display_labels`/`hfids.get_related_trigger_nodes`) and counts the **cross-node** fan-out per changed node; the timing layer's executed count is authoritative and confirmed it (counting-layer `computed=N, display=N` matched the timing layer's `N + N` executed runs for a one-reader-per-node dataset). The Prefect-no-worker variant was not needed.
+- R6 (flow-run filter): the **deployment-name + branch + before/after delta on a dedicated branch** filter works (`client.task.count(filters=TaskFilter(workflow=[recompute deployments], branch="main"))`). A seeded-node-id set is not supported. A poll-until-the-count-rises step is required because recompute is dispatched asynchronously after the merge returns.
+
+## Discovery during implementation (changes the cost model)
+
+Profiling on the full stack showed the "one node event → one recompute job" model is incomplete: a node's own derived values recompute **inline** on save (no async work), and the async recompute fan-out is the **cross-node** case (a node that others read changes → each reader recomputes). The harness therefore profiles a cross-node change (mutating peers the mains read) and keeps a same-node control. See findings.md.
 
 Resolved:
 - R2: drive via the real `diff_coordinator.update_branch_diff` + merge pattern (`test_merge_task_lock.py` mocks the merge — do not copy it); no existing test drives the real flow end-to-end, so budget for first-time wiring.
