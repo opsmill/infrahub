@@ -13,7 +13,12 @@ node_modules
 .DS_Store
 .coverage
 coverage.xml
-.git*
+# Exclude git dotfiles but NOT .git/ itself — the Dockerfile bind-mounts .git/ at build time so
+# hatch-vcs can resolve the version. .git/ is kept out of the image by COPY --exclude=.git.
+.gitignore
+.gitmodules
+.gitattributes
+.github
 .devcontainer
 frontend/**/node_modules
 frontend/**/playwright-report

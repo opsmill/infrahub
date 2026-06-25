@@ -90,6 +90,9 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive
+          # Full history + tags so the Dockerfile's hatch-vcs resolver reads the real tag version
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Docker Buildx
         if: steps.check.outputs.skip == 'false'

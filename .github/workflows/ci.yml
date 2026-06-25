@@ -400,20 +400,17 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
 
-      - name: Compare package versions
+      - name: Compare package version configuration
         run: |
-          INFRAHUB_VERSION=$(uv version --short)
-          echo "Infrahub version: $INFRAHUB_VERSION"
-
-          cd python_testcontainers
-          TESTCONTAINERS_VERSION=$(uv version --short)
-          echo "Testcontainers version: $TESTCONTAINERS_VERSION"
-
-          if [ "$INFRAHUB_VERSION" != "$TESTCONTAINERS_VERSION" ]; then
-            echo "Error: Version mismatch!"
-            echo "infrahub version: $INFRAHUB_VERSION"
-            echo "infrahub-testcontainers version: $TESTCONTAINERS_VERSION"
-            echo "The version of infrahub-testcontainers must match the version of infrahub"
+          # Both packages derive their version from the same git tag via hatch-vcs, so their runtime
+          # versions are equal by construction. Verify both declare the same resolver match pattern so
+          # they can never drift apart.
+          ROOT_MATCH=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['tool']['hatch']['version']['raw-options']['git_describe_command'])")
+          TC_MATCH=$(uv run python -c "import tomllib; print(tomllib.load(open('python_testcontainers/pyproject.toml','rb'))['tool']['hatch']['version']['raw-options']['git_describe_command'])")
+          echo "infrahub-server git_describe_command: $ROOT_MATCH"
+          echo "infrahub-testcontainers git_describe_command: $TC_MATCH"
+          if [ "$ROOT_MATCH" != "$TC_MATCH" ]; then
+            echo "Error: hatch-vcs git_describe_command differs between the two packages; they could resolve different versions."
             exit 1
           fi
 

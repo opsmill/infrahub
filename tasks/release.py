@@ -11,7 +11,7 @@ from tasks.shared import init_yaml_obj
 from tasks.utils import (
     ESCAPED_REPO_PATH,
     check_if_command_available,
-    get_version_from_pyproject,
+    get_project_version,
 )
 
 if TYPE_CHECKING:
@@ -99,7 +99,7 @@ def ship(context: Context) -> None:
 
 @task
 def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:  # noqa: ARG001
-    """Update helm/Chart.yaml with the current version from pyproject.toml.
+    """Update helm/Chart.yaml with the current version from the installed package metadata.
 
     Raises:
         ValueError: When ``appVersion`` or ``version`` is missing from a Chart.yaml file.
@@ -110,8 +110,8 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
     # Import here to not require installing packaging when running invoke without installing dependencies.
     from packaging.version import Version
 
-    # Get the app version directly from pyproject.toml
-    app_version = Version(get_version_from_pyproject())  # Returns a string like '1.1.0a1'
+    # Get the app version from the installed package metadata (resolved from the git tag at build time)
+    app_version = Version(get_project_version())  # Returns a string like '1.1.0a1'
 
     for chart in ["infrahub", "infrahub-enterprise"]:
         # Initialize YAML and load the Chart.yaml file
@@ -197,11 +197,15 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
 
 @task
 def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:  # noqa: ARG001
-    """Update docker-compose.yml with the current version from pyproject.toml."""
+    """Update docker-compose.yml with the current version from the installed package metadata."""
     print(" - [release] Update docker-compose.yml")
 
-    # Get the version directly from pyproject.toml
-    version = get_version_from_pyproject()  # Returns a string like '1.1.0a0'
+    # Import here to not require installing packaging when running invoke without installing dependencies.
+    from packaging.version import Version
+
+    # Get the version from the installed package metadata (resolved from the git tag at build time)
+    version = get_project_version()  # Returns a string like '1.1.0a0'
+    new_version = Version(version)
 
     # Initialize YAML and load the docker-compose file
     yaml: YAML = init_yaml_obj(line_length=4096)
@@ -225,7 +229,13 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
         old_version_match = re.search(version_pattern, image)
         if old_version_match:
             old_version = old_version_match[0]
-            if old_version != version:
+            # Only rewrite when strictly newer and not a pre-release, so a maintenance release never
+            # rewrites the pinned image tags downward.
+            try:
+                should_update = not new_version.is_prerelease and new_version > Version(old_version)
+            except Exception:
+                should_update = False
+            if should_update:
                 # Replace old version with the new version in the image field
                 new_image = re.sub(version_pattern, version, image)
                 service_config["image"] = new_image
@@ -239,25 +249,6 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
 
     # Write the updated YAML back to file
     yaml.dump(docker_yaml, docker_path)
-
-
-@task
-def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:  # noqa: ARG001
-    """Update test containers pyproject.toml with the current version from pyproject.toml."""
-    print(" - [release] Update python_testcontainers/pyproject.toml")
-
-    # Get the version directly from pyproject.toml
-    version = get_version_from_pyproject()  # Returns a string like '1.1.0a0'
-
-    # Read the test containers pyproject.toml file
-    test_containers_file = Path(toml_file)
-    test_containers_toml = test_containers_file.read_text(encoding="utf8")
-
-    # Replace the version referenced there
-    new_toml = re.sub(r'^version = ".*"', f'version = "{version}"', test_containers_toml, flags=re.MULTILINE)
-
-    # Print the new file out
-    test_containers_file.write_text(new_toml, encoding="utf8")
 
 
 def get_enum_mappings() -> dict:

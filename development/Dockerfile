@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1-labs
 # ****************************************************************
 # STAGE : Base Python Image
 # ****************************************************************
@@ -122,9 +123,13 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-ins
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
+#   .git is excluded from the copy so it never lands in the image; it is bind-mounted transiently
+#   on the install step below so hatch-vcs can resolve the version from the git tag.
 # --------------------------------------------
-COPY . ./
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
+COPY --exclude=.git . ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=.git,target=/source/.git \
+    uv sync --frozen --no-dev
 
 # Import Frontend & Documentation builds last so frontend/docs edits don't invalidate any uv sync layer
 COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
