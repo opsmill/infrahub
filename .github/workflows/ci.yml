@@ -143,15 +143,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-<<<<<<< HEAD
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           package_json_file: frontend/package.json
-=======
-        uses: "actions/checkout@v7"
->>>>>>> origin/stable
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -190,29 +186,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-<<<<<<< HEAD
-        uses: "actions/checkout@v6"
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          package_json_file: frontend/package.json
-=======
         uses: "actions/checkout@v7"
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
->>>>>>> origin/stable
+          package_json_file: frontend/package.json
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-<<<<<<< HEAD
           cache-dependency-path: frontend/pnpm-lock.yaml
-=======
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
->>>>>>> origin/stable
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify generated error bindings match schema/error-catalogue.json
@@ -243,15 +227,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-<<<<<<< HEAD
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           package_json_file: frontend/package.json
-=======
-        uses: "actions/checkout@v7"
->>>>>>> origin/stable
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:

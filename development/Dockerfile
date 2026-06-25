@@ -65,27 +65,7 @@ WORKDIR /frontend/app
 # CI is used to customize config, like disabling animations at build time to avoid flaky e2e.
 ARG CI_ARG
 ENV CI=$CI_ARG
-<<<<<<< HEAD
 RUN pnpm build
-=======
-
-RUN corepack enable && corepack prepare pnpm@10 --activate
-
-# Create directory structure that matches the relative paths in package.json
-# App is at /frontend/app, packages at /frontend/packages
-RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer /frontend/packages/ui
-
-# Copy local packages (app imports them via file: protocol)
-COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
-COPY frontend/packages/ui/ /frontend/packages/ui/
-
-# Copy the app package.json and install dependencies (pnpm file: protocol handles schema-visualizer deps)
-COPY frontend/app/package.json frontend/app/pnpm-lock.yaml /frontend/app/
-WORKDIR /frontend/app
-RUN pnpm install --frozen-lockfile --prod
-COPY frontend/app/ /frontend/app/
-RUN pnpm build && pnpm store prune
->>>>>>> origin/stable
 
 # ****************************************************************
 # STAGE : Documentation
@@ -129,19 +109,6 @@ ENV PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_API_DATABASE_TIMEOUT=60 \
     PREFECT_FLOWS_HEARTBEAT_FREQUENCY=30 \
     PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0
-<<<<<<< HEAD
-=======
-
-# --------------------------------------------
-# Import Frontend Build
-# --------------------------------------------
-COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
-
-# --------------------------------------------
-# Import Documentation Build
-# --------------------------------------------
-COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
->>>>>>> origin/stable
 
 # --------------------------------------------
 # Install Dependencies
