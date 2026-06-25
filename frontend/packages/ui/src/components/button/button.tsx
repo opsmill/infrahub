@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import type { RefAttributes } from "react";
 
 import {
@@ -10,17 +9,6 @@ import {
 } from "react-aria-components";
 import { cn, tv, type VariantProps } from "tailwind-variants";
 
-=======
-import {
-  Button as AriaButton,
-  type ButtonProps as AriaButtonProps,
-  Link as AriaLink,
-  type LinkProps as AriaLinkProps,
-  composeRenderProps,
-} from "react-aria-components";
-import { cn, tv, type VariantProps } from "tailwind-variants";
-
->>>>>>> origin/stable
 import { focusVisibleStyle } from "../../styles/focus-visible";
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 import { Spinner } from "../spinner/spinner";
@@ -98,12 +86,8 @@ const buttonVariants = tv({
   },
 });
 
-<<<<<<< HEAD
 export interface ButtonProps
   extends AriaButtonProps, VariantProps<typeof buttonVariants>, RefAttributes<HTMLButtonElement> {
-=======
-export interface ButtonProps extends AriaButtonProps, VariantProps<typeof buttonVariants> {
->>>>>>> origin/stable
   /** Uses isPending internally to keep the button hoverable/focusable while appearing disabled. Useful for tooltip triggers. */
   isDisabledAndFocusable?: boolean;
 }

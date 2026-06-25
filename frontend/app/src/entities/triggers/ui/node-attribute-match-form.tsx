@@ -155,7 +155,6 @@ export const NodeAttributeMatchForm = ({
         return <DynamicField key={field.name} {...field} />;
       })}
 
-<<<<<<< HEAD
       <Row className="justify-end">
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
@@ -166,19 +165,6 @@ export const NodeAttributeMatchForm = ({
         <FormSubmit>Save</FormSubmit>
       </Row>
     </Form>
-=======
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
-
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
->>>>>>> origin/stable
   );
 };
 

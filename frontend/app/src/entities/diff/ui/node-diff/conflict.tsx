@@ -1,9 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Checkbox, Spinner } from "@infrahub/ui";
-=======
-import { Spinner } from "@infrahub/ui";
->>>>>>> origin/stable
 import { toast } from "react-toastify";
 
 import type { ConflictSelection } from "@/shared/api/graphql/generated/types";
@@ -61,7 +57,6 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
 
       <span className="text-xs">Choose the branch to resolve the conflict:</span>
 
-<<<<<<< HEAD
       <Checkbox
         isDisabled={isPending || !isAuthenticated}
         isSelected={selectedBranch === "BASE_BRANCH"}
@@ -84,45 +79,5 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
         </Badge>
       </Checkbox>
     </Row>
-=======
-      <div className="flex gap-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={"base"}
-            disabled={isPending || !isAuthenticated}
-            checked={selectedBranch === "BASE_BRANCH"}
-            onChange={() => handleAccept("BASE_BRANCH")}
-          />
-          <label
-            htmlFor={"base"}
-            className={selectedBranch === "BASE_BRANCH" ? "cursor-default" : "cursor-pointer"}
-          >
-            <Badge variant="green">
-              <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChange.destination_branch?.value ?? "Base Branch"}
-            </Badge>
-          </label>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={"diff"}
-            disabled={isPending || !isAuthenticated}
-            checked={selectedBranch === "DIFF_BRANCH"}
-            onChange={() => handleAccept("DIFF_BRANCH")}
-          />
-          <label
-            htmlFor={"diff"}
-            className={selectedBranch === "DIFF_BRANCH" ? "cursor-default" : "cursor-pointer"}
-          >
-            <Badge variant="blue">
-              <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChange.source_branch?.value ?? "Diff Branch"}
-            </Badge>
-          </label>
-        </div>
-      </div>
-    </div>
->>>>>>> origin/stable
   );
 };

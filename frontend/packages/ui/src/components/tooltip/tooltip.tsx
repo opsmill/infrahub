@@ -1,24 +1,16 @@
-<<<<<<< HEAD
 import type React from "react";
-=======
-import type { ReactNode } from "react";
->>>>>>> origin/stable
 
 import {
   Tooltip as AriaTooltip,
   type TooltipProps as AriaTooltipProps,
   composeRenderProps,
-<<<<<<< HEAD
   Focusable,
-=======
->>>>>>> origin/stable
   OverlayArrow,
   TooltipTrigger,
 } from "react-aria-components";
 import { tv } from "tailwind-variants";
 
 export interface TooltipProps extends Omit<AriaTooltipProps, "children"> {
-<<<<<<< HEAD
   children: React.ReactNode;
   message: React.ReactNode;
   /**
@@ -27,10 +19,6 @@ export interface TooltipProps extends Omit<AriaTooltipProps, "children"> {
    * element that accepts a ref and DOM props.
    */
   nonInteractiveTrigger?: boolean;
-=======
-  children: ReactNode;
-  message: ReactNode;
->>>>>>> origin/stable
 }
 
 const tooltipStyles = tv({
@@ -45,26 +33,16 @@ const tooltipStyles = tv({
   },
 });
 
-<<<<<<< HEAD
-=======
-/** Accessible tooltip. Wraps a trigger child and shows `message` on hover/focus. */
->>>>>>> origin/stable
 export function Tooltip({
   children,
   message,
   isOpen,
   onOpenChange,
   className,
-<<<<<<< HEAD
   nonInteractiveTrigger,
   ...props
 }: TooltipProps) {
   if (!message && message !== 0) {
-=======
-  ...props
-}: TooltipProps) {
-  if (message == null) {
->>>>>>> origin/stable
     return children;
   }
 
@@ -76,7 +54,6 @@ export function Tooltip({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
     >
-<<<<<<< HEAD
       {nonInteractiveTrigger ? (
         <Focusable excludeFromTabOrder>
           {children as React.ComponentProps<typeof Focusable>["children"]}
@@ -84,9 +61,6 @@ export function Tooltip({
       ) : (
         children
       )}
-=======
-      {children}
->>>>>>> origin/stable
 
       <AriaTooltip
         offset={10}

@@ -1,9 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Card, CardContent } from "@infrahub/ui";
-=======
-import { Card, CardContent } from "@infrahub/ui/card";
->>>>>>> origin/stable
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 

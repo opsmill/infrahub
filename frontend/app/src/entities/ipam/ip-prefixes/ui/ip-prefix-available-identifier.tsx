@@ -1,13 +1,8 @@
-<<<<<<< HEAD
 import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
-=======
-import { Button, type ButtonProps } from "@infrahub/ui";
->>>>>>> origin/stable
 import { PlusIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";

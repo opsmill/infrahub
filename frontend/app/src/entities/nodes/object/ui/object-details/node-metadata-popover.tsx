@@ -1,9 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
-=======
-import { Button } from "@infrahub/ui";
->>>>>>> origin/stable
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -72,7 +68,6 @@ export function NodeMetadata({ objectKind, objectId }: NodeMetadataProps) {
 
 export function NodeMetadataPopover(props: NodeMetadataProps) {
   return (
-<<<<<<< HEAD
     <PopoverTrigger>
       <Button
         size="xs"
@@ -83,20 +78,6 @@ export function NodeMetadataPopover(props: NodeMetadataProps) {
       >
         <Icon icon="mdi:information-slab-circle-outline" />
       </Button>
-=======
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          size="xs"
-          shape="circle"
-          variant="ghost"
-          className="text-gray-500"
-          aria-label="View node metadata"
-        >
-          <Icon icon="mdi:information-slab-circle-outline" />
-        </Button>
-      </PopoverTrigger>
->>>>>>> origin/stable
 
       <Popover>
         <NodeMetadata {...props} />

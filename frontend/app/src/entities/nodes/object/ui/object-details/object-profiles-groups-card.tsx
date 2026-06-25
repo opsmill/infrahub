@@ -1,10 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Card, CardHeader, Sheet } from "@infrahub/ui";
-=======
-import { Button } from "@infrahub/ui";
-import { Card, CardHeader } from "@infrahub/ui/card";
->>>>>>> origin/stable
 import { ChevronDownIcon, ChevronUpIcon, PenLineIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";

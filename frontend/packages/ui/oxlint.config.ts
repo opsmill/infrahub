@@ -2,13 +2,7 @@ import { defineConfig } from "oxlint";
 
 // We enable all rules and disable irrelevant ones.
 export default defineConfig({
-<<<<<<< HEAD
   ignorePatterns: ["**/.storybook/**"],
-=======
-  env: {
-    browser: true,
-  },
->>>>>>> origin/stable
   categories: {
     correctness: "error",
     nursery: "error",
@@ -49,20 +43,14 @@ export default defineConfig({
     "react/no-multi-comp": "off",
     "react/only-export-components": "off",
     "react/react-in-jsx-scope": "off",
-<<<<<<< HEAD
     "react-perf/jsx-no-jsx-as-prop": "off",
     "react_perf/jsx-no-new-array-as-prop": "off",
-=======
->>>>>>> origin/stable
     "react_perf/jsx-no-new-function-as-prop": "off",
     "typescript/explicit-function-return-type": "off",
     "typescript/explicit-module-boundary-types": "off",
     "typescript/no-empty-interface": "off",
     "typescript/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
     "unicorn/no-null": "off",
-<<<<<<< HEAD
     "unicorn/prefer-export-from": "off",
-=======
->>>>>>> origin/stable
   },
 });

@@ -1,17 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-=======
-import { Button } from "@infrahub/ui";
-import { useState } from "react";
-
-import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver from "@/shared/components/display/slide-over";
->>>>>>> origin/stable
 import {
   PROPOSED_CHANGES_EDITABLE_STATE,
   PROPOSED_CHANGES_OBJECT,

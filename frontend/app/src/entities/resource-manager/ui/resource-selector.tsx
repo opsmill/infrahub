@@ -1,9 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Card, CardHeader } from "@infrahub/ui";
-=======
-import { Card, CardHeader } from "@infrahub/ui/card";
->>>>>>> origin/stable
 import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 

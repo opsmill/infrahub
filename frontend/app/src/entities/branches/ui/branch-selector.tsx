@@ -1,5 +1,4 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import {
   Autocomplete,
   Button,
@@ -19,25 +18,6 @@ import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-comp
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Separator } from "@/shared/components/aria/separator";
-=======
-import { Button, LinkButton } from "@infrahub/ui";
-import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
-import { useQueryState } from "nuqs";
-import React from "react";
-import {
-  type ButtonProps as AriaButtonProps,
-  Collection,
-  ListLayout,
-  Virtualizer,
-} from "react-aria-components";
-
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/aria/list-box";
-import { Popover, PopoverDialog, PopoverTrigger } from "@/shared/components/aria/popover";
-import { Separator } from "@/shared/components/aria/separator";
-import { Tooltip } from "@/shared/components/aria/tooltip";
->>>>>>> origin/stable
 import { Row } from "@/shared/components/container";
 import { QSP } from "@/shared/config/qsp";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -145,7 +125,6 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
         onInputChange={setSearch}
         suffix={<BranchFormTriggerButton onPress={() => openCreateForm(trimmedSearch)} />}
       >
-<<<<<<< HEAD
         <ListBox
           virtualized
           aria-label="branch list"
@@ -184,56 +163,6 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
             </ListBoxItem>
           )}
         </ListBox>
-=======
-        <Virtualizer
-          layout={ListLayout}
-          layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
-        >
-          <ListBox
-            aria-label="branch list"
-            className="max-h-125"
-            renderEmptyState={() =>
-              !isPending && (
-                <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
-              )
-            }
-          >
-            <Collection items={branches}>
-              {(branch) => (
-                <ListBoxItem textValue={branch.name} onAction={() => handleBranchChange(branch)}>
-                  <span className="truncate" title={branch.name}>
-                    {branch.name}
-                  </span>
-
-                  <Row className="ml-auto">
-                    {currentBranch.name === branch.name && (
-                      <CheckIcon className="size-4 shrink-0" />
-                    )}
-                    {branch.is_default && <BranchDefaultBadge />}
-                    <BranchStatusBadge status={branch.status} />
-                    {branch.sync_with_git && <Icon icon="mdi:source-branch-sync" />}
-                  </Row>
-                </ListBoxItem>
-              )}
-            </Collection>
-
-            <ListBoxLoadMoreItem
-              isLoading={isPending || isFetchingNextPage}
-              onLoadMore={fetchNextPage}
-            />
-
-            {isAuthenticated && trimmedSearch && (
-              <ListBoxItem
-                textValue={CREATE_BRANCH_ITEM_VALUE}
-                onAction={() => openCreateForm(trimmedSearch)}
-                className="gap-1 whitespace-nowrap"
-              >
-                Create branch <span className="truncate font-semibold">{trimmedSearch}</span>
-              </ListBoxItem>
-            )}
-          </ListBox>
-        </Virtualizer>
->>>>>>> origin/stable
       </Autocomplete>
 
       <Separator />

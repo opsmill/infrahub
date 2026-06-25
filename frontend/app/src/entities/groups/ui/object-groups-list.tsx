@@ -1,14 +1,9 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Tooltip } from "@infrahub/ui";
-=======
-import { Button } from "@infrahub/ui";
->>>>>>> origin/stable
 import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";

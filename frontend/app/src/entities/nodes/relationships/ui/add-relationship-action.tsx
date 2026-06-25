@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Button, Sheet } from "@infrahub/ui";
-=======
-import { Button } from "@infrahub/ui";
->>>>>>> origin/stable
 import type React from "react";
 import { useState } from "react";
 

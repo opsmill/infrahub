@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Card, CardContent } from "@infrahub/ui";
-=======
-import { Card, CardContent } from "@infrahub/ui/card";
->>>>>>> origin/stable
 import { type HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router";
 

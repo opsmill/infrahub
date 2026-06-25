@@ -1,26 +1,12 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Popover as AriaPopover, Button, Menu, MenuItem, MenuTrigger, Sheet } from "@infrahub/ui";
 import { PencilLineIcon } from "lucide-react";
-=======
-import { Button } from "@infrahub/ui";
->>>>>>> origin/stable
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { TableCell } from "@/shared/components/table/table-cell";
-<<<<<<< HEAD
-=======
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuItemWithTooltip,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
->>>>>>> origin/stable
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
@@ -75,7 +61,6 @@ export function RelationshipActionsCell({
         <div className="pointer-events-none absolute top-0 bottom-0 -left-4 w-4 bg-linear-to-r from-transparent to-gray-300/30" />
         <MenuTrigger>
           <PopoverAnchor>
-<<<<<<< HEAD
             <Button
               size="sm"
               shape="square"
@@ -84,18 +69,6 @@ export function RelationshipActionsCell({
             >
               <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
             </Button>
-=======
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="sm"
-                shape="square"
-                variant="ghost"
-                data-testid={`actions-cell-${relationshipLabel}`}
-              >
-                <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-              </Button>
-            </DropdownMenuTrigger>
->>>>>>> origin/stable
           </PopoverAnchor>
 
           <AriaPopover placement="bottom end">

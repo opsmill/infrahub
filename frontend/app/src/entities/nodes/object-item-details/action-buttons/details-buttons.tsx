@@ -1,20 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, LinkButton, Sheet, Tooltip } from "@infrahub/ui";
-=======
-import { Button, LinkButton } from "@infrahub/ui";
->>>>>>> origin/stable
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-<<<<<<< HEAD
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
-=======
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
->>>>>>> origin/stable
 import { classNames } from "@/shared/utils/common";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";

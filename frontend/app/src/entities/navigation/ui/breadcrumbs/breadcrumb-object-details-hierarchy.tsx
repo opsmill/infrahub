@@ -1,15 +1,7 @@
-<<<<<<< HEAD
 import { BreadcrumbItem, BreadcrumbItemError, BreadcrumbItemLoading, Tooltip } from "@infrahub/ui";
 import { keepPreviousData } from "@tanstack/react-query";
 import { TriangleAlertIcon } from "lucide-react";
 
-=======
-import { BreadcrumbItem, BreadcrumbItemError, BreadcrumbItemLoading } from "@infrahub/ui";
-import { keepPreviousData } from "@tanstack/react-query";
-import { TriangleAlertIcon } from "lucide-react";
-
-import { Tooltip } from "@/shared/components/ui/tooltip";
->>>>>>> origin/stable
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";

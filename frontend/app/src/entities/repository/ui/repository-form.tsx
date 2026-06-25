@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 import { Button, Card, CardContent, type CardProps } from "@infrahub/ui";
-=======
-import { Button } from "@infrahub/ui";
-import { Card, CardContent, type CardProps } from "@infrahub/ui/card";
->>>>>>> origin/stable
 
 import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";

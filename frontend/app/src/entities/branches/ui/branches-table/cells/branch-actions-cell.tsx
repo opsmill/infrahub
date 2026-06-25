@@ -1,21 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
-=======
-import { Button } from "@infrahub/ui";
-import { useState } from "react";
-import { Link } from "react-router";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { Tooltip } from "@/shared/components/ui/tooltip";
->>>>>>> origin/stable
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
@@ -40,7 +26,6 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
   return (
     <>
       <StickyRightCell className="h-auto min-h-14">
-<<<<<<< HEAD
         <MenuTrigger>
           <Button
             size="sm"
@@ -57,27 +42,6 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
                 <Icon icon="mdi:arrow-expand" />
                 <span>View details</span>
               </MenuItem>
-=======
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              shape="square"
-              variant="ghost"
-              data-testid={`branch-actions-cell-${branch.name}`}
-            >
-              <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-            </Button>
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link to={getBranchDetailsUrl(branch.name)}>
-                <Icon icon="mdi:arrow-expand" className="text-base" />
-                View details
-              </Link>
-            </DropdownMenuItem>
->>>>>>> origin/stable
 
               <MenuItem
                 isDisabled={!isDeleteAllowed}

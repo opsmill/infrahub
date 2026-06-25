@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 import { Button, Card, CardHeader } from "@infrahub/ui";
-=======
-import { Button } from "@infrahub/ui";
-import { Card, CardHeader } from "@infrahub/ui/card";
->>>>>>> origin/stable
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
 

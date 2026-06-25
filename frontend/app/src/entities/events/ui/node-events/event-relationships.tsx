@@ -1,9 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Card, CardContent } from "@infrahub/ui";
-=======
-import { Card, CardContent } from "@infrahub/ui/card";
->>>>>>> origin/stable
 import React from "react";
 
 import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/types";

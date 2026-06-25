@@ -1,10 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Card, CardContent, LinkButton } from "@infrahub/ui";
-=======
-import { LinkButton } from "@infrahub/ui";
-import { Card, CardContent } from "@infrahub/ui/card";
->>>>>>> origin/stable
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";

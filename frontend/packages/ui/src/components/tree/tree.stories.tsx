@@ -1,25 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/stable
 import { Collection } from "react-aria-components";
 
 import { Tree, TreeItem, TreeItemContent } from "./tree";
 
-<<<<<<< HEAD
 interface FolderNode {
   id: string;
   name: string;
   children?: FolderNode[];
 }
-=======
-type FolderNode = {
-  id: string;
-  name: string;
-  children?: FolderNode[];
-};
->>>>>>> origin/stable
 
 const TREE_DATA: FolderNode[] = [
   {

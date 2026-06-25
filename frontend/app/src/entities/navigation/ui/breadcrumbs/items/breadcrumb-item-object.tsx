@@ -1,16 +1,7 @@
-<<<<<<< HEAD
 import { Breadcrumb, Button, MenuTrigger, Popover } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
 import { Link } from "react-router";
 
-=======
-import { Breadcrumb, Button } from "@infrahub/ui";
-import { ChevronsUpDownIcon } from "lucide-react";
-import { Link } from "react-router";
-
-import { MenuTrigger } from "@/shared/components/aria/menu";
-import { Popover } from "@/shared/components/aria/popover";
->>>>>>> origin/stable
 import { Col, Row } from "@/shared/components/container";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";

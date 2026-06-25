@@ -19,20 +19,14 @@ export {
   type AttributeInvalidTypeData,
   type AttributeRequiredData,
   type AuthenticationRequiredData,
-<<<<<<< HEAD
   type BranchAlreadyMergedData,
   type BranchNeedsRebaseData,
-=======
->>>>>>> origin/stable
   type BranchNotFoundData,
   type CatalogueError,
   ERROR_CODES,
   ERROR_HTTP_STATUS,
   type ErrorCode,
-<<<<<<< HEAD
   type MergeInProgressData,
-=======
->>>>>>> origin/stable
   type NodeNotFoundData,
   type PermissionDeniedData,
   type SchemaNotFoundData,

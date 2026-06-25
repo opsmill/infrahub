@@ -1,16 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
-=======
-import { Button, type ButtonProps } from "@infrahub/ui";
-import { useState } from "react";
-
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
->>>>>>> origin/stable
 import ObjectForm from "@/shared/components/form/object-form";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 

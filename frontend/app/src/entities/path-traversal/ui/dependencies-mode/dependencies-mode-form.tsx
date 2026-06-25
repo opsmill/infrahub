@@ -1,12 +1,6 @@
-<<<<<<< HEAD
 import { Checkbox } from "@infrahub/ui";
 import type { UseFormReturn } from "react-hook-form";
 
-=======
-import type { UseFormReturn } from "react-hook-form";
-
-import { Checkbox } from "@/shared/components/inputs/checkbox";
->>>>>>> origin/stable
 import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
 import {
   Accordion,
@@ -170,13 +164,8 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                   <div className="flex items-center gap-2">
                     <FormInput>
                       <Checkbox
-<<<<<<< HEAD
                         isSelected={Boolean(field.value)}
                         onChange={(isSelected) => field.onChange(isSelected)}
-=======
-                        checked={Boolean(field.value)}
-                        onChange={(e) => field.onChange(e.target.checked)}
->>>>>>> origin/stable
                       />
                     </FormInput>
                     <FormLabel className="cursor-pointer">Shortest paths only</FormLabel>

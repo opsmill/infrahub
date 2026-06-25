@@ -3,10 +3,6 @@ import { XIcon } from "lucide-react";
 
 import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
 
-<<<<<<< HEAD
-=======
-import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
->>>>>>> origin/stable
 import { Separator } from "@/shared/components/aria/separator";
 import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
 import { Col, Row } from "@/shared/components/container";

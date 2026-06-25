@@ -58,10 +58,7 @@ export function RelationshipManyInput({
                   size="xs"
                   shape="circle"
                   variant="ghost"
-<<<<<<< HEAD
                   preventFocusOnPress
-=======
->>>>>>> origin/stable
                   onPress={() => {
                     onChange(value.filter((item) => item.id !== node.id));
                   }}

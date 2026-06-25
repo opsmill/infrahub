@@ -1,17 +1,9 @@
-<<<<<<< HEAD
 import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
-=======
-import { Button, type ButtonProps } from "@infrahub/ui";
->>>>>>> origin/stable
 import { useIsFetching } from "@tanstack/react-query";
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-<<<<<<< HEAD
-=======
-import { Tooltip } from "@/shared/components/aria/tooltip";
->>>>>>> origin/stable
 import { classNames } from "@/shared/utils/common";
 import { formatFullDate } from "@/shared/utils/date";
 

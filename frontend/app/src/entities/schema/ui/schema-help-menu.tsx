@@ -1,13 +1,6 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 
-=======
-import { Button } from "@infrahub/ui";
-
-import { Menu, MenuItem, MenuTrigger } from "@/shared/components/aria/menu";
-import { Popover } from "@/shared/components/aria/popover";
->>>>>>> origin/stable
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { MENU_EXCLUDELIST } from "@/shared/config/constants";
 

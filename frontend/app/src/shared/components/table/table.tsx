@@ -1,23 +1,7 @@
-<<<<<<< HEAD
 import type { ReactNode } from "react";
-=======
-import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
-import { isValidElement, type ReactNode } from "react";
->>>>>>> origin/stable
 import { Link } from "react-router";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-<<<<<<< HEAD
-=======
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
->>>>>>> origin/stable
 import { classNames } from "@/shared/utils/common";
 
 type tRowValue = {
@@ -89,52 +73,6 @@ export const Table = ({ columns, rows, className }: TableProps) => {
                   </td>
                 );
               })}
-<<<<<<< HEAD
-=======
-
-              {(onUpdate || onDelete) && (
-                <td className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Tooltip message="Actions">
-                        <Button
-                          variant="ghost"
-                          shape="square"
-                          className="p-4"
-                          data-testid="actions-row-button"
-                        >
-                          <Icon icon="mdi:dots-vertical" className="" />
-                        </Button>
-                      </Tooltip>
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuContent align="end">
-                      {onUpdate && (
-                        <DropdownMenuItem
-                          onClick={() => onUpdate(row)}
-                          disabled={!permission?.update?.isAllowed}
-                          data-testid="update-row-button"
-                        >
-                          <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
-
-                      {onDelete && (
-                        <DropdownMenuItem
-                          onClick={() => onDelete(row)}
-                          disabled={!permission?.delete?.isAllowed}
-                          data-testid="delete-row-button"
-                        >
-                          <Icon icon="mdi:trash-outline" className="text-red-500" />
-                          Delete
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
-              )}
->>>>>>> origin/stable
             </tr>
           ))}
         </tbody>

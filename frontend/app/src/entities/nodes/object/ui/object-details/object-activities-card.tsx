@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Card, CardHeader } from "@infrahub/ui";
-=======
-import { Card, CardHeader } from "@infrahub/ui/card";
->>>>>>> origin/stable
 
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 

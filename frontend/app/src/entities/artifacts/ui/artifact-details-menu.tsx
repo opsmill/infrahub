@@ -1,27 +1,12 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from "@infrahub/ui";
-=======
-import { Button } from "@infrahub/ui";
->>>>>>> origin/stable
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, EllipsisVertical } from "lucide-react";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-<<<<<<< HEAD
 import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
-=======
-import {
-  CopyToClipboardMenuItem,
-  Menu,
-  MenuItem,
-  MenuSection,
-  MenuTrigger,
-} from "@/shared/components/aria/menu";
-import { Popover } from "@/shared/components/aria/popover";
->>>>>>> origin/stable
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";

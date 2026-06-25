@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 import { Tooltip } from "@infrahub/ui";
-=======
->>>>>>> origin/stable
 import type React from "react";
 
 import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";

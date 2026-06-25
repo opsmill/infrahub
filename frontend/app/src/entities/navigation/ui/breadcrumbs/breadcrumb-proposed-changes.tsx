@@ -4,21 +4,13 @@ import {
   BreadcrumbItemError,
   BreadcrumbItemLoading,
   Breadcrumbs,
-<<<<<<< HEAD
   MenuTrigger,
   Popover,
-=======
->>>>>>> origin/stable
 } from "@infrahub/ui";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useLocation, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-<<<<<<< HEAD
-=======
-import { MenuTrigger } from "@/shared/components/aria/menu";
-import { Popover } from "@/shared/components/aria/popover";
->>>>>>> origin/stable
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";

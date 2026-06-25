@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Button, type ButtonProps, Menu, MenuItem } from "@infrahub/ui";
-=======
-import { Button, type ButtonProps } from "@infrahub/ui";
->>>>>>> origin/stable
 import { PlayIcon } from "lucide-react";
 import { useState } from "react";
 import { Text } from "react-aria-components";

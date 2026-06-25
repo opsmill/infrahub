@@ -1,22 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
-=======
-import { Button } from "@infrahub/ui";
-import { useState } from "react";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-
->>>>>>> origin/stable
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import type { Permission } from "@/entities/permission/types";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
@@ -33,7 +19,6 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
 
   return (
     <>
-<<<<<<< HEAD
       <MenuTrigger>
         <Button
           size="sm"
@@ -44,20 +29,6 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
         >
           <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
         </Button>
-=======
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="sm"
-            shape="square"
-            variant="ghost"
-            data-testid={`actions-row-button-${objectLabel}`}
-            aria-label="Actions"
-          >
-            <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
-          </Button>
-        </DropdownMenuTrigger>
->>>>>>> origin/stable
 
         <Popover placement="bottom end">
           <Menu aria-label="Actions">

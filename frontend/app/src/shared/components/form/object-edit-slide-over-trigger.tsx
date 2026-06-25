@@ -1,16 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, type ButtonProps, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
-=======
-import { Button, type ButtonProps } from "@infrahub/ui";
-import { useState } from "react";
-
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
->>>>>>> origin/stable
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
@@ -60,13 +52,6 @@ const ObjectEditSlideOverTrigger = ({
       <Icon icon="mdi:pencil" />
     </Button>
   );
-<<<<<<< HEAD
-=======
-
-  return (
-    <>
-      {editButton}
->>>>>>> origin/stable
 
   return (
     <>

@@ -142,7 +142,6 @@ export const GlobalPermissionForm = ({
         }}
       />
 
-<<<<<<< HEAD
       <Row className="justify-end">
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
@@ -153,18 +152,5 @@ export const GlobalPermissionForm = ({
         <FormSubmit>Save</FormSubmit>
       </Row>
     </Form>
-=======
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
-
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
->>>>>>> origin/stable
   );
 };

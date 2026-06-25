@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Button, type ButtonProps, DismissGuardContext } from "@infrahub/ui";
-=======
-import { Button, type ButtonProps } from "@infrahub/ui";
->>>>>>> origin/stable
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
 import {
@@ -15,11 +11,7 @@ import {
   useFormState,
 } from "react-hook-form";
 
-<<<<<<< HEAD
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
-=======
-import { SlideOverContext } from "@/shared/components/display/slide-over";
->>>>>>> origin/stable
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";

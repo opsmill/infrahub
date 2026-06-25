@@ -1,5 +1,4 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import {
   Autocomplete,
   Breadcrumb,
@@ -14,16 +13,6 @@ import {
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-=======
-import { Breadcrumb, BreadcrumbItem, Breadcrumbs } from "@infrahub/ui";
-import { useParams } from "react-router";
-
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
-import { MenuTrigger } from "@/shared/components/aria/menu";
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
->>>>>>> origin/stable
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { getBranchDetailsUrl } from "@/entities/branches/utils";

@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 import { Card, ScrollArea } from "@infrahub/ui";
-=======
-import { ScrollArea } from "@infrahub/ui";
-import { Card } from "@infrahub/ui/card";
->>>>>>> origin/stable
 
 import { BranchSelector } from "@/entities/branches/ui/branch-selector";
 import { BreadcrumbNavigation } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-navigation";

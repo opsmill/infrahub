@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Card, CardContent } from "@infrahub/ui";
-=======
-import { Card, CardContent } from "@infrahub/ui/card";
->>>>>>> origin/stable
 import {
   BoxIcon,
   CheckIcon,

@@ -1,16 +1,7 @@
-<<<<<<< HEAD
 import { Button, Popover, PopoverDialog, Tooltip } from "@infrahub/ui";
 import { DialogTrigger } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
-=======
-import { Button } from "@infrahub/ui";
-import { DialogTrigger } from "react-aria-components";
-
-import { queryClient } from "@/shared/api/rest/client";
-import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
-import { Tooltip } from "@/shared/components/aria/tooltip";
->>>>>>> origin/stable
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";

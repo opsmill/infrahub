@@ -1,15 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-<<<<<<< HEAD
 import { Button, Sheet } from "@infrahub/ui";
 import React from "react";
 
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
-=======
-import { Button } from "@infrahub/ui";
-import React from "react";
-
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
->>>>>>> origin/stable
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
