@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum, IntFlag
 from pathlib import Path
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
@@ -44,7 +45,8 @@ from infrahub.core.constants import (
 )
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
-from infrahub.core.diff.model.path import NodeDiffFieldSummary
+from infrahub.core.diff.model.path import BranchTrackingId, NodeDiffFieldSummary
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
@@ -156,6 +158,39 @@ async def _proposed_change_transition_state(
 #     )
 
 
+async def _rerun_proposed_change_integrity_checks(
+    proposed_change_id: str, source_branch: Branch, destination_branch_name: str
+) -> None:
+    """Re-run the data and schema integrity checks against the current destination state.
+
+    Both checks are recalculated from a freshly updated diff so that the validator conclusions read
+    by the merge gate reflect the destination branch as it is now, not as it was when the proposed
+    change pipeline last ran.
+    """
+    branch_diff = ProposedChangeBranchDiff(pipeline_id=uuid4())
+    data_integrity_model = RequestProposedChangeDataIntegrity(
+        proposed_change=proposed_change_id,
+        source_branch=source_branch.name,
+        source_branch_sync_with_git=source_branch.sync_with_git,
+        destination_branch=destination_branch_name,
+        branch_diff=branch_diff,
+    )
+    # Recalculates the diff (and its conflicts) for the current state.
+    await run_proposed_change_data_integrity_check(model=data_integrity_model)
+
+    # The schema integrity check reads the diff summary from the cache, so refresh it first.
+    diff_summary = await get_client().get_diff_summary(branch=source_branch.name)
+    await set_diff_summary_cache(pipeline_id=branch_diff.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
+    schema_integrity_model = RequestProposedChangeSchemaIntegrity(
+        proposed_change=proposed_change_id,
+        source_branch=source_branch.name,
+        source_branch_sync_with_git=source_branch.sync_with_git,
+        destination_branch=destination_branch_name,
+        branch_diff=branch_diff,
+    )
+    await run_proposed_change_schema_integrity_check(model=schema_integrity_model)
+
+
 @flow(
     name="proposed-change-merge",
     flow_run_name="Merge propose change: {proposed_change_name} ",
@@ -201,6 +236,14 @@ async def merge_proposed_change(
             return Failed(message=str(exc))
 
         source_branch = await Branch.get_by_name(db=db, name=proposed_change.source_branch.value)
+        # Re-run the integrity checks against the current destination state. The pipeline runs them
+        # when the proposed change is opened or updated, but the destination branch may have changed
+        # since (e.g. another branch was merged), making the stored validator conclusions stale.
+        await _rerun_proposed_change_integrity_checks(
+            proposed_change_id=proposed_change_id,
+            source_branch=source_branch,
+            destination_branch_name=proposed_change.destination_branch.value,
+        )
         validations = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
         for validation in validations.values():
             validator_kind = validation.get_kind()
@@ -504,10 +547,29 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         )
     )
 
+    # A node/field with a diff conflict is reconciled by the data-conflict resolution applied during
+    # the merge. Validating its pre-resolution cross-branch state here would report a spurious
+    # (and non-resolvable) schema violation, so those fields are skipped.
+    component_registry = get_component_registry()
+    database = await get_database()
+    conflicted_fields: set[tuple[str, str]] = set()
+    async with database.start_session() as db:
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
+        async for conflict_path, _conflict in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=model.source_branch,
+            tracking_id=BranchTrackingId(name=model.source_branch),
+        ):
+            # path_identifier is "data/<node_uuid>/<field>/...".
+            path_parts = conflict_path.split("/")
+            if len(path_parts) >= 3 and path_parts[0] == "data":
+                conflicted_fields.add((path_parts[1], path_parts[2]))
+
     # TODO we need to report a failure if an error happened during the execution of a validator
     conflicts: list[SchemaConflict] = []
     for response in responses:
         for violation in response.violations:
+            if (violation.node_id, response.schema_path.field_name) in conflicted_fields:
+                continue
             conflicts.append(
                 SchemaConflict(
                     name=response.schema_path.get_path(),
@@ -520,7 +582,6 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
                 )
             )
 
-    database = await get_database()
     async with database.start_transaction() as db:
         object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
             db=db,
@@ -545,13 +606,12 @@ async def _get_proposed_change_schema_integrity_constraints(
         field_summary = node_diff_field_summary_map[node_kind]
         for element in node_diff["elements"]:
             element_name = element["name"]
+            # The SDK diff summary reports element_type using the DiffElementType member name
+            # (e.g. "RELATIONSHIP_ONE"), not its value ("RelationshipOne").
             element_type = element["element_type"]
-            if element_type.lower() in (
-                DiffElementType.RELATIONSHIP_MANY.value.lower(),
-                DiffElementType.RELATIONSHIP_ONE.value.lower(),
-            ):
+            if element_type in (DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name):
                 field_summary.relationship_names.add(element_name)
-            elif element_type.lower() == DiffElementType.ATTRIBUTE.value.lower():
+            elif element_type == DiffElementType.ATTRIBUTE.name:
                 field_summary.attribute_names.add(element_name)
 
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)
