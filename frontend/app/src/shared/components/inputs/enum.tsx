@@ -139,7 +139,6 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
             setOpen(false);
           }}
           onCancel={() => setOpen(false)}
-          className="p-4"
         />
       </Sheet>
     </div>

@@ -148,25 +148,23 @@ export const NodeAttributeMatchForm = ({
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <NodeAttributeField field={attributeField} />
+    <Form form={form} onSubmit={handleSubmit}>
+      <NodeAttributeField field={attributeField} />
 
-        {fields.map((field) => {
-          return <DynamicField key={field.name} {...field} />;
-        })}
+      {fields.map((field) => {
+        return <DynamicField key={field.name} {...field} />;
+      })}
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };
 

@@ -23,15 +23,19 @@ export function AccountTokenCreateAction() {
       </Button>
 
       <Sheet isOpen={isFormOpen} onOpenChange={setIsFormOpen}>
-        <Col>
+        <Col className="mb-4">
           <Row>
             <h3 className="font-semibold text-lg">Create a new token</h3>
-            <ObjectHelpButton documentationUrl="/guides/managing-api-tokens" className="ml-auto" />
+            <ObjectHelpButton
+              documentationUrl="/deploy-manage/user-management/managing-api-tokens"
+              className="ml-auto"
+            />
           </Row>
           <span className="text-gray-500 text-sm">
             These tokens provide full access to your account. Please keep them secure.
           </span>
         </Col>
+
         <AccountTokenCreateForm
           onSuccess={async ({ token }) => {
             setNewToken(token);

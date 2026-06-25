@@ -144,7 +144,6 @@ export const IpAddressPoolForm = ({
       onSubmit={(formData: Record<string, FormFieldValue>) =>
         onSubmit ? onSubmit({ formData, fields }) : handleSubmit(formData)
       }
-      className="overflow-auto p-4"
     />
   );
 };

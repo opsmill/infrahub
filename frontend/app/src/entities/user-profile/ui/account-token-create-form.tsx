@@ -3,7 +3,6 @@ import { toast } from "react-toastify";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames } from "@/shared/utils/common";
 
 import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
 import { useCreateAccountTokenMutation } from "@/entities/user-profile/ui/queries/create-account-token.mutation";
@@ -24,7 +23,7 @@ export function AccountTokenCreateForm({
   return (
     <DynamicForm
       onCancel={onCancel}
-      className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}
+      className={className}
       fields={[
         {
           name: "name",
