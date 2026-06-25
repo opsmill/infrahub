@@ -77,7 +77,7 @@ jobs:
 
       - name: Checkout
         if: steps.check.outputs.skip == 'false'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive
