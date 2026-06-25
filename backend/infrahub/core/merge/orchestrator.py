@@ -74,6 +74,7 @@ class BranchMergeOrchestrator:
         merge_at = Timestamp()
         pre_merge_schema = registry.schema.get_schema_branch(name=self.destination_branch.name).duplicate()
         pre_merge_branched_from = self.source_branch.branched_from
+        schema_was_updated = False
 
         try:
             # Publish the shared write-protection key before any graph write so every worker rejects
@@ -118,6 +119,7 @@ class BranchMergeOrchestrator:
                     user_id=user_id,
                     manage_rollback=False,
                 )
+                schema_was_updated = True
 
             # Compute the IPAM reconciliation details while the diff is still live. Submission is
             # deferred until after the MERGED transition because recovery cannot completely roll back
@@ -165,5 +167,6 @@ class BranchMergeOrchestrator:
             branch=self.source_branch,
             proposed_change_id=proposed_change_id,
             node_events=node_events,
+            schema_was_updated=schema_was_updated,
             context=context,
         )
