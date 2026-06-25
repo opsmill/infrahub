@@ -4,6 +4,7 @@ import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { getObjectsFromApi } from "@/entities/nodes/object/api/get-objects-from-api";
+import type { Sort } from "@/entities/nodes/object/domain/sort";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { NodeObject } from "@/entities/nodes/types";
@@ -13,6 +14,7 @@ export type GetObjectsParams = ContextParams &
   PaginationParams & {
     schema: ModelSchema;
     filters?: Array<Filter>;
+    sort?: Sort[] | null;
     getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
     getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
     attributesOptions?: AddAttributesToRequestOptions;
@@ -28,6 +30,7 @@ export const getObjects: GetObjects = async ({
   branchName,
   atDate,
   filters,
+  sort,
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
   attributesOptions,
@@ -47,6 +50,7 @@ export const getObjects: GetObjects = async ({
     branchName,
     atDate,
     filters,
+    sort,
     attributesOptions,
     relationshipsOptions,
   });

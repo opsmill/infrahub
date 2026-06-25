@@ -5,7 +5,7 @@ import {
   type ListBoxProps as AriaListBoxProps,
   SelectValue as AriaSelectValue,
 } from "react-aria-components";
-import { tv } from "tailwind-variants";
+import { tv, type VariantProps } from "tailwind-variants";
 export { Select } from "react-aria-components";
 
 import { focusVisibleStyle } from "../../styles/focus-visible";
@@ -15,16 +15,28 @@ import { Popover } from "../popover/popover";
 
 const triggerStyles = tv({
   base: [
-    "flex min-h-10 w-full items-center gap-2 rounded-lg border border-neutral-300 outline-none",
-    "bg-white p-2 text-sm placeholder:text-neutral-400",
-    "disabled:cursor-not-allowed disabled:bg-neutral-100",
+    "min-h-10 flex items-center gap-1 w-full rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.04)] bg-white p-2 pr-1.5 text-sm border border-neutral-200",
+    "data-disabled:cursor-not-allowed data-disabled:bg-neutral-100 data-disabled:shadow-none",
     focusVisibleStyle,
   ],
+  // Heights mirror the Button size scale so a trigger can line up with adjacent buttons.
+  // The default (no size) keeps the existing min-h-10 input look.
+  variants: {
+    size: {
+      xxs: "h-6 min-h-0 py-0",
+      xs: "h-7 min-h-0 py-0",
+      sm: "h-8 min-h-0 py-0",
+      md: "h-9 min-h-0 py-0",
+    },
+  },
 });
 
-export function SelectTrigger({ className, ...props }: Omit<AriaButtonProps, "children">) {
+export interface SelectTriggerProps
+  extends Omit<AriaButtonProps, "children">, VariantProps<typeof triggerStyles> {}
+
+export function SelectTrigger({ className, size, ...props }: SelectTriggerProps) {
   return (
-    <AriaButton className={composeAriaClassName(className, triggerStyles())} {...props}>
+    <AriaButton className={composeAriaClassName(className, triggerStyles({ size }))} {...props}>
       <AriaSelectValue className="truncate data-placeholder:text-neutral-400" />
       <ChevronDownIcon className="ml-auto size-4" />
     </AriaButton>

@@ -5,6 +5,7 @@ import type React from "react";
 import { useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 
+import { CountBadge } from "@/shared/components/count-badge";
 import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
@@ -59,10 +60,10 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
           if (!isOpen) setSelectedField(null);
         }}
       >
-        <Button variant="ghost" size="sm" className="rounded-xl border-gray-300">
+        <Button variant="outline" size="sm" className="rounded-xl">
           <Icon icon="mdi:filter-variant" className="text-base" />
           Filter
-          {filterCount > 0 && <FilterCountBadge count={filterCount} />}
+          {filterCount > 0 && <CountBadge count={filterCount} />}
         </Button>
 
         <Popover
@@ -135,14 +136,6 @@ function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItem
       {hasActiveFilter && <ActiveFilterIndicator />}
       <ChevronRightIcon className={classNames("size-3.5")} />
     </ListBoxItem>
-  );
-}
-
-function FilterCountBadge({ count }: { count: number }) {
-  return (
-    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-200 px-1 text-stone-600 text-xs">
-      {count}
-    </span>
   );
 }
 

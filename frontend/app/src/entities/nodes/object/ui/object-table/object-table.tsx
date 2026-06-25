@@ -8,9 +8,11 @@ import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/
 import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { useSort } from "@/entities/nodes/object/ui/sort/use-sort";
 
 export const ObjectTable = () => {
   const { filters, selectedSchema, permission } = useObjectTableContext();
+  const [sort] = useSort(selectedSchema);
 
   const { data: count } = useObjectsCount({
     objectKind: selectedSchema.kind!,
@@ -20,6 +22,7 @@ export const ObjectTable = () => {
   const { data, fetchNextPage, error, hasNextPage, isPending, isFetchingNextPage } = useObjects({
     schema: selectedSchema,
     filters,
+    sort,
   });
 
   if (error) {

@@ -43,6 +43,7 @@ export {
   MenuSection,
   type MenuSectionProps,
   MenuTrigger,
+  SubmenuTrigger,
 } from "./components/menu/menu";
 export { Meter, type MeterProps } from "./components/meter/meter";
 export {
@@ -69,6 +70,7 @@ export {
   SelectList,
   type SelectListProps,
   SelectTrigger,
+  type SelectTriggerProps,
 } from "./components/select/select";
 export { Sheet, type SheetProps } from "./components/sheet/sheet";
 export {

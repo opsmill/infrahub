@@ -8,6 +8,7 @@ import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-sea
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableSchemaSelector } from "@/entities/nodes/object/ui/object-table/object-table-schema-selector";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { SortPicker } from "@/entities/nodes/object/ui/sort/sort-picker";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export function ObjectsManagerToolbar() {
@@ -21,6 +22,8 @@ export function ObjectsManagerToolbar() {
         )}
 
         <FilterSearchInput schema={selectedSchema} />
+
+        <SortPicker schema={selectedSchema} />
 
         <FilterPicker schema={selectedSchema} filters={filters} />
 

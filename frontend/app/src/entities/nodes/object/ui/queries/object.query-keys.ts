@@ -1,6 +1,7 @@
 import type { ContextParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 
+import type { Sort } from "@/entities/nodes/object/domain/sort";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
@@ -11,6 +12,7 @@ export interface ObjectKeysBaseParams extends ContextParams {
 
 export interface ObjectListKeysParams extends ObjectKeysBaseParams {
   filters?: Filter[];
+  sort?: Sort[] | null;
 }
 
 export interface ObjectDetailKeysParams extends ObjectKeysBaseParams {
@@ -44,7 +46,7 @@ export const objectQueryKeys = {
   count: (params: ObjectListKeysParams) =>
     [...objectQueryKeys.lists(params), "count", params.filters] as const,
   list: (params: ObjectListKeysParams) =>
-    [...objectQueryKeys.lists(params), params.filters] as const,
+    [...objectQueryKeys.lists(params), params.filters, params.sort] as const,
   profiles: (params: ObjectKeysBaseParams) =>
     [...objectQueryKeys.lists(params), "profiles"] as const,
   detail: (params: ObjectDetailKeysParams) =>

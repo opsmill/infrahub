@@ -1,6 +1,9 @@
+import { EnumType } from "json-to-graphql-query";
+
 import type { Filter } from "@/shared/hooks/useFilters";
 
 import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
+import type { Sort } from "@/entities/nodes/object/domain/sort";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
@@ -162,6 +165,14 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
     },
     {} as Record<string, string | number | boolean | string[]>
   );
+};
+
+export const addOrderByToRequest = (sort: Sort[]) => {
+  return {
+    order: {
+      by: sort.map(({ field, direction }) => ({ field, direction: new EnumType(direction) })),
+    },
+  };
 };
 
 export const dropIncludeAvailableWhenFalse = (filters?: Filter[]) =>
