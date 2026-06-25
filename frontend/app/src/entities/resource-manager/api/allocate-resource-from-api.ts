@@ -23,15 +23,17 @@ export function allocateResourceFromApi({
   prefixLength,
   branchName,
 }: AllocateResourceFromApiParams) {
+  const resourceArgs: Record<string, unknown> = { id: poolId, data };
+  // Only send a prefix length when one was entered; otherwise the pool's default applies.
+  if (typeof prefixLength === "number") {
+    resourceArgs.prefix_length = prefixLength;
+  }
+
   const mutation = jsonToGraphQLQuery({
     mutation: {
       [poolGetResourceMutationName]: {
         __args: {
-          data: {
-            id: poolId,
-            ...(typeof prefixLength === "number" && { prefix_length: prefixLength }),
-            data,
-          },
+          data: resourceArgs,
         },
         node: {
           id: true,
