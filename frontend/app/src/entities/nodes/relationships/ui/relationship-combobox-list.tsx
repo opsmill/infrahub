@@ -25,6 +25,7 @@ export interface RelationshipComboboxListProps
   selectedValue?: string;
   filterItem?: (relationshipNode: RelationshipNode) => boolean;
   filterQuery?: Record<string, string | number | boolean | string[]>;
+  additionalFields?: Record<string, unknown>;
 }
 
 export const RelationshipComboboxList = ({
@@ -35,6 +36,7 @@ export const RelationshipComboboxList = ({
   onSelect,
   filterItem,
   filterQuery,
+  additionalFields,
   ...props
 }: RelationshipComboboxListProps) => {
   const [search, setSearch] = React.useState("");
@@ -48,6 +50,7 @@ export const RelationshipComboboxList = ({
       peer,
       search: isUuidSearch ? undefined : search,
       filterQuery: isUuidSearch ? { ids: [search.trim()] } : filterQuery,
+      additionalFields,
     });
 
   if (error) return <ErrorScreen message={error.message} />;

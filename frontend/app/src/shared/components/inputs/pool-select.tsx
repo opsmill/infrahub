@@ -15,6 +15,11 @@ import {
 } from "@/entities/resource-manager/constants";
 import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
 
+// Both IP pool kinds expose default_prefix_length; we surface it as the placeholder on
+// the prefix-length override. Injected into the relationship list query so the generic
+// builder stays kind-agnostic. Module-level for a stable react-query cache key.
+const POOL_ADDITIONAL_FIELDS = { default_prefix_length: { value: true } };
+
 export interface PoolSelectProps {
   /** Name of the host form field; used to register the nested prefix-length field. */
   name: string;
@@ -133,6 +138,7 @@ export function PoolSelect({
             peer={poolKind}
             selectedValue={selectedPoolId ?? undefined}
             filterQuery={filterQuery}
+            additionalFields={POOL_ADDITIONAL_FIELDS}
           />
         </ComboboxContent>
       </Combobox>

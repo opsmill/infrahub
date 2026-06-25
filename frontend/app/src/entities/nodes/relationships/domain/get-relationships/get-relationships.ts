@@ -18,6 +18,7 @@ export const getRelationships: GetRelationships = async ({
   peer,
   search,
   filterQuery,
+  additionalFields,
 }) => {
   const { data } = await getRelationshipsFromApi({
     peer,
@@ -27,6 +28,7 @@ export const getRelationships: GetRelationships = async ({
     branchName,
     atDate,
     filterQuery,
+    additionalFields,
   });
 
   const relationshipsData = data[peer];
