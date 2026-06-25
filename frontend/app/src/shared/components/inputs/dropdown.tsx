@@ -214,7 +214,6 @@ export const DropdownAddAction = ({ schema, field, addOption }: DropdownAddActio
             setOpen(false);
           }}
           onCancel={() => setOpen(false)}
-          className="p-4"
         />
       </Sheet>
     </div>

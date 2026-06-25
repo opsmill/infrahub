@@ -16,7 +16,6 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
@@ -169,30 +168,28 @@ export function CoreFileForm({
   }
 
   return (
-    <div className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}>
-      <Form onSubmit={onSubmit} defaultValues={formDefaultValues} className="space-y-4">
-        <FileField
-          name="file"
-          label="File"
-          rules={!isUpdate ? { required: true, validate: { required: isRequired } } : undefined}
-          selectedFile={selectedFile}
-          existingFile={existingFile}
-          onFileSelect={setSelectedFile}
-        />
+    <Form onSubmit={onSubmit} defaultValues={formDefaultValues} className={className}>
+      <FileField
+        name="file"
+        label="File"
+        rules={!isUpdate ? { required: true, validate: { required: isRequired } } : undefined}
+        selectedFile={selectedFile}
+        existingFile={existingFile}
+        onFileSelect={setSelectedFile}
+      />
 
-        {fields.map((field) => (
-          <DynamicField key={`${field.type}_${field.name}`} {...field} />
-        ))}
+      {fields.map((field) => (
+        <DynamicField key={`${field.type}_${field.name}`} {...field} />
+      ))}
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 }

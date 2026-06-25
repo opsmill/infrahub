@@ -65,7 +65,6 @@ export function AddGroupTriggerButton({
               : undefined
           }
           schema={schema}
-          className="p-4"
           onCancel={() => setIsAddGroupFormOpen(false)}
           onUpdateCompleted={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });

@@ -23,7 +23,7 @@ export const SlideOverTitle = ({
   const { currentBranch } = useCurrentBranch();
 
   return (
-    <div className="space-y-2">
+    <div className="mb-4 space-y-2">
       <div className="flex">
         <Badge variant="blue" className="flex items-center gap-1">
           <Icon icon="mdi:layers-triple" />

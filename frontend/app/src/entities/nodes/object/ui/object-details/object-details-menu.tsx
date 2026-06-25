@@ -204,11 +204,7 @@ export function ObjectDetailsMenu({
           title="Manage groups"
           subtitle="Add and unassign groups"
         />
-        <GroupsManager
-          schema={objectSchema}
-          objectId={objectData.id}
-          className="overflow-auto p-4"
-        />
+        <GroupsManager schema={objectSchema} objectId={objectData.id} />
       </Sheet>
 
       <Sheet isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>

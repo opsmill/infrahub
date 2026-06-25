@@ -179,7 +179,6 @@ export function RelationshipsButtons({
               onCancel={() => {
                 setShowAddDrawer(false);
               }}
-              className="w-full p-4"
             />
           )}
         </FormContext>

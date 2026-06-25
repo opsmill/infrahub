@@ -72,7 +72,7 @@ export const TaskFilters = () => {
       </div>
 
       <Sheet isOpen={showFilters} onOpenChange={setShowFilters} aria-label="Apply filters">
-        <h3 className="font-semibold text-lg">Apply filters</h3>
+        <h3 className="mb-4 font-semibold text-lg">Apply filters</h3>
         <TasksFilterForm
           filters={filters}
           onSubmit={handleSubmit}

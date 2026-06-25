@@ -113,46 +113,44 @@ export const GlobalPermissionForm = ({
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
-      <Form form={form} onSubmit={handleSubmit}>
-        <DropdownField
-          name="action"
-          label="Action"
-          items={actionOptions}
-          rules={{ required: true, validate: { required: isRequired } }}
-        />
+    <Form form={form} onSubmit={handleSubmit}>
+      <DropdownField
+        name="action"
+        label="Action"
+        items={actionOptions}
+        rules={{ required: true, validate: { required: isRequired } }}
+      />
 
-        <DropdownField
-          name="decision"
-          label="Decision"
-          description={
-            schema?.attributes?.find((attribute) => attribute.name === "decision")?.description
-          }
-          items={globalDecisionOptions}
-          rules={{ required: true, validate: { required: isRequired } }}
-        />
+      <DropdownField
+        name="decision"
+        label="Decision"
+        description={
+          schema?.attributes?.find((attribute) => attribute.name === "decision")?.description
+        }
+        items={globalDecisionOptions}
+        rules={{ required: true, validate: { required: isRequired } }}
+      />
 
-        <RelationshipManyField
-          name="roles"
-          label="Roles"
-          defaultValue={roles}
-          relationship={{
-            name: "roles",
-            peer: ACCOUNT_ROLE_OBJECT,
-            cardinality: "many",
-          }}
-        />
+      <RelationshipManyField
+        name="roles"
+        label="Roles"
+        defaultValue={roles}
+        relationship={{
+          name: "roles",
+          peer: ACCOUNT_ROLE_OBJECT,
+          cardinality: "many",
+        }}
+      />
 
-        <Row className="justify-end">
-          {onCancel && (
-            <Button variant="outline" onPress={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>Save</FormSubmit>
-        </Row>
-      </Form>
-    </div>
+        <FormSubmit>Save</FormSubmit>
+      </Row>
+    </Form>
   );
 };
