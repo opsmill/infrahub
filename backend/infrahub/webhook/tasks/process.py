@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Any
 
 import ujson
@@ -8,17 +9,20 @@ from infrahub_sdk.protocols import CoreTransformPython, CoreWebhook
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
+from prefect.states import Failed
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus.types import KVTTL
 from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
+from ..classifier import StatusClass, WebhookDeliveryError, WebhookFailureClassifier
 from ..constants import CACHE_KEY_PREFIX
 from ..models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, TransformWebhook, Webhook, WebhookHeader
 
 if TYPE_CHECKING:
     from httpx import Response
+    from prefect.client.schemas.objects import State
 
 
 WEBHOOK_MAP: dict[str, type[Webhook]] = {
@@ -49,12 +53,35 @@ async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, pa
     retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAY_SECONDS,
 )
 async def webhook_send(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:
-    """Send the webhook delivery, retrying the whole send on failure."""
+    """Send the webhook delivery, retrying the whole send on failure.
+
+    Expected delivery failures (transport, HTTP status, configuration) are classified and
+    re-raised with a clean, user-facing message. An unexpected error keeps its traceback so
+    the run surfaces as a genuine crash.
+
+    Raises:
+        WebhookDeliveryError: When an expected delivery failure occurs, carrying the classified reason.
+
+    """
     log = get_run_logger()
-    response = await webhook_post(
-        webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload
-    )
-    log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
+    started = time.monotonic()
+    try:
+        response = await webhook_post(
+            webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload
+        )
+    except Exception as cause:
+        # Broad by design: classify the expected delivery failures and re-raise the rest untouched.
+        elapsed_ms = (time.monotonic() - started) * 1_000
+        failure = WebhookFailureClassifier().classify(cause=cause)
+        if failure.status_class is StatusClass.UNKNOWN:
+            raise
+        log.error(
+            f"Webhook delivery failed [{failure.status_class}] after {elapsed_ms:.0f} ms: "
+            f"{failure.message.rstrip('.')}. {failure.remediation}"
+        )
+        raise WebhookDeliveryError(failure) from None
+    elapsed_ms = (time.monotonic() - started) * 1_000
+    log.info(f"Webhook delivered to {response.url}, HTTP {response.status_code} in {elapsed_ms:.0f} ms")
     return response
 
 
@@ -136,8 +163,13 @@ async def webhook_process(
     event_occured_at: str,
     event_payload: dict,
     branch_name: str | None = None,
-) -> None:
-    """Resolve the webhook config, compute the payload once, and hand it to the send flow."""
+) -> State | None:
+    """Resolve the webhook config, compute the payload, send it, and surface a clean outcome.
+
+    A classified delivery failure ends the run in a failed state carrying the failure reason and its
+    remediation, without a stacktrace, so the run reads as an operational outcome rather than a crash.
+    An unexpected error keeps its traceback so it surfaces as a genuine crash.
+    """
     client = get_client()
 
     await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
@@ -151,4 +183,19 @@ async def webhook_process(
     )
     event_data = event_payload.get("data", {})
     payload = await webhook.compute_payload(data=event_data, context=webhook_context, client=client)
-    await webhook_send(webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload)
+    state = await webhook_send(
+        webhook_id=webhook_id,
+        webhook_kind=webhook_kind,
+        webhook_name=webhook_name,
+        payload=payload,
+        return_state=True,
+    )
+    if not state.is_failed():
+        return None
+
+    outcome = await state.aresult(raise_on_failure=False)
+    if isinstance(outcome, WebhookDeliveryError):
+        return Failed(message=f"{outcome.failure.message.rstrip('.')}. {outcome.failure.remediation}")
+    if isinstance(outcome, BaseException):
+        raise outcome
+    return state
