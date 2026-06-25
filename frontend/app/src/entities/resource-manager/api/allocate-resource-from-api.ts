@@ -7,7 +7,7 @@ import type { BranchContextParams } from "@/shared/api/types";
 export interface AllocateResourceFromApiParams extends BranchContextParams {
   poolGetResourceMutationName: string;
   poolId: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   /**
    * Optional prefix length to allocate with. For an IP address pool it sets the new
    * address's mask; for an IP prefix pool it sets the size of the carved-out subnet.
