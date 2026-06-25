@@ -108,12 +108,19 @@ function IpamCreationForm(props: IpamCreationFormProps) {
               ? fieldDataForIpField.value.from_pool
               : null;
 
+          const allocationData: Record<string, unknown> = {
+            id: fieldDataForIpField.source.id,
+            data: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
+          };
+          // Only send a prefix length when one was entered; otherwise the pool default applies.
+          if (typeof pendingFromPool?.prefixlen === "number") {
+            allocationData.prefix_length = pendingFromPool.prefixlen;
+          }
+
           await allocateResource.mutateAsync(
             {
               poolGetResourceMutationName: allocateMutationName,
-              poolId: fieldDataForIpField.source.id,
-              prefixLength: pendingFromPool?.prefixlen ?? null,
-              data: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
+              data: allocationData,
             },
             {
               onSuccess,

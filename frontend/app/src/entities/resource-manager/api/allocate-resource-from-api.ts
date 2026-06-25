@@ -6,34 +6,24 @@ import type { BranchContextParams } from "@/shared/api/types";
 
 export interface AllocateResourceFromApiParams extends BranchContextParams {
   poolGetResourceMutationName: string;
-  poolId: string;
-  data: Record<string, unknown>;
   /**
-   * Optional prefix length to allocate with. For an IP address pool it sets the new
-   * address's mask; for an IP prefix pool it sets the size of the carved-out subnet.
-   * Omitted when blank so the pool's default applies.
+   * The pool's GetResource input, built by the caller: `{ id, prefix_length?, data? }`.
+   * Mirrors createObjectFromApi/updateObjectFromApi, where the api wraps a caller-built
+   * `data` rather than owning individual fields.
    */
-  prefixLength?: number | null;
+  data: Record<string, unknown>;
 }
 
 export function allocateResourceFromApi({
   poolGetResourceMutationName,
-  poolId,
   data,
-  prefixLength,
   branchName,
 }: AllocateResourceFromApiParams) {
-  const resourceArgs: Record<string, unknown> = { id: poolId, data };
-  // Only send a prefix length when one was entered; otherwise the pool's default applies.
-  if (typeof prefixLength === "number") {
-    resourceArgs.prefix_length = prefixLength;
-  }
-
   const mutation = jsonToGraphQLQuery({
     mutation: {
       [poolGetResourceMutationName]: {
         __args: {
-          data: resourceArgs,
+          data,
         },
         node: {
           id: true,
