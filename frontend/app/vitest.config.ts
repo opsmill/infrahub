@@ -6,6 +6,21 @@ import viteConfig from "./vite.config";
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    // Pre-bundle dependencies that are only reached through dynamic/conditional
+    // imports (e.g. the devtools loader in src/app/devtools.tsx) so Vite's
+    // dependency scanner does not discover them mid-run. When that happens in
+    // browser mode, Vite re-optimizes and reloads the page ("Vite unexpectedly
+    // reloaded a test"), which drops module mocks registered via vi.mock() and
+    // makes mock-using tests fail intermittently (e.g.
+    // "mockClear is not a function"). See vitest-dev/vitest#8447 and #7333.
+    optimizeDeps: {
+      include: [
+        "@tanstack/react-query-devtools",
+        "react-dom/client",
+        "react-error-boundary",
+        "react-scan",
+      ],
+    },
     test: {
       browser: {
         enabled: true,
