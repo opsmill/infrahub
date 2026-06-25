@@ -16,19 +16,23 @@ import type { RelationshipNode } from "@/entities/nodes/relationships/domain/typ
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-export interface RelationshipComboboxListProps
+// Nodes always carry the base RelationshipNode shape; a caller that requests extra
+// fields via `additionalFields` declares their shape through TAdditionalFields, and the
+// node-bearing callbacks (onSelect/value/filterItem) surface them typed. The generic
+// keeps kind-specific fields out of the shared RelationshipNode type.
+export interface RelationshipComboboxListProps<TAdditionalFields = unknown>
   extends Omit<ComboboxListProps, "value" | "onSelect"> {
   ref?: React.Ref<HTMLDivElement>;
   peer: string;
-  onSelect: (value: RelationshipNode) => void;
-  value?: RelationshipNode | null;
+  onSelect: (value: RelationshipNode & TAdditionalFields) => void;
+  value?: (RelationshipNode & TAdditionalFields) | null;
   selectedValue?: string;
-  filterItem?: (relationshipNode: RelationshipNode) => boolean;
+  filterItem?: (relationshipNode: RelationshipNode & TAdditionalFields) => boolean;
   filterQuery?: Record<string, string | number | boolean | string[]>;
   additionalFields?: Record<string, unknown>;
 }
 
-export const RelationshipComboboxList = ({
+export const RelationshipComboboxList = <TAdditionalFields = unknown>({
   ref,
   peer,
   value,
@@ -38,7 +42,7 @@ export const RelationshipComboboxList = ({
   filterQuery,
   additionalFields,
   ...props
-}: RelationshipComboboxListProps) => {
+}: RelationshipComboboxListProps<TAdditionalFields>) => {
   const [search, setSearch] = React.useState("");
   const { schema } = useSchema(peer);
   // When the user types or pastes a UUID, switch the underlying query from a
@@ -73,7 +77,9 @@ export const RelationshipComboboxList = ({
           <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
 
           {data.pages.map((page) => {
-            const filteredNodes = filterItem ? page.filter(filterItem) : page;
+            // The query returns the base node plus whatever additionalFields requested.
+            const nodes = page as Array<RelationshipNode & TAdditionalFields>;
+            const filteredNodes = filterItem ? nodes.filter(filterItem) : nodes;
 
             return filteredNodes.map((node) => (
               <ComboboxItem

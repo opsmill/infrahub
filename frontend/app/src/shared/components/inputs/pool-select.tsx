@@ -20,6 +20,9 @@ import { validateNumberAttribute } from "@/entities/schema/utils/validation/vali
 // builder stays kind-agnostic. Module-level for a stable react-query cache key.
 const POOL_ADDITIONAL_FIELDS = { default_prefix_length: { value: true } };
 
+// The extra node field POOL_ADDITIONAL_FIELDS requests, typed for the combobox callbacks.
+type PoolNodeFields = { default_prefix_length?: { value?: number | null } | null };
+
 export interface PoolSelectProps {
   /** Name of the host form field; used to register the nested prefix-length field. */
   name: string;
@@ -115,7 +118,7 @@ export function PoolSelect({
         <PoolPopoverTrigger data-testid="select-open-pool-option-button" />
 
         <ComboboxContent align="end" fitTriggerWidth={false}>
-          <RelationshipComboboxList
+          <RelationshipComboboxList<PoolNodeFields>
             onSelect={(pool) => {
               // Re-selecting the already-selected pool is a no-op: keep the current
               // value rather than clearing it. Clearing a pool is done through the
