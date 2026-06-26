@@ -12,7 +12,7 @@ import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/ui/quer
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
-import type { AllocateResourceInput } from "@/entities/resource-manager/api/allocate-resource-from-api";
+import { buildAllocateResourceInput } from "@/entities/resource-manager/domain/build-allocate-resource-input";
 import { useAllocateResourceMutation } from "@/entities/resource-manager/ui/queries/allocate-resource.mutation";
 import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/utils/get-allocate-mutation-name-from-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -99,29 +99,17 @@ function IpamCreationForm(props: IpamCreationFormProps) {
         const allocateMutationName = getAllocateMutationNameFromSchema(props.schema);
 
         if (fieldDataForIpField?.source?.type === "pool" && allocateMutationName) {
-          // A pending from-pool allocation can carry a user-entered prefix length: the
-          // new address's mask for an address pool, or the carved-out subnet size for a
-          // prefix pool. Both map to the allocation mutation's `prefix_length` argument.
-          const pendingFromPool =
-            fieldDataForIpField.value &&
-            typeof fieldDataForIpField.value === "object" &&
-            "from_pool" in fieldDataForIpField.value
-              ? fieldDataForIpField.value.from_pool
-              : null;
-
-          const allocationData: AllocateResourceInput = {
-            id: fieldDataForIpField.source.id,
-            data: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
-          };
-          // Only send a prefix length when one was entered; otherwise the pool default applies.
-          if (typeof pendingFromPool?.prefixLength === "number") {
-            allocationData.prefix_length = pendingFromPool.prefixLength;
-          }
-
+          // IPAM creates the IP node *from* the pool via the dedicated GetResource mutation,
+          // so the input (pool id + node attributes + any entered prefix length) is assembled
+          // by buildAllocateResourceInput rather than through the generic from-pool path.
           await allocateResource.mutateAsync(
             {
               poolGetResourceMutationName: allocateMutationName,
-              data: allocationData,
+              data: buildAllocateResourceInput({
+                poolId: fieldDataForIpField.source.id,
+                poolFieldValue: fieldDataForIpField.value,
+                nodeData: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
+              }),
             },
             {
               onSuccess,
