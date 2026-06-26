@@ -95,13 +95,15 @@ Most merges are small. The coalescing must not make small merges slower or add n
 - **FR-004**: The amount of recompute work after a merge MUST scale with the number of affected derived values, not with the changed-node count multiplied by the number of matching automations.
 - **FR-005**: The recompute MUST handle both change triggers and respect their per-family read scope: a change to a node that other nodes read recomputes each reader's families that read across the relationship; a node creation recomputes all of the new node's families. A family that reads only local fields MUST NOT be recomputed because a related node changed.
 - **FR-006**: A branch rebase MUST use the same coalesced recompute as a merge.
-- **FR-007**: The selection of affected derived values MUST reuse the existing dependency derivation used by the live per-node recompute path, so merge-time and live behavior cannot diverge.
+- **FR-007**: The selection of affected derived values MUST NOT diverge from the live per-node recompute path. The computed-attribute deriver already exists and MUST be reused. No shared display-label or human-friendly-id deriver exists, so those MUST be built here following the same pattern, reading the dependency metadata already recorded on the display-label and HFID definitions, not as a parallel implementation.
 - **FR-008**: The merge and rebase path MUST NOT both coalesce-recompute and per-node fan-out the same change.
 - **FR-009**: The work MUST NOT make small merges slower than the current behavior beyond run-to-run tolerance.
 - **FR-010**: The change MUST be behavior-preserving: the final derived values MUST be identical to the current behavior; only the work to reach them changes.
 - **FR-011**: The improvement MUST be demonstrated with the profiling harness from the first task, before and after, at small, medium, and large scale.
 - **FR-012**: Recompute targeting MUST be precise wherever the dependency derivation supports it. Where precise derivation is genuinely unavailable, a bounded, logged safe over-approximation (for example, all nodes of an affected kind) is permitted rather than risking under-recompute.
 - **FR-013**: Nodes that read a node deleted by the merge MUST be included in the coalesced recompute, so their derived values no longer reflect the deleted node.
+- **FR-014**: The coalesced recompute MUST run on the correct branch per operation: a merge recomputes on the destination branch, a rebase on the user branch. This difference MUST be preserved.
+- **FR-015**: The coalesced recompute MUST cover readers that exist only on the destination branch (never touched by recompute on the source branch). Skipping readers already recomputed on the source branch and merged in is a permitted optimization only where proven safe; the default is to recompute, and under-recompute is never acceptable.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -121,7 +123,10 @@ Most merges are small. The coalescing must not make small merges slower or add n
 
 ## Assumptions
 
-- The redesign reuses the existing dependency derivation and scoping for the three in-scope families (Jinja2 computed attributes, display labels, human-friendly ids) rather than a parallel implementation, so the merge-time selection cannot drift from the live per-node path.
+- The computed-attribute dependency deriver already exists (the scoping work in PR #9467) and is reused. No shared display-label or human-friendly-id deriver exists: IFC-2759 closed as not applicable, because those families are scoped on the schema-update path by trigger-modification detection, so none was built. The display-label and HFID derivation MUST therefore be built here, following the computed-attribute pattern and reading the dependency metadata already recorded on the display-label and HFID definitions, so it cannot drift from the live per-node path.
+- Coordinate with IFC-2758 (the complementary correctness gap: merge emits no schema-updated event, so definition-only schema changes do not refresh nodes absent from the source branch) to avoid double processing.
+- This spec branch is based on the profile branch (older code). On current develop the merge emits its node events from `core/merge/post_merge.py` and rebase emits inline in `core/branch/tasks.py`; the branch MUST be rebased onto current develop before implementation so the integration targets the real emission points.
+- Optional related fix: on current develop the full-branch Jinja2 recompute loop submits one workflow per node without chunking (unlike the Python and transform paths); it may be chunked while this work is in the same area.
 - Same-node updates already recompute inline during the save and are unchanged by this work; the target is the asynchronous cross-node and creation fan-out.
 - Schema-changing merges (migrations) are out of scope. This work targets data-change recompute. The profile kept migration cost separate.
 - Background task scheduling and throughput tuning (tracked separately) are out of scope here; this work reduces how much recompute is submitted, not how it is scheduled.
