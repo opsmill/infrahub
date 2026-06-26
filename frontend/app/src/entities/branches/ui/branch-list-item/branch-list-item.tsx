@@ -34,16 +34,16 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
       {...props}
     >
       <Col className="min-w-0 gap-0 text-sm">
-        <Row className="shrink-0">
-          <span className="truncate font-semibold">{branch.name}</span>
+        <Row className="min-w-0">
+          <span className="min-w-0 truncate font-semibold">{branch.name}</span>
 
           {branch.is_default ? (
-            <BranchDefaultBadge />
+            <BranchDefaultBadge className="shrink-0" />
           ) : (
-            <BranchStatusBadge status={branch.status} />
+            <BranchStatusBadge status={branch.status} className="shrink-0" />
           )}
 
-          {branch.has_schema_changes && <BranchSchemaChangesBadge />}
+          {branch.has_schema_changes && <BranchSchemaChangesBadge className="shrink-0" />}
         </Row>
 
         <p className="truncate text-gray-600 text-xs">{branch.description}</p>

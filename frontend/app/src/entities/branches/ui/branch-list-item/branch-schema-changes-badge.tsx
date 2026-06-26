@@ -1,5 +1,10 @@
-import { Badge } from "@/shared/components/ui/badge";
+import { Badge, type BadgeProps } from "@/shared/components/ui/badge";
+import { classNames } from "@/shared/utils/common";
 
-export function BranchSchemaChangesBadge() {
-  return <Badge className="rounded-full font-normal text-gray-600">schema updated</Badge>;
+export function BranchSchemaChangesBadge({ className, ...props }: BadgeProps) {
+  return (
+    <Badge className={classNames("rounded-full font-normal text-gray-600", className)} {...props}>
+      schema updated
+    </Badge>
+  );
 }
