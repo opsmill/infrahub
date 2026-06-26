@@ -57,6 +57,7 @@ datetime
 default_branch
 default_filter
 Delinea
+Dependabot
 dev
 Diataxis
 direnv
