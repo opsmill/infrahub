@@ -9,7 +9,11 @@ export function getBranchDetailsUrl(
   tab?: BranchDetailsTab,
   overrideParams?: overrideQueryParams[]
 ): string {
-  const path = tab ? `/branches/${branchName}/${tab}` : `/branches/${branchName}`;
+  // Encode the branch name so a `/` in it (e.g. "feature/my-branch") stays inside
+  // a single path segment and is not parsed as a separator by the `:branchName`
+  // route. React Router decodes the param again when reading it via useParams.
+  const encodedBranchName = encodeURIComponent(branchName);
+  const path = tab ? `/branches/${encodedBranchName}/${tab}` : `/branches/${encodedBranchName}`;
   return constructPath(path, overrideParams);
 }
 
