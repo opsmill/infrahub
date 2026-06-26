@@ -107,7 +107,7 @@ class TestCoreGraphQLQueryDetails:
             .click()
         )
         await admin_page.get_by_test_id("edit-metadata-button").click()
-        await admin_page.get_by_label("is protected *").check()
+        await admin_page.get_by_role("group", name="is protected").locator("label").filter(has_text="True").click()
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("Metadata updated")).to_be_visible()
 

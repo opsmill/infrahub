@@ -45,7 +45,6 @@ def branch_diff_01() -> ProposedChangeBranchDiff:
     return ProposedChangeBranchDiff(
         pipeline_id=uuid4(),
         repositories=[],
-        subscribers=[],
     )
 
 
@@ -133,7 +132,7 @@ async def test_get_proposed_change_schema_integrity_constraints(
     )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
     # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 248
+    assert len(constraints) == 249
     assert len(non_generate_profile_constraints) == 151
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {

@@ -30,6 +30,7 @@ class Migration035(GraphMigration):
     """Remove Relationship vertices that only have a single peer."""
 
     name: str = "035_clean_up_orphaned_relationships"
+    description: str = "N/A"
     minimum_version: int = 34
     queries: Sequence[type[Query]] = [CleanupOrphanedRelationshipsQuery]
 

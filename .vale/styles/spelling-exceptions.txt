@@ -59,6 +59,7 @@ datetime
 default_branch
 default_filter
 Delinea
+Dependabot
 dev
 Diataxis
 direnv
@@ -175,6 +176,7 @@ breakpoint
 pdb
 performant
 pluggable
+pnpm
 post-mortem
 pre
 prebuilt
@@ -227,6 +229,7 @@ subqueries
 subschema
 subschemas
 substring
+subtree
 subtyping
 supernet
 template_path
@@ -249,6 +252,7 @@ updated_by
 upsert
 upserting
 Upserting
+URIs
 userinfo
 Userinfo
 username
@@ -270,6 +274,7 @@ walkthroughs
 whitespace
 widget's
 Widget's
+worktree
 worktrees
 Yaml
 YAML

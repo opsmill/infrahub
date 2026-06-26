@@ -52,6 +52,18 @@ async def test_get_repositories_commit_per_branch_main(
     }
 
 
+async def test_get_repositories_commit_per_branch_non_main_default_branch(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch, default_branch: Branch
+) -> None:
+    repo = await Node.init(db=db, schema=InfrahubKind.REPOSITORY, branch=default_branch)
+    await repo.new(db=db, name="repo01", default_branch="staging", commit="commit01", location="location01")
+    await repo.save(db=db)
+
+    repositories = await get_repositories_commit_per_branch(db=db)
+
+    assert repositories["repo01"].repository.default_branch.value == "staging"
+
+
 async def test_get_repositories_commit_per_branch_branches(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch, repository_01: Node, repository_02: Node
 ) -> None:

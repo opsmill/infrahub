@@ -43,6 +43,7 @@ class RemoveIsVisibleFromDiffsQuery(Query):
 
 class Migration049(GraphMigration):
     name: str = "049_remove_is_visible_relationship"
+    description: str = "N/A"
     minimum_version: int = 48
     queries: Sequence[type[Query]] = [RemoveIsVisibleRelationshipQuery, RemoveIsVisibleFromDiffsQuery]
 

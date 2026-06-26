@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Sequence
 from uuid import uuid4
 
@@ -41,6 +42,7 @@ from infrahub.events.branch_action import (
 )
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
+from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import ValidationError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
@@ -106,10 +108,13 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         await obj.save(db=db)
 
     if send_events:
+        event_context = context.to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             BranchMigratedEvent(
-                branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+                branch_name=obj.name,
+                branch_id=str(obj.uuid),
+                meta=EventMeta(branch=obj, context=event_context),
             )
         )
 
@@ -248,8 +253,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
     # -------------------------------------------------------------
+    event_context = context.to_event_context()
     rebase_event = BranchRebasedEvent(
-        branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+        branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=event_context)
     )
     events: list[InfrahubEvent] = [rebase_event]
     changelog_collector = DiffChangelogCollector(
@@ -281,11 +287,12 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
 
         obj = await Branch.get_by_name(db=db, name=branch)
         default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+        event_context = context.to_event_context()
         merge_event = BranchMergedEvent(
             branch_name=obj.name,
             branch_id=str(obj.get_uuid()),
             proposed_change_id=proposed_change_id,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=event_context, branch=registry.get_global_branch()),
         )
 
         merge_locker = MergeLocker()
@@ -295,7 +302,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 log.info(f"Branch '{branch}' is not open (status={obj.status}), skipping merge")
                 return
 
-            node_events = await _do_merge_branch(
+            merge_result = await _do_merge_branch(
                 db=db,
                 log=log,
                 branch=obj,
@@ -304,8 +311,17 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
             )
 
         events: list[InfrahubEvent] = [merge_event]
+        if merge_result.schema_was_updated:
+            # Drives the display label, HFID and computed-attribute backfills for the merged schema changes.
+            events.append(
+                SchemaUpdatedEvent(
+                    branch_name=default_branch.name,
+                    schema_hash=registry.schema.get_schema_branch(name=default_branch.name).get_hash(),
+                    meta=EventMeta.from_parent(parent=merge_event, branch=default_branch),
+                )
+            )
 
-        for action, node_changelog in node_events:
+        for action, node_changelog in merge_result.node_events:
             meta = EventMeta.from_parent(parent=merge_event, branch=default_branch)
             node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
             mutate_event = node_event_class(
@@ -359,13 +375,19 @@ async def _rollback_merge(
     return True
 
 
+@dataclass(frozen=True)
+class MergeBranchResult:
+    node_events: Sequence[tuple[DiffAction, NodeChangelog]]
+    schema_was_updated: bool
+
+
 async def _do_merge_branch(
     db: InfrahubDatabase,
     log: Logger | LoggerAdapter,
     branch: Branch,
     context: InfrahubContext,
     proposed_change_id: str | None = None,
-) -> Sequence[tuple[DiffAction, NodeChangelog]]:
+) -> MergeBranchResult:
     component_registry = get_component_registry()
     workflow = get_workflow()
     merge_at = Timestamp()
@@ -385,14 +407,19 @@ async def _do_merge_branch(
         diff_locker=DiffLocker(),
         workflow=workflow,
     )
+    schema_was_updated = False
     try:
         async with lock.registry.global_graph_lock():
             # Set to MERGING to lock the branch while merge proceeds
             branch.status = BranchStatus.MERGING
             await branch.save(db=db, user_id=user_id)
             registry.branch[branch.name] = branch
-            branch_diff = await merger.merge(at=merge_at)
+            await merger.merge(at=merge_at)
 
+        log.info("Loading enriched diff for changelog collection")
+        branch_diff = await diff_repository.get_one(
+            diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
+        )
         changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=branch, db=db)
         node_events = changelog_collector.collect_changelogs()
 
@@ -429,6 +456,7 @@ async def _do_merge_branch(
                 manage_rollback=False,
             )
             log.info("Migrations completed")
+            schema_was_updated = True
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the merge
         # -------------------------------------------------------------
@@ -496,7 +524,7 @@ async def _do_merge_branch(
         parameters={"source_branch": branch.name, "target_branch": registry.default_branch},
     )
 
-    return node_events
+    return MergeBranchResult(node_events=node_events, schema_was_updated=schema_was_updated)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
@@ -514,11 +542,12 @@ async def delete_branch(
 
         await obj.delete(db=db)
 
+        event_context = context.to_event_context()
         event = BranchDeletedEvent(
             branch_name=branch,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=event_context, branch=registry.get_global_branch()),
             proposed_change_id=proposed_change_id,
         )
 

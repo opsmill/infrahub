@@ -1,6 +1,5 @@
+import { BreadcrumbItemError, BreadcrumbItemLoading } from "@infrahub/ui";
 import { keepPreviousData } from "@tanstack/react-query";
-
-import { BreadcrumbItemError, BreadcrumbItemLoading } from "@/shared/components/aria/breadcrumbs";
 
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";

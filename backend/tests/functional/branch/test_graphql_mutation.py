@@ -93,7 +93,7 @@ class TestBranchMutations(TestInfrahubApp):
     async def test_branch_delete_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         from infrahub.core import registry
 
-        branch = await client.branch.create(branch_name="branch_to_delete")
+        branch = await client.branch.create(branch_name="branch_to_delete", sync_with_git=True)
         branch_server_id = registry.branch[branch.name].uuid
 
         query = Mutation(
@@ -112,7 +112,7 @@ class TestBranchMutations(TestInfrahubApp):
         remove_git_worktree_branch(repository_id=initial_dataset, branch_id=str(branch_server_id))
 
     async def test_branch_delete(self, initial_dataset: str, client: InfrahubClient) -> None:
-        branch = await client.branch.create(branch_name="branch_to_delete_sync")
+        branch = await client.branch.create(branch_name="branch_to_delete_sync", sync_with_git=True)
         branch_server_id = registry.branch[branch.name].uuid
         query = Mutation(
             mutation="BranchDelete",

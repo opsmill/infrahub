@@ -88,6 +88,7 @@ class DedupCardinalityOneRelsQuery(Query):
 
 class Migration023(GraphMigration):
     name: str = "dedup_cardinality_one_rels"
+    description: str = "N/A"
     minimum_version: int = 22
     queries: Sequence[type[Query]] = [DedupCardinalityOneRelsQuery]
 

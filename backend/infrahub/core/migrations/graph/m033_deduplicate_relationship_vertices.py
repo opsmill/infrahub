@@ -92,6 +92,7 @@ class Migration033(GraphMigration):
     """
 
     name: str = "033_deduplicate_relationship_vertices"
+    description: str = "N/A"
     minimum_version: int = 32
     queries: Sequence[type[Query]] = [DeduplicateRelationshipVerticesQuery]
 

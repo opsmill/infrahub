@@ -1,8 +1,7 @@
-import { Icon } from "@iconify-icon/react";
+import { ClockAlertIcon, ClockFadingIcon, KeySquareIcon } from "lucide-react";
 
 import type { AccountTokenNode } from "@/shared/api/graphql/generated/types";
-import { Card } from "@/shared/components/ui/card";
-import { classNames } from "@/shared/utils/common";
+import { Row } from "@/shared/components/container";
 import { formatFullDate } from "@/shared/utils/date";
 
 import { AccountTokenDeleteAction } from "@/entities/user-profile/ui/account-token-delete-action";
@@ -13,40 +12,41 @@ export interface AccountTokenItemProps {
 
 export function AccountTokenItem({ token }: AccountTokenItemProps) {
   return (
-    <Card
-      className="flex items-center gap-4 p-4 text-sm"
-      data-testid={`account-token-${token.name}`}
-    >
-      <Icon icon="mdi:key-variant" className="text-gray-600 text-xl" />
-      <div className="min-w-0 grow">
+    <Row className="gap-3 p-3 text-sm" data-testid={`account-token-${token.name}`}>
+      <KeySquareIcon className="size-5 text-stone-600" />
+
+      <div className="min-w-0">
         <div className="truncate font-medium">{token.name}</div>
-        {token.expiration ? (
-          <ExpirationDate date={token.expiration} />
-        ) : (
-          <NoExpirationDataWarning />
-        )}
+        <ExpirationDate date={token.expiration} />
       </div>
-      <AccountTokenDeleteAction token={token} />
-    </Card>
+
+      <AccountTokenDeleteAction token={token} className="ml-auto" />
+    </Row>
   );
 }
 
-export const ExpirationDate = ({ date }: { date: string }) => {
+export const ExpirationDate = ({ date }: { date?: string | null }) => {
+  if (!date) {
+    return (
+      <Row className="text-amber-600">
+        <ClockAlertIcon className="size-4" /> This token has no expiration date
+      </Row>
+    );
+  }
+
   const isExpired = new Date(date) < new Date();
 
-  return (
-    <p className={classNames("flex items-center gap-1 text-gray-500", isExpired && "text-red-600")}>
-      {isExpired && <Icon icon="mdi:clock-alert" className="text-base" />}
-      {isExpired ? "Expired on" : "Expires"} {formatFullDate(date)}
-    </p>
-  );
-};
+  if (isExpired) {
+    return (
+      <Row className="text-red-600">
+        <ClockAlertIcon className="size-4" /> Expired on {formatFullDate(date)}
+      </Row>
+    );
+  }
 
-export const NoExpirationDataWarning = () => {
   return (
-    <p className="flex items-center gap-1 text-yellow-800">
-      <Icon icon="mdi:alert-circle" className="shrink-0 text-amber-500 text-base" />
-      <span>This token has no expiration date</span>
-    </p>
+    <Row className="text-gray-500">
+      <ClockFadingIcon className="size-4" /> Expires {formatFullDate(date)}
+    </Row>
   );
 };

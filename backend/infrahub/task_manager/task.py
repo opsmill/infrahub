@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -27,6 +27,7 @@ from prefect.client.schemas.objects import Flow, FlowRun, StateType
 from prefect.client.schemas.sorting import (
     FlowRunSort,
 )
+from prefect.types import DateTime
 
 from infrahub import config
 from infrahub.core.constants import TaskConclusion
@@ -355,10 +356,10 @@ class PrefectTask:
         logger = get_logger()
 
         async with get_client(sync_client=False) as client:
-            cutoff = datetime.now(UTC) - timedelta(days=days_to_keep)
+            cutoff = DateTime.now(tz=UTC) - timedelta(days=days_to_keep)
 
             flow_run_filter = FlowRunFilter(
-                start_time=FlowRunFilterStartTime(before_=cutoff),  # type: ignore[arg-type]
+                start_time=FlowRunFilterStartTime(before_=cutoff),
                 state=FlowRunFilterState(type=FlowRunFilterStateType(any_=states)),
             )
 

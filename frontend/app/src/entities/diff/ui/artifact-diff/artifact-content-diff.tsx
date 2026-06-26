@@ -1,4 +1,3 @@
-import { useQuery } from "@apollo/client";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "react-aria-components";
@@ -19,9 +18,9 @@ import {
 
 import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useGetArtifactContentDiff } from "@/entities/diff/ui/queries/get-artifact-content-diff.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
-import { GET_ARTIFACT_THREADS } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 
@@ -114,12 +113,17 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     { enabled: !!itemNew?.storage_id }
   );
 
-  const { loading, error, data, refetch } = useQuery(GET_ARTIFACT_THREADS, {
-    variables: { changeIds: [proposedChangeId!] },
-    skip: !proposedChangeId,
-  });
+  const {
+    isLoading: isThreadsLoading,
+    error,
+    data,
+    refetch,
+  } = useGetArtifactContentDiff(
+    { proposedChangeId: proposedChangeId ?? "" },
+    { enabled: !!proposedChangeId }
+  );
 
-  if (loading || isPreviousLoading || isNewLoading) {
+  if (isThreadsLoading || isPreviousLoading || isNewLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 
@@ -131,7 +135,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     return null;
   }
 
-  const threads = data?.CoreArtifactThread?.edges?.map((edge: any) => edge.node) ?? [];
+  const threads = data?.threads ?? [];
 
   const handleCloseComment = () => {
     setDisplayAddComment({});

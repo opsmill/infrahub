@@ -1,14 +1,13 @@
-import { keepPreviousData } from "@tanstack/react-query";
-import { useQueryState } from "nuqs";
-import type React from "react";
-import { useParams } from "react-router";
-
 import {
   BreadcrumbItem,
   BreadcrumbItemError,
   BreadcrumbItemLoading,
   Breadcrumbs,
-} from "@/shared/components/aria/breadcrumbs";
+} from "@infrahub/ui";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useQueryState } from "nuqs";
+import type React from "react";
+import { useParams } from "react-router";
 
 import {
   IP_ADDRESS_GENERIC,

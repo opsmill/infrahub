@@ -12,6 +12,7 @@ from . import InfrahubWorkflow, Return
 
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
+    from infrahub.events.models import EventContext
 
 
 class WorkflowLocalExecution(InfrahubWorkflow):
@@ -19,7 +20,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         expected_return: type[Return] | None = None,  # noqa: ARG002
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,  # noqa: ARG002
     ) -> Any:
@@ -33,7 +34,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
     async def submit_workflow(
         self,
         workflow: WorkflowDefinition,
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,  # noqa: ARG002
     ) -> WorkflowInfo:

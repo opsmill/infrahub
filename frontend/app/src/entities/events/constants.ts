@@ -46,6 +46,18 @@ export const EVENT_TYPE_CHOICES = [
     name: "infrahub.branch.deleted",
   },
   {
+    label: "Group auto-created",
+    name: "infrahub.group.auto_created",
+  },
+  {
+    label: "Group auto-create rejected",
+    name: "infrahub.group.auto_create_rejected",
+  },
+  {
+    label: "Group auto-create capped",
+    name: "infrahub.group.auto_create_capped",
+  },
+  {
     label: "Added to group",
     name: "infrahub.group.member_added",
   },

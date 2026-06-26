@@ -28,7 +28,7 @@ function ObjectDetailsPage() {
   }
 
   return (
-    <Content.Card className="flex grow flex-col">
+    <Content.Card className="grow">
       <RequireObjectPermissions objectKind={schema.kind!} loadingClassName="h-full">
         {({ permission }) => (
           <>

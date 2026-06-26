@@ -33,7 +33,7 @@ Here are a few common methods of setting configuration:
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 {% for parameter in section.parameters %}
-| `{{ parameter.env }}` | {{ parameter.description }} | {{ parameter.type }} | {{ parameter.default }} |
+| `{{ parameter.env }}` | {{ parameter.description }} | {{ parameter.type }} | {{ parameter.default | replace("{", "\\{") | replace("}", "\\}") }} |
 {% endfor %}
 
 {%- for parameter in section.parameters %}
@@ -44,7 +44,7 @@ Here are a few common methods of setting configuration:
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 {% for nested in parameter.nested_parameters %}
-| `{{ nested.env or nested.name | upper | replace(" ", "_") }}` | {{ nested.description }} | {{ nested.type }} | {{ nested.default }} |
+| `{{ nested.env or nested.name | upper | replace(" ", "_") }}` | {{ nested.description }} | {{ nested.type }} | {{ nested.default | replace("{", "\\{") | replace("}", "\\}") }} |
 {% endfor -%}
   {% endif -%}
 {% endfor -%}

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from fast_depends import Depends, inject
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 

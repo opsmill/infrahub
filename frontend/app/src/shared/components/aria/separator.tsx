@@ -12,7 +12,7 @@ export function Separator({ orientation = "horizontal", className, ...props }: S
     <AriaSeparator
       {...props}
       className={classNames(
-        "shrink-0 bg-stone-200 text-stone-200",
+        "shrink-0 bg-stone-300 text-stone-300",
         orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
         className
       )}

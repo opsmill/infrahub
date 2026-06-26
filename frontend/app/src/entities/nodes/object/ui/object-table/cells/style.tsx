@@ -14,7 +14,11 @@ export function StickyLeftCell({
 }: StickyCellProps) {
   return (
     <TableCell
-      className={classNames("sticky left-0 z-1", isMuted ? cellMutedStyle : "bg-white", className)}
+      className={classNames(
+        "sticky left-0 z-1 font-medium",
+        isMuted ? cellMutedStyle : "bg-white",
+        className
+      )}
       {...props}
     >
       {children}

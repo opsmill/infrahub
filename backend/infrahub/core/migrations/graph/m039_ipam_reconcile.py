@@ -10,7 +10,7 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
@@ -219,6 +219,7 @@ class Migration039(ArbitraryMigration):
     """
 
     name: str = "039_ipam_reconcile_updated"
+    description: str = "N/A"
     minimum_version: int = 38
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -236,7 +237,7 @@ class Migration039(ArbitraryMigration):
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
-        console = get_migration_console()
+        console = migration_input.console
         result = MigrationResult()
         # load schemas from database into registry
         initialize_lock()
@@ -261,7 +262,7 @@ class Migration039(ArbitraryMigration):
         console.print("done")
 
         console.log("Reconciling IP prefixes and addresses across branches...")
-        with Progress(console=console) as progress:
+        with Progress(console=migration_input.console) as progress:
             reconcile_task = progress.add_task("Reconciling IP prefixes/addresses...", total=len(ip_node_details_list))
 
             for ip_node_details in ip_node_details_list:

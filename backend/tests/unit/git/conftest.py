@@ -1,6 +1,14 @@
 import os
+from pathlib import Path
 
 import pytest
+
+
+@pytest.fixture
+def git_sources_dir(tmp_path: Path) -> Path:
+    source_dir = tmp_path / "sources"
+    source_dir.mkdir()
+    return source_dir
 
 
 @pytest.fixture(autouse=True)

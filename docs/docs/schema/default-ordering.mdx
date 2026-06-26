@@ -1,0 +1,139 @@
+---
+title: Default ordering
+---
+
+import ReferenceLink from "../../src/components/Card";
+
+# Default ordering
+
+The `order_by` field on a node or generic sets the default sort order for every list of that kind's objects. Once declared, the order applies everywhere the objects are listed - the web interface, the GraphQL API, and the Python SDK - without each query specifying how to sort.
+
+`order_by` controls which **objects** come first in a list. This is distinct from [`order_weight`](./order-weight), which controls which **fields** come first within a single object's view.
+
+## Why this matters
+
+A schema author usually knows the natural order for a kind of object: documentation notes read best newest-first, devices read best alphabetically, invoices read best by largest amount. Without a schema-level default, that order has to be requested on every individual query, and any consumer that forgets - the object list view, an ad-hoc API call - shows the objects in an order nobody chose.
+
+Declaring `order_by` once moves that decision into the schema. Every consumer inherits it, and a single edit changes the order across all of them.
+
+## The `order_by` field
+
+`order_by` is an optional list of strings on nodes and generics. Each entry names something to sort by; entries are applied in order, so the first entry is the primary sort, the second is the tiebreaker, and so on.
+
+```yaml
+nodes:
+  - name: Note
+    namespace: Documentation
+    order_by:
+      - node_metadata__created_at__desc
+    attributes:
+      - name: title
+        kind: Text
+      - name: body
+        kind: TextArea
+```
+
+An empty or absent `order_by` applies no schema-level ordering.
+
+## Entry grammar
+
+An entry is a sort target with an optional direction suffix. The target is one of three forms:
+
+| Target | Form | Example |
+| --- | --- | --- |
+| Attribute | `<attribute>__value` | `title__value` |
+| Relationship attribute | `<relationship>__<attribute>__value` | `author__name__value` |
+| Object metadata | `node_metadata__<field>` | `node_metadata__created_at` |
+
+For object metadata, `<field>` is `created_at` or `updated_at`. The `node_metadata__` prefix marks the entry as metadata so it never collides with an attribute name.
+
+Any entry can carry a trailing `__asc` or `__desc` to set the direction. When the suffix is omitted, the direction is **ascending**:
+
+| Entry | Result |
+| --- | --- |
+| `title__value` | Titles A→Z (ascending, the default) |
+| `title__value__desc` | Titles Z→A |
+| `node_metadata__created_at__desc` | Newest first |
+| `node_metadata__updated_at__asc` | Least-recently modified first |
+
+Because the suffix is optional and defaults to ascending, every `order_by` entry written before this syntax existed keeps its original behavior.
+
+## Examples
+
+Order documentation notes newest-first on the object-level `created_at` metadata that Infrahub tracks on every node:
+
+```yaml
+nodes:
+  - name: Note
+    namespace: Documentation
+    order_by:
+      - node_metadata__created_at__desc
+```
+
+When notes are attached to a parent object through a many-cardinality relationship, the parent's notes tab and any API read of that relationship return them newest-first - no per-query ordering argument.
+
+Order devices by descending name, then by ascending serial number as a tiebreaker:
+
+```yaml
+nodes:
+  - name: Device
+    namespace: Infra
+    order_by:
+      - name__value__desc
+      - serial_number__value
+```
+
+## Where ordering applies
+
+Schema-level `order_by` is honored consistently in the three places a list of objects is returned:
+
+- **Top-level listings** - querying a kind directly.
+- **Relationship listings** - the objects on the far side of a many-cardinality relationship. The **peer** schema's `order_by` is the source of truth; there is no per-relationship override.
+- **Hierarchy listings** - children, ancestors, and descendants of a hierarchical node.
+
+Whenever `order_by` is in effect, the object UUID is appended as a final ascending tiebreaker. Two objects that compare equal on every declared entry - two notes created in the same millisecond - therefore keep a stable relative order, so pagination does not shuffle between requests.
+
+## Ordering by object metadata
+
+`created_at` and `updated_at` are object-level metadata that Infrahub records automatically for every node - there is no need to add a timestamp attribute to the schema to sort on them.
+
+<ReferenceLink title="Data lineage and metadata" url="../objects/metadata" />
+
+Only `created_at` and `updated_at` can be used in `order_by`. The `created_by` and `updated_by` metadata reference accounts, whose ordering is not meaningful, and are not supported.
+
+## Inheritance
+
+A concrete node inherits a generic's `order_by` only when the node does not declare its own. When the node declares `order_by`, its value applies in full and the generic's is not merged in. The metadata and direction syntax inherits the same way. This matches existing `order_by` inheritance - no new rules are introduced.
+
+<ReferenceLink title="Generics & inheritance" url="./generics-and-inheritance" />
+
+## Overriding at query time
+
+A query can pass an `order` argument to sort that one request differently. When it does, the `order` argument **fully replaces** the schema's `order_by` for that query - the two are not combined, and the schema default contributes no fallback tiebreaker.
+
+The query-time `order` argument expresses the same sort targets - attributes, relationship attributes, and object metadata - but in a structured form rather than the schema field's suffixed strings: each entry is a `{ field, direction }` object, where `direction` is a separate `ASC`/`DESC` value instead of an `__asc`/`__desc` suffix. For the GraphQL details, see the ordering section of the queries guide.
+
+<ReferenceLink title="Ordering results in GraphQL" url="../development-resources/graphql/queries-and-mutations#ordering-results" />
+
+## Validation
+
+`order_by` is validated when the schema loads. A malformed entry fails the load with an error naming the node and the offending entry, rather than silently falling back to default ordering. The validator rejects:
+
+| Problem | Example |
+| --- | --- |
+| An unsupported metadata field | `node_metadata__created_by` |
+| A direction token other than `asc` or `desc` | `title__value__descending` |
+| The same field listed twice, or with conflicting directions | `title__value__asc` and `title__value__desc` together |
+| An attribute or relationship literally named `node_metadata` | see below |
+
+## `node_metadata` is a reserved name
+
+Because `node_metadata__` distinguishes metadata entries from attribute paths, `node_metadata` is a reserved attribute and relationship name. A schema that defines an attribute or relationship literally named `node_metadata` fails to load.
+
+## Related concepts
+
+- [Order weight](./order-weight) - Controls the order of fields within an object's view
+- [Data lineage and metadata](../objects/metadata) - The object-level metadata you can sort on
+- [Generics & inheritance](./generics-and-inheritance) - How a node inherits a generic's `order_by`
+- [Ordering results in GraphQL](../development-resources/graphql/queries-and-mutations#ordering-results) - Overriding the default order at query time
+- [Reference: Node](../reference/schema/node) - Full node property reference

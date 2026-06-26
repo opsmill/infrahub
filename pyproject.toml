@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.9.8"
+version = "1.10.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -19,7 +19,7 @@ dependencies = [
     "neo4j==6.0.3",
     "neo4j-rust-ext==6.0.3.0",
     "pydantic>=2.12,<2.13",
-    "pydantic-settings>=2.8,<2.9",
+    "pydantic-settings>=2.10,<3.0",
     "pytest>=9.0,<9.1",
     "aio-pika>=9.4,<9.5",
     "structlog==24.1.0",
@@ -27,9 +27,9 @@ dependencies = [
     "email-validator>=2.1,<2.2",
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
-    "click==8.1.7",
-    "prefect==3.6.13",
-    "prefect-redis==0.2.8",
+    "click>=8.3,<9",
+    "prefect==3.7.5",
+    "prefect-redis==0.2.12",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3.1.50,<4",
@@ -37,16 +37,16 @@ dependencies = [
     "tomli>=1.1.0; python_version<='3.11'",
     "deepdiff==8.6.2",
     # Dependencies specific to the API Server
-    "fastapi==0.131.0",
+    "fastapi==0.136.3",
     "fastapi-storages>=0.3,<0.4",
     "graphene>=3.4,<3.5",
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
-    "python-multipart==0.0.27", # Required by FastAPI to upload large files
+    "python-multipart==0.0.31", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
-    "pyjwt==2.12.1", # Used to manage JWT tokens
+    "pyjwt==2.13.0", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.60b0",
     "opentelemetry-instrumentation-fastapi==0.60b0",
@@ -63,11 +63,14 @@ dependencies = [
     "rich>=13,<14",
     "pyarrow>=14",
     "numpy>=1.26.2",
-    "dulwich==0.24.7",
+    "dulwich==1.2.6",
     "whenever==0.9.3",
     "netutils==1.12.0",
-    "ariadne-codegen==0.15.3",
+    "ariadne-codegen==0.18.0",
 ]
+
+[project.optional-dependencies]
+enterprise = ["bonsai>=1.5.5"]
 
 [project.urls]
 Homepage = "https://opsmill.com"
@@ -171,7 +174,6 @@ INFRAHUB_PRODUCTION = false
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
-disable_error_code = ["type-abstract"]
 exclude = [
     "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",
@@ -258,14 +260,6 @@ disable_error_code = [
 module = "infrahub.core.node.base"
 disable_error_code = [
     "no-untyped-def",
-]
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.node.standard"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-    "return-value",
 ]
 
 [[tool.mypy.overrides]]
@@ -606,9 +600,6 @@ allow-dunder-method-names = [
     "FIX",      # flake8-fixme
     "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
     "INP001",   # File is part of an implicit namespace package
-    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
-    "FURB140",  # Use `itertools.starmap` instead of the generator
-    "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
     "PERF401",  # Use a list comprehension to create a transformed list
@@ -649,6 +640,10 @@ allow-dunder-method-names = [
     "TID252",   # Replace relative imports from parent modules with absolute imports
     "UP031",    # Use format specifiers instead of percent format
     "UP035",    # `typing.List` is deprecated, use `list` instead
+]
+
+"**/graphql_queries/*.py" = [
+    "E501",  # ruff check --fix produces a long single-line union before ruff format wraps it
 ]
 
 "backend/infrahub/cli/db.py" = [
@@ -732,6 +727,13 @@ allow-dunder-method-names = [
 ]
 
 "backend/infrahub/graphql/manager.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/graphql/mutations/main.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################

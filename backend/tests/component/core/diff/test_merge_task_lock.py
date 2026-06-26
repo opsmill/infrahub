@@ -7,12 +7,13 @@ import pytest
 from fast_depends import Provider
 
 from infrahub import lock
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.branch.tasks import merge_branch
+from infrahub.core.branch.tasks import MergeBranchResult, merge_branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -50,11 +51,11 @@ class TestMergeTaskLock:
         branch: Branch,
         context: Any,  # noqa: ARG004
         proposed_change_id: str | None = None,  # noqa: ARG004
-    ) -> list:
+    ) -> MergeBranchResult:
         branch.status = BranchStatus.MERGED
         await branch.save(db=db)
         registry.branch[branch.name] = branch
-        return []
+        return MergeBranchResult(node_events=[], schema_was_updated=False)
 
     @staticmethod
     def _mock_event_service() -> AsyncMock:
@@ -115,7 +116,7 @@ class TestMergeTaskLock:
             branch.status = BranchStatus.MERGED
             await branch.save(db=db)
             registry.branch[branch.name] = branch
-            return []
+            return MergeBranchResult(node_events=[], schema_was_updated=False)
 
         mock_do_merge_fn = AsyncMock(side_effect=tracking_mock_do_merge)
         mock_get_event_svc = AsyncMock(return_value=self._mock_event_service())

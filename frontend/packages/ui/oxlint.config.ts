@@ -1,6 +1,9 @@
 import { defineConfig } from "oxlint";
 
 export default defineConfig({
+  env: {
+    browser: true,
+  },
   categories: {
     correctness: "error",
     nursery: "error",
@@ -14,6 +17,10 @@ export default defineConfig({
   rules: {
     "eslint/arrow-body-style": "off",
     "eslint/func-style": "off",
+    "eslint/id-length": "off",
+    "eslint/no-console": ["error", { allow: ["error"] }],
+    "eslint/no-empty-function": "off",
+    "eslint/no-magic-numbers": ["error", { ignore: [0, 1] }],
     "eslint/max-lines-per-function": "off",
     "eslint/no-ternary": "off",
     "eslint/sort-imports": "off",
@@ -21,12 +28,18 @@ export default defineConfig({
     "oxc/no-rest-spread-properties": "off",
     "react-perf/jsx-no-new-object-as-prop": "off",
     "react/button-has-type": "off",
+    "react/forbid-component-props": "off",
     "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
     "react/jsx-max-depth": "off",
     "react/jsx-props-no-spreading": "off",
+    "react/no-multi-comp": "off",
     "react/only-export-components": "off",
     "react/react-in-jsx-scope": "off",
+    "react_perf/jsx-no-new-function-as-prop": "off",
     "typescript/explicit-function-return-type": "off",
     "typescript/explicit-module-boundary-types": "off",
+    "typescript/no-empty-interface": "off",
+    "typescript/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
+    "unicorn/no-null": "off",
   },
 });

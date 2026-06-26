@@ -1,6 +1,5 @@
+import { ScrollArea } from "@infrahub/ui";
 import { TagGroup, TagList } from "react-aria-components";
-
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { EVENT_TYPE_CHOICES } from "@/entities/events/constants";
 

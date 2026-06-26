@@ -544,7 +544,7 @@ interface BuiltinIPPrefix {
   """The IP prefix in CIDR notation"""
   prefix: IPNetwork
   profiles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
-  resource_pool(default_address_type__is_protected: Boolean, default_address_type__owner__id: ID, default_address_type__source__id: ID, default_address_type__value: String, default_address_type__values: [String], default_prefix_length__is_protected: Boolean, default_prefix_length__owner__id: ID, default_prefix_length__source__id: ID, default_prefix_length__value: BigInt, default_prefix_length__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreIPAddressPool!
+  resource_pool(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreIPPool!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Percentage of the prefix that is allocated"""
   utilization: NumberAttribute
@@ -798,6 +798,10 @@ type CoreAccountGroup implements CoreGroup & LineageOwner & LineageSource {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  """
+  Identity provider name that auto-created this group; null on manual / bootstrap / pre-upgrade groups.
+  """
+  origin: TextAttribute
   parent: NestedEdgedCoreGroup!
   roles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountRole!
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
@@ -873,7 +877,7 @@ input CoreAccountGroupUpsertInput {
 """A role defines a set of permissions to grant to a group of accounts"""
 type CoreAccountRole implements CoreNode {
   display_label: String
-  groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountGroup!
+  groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String]): NestedPaginatedCoreAccountGroup!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -3496,7 +3500,7 @@ interface CoreGenericRepository {
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """A Git Repository integrated with Infrahub"""
@@ -4090,7 +4094,7 @@ input CoreGroupUpdateInput {
 }
 
 """A pool of IP address resources"""
-type CoreIPAddressPool implements CoreNode & CoreResourcePool & LineageSource {
+type CoreIPAddressPool implements CoreIPPool & CoreNode & CoreResourcePool & LineageSource {
   """
   The object type to create when reserving a resource in the pool (required)
   """
@@ -4185,8 +4189,32 @@ input CoreIPAddressPoolUpsertInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+interface CoreIPPool {
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+}
+
+"""A pool of IP resources (prefixes or addresses)."""
+type CoreIPPoolUpdate {
+  object: CoreIPPool
+  ok: Boolean
+}
+
+input CoreIPPoolUpdateInput {
+  hfid: [String]
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
 """A pool of IP prefix resources"""
-type CoreIPPrefixPool implements CoreNode & CoreResourcePool & LineageSource {
+type CoreIPPrefixPool implements CoreIPPool & CoreNode & CoreResourcePool & LineageSource {
   """Default member type for allocated prefixes"""
   default_member_type: TextAttribute
   """
@@ -5526,7 +5554,7 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """
@@ -5680,7 +5708,7 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """A Git Repository integrated with Infrahub"""
@@ -6788,6 +6816,14 @@ input CoreThreadUpdateInput {
 
 """A file rendered from a Jinja2 template"""
 type CoreTransformJinja2 implements CoreNode & CoreTransformation {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttribute
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttribute
   description: TextAttribute
   display_label: String
   """Human friendly identifier"""
@@ -6814,6 +6850,14 @@ type CoreTransformJinja2Create {
 }
 
 input CoreTransformJinja2CreateInput {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeCreate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeCreate
   description: TextAttributeCreate
   id: String
   label: TextAttributeCreate
@@ -6841,6 +6885,14 @@ type CoreTransformJinja2Update {
 }
 
 input CoreTransformJinja2UpdateInput {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -6864,6 +6916,14 @@ type CoreTransformJinja2Upsert {
 }
 
 input CoreTransformJinja2UpsertInput {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -6886,6 +6946,14 @@ type CoreTransformPython implements CoreNode & CoreTransformation {
   class_name: TextAttribute
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttribute
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttribute
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttribute
   description: TextAttribute
   display_label: String
   """Path to the Python file in the repository (required)"""
@@ -6916,6 +6984,14 @@ input CoreTransformPythonCreateInput {
   class_name: TextAttributeCreate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeCreate
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeCreate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeCreate
   description: TextAttributeCreate
   """Path to the Python file in the repository"""
   file_path: TextAttributeCreate
@@ -6947,6 +7023,14 @@ input CoreTransformPythonUpdateInput {
   class_name: TextAttributeUpdate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeUpdate
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   """Path to the Python file in the repository"""
   file_path: TextAttributeUpdate
@@ -6974,6 +7058,14 @@ input CoreTransformPythonUpsertInput {
   class_name: TextAttributeUpdate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeUpdate
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   """Path to the Python file in the repository"""
   file_path: TextAttributeUpdate
@@ -6992,6 +7084,14 @@ input CoreTransformPythonUpsertInput {
 
 """Generic Transformation Object."""
 interface CoreTransformation {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttribute
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttribute
   description: TextAttribute
   display_label: String
   """Human friendly identifier"""
@@ -7016,6 +7116,14 @@ type CoreTransformationUpdate {
 }
 
 input CoreTransformationUpdateInput {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -7784,6 +7892,12 @@ type EdgedCoreIPAddressPool {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+type EdgedCoreIPPool {
+  node: CoreIPPool
+  node_metadata: InfrahubNodeMetadata
+}
+
 """A pool of IP prefix resources"""
 type EdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
@@ -8146,6 +8260,8 @@ input EventTypeFilter {
   branch_merged: BranchEventTypeFilter = null
   """Filters specific to infrahub.branch.rebased events"""
   branch_rebased: BranchEventTypeFilter = null
+  """Filters specific to "infrahub.group.auto_create[...]" events"""
+  group_auto_create: GroupAutoCreateEventTypeFilter = null
 }
 
 type Events {
@@ -8196,6 +8312,131 @@ type GraphQLQueryReport {
   True if every operation in the submitted query resolves to uniquely identifiable nodes. An operation resolves uniquely when it filters by a required ids or hfid argument, or when every component of at least one of the model's uniqueness constraints is pinned by a required, single-valued argument. When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change.
   """
   targets_unique_nodes: Boolean!
+}
+
+type GroupAutoCreateCappedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """Configured per-login cap value"""
+  cap_value: Int!
+  """Verbatim, per-entry length-truncated dropped claims"""
+  dropped_claims: [String!]!
+  """Total count of dropped claims for this login"""
+  dropped_count: Int!
+  """The name of the event."""
+  event: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
+}
+
+input GroupAutoCreateEventTypeFilter {
+  """Filter by the configured identity-provider name"""
+  idp: [String!]
+  """Filter by authentication protocol"""
+  protocol: [String!]
+}
+
+type GroupAutoCreateRejectedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """The name of the event."""
+  event: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Verbatim, length-truncated rejected claim value"""
+  rejected_claim_value: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
+}
+
+type GroupAutoCreatedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """The name of the event."""
+  event: String!
+  """UUID of the newly created group"""
+  group_id: String!
+  """Local name of the new group"""
+  group_name: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """Configured provider name written to the group's origin attribute"""
+  origin_value: String!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """Raw regex pattern from the configured filter that matched"""
+  source_pattern: String!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
 }
 
 type GroupEvent implements EventNodeInterface {
@@ -8596,7 +8837,7 @@ type InternalIPPrefixAvailable implements BuiltinIPPrefix & CoreNode {
   """The IP prefix in CIDR notation"""
   prefix: IPNetwork
   profiles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
-  resource_pool(default_address_type__is_protected: Boolean, default_address_type__owner__id: ID, default_address_type__source__id: ID, default_address_type__value: String, default_address_type__values: [String], default_prefix_length__is_protected: Boolean, default_prefix_length__owner__id: ID, default_prefix_length__source__id: ID, default_prefix_length__value: BigInt, default_prefix_length__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreIPAddressPool!
+  resource_pool(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreIPPool!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Percentage of the prefix that is allocated"""
   utilization: NumberAttribute
@@ -8822,6 +9063,18 @@ type MacAddress implements AttributeInterface {
   updated_by: CoreGenericAccount
   value: String
   version: Int
+}
+
+"""
+Order input restricted to node metadata fields.
+
+Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+surface is limited to `created_at` / `updated_at` and does not accept the broader `by`
+field grammar or a `disable` toggle.
+"""
+input MetadataOrderInput {
+  """Order settings for branch metadata"""
+  node_metadata: InfrahubNodeMetadataOrder = null
 }
 
 type Mutation {
@@ -9165,6 +9418,8 @@ type Mutation {
   CoreIPAddressPoolUpdate(context: ContextInput, data: CoreIPAddressPoolUpdateInput!): CoreIPAddressPoolUpdate
   """A pool of IP address resources"""
   CoreIPAddressPoolUpsert(context: ContextInput, data: CoreIPAddressPoolUpsertInput!): CoreIPAddressPoolUpsert
+  """A pool of IP resources (prefixes or addresses)."""
+  CoreIPPoolUpdate(context: ContextInput, data: CoreIPPoolUpdateInput!): CoreIPPoolUpdate
   """A pool of IP prefix resources"""
   CoreIPPrefixPoolCreate(context: ContextInput, data: CoreIPPrefixPoolCreateInput!): CoreIPPrefixPoolCreate
   """A pool of IP prefix resources"""
@@ -9844,6 +10099,14 @@ type NestedEdgedCoreGroupTriggerRule {
 type NestedEdgedCoreIPAddressPool {
   node: CoreIPAddressPool
   node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
+"""A pool of IP resources (prefixes or addresses)."""
+type NestedEdgedCoreIPPool {
+  node: CoreIPPool
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
   relationship_metadata: InfrahubRelationshipMetadata
 }
@@ -10583,6 +10846,12 @@ type NestedPaginatedCoreIPAddressPool {
   permissions: PaginatedObjectPermission!
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+type NestedPaginatedCoreIPPool {
+  count: Int!
+  edges: [NestedEdgedCoreIPPool!]
+}
+
 """A pool of IP prefix resources"""
 type NestedPaginatedCoreIPPrefixPool {
   count: Int!
@@ -11046,6 +11315,15 @@ type ObjectPermissionNode {
   node: ObjectPermission!
 }
 
+input OrderByItem {
+  """Sort direction (default ASC)"""
+  direction: OrderDirection = ASC
+  """
+  Field to order by: an attribute (`name__value`), a relationship attribute (`owner__name__value`), or node metadata (`node_metadata__created_at`). The field carries no direction suffix; use `direction` for that.
+  """
+  field: String!
+}
+
 """An enumeration."""
 enum OrderDirection {
   ASC
@@ -11053,9 +11331,13 @@ enum OrderDirection {
 }
 
 input OrderInput {
+  """
+  Ordered list of fields to order results by. When provided, fully replaces the schema's `order_by`. Cannot be combined with the deprecated `node_metadata` in the same input.
+  """
+  by: [OrderByItem!]
   disable: Boolean
-  """Order settings for branch metadata"""
-  node_metadata: InfrahubNodeMetadataOrder = null
+  """Order settings for node metadata"""
+  node_metadata: InfrahubNodeMetadataOrder @deprecated(reason: "Use `by` with the `node_metadata__created_at` / `node_metadata__updated_at` fields instead.")
 }
 
 """IPv4 or IPv6 address"""
@@ -11379,6 +11661,13 @@ type PaginatedCoreGroupTriggerRule {
 type PaginatedCoreIPAddressPool {
   count: Int!
   edges: [EdgedCoreIPAddressPool!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A pool of IP resources (prefixes or addresses)."""
+type PaginatedCoreIPPool {
+  count: Int!
+  edges: [EdgedCoreIPPool!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -11761,6 +12050,94 @@ type PaginatedProfileIpamNamespace {
   count: Int!
   edges: [EdgedProfileIpamNamespace!]!
   permissions: PaginatedObjectPermission!
+}
+
+type PathHopType {
+  """Node visited at this hop"""
+  node: PathNodeType!
+  """
+  Relationship traversed to reach this node from the previous hop. Null on the first hop.
+  """
+  relationship: PathRelationshipType
+}
+
+type PathNodeType {
+  """Human-readable display label"""
+  display_label: String!
+  """Human friendly identifier"""
+  hfid: [String!]!
+  """Node UUID"""
+  id: String!
+  """Schema kind"""
+  kind: String!
+  """Schema label for the node's kind"""
+  label: String!
+}
+
+type PathRelationshipType {
+  """Relationship label on the source side of the hop"""
+  from_label: String!
+  """Relationship name on the source side of the hop"""
+  from_rel: String!
+  """Relationship kind (e.g. Component, Generic)"""
+  kind: String!
+  """Relationship label on the destination side of the hop"""
+  to_label: String!
+  """Relationship name on the destination side of the hop"""
+  to_rel: String!
+}
+
+type PathResultType {
+  """Number of edges in this path"""
+  depth: Int!
+  """Ordered hops from source to destination"""
+  hops: [PathHopType!]!
+}
+
+input PathTraversalInput {
+  """UUID of the end node"""
+  destination_id: String!
+  """
+  Specific node kinds to exclude from traversal paths. Unioned with the default excluded kinds (BuiltinIPNamespace and all kinds inheriting it); the defaults can be re-included via included_kinds.
+  """
+  excluded_kinds: [String!]
+  """
+  Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input.
+  """
+  excluded_namespaces: [String!]
+  """
+  Kinds excluded by default (BuiltinIPNamespace and all kinds inheriting it) to re-include in traversal paths. Passing the generic re-includes every implementer. Has no effect on kinds passed in excluded_kinds in the same request.
+  """
+  included_kinds: [String!]
+  """Filter to only traverse through nodes of these kinds"""
+  kind_filter: [String!]
+  """Maximum number of node hops (default: 5, max: 30)"""
+  max_depth: Int = 5
+  """Maximum number of paths to return (default: 10, max: 100)"""
+  max_paths: Int = 10
+  """
+  Filter to only follow relationships with these identifiers (the relationship's schema identifier, e.g. `device__interface`), not relationship names (e.g. `interfaces`).
+  """
+  relationship_filter: [String!]
+  """UUID of the start node"""
+  source_id: String!
+}
+
+type PathTraversalResultType {
+  """Total number of paths discovered"""
+  count: Int!
+  """The end node"""
+  destination: PathNodeType!
+  """
+  Concrete node kinds excluded from this traversal: the default exclusions plus the requested excluded_kinds, minus included_kinds.
+  """
+  excluded_kinds: [String!]!
+  """
+  Paths found, ordered shortest first. Only the shortest path through each intermediate node is returned; longer routes through the same intermediate are omitted.
+  """
+  paths: [PathResultType!]!
+  """The start node"""
+  source: PathNodeType!
 }
 
 type PermissionType {
@@ -13009,31 +13386,8 @@ type Query {
     profiles__profile_priority__source__id: ID
     profiles__profile_priority__value: BigInt
     profiles__profile_priority__values: [BigInt]
-    resource_pool__default_address_type__is_protected: Boolean
-    resource_pool__default_address_type__owner__id: ID
-    resource_pool__default_address_type__source__id: ID
-    resource_pool__default_address_type__value: String
-    resource_pool__default_address_type__values: [String]
-    resource_pool__default_prefix_length__is_protected: Boolean
-    resource_pool__default_prefix_length__owner__id: ID
-    resource_pool__default_prefix_length__source__id: ID
-    resource_pool__default_prefix_length__value: BigInt
-    resource_pool__default_prefix_length__values: [BigInt]
-    resource_pool__description__is_protected: Boolean
-    resource_pool__description__owner__id: ID
-    resource_pool__description__source__id: ID
-    resource_pool__description__value: String
-    resource_pool__description__values: [String]
-    resource_pool__display_label__isnull: Boolean
-    resource_pool__display_label__value: String
-    resource_pool__display_label__values: [String]
     resource_pool__ids: [ID]
     resource_pool__isnull: Boolean
-    resource_pool__name__is_protected: Boolean
-    resource_pool__name__owner__id: ID
-    resource_pool__name__source__id: ID
-    resource_pool__name__value: String
-    resource_pool__name__values: [String]
     subscriber_of_groups__description__value: String
     subscriber_of_groups__description__values: [String]
     subscriber_of_groups__display_label__isnull: Boolean
@@ -13326,6 +13680,12 @@ type Query {
     node_metadata__updated_by__ids: [ID]
     offset: Int
     order: OrderInput
+    origin__is_protected: Boolean
+    origin__isnull: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
     parent__description__is_protected: Boolean
     parent__description__owner__id: ID
     parent__description__source__id: ID
@@ -13399,6 +13759,11 @@ type Query {
     groups__name__source__id: ID
     groups__name__value: String
     groups__name__values: [String]
+    groups__origin__is_protected: Boolean
+    groups__origin__owner__id: ID
+    groups__origin__source__id: ID
+    groups__origin__value: String
+    groups__origin__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
@@ -13983,6 +14348,16 @@ type Query {
     targets__name__source__id: ID
     targets__name__value: String
     targets__name__values: [String]
+    transformation__dependencies__is_protected: Boolean
+    transformation__dependencies__owner__id: ID
+    transformation__dependencies__source__id: ID
+    transformation__dependencies__value: GenericScalar
+    transformation__dependencies__values: [GenericScalar]
+    transformation__dependencies_complete__is_protected: Boolean
+    transformation__dependencies_complete__owner__id: ID
+    transformation__dependencies_complete__source__id: ID
+    transformation__dependencies_complete__value: Boolean
+    transformation__dependencies_complete__values: [Boolean]
     transformation__description__is_protected: Boolean
     transformation__description__owner__id: ID
     transformation__description__source__id: ID
@@ -15395,6 +15770,16 @@ type Query {
     transformation__convert_query_response__source__id: ID
     transformation__convert_query_response__value: Boolean
     transformation__convert_query_response__values: [Boolean]
+    transformation__dependencies__is_protected: Boolean
+    transformation__dependencies__owner__id: ID
+    transformation__dependencies__source__id: ID
+    transformation__dependencies__value: GenericScalar
+    transformation__dependencies__values: [GenericScalar]
+    transformation__dependencies_complete__is_protected: Boolean
+    transformation__dependencies_complete__owner__id: ID
+    transformation__dependencies_complete__source__id: ID
+    transformation__dependencies_complete__value: Boolean
+    transformation__dependencies_complete__values: [Boolean]
     transformation__description__is_protected: Boolean
     transformation__description__owner__id: ID
     transformation__description__source__id: ID
@@ -17737,6 +18122,16 @@ type Query {
     tags__name__source__id: ID
     tags__name__value: String
     tags__name__values: [String]
+    transformations__dependencies__is_protected: Boolean
+    transformations__dependencies__owner__id: ID
+    transformations__dependencies__source__id: ID
+    transformations__dependencies__value: GenericScalar
+    transformations__dependencies__values: [GenericScalar]
+    transformations__dependencies_complete__is_protected: Boolean
+    transformations__dependencies_complete__owner__id: ID
+    transformations__dependencies_complete__source__id: ID
+    transformations__dependencies_complete__value: Boolean
+    transformations__dependencies_complete__values: [Boolean]
     transformations__description__is_protected: Boolean
     transformations__description__owner__id: ID
     transformations__description__source__id: ID
@@ -18716,6 +19111,64 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreIPAddressPool!
+  CoreIPPool(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    ids: [ID]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+  ): PaginatedCoreIPPool!
   CoreIPPrefixPool(
     any__is_protected: Boolean
     any__owner__id: ID
@@ -21161,6 +21614,16 @@ type Query {
     tags__name__source__id: ID
     tags__name__value: String
     tags__name__values: [String]
+    transformations__dependencies__is_protected: Boolean
+    transformations__dependencies__owner__id: ID
+    transformations__dependencies__source__id: ID
+    transformations__dependencies__value: GenericScalar
+    transformations__dependencies__values: [GenericScalar]
+    transformations__dependencies_complete__is_protected: Boolean
+    transformations__dependencies_complete__owner__id: ID
+    transformations__dependencies_complete__source__id: ID
+    transformations__dependencies_complete__value: Boolean
+    transformations__dependencies_complete__values: [Boolean]
     transformations__description__is_protected: Boolean
     transformations__description__owner__id: ID
     transformations__description__source__id: ID
@@ -21486,6 +21949,16 @@ type Query {
     tags__name__source__id: ID
     tags__name__value: String
     tags__name__values: [String]
+    transformations__dependencies__is_protected: Boolean
+    transformations__dependencies__owner__id: ID
+    transformations__dependencies__source__id: ID
+    transformations__dependencies__value: GenericScalar
+    transformations__dependencies__values: [GenericScalar]
+    transformations__dependencies_complete__is_protected: Boolean
+    transformations__dependencies_complete__owner__id: ID
+    transformations__dependencies_complete__source__id: ID
+    transformations__dependencies_complete__value: Boolean
+    transformations__dependencies_complete__values: [Boolean]
     transformations__description__is_protected: Boolean
     transformations__description__owner__id: ID
     transformations__description__source__id: ID
@@ -23022,6 +23495,18 @@ type Query {
     any__source__id: ID
     any__value: String
     any__values: [String]
+    dependencies__is_protected: Boolean
+    dependencies__isnull: Boolean
+    dependencies__owner__id: ID
+    dependencies__source__id: ID
+    dependencies__value: GenericScalar
+    dependencies__values: [GenericScalar]
+    dependencies_complete__is_protected: Boolean
+    dependencies_complete__isnull: Boolean
+    dependencies_complete__owner__id: ID
+    dependencies_complete__source__id: ID
+    dependencies_complete__value: Boolean
+    dependencies_complete__values: [Boolean]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
@@ -23221,6 +23706,18 @@ type Query {
     convert_query_response__source__id: ID
     convert_query_response__value: Boolean
     convert_query_response__values: [Boolean]
+    dependencies__is_protected: Boolean
+    dependencies__isnull: Boolean
+    dependencies__owner__id: ID
+    dependencies__source__id: ID
+    dependencies__value: GenericScalar
+    dependencies__values: [GenericScalar]
+    dependencies_complete__is_protected: Boolean
+    dependencies_complete__isnull: Boolean
+    dependencies_complete__owner__id: ID
+    dependencies_complete__source__id: ID
+    dependencies_complete__value: Boolean
+    dependencies_complete__values: [Boolean]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
@@ -23408,6 +23905,18 @@ type Query {
     any__source__id: ID
     any__value: String
     any__values: [String]
+    dependencies__is_protected: Boolean
+    dependencies__isnull: Boolean
+    dependencies__owner__id: ID
+    dependencies__source__id: ID
+    dependencies__value: GenericScalar
+    dependencies__values: [GenericScalar]
+    dependencies_complete__is_protected: Boolean
+    dependencies_complete__isnull: Boolean
+    dependencies_complete__owner__id: ID
+    dependencies_complete__source__id: ID
+    dependencies_complete__value: Boolean
+    dependencies_complete__values: [Boolean]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
@@ -24331,7 +24840,7 @@ type Query {
     node_metadata__updated_at__before: DateTime
     offset: Int
     """Define ordering of results for branch queries."""
-    order: OrderInput
+    order: MetadataOrderInput
     partial_match: Boolean = false
     """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
     status__value: BranchStatus
@@ -24376,7 +24885,13 @@ type Query {
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!
+  """
+  Find the shortest path(s) between two nodes — the shortest route through each intermediate node, up to max_paths.
+  """
+  InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
+  """Find all nodes of specified kinds reachable from a source node"""
+  InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
   InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
@@ -25166,6 +25681,47 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedProfileIpamNamespace!
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
+}
+
+type ReachableNodeType {
+  """Hops from source node"""
+  depth: Int!
+  """Reachable node"""
+  node: PathNodeType!
+  """Full path from source to this node"""
+  path: PathResultType!
+}
+
+input ReachableNodesInput {
+  """Maximum traversal depth (default: 5, max: 30)"""
+  max_depth: Int = 5
+  """
+  Maximum total paths returned across all discovered terminals (default: 500, max: 5000)
+  """
+  max_paths: Int = 500
+  """
+  Maximum number of distinct terminal nodes to discover (default: 50, max: 200)
+  """
+  max_results: Int = 50
+  """
+  When true (default), return only the shortest path(s) to each reachable target. When false, return every path to each target within max_depth that meets the filters.
+  """
+  shortest_paths_only: Boolean = true
+  """UUID of the source node"""
+  source_id: String!
+  """Node kinds to search for"""
+  target_kinds: [String!]!
+}
+
+type ReachableNodesResultType {
+  """Number of dependency entries returned"""
+  count: Int!
+  """
+  Reachable nodes of the requested kinds, one entry per (node, path) pair
+  """
+  dependencies: [ReachableNodeType!]!
+  """The source node"""
+  source: PathNodeType!
 }
 
 type ReadOnlyRepositoryImportLastCommit {

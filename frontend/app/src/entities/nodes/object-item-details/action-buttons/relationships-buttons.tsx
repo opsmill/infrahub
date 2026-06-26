@@ -1,18 +1,17 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
-import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
-import { QSP } from "@/shared/config/qsp";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
@@ -27,55 +26,57 @@ interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
   objectDetailsData: NodeObject;
+  relationshipName: string;
 }
 
 export function RelationshipsButtons({
   permission,
   schema: parentSchema,
   objectDetailsData,
+  relationshipName,
 }: RelationshipsButtonsProps) {
   const objectKind = objectDetailsData.__typename;
   const objectId = objectDetailsData.id;
   const { mutateAsync: addRelationship } = useAddRelationships();
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
-  const [relationshipTab] = useQueryState(QSP.TAB);
 
   const parentGeneric = generics.find((s) => s.kind === objectKind);
-  const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
-  const relationshipGeneric = parentGeneric?.relationships?.find((r) => {
-    return r?.name === relationshipTab;
-  });
-  const relationshipSchemaData = relationshipSchema || relationshipGeneric;
+  const relationshipSchema = parentSchema.relationships?.find((r) => r?.name === relationshipName);
+  const relationshipGeneric = parentGeneric?.relationships?.find(
+    (r) => r?.name === relationshipName
+  );
+  const relationshipSchemaData = relationshipSchema ?? relationshipGeneric;
   const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
   const peerSchema = useSchema(relationshipSchemaData?.peer);
-  const peerRelationshipSchema = peerSchema.schema?.relationships?.find((r) => {
-    return r.peer === objectKind;
-  });
+  const peerRelationshipSchema = peerSchema.schema?.relationships?.find(
+    (r) => r.peer === objectKind
+  );
 
   const poolKind = peerSchema.schema ? getPoolKindFromSchema(peerSchema.schema) : null;
 
   const [showAddDrawer, setShowAddDrawer] = useState(false);
 
-  let options: SelectOption[] = [];
+  if (!relationshipSchemaData) {
+    // The route guarantees relationshipName, but the schema lookup can fail
+    // (e.g. stale URL after a schema change). Render nothing rather than crash.
+    return null;
+  }
+
+  const options: SelectOption[] = [];
 
   if (generic) {
-    (generic.used_by || []).forEach((kind) => {
+    for (const kind of generic.used_by ?? []) {
       const relatedSchema = schemaList.find((s) => s.kind === kind);
-
-      if (relatedSchema) {
-        options.push({
-          id: relatedSchema.kind!,
-          name: relatedSchema.name,
-        });
+      if (relatedSchema?.kind) {
+        options.push({ id: relatedSchema.kind, name: relatedSchema.name });
       }
-    });
+    }
   } else {
-    const relatedSchema = schemaList.find((s) => s.kind === relationshipSchema?.peer);
-
-    if (relatedSchema) {
+    const relatedSchema = schemaList.find((s) => s.kind === relationshipSchemaData.peer);
+    if (relatedSchema?.kind) {
       options.push({
-        id: relatedSchema.kind!,
+        id: relatedSchema.kind,
         name: relatedSchema.label ?? relatedSchema.name,
       });
     }
@@ -96,7 +97,7 @@ export function RelationshipsButtons({
       await addRelationship({
         objectId,
         relationshipIds: [relationshipId],
-        relationshipName: relationshipSchema!.name,
+        relationshipName,
       });
 
       await handleRefetch();
@@ -104,7 +105,7 @@ export function RelationshipsButtons({
       toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}
-          message={`Association with ${relationshipSchema?.peer} added`}
+          message={`Association with ${relationshipSchemaData.peer} added`}
         />
       );
 
@@ -113,40 +114,39 @@ export function RelationshipsButtons({
   };
 
   const { isAllowed: isAddAllowed, message: addTooltipMessage } = permission.create;
+  const relationshipLabel =
+    relationshipSchemaData.label ?? relationshipSchemaData.kind ?? "relationship";
 
   return (
     <>
-      <ButtonWithTooltip
-        disabled={!isAddAllowed}
-        tooltipEnabled
-        tooltipContent={addTooltipMessage ?? "Add relationship"}
-        onClick={() => setShowAddDrawer(true)}
-        data-testid="open-relationship-form-button"
-        size="sm"
-      >
-        <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
-        {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
-      </ButtonWithTooltip>
+      <Tooltip message={addTooltipMessage ?? "Add relationship"}>
+        <Button
+          isDisabledAndFocusable={!isAddAllowed}
+          onPress={() => setShowAddDrawer(true)}
+          data-testid="open-relationship-form-button"
+          size="sm"
+        >
+          <Icon icon="mdi:plus" aria-hidden="true" /> Add {relationshipLabel}
+        </Button>
+      </Tooltip>
 
       <SlideOver
         title={
-          parentSchema && (
-            <SlideOverTitle
-              schema={parentSchema}
-              currentObjectLabel={relationshipSchema?.label}
-              title={`Associate a new ${relationshipSchema?.label}`}
-              subtitle={`Add a new ${relationshipSchema?.label} to the current object`}
-            />
-          )
+          <SlideOverTitle
+            schema={parentSchema}
+            currentObjectLabel={relationshipSchemaData.label}
+            title={`Associate a new ${relationshipLabel}`}
+            subtitle={`Add a new ${relationshipLabel} to the current object`}
+          />
         }
         open={showAddDrawer}
         setOpen={setShowAddDrawer}
       >
         <FormContext value={{ parentSchema, parentData: objectDetailsData }}>
-          {parentSchema &&
-          relationshipSchemaData?.kind === "Component" &&
+          {relationshipSchemaData.kind === "Component" &&
           peerRelationshipSchema?.kind === "Parent" &&
-          peerRelationshipSchema.optional === false ? (
+          peerRelationshipSchema.optional === false &&
+          relationshipSchemaData.peer ? (
             <ObjectForm
               onSuccess={async () => {
                 await handleRefetch();
@@ -155,26 +155,26 @@ export function RelationshipsButtons({
               onCancel={() => {
                 setShowAddDrawer(false);
               }}
-              kind={relationshipSchemaData?.peer!}
+              kind={relationshipSchemaData.peer}
             />
           ) : (
             <DynamicForm
               fields={[
                 {
                   name: "relation",
-                  label: relationshipSchema?.label!,
+                  label: relationshipLabel,
                   type: "relationship",
                   relationship: {
-                    ...relationshipSchema,
+                    ...relationshipSchemaData,
                     cardinality: "one",
                     inherited: true,
                   } as RelationshipSchema,
                   options,
                   pool:
-                    poolKind && peerSchema.schema
+                    poolKind && peerSchema.schema?.kind
                       ? {
                           kind: poolKind,
-                          defaultAllocatedObjectKind: peerSchema.schema.kind as string,
+                          defaultAllocatedObjectKind: peerSchema.schema.kind,
                         }
                       : undefined,
                 },

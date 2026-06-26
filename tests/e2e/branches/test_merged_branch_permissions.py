@@ -58,7 +58,9 @@ class TestMergedBranchDisabledActions:
 
         # create button is disabled with tooltip
         await expect(admin_page.get_by_test_id("create-object-button")).to_be_disabled()
-        await admin_page.get_by_test_id("create-object-button").hover(force=True)
+        # React Aria tooltips need a prior pointer interaction before hover triggers them.
+        await admin_page.locator("body").click(position={"x": 0, "y": 0})
+        await admin_page.get_by_test_id("create-object-button").hover()
         await expect(admin_page.get_by_text(TOOLTIP_MESSAGE)).to_be_visible()
 
         # row action menu items are disabled
@@ -74,7 +76,9 @@ class TestMergedBranchDisabledActions:
         # edit button is disabled with tooltip
         await expect(admin_page.get_by_test_id("edit-button")).to_be_visible()
         await expect(admin_page.get_by_test_id("edit-button")).to_be_disabled()
-        await admin_page.get_by_test_id("edit-button").hover(force=True)
+        # React Aria tooltips need a prior pointer interaction before hover triggers them.
+        await admin_page.locator("body").click(position={"x": 0, "y": 0})
+        await admin_page.get_by_test_id("edit-button").hover()
         await expect(admin_page.get_by_text(TOOLTIP_MESSAGE)).to_be_visible()
 
         # menu actions are disabled
@@ -92,5 +96,7 @@ class TestMergedBranchDisabledActions:
         # add relationship button is disabled with tooltip
         await expect(admin_page.get_by_test_id("open-relationship-form-button")).to_be_visible()
         await expect(admin_page.get_by_test_id("open-relationship-form-button")).to_be_disabled()
-        await admin_page.get_by_test_id("open-relationship-form-button").hover(force=True)
+        # React Aria tooltips need a prior pointer interaction before hover triggers them.
+        await admin_page.locator("body").click(position={"x": 0, "y": 0})
+        await admin_page.get_by_test_id("open-relationship-form-button").hover()
         await expect(admin_page.get_by_text(TOOLTIP_MESSAGE)).to_be_visible()

@@ -1,6 +1,6 @@
+import { Modal, type ModalProps } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Modal, type ModalProps } from "@/shared/components/aria/modal";
 import { classNames } from "@/shared/utils/common";
 
 import type { ModelSchema } from "@/entities/schema/types";

@@ -1,4 +1,17 @@
+import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
+
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+
+export type BranchDetailsTab = "data" | "files" | "artifacts" | "schema";
+
+export function getBranchDetailsUrl(
+  branchName: string,
+  tab?: BranchDetailsTab,
+  overrideParams?: overrideQueryParams[]
+): string {
+  const path = tab ? `/branches/${branchName}/${tab}` : `/branches/${branchName}`;
+  return constructPath(path, overrideParams);
+}
 
 export const findSelectedBranch = (
   branches: BranchListItem[],
@@ -22,22 +35,9 @@ export const branchesToSelectOptions = (branches: BranchListItem[]) =>
       has_schema_changes: branch.has_schema_changes,
       created_at: branch.created_at,
     }))
-    .sort((branch1, branch2) => {
-      if (branch1.name === "main") {
-        return -1;
-      }
-
-      if (branch2.name === "main") {
-        return 1;
-      }
-
-      if (branch2.name === "main") {
-        return -1;
-      }
-
-      if (branch1.name > branch2.name) {
-        return 1;
-      }
-
-      return -1;
+    .sort((a, b) => {
+      // "main" always pins to the top.
+      if (a.name === "main") return -1;
+      if (b.name === "main") return 1;
+      return a.name.localeCompare(b.name);
     });

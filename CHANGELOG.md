@@ -11,11 +11,137 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.0) - 2026-06-24
+
+### Security
+
+- Bumped transitive docs dependencies to address Dependabot advisories: `dompurify` >= 3.4.0, `follow-redirects` >= 1.16.0, `lodash` and `lodash-es` >= 4.18.0, `postcss` >= 8.5.10, and `uuid` (v11) >= 11.1.1.
+
+### Added
+
+- Object Templates now expose `member_of_groups_for_instances` and `subscriber_of_groups_for_instances` relationships. Groups assigned through these fields are propagated to every object created from the template, mirroring the resource-pool pattern. The existing `member_of_groups` and `subscriber_of_groups` on a template continue to apply to the template itself only. ([#9094](https://github.com/opsmill/infrahub/issues/9094))
+- Per-provider `groups_claim` setting for OAuth2 and OIDC providers: configure the JSON key used to extract the user's groups from the IdP claim payload (default `groups`). See the SSO guide for details. ([#9144](https://github.com/opsmill/infrahub/issues/9144))
+- Added graph path traversal feature with visual topology explorer. Users can discover paths between any two nodes, find dependencies from a source node, filter by kind and namespace, and explore the graph interactively with React Flow visualization.
+- Infrahub can now auto-create account groups from identity-provider claims on SSO login. Opt in by configuring a claim filter under `security.auto_create_groups_filter`, with an optional per-login cap.
+- The GraphQL `order` argument now uses a single, structured interface for ordering results:
+
+  - `order: {by: [{field: "name__value", direction: ASC}, {field: "node_metadata__created_at", direction: DESC}]}`
+  - `field` is an attribute (`name__value`), a relationship attribute (`owner__name__value`), or node metadata (`node_metadata__created_at` / `node_metadata__updated_at`). It no longer carries a trailing `__asc`/`__desc` suffix.
+  - `direction` is an enum (`ASC` / `DESC`) and defaults to `ASC` when omitted.
+  - When provided, `by` fully replaces the schema's `order_by` default. It works at the root level, on many-relationship fields, and on hierarchical (`ancestors` / `descendants`) relationships.
+
+  The `node_metadata` field on the `order` argument is deprecated; order by metadata through `by` using the `node_metadata__created_at` / `node_metadata__updated_at` fields instead. `node_metadata` cannot be combined with `by` in the same input.
+
+  Schema-level `order_by` entries are unchanged and still reference object-level metadata (`node_metadata__created_at`) with an optional `__asc`/`__desc` suffix. A UUID tiebreaker is always appended so ordering is stable across paths.
+
+  Breaking change: `node_metadata` is a reserved attribute and relationship name. Schemas that literally use `node_metadata` as an attribute or relationship name will fail to load and must rename the offending element.
+
+### Changed
+
+- **Breaking:** GraphQL error responses now carry a stable string code in `extensions.code` (e.g. `"NODE_NOT_FOUND"`, `"AUTHENTICATION_REQUIRED"`) and a typed `extensions.data` payload, plus a new integer `extensions.http_status`. Previously `extensions.code` was an integer mirroring the HTTP status. Consumers reading the integer code (most commonly on the `/graphql` auth-short-circuit path) must migrate to switching on the string code; numeric checks now read `extensions.http_status`. REST `/api/...` responses are unchanged.
+- HFID attribute values are now indexed in Neo4j for faster lookups. A migration normalizes existing HFID values to consistent all-string format and adds database indexes. The HFID lookup query has been simplified to match directly on the stored value instead of reconstructing per-field filters.
+- Improve merge performance by moving the logic to the database level
+- Improved design of the account token list page
+- Prefect task read queries optimized to fetch only required fields. `client.all()` and `client.filters()` calls replaced with targeted `execute_graphql()` queries in `display_labels`, `hfid`, `computed_attribute`, `git`, and `generators` tasks, significantly reducing data transfer per workflow execution.
+- Refined graph path traversal API: renamed `InfrahubDependencies` to `InfrahubReachableNodes`, renamed `node_filter` input to `kind_filter`, added generic-kind support in filters, and hardened default-branch edge filtering.
+- Rewrote the CLI reference and upgrade documentation for the 1.10 upgrade/migrate UX. The `--verbose` flag on `infrahub db migrate` and `infrahub upgrade` now correctly describes that it controls internal `infrahub`/`prefect` logger output (not per-migration progress, which is always shown). Developer-facing `Raises:` blocks are no longer leaked into the rendered CLI reference. The upgrade overview now explains the six-step upgrade pipeline, what operators should expect to see during an upgrade, and how to use `db showmigrations`, `db showmigration N`, and `db migrate --plan`. Every migration now carries a required `description` field that `db showmigration N` surfaces, so operators can see what each migration does without reading the source. Migrations 068–073 ship with real descriptions; older migrations are stubbed as `N/A` for now. The migration console no longer renders Rich `file.py:NNN` debug tags on every line.
+- Several built-in `Core` generic schemas that have special handling in Infrahub now restrict inheritance to the `Core` namespace via the `restricted_namespaces` field. This prevents user-defined schemas from inheriting from generics whose code paths assume a specific internal structure.
+
+  **Breaking change.** Any user-defined node schema that inherits from one of the generics listed below must be removed (and its data deleted) before upgrading. Infrahub will refuse to load a schema that violates these restrictions and the upgrade will not complete.
+
+  The newly restricted generics are:
+
+  - `CoreCredential`
+  - `CoreGenericAccount`
+  - `CoreResourcePool`
+  - `CoreIPPool`
+  - `CoreTransformation`
+  - `CoreBasePermission`
+  - `CoreMenu`
+  - `CoreComment`
+  - `CoreThread`
+  - `CoreValidator`
+  - `CoreKeyValue`
+  - `CoreTriggerRule`
+  - `CoreAction`
+  - `CoreNodeTriggerMatch`
+- Tab navigation on detail pages (Profile, Branch details, Proposed change, Object details) now uses URL path segments (`/profile/tokens`, `/branches/foo/data`, `/proposed-changes/abc/checks`, `/objects/CoreTag/abc/members`) instead of `?tab=` query parameters. Browser back/forward navigates between tabs as distinct history entries, and each tab's content is lazy-loaded per route. Bookmarks to old `?tab=` URLs render the default tab.
+- The web UI's data-fetching layer has been unified on TanStack Query. Previously the frontend mixed two libraries (Apollo and TanStack) for talking to the GraphQL API, with caching disabled globally. Lists, detail pages and forms now share a single caching layer, so navigating back to a page you just visited reuses the data instead of refetching it, and the JavaScript bundle is smaller. No user action is required and there are no URL changes from this update.
+- When a proposed change includes commits to a linked repository, Infrahub now regenerates only the artifacts whose transform source, GraphQL query, or artifact definition was actually affected by the change, instead of regenerating every artifact in the repository. Each regeneration decision is recorded in the proposed change's task log, naming the file, query, or definition field that triggered it. Transforms imported before this change keep working unchanged and adopt the precise behavior automatically on their next import; until then they conservatively regenerate on any file change in their repository.
+
+  For dependencies Infrahub cannot detect automatically, such as templates pulled in dynamically or helper modules imported at runtime, you can declare extra files with a new optional `watch:` key on `jinja2_transforms` and `python_transforms` entries in `.infrahub.yml`. Changes to a declared file or directory then trigger regeneration of that transform's artifacts.
+
+### Fixed
+
+- Removed the required asterisk from the "Sync with Git" checkbox on the create-branch form, since the checkbox is optional and the asterisk misleadingly implied it had to be checked. ([#IFC-2747](https://github.com/opsmill/infrahub/issues/IFC-2747))
+- Added a new boolean input, allowing users to explicitly submit true, false, or null values. ([#4418](https://github.com/opsmill/infrahub/issues/4418))
+- Stop `infrahub upgrade` from overwriting the status of merged or deleting branches. Branches in a terminal state (`MERGED`, `DELETING`) are now skipped, so they no longer reappear as `NEED_UPGRADE_REBASE` after an upgrade. ([#9103](https://github.com/opsmill/infrahub/issues/9103))
+- Stop object-type conversion of agnostic nodes with aware attributes from re-opening merged or deleting branches. The "needs rebase" status now only applies to non-terminal branches. ([#9103](https://github.com/opsmill/infrahub/issues/9103))
+- Prevent duplicated Node, Generic, Attribute, and Relationship schemas from being created in the case of a worker's in-memory schema cache being stale while updating schemas. ([#9250](https://github.com/opsmill/infrahub/issues/9250))
+- Fix a bug in the merge logic that prevented the merge operation from deleting an object that had its kind or inheritance updated on the default branch after the branch being merged forked. ([#9283](https://github.com/opsmill/infrahub/issues/9283))
+- Within a proposed change, generator instances are now only re-run when the diff touches a field that the generator's GraphQL query actually reads. Previously a generator was dispatched for every instance sharing a relationship target with a changed node, even when the change touched no field the query depended on. ([#9378](https://github.com/opsmill/infrahub/issues/9378))
+- Fix the "Resource Pool" tab on the IP prefix detail view so that it now lists both `CoreIPPrefixPool` and `CoreIPAddressPool` pools that have the prefix as a resource. A new `CoreIPPool` generic groups the two pool types and the `BuiltinIPPrefix.resource_pool` relationship now points at it. A database migration retroactively consolidates the IP pool ↔ IP prefix relationships.
+
+  **Breaking change for GraphQL clients.** Because `BuiltinIPPrefix.resource_pool` now returns the abstract `CoreIPPool` generic (instead of the concrete `CoreIPAddressPool`), any existing GraphQL queries that selected fields directly under `resource_pool` will need to be updated to use inline fragments for fields that are specific to `CoreIPAddressPool` or `CoreIPPrefixPool`. For example:
+
+  ```graphql
+  # Before
+  query {
+    BuiltinIPPrefix {
+      edges { node { resource_pool { edges { node { name { value } default_address_type { value } } } } } }
+    }
+  }
+
+  # After
+  query {
+    BuiltinIPPrefix {
+      edges { node { resource_pool { edges { node {
+        name { value }
+        ... on CoreIPAddressPool { default_address_type { value } }
+        ... on CoreIPPrefixPool  { default_prefix_type  { value } }
+      } } } } }
+    }
+  }
+  ```
+
+  Fields that exist on the `CoreResourcePool` generic (`name`, `description`) can still be selected directly without a fragment.
+- Fixed Python transform based computed attributes not being configured after a repository commit update. The trigger template referenced `event.payload['commit']` instead of `event.payload['data']['commit']`; starting with Prefect 3.7 an undefined template reference fails the whole automation action instead of rendering an empty string, so the setup workflow never ran.
+- Proposed change action buttons (approve, reject, merge, close, draft) now surface the actual backend error message in the toast instead of a generic "An error occurred" message, making failures easier to diagnose.
+- The SSO default group (`sso_user_default_group`) is now only assigned on a user's first login, when their external identity is created. Previously it was re-applied on every login whenever the identity provider returned no group claims, so an administrator who removed a user from the default group would find them added back on their next login. Groups derived from identity-provider claims continue to be synchronized on every login.
+
+### Housekeeping
+
+- Refactored permission system to extract decision logic into a single `PermissionResolver` class. `PermissionManager` now delegates resolution to the resolver and the permission report uses the same resolver, ensuring the GraphQL pipeline and UI report always agree.
+
+## [Infrahub - v1.9.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.9) - 2026-06-23
+
+### Security
+
+- Upgraded GitPython to 3.1.50 to address GHSA-mv93-w799-cj2w, a configuration-injection vulnerability that could lead to arbitrary code execution via crafted git config section names.
+
+### Added
+
+- Added a link in the Proposed Change "Checks" tab from each Artifact Validator to the originating `CoreArtifactDefinition`, so users can navigate directly to the definition that produced the check.
+
+### Fixed
+
+- Importing a Git repository now succeeds even when one of its branches has a merge conflict against the default branch. The conflicting branch is imported as-is and a warning is logged; the conflict is reported when a user later attempts to merge the branch. ([#2293](https://github.com/opsmill/infrahub/issues/2293))
+- Fixed the unclear error message shown when picking a time earlier than the Infrahub instance was created. ([#4076](https://github.com/opsmill/infrahub/issues/4076))
+- Narrowed the git repository lock so it only guards on-disk git working-copy mutations (clone, fetch, worktree creation) and no longer wraps importing repository objects into the graph. ([#6639](https://github.com/opsmill/infrahub/issues/6639))
+- Added a refresh button to the artifact detail page so regenerated artifact content can be reloaded in place, without requiring a full browser refresh. ([#9335](https://github.com/opsmill/infrahub/issues/9335))
+- Fixed git repository synchronization so that a failure on one branch no longer prevents the other branches from being synchronized. ([#9463](https://github.com/opsmill/infrahub/issues/9463))
+- Fixed the file action reported by the repository diff so a file added on a branch is labelled `added` (and a deleted file `removed`) instead of being inverted in `GET /api/diff/files` and the Proposed Change Files tab. ([#9530](https://github.com/opsmill/infrahub/issues/9530))
+- Rebasing a branch now only requires the `global:rebase_branch:allow_all` permission. Previously the default-branch permission check ran ahead of the rebase check and also demanded `global:edit_default_branch:allow_all`, so users granted only the rebase permission were denied with "You are not allowed to change data in the default branch". ([#9604](https://github.com/opsmill/infrahub/issues/9604))
+- Fixed the repository **Import latest commit** and **Reimport current commit** actions running against `main` instead of the branch currently selected in the UI. ([#9653](https://github.com/opsmill/infrahub/issues/9653))
+- Computed attribute updates no longer raise a `ValueError` when `PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES` is set to `1`. The workflow submission chunk size is now floored at 1.
+- Concurrent imports of the same repository no longer race to create the same object and fail on a name uniqueness constraint, which could leave the repository out of sync. The graph-changing phase of a repository import is now serialized under the repository lock.
+- Repository synchronization now resolves both a new repository's initial import and the pinned worker-pool commit from the repository's Git default branch rather than Infrahub's default branch name, fixing repositories whose Git default branch differs and staging-branch syncs.
+
 ## [Infrahub - v1.9.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.8) - 2026-06-09
 
 ### Changed
 
-- Performance improvements for transform based computed attributes
+- Performance improvements for transform-based computed attributes
 
 ### Fixed
 

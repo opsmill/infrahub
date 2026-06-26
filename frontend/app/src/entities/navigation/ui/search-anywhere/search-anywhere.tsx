@@ -12,11 +12,7 @@ import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
 import { SearchParentPrefixes } from "./search-parent-prefixes";
 
-type SearchModalProps = {
-  isCollapsed?: boolean;
-};
-
-export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
+export function SearchAnywhere() {
   let [isOpen, setIsOpen] = useState(false);
 
   function closeDialog() {
@@ -48,7 +44,7 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
         openDialog,
       }}
     >
-      <SearchAnywhereTrigger isCollapsed={isCollapsed} onClick={openDialog} />
+      <SearchAnywhereTrigger onClick={openDialog} />
 
       <SearchAnywhereDialog>
         <Command shouldFilter={false}>

@@ -1,13 +1,12 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import React from "react";
 
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -19,9 +18,10 @@ import {
 import type { CommandItem } from "@/shared/components/ui/command";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
-import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
+import { useAddDropdownMutation } from "@/entities/schema/ui/queries/add-dropdown.mutation";
+import { useRemoveDropdownMutation } from "@/entities/schema/ui/queries/remove-dropdown.mutation";
 
 export interface DropdownOption {
   value: string;
@@ -62,7 +62,7 @@ export const DropdownItem = ({
   ...props
 }: DropdownItemProps) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
-  const [removeDropdownOption, { loading }] = useMutation(DROPDOWN_REMOVE_MUTATION);
+  const { mutateAsync: removeDropdownOption, isPending: loading } = useRemoveDropdownMutation();
   const namespace = useNamespace(schema?.namespace);
 
   return (
@@ -86,12 +86,11 @@ export const DropdownItem = ({
         <>
           <Button
             aria-label="Delete option"
-            tabIndex={-1}
+            excludeFromTabOrder
             variant="ghost"
             size="sm"
             className="ml-auto h-6 text-red-800"
-            onClick={(e) => {
-              e.stopPropagation();
+            onPress={() => {
               setShowDeleteModal(true);
             }}
           >
@@ -122,13 +121,12 @@ export const DropdownItem = ({
             isOpen={showDeleteModal}
             onOpenChange={setShowDeleteModal}
             onDelete={async () => {
+              if (!schema.kind) return;
               try {
                 await removeDropdownOption({
-                  variables: {
-                    kind: schema.kind,
-                    attribute: fieldSchema.name,
-                    dropdown: item.value,
-                  },
+                  kind: schema.kind,
+                  attribute: fieldSchema.name,
+                  dropdown: item.value,
                 });
                 onDelete(item);
               } catch (error) {
@@ -152,14 +150,14 @@ interface DropdownAddActionProps {
 export const DropdownAddAction = ({ schema, field, addOption }: DropdownAddActionProps) => {
   const namespace = useNamespace(schema.namespace);
   const [open, setOpen] = React.useState(false);
-  const [addDropdownItem] = useMutation(DROPDOWN_ADD_MUTATION);
+  const { mutateAsync: addDropdownItem } = useAddDropdownMutation();
 
   return (
     <div className="p-2 pt-0">
       {namespace?.user_editable && (
         <Button
-          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-          onClick={() => setOpen(!open)}
+          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-700/20"
+          onPress={() => setOpen(!open)}
           data-testid="add-option-button"
         >
           + Add option
@@ -204,20 +202,22 @@ export const DropdownAddAction = ({ schema, field, addOption }: DropdownAddActio
             },
           ]}
           onSubmit={async (formData) => {
-            const { data } = await addDropdownItem({
-              variables: {
-                kind: schema.kind,
-                attribute: field.name,
-                dropdown: formData.value.value,
-                label: formData.label?.value,
-                color: formData.color?.value,
-                description: formData.description?.value,
-              },
+            if (!schema.kind) return;
+            const result = await addDropdownItem({
+              kind: schema.kind,
+              attribute: field.name,
+              dropdown: formData.value.value as string,
+              label: formData.label?.value as string | undefined,
+              color: formData.color?.value as string | undefined,
+              description: formData.description?.value as string | undefined,
             });
-            if (data?.SchemaDropdownAdd?.ok) {
-              addOption(data?.SchemaDropdownAdd?.object);
-              setOpen(false);
-            }
+            addOption({
+              value: result.value,
+              label: result.label ?? result.value,
+              color: result.color ?? undefined,
+              description: result.description ?? undefined,
+            });
+            setOpen(false);
           }}
           onCancel={() => setOpen(false)}
           className="p-4"

@@ -1,6 +1,5 @@
 import { ListBoxItem, type ListBoxItemProps } from "react-aria-components";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -12,6 +11,7 @@ import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/bran
 import { BranchMetadata } from "@/entities/branches/ui/branch-list-item/branch-metadata";
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
+import { getBranchDetailsUrl } from "@/entities/branches/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 interface BranchListItemProps extends ListBoxItemProps {
@@ -22,7 +22,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
   return (
     <ListBoxItem
       textValue={branch.name}
-      href={constructPath(`/branches/${branch.name}`)}
+      href={getBranchDetailsUrl(branch.name)}
       className={classNames(
         focusVisibleStyle,
         "grid grid-cols-[minmax(200px,1fr)_auto_1fr] items-center gap-4 px-6 py-4",

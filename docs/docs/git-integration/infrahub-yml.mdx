@@ -84,6 +84,50 @@ The configuration enables Infrahub to resolve dependencies between resources:
 
 This dependency management ensures that all resources have what they need when they execute.
 
+### Declaring extra dependencies with `watch`
+
+Infrahub automatically detects the files a Transformation reads: a Python Transformation's package directory, and the templates a Jinja2 Transformation statically includes, imports, or extends. When a file in that detected set changes in a proposed change, only the artifacts of the affected Transformation regenerate.
+
+Some dependencies cannot be detected automatically, such as a template pulled in through a dynamic `{% include some_variable %}` or a helper module imported at runtime from another package. Declare these with the optional `watch` key on a `jinja2_transforms` or `python_transforms` entry. Watched files are added to the Transformation's auto-detected dependencies; they never replace them.
+
+`watch` is a strict object. Today it accepts a single key, `files`:
+
+- `files` is a list of file or directory paths, relative to the repository root.
+- A directory entry matches **recursively**: every tracked file beneath it joins the dependency set.
+- Entries may be written with or without a trailing slash.
+- Files ignored by Git, `.pyc` files, `__pycache__/` directories, and symlinks are never included.
+
+A list at the `watch` key (`watch: [a, b]`), a bare string, or any unknown key is rejected when the repository is imported.
+
+Future dependency-related keys (for example `strict` or `exclude`) will live under `watch` as additional keys alongside `files`.
+
+Jinja2 example, where a template dynamically includes partials the parser cannot follow:
+
+```yaml
+jinja2_transforms:
+  - name: DeviceConfig
+    query: device_config_query
+    template_path: templates/device_config.j2
+    watch:
+      files:
+        - templates/partials/
+```
+
+Python example, where a Transformation imports helpers from a sibling top-level package:
+
+```yaml
+python_transforms:
+  - name: DeviceNameAttribute
+    class_name: DeviceNameAttribute
+    file_path: transforms/device_name_attribute.py
+    watch:
+      files:
+        - utils/
+        - shared/helpers.py
+```
+
+Declaring any `watch.files` entry also marks the Transformation's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete auto-detection would otherwise trigger. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
+
 ## Group targeting
 
 Many definitions in `.infrahub.yml` use [groups](../groups/overview) to specify their targets:

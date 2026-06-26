@@ -1,11 +1,10 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { useIsFetching } from "@tanstack/react-query";
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
-import { Focusable } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Tooltip } from "@/shared/components/aria/tooltip";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 import { formatFullDate } from "@/shared/utils/date";
 
@@ -53,22 +52,21 @@ export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
         )
       }
     >
-      <Focusable isDisabled={isRefetching}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefetching}
-          aria-label="Refresh data"
-          {...props}
-        >
-          {isRefreshSuccess ? (
-            <CheckIcon className="size-3.5 text-green-600" />
-          ) : (
-            <RefreshCwIcon className={classNames("size-3.5", isRefetching && "animate-spin")} />
-          )}
-        </Button>
-      </Focusable>
+      <Button
+        variant="outline"
+        size="sm"
+        shape="square"
+        isDisabledAndFocusable={isRefetching}
+        onPress={handleRefresh}
+        aria-label="Refresh data"
+        {...props}
+      >
+        {isRefreshSuccess ? (
+          <CheckIcon className="size-3.5 text-green-600" />
+        ) : (
+          <RefreshCwIcon className={classNames("size-3.5", isRefetching && "animate-spin")} />
+        )}
+      </Button>
     </Tooltip>
   );
 }

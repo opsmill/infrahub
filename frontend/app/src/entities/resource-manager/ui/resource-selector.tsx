@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Card, CardHeader } from "@infrahub/ui/card";
 import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
@@ -26,9 +26,9 @@ interface ResourcePoolSelectorProps extends HTMLAttributes<HTMLDivElement> {
 const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelectorProps) => {
   return (
     <Card className={className} {...props}>
-      <CardWithBorder.Title className="border-gray-200 border-b bg-white">
+      <CardHeader>
         Resources <Badge>{resources.length}</Badge>
-      </CardWithBorder.Title>
+      </CardHeader>
 
       <PropertyList
         className="block overflow-auto"

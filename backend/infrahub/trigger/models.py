@@ -148,7 +148,9 @@ class EventTrigger(BaseModel):
         )
 
     @property
-    def related_resource_specification(self) -> ResourceSpecification | list[ResourceSpecification]:
+    def related_resource_specification(
+        self,
+    ) -> ResourceSpecification | dict[str, str | list[str]] | list[ResourceSpecification | dict[str, str | list[str]]]:
         if isinstance(self.match_related, dict):
             return ResourceSpecification(self.match_related)
 

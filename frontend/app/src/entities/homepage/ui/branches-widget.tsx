@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { ScrollArea } from "@infrahub/ui";
 import { ListBox } from "react-aria-components";
 import * as R from "remeda";
 
@@ -6,7 +7,6 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";

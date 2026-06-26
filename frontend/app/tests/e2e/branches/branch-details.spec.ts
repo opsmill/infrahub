@@ -77,26 +77,21 @@ test.describe("Branch details view", () => {
       await page.goto(`/branches/${BRANCH_NAME}`);
 
       const tabsNav = page.getByRole("navigation", { name: "Tabs" });
-      // Click on Data tab
+
       await tabsNav.getByText("Data").click();
-      await expect(page).toHaveURL(/.*branch_tab=data/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}/data`));
 
-      // Click on Files tab
       await tabsNav.getByText("Files").click();
-      await expect(page).toHaveURL(/.*branch_tab=files/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}/files`));
 
-      // Click on Artifacts tab
       await tabsNav.getByText("Artifacts").click();
-      await expect(page).toHaveURL(/.*branch_tab=artifacts/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}/artifacts`));
 
-      // Click on Schema tab
       await tabsNav.getByText("Schema").click();
-      await expect(page).toHaveURL(/.*branch_tab=schema/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}/schema`));
 
-      // Go back to Details tab (first tab clears the QSP)
       await tabsNav.getByText("Details").click();
-      // First tab doesn't set QSP, so URL should not contain branch_tab
-      await expect(page).not.toHaveURL(/.*branch_tab=details/);
+      await expect(page).toHaveURL(new RegExp(`/branches/${BRANCH_NAME}$`));
     });
 
     test("should display node metadata when clicking metadata button", async ({ page }) => {

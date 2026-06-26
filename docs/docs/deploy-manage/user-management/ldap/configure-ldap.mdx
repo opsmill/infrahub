@@ -1,0 +1,210 @@
+---
+title: Configure LDAP authentication
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+import ReferenceLink from "../../../../src/components/Card";
+
+# Configure LDAP authentication <EnterpriseBadge />
+
+This guide explains how to connect Infrahub to your LDAP directory so users can sign in with their directory credentials.
+
+When complete, users will see an LDAP sign-in button on the login page and authenticate against your directory through a service-account lookup.
+
+## Prerequisites
+
+Before configuring LDAP, you need:
+
+- An Infrahub deployment running the Enterprise Edition. The Community Edition rejects LDAP sign-ins with an enterprise-required error.
+- A directory service account (distinguished name and password) with **read-only** access to search the user subtree — and the group subtree, if you enable group resolution. It never needs write permissions; grant it the least privilege required.
+- The connection details for your directory: server URIs, the user search base, and the attribute that holds the sign-in name.
+- Administrative access to your Infrahub configuration.
+
+## Steps overview
+
+1. Collect directory information
+2. Configure the connection
+3. Configure the service account and user lookup
+4. Map user attributes
+5. Enable LDAP and restart
+6. Validate the configuration
+
+## Step 1: Collect directory information
+
+Gather the following from your directory administrator:
+
+| Information | Example | Notes |
+|-------------|---------|-------|
+| Server URIs | `ldaps://dc1.corp.example.com:636` | One or more; the `ldap` or `ldaps` scheme is required |
+| Service account DN | `CN=infrahub-svc,OU=Service,DC=corp,DC=example,DC=com` | Read-only access is sufficient; used to look up users before verifying their credentials |
+| Service account password | — | Store as a secret |
+| User search base | `OU=Users,DC=corp,DC=example,DC=com` | Subtree where user entries live |
+| Sign-in name attribute | `sAMAccountName` (AD), `uid` (OpenLDAP) | Defaults to `sAMAccountName` |
+
+## Step 2: Configure the connection
+
+List your directory servers and choose how to encrypt the connection. Use `ldaps://` URIs (port 636) for implicit TLS, or keep plain `ldap://` URIs (port 389) and set `tls_starttls` to upgrade the connection with STARTTLS. Pick one — combining `tls_starttls` with an `ldaps://` URI is rejected at startup. For production certificate verification, see [Harden the TLS connection](./advanced-ldap.mdx#harden-the-tls-connection).
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# Tried in declaration order; list the primary first
+export INFRAHUB_LDAP_SERVERS="ldaps://dc1.corp.example.com:636,ldaps://dc2.corp.example.com:636"
+
+# Encrypt the connection
+export INFRAHUB_LDAP_TLS_ENABLED=true
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[ldap]
+# Tried in declaration order; list the primary first
+servers = ["ldaps://dc1.corp.example.com:636", "ldaps://dc2.corp.example.com:636"]
+
+# Encrypt the connection
+tls_enabled = true
+```
+
+</TabItem>
+</Tabs>
+
+:::warning
+Do not enable `tls_insecure` outside test and development environments — it skips certificate validation and exposes the connection to interception. For private certificate authorities, supply a CA bundle instead (see [Advanced LDAP configuration](./advanced-ldap.mdx#harden-the-tls-connection)).
+:::
+
+## Step 3: Configure the service account and user lookup
+
+Infrahub binds with the service account, searches the user subtree for the sign-in name, then re-binds as the located user to verify the password.
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+export INFRAHUB_LDAP_SERVICE_ACCOUNT_DN="CN=infrahub-svc,OU=Service,DC=corp,DC=example,DC=com"
+export INFRAHUB_LDAP_SERVICE_ACCOUNT_PASSWORD="service-account-password"
+export INFRAHUB_LDAP_USER_SEARCH_BASE="OU=Users,DC=corp,DC=example,DC=com"
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[ldap]
+service_account_dn = "CN=infrahub-svc,OU=Service,DC=corp,DC=example,DC=com"
+service_account_password = "service-account-password"
+user_search_base = "OU=Users,DC=corp,DC=example,DC=com"
+```
+
+</TabItem>
+</Tabs>
+
+:::info
+By default the user search filter is generated from the sign-in name attribute, so it stays aligned when you change `attribute_username`. To override it, set `user_search_filter`; the `{username}` placeholder is substituted at sign-in time and escaped to prevent filter injection.
+:::
+
+## Step 4: Map user attributes
+
+Map directory attributes to the Infrahub account fields. The defaults match Active Directory; adjust them for other directories.
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# sAMAccountName on AD, uid on OpenLDAP
+export INFRAHUB_LDAP_ATTRIBUTE_USERNAME="sAMAccountName"
+export INFRAHUB_LDAP_ATTRIBUTE_DISPLAY_NAME="displayName"
+
+# AD's disabled-account flag; leave empty on directories without an equivalent attribute to skip the check
+export INFRAHUB_LDAP_ATTRIBUTE_DISABLED="userAccountControl"
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[ldap]
+# sAMAccountName on AD, uid on OpenLDAP
+attribute_username = "sAMAccountName"
+attribute_display_name = "displayName"
+
+# AD's disabled-account flag; leave empty on directories without an equivalent attribute to skip the check
+attribute_disabled = "userAccountControl"
+```
+
+</TabItem>
+</Tabs>
+
+## Step 5: Enable LDAP and restart
+
+Set `enabled` to turn LDAP sign-in on, then restart the Infrahub server to apply the configuration.
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+export INFRAHUB_LDAP_ENABLED=true
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[ldap]
+enabled = true
+```
+
+</TabItem>
+</Tabs>
+
+<ReferenceLink title="Configure Infrahub" url="../../install-configure/configure-infrahub" openInNewTab />
+
+:::info Configuration is validated at startup
+With `enabled = true`, Infrahub refuses to start until `servers`, `service_account_dn`, `service_account_password`, and `user_search_base` are set — plus `group_base_dn` when group resolution is on. A missing or contradictory setting fails fast at startup with a message naming the problem, rather than surfacing later at sign-in.
+:::
+
+## Step 6: Validate the configuration
+
+1. Navigate to your Infrahub login page.
+2. Look for the LDAP sign-in button next to the local login form. Its text comes from `display_label` (default `Sign in with LDAP`).
+3. Sign in with a set of directory credentials.
+4. Confirm a local account was created for the user under `Admin` > `Users and Permissions` > `Accounts`.
+
+:::success
+When correctly configured, directory users sign in with their existing credentials and an Infrahub account is provisioned on their first sign-in.
+:::
+
+## Troubleshooting
+
+Every LDAP sign-in attempt is recorded in the Infrahub server logs. Review them for the error returned by the directory.
+
+| Symptom | Possible cause | Solution |
+|---------|----------------|----------|
+| No LDAP button on the login page | `enabled` is false, or the deployment is running the Community Edition | Set `INFRAHUB_LDAP_ENABLED=true` and confirm the deployment is running the Enterprise Edition |
+| Sign-in returns `403 ENTERPRISE_REQUIRED` | The deployment is running the Community Edition | Run the Enterprise Edition (see [Community vs enterprise](../../../overview/community-vs-enterprise.mdx)) |
+| Sign-in fails with `401` | Wrong credentials, or the user is not found by the search base and filter | Verify the service account, `user_search_base`, and `attribute_username` |
+| Sign-in returns `409 LDAP_ACCOUNT_COLLISION` | The directory sign-in name matches an existing local-only account | Reconcile or rename the local account before the user signs in via LDAP |
+| Sign-in returns `502` | Every configured server was unreachable, or the TLS handshake failed | Check the server URIs and that the servers are reachable, and the TLS settings and CA bundle |
+
+### Check the directory independently
+
+When a sign-in fails, reproduce the service-account lookup directly against the directory with `ldapsearch`. This separates a directory-side problem (credentials, search base, filter) from an Infrahub one:
+
+```bash
+ldapsearch -H ldaps://dc1.corp.example.com:636 \
+  -D "CN=infrahub-svc,OU=Service,DC=corp,DC=example,DC=com" -W \
+  -b "OU=Users,DC=corp,DC=example,DC=com" \
+  "(sAMAccountName=jdoe)"
+```
+
+A successful bind that returns the expected user entry confirms the service-account credentials, `user_search_base`, and sign-in attribute are correct — which narrows the problem to Infrahub's configuration. Add `-ZZ` to test STARTTLS on a plain `ldap://` connection.
+
+## Related resources
+
+- [LDAP authentication overview](./overview.mdx)
+- [Advanced LDAP configuration](./advanced-ldap.mdx)
+- [LDAP reference](../../../reference/ldap.mdx)
+- [Authentication](../authentication.mdx)

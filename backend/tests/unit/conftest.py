@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.constants import (
     BranchSupportType,
     RelationshipCardinality,
@@ -7,6 +8,11 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+
+
+@pytest.fixture(autouse=True)
+def set_registry_default_branch() -> None:
+    registry._default_branch = "main"
 
 
 @pytest.fixture

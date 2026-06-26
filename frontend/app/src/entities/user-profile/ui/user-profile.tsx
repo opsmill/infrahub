@@ -1,54 +1,15 @@
-import { useQueryState } from "nuqs";
+import { Outlet } from "react-router";
 
 import { Avatar } from "@/shared/components/display/avatar";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Tabs } from "@/shared/components/tabs";
-import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
+import { ProfileTabs } from "@/entities/user-profile/ui/profile-tabs";
 import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
 
-import TabProfile from "./tab-profile";
-import TabTokens from "./tab-tokens";
-import TabUpdatePassword from "./tab-update-password";
-
-const PROFILE_TABS = {
-  PROFILE: "profile",
-  TOKENS: "tokens",
-  PASSWORD: "password",
-};
-
-const baseTabs = [
-  {
-    label: "Profile",
-    name: PROFILE_TABS.PROFILE,
-  },
-  {
-    label: "Tokens",
-    name: PROFILE_TABS.TOKENS,
-  },
-];
-
-const passwordTab = {
-  label: "Password",
-  name: PROFILE_TABS.PASSWORD,
-};
-
-const renderContent = (tab: string | null | undefined) => {
-  switch (tab) {
-    case PROFILE_TABS.PASSWORD:
-      return <TabUpdatePassword />;
-    case PROFILE_TABS.TOKENS:
-      return <TabTokens />;
-    default:
-      return <TabProfile />;
-  }
-};
-
 export function UserProfilePage() {
-  const [qspTab] = useQueryState(QSP.TAB);
   const { data: account, isPending, error } = useGetAccountProfile();
   useTitle(account?.display_label ?? "Profile");
 
@@ -59,8 +20,6 @@ export function UserProfilePage() {
   if (isPending) {
     return <LoadingIndicator className="h-full" />;
   }
-
-  const tabs = account.is_externally_managed ? baseTabs : [...baseTabs, passwordTab];
 
   return (
     <Content.Card>
@@ -78,9 +37,9 @@ export function UserProfilePage() {
         }
       />
 
-      <Tabs tabs={tabs} />
+      <ProfileTabs />
 
-      {renderContent(qspTab)}
+      <Outlet />
     </Content.Card>
   );
 }
