@@ -221,7 +221,7 @@ describe("getCreateMutationFromFormData", () => {
     const formData: Record<string, FormRelationshipValue> = {
       primary_address: {
         source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
-        value: { from_pool: { id: "pool-id", prefixlen: 32 } },
+        value: { from_pool: { id: "pool-id", prefixLength: 32 } },
       },
     };
 
@@ -276,7 +276,7 @@ describe("getCreateMutationFromFormData", () => {
       const formData: Record<string, FormRelationshipValue> = {
         ip_address: {
           source: { type: "pool", label: "test pool", id: "pool-id", kind: "CoreIPAddressPool" },
-          value: { from_pool: { id: "pool-id", prefixlen: 24 } },
+          value: { from_pool: { id: "pool-id", prefixLength: 24 } },
         },
       };
 

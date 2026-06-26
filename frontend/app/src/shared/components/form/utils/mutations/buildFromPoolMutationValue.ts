@@ -8,16 +8,16 @@ import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
  *
  * The from-pool input names the prefix length differently per pool kind: an IP address
  * pool takes `prefixlen` (the new address's mask), an IP prefix pool takes `size` (the
- * carved-out subnet's prefix length). The value model stores it as `prefixlen` either
- * way; this maps it to the field the pool's input expects.
+ * carved-out subnet's prefix length). The client value model stores it as `prefixLength`
+ * either way; this maps it to the field the pool's input expects.
  */
 export const buildFromPoolPayload = (
-  fromPool: { id: string; prefixlen?: number | null },
+  fromPool: { id: string; prefixLength?: number | null },
   poolKind?: string
 ): { id: string; prefixlen?: number; size?: number } => {
-  const { id, prefixlen } = fromPool;
-  if (typeof prefixlen !== "number") {
+  const { id, prefixLength } = fromPool;
+  if (typeof prefixLength !== "number") {
     return { id };
   }
-  return poolKind === IP_PREFIX_POOL ? { id, size: prefixlen } : { id, prefixlen };
+  return poolKind === IP_PREFIX_POOL ? { id, size: prefixLength } : { id, prefixlen: prefixLength };
 };

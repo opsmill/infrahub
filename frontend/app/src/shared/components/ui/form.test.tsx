@@ -17,7 +17,7 @@ describe("findErrorMessage", () => {
     // allocation's prefix-length field.
     const error = {
       value: {
-        from_pool: { prefixlen: { type: "validate", message: "Value must be at most 128" } },
+        from_pool: { prefixLength: { type: "validate", message: "Value must be at most 128" } },
       },
     };
     expect(findErrorMessage(error)).toBe("Value must be at most 128");

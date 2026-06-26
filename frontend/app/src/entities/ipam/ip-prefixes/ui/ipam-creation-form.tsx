@@ -114,8 +114,8 @@ function IpamCreationForm(props: IpamCreationFormProps) {
             data: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
           };
           // Only send a prefix length when one was entered; otherwise the pool default applies.
-          if (typeof pendingFromPool?.prefixlen === "number") {
-            allocationData.prefix_length = pendingFromPool.prefixlen;
+          if (typeof pendingFromPool?.prefixLength === "number") {
+            allocationData.prefix_length = pendingFromPool.prefixLength;
           }
 
           await allocateResource.mutateAsync(

@@ -46,8 +46,8 @@ export const updateAttributeFieldValue = (
       value: {
         from_pool: {
           id: newValue.from_pool.id,
-          ...(newValue.from_pool.prefixlen !== undefined && {
-            prefixlen: newValue.from_pool.prefixlen,
+          ...(newValue.from_pool.prefixLength !== undefined && {
+            prefixLength: newValue.from_pool.prefixLength,
           }),
         },
       },
@@ -80,8 +80,8 @@ export const updateRelationshipFieldValue = (
       value: {
         from_pool: {
           id: newValue.from_pool.id,
-          ...(newValue.from_pool.prefixlen !== undefined && {
-            prefixlen: newValue.from_pool.prefixlen,
+          ...(newValue.from_pool.prefixLength !== undefined && {
+            prefixLength: newValue.from_pool.prefixLength,
           }),
         },
       },

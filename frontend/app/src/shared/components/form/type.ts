@@ -29,7 +29,7 @@ export type PoolSource = {
   /**
    * Pool's default prefix length, captured from the pool option at selection time and
    * shown as a placeholder on the prefix-length override. Display-only metadata — it is
-   * never serialized into the mutation (the value's `from_pool` carries only id/prefixlen).
+   * never serialized into the mutation (the value's `from_pool` carries only id/prefixLength).
    */
   defaultPrefixLength?: number | null;
 };
@@ -55,7 +55,7 @@ export type AttributeValueFromProfile = {
 
 export type AttributeValueFromPool = {
   source: PoolSource;
-  value: { from_pool: { id: string; prefixlen?: number } };
+  value: { from_pool: { id: string; prefixLength?: number } };
 };
 
 export type AttributeValueForCheckbox = {
@@ -110,7 +110,7 @@ export type RelationshipManyValueFromTemplate = {
 
 export type RelationshipValueFromPool = {
   source: PoolSource;
-  value: NodeCore | { from_pool: { id: string; prefixlen?: number } };
+  value: NodeCore | { from_pool: { id: string; prefixLength?: number } };
 };
 
 export type RelationshipOneValueFromProfile = {

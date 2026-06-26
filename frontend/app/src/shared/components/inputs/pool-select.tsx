@@ -65,7 +65,7 @@ export function PoolSelect({
 
   // The prefix-length override only applies to a pending allocation (a resolved value
   // can't be re-allocated with a new mask). It is its own form field, nested at the
-  // allocation's `from_pool.prefixlen`, so it owns its validation/error.
+  // allocation's `from_pool.prefixLength`, so it owns its validation/error.
   //
   // Offered for both IP address pools (sets the new address's mask) and IP prefix pools
   // (sets the size of the carved-out subnet); both map to the allocation's prefix length.
@@ -90,15 +90,15 @@ export function PoolSelect({
       {/* Sits between the value input and the pool button. */}
       {showPrefixLength && (
         <FormField
-          name={`${name}.value.from_pool.prefixlen`}
+          name={`${name}.value.from_pool.prefixLength`}
           rules={{
-            validate: (prefixlen: number | null | undefined) => {
-              if (typeof prefixlen === "number" && !Number.isInteger(prefixlen)) {
+            validate: (prefixLength: number | null | undefined) => {
+              if (typeof prefixLength === "number" && !Number.isInteger(prefixLength)) {
                 return "Prefix length must be a whole number";
               }
               const result = validateNumberAttribute(
                 { min: MIN_PREFIX_LENGTH, max: MAX_PREFIX_LENGTH },
-                prefixlen ?? null
+                prefixLength ?? null
               );
               return result.success || result.error;
             },
@@ -132,7 +132,7 @@ export function PoolSelect({
                     defaultPrefixLength: pool.default_prefix_length?.value ?? null,
                   },
                 });
-                // No prefixlen is sent unless the user types an override: allocation is
+                // No prefixLength is sent unless the user types an override: allocation is
                 // idempotent, so re-selecting a pool that already holds a reservation can't
                 // change the mask, and the backend rejects a conflicting length.
               }

@@ -12,7 +12,7 @@ describe("updateRelationshipFieldValue - from-pool", () => {
     value: { id: "addr-id", display_label: "10.0.0.31/24", __typename: "IpamIPAddress" },
   };
 
-  it("restores the existing allocation when the original pool is re-selected, ignoring a new prefixlen", () => {
+  it("restores the existing allocation when the original pool is re-selected, ignoring a new prefixLength", () => {
     // Allocation is idempotent: re-selecting the field's original pool cannot change
     // its mask, so the resolved value is restored rather than a pending allocation.
     const result = updateRelationshipFieldValue(
@@ -21,7 +21,7 @@ describe("updateRelationshipFieldValue - from-pool", () => {
           id: "loopbacks",
           name: "Loopbacks pool",
           kind: "CoreIPAddressPool",
-          prefixlen: 28,
+          prefixLength: 28,
         },
       },
       original
@@ -30,14 +30,14 @@ describe("updateRelationshipFieldValue - from-pool", () => {
     expect(result).toBe(original);
   });
 
-  it("creates a pending allocation when a different pool is selected, carrying its prefixlen", () => {
+  it("creates a pending allocation when a different pool is selected, carrying its prefixLength", () => {
     const result = updateRelationshipFieldValue(
       {
         from_pool: {
           id: "management",
           name: "Management addresses pool",
           kind: "CoreIPAddressPool",
-          prefixlen: 16,
+          prefixLength: 16,
           defaultPrefixLength: 8,
         },
       },
@@ -45,7 +45,7 @@ describe("updateRelationshipFieldValue - from-pool", () => {
     );
 
     // The pool default is kept on the source (for the placeholder) but never in the
-    // value, which carries only what the mutation sends (id + the typed prefixlen).
+    // value, which carries only what the mutation sends (id + the typed prefixLength).
     expect(result).toEqual({
       source: {
         type: "pool",
@@ -54,7 +54,7 @@ describe("updateRelationshipFieldValue - from-pool", () => {
         label: "Management addresses pool",
         defaultPrefixLength: 8,
       },
-      value: { from_pool: { id: "management", prefixlen: 16 } },
+      value: { from_pool: { id: "management", prefixLength: 16 } },
     });
   });
 });
@@ -64,17 +64,17 @@ describe("updateAttributeFieldValue - from-pool", () => {
   // nodes); re-selecting the same pool restores it unchanged.
   const original: FormAttributeValue = {
     source: { type: "pool", id: "loopbacks", kind: "CoreIPAddressPool", label: "Loopbacks pool" },
-    value: { from_pool: { id: "loopbacks", prefixlen: 24 } },
+    value: { from_pool: { id: "loopbacks", prefixLength: 24 } },
   };
 
-  it("restores the existing allocation when the original pool is re-selected, ignoring a new prefixlen", () => {
+  it("restores the existing allocation when the original pool is re-selected, ignoring a new prefixLength", () => {
     const result = updateAttributeFieldValue(
       {
         from_pool: {
           id: "loopbacks",
           name: "Loopbacks pool",
           kind: "CoreIPAddressPool",
-          prefixlen: 28,
+          prefixLength: 28,
         },
       },
       original
@@ -83,14 +83,14 @@ describe("updateAttributeFieldValue - from-pool", () => {
     expect(result).toBe(original);
   });
 
-  it("creates a pending allocation when a different pool is selected, carrying its prefixlen", () => {
+  it("creates a pending allocation when a different pool is selected, carrying its prefixLength", () => {
     const result = updateAttributeFieldValue(
       {
         from_pool: {
           id: "management",
           name: "Management addresses pool",
           kind: "CoreIPAddressPool",
-          prefixlen: 16,
+          prefixLength: 16,
           defaultPrefixLength: 8,
         },
       },
@@ -98,7 +98,7 @@ describe("updateAttributeFieldValue - from-pool", () => {
     );
 
     // The pool default is kept on the source (for the placeholder) but never in the
-    // value, which carries only what the mutation sends (id + the typed prefixlen).
+    // value, which carries only what the mutation sends (id + the typed prefixLength).
     expect(result).toEqual({
       source: {
         type: "pool",
@@ -107,7 +107,7 @@ describe("updateAttributeFieldValue - from-pool", () => {
         label: "Management addresses pool",
         defaultPrefixLength: 8,
       },
-      value: { from_pool: { id: "management", prefixlen: 16 } },
+      value: { from_pool: { id: "management", prefixLength: 16 } },
     });
   });
 });

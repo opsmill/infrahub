@@ -223,7 +223,7 @@ describe("getUpdateMutationFromFormData - test", () => {
     const formData: Record<string, RelationshipValueFromPool> = {
       primary_address: {
         source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
-        value: { from_pool: { id: "pool-id", prefixlen: 24 } },
+        value: { from_pool: { id: "pool-id", prefixLength: 24 } },
       },
     };
 
@@ -251,7 +251,7 @@ describe("getUpdateMutationFromFormData - test", () => {
     const formData: Record<string, RelationshipValueFromPool> = {
       primary_address: {
         source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
-        value: { from_pool: { id: "pool-id", prefixlen: undefined } },
+        value: { from_pool: { id: "pool-id", prefixLength: undefined } },
       },
     };
 
@@ -279,7 +279,7 @@ describe("getUpdateMutationFromFormData - test", () => {
             id: "pool-id",
             kind: "CoreIPAddressPool",
           },
-          value: { from_pool: { id: "pool-id", prefixlen: 32 } },
+          value: { from_pool: { id: "pool-id", prefixLength: 32 } },
         },
         pool: { kind: "CoreIPAddressPool", defaultAllocatedObjectKind: "IpamIPAddress" },
       }),
@@ -287,7 +287,7 @@ describe("getUpdateMutationFromFormData - test", () => {
     const formData: Record<string, RelationshipValueFromPool> = {
       primary_address: {
         source: { type: "pool", label: "Loopbacks pool", id: "pool-id", kind: "CoreIPAddressPool" },
-        value: { from_pool: { id: "pool-id", prefixlen: 28 } },
+        value: { from_pool: { id: "pool-id", prefixLength: 28 } },
       },
     };
 
