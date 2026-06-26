@@ -92,7 +92,7 @@ describe("getRelationshipDefaultValue", () => {
     it("returns relationship from pool", () => {
       // GIVEN
       store.set(nodeSchemasAtom, [
-        { kind: "FakeResourcePool", inherit_from: [RESOURCE_GENERIC_KIND] } as NodeSchema,
+        { kind: "CoreIPAddressPool", inherit_from: [RESOURCE_GENERIC_KIND] } as NodeSchema,
       ]);
 
       const relationshipName = "testRelationship";
@@ -101,7 +101,7 @@ describe("getRelationshipDefaultValue", () => {
           source: {
             id: "pool-random-id",
             display_label: "test name pool",
-            __typename: "FakeResourcePool",
+            __typename: "CoreIPAddressPool",
           },
         },
       });
@@ -120,7 +120,7 @@ describe("getRelationshipDefaultValue", () => {
           type: "pool",
           label: "test name pool",
           id: "pool-random-id",
-          kind: "FakeResourcePool",
+          kind: "CoreIPAddressPool",
         },
         value: {
           id: "relationship-one-id",

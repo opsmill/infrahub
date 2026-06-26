@@ -30,7 +30,7 @@ describe("getFieldDefaultValue", () => {
     const profileSchema = generateProfileSchema({ kind: "Profile" });
     const templateSchema = generateTemplateSchema({ kind: "Template" });
     const fakeProfileSchema = generateProfileSchema({ kind: "FakeProfileKind" });
-    const poolSchema = generateGenericSchema({ kind: "FakePool" });
+    const poolSchema = generateGenericSchema({ kind: "CoreIPAddressPool" });
     const fakeTemplateSchema = generateTemplateSchema({ kind: "FakeTemplateKind" });
 
     store.set(nodeSchemasAtom, [nodeSchema]);
@@ -648,7 +648,7 @@ describe("getFieldDefaultValue", () => {
       const initialObject = {
         field1: generateNodeAttributeWithMetadata({
           value: "my-default-value",
-          source: { id: "pool-id", display_label: "Fake pool", __typename: "FakePool" },
+          source: { id: "pool-id", display_label: "Fake pool", __typename: "CoreIPAddressPool" },
         }),
       };
 
@@ -661,7 +661,7 @@ describe("getFieldDefaultValue", () => {
           type: "pool",
           id: "pool-id",
           label: "Fake pool",
-          kind: "FakePool",
+          kind: "CoreIPAddressPool",
         },
         value: "my-default-value",
       });
