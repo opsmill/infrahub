@@ -588,6 +588,19 @@ allow-dunder-method-names = [
 
 [tool.ruff.lint.per-file-ignores]
 
+# Dev-only helper scripts under .agents/skills drive docker/cypher-shell by design, so the
+# subprocess-security rules do not apply the way they would in shipped application code.
+".agents/skills/**/scripts/*.py" = [
+    "S404",  # `subprocess` import flagged insecure
+    "S603",  # `subprocess` call: check for execution of untrusted input
+]
+
+# ...and their tests assert and exercise the scripts' private parsing helpers (mirrors backend/tests).
+".agents/skills/**/scripts/test_*.py" = [
+    "S101",    # Use of `assert` detected
+    "SLF001",  # Private member accessed
+]
+
 "backend/infrahub/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule

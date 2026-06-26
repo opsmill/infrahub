@@ -201,6 +201,8 @@ Before finalizing any generated query:
 5. **Use EXISTS for existence checks** - More efficient than counting
 6. **Profile queries** - Use PROFILE to identify bottlenecks
 
+> These are generic, write-time tips. When a **specific Infrahub query is measurably slow** and you need to reproduce it, pull it from `query.log`, PROFILE it, and read the plan against a curated operator-level anti-pattern checklist (`AllNodesScan`, `Expand(All)` db hits, `Eager`, the `$param IS NULL` UNION trap, etc.), use the `optimizing-neo4j-cypher-query` skill — that's the performance-debugging counterpart to this syntax guide.
+
 ## Modern Cypher Features
 
 ### Label Expressions
