@@ -7,7 +7,7 @@
 
 Make a webhook delivery a first-class, inspectable, recoverable object in the Tasks tab, built entirely on Prefect primitives with no new Neo4j node and no migration. The delivery is the user-visible `webhook_send` run; the operability layer adds: (1) capture of the request/response as a redacted artifact on the run, (2) a pure failure classifier producing a clean reason + smart (transient-only) retry over the existing fixed-delay policy, (3) polymorphic GraphQL task typing (`WebhookDeliveryTask`) discriminated by the run's workflow name, mirroring the events type hierarchy, and (4) generic, task-id-addressable resend and cancel mutations gated by a server-computed `available_actions` capability on every task.
 
-The structural split (orchestrator freezes payload → `webhook_send` carries its own retries) already exists on the branch. The one structural prerequisite uncovered in research is that `webhook_send` must be promoted to a registered workflow/deployment so it can be resubmitted by id and discriminated by name.
+The structural split (orchestrator freezes payload → `webhook_send` carries its own fixed-delay bounded retries) already exists on the branch, along with the retry policy itself (3 attempts, ~120s fixed delay, retrying on every failure) and webhook-node-id tagging on the flow runs — see the Implementation Sync revision below. The one structural prerequisite uncovered in research and still outstanding is that `webhook_send` must be promoted to a registered workflow/deployment so it can be resubmitted by id and discriminated by name.
 
 ## Technical Context
 
@@ -139,3 +139,16 @@ Both surfaces require `available_actions` (and, for the row, the `... on Webhook
 ## Complexity Tracking
 
 No constitution violations to justify.
+
+## Revision: Implementation Sync — 2026-06-26
+
+Reason: Reconcile the plan with foundation work merged ahead of the operability layer. Documentation-only sync; no constitution, `dev/guidelines/`, or `dev/adr/` conflict.
+
+| Foundation piece | State |
+|---|---|
+| `webhook_send` flow split (#9672) | Landed |
+| Fixed-delay bounded retry policy, 3 attempts / ~120s, retrying on all failures (#9676) | Landed |
+| Webhook-node-id tagging on flow runs | Landed |
+| Register `WEBHOOK_SEND` in the workflow catalogue (Phasing → Foundation) | Outstanding |
+| Transient-only `retry_condition_fn` over the landed policy (Phasing → US2) | Outstanding |
+| Capture/redaction, typing, classification, resend, cancel (US1–US4) | Outstanding |

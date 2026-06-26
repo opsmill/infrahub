@@ -167,7 +167,7 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 
 ## Assumptions
 
-- The structural foundation — splitting the orchestrator that freezes the payload from the user-visible send, which carries its own auto-retries — is already in place on the current branch; this feature adds the operability layer (capture, classification, typing, resend, cancel) on top.
+- The structural foundation — splitting the orchestrator that freezes the payload from the user-visible `webhook_send`, which carries its own fixed-delay bounded auto-retries — is already in place on the current branch (see the Implementation Sync revision below); this feature adds the operability layer (capture, classification, typing, resend, cancel) on top. The landed retry policy currently retries on every failure; FR-012 narrows it to transient-only.
 - Delivery data lives in the background execution system and is subject to its retention window (default 30 days); deliveries older than the window are not inspectable or resendable. This is an accepted trade for requiring no new domain schema or migration.
 - Resend replays the frozen payload against the *current* configuration with a fresh signature; it deliberately does not replay a byte-for-byte frozen request, so that fixing a misconfiguration and resending succeeds.
 - The payload is frozen once at delivery creation; headers, signature, and configuration are recomputed per attempt and per resend.
@@ -175,3 +175,17 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 - Permission to resend or cancel a delivery is the existing webhook-management permission (see FR-027); this feature introduces no new permission model.
 - Resend and cancel are state-gated rather than coordinated through locking; concurrent or stale attempts are resolved by the server-side availability check at execution time (FR-026).
 - "Terminal" means a delivery has settled (succeeded, failed, crashed, or cancelled); "non-terminal" means it is in progress or awaiting an auto-retry.
+
+## Revision: Implementation Sync — 2026-06-26
+
+Reason: Reconcile the specification with foundation work that has merged ahead of the operability layer, so the spec reflects shipped reality rather than a greenfield baseline. Documentation-only sync; no constitution, `dev/guidelines/`, or `dev/adr/` conflict.
+
+Landed prerequisites (structural; out of this spec's scope but the layer it builds on):
+
+| Change | Bearing on this spec |
+|---|---|
+| `webhook_send` split into its own flow (#9672) | The delivery this spec makes a first-class object (FR-001) already exists as a standalone run. |
+| Fixed-delay bounded retry policy on `webhook_send` (#9676) | FR-012a's retry mechanism (3 attempts, ~120s fixed delay) is implemented. It retries on every failure today; the transient-only gating in FR-012 is the remaining operability layer. |
+| Webhook flow runs tagged with the webhook node id | Underpins the per-delivery, object-level authorization in FR-027 and node-scoped lookup. |
+
+Outstanding (this feature's scope): capture and redaction (FR-005–FR-009), failure classification with remediation hints (FR-010–FR-014), polymorphic task typing (FR-001–FR-004), and the generic resend/cancel actions (FR-016–FR-027).
