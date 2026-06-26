@@ -7,9 +7,8 @@ export type GenerateRelationshipListQueryParams = PaginationParams & {
   parent?: { name: string; value: string };
   search?: string;
   filterQuery?: Record<string, string | number | boolean | string[]>;
-  // Extra node-level fields to select, in json-to-graphql-query form. Lets a caller
-  // request kind-specific fields (e.g. a pool's default_prefix_length) without this
-  // generic builder needing to know about any particular node kind.
+  // Extra node fields to select (json-to-graphql-query form), so callers request
+  // kind-specific fields without this builder knowing about any node kind.
   additionalFields?: Record<string, unknown>;
 };
 

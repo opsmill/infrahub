@@ -16,10 +16,8 @@ import type { RelationshipNode } from "@/entities/nodes/relationships/domain/typ
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-// Nodes always carry the base RelationshipNode shape; a caller that requests extra
-// fields via `additionalFields` declares their shape through TAdditionalFields, and the
-// node-bearing callbacks (onSelect/value/filterItem) surface them typed. The generic
-// keeps kind-specific fields out of the shared RelationshipNode type.
+// TAdditionalFields types any extra fields a caller requested via `additionalFields`,
+// surfaced on the node-bearing callbacks (onSelect/value/filterItem).
 export interface RelationshipComboboxListProps<TAdditionalFields = unknown>
   extends Omit<ComboboxListProps, "value" | "onSelect"> {
   ref?: React.Ref<HTMLDivElement>;

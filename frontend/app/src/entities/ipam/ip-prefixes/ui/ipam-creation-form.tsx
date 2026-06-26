@@ -99,9 +99,7 @@ function IpamCreationForm(props: IpamCreationFormProps) {
         const allocateMutationName = getAllocateMutationNameFromSchema(props.schema);
 
         if (fieldDataForIpField?.source?.type === "pool" && allocateMutationName) {
-          // IPAM creates the IP node *from* the pool via the dedicated GetResource mutation,
-          // so the input (pool id + node attributes + any entered prefix length) is assembled
-          // by buildAllocateResourceInput rather than through the generic from-pool path.
+          // IPAM allocates the IP node from the pool via the dedicated GetResource mutation.
           await allocateResource.mutateAsync(
             {
               poolGetResourceMutationName: allocateMutationName,

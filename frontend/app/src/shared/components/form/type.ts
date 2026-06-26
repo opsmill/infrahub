@@ -21,7 +21,6 @@ export type EmptyFieldValue = {
   value: null;
 };
 
-/** The three resource-pool kinds a from-pool source can point at ({@link PoolKind}). */
 export type { PoolKind };
 
 type PoolSourceBase = {
@@ -31,18 +30,12 @@ type PoolSourceBase = {
   fromTemplate?: boolean;
 };
 
-/** IP address / prefix pools support a prefix-length override. */
 export type IpPoolSource = PoolSourceBase & {
   kind: IpPoolKind;
-  /**
-   * Pool's default prefix length, captured from the pool option at selection time and
-   * shown as a placeholder on the prefix-length override. Display-only metadata — it is
-   * never serialized into the mutation (the value's `from_pool` carries only id/prefixLength).
-   */
+  /** Pool default, shown as the prefix-length override placeholder; never serialized. */
   defaultPrefixLength?: number | null;
 };
 
-/** Number pools allocate a plain integer; no prefix-length customization. */
 export type NumberPoolSource = PoolSourceBase & {
   kind: NumberPoolKind;
 };

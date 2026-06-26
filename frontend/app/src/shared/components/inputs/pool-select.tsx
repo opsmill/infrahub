@@ -16,12 +16,9 @@ import {
 } from "@/entities/resource-manager/constants";
 import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
 
-// Both IP pool kinds expose default_prefix_length; we surface it as the placeholder on
-// the prefix-length override. Injected into the relationship list query so the generic
-// builder stays kind-agnostic. Module-level for a stable react-query cache key.
+// Pool default, injected into the relationship query (module-level for a stable cache key).
 const POOL_ADDITIONAL_FIELDS = { default_prefix_length: { value: true } };
 
-// The extra node field POOL_ADDITIONAL_FIELDS requests, typed for the combobox callbacks.
 type PoolNodeFields = { default_prefix_length?: { value?: number | null } | null };
 
 export interface PoolSelectProps {
@@ -64,12 +61,7 @@ export function PoolSelect({
     }
   }, [poolKind, poolDefaultAllocatedObjectKind]);
 
-  // The prefix-length override only applies to a pending allocation (a resolved value
-  // can't be re-allocated with a new mask). It is its own form field, nested at the
-  // allocation's `from_pool.prefixLength`, so it owns its validation/error.
-  //
-  // Offered for both IP address pools (sets the new address's mask) and IP prefix pools
-  // (sets the size of the carved-out subnet); both map to the allocation's prefix length.
+  // The prefix-length override only applies to a pending allocation, for IP pools.
   const pendingFromPool =
     value.source?.type === "pool" &&
     value.value &&
@@ -80,9 +72,7 @@ export function PoolSelect({
   const showPrefixLength =
     !!pendingFromPool && (poolKind === IP_ADDRESS_POOL || poolKind === IP_PREFIX_POOL);
 
-  // The pool's default prefix length is shown as a placeholder so the user can see which
-  // mask a blank override will allocate. It is captured from the pool option at selection
-  // time and carried on the field's source, so no extra fetch is needed here.
+  // Pool default, shown as the override placeholder (carried on the source, no extra fetch).
   const defaultPrefixLength =
     value.source?.type === "pool" && value.source.kind !== NUMBER_POOL_KIND
       ? value.source.defaultPrefixLength
@@ -123,9 +113,7 @@ export function PoolSelect({
         <ComboboxContent align="end" fitTriggerWidth={false}>
           <RelationshipComboboxList<PoolNodeFields>
             onSelect={(pool) => {
-              // Re-selecting the already-selected pool is a no-op: keep the current
-              // value rather than clearing it. Clearing a pool is done through the
-              // relationship/attribute input or the reset action.
+              // Re-selecting the current pool is a no-op (clear via the input or reset action).
               if (selectedPoolId !== pool.id) {
                 onChange({
                   from_pool: {
@@ -135,9 +123,6 @@ export function PoolSelect({
                     defaultPrefixLength: pool.default_prefix_length?.value ?? null,
                   },
                 });
-                // No prefixLength is sent unless the user types an override: allocation is
-                // idempotent, so re-selecting a pool that already holds a reservation can't
-                // change the mask, and the backend rejects a conflicting length.
               }
               setIsOpen(false);
             }}
