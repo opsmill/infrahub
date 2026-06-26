@@ -132,6 +132,6 @@ Most merges are small. The coalescing must not make small merges slower or add n
 - Background task scheduling and throughput tuning (tracked separately) are out of scope here; this work reduces how much recompute is submitted, not how it is scheduled.
 - A configurable per-instance recompute policy is out of scope for this work.
 - The profiling harness from the first task (on the `merge-recompute-profile-ifc-2761` branch) is the before/after measurement tool and is available to this work.
-- Python-transform computed attributes are deferred to a follow-up increment that reuses the same coalescing approach; this increment covers Jinja2 computed attributes, display labels, and human-friendly ids.
+- Python-transform computed attributes and the profile-refresh family are deferred to a follow-up increment; both keep their current per-node recompute path. This increment covers Jinja2 computed attributes, display labels, and human-friendly ids, which are the families the coalesced pass replaces and suppresses on the merge/rebase path.
 - Readers of a node deleted by the merge are recomputed by the coalesced pass so their derived values no longer reflect the deleted node.
 - Absolute timings are stack-relative; the success criteria are judged on the growth shape and the relative reduction against the profile baseline, not on fixed second counts.

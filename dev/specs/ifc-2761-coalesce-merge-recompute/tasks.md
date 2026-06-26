@@ -32,9 +32,9 @@ The shippable increments are by **capability**, not strictly by user story: the 
 
 ## Phase 1: Setup
 
-- [ ] T001 Rebase `coalesce-merge-recompute-ifc-2761` onto current develop (coordinating with the in-flight stable→develop merge), so the integration points are real: `backend/infrahub/core/merge/post_merge.py` (merge emission) and the per-family recompute flows. Resolve conflicts; re-run the profiling harness to confirm it still builds.
-- [ ] T002 [P] Spike (blocks T009/T012): map every consumer of the per-node `NodeMutatedEvent`s emitted by a merge/rebase (webhooks, generators, action rules, audit). Decide the no-double-processing mechanism — drop the per-node recompute-triggering emission, or keep the events and exclude merge-origin events from the cross-node automations. Record the decision in `research.md` (R3).
-- [ ] T003 [P] Spike (gates T019): trace which post-merge readers were already recomputed on the source branch versus those that exist only on the destination branch, to scope the skip optimization. Record in `research.md` (R5). Until done, the design recomputes all affected readers.
+- [X] T001 Rebased `coalesce-merge-recompute-ifc-2761` onto current develop (`f1e69c9dd`). The integration points are now real (`backend/infrahub/core/merge/post_merge.py`, the per-family triggers). No conflicts. The harness builds and the counting layer passes on develop after one adaptation: develop's merge/rebase path reads a Redis-backed write blocker, so the counting driver injects the in-memory cache adapter. The stable→develop merge is identical to develop across the merge/recompute area (see research R9).
+- [X] T002 [P] Spike (gates T009/T012): mapped consumers of the per-node `NodeMutatedEvent`s. Decision = keep emission, stamp a merge/rebase-origin label, and add a negative match to only the three coalesced families' triggers; user action rules and webhooks consume the same events and must keep firing. Recorded in `research.md` (R3).
+- [X] T003 [P] Spike (gates T019): traced source-vs-destination reader redundancy. Decision = recompute-all on the correct branch; the skip optimization is deferred and likely not worth it. Recorded in `research.md` (R5).
 - [ ] T004 [P] Pin the reuse points in a short note in the feature dir: the computed-attribute deriver API (`backend/infrahub/computed_attribute/scoping.py`, PR #9467), the display-label/HFID dependency metadata on the definitions (`backend/infrahub/core/schema/schema_branch_display.py`, `schema_branch_hfid.py`), the diff changelog shape at the emission points, and the per-family process/update flows plus chunk helpers.
 
 ---
@@ -47,7 +47,7 @@ The shippable increments are by **capability**, not strictly by user story: the 
 - [ ] T006 [P] Build the human-friendly-id dependency deriver in `backend/infrahub/hfid/` similarly, respecting that a self-only HFID has no peer trigger and does not fan out on a related-node change.
 - [ ] T007 Implement `build_coalesced_recompute(*, changes, schema_branch, branch)` in `backend/infrahub/core/merge/recompute_coalescing.py`: group changes by change signature, run the computed/display/HFID derivers, deduplicate to the affected-target set, tag the branch, mark precise vs bounded-fallback. Pure, no DB/Prefect.
 - [ ] T008 Implement `submit_coalesced_recompute(...)` in the same module: resolve reader node ids with one query over the union per family and submit a batched/chunked recompute via the existing per-family process/update flows. No per-node fan-out, no per-target reader re-query.
-- [ ] T009 Implement the no-double-processing mechanism chosen in T002 so the cross-node automations do not also fire for merge-origin changes (`backend/infrahub/events/` and/or the family trigger definitions, or the merge emission site).
+- [ ] T009 Implement the no-double-processing mechanism (T002 decision): stamp a merge/rebase-origin discriminator on the node events at the two build sites (`core/merge/post_merge.py`, `core/branch/tasks.py`), surface it as a Prefect match label in `core/events`/`events/node_action.py`, and add a negative match to the trigger builders of the three coalesced families only (`computed_attribute/models.py`, `display_labels/models.py`, `hfid/models.py`). Do not touch Python-transform, profiles, action rules, or webhooks.
 
 **Checkpoint**: derivers + coordinator + suppression ready; merge and rebase can integrate.
 
@@ -84,7 +84,7 @@ The shippable increments are by **capability**, not strictly by user story: the 
 
 - [ ] T017 [US4] No-regression: run the harness at the small scale before/after; confirm small merges are no slower within tolerance.
 - [ ] T018 [P] Chunk the full-branch Jinja2 recompute loop (one workflow per node today, no chunking) to match the Python/transform paths.
-- [ ] T019 Redundancy skip (gated on T003): skip readers already recomputed on the source branch only where the trace proves it safe; default to recompute-all; log any bounded over-approximation. Never under-recompute.
+- [ ] T019 Redundancy skip (T003 decision: deferred): keep recompute-all as the default; the source-branch skip is not implemented in this increment because proving a reader safe needs a source-vs-destination branch query plus a conflict-resolution check whose cost rivals the recompute, with the best-effort source fan-out as a correctness risk. Revisit only if the harness shows reader overlap is a measured hotspot after coalescing. Never under-recompute.
 - [ ] T020 Confirm the existing recompute tests stay green: `backend/tests/integration_docker/test_computed_attributes.py`, `test_display_label_backfill.py`.
 - [ ] T021 [P] Add a changelog fragment (user-facing performance change); confirm wording against project convention. Optional `dev/knowledge/backend/` note on the coalesced path.
 - [ ] T022 Run `uv run invoke format` and `uv run invoke lint`; resolve `mypy` on all new files.

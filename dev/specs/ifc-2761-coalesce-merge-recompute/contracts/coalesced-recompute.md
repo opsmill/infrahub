@@ -35,7 +35,7 @@ async def submit_coalesced_recompute(*, request, context, ...) -> None: ...
 
 **Rebase**: `backend/infrahub/core/branch/tasks.py` — inline in the rebase flow. Same coordinator, on the **user branch**.
 
-**No-double-processing invariant (FR-008)**: a single change is recomputed by exactly one path. Self-targeting automations are already disabled for replayed merge events; the coalesced pass must also stop the **cross-node** automations from firing for the same change (drop the per-node recompute-triggering emission, or exclude merge-origin events). Resolved in research R3.
+**No-double-processing invariant (FR-008)**: a single change is recomputed by exactly one path. Self-targeting automations never match a real node event regardless of origin (they carry a placeholder field, not a merge filter), so same-node values stay free. The coalesced pass becomes the single dispatcher for the **cross-node** recompute of the three coalesced families; per research R3 the chosen mechanism keeps the per-node events (user action rules and webhooks depend on them) and adds a merge/rebase-origin discriminator so only those three families' cross-node triggers stop matching merge/rebase-origin events. Python-transform, profiles, action rules, and webhooks keep the per-node path.
 
 **Behavior-preserving invariant (FR-010)**: the derived values stored after the merge/rebase are identical to today; only the work changes. **Branch invariant (FR-014)**: merge recomputes on the destination branch, rebase on the user branch.
 
@@ -54,7 +54,7 @@ The full-branch Jinja2 recompute loop submits one workflow per node without chun
 
 ## Out of scope
 
-- Python-transform computed attributes (follow-up).
+- Python-transform computed attributes and the profile-refresh family (both keep the per-node path; follow-up).
 - Background task scheduling / throughput tuning.
 - Schema-changing merges (migrations); see IFC-2758 for the complementary correctness gap.
 - Any change to the final derived values (behavior-preserving only).
