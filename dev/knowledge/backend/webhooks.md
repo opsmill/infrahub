@@ -94,7 +94,7 @@ Normalized representation of the event extracted from Prefect's raw event payloa
 
 ### `WebhookHeader`
 
-Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up the environment variable and raises `WebhookHeaderResolutionError` if the variable is missing (the caller catches this and skips the header with a warning log).
+Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up the environment variable and raises `WebhookHeaderResolutionError` if the variable is missing, which fails the delivery with a configuration error rather than sending the request without that header.
 
 ### `Webhook` class hierarchy
 
@@ -107,7 +107,7 @@ The base class handles:
 - HTTP delivery of a precomputed payload via `send_payload()`
 - Cache serialization (`to_cache` / `from_cache`)
 
-The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_build_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time (missing vars are skipped with a warning log).
+The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_build_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time. A missing variable fails the delivery with a configuration error (the `CONFIG` failure class) rather than being skipped.
 
 ## Schema (GraphQL)
 
