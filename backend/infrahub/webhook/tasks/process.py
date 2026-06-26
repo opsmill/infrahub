@@ -190,9 +190,10 @@ async def webhook_process(
         payload=payload,
         return_state=True,
     )
-    if not state.is_failed():
+    if state.is_completed():
         return None
 
+    # Any non-completed terminal state (failed, crashed, cancelled) is surfaced, not reported as success.
     outcome = await state.aresult(raise_on_failure=False)
     if isinstance(outcome, WebhookDeliveryError):
         return Failed(message=f"{outcome.failure.message.rstrip('.')}. {outcome.failure.remediation}")
