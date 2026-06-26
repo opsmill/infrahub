@@ -12,6 +12,7 @@ import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/ui/quer
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
+import type { AllocateResourceInput } from "@/entities/resource-manager/api/allocate-resource-from-api";
 import { useAllocateResourceMutation } from "@/entities/resource-manager/ui/queries/allocate-resource.mutation";
 import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/utils/get-allocate-mutation-name-from-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -108,7 +109,7 @@ function IpamCreationForm(props: IpamCreationFormProps) {
               ? fieldDataForIpField.value.from_pool
               : null;
 
-          const allocationData: Record<string, unknown> = {
+          const allocationData: AllocateResourceInput = {
             id: fieldDataForIpField.source.id,
             data: getCreateMutationFromFormData(formFieldsWithoutIpField, formData),
           };
