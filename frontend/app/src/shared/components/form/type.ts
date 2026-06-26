@@ -5,6 +5,7 @@ import type { SelectOption } from "@/shared/components/inputs/select-old";
 import type { FormField } from "@/shared/components/ui/form";
 
 import type { NodeCore } from "@/entities/nodes/types";
+import type { IpPoolKind, NumberPoolKind, PoolKind } from "@/entities/resource-manager/constants";
 import type { NumberPool } from "@/entities/resource-manager/domain/type";
 import type {
   AttributeKind,
@@ -20,12 +21,19 @@ export type EmptyFieldValue = {
   value: null;
 };
 
-export type PoolSource = {
+/** The three resource-pool kinds a from-pool source can point at ({@link PoolKind}). */
+export type { PoolKind };
+
+type PoolSourceBase = {
   type: "pool";
   label: string | null;
-  kind: string;
   id: string;
   fromTemplate?: boolean;
+};
+
+/** IP address / prefix pools support a prefix-length override. */
+export type IpPoolSource = PoolSourceBase & {
+  kind: IpPoolKind;
   /**
    * Pool's default prefix length, captured from the pool option at selection time and
    * shown as a placeholder on the prefix-length override. Display-only metadata — it is
@@ -33,6 +41,13 @@ export type PoolSource = {
    */
   defaultPrefixLength?: number | null;
 };
+
+/** Number pools allocate a plain integer; no prefix-length customization. */
+export type NumberPoolSource = PoolSourceBase & {
+  kind: NumberPoolKind;
+};
+
+export type PoolSource = IpPoolSource | NumberPoolSource;
 
 export type ProfileSource = {
   type: "profile";

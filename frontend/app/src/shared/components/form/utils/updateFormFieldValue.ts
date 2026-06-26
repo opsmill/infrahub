@@ -8,6 +8,7 @@ import type {
   FormRelationshipValue,
   RelationshipValueFromPool,
 } from "@/shared/components/form/type";
+import { makePoolSource } from "@/shared/components/form/utils/make-pool-source";
 
 export const updateFormFieldValue = (
   newValue: Exclude<FormFieldValue, AttributeValueFromPool | RelationshipValueFromPool>["value"],
@@ -36,13 +37,12 @@ export const updateAttributeFieldValue = (
       return defaultValue;
     }
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         id: newValue.from_pool.id,
         kind: newValue.from_pool.kind,
         label: newValue.from_pool.name,
         defaultPrefixLength: newValue.from_pool.defaultPrefixLength ?? null,
-      },
+      }),
       value: {
         from_pool: {
           id: newValue.from_pool.id,
@@ -70,13 +70,12 @@ export const updateRelationshipFieldValue = (
       return defaultValue;
     }
     return {
-      source: {
-        type: "pool",
+      source: makePoolSource({
         id: newValue.from_pool.id,
         kind: newValue.from_pool.kind,
         label: newValue.from_pool.name,
         defaultPrefixLength: newValue.from_pool.defaultPrefixLength ?? null,
-      },
+      }),
       value: {
         from_pool: {
           id: newValue.from_pool.id,

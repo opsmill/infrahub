@@ -191,7 +191,7 @@ describe("getUpdateMutationFromFormData - test", () => {
           type: "pool",
           label: "test name pool",
           id: "pool-id",
-          kind: "FakeResourcePool",
+          kind: "CoreIPAddressPool",
         },
         value: {
           from_pool: { id: "pool-id" },

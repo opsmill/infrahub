@@ -97,7 +97,7 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
         <div className="max-w-60">
           <p>This value is allocated from the pool:</p>
           <Link
-            to={getObjectDetailsUrl(source.kind!, source.id)}
+            to={getObjectDetailsUrl(source.kind, source.id)}
             className="inline-flex items-center gap-1 underline"
           >
             {source?.label} <Icon icon="mdi:open-in-new" />

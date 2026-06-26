@@ -12,6 +12,7 @@ import {
   IP_PREFIX_POOL,
   MAX_PREFIX_LENGTH,
   MIN_PREFIX_LENGTH,
+  NUMBER_POOL_KIND,
 } from "@/entities/resource-manager/constants";
 import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
 
@@ -83,7 +84,9 @@ export function PoolSelect({
   // mask a blank override will allocate. It is captured from the pool option at selection
   // time and carried on the field's source, so no extra fetch is needed here.
   const defaultPrefixLength =
-    value.source?.type === "pool" ? value.source.defaultPrefixLength : null;
+    value.source?.type === "pool" && value.source.kind !== NUMBER_POOL_KIND
+      ? value.source.defaultPrefixLength
+      : null;
 
   return (
     <>
