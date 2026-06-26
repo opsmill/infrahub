@@ -4,11 +4,9 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub import config
 from infrahub.core.constants import MutationAction
-from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
-from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
@@ -102,7 +100,6 @@ class PostMergeDispatcher:
         branch: Branch,
         proposed_change_id: str | None,
         node_events: Sequence[tuple[DiffAction, NodeChangelog]],
-        schema_was_updated: bool,
         context: InfrahubContext,
     ) -> None:
         event_context = context.to_event_context()
@@ -114,17 +111,6 @@ class PostMergeDispatcher:
         )
 
         events: list[InfrahubEvent] = [merge_event]
-        if schema_was_updated:
-            # A schema-changing merge updates the registry but emits no SchemaUpdatedEvent on its own,
-            # so the display-label, HFID and computed-attribute backfills never run on the destination
-            # branch. Emit it here so derived values on nodes absent from the merge diff get recomputed.
-            events.append(
-                SchemaUpdatedEvent(
-                    branch_name=self.default_branch.name,
-                    schema_hash=registry.schema.get_schema_branch(name=self.default_branch.name).get_hash(),
-                    meta=EventMeta.from_parent(parent=merge_event, branch=self.default_branch),
-                )
-            )
         for action, node_changelog in node_events:
             meta = EventMeta.from_parent(parent=merge_event, branch=self.default_branch)
             node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
