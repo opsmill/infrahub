@@ -31,7 +31,8 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.manager import NodeManager
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.node_action import NodeCreatedEvent, NodeDeletedEvent, NodeMutatedEvent, NodeUpdatedEvent
-from infrahub.workers.dependencies import build_database, build_event_service, build_workflow
+from infrahub.workers.dependencies import build_cache, build_database, build_event_service, build_workflow
+from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import load_profile_schema, seed_branch
@@ -94,6 +95,9 @@ async def _drive_counts(
 
     event_recorder = MemoryInfrahubEvent()
     workflow_recorder = WorkflowRecorder()
+    # Develop's merge/rebase path reads a Redis-backed write blocker; inject the
+    # in-memory cache adapter so the counting layer needs no external Redis.
+    cache = MemoryCache()
     context = InfrahubContext.init(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
@@ -103,6 +107,7 @@ async def _drive_counts(
         dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
         dependency_provider.scope(build_event_service, lambda: event_recorder),
         dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+        dependency_provider.scope(build_cache, lambda: cache),
     ):
         if operation == "merge":
             await merge_branch(branch=seeded.branch_name, context=context)
