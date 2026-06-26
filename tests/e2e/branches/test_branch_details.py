@@ -7,16 +7,22 @@ data_scenario_branches dependency on the non-default tests).
 
 from __future__ import annotations
 
+import contextlib
 import re
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 import pytest
+from helpers import generate_random_branch_name
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_branches_repo
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from data.handles import ScenarioBranchesHandle
+    from helpers import BranchAPI
     from playwright.async_api import Page
 
 NON_DEFAULT_BRANCH = "atl1-delete-upstream"
@@ -118,3 +124,30 @@ class TestBranchDetailsNonDefaultBranch:
         await expect(admin_page.get_by_text("Created by")).to_be_visible()
         await expect(admin_page.get_by_text("Updated at")).to_be_visible()
         await expect(admin_page.get_by_text("Updated by")).to_be_visible()
+
+
+class TestBranchDetailsSlashName:
+    @pytest.fixture
+    async def slash_branch(self, branch_api: BranchAPI) -> AsyncGenerator[str, None]:
+        """A branch whose name contains a slash, created via the API and removed afterwards."""
+        name = generate_random_branch_name("feat/slash-")
+        await branch_api.create(name)
+        yield name
+        with contextlib.suppress(Exception):
+            await branch_api.delete(name)
+
+    async def test_opens_detail_page_from_branches_list(self, admin_page: Page, slash_branch: str) -> None:
+        await admin_page.goto("/branches")
+        await admin_page.get_by_role("link", name=slash_branch, exact=True).click()
+
+        await expect(admin_page.get_by_role("heading", name=slash_branch)).to_be_visible()
+        await expect(admin_page.get_by_role("navigation", name="Tabs")).to_be_visible()
+        await expect(admin_page).to_have_url(re.compile(rf"/branches/{re.escape(quote(slash_branch, safe=''))}$"))
+
+    async def test_navigates_to_path_based_tab(self, admin_page: Page, slash_branch: str) -> None:
+        await admin_page.goto(f"/branches/{quote(slash_branch, safe='')}")
+
+        await admin_page.get_by_role("navigation", name="Tabs").get_by_text("Data").click()
+
+        await expect(admin_page.get_by_role("heading", name=slash_branch)).to_be_visible()
+        await expect(admin_page).to_have_url(re.compile(rf"/branches/{re.escape(quote(slash_branch, safe=''))}/data"))
