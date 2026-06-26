@@ -97,7 +97,7 @@ Most merges are small. The coalescing must not make small merges slower or add n
 - **FR-006**: A branch rebase MUST use the same coalesced recompute as a merge.
 - **FR-007**: The selection of affected derived values MUST NOT diverge from the live per-node recompute path. The computed-attribute deriver already exists and MUST be reused. No shared display-label or human-friendly-id deriver exists, so those MUST be built here following the same pattern, reading the dependency metadata already recorded on the display-label and HFID definitions, not as a parallel implementation.
 - **FR-008**: The merge and rebase path MUST NOT both coalesce-recompute and per-node fan-out the same change.
-- **FR-009**: The work MUST NOT make small merges slower than the current behavior beyond run-to-run tolerance.
+- **FR-009**: The work MUST NOT make small merges slower than the current behavior beyond the harness's observed run-to-run variance at that scale.
 - **FR-010**: The change MUST be behavior-preserving: the final derived values MUST be identical to the current behavior; only the work to reach them changes.
 - **FR-011**: The improvement MUST be demonstrated with the profiling harness from the first task, before and after, at small, medium, and large scale.
 - **FR-012**: Recompute targeting MUST be precise wherever the dependency derivation supports it. Where precise derivation is genuinely unavailable, a bounded, logged safe over-approximation (for example, all nodes of an affected kind) is permitted rather than risking under-recompute.
@@ -115,10 +115,10 @@ Most merges are small. The coalescing must not make small merges slower or add n
 
 ### Measurable Outcomes
 
-- **SC-001**: At the large profile scenario (about 1000 changed read-targets), the number of recompute jobs after a merge is bounded by the number of affected derived values and is materially lower than the per-node fan-out baseline recorded by the profile.
-- **SC-002**: At the large profile scenario, the trailing recompute window (from merge completion to all derived values settled) is reduced by a large margin versus the profile baseline (baseline about 11 minutes for 1000 changed nodes).
+- **SC-001**: At the large profile scenario (about 1000 changed read-targets), the number of recompute jobs after a merge is bounded by the number of affected derived values, not the changed-node count times the number of automations. This structural bound is the firm criterion; the concrete reduction versus the per-node fan-out baseline is recorded from the before/after harness run.
+- **SC-002**: At the large profile scenario, the trailing recompute window (from merge completion to all derived values settled) is reduced versus the profile baseline (baseline about 11 minutes for 1000 changed nodes); the concrete percentage is recorded from the before/after harness run.
 - **SC-003**: After a merge or rebase, no derived value that depends on the merged change is stale, verified against a full recompute, including cross-relationship and transitive dependencies, node creations, and readers of deleted nodes.
-- **SC-004**: Small-graph merges (about 10 changed nodes) are no slower than the baseline within run-to-run tolerance.
+- **SC-004**: Small-graph merges (about 10 changed nodes) are no slower than the baseline within the harness's observed run-to-run variance at that scale.
 - **SC-005**: Both merge and rebase show the reduction and the correctness guarantee.
 
 ## Assumptions
