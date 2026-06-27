@@ -22,11 +22,11 @@ class TestIpAddressList:
     async def test_view_address_list_and_summary(self, page: Page, data_sites: SitesHandle) -> None:
         await page.goto("/ipam/ip_addresses")
 
-        await page.get_by_test_id("identifier-cell").get_by_role("link", name="10.0.0.16/32").click()
+        await page.get_by_test_id("identifier-cell").get_by_role("link", name="10.0.0.1/32").click()
 
         object_details = page.get_by_test_id("object-details")
         await expect(object_details.get_by_text("Details", exact=True)).to_be_visible()
-        await expect(object_details.get_by_text("Address10.0.0.16/32")).to_be_visible()
+        await expect(object_details.get_by_text("Address10.0.0.1/32")).to_be_visible()
         await expect(object_details.get_by_text("InterfaceLoopback0")).to_be_visible()
         await expect(object_details.get_by_text("Ip Prefix10.0.0.0/16")).to_be_visible()
 

@@ -19,9 +19,11 @@ Faithful transcription of ``models/infrastructure_edge.py``:
   ``connected_endpoint``) and ``generate_site`` (lines 1384-1879), sequenced
   site by site exactly like ``run()`` (lines 2772-2794) so every pool
   allocation (loopbacks, management addresses, peer-link /31s,
-  upstream/peering /29s) happens in the script's order — tests assert the
-  resulting next-free values (172.16.0.31/16 management, 10.0.0.<n>/32
-  loopback of device #n).
+  upstream/peering /29s) happens in the script's order. NB: only atl1 and den1
+  are built (see KEPT_SITES below), so the next-free pool values differ from
+  the full 5-site script (e.g. management next-free is 172.16.0.13/16 after the
+  12 device addresses, loopback 10.0.0.<n>/32 of built device #n) — tests assert
+  the 2-site values.
 
 Preserved script quirks (NOT deviations):
 
@@ -82,6 +84,16 @@ ACTIVE_STATUS = "active"
 
 # PROFILES["medium"] (line 53): 5 sites, 6 devices per site.
 NUM_SITES = 5
+
+# SLIM DEVIATION (not in the script): the e2e suite references only two of the five
+# medium-profile sites — atl1 (139 refs) and den1 (20). The other three (ord1/jfk1/dfw1)
+# were pure parity ballast. We still run `_site_generator(NUM_SITES)` so each kept site
+# keeps its exact definition (atl=Atlanta/Bailey Li, den=Denver/Francesca Wilcox) and its
+# device-pattern order, but build ONLY these two — cutting ~60% of the devices/interfaces/
+# mesh. Allocation order therefore changes (den1 is the 2nd built site, not the 4th), so the
+# deterministic values tests assert were re-pinned to the 2-site dataset (see the IPAM specs
+# and tests/e2e/data/ history). The backbone table in topology.py is rewritten to atl1<->den1.
+KEPT_SITES = ("atl1", "den1")
 
 # name / country / city / contact, cycled by _site_generator (lines 402-413)
 SITES = (
@@ -915,6 +927,10 @@ async def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixt
     vlans: dict[str, str] = {}
 
     for site in _site_generator(nbr_site=NUM_SITES):
+        # SLIM: generate the full medium-profile list (so kept sites keep their exact
+        # definitions) but build only atl1 + den1. See KEPT_SITES.
+        if site["name"] not in KEPT_SITES:
+            continue
         state = await _generate_site(ctx=ctx, site=site)
         sites[state.site_name] = state.site_obj.id
         devices.update({name: node.id for name, node in state.device_nodes.items()})
