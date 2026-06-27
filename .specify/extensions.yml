@@ -1,4 +1,5 @@
 installed:
+- agent-context
 - id: infrahub
   path: .specify/extensions/infrahub
 settings:
@@ -92,6 +93,14 @@ hooks:
     prompt: Commit specification changes?
     description: Auto-commit after specification
     condition: null
+  - extension: agent-context
+    command: speckit.agent-context.update
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Execute speckit.agent-context.update?
+    description: Refresh agent context after specification
+    condition: null
   after_clarify:
   - extension: git
     command: speckit.git.commit
@@ -107,6 +116,14 @@ hooks:
     optional: true
     prompt: Commit plan changes?
     description: Auto-commit after implementation planning
+    condition: null
+  - extension: agent-context
+    command: speckit.agent-context.update
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Execute speckit.agent-context.update?
+    description: Refresh agent context after planning
     condition: null
   after_tasks:
   - extension: git
