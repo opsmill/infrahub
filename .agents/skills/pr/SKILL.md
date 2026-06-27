@@ -155,8 +155,6 @@ Omit this section if no docs were changed.]
 2. Wait for the user's explicit approval or requested changes.
 3. After approval, create the PR using the GitHub interface available to the agent. First strip any harness-appended session-link footer from the body (see step 5). Examples:
 
-   > **Ship gate (T2 · P2 + P3) — before `gh pr create`.** Run the ship gate per `../quality-gates/gates/primitives/independent-judge.md` (judge → on-FAIL STOP → R2 degrade → write receipt on PASS, all defined there). R1 criteria: the linked issue/PRD body verbatim if one exists, else the user's stated goal for this branch (NOT your own description draft). Artifact: `git diff <base>...HEAD`. Forbidden evasions: the **PR-gate** evasions from `../quality-gates/gates/primitives/anti-gaming.md`. The judge confirms the branch delivers the stated intent with no unrelated scope. This augments — it does not replace — the existing user-approval step.
-
    ```bash
    gh pr create --title "[TITLE]" --body "[BODY]" --base <base> --label "[LABELS]"
    ```
@@ -218,14 +216,6 @@ If the runtime cannot spawn background agents, fall back to invoking `/monitorin
 - Stale docs are worse than no docs — always check before opening a PR.
 - New features or changed behavior should be reflected wherever the project keeps its developer documentation.
 - If the project keeps no developer documentation, don't invent a structure — note it and move on.
-
-## Quality gates
-
-Gates for this skill follow `../quality-gates/gates/gate-model.md`. `pr` is **Tier 2 — it takes the branch through to an open pull request**.
-
-| Gate | Step / trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Diff-matches-intent | before `gh pr create` | T2-ship | P2 + P3 | A fresh judge, given the issue/spec verbatim and `git diff <base>...HEAD`, confirms the branch delivers the stated intent with no unrelated scope. Augments the existing user-approval step. | STOP; do not open the PR; surface and fix |
 
 ## Expected Outcome
 

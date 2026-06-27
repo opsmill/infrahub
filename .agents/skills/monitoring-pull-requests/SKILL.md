@@ -258,8 +258,6 @@ Don't push until the relevant local checks are green. This is where most "blind 
 
 2. **Re-run the specific track's local check** that failed in Phase 3 (the targeted test, hook, or build) to confirm the fix sticks.
 
-> **Gate (T2-verify · P1):** paste both the local reproduction of the CI failure and the local run showing your fix resolves it, before pushing. See `../quality-gates/gates/primitives/evidence-before-done.md`.
-
 3. **Generated-artefact guard.** If the project checks in generated artefacts (GraphQL schemas, OpenAPI clients, generated SDK types, protobufs) and the diff touches their sources, regenerate using the project's documented commands before committing — CI commonly fails on stale generated files.
 
 4. **Stage and commit the fix.** One commit per iteration, with a clear message following the repo's commit conventions (check `git log --oneline -20`):
@@ -272,8 +270,6 @@ Don't push until the relevant local checks are green. This is where most "blind 
    Append the commit SHA to `fix_commits`. Avoid `git add .` — be specific, and never stage anything that looks like a secret or credential.
 
 5. **Push to origin** (no force-push; these are new commits, not history rewrites):
-
-   > **Ship gate (T2 · P2 + P3) — before declaring CI resolved / the final push.** Run the ship gate per `../quality-gates/gates/primitives/independent-judge.md` (judge → on-FAIL STOP → R2 degrade → write receipt on PASS, all defined there). R1 criteria: the failing CI job's logs verbatim (the failure being fixed — NOT your summary). Artifact: the diff of your fix commits. Forbidden evasions: the CI-fix-gate evasions from `../quality-gates/gates/primitives/anti-gaming.md`. The judge confirms the fix addresses the failure's cause, not flake-suppression. Paste the green CI run as evidence.
 
    ```bash
    git push origin <branch>
@@ -392,15 +388,6 @@ docs to update.>
 - **Don't merge.** Even when CI goes green, this skill does not merge the PR. Report and stop.
 - **Stay on the PR's branch.** Never switch branches mid-loop; never edit files while a debugger or paused test run holds state on a different branch.
 - **Respect project conventions.** If the project's context (`AGENTS.md`, a constitution, contribution guide) requires test coverage or docs for new behaviour, and a fix introduces new behaviour rather than just patching an existing path, flag this in the final report so the user knows additional coverage is owed.
-
-## Quality gates
-
-Gates for this skill follow `../quality-gates/gates/gate-model.md`. `monitoring-pull-requests` is **Tier 2 — it watches CI and pushes fixes in a loop**.
-
-| Gate | Step / trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Local-repro | each CI-fix iteration | T2-verify | P1 | The failure reproduces locally and the fix resolves it. Paste both runs. | STOP; do not push |
-| CI-resolved | before declaring the PR green / final push | T2-ship | P2 + P3 | A fresh judge confirms the fix addresses the CI failure's cause, not a flake-suppression. Paste the green CI run. R1 criteria: the failing CI job's log from the pre-fix run, fetched fresh — this is the "original criteria" the judge receives verbatim to satisfy the R1 contract. | STOP; keep iterating or revert per the skill's retry policy |
 
 ## Expected Outcome
 

@@ -111,15 +111,6 @@ gh issue create --title "[TITLE]" --body "[BODY]" --label "[LABELS]"
 
 Or the equivalent GitHub MCP call. Return the issue URL.
 
-## Quality gates
-
-Per `../quality-gates/gates/gate-model.md`. `creating-issues` is **Tier 0**; the existing
-user-approval step IS the independent judgment (R4) — no subagent is added.
-
-| Gate | Trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Draft-shown | before `gh issue create` | T0 | P1 + human approval | The full draft is shown and the user approves. | revise per feedback |
-
 ## Guardrails
 
 - Prefer clarity over completeness — a short, sharp issue beats a padded one.

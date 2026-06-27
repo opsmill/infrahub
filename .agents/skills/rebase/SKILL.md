@@ -113,8 +113,6 @@ For each conflict that arises during the rebase:
 2. Confirm the commit history looks correct (same number of local commits, no duplicates).
 3. If the project defines fast validation commands (formatters, linters), run them to catch any issues introduced by conflict resolution. Discover them from the project's own context — for example `AGENTS.md`/`CONTAINER`-style docs, a `Makefile`/`Taskfile`/`justfile`, `package.json` scripts, `pyproject.toml`/`tox.ini`, or a `pre-commit` config. Run whatever the project actually defines, then fix any issues introduced by conflict resolution. If the project defines no such commands, skip this step.
 
-> **Gate (T2-verify · P1):** paste the test run showing the rebased branch preserves local intent. See `../quality-gates/gates/primitives/evidence-before-done.md`.
-
 ### 5. Force Push & Monitor CI (only when `push` argument is provided)
 
 **Skip this phase entirely if `push` was NOT passed as an argument.** Instead, inform the user the rebase is complete and they can push when ready.
@@ -122,8 +120,6 @@ For each conflict that arises during the rebase:
 When `push` IS provided:
 
 1. Force-push the rebased branch:
-
-   > **Ship gate (T2 · P2 + P3) — before force-push.** Run the ship gate per `../quality-gates/gates/primitives/independent-judge.md` (judge → on-FAIL STOP → R2 degrade → write receipt on PASS, all defined there). R1 criteria: the pre-rebase branch diff vs base (the local intent — NOT your summary). Artifact: the rebased branch diff vs the new base. Forbidden evasions: the merge/rebase-gate evasions from `../quality-gates/gates/primitives/anti-gaming.md`. The judge confirms no semantic drift was introduced by conflict resolution.
 
    ```bash
    git push --force-with-lease origin <branch-name>
@@ -184,15 +180,6 @@ When `push` IS provided:
 - **Inspecting `HEAD` during a conflict.** The commit being replayed is `REBASE_HEAD`, not `HEAD`. Looking at `HEAD` shows the wrong commit.
 - **Force-pushing without `--lease`.** Plain `git push --force` can silently clobber a teammate's push. Always use `--force-with-lease`.
 - **Counting commits against a stale local base.** Use `origin/<base-branch>..HEAD`, not the local ref, or the count can be wrong on an out-of-date or freshly cloned checkout.
-
-## Quality gates
-
-Gates for this skill follow `../quality-gates/gates/gate-model.md`. `rebase` is **Tier 1, escalating to Tier 2 at force-push**.
-
-| Gate | Step / trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Intent-preserved | after resolving conflicts | T2-verify | P1 | Rebased diff preserves local intent; tests pass. Paste the run. | STOP |
-| No-drift | before force-push | T2-ship | P2 + P3 | A fresh judge, given the pre-rebase intent and the rebased diff, confirms no semantic drift was introduced by conflict resolution. | STOP; do not force-push |
 
 ## Expected Outcome
 

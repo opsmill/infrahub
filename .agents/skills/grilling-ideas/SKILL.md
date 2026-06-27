@@ -214,15 +214,6 @@ When all of the applicable conditions hold, flip **Status** to `Ready for next s
 - If `.specify/templates/spec-template.md` exists (speckit is set up in this repo) → suggest `/speckit-specify` with the brief as input.
 - Otherwise → suggest whichever the user prefers: opening an issue, drafting a PRD, or starting implementation directly.
 
-## Quality gates
-
-Per `../quality-gates/gates/gate-model.md`. `grilling-ideas` is **Tier 0**; the interview's
-confirmation step IS the judgment (R4) — no subagent is added.
-
-| Gate | Trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Brief-confirmed | before emitting the brief | T0 | P1 + human approval | The user confirms the sharpened brief reflects intent. | keep interviewing |
-
 ## Anti-patterns
 
 - **Do not grill into implementation.** Stack choices, schema column names, libraries, file paths — those belong in a later planning step. If a question can only be answered by picking an implementation, defer it.

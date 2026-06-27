@@ -118,14 +118,6 @@ When `push` IS provided:
 5. **Never use `--force` or `--force-with-lease`** unless the user explicitly asks for it. Regular `git push` will fail if the remote has diverged — surface that error to the user instead of overwriting.
 6. Report the push result and, if a remote URL is configured (`git config --get remote.origin.url`), the branch URL the user can open.
 
-## Quality gates
-
-Per `../quality-gates/gates/gate-model.md`. `commit` is **Tier 1** (mutates a branch, does not ship).
-
-| Gate | Trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Branch-safety | before commit | T1 | P1 | Paste `git rev-parse --abbrev-ref HEAD` proving HEAD is not a protected/release/scratch branch. | STOP; create a feature branch first |
-
 ## Notes
 
 **Branch Safety:**
