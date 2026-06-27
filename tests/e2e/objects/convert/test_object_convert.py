@@ -2,7 +2,7 @@
 
 Object details "Convert object type": convert an InfraInterfaceL3 (Ethernet1 on
 atl1-edge1) to an InfraInterfaceL2, mapping source-object field values onto the
-target form. Runs as Admin on a throwaway branch cut from main; the data_sites
+target form. Runs as Admin on a throwaway branch cut from main; the data_site_atl1
 dependency provides atl1-edge1's Ethernet1 (connected to atl1-edge2 via the
 per-site cabling) with the speed/role/status values the mapping form asserts.
 """
@@ -32,7 +32,7 @@ class TestObjectDetailsConvert:
     async def branch(
         self,
         branch_api: BranchAPI,
-        data_sites: SitesHandle,
+        data_site_atl1: SitesHandle,
     ) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("object-convert")
         await branch_api.create(name)

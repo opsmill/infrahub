@@ -122,7 +122,7 @@ slices in `tests/e2e/data/`.
 | `schema_base` | session | `invoke dev.load-infra-schema` (schema) | Loads all `models/base/*.yml` as one set. |
 | `infrastructure_menu` | session | `invoke dev.load-infra-schema` (menu) | Loads `models/base_menu.yml` via the SDK `MenuFile` (what `infrahubctl menu load` calls). |
 | `infrastructure_data` | session | `invoke dev.load-infra-data` | The demo dataset via the `tests/e2e/data/` SDK slices, slimmed to the 2 sites any test references (atl1 + den1; 6 devices/site, iBGP mesh, 3 scenario branches). See `data/sites.py` `KEPT_SITES`. |
-| `data_rbac` / `data_locations` / `data_org_registry` / `data_profiles_groups` / `data_ipam_pools` / `data_patch_template` / `data_sites` / `data_topology` / `data_scenario_branches` | session | — | The individual dataset slices (each returns a typed handle, see `data/handles.py`); tests can depend on just the slice they need. |
+| `data_rbac` / `data_locations` / `data_org_registry` / `data_profiles_groups` / `data_ipam_pools` / `data_patch_template` / `data_site_atl1` / `data_sites` / `data_topology` / `data_scenario_branches` | session | — | The individual dataset slices (each returns a typed handle, see `data/handles.py`); tests depend on just the slice they need. `data_site_atl1` builds only atl1 — the lighter dependency for specs that touch atl1 alone (no den1, mesh, or 2-site count/next-free value); `data_sites` builds den1 on top of it for the full 2-site dataset. |
 | `demo_edge_repo` | session | `invoke dev.infra-git-import dev.infra-git-create` | Registers + syncs the `demo-edge` repo via the SDK `GitRepo` helper. |
 | `branch_api` | function | `tests/e2e/utils/graphql.ts` | Create/merge/delete throwaway branches via the API. |
 | `page` | function | anonymous Playwright page | Unauthenticated; base URL points at the stack. |
@@ -133,8 +133,9 @@ slices in `tests/e2e/data/`.
 The monolithic `models/infrastructure_edge.py` load is decomposed into
 session-scoped async-SDK fixtures, one module per slice, wired as pytest
 plugins from `conftest.py`. Slice DAG: `rbac` / `locations` / `org_registry` /
-`profiles_groups` / `ipam_pools` / `patch_template` (leaves) → `sites` →
-`topology` → `scenario_branches` (terminal — requesting it loads everything).
+`profiles_groups` / `ipam_pools` / `patch_template` (leaves) → `site_atl1`
+(atl1) → `sites` (adds den1) → `topology` → `scenario_branches` (terminal —
+requesting it loads everything).
 Each fixture returns a frozen handle of name→id maps replacing the script's
 in-process `client.store` state; every slice is idempotent and no-ops in
 pre-provisioned (`INFRAHUB_ADDRESS`) mode.

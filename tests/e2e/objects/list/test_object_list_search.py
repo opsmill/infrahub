@@ -2,7 +2,7 @@
 
 Object list search: type in the per-kind search box on the InfraDevice list and
 verify the result set narrows. Runs as Admin against main (no branch), hence the
-data_sites dependency (the demo devices atl1-core1/atl1-edge1).
+data_site_atl1 dependency (the demo devices atl1-core1/atl1-edge1).
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class TestObjectListSearch:
-    async def test_verify_the_search(self, admin_page: Page, data_sites: SitesHandle) -> None:
+    async def test_verify_the_search(self, admin_page: Page, data_site_atl1: SitesHandle) -> None:
         await admin_page.goto("/objects/InfraDevice")
 
         # initial state
