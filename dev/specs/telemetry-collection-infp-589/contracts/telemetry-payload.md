@@ -43,7 +43,7 @@ data mart) is forward-compatible: it ignores unknown fields, so additive changes
     }
   },
 
-  "activity_24h": {       // NEW object — trailing 24h window
+  "activity_24h": {       // NEW object — previous full UTC calendar day [00:00, 00:00)
     "logins": 19,                   // int | null
     "unique_logins": 6,             // int | null
     "webhooks_fired_success": 41,   // int | null
@@ -54,16 +54,32 @@ data mart) is forward-compatible: it ignores unknown fields, so additive changes
 
 ## Field semantics
 
+The 24h window is the **previous full UTC calendar day** `[window_start, window_end)` with
+`window_end = floor_to_midnight_utc(now)`, `window_start = window_end - 24h` — anchored to a
+deterministic boundary (not gather-time `now`) so daily snapshots tile exactly.
+
 | Path | Source | Window | Empty | Failure |
 |------|--------|--------|-------|---------|
 | `branches.active` | registry: `branch.values()` minus `is_default`/`is_global` | current | `0` | `null` |
 | `accounts.active` | `NodeManager.count(CoreAccount, status=ACTIVE)` | current | `0` | `null` |
 | `accounts.groups` | `NodeManager.count(CoreAccountGroup)` | current | `0` | `null` |
 | `database.node_count.corenode` | `NodeManager.count(CoreNode)` | current | `0` | `null` |
-| `activity_24h.logins` | Prefect `account.logged_in` events, windowed | trailing 24h | `0` | `null` |
-| `activity_24h.unique_logins` | Prefect count-by-resource on login events, windowed | trailing 24h | `0` | `null` |
-| `activity_24h.webhooks_fired_success` | Prefect `webhook-process` flow runs, `COMPLETED` | trailing 24h | `0` | `null` |
-| `activity_24h.webhooks_fired_failure` | Prefect `webhook-process` flow runs, `FAILED`/`CRASHED`/`TIMEDOUT` | trailing 24h | `0` | `null` |
+| `activity_24h.logins` | Prefect `account.logged_in` events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.unique_logins` | Prefect count-by-resource on login events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.webhooks_fired_success` | Prefect `webhook-process` flow runs, `COMPLETED` | prev. UTC day | `0` | `null` |
+| `activity_24h.webhooks_fired_failure` | Prefect `webhook-process` flow runs, `FAILED`/`CRASHED`/`TIMEDOUT` | prev. UTC day | `0` | `null` |
+
+**Node-count metrics (FR-009).** `node_count` carries three semantically distinct, strictly
+nesting keys — `user ⊆ corenode ⊆ total`:
+
+| Key | Counts | Namespace scope |
+|-----|--------|-----------------|
+| `total` | raw vertices | n/a (raw graph) |
+| `corenode` | all managed nodes (this phase) | `Core` + `Builtin` + user-defined |
+| `user` (future) | customer-facing subset | excludes `Core`; `Builtin` in/out is parked (IFC-2825) |
+
+`corenode` always includes the `Core` management namespace (always non-empty); `user` never
+does — so the two can never coincide.
 
 ## Invariants the consumer can rely on
 

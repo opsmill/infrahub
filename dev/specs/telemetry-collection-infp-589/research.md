@@ -17,6 +17,27 @@ correctness. `node_count["total"]` is the raw `count_nodes(db)` vertex total and
 as-is (FR-009). The key `corenode` does not collide with any `GRAPH_SCHEMA["nodes"]` label,
 so it is a clean additive key.
 
+**Namespace semantics (locked, so `corenode` and the future `user` can never become
+synonyms)**: `get_labels()` (`core/node/__init__.py`) applies the `CoreNode` label to every
+node whose namespace is **not** `Schema`/`Internal` and which is not a group. So
+`NodeManager.count(CoreNode)` counts the **`Core` + `Builtin` + user-defined namespaces** —
+including Infrahub's own management objects (`CoreAccount`, `CoreRepository`,
+`CoreProposedChange`, `CoreWebhook`, profiles, resource pools, artifacts, …). The three node
+metrics therefore nest strictly:
+
+```
+user  ⊆  corenode  ⊆  total
+```
+
+- `total` — raw vertices (incl. attributes/values/internal bookkeeping).
+- `corenode` — **all** managed nodes across `Core` + `Builtin` + user namespaces (this phase).
+- `user` (future, IFC-2825) — customer-facing subset that **excludes the `Core` management
+  namespace**; the parked decision only chooses whether `Builtin` is in or out, i.e. it slides
+  the `user` ⊂ `corenode` gap but never closes it (the `Core` namespace is always non-empty).
+
+This pins the definitions at the namespace level so a later `user` definition cannot
+accidentally equal `corenode` — a real concern given FR-011 forbids removing a shipped field.
+
 **Alternatives considered**: `count_nodes(label="CoreNode")` — rejected: no branch/temporal
 filter, would diverge from how GraphQL resolvers count and would not match an
 independently-computed fixture (fails SC-003).
@@ -41,9 +62,31 @@ in-memory source of truth used elsewhere and avoids an extra query (Constitution
 
 ## Decision 3 — NEW 24h-windowed Prefect event path (logins, unique_logins)
 
+**Window anchor (decided)**: The 24h window is anchored to a **deterministic calendar
+boundary, NOT to `datetime.now()` at gather time**. Compute:
+
+```
+window_end   = floor_to_midnight_utc(now)   # 00:00:00 UTC of the current day
+window_start = window_end - 24h             # 00:00:00 UTC of the previous day
+```
+
+so each daily run reports the **previous full UTC calendar day** `[window_start, window_end)`.
+
+Rationale: the daily flow is scheduled `f"{random.randint(0, 59)} 2 * * *"`
+(`workflows/catalogue.py`) — a per-deployment-fixed minute, firing at 02:XX. Anchoring the
+window to execution `now` is fragile: gather time drifts day-over-day (worker contention, the
+flow's own retries, queue latency), so consecutive `[now-24h, now]` windows either **overlap**
+(events double-counted) or leave a **gap** (events counted in neither run). SC-002 explicitly
+requires "no retention leakage/overlap", so the window must tile exactly. Flooring to midnight
+UTC makes the daily series tile perfectly regardless of the random minute or execution jitter;
+because the job runs at 02:XX, `window_end` (00:00 today) is always 2-3h settled in the past,
+so every prior-day event has landed. A missed run simply yields an absent day rather than a
+smeared one, and tests can pin a real boundary with `freezegun` instead of a moving `now`. The
+field name `activity_24h` is retained (it is a 24h window); only the anchor is fixed.
+
 **Decision**: Add a new windowed counter that posts to `/events/count-by/event` with an
-`occurred` window (`since = now - 24h`, `until = now`) in the filter, alongside the existing
-`event.name` filter. For `account.logged_in`:
+`occurred` window (`since = window_start`, `until = window_end` as defined above) in the
+filter, alongside the existing `event.name` filter. For `account.logged_in`:
 - `activity_24h.logins` = the windowed count of `infrahub.account.logged_in` events.
 - `activity_24h.unique_logins` = distinct accounts in the same window, obtained by counting
   by **resource** (`/events/count-by/resource`) over the windowed `logged_in` filter and
@@ -68,9 +111,10 @@ rejected: heavier, and Prefect's count-by primitives do it server-side (Constitu
 
 **Decision**: `activity_24h.webhooks_fired_success` / `_failure` come from Prefect **flow
 runs** of the `webhook-process` flow (grounded: `@flow(name="webhook-process")` in
-`webhook/tasks/process.py`) started within the trailing 24h, split by terminal state:
+`webhook/tasks/process.py`) started within the **same `[window_start, window_end)` calendar-day
+window as the event metrics** (Decision 3 anchor — not `now`), split by terminal state:
 `COMPLETED` ⇒ success; `FAILED` / `CRASHED` (and `TIMEDOUT`) ⇒ failure. Query via the Prefect
-client's flow-run read API filtered by flow name and `start_time >= now - 24h`.
+client's flow-run read API filtered by flow name and `start_time` in `[window_start, window_end)`.
 
 **Rationale**: Webhook delivery is a flow run, not an InfrahubEvent, so flow-run state is the
 correct signal. Webhook flow-run retention is 90 days (≫ 24h), so the window is always fully

@@ -153,9 +153,14 @@ field is populated, and the payload is still sent/stored.
 
 ### Edge Cases
 
-- **Event-retention leakage**: The trailing-24h window is far shorter than the
-  underlying event retention (7 days for events, 90 days for webhook flow runs),
-  so a correct window must never include retained-but-out-of-window records.
+- **Event-retention leakage**: The 24h window is far shorter than the underlying
+  event retention (7 days for events, 90 days for webhook flow runs), so a correct
+  window must never include retained-but-out-of-window records.
+- **Window anchoring vs. jittered schedule**: The daily job runs at a per-deployment
+  random minute. If the window were anchored to the job's execution time, day-over-day
+  execution drift would make consecutive windows overlap (double-count) or gap (miss
+  records). The window MUST therefore be anchored to a fixed calendar boundary (the
+  previous full UTC day), not to execution time, so daily snapshots tile exactly.
 - **Best-effort event counts**: Event dispatch can drop records, so activity
   counts are a trend signal, not a billing-grade exact count. This is acceptable
   and must be documented; success criteria for event metrics are framed around
@@ -193,9 +198,12 @@ field is populated, and the payload is still sent/stored.
   events over the trailing 24h) and `activity_24h.unique_logins` (distinct
   accounts over the same window). [IFC-2823]
 - **FR-009**: The feature MUST NOT change the existing raw-vertex
-  `database.node_count.total` field, and MUST document the distinction between
-  the raw total, the managed-node (`corenode`) count, and the (future, blocked)
-  user-node count. [IFC-2821]
+  `database.node_count.total` field, and MUST document the distinction between the
+  three node metrics at the namespace level so they cannot later become synonyms:
+  `total` (raw vertices), `corenode` (all managed nodes — the `Core` + `Builtin` +
+  user-defined namespaces, this phase), and the future/blocked `user` (the
+  customer-facing subset that excludes the `Core` management namespace). They nest
+  strictly: `user` ⊆ `corenode` ⊆ `total`. [IFC-2821]
 - **FR-010**: When a metric's source fails, that field MUST be set to `null`
   while the rest of the payload is still emitted and stored; when a source
   succeeds with nothing to count, the field MUST be `0`, not `null`. [IFC-2820]
@@ -219,8 +227,9 @@ field is populated, and the payload is still sent/stored.
 - **Telemetry payload**: The daily anonymous data structure Infrahub emits and
   stores. Carries a `payload_format` version identifier and nested sub-objects
   (`accounts`, `branches`, `database`, and the new `activity_24h`).
-- **`activity_24h` object**: A new sub-object holding trailing-24h activity
-  counts: `logins`, `unique_logins`, `webhooks_fired_success`,
+- **`activity_24h` object**: A new sub-object holding activity counts over the
+  previous full UTC calendar day (a 24h window anchored to a fixed boundary, not
+  to job-execution time): `logins`, `unique_logins`, `webhooks_fired_success`,
   `webhooks_fired_failure`.
 - **Account**: A user account with a status (active vs. non-active) used for
   `accounts.active`.
@@ -240,9 +249,12 @@ field is populated, and the payload is still sent/stored.
 - **SC-001**: All in-scope fields are present on 100% of daily telemetry runs; a
   field is `null` only when its source genuinely failed, never when the source
   succeeded with nothing to count.
-- **SC-002**: Event-derived metrics reflect exactly the trailing 24h, with no
-  leakage from records retained but outside the window — verified with fixtures
-  containing both in-window and out-of-window records.
+- **SC-002**: Event-derived metrics reflect exactly a 24h window anchored to a
+  deterministic calendar boundary (the previous full UTC day), so consecutive
+  daily snapshots tile with no overlap and no gap — independent of the exact
+  (jittered) time the daily job runs — and with no leakage from records retained
+  but outside the window. Verified with fixtures containing both in-window and
+  out-of-window records.
 - **SC-003**: `database.node_count.corenode` matches an independently-computed
   fixture count exactly (±0).
 - **SC-004**: No existing telemetry field changes meaning, type, or name across
@@ -259,9 +271,11 @@ field is populated, and the payload is still sent/stored.
 - Login activity is sourced from the event system (events are emitted after
   authentication and stored there); the graph database holds no last-login
   timestamp, so a windowed event query is the correct and only source.
-- The trailing-24h window is comfortably shorter than the underlying retention
-  windows (7-day event retention, 90-day webhook flow-run retention), so all
-  in-window records are available at gather time.
+- The 24h window is anchored to the previous full UTC calendar day (a fixed
+  boundary, not job-execution time) and is comfortably shorter than the underlying
+  retention windows (7-day event retention, 90-day webhook flow-run retention), so
+  all in-window records are available at gather time and consecutive daily
+  snapshots tile exactly.
 - Activity counts are best-effort trend signals (event dispatch can drop), not
   billing-grade exact figures; correctness is judged on windowing behavior, not
   against an external ground truth.

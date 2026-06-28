@@ -17,12 +17,17 @@ Counts via `NodeManager.count` on the default branch (branch/temporal-correct).
 
 ### `TelemetryActivity24hData`
 
+The window is the **previous full UTC calendar day** `[window_start, window_end)` where
+`window_end = floor_to_midnight_utc(now)` and `window_start = window_end - 24h` — anchored to a
+deterministic calendar boundary, NOT to gather-time `now`, so consecutive daily runs tile
+exactly (no overlap, no gap) despite the jittered cron minute and execution drift.
+
 | Field                     | Type          | Meaning                                                  | Empty | Failure |
 |---------------------------|---------------|---------------------------------------------------------|-------|---------|
-| `logins`                  | `int \| None` | `account.logged_in` events in the trailing 24h          | `0`   | `null`  |
+| `logins`                  | `int \| None` | `account.logged_in` events in the windowed day          | `0`   | `null`  |
 | `unique_logins`           | `int \| None` | Distinct `account_id` among those logins (same window)  | `0`   | `null`  |
-| `webhooks_fired_success`  | `int \| None` | `webhook-process` flow runs in 24h ending `COMPLETED`   | `0`   | `null`  |
-| `webhooks_fired_failure`  | `int \| None` | `webhook-process` flow runs in 24h ending `FAILED`/`CRASHED`/`TIMEDOUT` | `0` | `null` |
+| `webhooks_fired_success`  | `int \| None` | `webhook-process` flow runs in-window ending `COMPLETED`| `0`   | `null`  |
+| `webhooks_fired_failure`  | `int \| None` | `webhook-process` flow runs in-window ending `FAILED`/`CRASHED`/`TIMEDOUT` | `0` | `null` |
 
 Each field is isolated: one failing source nulls only its own field. A `webhook-process` run
 that started in-window but is still non-terminal (`PENDING`/`RUNNING`/`SCHEDULED`) at gather
@@ -48,6 +53,21 @@ best-effort daily trend signal).
 
 Widening is additive in practice: existing keys are always populated `int`; only `corenode`
 may be `null`. No existing key changes meaning or name (FR-011).
+
+**Three node metrics, defined at the namespace level (FR-009).** `CoreNode` is applied to every
+node outside the `Schema`/`Internal` namespaces (and non-groups), so the three nest strictly —
+`user ⊆ corenode ⊆ total`:
+
+| Key | Counts | Namespace scope |
+|-----|--------|-----------------|
+| `total` | raw vertices (incl. attributes/values/internal bookkeeping) | n/a (raw graph) |
+| `corenode` | all managed nodes (this phase) | `Core` + `Builtin` + user-defined |
+| `user` (future, IFC-2825) | customer-facing subset | excludes `Core` management namespace; `Builtin` in/out is the parked decision |
+
+Because the `Core` management namespace (accounts, repositories, proposed changes, webhooks,
+profiles, …) is always non-empty and is always in `corenode` but never in `user`, the two can
+never collapse into the same value. Pinning these definitions here prevents a later `user`
+definition from becoming a synonym for `corenode` (which FR-011 would then make unremovable).
 
 ### `TelemetryData` (root, extended)
 

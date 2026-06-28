@@ -76,15 +76,16 @@ repeat logins per account, and the existing `prefect.events.*` output is unchang
 
 ### Tests for User Story 1 (write first, must fail) ⚠️
 
-- [ ] T007 [P] [US1] Component test for windowed logins + unique_logins in `backend/tests/component/telemetry/test_task_manager.py`: with `freezegun` pinning "now", seed `account.logged_in` events in- and out-of-window (and repeat logins from one account); assert in-window-only `logins` and distinct-account `unique_logins`.
+- [ ] T007 [P] [US1] Component test for windowed logins + unique_logins in `backend/tests/component/telemetry/test_task_manager.py`: with `freezegun` pinning "now" to an off-midnight time (e.g. 02:37 UTC), seed `account.logged_in` events placed relative to the previous-UTC-day boundary — inside the window, just before `window_start`, and just after `window_end` (and repeat logins from one account); assert in-window-only `logins`, distinct-account `unique_logins`, and that the boundary records are excluded (proves the window is anchored to midnight, not to `now`).
 - [ ] T008 [P] [US1] Component test for webhook success/failure split over 24h in `backend/tests/component/telemetry/test_task_manager.py`: seed terminal `webhook-process` flow runs (completed + failed) in- and out-of-window; assert correct counts and that non-terminal runs are excluded.
 - [ ] T009 [P] [US1] Regression test asserting `gather_prefect_events` output is unchanged (existing unwindowed tally still present and untouched).
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] In `backend/infrahub/telemetry/task_manager.py`, add a NEW windowed event counter that posts to `/events/count-by/event` with an `occurred` window (`since = now - 24h`, `until = now`) plus the `event.name` filter — separate from `gather_prefect_events`, which stays untouched.
+- [ ] T009b [US1] In `backend/infrahub/telemetry/task_manager.py` (or a small `telemetry/window.py` helper), add a deterministic window function returning `[window_start, window_end)` where `window_end = floor_to_midnight_utc(now)` and `window_start = window_end - 24h` (previous full UTC calendar day). All activity_24h queries use this — never raw `now`.
+- [ ] T010 [US1] In `backend/infrahub/telemetry/task_manager.py`, add a NEW windowed event counter that posts to `/events/count-by/event` with an `occurred` window (`since = window_start`, `until = window_end` from T009b) plus the `event.name` filter — separate from `gather_prefect_events`, which stays untouched.
 - [ ] T011 [US1] In `task_manager.py`, add a windowed unique-account counter posting to `/events/count-by/resource` over the same `account.logged_in` window; the number of resource buckets (keyed by `infrahub.account.{account_id}`) is `unique_logins`.
-- [ ] T012 [US1] In `task_manager.py`, add a `webhook-process` flow-run query over the trailing 24h, splitting terminal states into success (`COMPLETED`) and failure (`FAILED`/`CRASHED`/`TIMEDOUT`); non-terminal runs counted in neither.
+- [ ] T012 [US1] In `task_manager.py`, add a `webhook-process` flow-run query over the same `[window_start, window_end)` window (T009b), splitting terminal states into success (`COMPLETED`) and failure (`FAILED`/`CRASHED`/`TIMEDOUT`); non-terminal runs counted in neither.
 - [ ] T013 [US1] In `task_manager.py`, add `gather_activity_24h(client) -> TelemetryActivity24hData` assembling the four counts, each obtained through the degradation helper so one failing source nulls only its own field.
 - [ ] T014 [US1] In `backend/infrahub/telemetry/tasks.py`, wire `activity_24h` into `gather_anonymous_telemetry_data` (gather via the Prefect client path; the object is always present).
 
@@ -128,7 +129,7 @@ count, and assert `node_count["corenode"]` matches exactly (±0).
 ### Implementation for User Story 3
 
 - [ ] T020 [US3] In `backend/infrahub/telemetry/database.py`, set `node_count["corenode"]` via `NodeManager.count(db, schema=InfrahubKind.NODE, branch=<default>)`, wrapped so a failure sets `corenode=None` without affecting `node_count["total"]` or the existing graph-label keys (do NOT use raw `count_nodes(label=...)`).
-- [ ] T021 [US3] Add/extend a docstring or module note distinguishing the three node metrics — raw vertex `total`, managed-node `corenode`, and the future (out-of-scope) `user` — without naming tickets/IDs in source.
+- [ ] T021 [US3] Add/extend a docstring or module note distinguishing the three node metrics at the namespace level: `total` (raw vertices), `corenode` (all managed nodes — `Core` + `Builtin` + user-defined namespaces), and the future/out-of-scope `user` (customer-facing subset excluding the `Core` management namespace), noting they nest `user ⊆ corenode ⊆ total`. No tickets/IDs in source.
 
 **Checkpoint**: `corenode` exact and branch-correct; raw `total` preserved.
 

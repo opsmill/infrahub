@@ -41,8 +41,9 @@ gather flow; unit tests for windowing/degradation logic where no DB is required
 (`NodeManager.count` / Prefect count-by). No per-node iteration, no N+1.
 
 **Constraints**: Additive only — no existing field changes meaning/type/name. Per-metric
-isolation: one failing source must not drop the payload. Event metrics must reflect exactly
-the trailing 24h with no retention leakage.
+isolation: one failing source must not drop the payload. Event metrics must reflect exactly a
+24h window anchored to a deterministic calendar boundary (previous full UTC day), not to
+job-execution time, so daily snapshots tile with no overlap/gap despite the jittered cron.
 
 **Scale/Scope**: ~9 new payload fields across 2 new sub-models + 2 extended sub-models;
 ~3 new gather functions; 1 degradation helper; 1 constant bump. Producer-only.
