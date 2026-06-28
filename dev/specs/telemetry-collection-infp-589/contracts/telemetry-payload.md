@@ -85,6 +85,17 @@ deterministic boundary (not gather-time `now`) so daily snapshots tile exactly.
 | `activity_24h.webhooks_fired_success` | Prefect `webhook-process` flow runs, `COMPLETED` | prev. UTC day | `0` | `null` |
 | `activity_24h.webhooks_fired_failure` | Prefect `webhook-process` flow runs, `FAILED`/`CRASHED`/`TIMEDOUT` | prev. UTC day | `0` | `null` |
 
+**Interpretation notes (checks vs webhooks).**
+
+- The three `checks_*` fields are **not additive**: `checks_started` is the *denominator*
+  (validation runs initiated in-window), while `checks_passed`/`checks_failed` are terminal
+  outcomes. Consumers derive pass rate (`passed/started`), failure rate (`failed/started`), and
+  incomplete/crash rate (`1 − (passed+failed)/started`). Do **not** sum all three.
+- `webhooks_*` is intentionally **outcomes-only** this phase (no `webhooks_attempted`
+  denominator), so only absolute success/failure counts are available — not a webhook failure
+  *rate*. This asymmetry with `checks_*` is deliberate; an attempted/started count can be added
+  later additively if rate analysis is needed, without breaking the contract.
+
 **Node-count metrics (FR-009).** `node_count` carries three semantically distinct, strictly
 nesting keys — `user ⊆ corenode ⊆ total`:
 
