@@ -39,8 +39,8 @@ full-payload resilience test that runs last, since it asserts every in-scope fie
 
 **Purpose**: Pre-flight; the telemetry module already exists, so setup is minimal.
 
-- [ ] T001 [P] Add a Towncrier changelog fragment under `changelog/` (e.g. `+telemetry-phase1.added.md`) describing the new additive telemetry fields and the `payload_format` bump.
-- [ ] T002 [P] Confirm the telemetry test layout exists and create empty skeletons where missing: `backend/tests/unit/telemetry/test_degradation.py`, `backend/tests/component/telemetry/test_tasks.py` (mirror source structure; no assertions yet).
+- [X] T001 [P] Add a Towncrier changelog fragment under `changelog/` (e.g. `+telemetry-phase1.added.md`) describing the new additive telemetry fields and the `payload_format` bump.
+- [X] T002 [P] Confirm the telemetry test layout exists and create empty skeletons where missing: `backend/tests/unit/telemetry/test_degradation.py`, `backend/tests/component/telemetry/test_tasks.py` (mirror source structure; no assertions yet).
 
 ---
 
