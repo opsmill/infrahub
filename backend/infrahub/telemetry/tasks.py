@@ -3,11 +3,11 @@ import json
 import logging
 import platform
 import time
-from collections.abc import Awaitable
 from typing import Any
 
 from prefect import flow, task
 from prefect.cache_policies import NONE
+from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
 from infrahub import __version__, config
@@ -24,7 +24,6 @@ from .constants import (
 from .database import gather_database_information
 from .models import (
     TelemetryAccountData,
-    TelemetryActivity24hData,
     TelemetryBranchData,
     TelemetryData,
     TelemetrySchemaData,
@@ -32,25 +31,12 @@ from .models import (
 )
 from .repository import TelemetrySnapshotRepository
 from .snapshot import TelemetrySnapshot
-from .task_manager import gather_prefect_information
-from .utils import determine_infrahub_type
+from .task_manager import gather_activity_24h, gather_prefect_information
+from .utils import determine_infrahub_type, safe_metric
 
 log = logging.getLogger(__name__)
 
-
-async def safe_metric[T](coro: Awaitable[T]) -> T | None:
-    """Run one metric coroutine in isolation, degrading a failure to ``None``.
-
-    Returns the awaited result on success — including a falsy value such as
-    ``0`` (a source that succeeded with nothing to count). On any exception the
-    failure is logged and ``None`` is returned, so a single broken source nulls
-    only its own field instead of dropping the whole payload.
-    """
-    try:
-        return await coro
-    except Exception as exc:
-        log.warning("Telemetry metric collection failed; reporting null for this field: %s", exc)
-        return None
+__all__ = ["safe_metric"]
 
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
@@ -93,6 +79,9 @@ async def gather_anonymous_telemetry_data() -> TelemetryData:
     component = await get_component()
     workers = await component.list_workers(branch=default_branch.name, schema_hash=False)
 
+    async with get_prefect_client(sync_client=False) as prefect_client:
+        activity_24h = await gather_activity_24h(client=prefect_client)
+
     data = TelemetryData(
         deployment_id=registry.id,
         execution_time=None,
@@ -110,20 +99,7 @@ async def gather_anonymous_telemetry_data() -> TelemetryData:
         # Always-present objects; individual fields are populated by their gather
         # functions and default to null until each metric is wired in.
         accounts=TelemetryAccountData(active=None, groups=None),
-        activity_24h=TelemetryActivity24hData(
-            logins=None,
-            unique_logins=None,
-            checks_started=None,
-            checks_passed=None,
-            checks_failed=None,
-            artifacts_created=None,
-            artifacts_updated=None,
-            branches_created=None,
-            branches_merged=None,
-            branches_deleted=None,
-            webhooks_fired_success=None,
-            webhooks_fired_failure=None,
-        ),
+        activity_24h=activity_24h,
         features=await gather_feature_information(),
         schema_info=await gather_schema_information(branch=default_branch),
         database=await gather_database_information(db=await get_database()),
