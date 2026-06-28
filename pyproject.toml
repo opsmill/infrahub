@@ -116,6 +116,7 @@ dev = [
     "prek>=0.3.0",
     "coverage==7.14.1",
     "pytest-playwright-asyncio>=0.8.0",
+    "pip-audit>=2.10.1",
 ]
 
 # test-scale = [
