@@ -1,0 +1,236 @@
+---
+description: "Task list for Phase 1 Telemetry Collection"
+---
+
+# Tasks: Phase 1 Telemetry Collection
+
+**Input**: Design documents from `specs/telemetry-collection-infp-589/`
+
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/telemetry-payload.md
+
+**Tests**: Included — Constitution IV requires component tests for SC-001/SC-002/SC-003 and a
+unit test for the degradation helper. TDD: write each test first and confirm it fails before
+implementing.
+
+**Organization**: Tasks are grouped by user story. The degradation helper, the additive model
+changes, and the `payload_format` bump are genuinely shared, so they live in Foundational
+(Phase 2). US4 (resilient payload, P1) is realized by that shared mechanism plus a
+full-payload resilience test that runs last, since it asserts every in-scope field is present.
+
+## Conventions & Guardrails
+
+- **No work-item / requirement IDs in source.** Do NOT write `FR-xxx`, `SC-xxx`, `IFC-xxxx`,
+  `INFP-589`, or task IDs in code, docstrings, comments, or test names
+  (`.agents/rules/code-doc-style.md`). Those IDs stay in this file and in commit messages.
+- **No mocking.** No `unittest.mock` / `MagicMock` / `patch`. Use plain coroutines as test
+  doubles for the degradation helper; use real fixtures/`prefect_test_fixture` for component
+  tests. `freezegun` is the allowed tool for pinning time; `get_run_logger` may be handled per
+  the allowed `testing-python.md` pattern when calling `@task`/`@flow` via `.fn`.
+- **Branch-safe counts.** Node/account counts go through `NodeManager.count` on the default
+  branch — never raw `count_nodes(label=...)` for `corenode`.
+- **Additive only.** Never change an existing field's name/type/meaning (the sole exception is
+  widening the `node_count` value type so the new `corenode` key may be `null`).
+- **Keyword arguments** for all calls; full type hints; `str | None` style.
+- Commit after each task or logical group.
+
+---
+
+## Phase 1: Setup (Shared Infrastructure)
+
+**Purpose**: Pre-flight; the telemetry module already exists, so setup is minimal.
+
+- [ ] T001 [P] Add a Towncrier changelog fragment under `changelog/` (e.g. `+telemetry-phase1.added.md`) describing the new additive telemetry fields and the `payload_format` bump.
+- [ ] T002 [P] Confirm the telemetry test layout exists and create empty skeletons where missing: `backend/tests/unit/telemetry/test_degradation.py`, `backend/tests/component/telemetry/test_tasks.py` (mirror source structure; no assertions yet).
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: Shared payload contract + degradation mechanism that every metric depends on.
+
+**⚠️ CRITICAL**: No user story metric can be wired until this phase is complete.
+
+- [ ] T003 Bump `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` from `"20250318"` to `"20260628"` (this also advances `DEFAULT_PAYLOAD_FORMAT`).
+- [ ] T004 In `backend/infrahub/telemetry/models.py`, add the additive payload models:
+  - `TelemetryAccountData` with `active: int | None` and `groups: int | None`.
+  - `TelemetryActivity24hData` with `logins`, `unique_logins`, `webhooks_fired_success`, `webhooks_fired_failure`, all `int | None`.
+  - Extend `TelemetryBranchData` with `active: int | None = None` (keep `total: int`).
+  - Widen `TelemetryDatabaseData.node_count` value type to `dict[str, int | None]`.
+  - Add `accounts: TelemetryAccountData` and `activity_24h: TelemetryActivity24hData` to `TelemetryData` (always-present objects; per-field nullability).
+- [ ] T005 [P] Write the degradation-helper unit test in `backend/tests/unit/telemetry/test_degradation.py` (TDD — must fail first): a coroutine that raises → helper returns `None`; a coroutine returning `0` → `0`; a coroutine returning `N` → `N`. No DB, no mock (plain coroutines as doubles).
+- [ ] T006 Implement the async graceful-degradation helper in `backend/infrahub/telemetry/tasks.py`: runs a metric coroutine, returns its result, and on any exception logs a warning and returns `None`. Make T005 pass.
+
+**Checkpoint**: Payload models, version bump, and degradation helper ready. Stories can begin.
+
+---
+
+## Phase 3: User Story 1 — Activity 24h enabler (Priority: P1) 🎯 MVP
+
+**Goal**: Emit `activity_24h` (logins, unique_logins, webhooks success/failure) over the
+trailing 24h via a NEW windowed Prefect path, without touching the existing unwindowed event
+tally; wire it into the daily payload with per-field degradation.
+
+**Independent Test**: Seed login + webhook-process records inside and outside the trailing 24h;
+the gathered `activity_24h` reflects exactly the in-window records, `unique_logins` collapses
+repeat logins per account, and the existing `prefect.events.*` output is unchanged.
+
+### Tests for User Story 1 (write first, must fail) ⚠️
+
+- [ ] T007 [P] [US1] Component test for windowed logins + unique_logins in `backend/tests/component/telemetry/test_task_manager.py`: with `freezegun` pinning "now", seed `account.logged_in` events in- and out-of-window (and repeat logins from one account); assert in-window-only `logins` and distinct-account `unique_logins`.
+- [ ] T008 [P] [US1] Component test for webhook success/failure split over 24h in `backend/tests/component/telemetry/test_task_manager.py`: seed terminal `webhook-process` flow runs (completed + failed) in- and out-of-window; assert correct counts and that non-terminal runs are excluded.
+- [ ] T009 [P] [US1] Regression test asserting `gather_prefect_events` output is unchanged (existing unwindowed tally still present and untouched).
+
+### Implementation for User Story 1
+
+- [ ] T010 [US1] In `backend/infrahub/telemetry/task_manager.py`, add a NEW windowed event counter that posts to `/events/count-by/event` with an `occurred` window (`since = now - 24h`, `until = now`) plus the `event.name` filter — separate from `gather_prefect_events`, which stays untouched.
+- [ ] T011 [US1] In `task_manager.py`, add a windowed unique-account counter posting to `/events/count-by/resource` over the same `account.logged_in` window; the number of resource buckets (keyed by `infrahub.account.{account_id}`) is `unique_logins`.
+- [ ] T012 [US1] In `task_manager.py`, add a `webhook-process` flow-run query over the trailing 24h, splitting terminal states into success (`COMPLETED`) and failure (`FAILED`/`CRASHED`/`TIMEDOUT`); non-terminal runs counted in neither.
+- [ ] T013 [US1] In `task_manager.py`, add `gather_activity_24h(client) -> TelemetryActivity24hData` assembling the four counts, each obtained through the degradation helper so one failing source nulls only its own field.
+- [ ] T014 [US1] In `backend/infrahub/telemetry/tasks.py`, wire `activity_24h` into `gather_anonymous_telemetry_data` (gather via the Prefect client path; the object is always present).
+
+**Checkpoint**: `activity_24h` present and windowed; existing event output intact. MVP testable.
+
+---
+
+## Phase 4: User Story 2 — Accounts & branches adoption (Priority: P2)
+
+**Goal**: Emit `accounts.active`, `accounts.groups`, and `branches.active`.
+
+**Independent Test**: Seed known active/inactive accounts, account groups, and
+open/system branches; assert each reported count matches the fixture exactly.
+
+### Tests for User Story 2 (write first, must fail) ⚠️
+
+- [ ] T015 [P] [US2] Component test for `accounts.active` / `accounts.groups` in `backend/tests/component/telemetry/test_tasks.py`: seed a known mix of active/inactive `CoreAccount` and a known number of `CoreAccountGroup`; assert exact counts via the gather.
+- [ ] T016 [P] [US2] Test for `branches.active` (registry-based) in `backend/tests/component/telemetry/test_tasks.py`: with open + system branches present, assert the count excludes the default (`main`) and global (`-global-`) branches.
+
+### Implementation for User Story 2
+
+- [ ] T017 [US2] Add `gather_account_information(db) -> TelemetryAccountData` (in `backend/infrahub/telemetry/tasks.py`, or a small `backend/infrahub/telemetry/accounts.py` if cohesion warrants): `active` via `NodeManager.count(CoreAccount, filters={"status__value": "active"})`, `groups` via `NodeManager.count(CoreAccountGroup)`, both on the default branch, each through the degradation helper.
+- [ ] T018 [US2] In `gather_anonymous_telemetry_data` (`tasks.py`), wire `accounts` (from T017) and compute `branches.active` from `registry.branch.values()` excluding `is_default` and `is_global`, via the degradation helper; keep `branches.total` unchanged.
+
+**Checkpoint**: Account + branch adoption metrics present and exact; `branches.total` untouched.
+
+---
+
+## Phase 5: User Story 3 — Branch-correct managed-node count (Priority: P2)
+
+**Goal**: Emit `database.node_count.corenode` via the branch/temporal-correct count path,
+leaving `node_count.total` (raw vertices) unchanged.
+
+**Independent Test**: Seed a known number of managed nodes, independently compute the expected
+count, and assert `node_count["corenode"]` matches exactly (±0).
+
+### Tests for User Story 3 (write first, must fail) ⚠️
+
+- [ ] T019 [P] [US3] Component test in `backend/tests/component/telemetry/test_datatabase.py`: seed N managed nodes via existing schema fixtures (`backend/tests/helpers/schema/`), independently compute N, assert `node_count["corenode"] == N` exactly and that `node_count["total"]` (raw) is unchanged and `>= N`.
+
+### Implementation for User Story 3
+
+- [ ] T020 [US3] In `backend/infrahub/telemetry/database.py`, set `node_count["corenode"]` via `NodeManager.count(db, schema=InfrahubKind.NODE, branch=<default>)`, wrapped so a failure sets `corenode=None` without affecting `node_count["total"]` or the existing graph-label keys (do NOT use raw `count_nodes(label=...)`).
+- [ ] T021 [US3] Add/extend a docstring or module note distinguishing the three node metrics — raw vertex `total`, managed-node `corenode`, and the future (out-of-scope) `user` — without naming tickets/IDs in source.
+
+**Checkpoint**: `corenode` exact and branch-correct; raw `total` preserved.
+
+---
+
+## Phase 6: User Story 4 — Resilient payload (Priority: P1)
+
+**Goal**: Guarantee the cross-cutting resilience contract end-to-end: every in-scope field is
+present; a failing source yields `null` (not a dropped payload); a genuine empty yields `0`.
+
+> The mechanism (degradation helper) is delivered in Foundational and consumed by each story
+> above. This phase validates the whole payload, so it runs after US1–US3 are wired.
+
+**Independent Test**: Run the gather flow; assert all in-scope fields present. Force one source
+to fail (inject a failing collaborator/fixture — no mock); assert that field is `null`, all
+others populated, and the payload is still built and stored. Assert genuine-empty → `0`.
+
+### Tests for User Story 4 (write first, must fail) ⚠️
+
+- [ ] T022 [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: run `gather_anonymous_telemetry_data` on a healthy stack and assert presence of `accounts.{active,groups}`, `branches.active`, `database.node_count.corenode`, and `activity_24h.{logins,unique_logins,webhooks_fired_success,webhooks_fired_failure}`.
+- [ ] T023 [US4] Resilience test in `backend/tests/component/telemetry/test_tasks.py`: make one source fail via an injected failing collaborator/fixture (no mock); assert that field is `null`, every other field is populated, and the snapshot is still stored. Add a genuine-empty case asserting `0`, not `null`.
+
+### Implementation for User Story 4
+
+- [ ] T024 [US4] Audit `gather_anonymous_telemetry_data` in `backend/infrahub/telemetry/tasks.py` to ensure every new metric (accounts, branches.active, corenode, each activity_24h field) is gathered through the degradation helper — no new metric can raise out of the orchestrator. If the current wiring doesn't expose a clean no-mock failure seam for T023, introduce one (e.g. an injectable gather collaborator) following backend component-design DI rules.
+
+**Checkpoint**: Whole payload resilient; one failing source never drops the rest.
+
+---
+
+## Phase 7: Polish & Cross-Cutting Concerns
+
+- [ ] T025 [P] Run the telemetry suites: `uv run pytest backend/tests/unit/telemetry backend/tests/component/telemetry -q` (set `DOCKER_HOST` for component tests).
+- [ ] T026 [P] `uv run invoke format lint` and resolve any findings in the telemetry module.
+- [ ] T027 Run the `quickstart.md` validation steps end-to-end and confirm `payload_format == "20260628"` in a stored snapshot.
+- [ ] T028 **Governance gate (GR-001)** — before merge/release, confirm with the cloud-processor owner and the data-mart owner that the receiver tolerates the `payload_format` bump, ignores unknown fields, and tolerates `null` values (including `corenode` inside `node_count`). Record the confirmation on the PR / tracking ticket. (Process task, not code.)
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Setup (Phase 1)**: no dependencies.
+- **Foundational (Phase 2)**: depends on Setup; **blocks all stories** (models, helper, version).
+- **US1 (Phase 3)**, **US2 (Phase 4)**, **US3 (Phase 5)**: each depends only on Foundational; mutually independent (different gather functions / files), so parallelizable across developers.
+- **US4 (Phase 6)**: depends on US1–US3 being wired (it asserts the full payload).
+- **Polish (Phase 7)**: depends on all desired stories complete.
+
+### Within Each User Story
+
+- Tests are written first and must fail before implementation.
+- US1: windowed counters (T010–T012) → assembler (T013) → orchestrator wiring (T014).
+- US2: gather function (T017) → orchestrator wiring (T018).
+- US3: db count (T020) → docs note (T021).
+
+### Parallel Opportunities
+
+- T001 / T002 (Setup) in parallel.
+- T005 (helper test) parallel with T003/T004 (constant + models).
+- US1 test tasks T007/T008/T009 in parallel; US2 T015/T016 in parallel.
+- With capacity: US1, US2, US3 proceed in parallel once Foundational is done.
+- Polish T025/T026 in parallel.
+
+---
+
+## Parallel Example: User Story 1
+
+```bash
+# Write US1 tests together (they must fail first):
+Task: "Component test windowed logins/unique_logins in backend/tests/component/telemetry/test_task_manager.py"
+Task: "Component test webhook success/failure split in backend/tests/component/telemetry/test_task_manager.py"
+Task: "Regression test gather_prefect_events unchanged"
+```
+
+---
+
+## Implementation Strategy
+
+### MVP First (User Story 1)
+
+1. Phase 1 Setup → Phase 2 Foundational (CRITICAL).
+2. Phase 3 US1 (activity_24h enabler).
+3. **STOP and VALIDATE**: windowing + existing-output-untouched, independently.
+4. Demo the new `activity_24h` object.
+
+### Incremental Delivery
+
+1. Setup + Foundational → contract + mechanism ready.
+2. US1 → trailing-24h activity (MVP).
+3. US2 → account/branch adoption.
+4. US3 → branch-correct scaling count.
+5. US4 → full-payload resilience guarantee.
+6. Polish → suite green, lint clean, GR-001 governance confirmed.
+
+---
+
+## Notes
+
+- `[P]` = different files, no incomplete-task dependency.
+- `[Story]` label maps each task to a user story for traceability (this file only — never in source).
+- Verify each test fails before implementing.
+- US4's value is P1, but its full-payload assertion depends on US1–US3, so it is scheduled last.
+- Out of scope (do not implement): `database.node_count.user` (blocked), Phase 2 metrics,
+  dashboards, redefining `node_count.total`, persisting logins in Neo4j.
