@@ -1,0 +1,285 @@
+# Feature Specification: Phase 1 Telemetry Collection
+
+**Feature Branch**: `telemetry-collection-infp-589`
+
+**Created**: 2026-06-28
+
+**Status**: Draft
+
+**Input**: User description: "Phase 1 telemetry collection (epic IFC-2789, idea INFP-589). Extend Infrahub's daily telemetry payload with additive, backwards-compatible metrics for 1.11. Producer-only: add fields to the emitted/stored payload; dashboard rendering is out of scope (INFP-550 / SA-184). EXCLUDE user_node_count (blocked on a product decision — IFC-2825)."
+
+## Overview
+
+Infrahub emits an anonymous telemetry payload on a daily schedule. Today that
+payload captures a handful of coarse counts (total branches, raw vertex count,
+unwindowed Prefect event tallies). The product and data teams cannot answer
+basic adoption questions from it — how many accounts are active, how the
+deployment is scaling in domain terms, or what happened in the last day.
+
+This feature extends the daily payload with a set of **additive,
+backwards-compatible** metrics so the receiving data mart gains usable adoption
+and scaling signals. It is **producer-only**: it changes what Infrahub emits and
+stores, not how anyone visualizes it. Dashboard work (INFP-550 / SA-184) is a
+separate, downstream effort.
+
+The work is deliberately scoped as Phase 1 of a larger telemetry roadmap (epic
+IFC-2789). Phase 2 metrics (licensing, token usage, generator/transformation
+adoption, branch lifetime, PR governance, CLI/MCP/Sync adoption, GraphQL/REST
+metrics) and the blocked `user_node_count` metric are explicitly **not** in
+scope here.
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Daily activity signal over a trailing 24h window (Priority: P1)
+
+As the OpsMill data team, I need each daily telemetry payload to carry an
+`activity_24h` object describing what happened in the trailing 24 hours —
+logins, unique logins, and webhook successes/failures — so I can observe usage
+trends per deployment instead of meaningless lifetime totals.
+
+**Why this priority**: This is the enabler. It introduces the new windowed
+event-query path, the `activity_24h` object, the `payload_format` bump, and the
+graceful-degradation behavior that every other metric depends on. Without it the
+other metrics have no consistent failure contract and no precedent for windowed
+queries. It also delivers the highest-value signal: real daily activity.
+
+**Independent Test**: Seed a deployment with login and webhook-process events,
+some inside the trailing 24h window and some outside it, then trigger the daily
+gather. The emitted payload contains an `activity_24h` object whose counts
+reflect exactly the in-window events and ignore the out-of-window ones.
+
+**Acceptance Scenarios**:
+
+1. **Given** a deployment with login events both inside and outside the trailing
+   24h window, **When** the daily telemetry payload is gathered, **Then**
+   `activity_24h.logins` equals the count of in-window login events only.
+2. **Given** logins from a set of distinct accounts within the window (some
+   accounts logging in multiple times), **When** the payload is gathered,
+   **Then** `activity_24h.unique_logins` equals the number of distinct accounts,
+   not the number of login events.
+3. **Given** webhook-process runs in the last 24h with a mix of successes and
+   failures, **When** the payload is gathered, **Then**
+   `activity_24h.webhooks_fired_success` and `activity_24h.webhooks_fired_failure`
+   reflect exactly the in-window successful and failed runs respectively.
+4. **Given** a deployment with zero activity in the window, **When** the payload
+   is gathered, **Then** each `activity_24h` count is `0` (not `null`, not
+   absent).
+
+---
+
+### User Story 2 - Account and branch adoption metrics (Priority: P2)
+
+As the OpsMill data team, I need the payload to report the number of active
+accounts, account groups, and currently-open non-system branches, so I can
+gauge real adoption per deployment.
+
+**Why this priority**: These are high-value adoption signals computed through
+the standard branch-safe count path. They depend on the graceful-degradation
+contract established in Story 1 but are otherwise independent.
+
+**Independent Test**: Seed a deployment with a known mix of active/inactive
+accounts, account groups, and open/closed/system branches, trigger the gather,
+and assert each reported count matches the seeded fixture exactly.
+
+**Acceptance Scenarios**:
+
+1. **Given** a deployment with active and non-active accounts, **When** the
+   payload is gathered, **Then** `accounts.active` equals the count of accounts
+   whose status is active.
+2. **Given** a known number of account groups, **When** the payload is gathered,
+   **Then** `accounts.groups` equals that count.
+3. **Given** open branches including the default and the global system branch,
+   **When** the payload is gathered, **Then** `branches.active` counts the open
+   branches while excluding the default branch and the global system branch.
+4. **Given** the existing `branches.total` field, **When** the payload is
+   gathered, **Then** `branches.total` is unchanged in meaning, type, and name.
+
+---
+
+### User Story 3 - Branch-correct scaling metric for managed nodes (Priority: P2)
+
+As the OpsMill data team, I need a node count that reflects the number of
+schema-managed nodes (the `CoreNode` generic) computed the same way the product
+counts nodes, so I can measure how a deployment scales in domain terms — distinct
+from the raw vertex total that includes internal graph bookkeeping.
+
+**Why this priority**: Scaling is a primary telemetry question and the raw vertex
+total is misleading for it. This metric must be computed through the
+branch-safe, temporal-correct count path rather than a raw label count.
+
+**Independent Test**: Build a fixture with a known number of managed nodes,
+independently compute the expected count, trigger the gather, and assert
+`database.node_count.corenode` matches the independently-computed value exactly
+(±0).
+
+**Acceptance Scenarios**:
+
+1. **Given** a deployment with a known number of managed (`CoreNode`-generic)
+   nodes, **When** the payload is gathered, **Then**
+   `database.node_count.corenode` equals that count exactly.
+2. **Given** the existing `database.node_count.total` raw-vertex field, **When**
+   the payload is gathered, **Then** `database.node_count.total` is unchanged in
+   meaning, type, and name, and the distinction between the raw total and the
+   managed-node count is documented.
+
+---
+
+### User Story 4 - Resilient payload that never silently drops everything (Priority: P1)
+
+As the OpsMill data team, I need the daily payload to keep arriving even when one
+metric source fails, with a clear convention distinguishing "source failed" from
+"genuinely zero", so I can trust field presence and interpret nulls correctly.
+
+**Why this priority**: This is the reliability contract that makes the data
+usable. Without it, one failing query could drop the whole payload, or a `null`
+could ambiguously mean either "failed" or "none", corrupting trend analysis.
+
+**Independent Test**: Force one metric's source to fail while leaving the others
+healthy, trigger the gather, and assert the failed metric is `null`, every other
+field is populated, and the payload is still sent/stored.
+
+**Acceptance Scenarios**:
+
+1. **Given** one metric source that raises an error during gathering, **When**
+   the payload is gathered, **Then** that metric's field is `null`, all other
+   fields are populated, and the payload is still emitted and stored.
+2. **Given** a metric source that succeeds but legitimately has nothing to count,
+   **When** the payload is gathered, **Then** that metric's field is `0`, not
+   `null`.
+3. **Given** any version of the new payload, **When** it is emitted, **Then** the
+   `payload_format` identifier reflects the new payload version.
+
+---
+
+### Edge Cases
+
+- **Event-retention leakage**: The trailing-24h window is far shorter than the
+  underlying event retention (7 days for events, 90 days for webhook flow runs),
+  so a correct window must never include retained-but-out-of-window records.
+- **Best-effort event counts**: Event dispatch can drop records, so activity
+  counts are a trend signal, not a billing-grade exact count. This is acceptable
+  and must be documented; success criteria for event metrics are framed around
+  windowing correctness, not against an external ground truth.
+- **Default and system branches**: `branches.active` must exclude the default
+  branch and the global system branch; only genuinely open, non-system branches
+  count.
+- **Existing-field protection**: No existing field may change meaning, type, or
+  name. Deprecation is allowed; removal is not.
+- **Consumer compatibility**: A `payload_format` bump plus new fields must be
+  tolerated by a forward-compatible consumer that ignores unknown fields.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: The payload MUST report `accounts.active` as the count of accounts
+  whose status is active, computed through the standard branch-safe count path.
+  [IFC-2822]
+- **FR-002**: The payload MUST report `accounts.groups` as the count of account
+  groups. [IFC-2822]
+- **FR-003**: The payload MUST report `database.node_count.corenode` as the count
+  of managed (`CoreNode`-generic) nodes, computed through the branch-safe,
+  temporal-correct count path (not a raw vertex/label count). [IFC-2821]
+- **FR-005**: The payload MUST report `branches.active` as the count of open,
+  non-system branches, excluding the default branch and the global system
+  branch. [IFC-2822]
+- **FR-006**: The payload MUST report `activity_24h.webhooks_fired_success` and
+  `activity_24h.webhooks_fired_failure` as the counts of successful and failed
+  webhook-process runs over the trailing 24h. [IFC-2824]
+- **FR-007**: The feature MUST add a NEW trailing-24h-windowed event-query path
+  that feeds `activity_24h`, WITHOUT modifying the existing unwindowed event
+  tally output, and MUST advance the `payload_format` identifier. [IFC-2820]
+- **FR-008**: The payload MUST report `activity_24h.logins` (count of login
+  events over the trailing 24h) and `activity_24h.unique_logins` (distinct
+  accounts over the same window). [IFC-2823]
+- **FR-009**: The feature MUST NOT change the existing raw-vertex
+  `database.node_count.total` field, and MUST document the distinction between
+  the raw total, the managed-node (`corenode`) count, and the (future, blocked)
+  user-node count. [IFC-2821]
+- **FR-010**: When a metric's source fails, that field MUST be set to `null`
+  while the rest of the payload is still emitted and stored; when a source
+  succeeds with nothing to count, the field MUST be `0`, not `null`. [IFC-2820]
+- **FR-011**: All changes MUST be additive. No existing field may change its
+  meaning, type, or name. Deprecation is permitted; removal is not.
+
+### Governance Requirement
+
+- **GR-001**: Before shipping, the payload contract change (the `payload_format`
+  bump and the new fields) MUST be confirmed compatible with the receiving end
+  (the cloud telemetry processor and the downstream data mart) — specifically
+  that the receiver tolerates the format bump and ignores unknown fields. Because
+  every change is additive, a forward-compatible consumer keeps working; this is
+  a confirmation gate, not a code dependency.
+
+### Key Entities *(include if feature involves data)*
+
+- **Telemetry payload**: The daily anonymous data structure Infrahub emits and
+  stores. Carries a `payload_format` version identifier and nested sub-objects
+  (`accounts`, `branches`, `database`, and the new `activity_24h`).
+- **`activity_24h` object**: A new sub-object holding trailing-24h activity
+  counts: `logins`, `unique_logins`, `webhooks_fired_success`,
+  `webhooks_fired_failure`.
+- **Account**: A user account with a status (active vs. non-active) used for
+  `accounts.active`.
+- **Account group**: A grouping of accounts, counted for `accounts.groups`.
+- **Branch**: A line of change. The default branch and the global system branch
+  are excluded from `branches.active`.
+- **Login event**: An event emitted after authentication and stored in the event
+  system (not in the graph database). The source for `activity_24h.logins` and
+  `unique_logins`.
+- **Webhook-process run**: An execution of the webhook delivery flow, with a
+  success/failure outcome, counted for the `activity_24h` webhook fields.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: All in-scope fields are present on 100% of daily telemetry runs; a
+  field is `null` only when its source genuinely failed, never when the source
+  succeeded with nothing to count.
+- **SC-002**: Event-derived metrics reflect exactly the trailing 24h, with no
+  leakage from records retained but outside the window — verified with fixtures
+  containing both in-window and out-of-window records.
+- **SC-003**: `database.node_count.corenode` matches an independently-computed
+  fixture count exactly (±0).
+- **SC-004**: No existing telemetry field changes meaning, type, or name across
+  this release; the `payload_format` identifier is advanced and a
+  forward-compatible consumer that ignores unknown fields continues to parse the
+  payload (confirmed with the receiving team per GR-001).
+
+## Assumptions
+
+- The telemetry feature is producer-only; consuming/visualizing the new fields
+  (dashboards, INFP-550 / SA-184) is out of scope and handled downstream.
+- Login activity is sourced from the event system (events are emitted after
+  authentication and stored there); the graph database holds no last-login
+  timestamp, so a windowed event query is the correct and only source.
+- The trailing-24h window is comfortably shorter than the underlying retention
+  windows (7-day event retention, 90-day webhook flow-run retention), so all
+  in-window records are available at gather time.
+- Activity counts are best-effort trend signals (event dispatch can drop), not
+  billing-grade exact figures; correctness is judged on windowing behavior, not
+  against an external ground truth.
+- Counts are gathered on the default branch through the standard branch-safe
+  count path, consistent with how the product computes them elsewhere.
+- The "graceful degradation" contract (per-metric isolation, `null` on failure,
+  `0` on genuine empty) applies uniformly to every in-scope metric.
+
+## Out of Scope
+
+- `database.node_count.user` (FR-004 / IFC-2825) — blocked on a product decision
+  about which namespaces to include; explicitly excluded from this feature.
+- All Phase 2 telemetry items: licensing (cores/RAM), distinct API-token usage,
+  generators/transformations adoption, branch lifetime, PR governance,
+  CLI/MCP/Sync adoption, and GraphQL/REST metrics.
+- Dashboard rendering and any consumer-side visualization (INFP-550 / SA-184).
+- Redefining or altering the existing `database.node_count.total` raw-vertex
+  metric.
+- Persisting logins or any last-login state in the graph database.
+
+## Dependencies
+
+- **Receiving-end confirmation (GR-001)**: A confirmation gate with the
+  cloud-processor and data-mart owners that the additive payload change is
+  tolerated before shipping. Not a code dependency (the change is additive), but
+  a release gate.
