@@ -11,8 +11,10 @@ present in the ask — Jira/JPD items are referenced by ID only, so no web fetch
 
 ## 2. Verdict
 
-✅ **ALIGNED** — no significant drift. The spec is a faithful, expanded restatement of the
-PRD. Additions are necessary clarifications, not scope creep.
+✅ **ALIGNED** — no *unintended* drift. The spec is a faithful, expanded restatement of the
+PRD. Additions are either necessary clarifications or one **sanctioned, user-directed scope
+expansion** (checks/artifacts metrics — see §6), explicitly recorded rather than silently
+folded in.
 
 ## 3. Findings
 
@@ -50,3 +52,24 @@ aligned with the PRD — they make existing requirements precise, they do not ad
    the future `user` metric excludes `Core`, so `user ⊆ corenode ⊆ total` strictly and they can
    never become synonyms (relevant because FR-011 forbids removing a shipped field). Updated in
    spec (FR-009), research (Decision 1), data-model, contract, and tasks (T021).
+
+## 6. Sanctioned scope expansion — checks & artifacts (2026-06-28, user-directed)
+
+| Category | PRD reference | Spec reference | Description |
+|----------|---------------|----------------|-------------|
+| added (approved) | **not in PRD** (came from the JPD card's Phase 2 list, not the handoff) | FR-012, FR-013, US5, `activity_24h.checks_*` / `artifacts_*` | Pulled `validator.started/passed/failed` → `checks_*` and `artifact.created/updated` → `artifacts_*` into Phase 1. |
+
+**Why this is NOT unresolved drift**: The user explicitly directed this after their own grilling
+pass. It is a deliberate, recorded expansion — the alignment phase exists to surface exactly
+this kind of divergence rather than let it pass unnoticed, and here it is surfaced and approved.
+
+**Why it is safe / cheap**: Both event families are **already emitted and counted today**
+(verified via `get_all_events()`), so they reuse the US1 windowed event path unchanged (one more
+event name per metric + a parametrized test). They serve the already-stated Phase 1
+"depth-of-adoption" goal.
+
+**Boundary discipline applied**: Events that exist but whose *value needs correlation* were
+deliberately **held in Phase 2** to avoid free-metric creep into permanent (FR-011) contract
+surface — PR governance (`proposed_change.*`, needs review↔merge correlation), branch lifetime
+(`branch.*`, needs time-to-merge correlation), and node churn (`node.*`, no standalone Phase 1
+value). Recorded in spec "Out of Scope" and research Decision 9.

@@ -151,6 +151,38 @@ field is populated, and the payload is still sent/stored.
 
 ---
 
+### User Story 5 - Depth-of-adoption activity: checks & artifacts (Priority: P2)
+
+As the OpsMill data team, I need the daily payload to report how many validation
+checks ran (and their pass/fail outcomes) and how many artifacts were generated
+over the same trailing-24h window, so I can measure *depth* of adoption — not just
+that a deployment exists, but that its core workflows are actively used.
+
+**Why this priority**: These ride entirely on the windowed event path delivered by
+User Story 1 — the underlying events (`validator.started/passed/failed`,
+`artifact.created/updated`) are already emitted and counted today, so the marginal
+cost is one additional event name per metric plus a parametrized test. They serve
+the depth-of-adoption goal directly, making them a near-zero-cost extension of the
+enabler rather than new scope of their own.
+
+**Independent Test**: Seed validator and artifact events inside and outside the
+24h window, trigger the gather, and assert the check/artifact counts reflect
+exactly the in-window events.
+
+**Acceptance Scenarios**:
+
+1. **Given** validator events (`started`/`passed`/`failed`) inside the window,
+   **When** the payload is gathered, **Then** `activity_24h.checks_started`,
+   `checks_passed`, and `checks_failed` equal the in-window counts of each.
+2. **Given** artifact events (`created`/`updated`) inside the window, **When** the
+   payload is gathered, **Then** `activity_24h.artifacts_created` and
+   `artifacts_updated` equal the in-window counts of each.
+3. **Given** a deployment with no such events in the window, **When** the payload
+   is gathered, **Then** each of these counts is `0` (not `null`, not absent), and
+   on a source failure the affected field is `null`.
+
+---
+
 ### Edge Cases
 
 - **Event-retention leakage**: The 24h window is far shorter than the underlying
@@ -209,6 +241,13 @@ field is populated, and the payload is still sent/stored.
   succeeds with nothing to count, the field MUST be `0`, not `null`. [IFC-2820]
 - **FR-011**: All changes MUST be additive. No existing field may change its
   meaning, type, or name. Deprecation is permitted; removal is not.
+- **FR-012**: The payload MUST report `activity_24h.checks_started`,
+  `activity_24h.checks_passed`, and `activity_24h.checks_failed` as the windowed
+  counts of `validator.started`, `validator.passed`, and `validator.failed` events
+  respectively, via the same windowed event path as FR-007/FR-008. [INFP-589, depth-of-adoption]
+- **FR-013**: The payload MUST report `activity_24h.artifacts_created` and
+  `activity_24h.artifacts_updated` as the windowed counts of `artifact.created` and
+  `artifact.updated` events respectively, via the same windowed event path. [INFP-589, depth-of-adoption]
 
 ### Governance Requirement
 
@@ -229,7 +268,9 @@ field is populated, and the payload is still sent/stored.
   (`accounts`, `branches`, `database`, and the new `activity_24h`).
 - **`activity_24h` object**: A new sub-object holding activity counts over the
   previous full UTC calendar day (a 24h window anchored to a fixed boundary, not
-  to job-execution time): `logins`, `unique_logins`, `webhooks_fired_success`,
+  to job-execution time): `logins`, `unique_logins`, `checks_started`,
+  `checks_passed`, `checks_failed`, `artifacts_created`, `artifacts_updated`,
+  `webhooks_fired_success`,
   `webhooks_fired_failure`.
 - **Account**: A user account with a status (active vs. non-active) used for
   `accounts.active`.
@@ -288,9 +329,20 @@ field is populated, and the payload is still sent/stored.
 
 - `database.node_count.user` (FR-004 / IFC-2825) — blocked on a product decision
   about which namespaces to include; explicitly excluded from this feature.
-- All Phase 2 telemetry items: licensing (cores/RAM), distinct API-token usage,
-  generators/transformations adoption, branch lifetime, PR governance,
-  CLI/MCP/Sync adoption, and GraphQL/REST metrics.
+- Remaining Phase 2 telemetry items: licensing (cores/RAM), distinct API-token
+  usage, generators/transformations adoption, branch lifetime, PR governance,
+  CLI/MCP/Sync adoption, and GraphQL/REST metrics. (Checks and artifacts, formerly
+  considered Phase 2, are pulled into Phase 1 — see FR-012/FR-013 — because their
+  events already flow and serve a stated Phase 1 goal.)
+- **Held in Phase 2 even though their events already flow** (aggregate counts would
+  be cheap, but the *valuable* signal needs correlation, not raw counts, so a bare
+  count would be permanent contract surface — FR-011 — without clear Phase 1 value):
+  - **PR governance** — `proposed_change.*` events exist, but the useful metric
+    ("merged without review") needs per-PR review↔merge correlation.
+  - **Branch lifetime** — `branch.created/merged/deleted` events exist, but the
+    useful metric (time-to-merge) needs durable per-branch correlation.
+  - **Node churn** — `node.created/updated/deleted` events exist, but raw 24h churn
+    counts have no clear standalone Phase 1 use.
 - Dashboard rendering and any consumer-side visualization (INFP-550 / SA-184).
 - Redefining or altering the existing `database.node_count.total` raw-vertex
   metric.

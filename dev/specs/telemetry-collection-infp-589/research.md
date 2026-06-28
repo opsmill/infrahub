@@ -196,6 +196,39 @@ in-window vs out-of-window fixtures are unambiguous and non-flaky.
 outside a flow context, `get_run_logger` is handled per the allowed `testing-python.md`
 pattern (return a stdlib logger), not via general mocking.
 
+## Decision 9 — Phase split by "is the event already flowing?" (checks & artifacts pulled in)
+
+**Decision**: Once the windowed event path exists (Decision 3), any metric derived from an
+**already-emitted, already-counted** event costs ~one event name + a parametrized test. So the
+Phase 1/2 boundary for event-derived metrics is drawn on *"is the event already flowing and is
+a raw windowed count the valuable signal?"* — not on the original card's labelling. Verified
+against `get_all_events()`:
+
+- **Pulled into Phase 1** (events emitted & counted today; raw per-period count *is* the
+  depth-of-adoption signal): `validator.started/passed/failed` → `checks_*`;
+  `artifact.created/updated` → `artifacts_*`. Near-zero marginal cost, serves a stated Phase 1
+  goal.
+- **Held in Phase 2 although the events exist** (raw count is cheap but not the valuable
+  signal; a bare count would be permanent contract surface per FR-011 with no clear Phase 1
+  use):
+  - PR governance — `proposed_change.*` exist, but "merged without review" needs per-PR
+    review↔merge correlation.
+  - Branch lifetime — `branch.created/merged/deleted` exist, but time-to-merge needs durable
+    per-branch correlation.
+  - Node churn — `node.created/updated/deleted` exist, but raw churn counts lack standalone
+    Phase 1 value.
+- **Stay Phase 2 — no events at all**: generators/transformations (no `generator.*`/`transform.*`
+  events), distinct API tokens (no token identity in events), CLI/MCP/Sync (greenfield SDK
+  instrumentation), licensing cores/RAM (product-scope decision).
+
+**Rationale**: This keeps Phase 1 disciplined (every field must serve a stated goal, not just
+be cheap) while harvesting the genuine free wins the windowing enabler unlocks. The discipline
+matters because FR-011 makes every shipped field unremovable.
+
+**Scope note (divergence from handoff PRD)**: checks/artifacts were not in the handoff PRD's
+in-scope FR list; they are a deliberate, user-directed expansion recorded in
+`alignment-check.md` §5. The events being verified-present is what makes the expansion safe.
+
 ## Decision 8 — Webhook run terminality & count cost (secondary)
 
 **Webhook non-terminal runs**: a `webhook-process` run that started in-window but is still

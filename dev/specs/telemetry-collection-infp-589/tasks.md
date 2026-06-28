@@ -53,7 +53,7 @@ full-payload resilience test that runs last, since it asserts every in-scope fie
 - [ ] T003 Bump `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` from `"20250318"` to `"20260628"` (this also advances `DEFAULT_PAYLOAD_FORMAT`).
 - [ ] T004 In `backend/infrahub/telemetry/models.py`, add the additive payload models:
   - `TelemetryAccountData` with `active: int | None` and `groups: int | None`.
-  - `TelemetryActivity24hData` with `logins`, `unique_logins`, `webhooks_fired_success`, `webhooks_fired_failure`, all `int | None`.
+  - `TelemetryActivity24hData` with `logins`, `unique_logins`, `checks_started`, `checks_passed`, `checks_failed`, `artifacts_created`, `artifacts_updated`, `webhooks_fired_success`, `webhooks_fired_failure`, all `int | None`.
   - Extend `TelemetryBranchData` with `active: int | None = None` (keep `total: int`).
   - Widen `TelemetryDatabaseData.node_count` value type to `dict[str, int | None]`.
   - Add `accounts: TelemetryAccountData` and `activity_24h: TelemetryActivity24hData` to `TelemetryData` (always-present objects; per-field nullability).
@@ -86,7 +86,7 @@ repeat logins per account, and the existing `prefect.events.*` output is unchang
 - [ ] T010 [US1] In `backend/infrahub/telemetry/task_manager.py`, add a NEW windowed event counter that posts to `/events/count-by/event` with an `occurred` window (`since = window_start`, `until = window_end` from T009b) plus the `event.name` filter — separate from `gather_prefect_events`, which stays untouched.
 - [ ] T011 [US1] In `task_manager.py`, add a windowed unique-account counter posting to `/events/count-by/resource` over the same `account.logged_in` window; the number of resource buckets (keyed by `infrahub.account.{account_id}`) is `unique_logins`.
 - [ ] T012 [US1] In `task_manager.py`, add a `webhook-process` flow-run query over the same `[window_start, window_end)` window (T009b), splitting terminal states into success (`COMPLETED`) and failure (`FAILED`/`CRASHED`/`TIMEDOUT`); non-terminal runs counted in neither.
-- [ ] T013 [US1] In `task_manager.py`, add `gather_activity_24h(client) -> TelemetryActivity24hData` assembling the four counts, each obtained through the degradation helper so one failing source nulls only its own field.
+- [ ] T013 [US1] In `task_manager.py`, add `gather_activity_24h(client) -> TelemetryActivity24hData` assembling the login + webhook counts (US1 fields), each obtained through the degradation helper so one failing source nulls only its own field. (US5 extends this same function with the check/artifact counts.)
 - [ ] T014 [US1] In `backend/infrahub/telemetry/tasks.py`, wire `activity_24h` into `gather_anonymous_telemetry_data` (gather via the Prefect client path; the object is always present).
 
 **Checkpoint**: `activity_24h` present and windowed; existing event output intact. MVP testable.
@@ -135,13 +135,38 @@ count, and assert `node_count["corenode"]` matches exactly (±0).
 
 ---
 
-## Phase 6: User Story 4 — Resilient payload (Priority: P1)
+## Phase 6: User Story 5 — Depth-of-adoption: checks & artifacts (Priority: P2)
+
+**Goal**: Emit `activity_24h.checks_started/passed/failed` and
+`activity_24h.artifacts_created/updated` from events that already flow today, reusing the US1
+windowed event path unchanged.
+
+> Rides entirely on US1's windowed counter (T009b/T010). Each metric is one more event name in
+> the same query — verified present via `get_all_events()`: `validator.started/passed/failed`,
+> `artifact.created/updated`.
+
+**Independent Test**: Seed `validator.*` and `artifact.*` events in- and out-of-window; assert
+each count reflects exactly the in-window events; assert genuine-empty → `0`.
+
+### Tests for User Story 5 (write first, must fail) ⚠️
+
+- [ ] T022 [P] [US5] Component test in `backend/tests/component/telemetry/test_task_manager.py` (parametrized off the US1 windowing fixture): seed `validator.started/passed/failed` and `artifact.created/updated` events in- and out-of-window; assert `checks_started/passed/failed` and `artifacts_created/updated` equal the in-window counts and that out-of-window events are excluded.
+
+### Implementation for User Story 5
+
+- [ ] T023 [US5] Extend the windowed event counter (T010) to also count `validator.started`, `validator.passed`, `validator.failed`, `artifact.created`, `artifact.updated`, and extend `gather_activity_24h` (T013) to populate the five new fields, each through the degradation helper (per-field null isolation). No change to `gather_prefect_events`.
+
+**Checkpoint**: Depth-of-adoption check/artifact metrics present and windowed.
+
+---
+
+## Phase 7: User Story 4 — Resilient payload (Priority: P1)
 
 **Goal**: Guarantee the cross-cutting resilience contract end-to-end: every in-scope field is
 present; a failing source yields `null` (not a dropped payload); a genuine empty yields `0`.
 
 > The mechanism (degradation helper) is delivered in Foundational and consumed by each story
-> above. This phase validates the whole payload, so it runs after US1–US3 are wired.
+> above. This phase validates the whole payload, so it runs after US1–US3 and US5 are wired.
 
 **Independent Test**: Run the gather flow; assert all in-scope fields present. Force one source
 to fail (inject a failing collaborator/fixture — no mock); assert that field is `null`, all
@@ -149,23 +174,23 @@ others populated, and the payload is still built and stored. Assert genuine-empt
 
 ### Tests for User Story 4 (write first, must fail) ⚠️
 
-- [ ] T022 [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: run `gather_anonymous_telemetry_data` on a healthy stack and assert presence of `accounts.{active,groups}`, `branches.active`, `database.node_count.corenode`, and `activity_24h.{logins,unique_logins,webhooks_fired_success,webhooks_fired_failure}`.
-- [ ] T023 [US4] Resilience test in `backend/tests/component/telemetry/test_tasks.py`: make one source fail via an injected failing collaborator/fixture (no mock); assert that field is `null`, every other field is populated, and the snapshot is still stored. Add a genuine-empty case asserting `0`, not `null`.
+- [ ] T024 [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: run `gather_anonymous_telemetry_data` on a healthy stack and assert presence of `accounts.{active,groups}`, `branches.active`, `database.node_count.corenode`, and all `activity_24h` fields (`logins`, `unique_logins`, `checks_started/passed/failed`, `artifacts_created/updated`, `webhooks_fired_success/failure`).
+- [ ] T025 [US4] Resilience test in `backend/tests/component/telemetry/test_tasks.py`: make one source fail via an injected failing collaborator/fixture (no mock); assert that field is `null`, every other field is populated, and the snapshot is still stored. Add a genuine-empty case asserting `0`, not `null`.
 
 ### Implementation for User Story 4
 
-- [ ] T024 [US4] Audit `gather_anonymous_telemetry_data` in `backend/infrahub/telemetry/tasks.py` to ensure every new metric (accounts, branches.active, corenode, each activity_24h field) is gathered through the degradation helper — no new metric can raise out of the orchestrator. If the current wiring doesn't expose a clean no-mock failure seam for T023, introduce one (e.g. an injectable gather collaborator) following backend component-design DI rules.
+- [ ] T026 [US4] Audit `gather_anonymous_telemetry_data` in `backend/infrahub/telemetry/tasks.py` to ensure every new metric (accounts, branches.active, corenode, each activity_24h field incl. checks/artifacts) is gathered through the degradation helper — no new metric can raise out of the orchestrator. If the current wiring doesn't expose a clean no-mock failure seam for T025, introduce one (e.g. an injectable gather collaborator) following backend component-design DI rules.
 
 **Checkpoint**: Whole payload resilient; one failing source never drops the rest.
 
 ---
 
-## Phase 7: Polish & Cross-Cutting Concerns
+## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T025 [P] Run the telemetry suites: `uv run pytest backend/tests/unit/telemetry backend/tests/component/telemetry -q` (set `DOCKER_HOST` for component tests).
-- [ ] T026 [P] `uv run invoke format lint` and resolve any findings in the telemetry module.
-- [ ] T027 Run the `quickstart.md` validation steps end-to-end and confirm `payload_format == "20260628"` in a stored snapshot.
-- [ ] T028 **Governance gate (GR-001)** — before merge/release, confirm with the cloud-processor owner and the data-mart owner that the receiver tolerates the `payload_format` bump, ignores unknown fields, and tolerates `null` values (including `corenode` inside `node_count`). Record the confirmation on the PR / tracking ticket. (Process task, not code.)
+- [ ] T027 [P] Run the telemetry suites: `uv run pytest backend/tests/unit/telemetry backend/tests/component/telemetry -q` (set `DOCKER_HOST` for component tests).
+- [ ] T028 [P] `uv run invoke format lint` and resolve any findings in the telemetry module.
+- [ ] T029 Run the `quickstart.md` validation steps end-to-end and confirm `payload_format == "20260628"` in a stored snapshot.
+- [ ] T030 **Governance gate (GR-001)** — before merge/release, confirm with the cloud-processor owner and the data-mart owner that the receiver tolerates the `payload_format` bump, ignores unknown fields, and tolerates `null` values (including `corenode` inside `node_count`). Record the confirmation on the PR / tracking ticket. (Process task, not code.)
 
 ---
 
@@ -176,23 +201,25 @@ others populated, and the payload is still built and stored. Assert genuine-empt
 - **Setup (Phase 1)**: no dependencies.
 - **Foundational (Phase 2)**: depends on Setup; **blocks all stories** (models, helper, version).
 - **US1 (Phase 3)**, **US2 (Phase 4)**, **US3 (Phase 5)**: each depends only on Foundational; mutually independent (different gather functions / files), so parallelizable across developers.
-- **US4 (Phase 6)**: depends on US1–US3 being wired (it asserts the full payload).
-- **Polish (Phase 7)**: depends on all desired stories complete.
+- **US5 (Phase 6)**: depends on US1 (reuses its windowed counter); otherwise independent.
+- **US4 (Phase 7)**: depends on US1–US3 and US5 being wired (it asserts the full payload).
+- **Polish (Phase 8)**: depends on all desired stories complete.
 
 ### Within Each User Story
 
 - Tests are written first and must fail before implementation.
-- US1: windowed counters (T010–T012) → assembler (T013) → orchestrator wiring (T014).
+- US1: window helper (T009b) → windowed counters (T010–T012) → assembler (T013) → orchestrator wiring (T014).
 - US2: gather function (T017) → orchestrator wiring (T018).
 - US3: db count (T020) → docs note (T021).
+- US5: extend the windowed counter + assembler (T023) after US1's T010/T013 exist.
 
 ### Parallel Opportunities
 
 - T001 / T002 (Setup) in parallel.
 - T005 (helper test) parallel with T003/T004 (constant + models).
 - US1 test tasks T007/T008/T009 in parallel; US2 T015/T016 in parallel.
-- With capacity: US1, US2, US3 proceed in parallel once Foundational is done.
-- Polish T025/T026 in parallel.
+- With capacity: US1, US2, US3 proceed in parallel once Foundational is done; US5 follows US1.
+- Polish T027/T028 in parallel.
 
 ---
 
@@ -219,11 +246,12 @@ Task: "Regression test gather_prefect_events unchanged"
 ### Incremental Delivery
 
 1. Setup + Foundational → contract + mechanism ready.
-2. US1 → trailing-24h activity (MVP).
+2. US1 → calendar-day-windowed activity (MVP).
 3. US2 → account/branch adoption.
 4. US3 → branch-correct scaling count.
-5. US4 → full-payload resilience guarantee.
-6. Polish → suite green, lint clean, GR-001 governance confirmed.
+5. US5 → depth-of-adoption checks/artifacts (rides on US1).
+6. US4 → full-payload resilience guarantee.
+7. Polish → suite green, lint clean, GR-001 governance confirmed.
 
 ---
 
@@ -232,6 +260,10 @@ Task: "Regression test gather_prefect_events unchanged"
 - `[P]` = different files, no incomplete-task dependency.
 - `[Story]` label maps each task to a user story for traceability (this file only — never in source).
 - Verify each test fails before implementing.
-- US4's value is P1, but its full-payload assertion depends on US1–US3, so it is scheduled last.
-- Out of scope (do not implement): `database.node_count.user` (blocked), Phase 2 metrics,
-  dashboards, redefining `node_count.total`, persisting logins in Neo4j.
+- US4's value is P1, but its full-payload assertion depends on US1–US3 + US5, so it is scheduled last.
+- US5 (checks/artifacts) is a user-directed pull-in from Phase 2 — cheap because the events
+  already flow; see `alignment-check.md` §5 for the sanctioned-scope-expansion record.
+- Out of scope (do not implement): `database.node_count.user` (blocked); PR/branch/node-churn
+  aggregate counts (events exist but value needs correlation — held in Phase 2); remaining
+  Phase 2 metrics (generators/transforms, tokens, CLI/MCP/Sync, licensing); dashboards;
+  redefining `node_count.total`; persisting logins in Neo4j.

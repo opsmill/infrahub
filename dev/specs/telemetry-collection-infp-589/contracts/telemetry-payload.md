@@ -46,6 +46,11 @@ data mart) is forward-compatible: it ignores unknown fields, so additive changes
   "activity_24h": {       // NEW object — previous full UTC calendar day [00:00, 00:00)
     "logins": 19,                   // int | null
     "unique_logins": 6,             // int | null
+    "checks_started": 88,           // int | null
+    "checks_passed": 80,            // int | null
+    "checks_failed": 8,             // int | null
+    "artifacts_created": 14,        // int | null
+    "artifacts_updated": 31,        // int | null
     "webhooks_fired_success": 41,   // int | null
     "webhooks_fired_failure": 2     // int | null
   }
@@ -66,6 +71,11 @@ deterministic boundary (not gather-time `now`) so daily snapshots tile exactly.
 | `database.node_count.corenode` | `NodeManager.count(CoreNode)` | current | `0` | `null` |
 | `activity_24h.logins` | Prefect `account.logged_in` events, windowed | prev. UTC day | `0` | `null` |
 | `activity_24h.unique_logins` | Prefect count-by-resource on login events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.checks_started` | Prefect `validator.started` events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.checks_passed` | Prefect `validator.passed` events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.checks_failed` | Prefect `validator.failed` events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.artifacts_created` | Prefect `artifact.created` events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.artifacts_updated` | Prefect `artifact.updated` events, windowed | prev. UTC day | `0` | `null` |
 | `activity_24h.webhooks_fired_success` | Prefect `webhook-process` flow runs, `COMPLETED` | prev. UTC day | `0` | `null` |
 | `activity_24h.webhooks_fired_failure` | Prefect `webhook-process` flow runs, `FAILED`/`CRASHED`/`TIMEDOUT` | prev. UTC day | `0` | `null` |
 

@@ -9,8 +9,10 @@
 Extend Infrahub's daily anonymous telemetry payload with additive, backwards-compatible
 metrics: account adoption (`accounts.active`, `accounts.groups`), open-branch count
 (`branches.active`), a branch/temporal-correct managed-node count
-(`database.node_count.corenode`), and a new trailing-24h `activity_24h` object
-(`logins`, `unique_logins`, `webhooks_fired_success`, `webhooks_fired_failure`).
+(`database.node_count.corenode`), and a new calendar-day-windowed `activity_24h` object
+(`logins`, `unique_logins`, `checks_started/passed/failed`, `artifacts_created/updated`,
+`webhooks_fired_success`, `webhooks_fired_failure`). The check/artifact metrics are derived
+from events that already flow today, harvested cheaply on the same windowed path.
 
 Technical approach: add the new fields to the existing Pydantic payload models; add gather
 functions that use the standard branch-safe `NodeManager.count` path for node-based metrics
@@ -45,8 +47,9 @@ isolation: one failing source must not drop the payload. Event metrics must refl
 24h window anchored to a deterministic calendar boundary (previous full UTC day), not to
 job-execution time, so daily snapshots tile with no overlap/gap despite the jittered cron.
 
-**Scale/Scope**: ~9 new payload fields across 2 new sub-models + 2 extended sub-models;
-~3 new gather functions; 1 degradation helper; 1 constant bump. Producer-only.
+**Scale/Scope**: ~13 new payload fields across 2 new sub-models + 2 extended sub-models;
+~3 new gather functions; 1 windowed-event counter (reused for logins + 5 check/artifact
+metrics); 1 degradation helper; 1 constant bump. Producer-only.
 
 ## Constitution Check
 

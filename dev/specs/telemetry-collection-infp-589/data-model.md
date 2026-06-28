@@ -26,8 +26,17 @@ exactly (no overlap, no gap) despite the jittered cron minute and execution drif
 |---------------------------|---------------|---------------------------------------------------------|-------|---------|
 | `logins`                  | `int \| None` | `account.logged_in` events in the windowed day          | `0`   | `null`  |
 | `unique_logins`           | `int \| None` | Distinct `account_id` among those logins (same window)  | `0`   | `null`  |
+| `checks_started`          | `int \| None` | `validator.started` events in-window                    | `0`   | `null`  |
+| `checks_passed`           | `int \| None` | `validator.passed` events in-window                     | `0`   | `null`  |
+| `checks_failed`           | `int \| None` | `validator.failed` events in-window                     | `0`   | `null`  |
+| `artifacts_created`       | `int \| None` | `artifact.created` events in-window                     | `0`   | `null`  |
+| `artifacts_updated`       | `int \| None` | `artifact.updated` events in-window                     | `0`   | `null`  |
 | `webhooks_fired_success`  | `int \| None` | `webhook-process` flow runs in-window ending `COMPLETED`| `0`   | `null`  |
 | `webhooks_fired_failure`  | `int \| None` | `webhook-process` flow runs in-window ending `FAILED`/`CRASHED`/`TIMEDOUT` | `0` | `null` |
+
+The five check/artifact fields are derived from events that are **already emitted and counted
+today** (windowless) via `get_all_events()`; they reuse the windowed event-count path
+unchanged — each is one more event name in the same query. They serve "depth of adoption".
 
 Each field is isolated: one failing source nulls only its own field. A `webhook-process` run
 that started in-window but is still non-terminal (`PENDING`/`RUNNING`/`SCHEDULED`) at gather
