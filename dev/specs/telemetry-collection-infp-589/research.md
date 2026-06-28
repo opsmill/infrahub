@@ -206,17 +206,20 @@ against `get_all_events()`:
 
 - **Pulled into Phase 1** (events emitted & counted today; raw per-period count *is* the
   depth-of-adoption signal): `validator.started/passed/failed` → `checks_*`;
-  `artifact.created/updated` → `artifacts_*`. Near-zero marginal cost, serves a stated Phase 1
-  goal.
-- **Held in Phase 2 although the events exist** (raw count is cheap but not the valuable
-  signal; a bare count would be permanent contract surface per FR-011 with no clear Phase 1
-  use):
+  `artifact.created/updated` → `artifacts_*`; `branch.created/merged/deleted` → `branches_*`.
+  Near-zero marginal cost, serves a stated Phase 1 goal. Branch lifecycle counts need no
+  correlation — only branch *lifetime* (duration) does.
+- **Held in Phase 2 although the events exist** (a bare count would be permanent contract
+  surface per FR-011 without clear standalone Phase 1 value):
   - PR governance — `proposed_change.*` exist, but "merged without review" needs per-PR
     review↔merge correlation.
-  - Branch lifetime — `branch.created/merged/deleted` exist, but time-to-merge needs durable
-    per-branch correlation.
-  - Node churn — `node.created/updated/deleted` exist, but raw churn counts lack standalone
-    Phase 1 value.
+  - Branch *lifetime* — the create→merge duration needs durable per-branch correlation (the
+    lifecycle *counts* are pulled in above; only the duration is deferred).
+  - Node churn — `node.created/updated/deleted` exist, but `node.updated` fires on every
+    attribute mutation incl. automated/computed writes, so the count is machine-dominated — a
+    noisy adoption proxy, not a clean signal. (Held on signal quality, not cost.)
+  - Branch `rebased`/`migrated` counts — maintenance/automation-driven, lower-signal than
+    create/merge/delete; deferred to keep the permanent field set focused.
 - **Stay Phase 2 — no events at all**: generators/transformations (no `generator.*`/`transform.*`
   events), distinct API tokens (no token identity in events), CLI/MCP/Sync (greenfield SDK
   instrumentation), licensing cores/RAM (product-scope decision).
@@ -225,9 +228,10 @@ against `get_all_events()`:
 be cheap) while harvesting the genuine free wins the windowing enabler unlocks. The discipline
 matters because FR-011 makes every shipped field unremovable.
 
-**Scope note (divergence from handoff PRD)**: checks/artifacts were not in the handoff PRD's
-in-scope FR list; they are a deliberate, user-directed expansion recorded in
-`alignment-check.md` §5. The events being verified-present is what makes the expansion safe.
+**Scope note (divergence from handoff PRD)**: checks/artifacts and branch-lifecycle counts
+were not in the handoff PRD's in-scope FR list; they are a deliberate, user-directed expansion
+recorded in `alignment-check.md` §6. The events being verified-present is what makes the
+expansion safe.
 
 ## Decision 8 — Webhook run terminality & count cost (secondary)
 

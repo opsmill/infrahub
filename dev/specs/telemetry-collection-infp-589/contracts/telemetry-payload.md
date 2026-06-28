@@ -51,6 +51,9 @@ data mart) is forward-compatible: it ignores unknown fields, so additive changes
     "checks_failed": 8,             // int | null
     "artifacts_created": 14,        // int | null
     "artifacts_updated": 31,        // int | null
+    "branches_created": 9,          // int | null
+    "branches_merged": 5,           // int | null
+    "branches_deleted": 4,          // int | null
     "webhooks_fired_success": 41,   // int | null
     "webhooks_fired_failure": 2     // int | null
   }
@@ -76,6 +79,9 @@ deterministic boundary (not gather-time `now`) so daily snapshots tile exactly.
 | `activity_24h.checks_failed` | Prefect `validator.failed` events, windowed | prev. UTC day | `0` | `null` |
 | `activity_24h.artifacts_created` | Prefect `artifact.created` events, windowed | prev. UTC day | `0` | `null` |
 | `activity_24h.artifacts_updated` | Prefect `artifact.updated` events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.branches_created` | Prefect `branch.created` events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.branches_merged` | Prefect `branch.merged` events, windowed | prev. UTC day | `0` | `null` |
+| `activity_24h.branches_deleted` | Prefect `branch.deleted` events, windowed | prev. UTC day | `0` | `null` |
 | `activity_24h.webhooks_fired_success` | Prefect `webhook-process` flow runs, `COMPLETED` | prev. UTC day | `0` | `null` |
 | `activity_24h.webhooks_fired_failure` | Prefect `webhook-process` flow runs, `FAILED`/`CRASHED`/`TIMEDOUT` | prev. UTC day | `0` | `null` |
 

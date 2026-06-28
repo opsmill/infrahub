@@ -53,23 +53,30 @@ aligned with the PRD — they make existing requirements precise, they do not ad
    never become synonyms (relevant because FR-011 forbids removing a shipped field). Updated in
    spec (FR-009), research (Decision 1), data-model, contract, and tasks (T021).
 
-## 6. Sanctioned scope expansion — checks & artifacts (2026-06-28, user-directed)
+## 6. Sanctioned scope expansion — checks, artifacts & branch lifecycle (2026-06-28, user-directed)
 
 | Category | PRD reference | Spec reference | Description |
 |----------|---------------|----------------|-------------|
-| added (approved) | **not in PRD** (came from the JPD card's Phase 2 list, not the handoff) | FR-012, FR-013, US5, `activity_24h.checks_*` / `artifacts_*` | Pulled `validator.started/passed/failed` → `checks_*` and `artifact.created/updated` → `artifacts_*` into Phase 1. |
+| added (approved) | **not in PRD** (came from the JPD card's Phase 2 list, not the handoff) | FR-012, FR-013, FR-014, US5, `activity_24h.checks_*` / `artifacts_*` / `branches_*` | Pulled `validator.started/passed/failed` → `checks_*`, `artifact.created/updated` → `artifacts_*`, and `branch.created/merged/deleted` → `branches_*` into Phase 1. |
 
-**Why this is NOT unresolved drift**: The user explicitly directed this after their own grilling
-pass. It is a deliberate, recorded expansion — the alignment phase exists to surface exactly
-this kind of divergence rather than let it pass unnoticed, and here it is surfaced and approved.
+**Why this is NOT unresolved drift**: The user explicitly directed this across two review
+rounds (checks/artifacts, then branch-lifecycle counts after challenging the cost). It is a
+deliberate, recorded expansion — the alignment phase exists to surface exactly this kind of
+divergence rather than let it pass unnoticed, and here it is surfaced and approved.
 
-**Why it is safe / cheap**: Both event families are **already emitted and counted today**
+**Why it is safe / cheap**: All three event families are **already emitted and counted today**
 (verified via `get_all_events()`), so they reuse the US1 windowed event path unchanged (one more
 event name per metric + a parametrized test). They serve the already-stated Phase 1
-"depth-of-adoption" goal.
+"depth-of-adoption" goal; branch create/merge/delete activity is an especially direct adoption
+signal for the branch-based workflow.
 
-**Boundary discipline applied**: Events that exist but whose *value needs correlation* were
-deliberately **held in Phase 2** to avoid free-metric creep into permanent (FR-011) contract
-surface — PR governance (`proposed_change.*`, needs review↔merge correlation), branch lifetime
-(`branch.*`, needs time-to-merge correlation), and node churn (`node.*`, no standalone Phase 1
-value). Recorded in spec "Out of Scope" and research Decision 9.
+**Boundary discipline applied** — events that exist but were deliberately **held in Phase 2**,
+to keep permanent (FR-011) contract surface to clean standalone signals:
+- **PR "merged-without-review"** (`proposed_change.*`) — needs per-PR review↔merge correlation.
+- **Branch *lifetime*** (create→merge duration) — needs durable per-branch correlation. (The
+  lifecycle *counts* are in scope; only the duration is deferred.)
+- **Node churn** (`node.*`) — `node.updated` fires on every attribute mutation incl. automated
+  writes, so the count is machine-dominated (held on signal quality, not cost).
+- **Branch `rebased`/`migrated` counts** — maintenance/automation-driven, lower-signal.
+
+Recorded in spec "Out of Scope", research Decision 9, and tasks Notes.

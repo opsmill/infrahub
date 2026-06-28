@@ -53,7 +53,7 @@ full-payload resilience test that runs last, since it asserts every in-scope fie
 - [ ] T003 Bump `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` from `"20250318"` to `"20260628"` (this also advances `DEFAULT_PAYLOAD_FORMAT`).
 - [ ] T004 In `backend/infrahub/telemetry/models.py`, add the additive payload models:
   - `TelemetryAccountData` with `active: int | None` and `groups: int | None`.
-  - `TelemetryActivity24hData` with `logins`, `unique_logins`, `checks_started`, `checks_passed`, `checks_failed`, `artifacts_created`, `artifacts_updated`, `webhooks_fired_success`, `webhooks_fired_failure`, all `int | None`.
+  - `TelemetryActivity24hData` with `logins`, `unique_logins`, `checks_started`, `checks_passed`, `checks_failed`, `artifacts_created`, `artifacts_updated`, `branches_created`, `branches_merged`, `branches_deleted`, `webhooks_fired_success`, `webhooks_fired_failure`, all `int | None`.
   - Extend `TelemetryBranchData` with `active: int | None = None` (keep `total: int`).
   - Widen `TelemetryDatabaseData.node_count` value type to `dict[str, int | None]`.
   - Add `accounts: TelemetryAccountData` and `activity_24h: TelemetryActivity24hData` to `TelemetryData` (always-present objects; per-field nullability).
@@ -135,28 +135,30 @@ count, and assert `node_count["corenode"]` matches exactly (±0).
 
 ---
 
-## Phase 6: User Story 5 — Depth-of-adoption: checks & artifacts (Priority: P2)
+## Phase 6: User Story 5 — Depth-of-adoption: checks, artifacts & branch lifecycle (Priority: P2)
 
-**Goal**: Emit `activity_24h.checks_started/passed/failed` and
-`activity_24h.artifacts_created/updated` from events that already flow today, reusing the US1
-windowed event path unchanged.
+**Goal**: Emit `activity_24h.checks_started/passed/failed`,
+`activity_24h.artifacts_created/updated`, and
+`activity_24h.branches_created/merged/deleted` from events that already flow today, reusing the
+US1 windowed event path unchanged.
 
 > Rides entirely on US1's windowed counter (T009b/T010). Each metric is one more event name in
 > the same query — verified present via `get_all_events()`: `validator.started/passed/failed`,
-> `artifact.created/updated`.
+> `artifact.created/updated`, `branch.created/merged/deleted`. Branch *lifetime* (duration) is
+> NOT included — it needs per-branch correlation (Phase 2).
 
-**Independent Test**: Seed `validator.*` and `artifact.*` events in- and out-of-window; assert
-each count reflects exactly the in-window events; assert genuine-empty → `0`.
+**Independent Test**: Seed `validator.*`, `artifact.*`, and `branch.*` events in- and
+out-of-window; assert each count reflects exactly the in-window events; assert genuine-empty → `0`.
 
 ### Tests for User Story 5 (write first, must fail) ⚠️
 
-- [ ] T022 [P] [US5] Component test in `backend/tests/component/telemetry/test_task_manager.py` (parametrized off the US1 windowing fixture): seed `validator.started/passed/failed` and `artifact.created/updated` events in- and out-of-window; assert `checks_started/passed/failed` and `artifacts_created/updated` equal the in-window counts and that out-of-window events are excluded.
+- [ ] T022 [P] [US5] Component test in `backend/tests/component/telemetry/test_task_manager.py` (parametrized off the US1 windowing fixture): seed `validator.started/passed/failed`, `artifact.created/updated`, and `branch.created/merged/deleted` events in- and out-of-window; assert `checks_*`, `artifacts_*`, and `branches_*` equal the in-window counts and that out-of-window events are excluded.
 
 ### Implementation for User Story 5
 
-- [ ] T023 [US5] Extend the windowed event counter (T010) to also count `validator.started`, `validator.passed`, `validator.failed`, `artifact.created`, `artifact.updated`, and extend `gather_activity_24h` (T013) to populate the five new fields, each through the degradation helper (per-field null isolation). No change to `gather_prefect_events`.
+- [ ] T023 [US5] Extend the windowed event counter (T010) to also count `validator.started`, `validator.passed`, `validator.failed`, `artifact.created`, `artifact.updated`, `branch.created`, `branch.merged`, `branch.deleted`, and extend `gather_activity_24h` (T013) to populate the eight new fields, each through the degradation helper (per-field null isolation). No change to `gather_prefect_events`.
 
-**Checkpoint**: Depth-of-adoption check/artifact metrics present and windowed.
+**Checkpoint**: Depth-of-adoption check/artifact/branch metrics present and windowed.
 
 ---
 
@@ -174,7 +176,7 @@ others populated, and the payload is still built and stored. Assert genuine-empt
 
 ### Tests for User Story 4 (write first, must fail) ⚠️
 
-- [ ] T024 [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: run `gather_anonymous_telemetry_data` on a healthy stack and assert presence of `accounts.{active,groups}`, `branches.active`, `database.node_count.corenode`, and all `activity_24h` fields (`logins`, `unique_logins`, `checks_started/passed/failed`, `artifacts_created/updated`, `webhooks_fired_success/failure`).
+- [ ] T024 [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: run `gather_anonymous_telemetry_data` on a healthy stack and assert presence of `accounts.{active,groups}`, `branches.active`, `database.node_count.corenode`, and all `activity_24h` fields (`logins`, `unique_logins`, `checks_started/passed/failed`, `artifacts_created/updated`, `branches_created/merged/deleted`, `webhooks_fired_success/failure`).
 - [ ] T025 [US4] Resilience test in `backend/tests/component/telemetry/test_tasks.py`: make one source fail via an injected failing collaborator/fixture (no mock); assert that field is `null`, every other field is populated, and the snapshot is still stored. Add a genuine-empty case asserting `0`, not `null`.
 
 ### Implementation for User Story 4
@@ -261,9 +263,11 @@ Task: "Regression test gather_prefect_events unchanged"
 - `[Story]` label maps each task to a user story for traceability (this file only — never in source).
 - Verify each test fails before implementing.
 - US4's value is P1, but its full-payload assertion depends on US1–US3 + US5, so it is scheduled last.
-- US5 (checks/artifacts) is a user-directed pull-in from Phase 2 — cheap because the events
-  already flow; see `alignment-check.md` §5 for the sanctioned-scope-expansion record.
-- Out of scope (do not implement): `database.node_count.user` (blocked); PR/branch/node-churn
-  aggregate counts (events exist but value needs correlation — held in Phase 2); remaining
-  Phase 2 metrics (generators/transforms, tokens, CLI/MCP/Sync, licensing); dashboards;
-  redefining `node_count.total`; persisting logins in Neo4j.
+- US5 (checks/artifacts/branch-lifecycle counts) is a user-directed pull-in from Phase 2 —
+  cheap because the events already flow; see `alignment-check.md` §6 for the
+  sanctioned-scope-expansion record.
+- Out of scope (do not implement): `database.node_count.user` (blocked); branch *lifetime*
+  (duration — needs correlation); PR "merged-without-review" (needs correlation); node churn
+  (`node.*` — machine-dominated, noisy); branch `rebased`/`migrated` counts (low-signal);
+  remaining Phase 2 metrics (generators/transforms, tokens, CLI/MCP/Sync, licensing);
+  dashboards; redefining `node_count.total`; persisting logins in Neo4j.
