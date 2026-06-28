@@ -47,6 +47,65 @@
       },
       "registered_skills": [],
       "installed_at": "2026-06-27T16:51:30.302727+00:00"
+    },
+    "opsmill": {
+      "version": "1.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:e4681b338e7176e0ad5e85af4bcfbd31e6a457432ce3a9fbeedeb6ce62e12e0e",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "agy": [
+          "speckit.opsmill.extract",
+          "speckit.opsmill.retrospect",
+          "speckit.opsmill.summary",
+          "speckit.opsmill.auto",
+          "speckit.opsmill.prep",
+          "speckit.opsmill.implement"
+        ],
+        "amp": [
+          "speckit.opsmill.extract",
+          "speckit.opsmill.retrospect",
+          "speckit.opsmill.summary",
+          "speckit.opsmill.auto",
+          "speckit.opsmill.prep",
+          "speckit.opsmill.implement"
+        ],
+        "claude": [
+          "speckit.opsmill.extract",
+          "speckit.opsmill.retrospect",
+          "speckit.opsmill.summary",
+          "speckit.opsmill.auto",
+          "speckit.opsmill.prep",
+          "speckit.opsmill.implement"
+        ],
+        "codex": [
+          "speckit.opsmill.extract",
+          "speckit.opsmill.retrospect",
+          "speckit.opsmill.summary",
+          "speckit.opsmill.auto",
+          "speckit.opsmill.prep",
+          "speckit.opsmill.implement"
+        ],
+        "copilot": [
+          "speckit.opsmill.extract",
+          "speckit.opsmill.retrospect",
+          "speckit.opsmill.summary",
+          "speckit.opsmill.auto",
+          "speckit.opsmill.prep",
+          "speckit.opsmill.implement"
+        ],
+        "zed": [
+          "speckit.opsmill.extract",
+          "speckit.opsmill.retrospect",
+          "speckit.opsmill.summary",
+          "speckit.opsmill.auto",
+          "speckit.opsmill.prep",
+          "speckit.opsmill.implement"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-28T07:31:58.179187+00:00"
     }
   }
 }

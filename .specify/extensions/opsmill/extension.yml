@@ -1,0 +1,55 @@
+schema_version: "1.0"
+
+extension:
+  id: "opsmill"
+  name: "OpsMill Speckit Workflow"
+  version: "1.1.0"
+  description: "OpsMill house spec-kit commands: autonomous end-to-end workflow (auto/prep/implement), knowledge extraction, session retrospective, and session summary."
+  author: "opsmill"
+  repository: "https://github.com/opsmill/opsmill-speckit"
+  license: "Apache-2.0"
+  homepage: "https://github.com/opsmill/opsmill-speckit"
+
+requires:
+  speckit_version: ">=0.8.0"
+  scripts:
+    - "check-prerequisites.sh"
+
+provides:
+  commands:
+    - name: "speckit.opsmill.extract"
+      file: "commands/extract.md"
+      description: "Extract knowledge, guidelines, and ADRs from completed spec directories into the project documentation system."
+    - name: "speckit.opsmill.retrospect"
+      file: "commands/retrospect.md"
+      description: "Run a session retrospective that surfaces context-management gaps and routes them to approved follow-up actions."
+    - name: "speckit.opsmill.summary"
+      file: "commands/summary.md"
+      description: "Produce a flow-level timeline of the current Claude Code session in the active feature directory."
+    - name: "speckit.opsmill.auto"
+      file: "commands/auto.md"
+      description: "Run the speckit workflow end-to-end (prep + implement) autonomously. Stops before extract; run that manually."
+    - name: "speckit.opsmill.prep"
+      file: "commands/prep.md"
+      description: "Run the speckit preparation phases end-to-end (specify → plan → critique → tasks → alignment), stopping before implementation."
+    - name: "speckit.opsmill.implement"
+      file: "commands/implement.md"
+      description: "Run the implementation + review tail in clean-context subagents from an existing tasks.md, then produce a final report."
+
+hooks:
+  after_taskstoissues:
+    command: "speckit.opsmill.summary"
+    optional: true
+    prompt: "Produce a session summary in the feature directory?"
+    description: "Flow-level timeline next to spec.md/plan.md, capturing the handoff to the issue tracker."
+
+tags:
+  - "opsmill"
+  - "extract"
+  - "retrospect"
+  - "summary"
+  - "workflow"
+  - "auto"
+  - "prep"
+  - "implement"
+  - "autonomous"

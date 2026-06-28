@@ -2,6 +2,7 @@ installed:
 - agent-context
 - id: infrahub
   path: .specify/extensions/infrahub
+- opsmill
 settings:
   auto_execute_hooks: true
 hooks:
@@ -164,4 +165,13 @@ hooks:
     optional: true
     prompt: Commit after syncing issues?
     description: Auto-commit after tasks-to-issues conversion
+    condition: null
+  - extension: opsmill
+    command: speckit.opsmill.summary
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Produce a session summary in the feature directory?
+    description: Flow-level timeline next to spec.md/plan.md, capturing the handoff
+      to the issue tracker.
     condition: null
