@@ -10,6 +10,27 @@ class TelemetryWorkerData(BaseModel):
 
 class TelemetryBranchData(BaseModel):
     total: int
+    active: int | None = None
+
+
+class TelemetryAccountData(BaseModel):
+    active: int | None
+    groups: int | None
+
+
+class TelemetryActivity24hData(BaseModel):
+    logins: int | None
+    unique_logins: int | None
+    checks_started: int | None
+    checks_passed: int | None
+    checks_failed: int | None
+    artifacts_created: int | None
+    artifacts_updated: int | None
+    branches_created: int | None
+    branches_merged: int | None
+    branches_deleted: int | None
+    webhooks_fired_success: int | None
+    webhooks_fired_failure: int | None
 
 
 class TelemetrySchemaData(BaseModel):
@@ -32,7 +53,7 @@ class TelemetryDatabaseSystemInfoData(BaseModel):
 class TelemetryDatabaseData(BaseModel):
     database_type: str
     relationship_count: dict[str, int]
-    node_count: dict[str, int]
+    node_count: dict[str, int | None]
     servers: list[TelemetryDatabaseServerData]
     system_info: TelemetryDatabaseSystemInfoData | None
 
@@ -59,6 +80,8 @@ class TelemetryData(BaseModel):
     platform: str
     workers: TelemetryWorkerData
     branches: TelemetryBranchData
+    accounts: TelemetryAccountData
+    activity_24h: TelemetryActivity24hData
     features: dict[str, int]
     schema_info: TelemetrySchemaData
     database: TelemetryDatabaseData

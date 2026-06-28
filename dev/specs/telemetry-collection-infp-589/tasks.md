@@ -50,15 +50,15 @@ full-payload resilience test that runs last, since it asserts every in-scope fie
 
 **⚠️ CRITICAL**: No user story metric can be wired until this phase is complete.
 
-- [ ] T003 Bump `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` from `"20250318"` to `"20260628"` (this also advances `DEFAULT_PAYLOAD_FORMAT`).
-- [ ] T004 In `backend/infrahub/telemetry/models.py`, add the additive payload models:
+- [X] T003 Bump `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` from `"20250318"` to `"20260628"` (this also advances `DEFAULT_PAYLOAD_FORMAT`).
+- [X] T004 In `backend/infrahub/telemetry/models.py`, add the additive payload models:
   - `TelemetryAccountData` with `active: int | None` and `groups: int | None`.
   - `TelemetryActivity24hData` with `logins`, `unique_logins`, `checks_started`, `checks_passed`, `checks_failed`, `artifacts_created`, `artifacts_updated`, `branches_created`, `branches_merged`, `branches_deleted`, `webhooks_fired_success`, `webhooks_fired_failure`, all `int | None`.
   - Extend `TelemetryBranchData` with `active: int | None = None` (keep `total: int`).
   - Widen `TelemetryDatabaseData.node_count` value type to `dict[str, int | None]`.
   - Add `accounts: TelemetryAccountData` and `activity_24h: TelemetryActivity24hData` to `TelemetryData` (always-present objects; per-field nullability).
-- [ ] T005 [P] Write the degradation-helper unit test in `backend/tests/unit/telemetry/test_degradation.py` (TDD — must fail first): a coroutine that raises → helper returns `None`; a coroutine returning `0` → `0`; a coroutine returning `N` → `N`. No DB, no mock (plain coroutines as doubles).
-- [ ] T006 Implement the async graceful-degradation helper in `backend/infrahub/telemetry/tasks.py`: runs a metric coroutine, returns its result, and on any exception logs a warning and returns `None`. Make T005 pass.
+- [X] T005 [P] Write the degradation-helper unit test in `backend/tests/unit/telemetry/test_degradation.py` (TDD — must fail first): a coroutine that raises → helper returns `None`; a coroutine returning `0` → `0`; a coroutine returning `N` → `N`. No DB, no mock (plain coroutines as doubles).
+- [X] T006 Implement the async graceful-degradation helper in `backend/infrahub/telemetry/tasks.py`: runs a metric coroutine, returns its result, and on any exception logs a warning and returns `None`. Make T005 pass.
 
 **Checkpoint**: Payload models, version bump, and degradation helper ready. Stories can begin.
 
