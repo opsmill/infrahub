@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator, Generator
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -8,7 +9,10 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.objects import State, StateType
 from prefect.events.schemas.events import Event, Resource
 
+from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
+from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent
 from infrahub.events.utils import get_all_events
+from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
 from infrahub.telemetry.task_manager import (
     count_webhook_runs,
     count_windowed_event,
@@ -51,6 +55,20 @@ def _login_event(account_id: str, occurred: datetime) -> Event:
     )
 
 
+def _named_event(event_name: str, occurred: datetime, resource_id: str) -> Event:
+    """Build a Prefect event of one name at an explicit instant.
+
+    The windowed tally counts by event name over an ``occurred`` window, so only the name and
+    timestamp drive the assertions; the resource id is unique-per-event to keep records distinct.
+    """
+    return Event(
+        id=uuid.uuid4(),
+        event=event_name,
+        occurred=occurred,
+        resource=Resource({"prefect.resource.id": resource_id}),
+    )
+
+
 @pytest.fixture(scope="module")
 async def prefect_client(prefect_test_fixture: Generator[None]) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
@@ -86,6 +104,44 @@ async def seeded_logins(prefect_client: PrefectClient) -> str:
     ]
     await _post_events(prefect_client, events)
     return suffix
+
+
+# Each check/artifact/branch metric gets a distinct in-window count so a mis-wired field (one
+# reading another's event name) would not coincidentally pass. Every event name also gets one
+# event placed just before window_start to prove out-of-window records are excluded.
+_ACTIVITY_IN_WINDOW_COUNTS: dict[str, int] = {
+    ValidatorStartedEvent.event_name: 3,
+    ValidatorPassedEvent.event_name: 2,
+    ValidatorFailedEvent.event_name: 1,
+    ArtifactCreatedEvent.event_name: 2,
+    ArtifactUpdatedEvent.event_name: 3,
+    BranchCreatedEvent.event_name: 2,
+    BranchMergedEvent.event_name: 1,
+    BranchDeletedEvent.event_name: 3,
+}
+
+
+@pytest.fixture(scope="module")
+async def seeded_activity(prefect_client: PrefectClient) -> dict[str, int]:
+    """Seed validator/artifact/branch events around the previous-UTC-day window.
+
+    For each event name, places its mapped number of events inside the window and exactly one a
+    minute before window_start (which must be excluded). Returns the in-window count per event
+    name so the assertions read the expected totals from the same source that seeded them.
+    """
+    window_start, _ = get_activity_window()
+    suffix = uuid.uuid4().hex[:8]
+    in_window = window_start + timedelta(hours=12)
+    out_of_window = window_start - timedelta(minutes=1)
+    events: list[Event] = []
+    for event_name, count in _ACTIVITY_IN_WINDOW_COUNTS.items():
+        for index in range(count):
+            events.append(
+                _named_event(event_name, in_window, f"{event_name}.{suffix}.in.{index}"),
+            )
+        events.append(_named_event(event_name, out_of_window, f"{event_name}.{suffix}.out"))
+    await _post_events(prefect_client, events)
+    return dict(_ACTIVITY_IN_WINDOW_COUNTS)
 
 
 async def test_window_is_previous_full_utc_day() -> None:
@@ -195,15 +251,41 @@ async def test_gather_activity_24h_logins(prefect_client: PrefectClient, seeded_
     # computes, so this assertion does not depend on cross-test ordering for a 0.
     assert data.webhooks_fired_success is not None
     assert data.webhooks_fired_failure is not None
-    # Fields owned by a later chunk stay null in this one.
-    assert data.checks_started is None
-    assert data.checks_passed is None
-    assert data.checks_failed is None
-    assert data.artifacts_created is None
-    assert data.artifacts_updated is None
-    assert data.branches_created is None
-    assert data.branches_merged is None
-    assert data.branches_deleted is None
+
+
+@dataclass
+class ActivityFieldCase:
+    name: str
+    field: str
+    event_name: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ActivityFieldCase(name="checks_started", field="checks_started", event_name=ValidatorStartedEvent.event_name),
+        ActivityFieldCase(name="checks_passed", field="checks_passed", event_name=ValidatorPassedEvent.event_name),
+        ActivityFieldCase(name="checks_failed", field="checks_failed", event_name=ValidatorFailedEvent.event_name),
+        ActivityFieldCase(
+            name="artifacts_created", field="artifacts_created", event_name=ArtifactCreatedEvent.event_name
+        ),
+        ActivityFieldCase(
+            name="artifacts_updated", field="artifacts_updated", event_name=ArtifactUpdatedEvent.event_name
+        ),
+        ActivityFieldCase(name="branches_created", field="branches_created", event_name=BranchCreatedEvent.event_name),
+        ActivityFieldCase(name="branches_merged", field="branches_merged", event_name=BranchMergedEvent.event_name),
+        ActivityFieldCase(name="branches_deleted", field="branches_deleted", event_name=BranchDeletedEvent.event_name),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_gather_activity_24h_checks_artifacts_branches(
+    prefect_client: PrefectClient, seeded_activity: dict[str, int], case: ActivityFieldCase
+) -> None:
+    # Each field equals exactly the in-window seeded count for its mapped event; the single
+    # out-of-window event per name is excluded, so the count never inflates past the in-window
+    # total.
+    data = await gather_activity_24h.fn(client=prefect_client)
+    assert getattr(data, case.field) == seeded_activity[case.event_name]
 
 
 async def test_gather_prefect_events_unchanged(prefect_client: PrefectClient, seeded_logins: str) -> None:

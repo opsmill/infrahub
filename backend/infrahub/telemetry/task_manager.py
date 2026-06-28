@@ -16,7 +16,10 @@ from prefect.client.schemas.objects import StateType, WorkerStatus
 from prefect.types import DateTime
 
 from infrahub.events.account_action import AccountLoggedInEvent
+from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
+from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent
 from infrahub.events.utils import get_all_events
+from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import gather_all_automations
@@ -143,19 +146,21 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
 async def gather_activity_24h(client: PrefectClient) -> TelemetryActivity24hData:
     """Assemble the 24h activity metrics over the previous full UTC calendar day.
 
-    Each source is isolated so one failing source nulls only its own field. The
-    check/artifact/branch fields are populated by a later extension and stay null here.
+    Each source is isolated so one failing source nulls only its own field.
     """
     window_start, window_end = get_activity_window()
 
-    logins = await safe_metric(
-        count_windowed_event.fn(
-            client=client,
-            event_name=AccountLoggedInEvent.event_name,
-            window_start=window_start,
-            window_end=window_end,
+    async def windowed_count(event_name: str) -> int | None:
+        return await safe_metric(
+            count_windowed_event.fn(
+                client=client,
+                event_name=event_name,
+                window_start=window_start,
+                window_end=window_end,
+            )
         )
-    )
+
+    logins = await windowed_count(AccountLoggedInEvent.event_name)
     unique_logins = await safe_metric(
         count_windowed_unique_resources.fn(
             client=client,
@@ -173,14 +178,14 @@ async def gather_activity_24h(client: PrefectClient) -> TelemetryActivity24hData
     return TelemetryActivity24hData(
         logins=logins,
         unique_logins=unique_logins,
-        checks_started=None,
-        checks_passed=None,
-        checks_failed=None,
-        artifacts_created=None,
-        artifacts_updated=None,
-        branches_created=None,
-        branches_merged=None,
-        branches_deleted=None,
+        checks_started=await windowed_count(ValidatorStartedEvent.event_name),
+        checks_passed=await windowed_count(ValidatorPassedEvent.event_name),
+        checks_failed=await windowed_count(ValidatorFailedEvent.event_name),
+        artifacts_created=await windowed_count(ArtifactCreatedEvent.event_name),
+        artifacts_updated=await windowed_count(ArtifactUpdatedEvent.event_name),
+        branches_created=await windowed_count(BranchCreatedEvent.event_name),
+        branches_merged=await windowed_count(BranchMergedEvent.event_name),
+        branches_deleted=await windowed_count(BranchDeletedEvent.event_name),
         webhooks_fired_success=webhooks_fired_success,
         webhooks_fired_failure=webhooks_fired_failure,
     )

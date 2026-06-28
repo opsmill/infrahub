@@ -152,11 +152,11 @@ out-of-window; assert each count reflects exactly the in-window events; assert g
 
 ### Tests for User Story 5 (write first, must fail) ⚠️
 
-- [ ] T022 [P] [US5] Component test in `backend/tests/component/telemetry/test_task_manager.py` (parametrized off the US1 windowing fixture): seed `validator.started/passed/failed`, `artifact.created/updated`, and `branch.created/merged/deleted` events in- and out-of-window; assert `checks_*`, `artifacts_*`, and `branches_*` equal the in-window counts and that out-of-window events are excluded.
+- [X] T022 [P] [US5] Component test in `backend/tests/component/telemetry/test_task_manager.py` (parametrized off the US1 windowing fixture): seed `validator.started/passed/failed`, `artifact.created/updated`, and `branch.created/merged/deleted` events in- and out-of-window; assert `checks_*`, `artifacts_*`, and `branches_*` equal the in-window counts and that out-of-window events are excluded.
 
 ### Implementation for User Story 5
 
-- [ ] T023 [US5] Extend the windowed event counter (T010) to also count `validator.started`, `validator.passed`, `validator.failed`, `artifact.created`, `artifact.updated`, `branch.created`, `branch.merged`, `branch.deleted`, and extend `gather_activity_24h` (T013) to populate the eight new fields, each through the degradation helper (per-field null isolation). No change to `gather_prefect_events`.
+- [X] T023 [US5] Extend the windowed event counter (T010) to also count `validator.started`, `validator.passed`, `validator.failed`, `artifact.created`, `artifact.updated`, `branch.created`, `branch.merged`, `branch.deleted`, and extend `gather_activity_24h` (T013) to populate the eight new fields, each through the degradation helper (per-field null isolation). No change to `gather_prefect_events`.
 
 **Checkpoint**: Depth-of-adoption check/artifact/branch metrics present and windowed.
 
