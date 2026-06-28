@@ -58,6 +58,7 @@ jobs:
       error_catalogue: ${{ steps.changes.outputs.error_catalogue_all }}
       dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
       observability_standalone: ${{ steps.changes.outputs.observability_standalone_all }}
+      library_skills: ${{ steps.changes.outputs.library_skills_all }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
@@ -375,6 +376,58 @@ jobs:
     uses: "./.github/workflows/uv-check.yml"
     with:
       directory: "./"
+
+  library-skills-check:
+    if: |
+      needs.files-changed.outputs.library_skills == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - files-changed
+      - prepare-environment
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 10
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v7"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Regenerate library-provided skills from their packages"
+        run: |
+          set -euo pipefail
+          skills=$(uvx library-skills scan --json | jq -r '.skills[].name')
+          if [ -z "$skills" ]; then
+            echo "No library-provided skills discovered; nothing to verify."
+            exit 0
+          fi
+          for skill in $skills; do
+            echo "Regenerating skill: ${skill}"
+            rm -rf ".agents/skills/${skill}"
+            uvx library-skills install --skill "${skill}" --yes --copy
+          done
+      - name: "Verify library-provided skills are up to date"
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain -- .agents/skills)" ]; then
+            echo "::error::Skills installed via 'uvx library-skills' are out of date. Regenerate them and commit the result."
+            echo "Run locally:"
+            echo "  for s in \$(uvx library-skills scan --json | jq -r '.skills[].name'); do rm -rf \".agents/skills/\$s\"; uvx library-skills install --skill \"\$s\" --yes --copy; done"
+            git status --porcelain -- .agents/skills
+            git --no-pager diff -- .agents/skills
+            exit 1
+          fi
+          echo "All library-provided skills are up to date."
 
   infrahub-testcontainers-check:
     if: needs.files-changed.outputs.infrahub_uv_files == 'true'

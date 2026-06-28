@@ -58,6 +58,9 @@ vale_files: &vale_files
   - ".vale/**"
   - ".vale.ini"
 
+library_skills_files: &library_skills_files
+  - ".agents/skills/**"
+
 doc_files: &doc_files
   - "docs/**"
   - package.json
@@ -125,6 +128,11 @@ graphql_schema_all:
 
 error_catalogue_all:
   - *error_catalogue_files
+
+library_skills_all:
+  - *library_skills_files
+  - *infrahub_uv_files
+  - *ci_config
 
 observability_standalone_all:
   - "development/docker-compose-observability.yml"
