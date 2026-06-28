@@ -13,7 +13,9 @@ from prefect.logging import get_run_logger
 from infrahub import __version__, config
 from infrahub.core import registry, utils
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import AccountStatus, InfrahubKind
+from infrahub.core.manager import NodeManager
+from infrahub.database import InfrahubDatabase
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import (
@@ -71,11 +73,53 @@ async def gather_feature_information() -> dict[str, int]:
         return data
 
 
+@task(name="telemetry-account-information", task_run_name="Gather Account Information", cache_policy=NONE)
+async def gather_account_information(db: InfrahubDatabase) -> TelemetryAccountData:
+    """Gather account adoption counts on the default branch, each degradable to ``null``.
+
+    ``active`` counts managed accounts whose status is active; ``groups`` counts account
+    groups. Counts go through the branch/temporal-correct count path so they match what the
+    GraphQL resolvers report. Either field degrades to ``null`` independently if its source
+    raises, while a source that simply finds nothing returns ``0``.
+    """
+    default_branch = registry.get_branch_from_registry()
+
+    active = await safe_metric(
+        NodeManager.count(
+            db=db,
+            schema=InfrahubKind.ACCOUNT,
+            filters={"status__value": AccountStatus.ACTIVE.value},
+            branch=default_branch,
+        )
+    )
+    groups = await safe_metric(
+        NodeManager.count(
+            db=db,
+            schema=InfrahubKind.ACCOUNTGROUP,
+            branch=default_branch,
+        )
+    )
+
+    return TelemetryAccountData(active=active, groups=groups)
+
+
+async def count_active_branches() -> int:
+    """Count open non-system branches: registry branches excluding the default and global ones.
+
+    Closed/merged/deleted branches are removed from the registry, so registry membership
+    already means "open"; the default (``main``) and global (``-global-``) branches are the
+    only system branches to exclude. Async so it composes with the per-metric degradation
+    helper alongside the awaitable count sources.
+    """
+    return len([branch for branch in registry.branch.values() if not branch.is_default and not branch.is_global])
+
+
 @task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
 async def gather_anonymous_telemetry_data() -> TelemetryData:
     start_time = time.time()
 
     default_branch = registry.get_branch_from_registry()
+    database = await get_database()
     component = await get_component()
     workers = await component.list_workers(branch=default_branch.name, schema_hash=False)
 
@@ -95,10 +139,9 @@ async def gather_anonymous_telemetry_data() -> TelemetryData:
         ),
         branches=TelemetryBranchData(
             total=len(registry.branch),
+            active=await safe_metric(count_active_branches()),
         ),
-        # Always-present objects; individual fields are populated by their gather
-        # functions and default to null until each metric is wired in.
-        accounts=TelemetryAccountData(active=None, groups=None),
+        accounts=await gather_account_information(db=database),
         activity_24h=activity_24h,
         features=await gather_feature_information(),
         schema_info=await gather_schema_information(branch=default_branch),

@@ -102,13 +102,13 @@ open/system branches; assert each reported count matches the fixture exactly.
 
 ### Tests for User Story 2 (write first, must fail) ⚠️
 
-- [ ] T015 [P] [US2] Component test for `accounts.active` / `accounts.groups` in `backend/tests/component/telemetry/test_tasks.py`: seed a known mix of active/inactive `CoreAccount` and a known number of `CoreAccountGroup`; assert exact counts via the gather.
-- [ ] T016 [P] [US2] Test for `branches.active` (registry-based) in `backend/tests/component/telemetry/test_tasks.py`: with open + system branches present, assert the count excludes the default (`main`) and global (`-global-`) branches.
+- [X] T015 [P] [US2] Component test for `accounts.active` / `accounts.groups` in `backend/tests/component/telemetry/test_tasks.py`: seed a known mix of active/inactive `CoreAccount` and a known number of `CoreAccountGroup`; assert exact counts via the gather.
+- [X] T016 [P] [US2] Test for `branches.active` (registry-based) in `backend/tests/component/telemetry/test_tasks.py`: with open + system branches present, assert the count excludes the default (`main`) and global (`-global-`) branches.
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Add `gather_account_information(db) -> TelemetryAccountData` (in `backend/infrahub/telemetry/tasks.py`, or a small `backend/infrahub/telemetry/accounts.py` if cohesion warrants): `active` via `NodeManager.count(CoreAccount, filters={"status__value": "active"})`, `groups` via `NodeManager.count(CoreAccountGroup)`, both on the default branch, each through the degradation helper.
-- [ ] T018 [US2] In `gather_anonymous_telemetry_data` (`tasks.py`), wire `accounts` (from T017) and compute `branches.active` from `registry.branch.values()` excluding `is_default` and `is_global`, via the degradation helper; keep `branches.total` unchanged.
+- [X] T017 [US2] Add `gather_account_information(db) -> TelemetryAccountData` (in `backend/infrahub/telemetry/tasks.py`, or a small `backend/infrahub/telemetry/accounts.py` if cohesion warrants): `active` via `NodeManager.count(CoreAccount, filters={"status__value": "active"})`, `groups` via `NodeManager.count(CoreAccountGroup)`, both on the default branch, each through the degradation helper.
+- [X] T018 [US2] In `gather_anonymous_telemetry_data` (`tasks.py`), wire `accounts` (from T017) and compute `branches.active` from `registry.branch.values()` excluding `is_default` and `is_global`, via the degradation helper; keep `branches.total` unchanged.
 
 **Checkpoint**: Account + branch adoption metrics present and exact; `branches.total` untouched.
 
