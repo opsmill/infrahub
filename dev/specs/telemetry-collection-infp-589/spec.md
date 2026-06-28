@@ -238,11 +238,22 @@ in-window events.
   accounts over the same window). [IFC-2823]
 - **FR-009**: The feature MUST NOT change the existing raw-vertex
   `database.node_count.total` field, and MUST document the distinction between the
-  three node metrics at the namespace level so they cannot later become synonyms:
-  `total` (raw vertices), `corenode` (all managed nodes — the `Core` + `Builtin` +
-  user-defined namespaces, this phase), and the future/blocked `user` (the
-  customer-facing subset that excludes the `Core` management namespace). They nest
-  strictly: `user` ⊆ `corenode` ⊆ `total`. [IFC-2821]
+  node metrics so they cannot later become synonyms. Definitions are operational, by
+  how each is computed:
+  - `total` — raw graph vertex count (includes history, all branches, and internal
+    bookkeeping nodes). Unchanged by this feature.
+  - `corenode` — count of nodes carrying the `CoreNode` generic label, obtained via
+    the branch-safe `NodeManager.count` path (same as FR-003). By construction this
+    is every schema-managed node whose namespace is not internal-only
+    (`Schema`/`Internal`); it therefore includes management kinds such as
+    `CoreAccount`, not just user-defined data.
+  - `user` (future / blocked — IFC-2825, not in this feature) — a narrower,
+    customer-facing subset of `corenode`. Its exact namespace boundary — in
+    particular whether the `Builtin` namespace (tags, IPAM addresses/prefixes) counts
+    as user data — is an open product decision and MUST NOT be assumed here.
+
+  The metrics nest by construction (`user ⊆ corenode ⊆ total`), but only `total` and
+  `corenode` are defined and delivered in this phase. [IFC-2821]
 - **FR-010**: When a metric's source fails, that field MUST be set to `null`
   while the rest of the payload is still emitted and stored; when a source
   succeeds with nothing to count, the field MUST be `0`, not `null`. [IFC-2820]
@@ -285,6 +296,11 @@ in-window events.
   `branches_created`, `branches_merged`, `branches_deleted`,
   `webhooks_fired_success`,
   `webhooks_fired_failure`.
+- **Node-count metrics (`database.node_count`)**: A map of node counts. `total` =
+  raw vertices (existing, unchanged); `corenode` = `CoreNode`-generic count via the
+  branch-safe count path (new, this phase). A future `user` subset is blocked
+  (IFC-2825) and not added here. The map may carry a `null` only on the new
+  `corenode` key (per FR-010 / GR-001).
 - **Account**: A user account with a status (active vs. non-active) used for
   `accounts.active`.
 - **Account group**: A grouping of accounts, counted for `accounts.groups`.
