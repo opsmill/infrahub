@@ -131,6 +131,36 @@ codebase already uses a `YYYYMMDD` convention.
 tests via TestContainers; adapter/fixture injection; files mirror source). Existing
 `prefect_test_fixture` and telemetry component fixtures are reused.
 
-**Open consideration for tasks phase**: prefer injecting a failing collaborator over
-patching to simulate source failure; if a clean injection seam is awkward in the current
-orchestrator, the degradation helper itself is unit-testable in isolation (`test_degradation.py`).
+**No-mock seam (decided, not open)**: The `null`-vs-`0` contract is proven WITHOUT any
+`unittest.mock` by two complementary, decided approaches:
+
+1. **Degradation helper unit test** (`test_degradation.py`): the helper takes a coroutine and
+   returns its value or `None` on exception. Pass it (a) a coroutine that `raise`s → assert
+   `None`; (b) a coroutine returning `0` → assert `0`; (c) a coroutine returning `N` → assert
+   `N`. No DB, no mock — a plain failing/succeeding coroutine is the test double.
+2. **Flow presence test** (`test_tasks.py`): assert every in-scope field is present in the
+   gathered payload on a healthy stack. End-to-end "one source nulled, rest populated" is
+   covered by composing the helper (proven in #1) with the orchestrator wiring; if a natural
+   failing-source fixture is cheap (e.g. pointing a gather at an absent Prefect resource) it is
+   added, but the contract does NOT depend on mocking a failure end-to-end.
+
+**Deterministic time (decided)**: the 24h-window tests (SC-002) use `freezegun` to pin "now"
+(an explicitly allowed exception in `testing-python.md` for time-dependent behavior), so
+in-window vs out-of-window fixtures are unambiguous and non-flaky.
+
+**Prefect `.fn` + logger**: where a `@task`/`@flow`-decorated function is exercised via `.fn`
+outside a flow context, `get_run_logger` is handled per the allowed `testing-python.md`
+pattern (return a stdlib logger), not via general mocking.
+
+## Decision 8 — Webhook run terminality & count cost (secondary)
+
+**Webhook non-terminal runs**: a `webhook-process` run that started in-window but is still
+`PENDING`/`RUNNING`/`SCHEDULED` at gather time is counted as neither success nor failure. This
+is correct for a best-effort daily trend signal — only terminal outcomes are tallied. Captured
+in the contract and data model.
+
+**`corenode` count cost (Constitution V)**: `NodeManager.count(CoreNode)` is a single aggregate
+query (order disabled) over the managed-node generic with branch/temporal filters — no N+1, no
+node materialization. On very large deployments this is still a full count; it runs once per
+day in a batch job, so the cost is acceptable. A benchmark is not required for this phase but
+the single-aggregate shape is a deliberate choice over per-label summation.

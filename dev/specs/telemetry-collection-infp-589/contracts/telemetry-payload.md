@@ -96,6 +96,8 @@ These are the new/changed producer-side function contracts (full signatures land
 
 ## Governance (GR-001)
 
-Before shipping: confirm the cloud processor and BigQuery/Metabase data mart tolerate the
-`payload_format` bump and ignore unknown fields. Additive design means a forward-compatible
+Before shipping: confirm the cloud processor and BigQuery/Metabase data mart (a) tolerate the
+`payload_format` bump, (b) ignore unknown fields, and (c) tolerate `null` values on the new
+fields — including a `null` on the `corenode` key inside `node_count`, the only place a
+previously all-integer map can now carry a `null`. Additive design means a forward-compatible
 consumer keeps working; this is a release gate, not a code dependency.

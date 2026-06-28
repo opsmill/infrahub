@@ -207,9 +207,12 @@ field is populated, and the payload is still sent/stored.
 - **GR-001**: Before shipping, the payload contract change (the `payload_format`
   bump and the new fields) MUST be confirmed compatible with the receiving end
   (the cloud telemetry processor and the downstream data mart) — specifically
-  that the receiver tolerates the format bump and ignores unknown fields. Because
-  every change is additive, a forward-compatible consumer keeps working; this is
-  a confirmation gate, not a code dependency.
+  that the receiver (a) tolerates the format bump, (b) ignores unknown fields,
+  and (c) tolerates `null` values on the new fields, including a `null` value on
+  the new `corenode` key inside the existing `node_count` object (the only place
+  a previously all-integer map can now carry a `null`). Because every change is
+  additive, a forward-compatible consumer keeps working; this is a confirmation
+  gate, not a code dependency.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -243,9 +246,11 @@ field is populated, and the payload is still sent/stored.
 - **SC-003**: `database.node_count.corenode` matches an independently-computed
   fixture count exactly (±0).
 - **SC-004**: No existing telemetry field changes meaning, type, or name across
-  this release; the `payload_format` identifier is advanced and a
-  forward-compatible consumer that ignores unknown fields continues to parse the
-  payload (confirmed with the receiving team per GR-001).
+  this release (the `node_count` map may carry a `null` value only on the new
+  `corenode` key); the `payload_format` identifier is advanced and a
+  forward-compatible consumer that ignores unknown fields and tolerates `null`
+  values continues to parse the payload (confirmed with the receiving team per
+  GR-001).
 
 ## Assumptions
 

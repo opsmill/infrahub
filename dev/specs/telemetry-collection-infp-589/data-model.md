@@ -24,7 +24,10 @@ Counts via `NodeManager.count` on the default branch (branch/temporal-correct).
 | `webhooks_fired_success`  | `int \| None` | `webhook-process` flow runs in 24h ending `COMPLETED`   | `0`   | `null`  |
 | `webhooks_fired_failure`  | `int \| None` | `webhook-process` flow runs in 24h ending `FAILED`/`CRASHED`/`TIMEDOUT` | `0` | `null` |
 
-Each field is isolated: one failing source nulls only its own field.
+Each field is isolated: one failing source nulls only its own field. A `webhook-process` run
+that started in-window but is still non-terminal (`PENDING`/`RUNNING`/`SCHEDULED`) at gather
+time is counted in neither success nor failure — only terminal outcomes are tallied (a
+best-effort daily trend signal).
 
 ## Extended models
 
