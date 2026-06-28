@@ -1,8 +1,10 @@
 installed:
 - agent-context
+- critique
 - id: infrahub
   path: .specify/extensions/infrahub
 - opsmill
+- review
 settings:
   auto_execute_hooks: true
 hooks:
@@ -126,6 +128,14 @@ hooks:
     prompt: Execute speckit.agent-context.update?
     description: Refresh agent context after planning
     condition: null
+  - extension: critique
+    command: speckit.critique.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Run spec critique before proceeding to tasks?
+    description: Challenges the spec and plan through product and engineering lenses
+    condition: null
   after_tasks:
   - extension: git
     command: speckit.git.commit
@@ -141,6 +151,14 @@ hooks:
     optional: true
     prompt: Commit implementation changes?
     description: Auto-commit after implementation
+    condition: null
+  - extension: review
+    command: speckit.review.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Run PR review on implemented changes?
+    description: Comprehensive review after implementation
     condition: null
   after_checklist:
   - extension: git
