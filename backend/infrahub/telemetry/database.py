@@ -1,13 +1,19 @@
+import logging
+
 from neo4j.exceptions import Neo4jError
 from prefect import task
 from prefect.cache_policies import NONE
 
-from infrahub.core import utils
+from infrahub.core import registry, utils
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GRAPH_SCHEMA
+from infrahub.core.manager import NodeManager
 from infrahub.core.query import QueryType
 from infrahub.database import DatabaseType, InfrahubDatabase
 
 from .models import TelemetryDatabaseData, TelemetryDatabaseServerData, TelemetryDatabaseSystemInfoData
+
+log = logging.getLogger(__name__)
 
 
 async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerData]:
@@ -49,6 +55,24 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
 
 @task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
 async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabaseData:
+    """Gather database node and relationship counts for the telemetry payload.
+
+    ``node_count`` carries three semantically distinct, strictly nesting node metrics —
+    ``user`` ⊆ ``corenode`` ⊆ ``total`` — defined at the namespace level so they can never
+    collapse into synonyms:
+
+    - ``total`` — raw vertex count of the whole graph, including attributes, values, and
+      internal bookkeeping nodes across all branches and history.
+    - ``corenode`` — all managed nodes (the ``CoreNode`` generic), spanning the ``Core``,
+      ``Builtin``, and user-defined namespaces. The ``Core`` management namespace is always
+      non-empty, so ``corenode`` always exceeds the customer-facing subset. Counted through
+      the branch/temporal-correct count path on the default branch, not a raw label tally.
+    - ``user`` (future, out of scope here) — the customer-facing subset, which excludes the
+      ``Core`` management namespace.
+
+    ``corenode`` is isolated: if its source raises, only that key is set to ``None`` while
+    ``total`` and the per-graph-label keys are still populated and the payload still ships.
+    """
     async with db.start_session(read_only=True) as dbs:
         server_info = []
         system_info = None
@@ -82,5 +106,18 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
 
         for name in GRAPH_SCHEMA["nodes"]:
             data.node_count[name] = await utils.count_nodes(db=dbs, label=name)
+
+        # Managed-node count via the branch/temporal-correct count path on the default branch.
+        # Isolated in its own try/except so a failure nulls only this key, leaving the raw
+        # "total" and the per-graph-label counts intact.
+        try:
+            data.node_count["corenode"] = await NodeManager.count(
+                db=dbs,
+                schema=InfrahubKind.NODE,
+                branch=registry.get_branch_from_registry(),
+            )
+        except Exception as exc:
+            log.warning("Telemetry metric collection failed; reporting null for this field: %s", exc)
+            data.node_count["corenode"] = None
 
         return data

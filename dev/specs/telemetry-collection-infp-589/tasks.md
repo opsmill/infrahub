@@ -124,12 +124,12 @@ count, and assert `node_count["corenode"]` matches exactly (±0).
 
 ### Tests for User Story 3 (write first, must fail) ⚠️
 
-- [ ] T019 [P] [US3] Component test in `backend/tests/component/telemetry/test_datatabase.py`: seed N managed nodes via existing schema fixtures (`backend/tests/helpers/schema/`), independently compute N, assert `node_count["corenode"] == N` exactly and that `node_count["total"]` (raw) is unchanged and `>= N`.
+- [x] T019 [P] [US3] Component test in `backend/tests/component/telemetry/test_datatabase.py`: seed N managed nodes via existing schema fixtures (`backend/tests/helpers/schema/`), independently compute N, assert `node_count["corenode"] == N` exactly and that `node_count["total"]` (raw) is unchanged and `>= N`.
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] In `backend/infrahub/telemetry/database.py`, set `node_count["corenode"]` via `NodeManager.count(db, schema=InfrahubKind.NODE, branch=<default>)`, wrapped so a failure sets `corenode=None` without affecting `node_count["total"]` or the existing graph-label keys (do NOT use raw `count_nodes(label=...)`).
-- [ ] T021 [US3] Add/extend a docstring or module note distinguishing the three node metrics at the namespace level: `total` (raw vertices), `corenode` (all managed nodes — `Core` + `Builtin` + user-defined namespaces), and the future/out-of-scope `user` (customer-facing subset excluding the `Core` management namespace), noting they nest `user ⊆ corenode ⊆ total`. No tickets/IDs in source.
+- [x] T020 [US3] In `backend/infrahub/telemetry/database.py`, set `node_count["corenode"]` via `NodeManager.count(db, schema=InfrahubKind.NODE, branch=<default>)`, wrapped so a failure sets `corenode=None` without affecting `node_count["total"]` or the existing graph-label keys (do NOT use raw `count_nodes(label=...)`).
+- [x] T021 [US3] Add/extend a docstring or module note distinguishing the three node metrics at the namespace level: `total` (raw vertices), `corenode` (all managed nodes — `Core` + `Builtin` + user-defined namespaces), and the future/out-of-scope `user` (customer-facing subset excluding the `Core` management namespace), noting they nest `user ⊆ corenode ⊆ total`. No tickets/IDs in source.
 
 **Checkpoint**: `corenode` exact and branch-correct; raw `total` preserved.
 
