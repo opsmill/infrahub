@@ -1,4 +1,4 @@
-import { Card, CardHeader } from "@infrahub/ui/card";
+import { Card, CardHeader } from "@infrahub/ui";
 
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";

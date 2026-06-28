@@ -2,12 +2,11 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import HashableModelState, InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath, SchemaPathType
@@ -18,21 +17,17 @@ from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 
 
-async def _get_branch_merger(
-    db: InfrahubDatabase, source_branch: Branch, destination_branch: Branch | None = None
-) -> BranchMerger:
+async def _get_schema_analyzer(
+    db: InfrahubDatabase, source_branch: Branch, destination_branch: Branch
+) -> MergeSchemaAnalyzer:
     component_registry = get_component_registry()
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
-    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=source_branch)
-    return BranchMerger(
+    return MergeSchemaAnalyzer(
         db=db,
-        diff_coordinator=diff_coordinator,
-        diff_merger=diff_merger,
-        diff_repository=diff_repository,
         source_branch=source_branch,
         destination_branch=destination_branch,
-        diff_locker=DiffLocker(),
+        diff_repository=diff_repository,
+        schema_manager=registry.schema,
     )
 
 
@@ -245,9 +240,9 @@ async def test_merge_update_schema(
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch2)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
-    merger = await _get_branch_merger(db=db, source_branch=branch2, destination_branch=default_branch)
-    await merger.calculate_migrations(target_schema=schema_branch)
-    assert sorted(merger.migrations, key=lambda x: x.path.get_path()) == sorted(
+    schema_analyzer = await _get_schema_analyzer(db=db, source_branch=branch2, destination_branch=default_branch)
+    migrations = await schema_analyzer.calculate_migrations(target_schema=schema_branch)
+    assert sorted(migrations, key=lambda x: x.path.get_path()) == sorted(
         [
             SchemaUpdateMigrationInfo(
                 path=SchemaPath(

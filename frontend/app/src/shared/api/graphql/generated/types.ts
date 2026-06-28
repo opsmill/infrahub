@@ -23736,7 +23736,7 @@ export type PathTraversalInput = {
   max_depth?: InputMaybe<Scalars['Int']['input']>;
   /** Maximum number of paths to return (default: 10, max: 100) */
   max_paths?: InputMaybe<Scalars['Int']['input']>;
-  /** Filter to only follow relationships with these names */
+  /** Filter to only follow relationships with these identifiers (the relationship's schema identifier, e.g. `device__interface`), not relationship names (e.g. `interfaces`). */
   relationship_filter?: InputMaybe<Array<Scalars['String']['input']>>;
   /** UUID of the start node */
   source_id: Scalars['String']['input'];
@@ -23750,7 +23750,7 @@ export type PathTraversalResultType = {
   destination: PathNodeType;
   /** Concrete node kinds excluded from this traversal: the default exclusions plus the requested excluded_kinds, minus included_kinds. */
   excluded_kinds: Array<Scalars['String']['output']>;
-  /** Paths found, ordered shortest first */
+  /** Paths found, ordered shortest first. Only the shortest path through each intermediate node is returned; longer routes through the same intermediate are omitted. */
   paths: Array<PathResultType>;
   /** The start node */
   source: PathNodeType;
@@ -25004,7 +25004,7 @@ export type Query = {
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
   InfrahubIPPrefixGetNextAvailable: IpPrefixGetNextAvailable;
   InfrahubInfo: Info;
-  /** Find all shortest paths between two nodes in the graph */
+  /** Find the shortest path(s) between two nodes — the shortest route through each intermediate node, up to max_paths. */
   InfrahubPathTraversal: PathTraversalResultType;
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */

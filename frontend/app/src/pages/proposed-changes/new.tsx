@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@infrahub/ui/card";
+import { Card, CardContent } from "@infrahub/ui";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";

@@ -1,9 +1,6 @@
-import { Button } from "@infrahub/ui";
+import { Button, Popover, Tooltip } from "@infrahub/ui";
 import { PencilIcon } from "lucide-react";
 import { DialogTrigger } from "react-aria-components";
-
-import { Popover } from "@/shared/components/aria/popover";
-import { Tooltip } from "@/shared/components/aria/tooltip";
 
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkEditObjects } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/bulk-edit-objects";

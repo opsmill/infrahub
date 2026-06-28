@@ -82,7 +82,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("Add a new relationship", async () => {
         await page.getByTestId("open-relationship-form-button").click();
-        await page.getByTestId("side-panel-container").getByLabel("Devices").click();
+        await page.getByLabel("sheet").getByLabel("Devices").click();
         await page.getByRole("option", { name: "atl1-leaf1" }).click();
         await page.getByRole("button", { name: "Save" }).click();
       });

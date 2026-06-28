@@ -111,7 +111,6 @@ function ObjectItemEditForm({
       kind={objectname}
       currentObject={objectDetailsData}
       currentProfiles={objectProfiles}
-      data-cy="object-item-edit"
       isUpdate
     />
   );

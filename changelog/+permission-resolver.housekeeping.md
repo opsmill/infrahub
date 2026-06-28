@@ -1,0 +1,1 @@
+Refactored permission system to extract decision logic into a single `PermissionResolver` class. `PermissionManager` now delegates resolution to the resolver and the permission report uses the same resolver, ensuring the GraphQL pipeline and UI report always agree.

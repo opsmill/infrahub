@@ -1,5 +1,4 @@
-import { Button } from "@infrahub/ui";
-import { Card, CardHeader } from "@infrahub/ui/card";
+import { Button, Card, CardHeader } from "@infrahub/ui";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
 

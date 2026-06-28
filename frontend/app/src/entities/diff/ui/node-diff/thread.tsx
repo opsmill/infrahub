@@ -1,11 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 import { useParams } from "react-router";
-
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
-import SlideOver from "@/shared/components/display/slide-over";
 
 import { getThreadLabel, getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { useGetDiffThread } from "@/entities/diff/ui/queries/get-diff-thread.query";
@@ -33,12 +29,6 @@ export const DiffThread = ({ path }: tDiffThread) => {
   if (!proposedChangeId || isLoading || error) {
     return null;
   }
-
-  const title = (
-    <SidePanelTitle title="Conversation" hideBranch>
-      {getThreadTitle(thread, getThreadLabel(path))}
-    </SidePanelTitle>
-  );
 
   return (
     <>
@@ -75,13 +65,11 @@ export const DiffThread = ({ path }: tDiffThread) => {
         )}
       </div>
 
-      <SlideOver title={title} open={showThread} setOpen={setShowThread}>
+      <Sheet isOpen={showThread} onOpenChange={setShowThread}>
+        <div className="mb-2 font-semibold text-lg">Conversation</div>
+        {getThreadTitle(thread, getThreadLabel(path))}
         <DiffComments path={path} refetch={refetch} />
-
-        <div className="flex items-center justify-end gap-x-6 border-gray-200 border-t py-3 pr-3">
-          <Button onPress={() => setShowThread(false)}>Close</Button>
-        </div>
-      </SlideOver>
+      </Sheet>
     </>
   );
 };

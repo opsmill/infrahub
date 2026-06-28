@@ -29,7 +29,7 @@ test.describe
         await page.getByRole("textbox", { name: "Name *" }).fill("My IP address pool");
         await page.getByRole("spinbutton", { name: "Default Prefix Length" }).fill("24");
         await page
-          .getByTestId("side-panel-container")
+          .getByLabel("sheet")
           .locator("div")
           .filter({ hasText: "Resources *" })
           .first()
@@ -100,7 +100,7 @@ test.describe
         await page.getByLabel("Default Prefix Length").fill("31");
 
         await page
-          .getByTestId("side-panel-container")
+          .getByLabel("sheet")
           .locator("div")
           .filter({ hasText: "Resources *" })
           .first()

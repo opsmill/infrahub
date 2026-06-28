@@ -17,6 +17,9 @@ coverage.xml
 .devcontainer
 frontend/**/node_modules
 frontend/**/playwright-report
+frontend/**/dist
+frontend/**/test-results
+frontend/**/coverage
 
 # Documentation
 docs/build

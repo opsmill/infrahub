@@ -1,5 +1,4 @@
-import { Button } from "@infrahub/ui";
-import { Card, CardContent, type CardProps } from "@infrahub/ui/card";
+import { Button, Card, CardContent, type CardProps } from "@infrahub/ui";
 
 import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";

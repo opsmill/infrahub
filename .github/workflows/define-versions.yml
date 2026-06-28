@@ -7,7 +7,7 @@ on:
       UV_VERSION:
         value: "0.11.8"
       PYTHON_VERSION:
-        value: "3.13.11"
+        value: "3.14.3"
 
 jobs:
   prepare:

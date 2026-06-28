@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Sheet } from "@infrahub/ui";
 import { useAtom } from "jotai";
 import { useState } from "react";
 
-import SlideOver from "@/shared/components/display/slide-over";
 import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
@@ -131,23 +131,18 @@ export function ObjectDataDisplay({
         );
       })}
 
-      <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex w-full items-center">
-              <span className="mr-3 font-semibold text-lg">{metaEditFieldDetails?.label}</span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{currentBranch.name}</div>
-              </div>
+      <Sheet isOpen={showMetaEditModal} onOpenChange={setShowMetaEditModal}>
+        <div className="space-y-2">
+          <div className="flex w-full items-center">
+            <span className="mr-3 font-semibold text-lg">{metaEditFieldDetails?.label}</span>
+            <div className="flex-1"></div>
+            <div className="flex items-center">
+              <Icon icon={"mdi:layers-triple"} />
+              <div className="ml-1.5 pb-1">{currentBranch.name}</div>
             </div>
-            <div className="text-gray-500">Metadata</div>
           </div>
-        }
-        open={showMetaEditModal}
-        setOpen={setShowMetaEditModal}
-      >
+          <div className="text-gray-500">Metadata</div>
+        </div>
         <ObjectItemMetaEdit
           onCancel={() => setShowMetaEditModal(false)}
           onSuccess={() => setShowMetaEditModal(false)}
@@ -160,7 +155,7 @@ export function ObjectDataDisplay({
           type={metaEditFieldDetails?.type!}
           row={objectData}
         />
-      </SlideOver>
+      </Sheet>
     </div>
   );
 }

@@ -134,7 +134,7 @@ export async function fillCircuitContractFields(
     ...options,
   };
 
-  const form = page.getByTestId("side-panel-container");
+  const form = page.getByLabel("sheet");
 
   // Wait for form to be ready
   await form.getByLabel("Contract Number").waitFor({ state: "visible" });

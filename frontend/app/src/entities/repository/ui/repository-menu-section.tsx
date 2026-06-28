@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { MenuItem, MenuSection } from "@infrahub/ui";
 import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { MenuItem, MenuSection } from "@/shared/components/aria/menu";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";

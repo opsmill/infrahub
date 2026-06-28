@@ -1,8 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Tooltip } from "@infrahub/ui";
 import { LockIcon } from "lucide-react";
 
-import { Tooltip } from "@/shared/components/aria/tooltip";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -44,8 +43,8 @@ export function ObjectAttributeRow({
             isProtected={attributeData.is_protected}
             header={
               !attributeSchema.read_only && (
-                <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
-                  <div className="font-semibold">{attributeLabel}</div>
+                <div className="flex items-center justify-between border-neutral-300 border-b p-1 pl-2">
+                  <div className="font-semibold text-sm">{attributeLabel}</div>
                   {onClickMetadata && (
                     <Tooltip message={permission.update.message}>
                       <Button

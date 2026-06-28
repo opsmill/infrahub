@@ -27,7 +27,6 @@ export function ModalDelete({
       isDismissable={!isLoading}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      className="w-full max-w-lg p-0"
       data-testid="modal-delete"
     >
       <Col className="p-3">

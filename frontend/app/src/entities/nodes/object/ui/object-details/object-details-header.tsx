@@ -1,4 +1,4 @@
-import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
+import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
 import { Row, type RowProps } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { classNames } from "@/shared/utils/common";

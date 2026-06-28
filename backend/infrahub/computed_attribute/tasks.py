@@ -11,8 +11,10 @@ from prefect.logging import get_run_logger
 
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
+from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
+from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
@@ -34,9 +36,17 @@ from .models import (
     ComputedAttrJinja2TriggerDefinition,
     PythonTransformTarget,
 )
+from .scoping import (
+    ChangedElementSet,
+    ComputedAttributeRef,
+    Jinja2DependencyDeriver,
+    PythonTransformDependencyDeriver,
+    RecomputeScoper,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
+    from infrahub.graphql.analyzer import GraphQLQueryReport
 
 
 def get_prefect_max_related_resources() -> int:
@@ -70,6 +80,26 @@ mutation UpdateAttribute(
   }
 }
 """
+
+
+def _resolve_changed_elements(
+    changed_elements: ChangedElementsPayload | None,
+) -> ChangedElementSet | None:
+    """Normalize the workflow parameter into the internal change set.
+
+    ``None`` signals that no change set was available and recompute must fall back
+    to processing every attribute. Prefect deserializes the JSON workflow parameter
+    into ``ChangedElementsPayload`` at the flow boundary, so consumers see either
+    the model or ``None``.
+    """
+    if changed_elements is None:
+        return None
+    return ChangedElementSet.from_payload(changed_elements)
+
+
+def _transform_read_set_from_query_report(report: GraphQLQueryReport) -> TransformReadSet:
+    """Map an analyzed GraphQL query report into the kinds and fields it reads."""
+    return TransformReadSet.from_read_fields({kind: access.fields for kind, access in report.requested_read.items()})
 
 
 @task(name="computed-attribute-process-transform-for-node", cache_policy=NONE)
@@ -393,11 +423,17 @@ async def trigger_update_jinja2_computed_attributes(
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup_jinja2(
-    context: EventContext, branch_name: str | None = None, event_name: str | None = None
+    context: EventContext,
+    branch_name: str | None = None,
+    event_name: str | None = None,
+    changed_elements: ChangedElementsPayload | None = None,
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
         log = get_run_logger()
+
+        changed_element_set = _resolve_changed_elements(changed_elements)
+        branch_name = branch_name or registry.default_branch
 
         if branch_name:
             await add_tags(branches=[branch_name])
@@ -411,34 +447,70 @@ async def computed_attribute_setup_jinja2(
 
         all_triggers = report.triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)
 
-        # Since we can have multiple trigger per NodeKind
-        # we need to extract the list of unique node that should be processed, this is done by filtering the triggers that targets_self
-        modified_triggers = [
-            trigger
-            for trigger in report.modified_triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)
-            if trigger.targets_self
+        # The self-targeting triggers are the per (kind, attribute) recompute units.
+        self_triggers_on_branch = [
+            trigger for trigger in all_triggers if trigger.targets_self and trigger.branch == branch_name
         ]
 
-        for modified_trigger in modified_triggers:
-            if event_name != BranchDeletedEvent.event_name and modified_trigger.branch == branch_name:
+        if changed_element_set is None:
+            # No change set is available, so fall back to recomputing every computed attribute on
+            # the branch rather than risk leaving a value stale.
+            candidate_triggers = self_triggers_on_branch
+        else:
+            # The change set is available, so scope across every self-targeting attribute:
+            # a template edit, a read-field change, or a relationship-reached change all select it.
+            schema_branch = registry.schema.get_schema_branch(name=branch_name)
+            jinja2_trigger_nodes = {
+                (target.kind, target.attribute.name): trigger_nodes
+                for target, trigger_nodes in schema_branch.computed_attributes.get_jinja2_trigger_nodes().items()
+            }
+            scoper = RecomputeScoper(
+                derivers={ComputedAttributeKind.JINJA2: Jinja2DependencyDeriver(trigger_nodes=jinja2_trigger_nodes)}
+            )
+            triggers_by_ref = {
+                ComputedAttributeRef(
+                    branch=trigger.branch,
+                    kind=trigger.computed_attribute.kind,
+                    attribute_name=trigger.computed_attribute.attribute.name,
+                    computed_kind=ComputedAttributeKind.JINJA2,
+                ): trigger
+                for trigger in self_triggers_on_branch
+            }
+            scoping_report = scoper.scope(
+                candidate_attributes=list(triggers_by_ref.keys()),
+                changed_elements=changed_element_set,
+            )
+            selected_identities = [f"{ref.kind}.{ref.attribute_name}" for ref in scoping_report.selected]
+            log.info(
+                f"Recompute scoping selected {len(scoping_report.selected)} Jinja2 computed attribute(s) on "
+                f"{branch_name}: {selected_identities}"
+            )
+            for skipped in scoping_report.skipped:
+                log.debug(
+                    f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}"
+                )
+            candidate_triggers = [triggers_by_ref[ref] for ref in scoping_report.selected]
+
+        for candidate_trigger in candidate_triggers:
+            if event_name != BranchDeletedEvent.event_name and candidate_trigger.branch == branch_name:
                 if branch_name != registry.default_branch:
                     default_branch_triggers = [
                         trigger
                         for trigger in all_triggers
                         if trigger.branch == registry.default_branch
                         and trigger.targets_self
-                        and trigger.computed_attribute.kind == modified_trigger.computed_attribute.kind
+                        and trigger.computed_attribute.kind == candidate_trigger.computed_attribute.kind
                         and trigger.computed_attribute.attribute.name
-                        == modified_trigger.computed_attribute.attribute.name
+                        == candidate_trigger.computed_attribute.attribute.name
                     ]
                     if (
                         default_branch_triggers
                         and len(default_branch_triggers) == 1
-                        and default_branch_triggers[0].template_hash == modified_trigger.template_hash
+                        and default_branch_triggers[0].template_hash == candidate_trigger.template_hash
                     ):
                         log.debug(
-                            f"Skipping computed attribute updates for {modified_trigger.computed_attribute.kind}."
-                            f"{modified_trigger.computed_attribute.attribute.name} [{branch_name}], schema is identical to default branch"
+                            f"Skipping computed attribute updates for {candidate_trigger.computed_attribute.kind}."
+                            f"{candidate_trigger.computed_attribute.attribute.name} [{branch_name}], schema is identical to default branch"
                         )
                         continue
 
@@ -446,9 +518,9 @@ async def computed_attribute_setup_jinja2(
                     workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
-                        "branch_name": modified_trigger.branch,
-                        "computed_attribute_name": modified_trigger.computed_attribute.attribute.name,
-                        "computed_attribute_kind": modified_trigger.computed_attribute.kind,
+                        "branch_name": candidate_trigger.branch,
+                        "computed_attribute_name": candidate_trigger.computed_attribute.attribute.name,
+                        "computed_attribute_kind": candidate_trigger.computed_attribute.kind,
                     },
                 )
 
@@ -464,10 +536,13 @@ async def computed_attribute_setup_python(
     branch_name: str | None = None,
     event_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
+    changed_elements: ChangedElementsPayload | None = None,
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
         log = get_run_logger()
+
+        changed_element_set = _resolve_changed_elements(changed_elements)
 
         branch_name = branch_name or registry.default_branch
         if branch_name:
@@ -477,11 +552,17 @@ async def computed_attribute_setup_python(
 
         triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
 
+        # The read set of each transform is derived from its GraphQL query here, where the
+        # database session is available, so that the scoping decision itself stays pure.
+        read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
+        for trigger in triggers_python:
+            definition = trigger.computed_attribute.computed_attribute
+            read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
+                _transform_read_set_from_query_report(report=trigger.computed_attribute.query_analyzer.query_report)
+            )
+
         # Since we can have multiple trigger per NodeKind
         # we need to extract the list of unique node that should be processed
-        # also
-        # Because the automation in Prefect doesn't capture all information about the computed attribute
-        # we can't tell right now if a given computed attribute has changed and need to be updated
         unique_nodes: set[tuple[str, str, str]] = {
             (
                 trigger.branch,
@@ -490,18 +571,43 @@ async def computed_attribute_setup_python(
             )
             for trigger in triggers_python
         }
-        for branch, kind, attribute_name in unique_nodes:
-            if event_name != BranchDeletedEvent.event_name and branch == branch_name:
-                log.info(f"Triggering update for {kind}.{attribute_name} on {branch}")
-                await get_workflow().submit_workflow(
-                    workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
-                    context=context,
-                    parameters={
-                        "branch_name": branch_name,
-                        "computed_attribute_name": attribute_name,
-                        "computed_attribute_kind": kind,
-                    },
-                )
+        candidate_attributes = [
+            ComputedAttributeRef(
+                branch=branch,
+                kind=kind,
+                attribute_name=attribute_name,
+                computed_kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+            )
+            for branch, kind, attribute_name in sorted(unique_nodes)
+            if event_name != BranchDeletedEvent.event_name and branch == branch_name
+        ]
+
+        scoper = RecomputeScoper(
+            derivers={ComputedAttributeKind.TRANSFORM_PYTHON: PythonTransformDependencyDeriver(read_sets=read_sets)}
+        )
+        report = scoper.scope(
+            candidate_attributes=candidate_attributes,
+            changed_elements=changed_element_set,
+        )
+
+        selected_identities = [f"{ref.kind}.{ref.attribute_name}" for ref in report.selected]
+        log.info(
+            f"Recompute scoping selected {len(report.selected)} Python computed attribute(s) on {branch_name}: "
+            f"{selected_identities}"
+        )
+        for skipped in report.skipped:
+            log.debug(f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}")
+
+        for ref in report.selected:
+            await get_workflow().submit_workflow(
+                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "computed_attribute_name": ref.attribute_name,
+                    "computed_attribute_kind": ref.kind,
+                },
+            )
 
         async with get_prefect_client(sync_client=False) as prefect_client:
             await setup_triggers(

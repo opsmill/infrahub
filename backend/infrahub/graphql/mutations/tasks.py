@@ -6,10 +6,8 @@ from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.diff_locker import DiffLocker
-from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
-from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
@@ -32,7 +30,6 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
         async for _ in diff_repository.get_all_conflicts_for_diff(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
@@ -46,20 +43,18 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
 
-        merger = BranchMerger(
+        schema_analyzer = MergeSchemaAnalyzer(
             db=db,
-            diff_coordinator=diff_coordinator,
-            diff_merger=diff_merger,
-            diff_repository=diff_repository,
             source_branch=obj,
-            diff_locker=DiffLocker(),
-            workflow=get_workflow(),
+            destination_branch=base_branch,
+            diff_repository=diff_repository,
+            schema_manager=registry.schema,
         )
-        candidate_schema = merger.get_candidate_schema()
+        candidate_schema = schema_analyzer.get_candidate_schema()
         determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
         constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
         if obj.has_schema_changes:
-            constraints += await merger.calculate_validations(target_schema=candidate_schema)
+            constraints += await schema_analyzer.calculate_validations(target_schema=candidate_schema)
 
         if constraints:
             responses = await schema_validate_migrations(

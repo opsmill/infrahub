@@ -1,4 +1,4 @@
-import { Button, type ButtonProps } from "@infrahub/ui";
+import { Button, type ButtonProps, Menu, MenuItem } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
 import { useState } from "react";
 import { Text } from "react-aria-components";
@@ -6,7 +6,6 @@ import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Menu, MenuItem } from "@/shared/components/aria/menu";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";

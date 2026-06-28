@@ -1,10 +1,9 @@
-import { LinkButton, Spinner } from "@infrahub/ui";
+import { LinkButton, Popover, PopoverTrigger, Spinner } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
 import React from "react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import {

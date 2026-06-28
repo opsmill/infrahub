@@ -1,3 +1,5 @@
+import type { RefAttributes } from "react";
+
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
@@ -84,7 +86,8 @@ const buttonVariants = tv({
   },
 });
 
-export interface ButtonProps extends AriaButtonProps, VariantProps<typeof buttonVariants> {
+export interface ButtonProps
+  extends AriaButtonProps, VariantProps<typeof buttonVariants>, RefAttributes<HTMLButtonElement> {
   /** Uses isPending internally to keep the button hoverable/focusable while appearing disabled. Useful for tooltip triggers. */
   isDisabledAndFocusable?: boolean;
 }

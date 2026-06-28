@@ -23,7 +23,7 @@ export function SchemaViewerModal({
   const [nestedKind, setNestedKind] = useState<string | null>(null);
 
   return (
-    <Modal aria-label="Schema viewer" className={classNames("w-150 p-0", className)} {...props}>
+    <Modal aria-label="Schema viewer" className={classNames("w-150", className)} {...props}>
       {({ close }) => (
         <>
           <SchemaViewer

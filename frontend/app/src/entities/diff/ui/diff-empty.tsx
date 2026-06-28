@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
+import { Tooltip } from "@infrahub/ui";
 
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
@@ -28,7 +28,7 @@ export function DiffEmpty({
       <div className="text-center">
         <p>
           The last comparison was made{" "}
-          <Tooltip enabled content={formatFullDate(lastRefreshedAt)}>
+          <Tooltip message={formatFullDate(lastRefreshedAt)} nonInteractiveTrigger>
             <span className="font-semibold">{formatRelativeTimeFromNow(lastRefreshedAt)}</span>
           </Tooltip>
           .

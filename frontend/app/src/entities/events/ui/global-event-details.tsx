@@ -1,4 +1,4 @@
-import { Card, CardHeader } from "@infrahub/ui/card";
+import { Card, CardHeader } from "@infrahub/ui";
 
 import type { EventType } from "@/entities/events/types";
 

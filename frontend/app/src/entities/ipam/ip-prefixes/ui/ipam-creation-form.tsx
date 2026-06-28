@@ -52,12 +52,10 @@ function IpamCreationForm(props: IpamCreationFormProps) {
   const nextIpValue = isIpPrefixSchema ? nextIpPrefix : nextIpAddress;
 
   const onSuccess: NodeFormProps["onSuccess"] = (newNode) => {
+    const nodeLabel = getNodeLabel(newNode);
     toast(
       () => (
-        <Alert
-          type={ALERT_TYPES.SUCCESS}
-          message={`${props.schema.label} ${getNodeLabel(newNode)} created`}
-        />
+        <Alert type={ALERT_TYPES.SUCCESS} message={`${props.schema.label} ${nodeLabel} created`} />
       ),
       {
         // Per-node id so two same-kind allocations in quick succession each render their

@@ -44,9 +44,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await expect(page.getByLabel("Layer2 Mode *")).not.toBeVisible();
       await expect(page.getByLabel("Speed *")).not.toBeVisible();
       await expect(page.getByLabel("Untagged VLAN")).not.toBeVisible();
-      await expect(
-        page.getByTestId("side-panel-container").getByText("Tagged VLANs")
-      ).toBeVisible();
+      await expect(page.getByLabel("sheet").getByText("Tagged VLANs")).toBeVisible();
       await expect(page.getByLabel("Device *")).not.toBeVisible();
     });
   });

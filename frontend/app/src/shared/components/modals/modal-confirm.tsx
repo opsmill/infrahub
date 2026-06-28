@@ -23,12 +23,7 @@ export function ModalConfirm({
   isLoading,
 }: ModalConfirmProps) {
   return (
-    <Modal
-      isDismissable={!isLoading}
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      className="w-full max-w-lg p-0"
-    >
+    <Modal isDismissable={!isLoading} isOpen={isOpen} onOpenChange={onOpenChange}>
       <Col className="p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-yellow-100">

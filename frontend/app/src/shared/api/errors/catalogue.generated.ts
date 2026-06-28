@@ -24,8 +24,21 @@ export interface AttributeRequiredData {
 
 export type AuthenticationRequiredData = Record<string, never>;
 
+export interface BranchAlreadyMergedData {
+  branch_name: string;
+}
+
+export interface BranchNeedsRebaseData {
+  branch_name: string;
+}
+
 export interface BranchNotFoundData {
   branch_name: string;
+}
+
+export interface MergeInProgressData {
+  branch_name: string;
+  merging_branch: string;
 }
 
 export interface NodeNotFoundData {
@@ -53,7 +66,10 @@ export const ERROR_CODES = {
   ATTRIBUTE_INVALID_TYPE: "ATTRIBUTE_INVALID_TYPE",
   ATTRIBUTE_REQUIRED: "ATTRIBUTE_REQUIRED",
   AUTHENTICATION_REQUIRED: "AUTHENTICATION_REQUIRED",
+  BRANCH_ALREADY_MERGED: "BRANCH_ALREADY_MERGED",
+  BRANCH_NEEDS_REBASE: "BRANCH_NEEDS_REBASE",
   BRANCH_NOT_FOUND: "BRANCH_NOT_FOUND",
+  MERGE_IN_PROGRESS: "MERGE_IN_PROGRESS",
   NODE_NOT_FOUND: "NODE_NOT_FOUND",
   PERMISSION_DENIED: "PERMISSION_DENIED",
   SCHEMA_NOT_FOUND: "SCHEMA_NOT_FOUND",
@@ -71,7 +87,10 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   ATTRIBUTE_INVALID_TYPE: 422,
   ATTRIBUTE_REQUIRED: 422,
   AUTHENTICATION_REQUIRED: 401,
+  BRANCH_ALREADY_MERGED: 400,
+  BRANCH_NEEDS_REBASE: 400,
   BRANCH_NOT_FOUND: 400,
+  MERGE_IN_PROGRESS: 423,
   NODE_NOT_FOUND: 404,
   PERMISSION_DENIED: 403,
   SCHEMA_NOT_FOUND: 422,
@@ -86,7 +105,10 @@ export type CatalogueError =
   | { code: typeof ERROR_CODES.ATTRIBUTE_INVALID_TYPE; http_status: number; data: AttributeInvalidTypeData }
   | { code: typeof ERROR_CODES.ATTRIBUTE_REQUIRED; http_status: number; data: AttributeRequiredData }
   | { code: typeof ERROR_CODES.AUTHENTICATION_REQUIRED; http_status: number; data: AuthenticationRequiredData }
+  | { code: typeof ERROR_CODES.BRANCH_ALREADY_MERGED; http_status: number; data: BranchAlreadyMergedData }
+  | { code: typeof ERROR_CODES.BRANCH_NEEDS_REBASE; http_status: number; data: BranchNeedsRebaseData }
   | { code: typeof ERROR_CODES.BRANCH_NOT_FOUND; http_status: number; data: BranchNotFoundData }
+  | { code: typeof ERROR_CODES.MERGE_IN_PROGRESS; http_status: number; data: MergeInProgressData }
   | { code: typeof ERROR_CODES.NODE_NOT_FOUND; http_status: number; data: NodeNotFoundData }
   | { code: typeof ERROR_CODES.PERMISSION_DENIED; http_status: number; data: PermissionDeniedData }
   | { code: typeof ERROR_CODES.SCHEMA_NOT_FOUND; http_status: number; data: SchemaNotFoundData }

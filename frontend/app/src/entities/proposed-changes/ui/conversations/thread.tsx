@@ -1,11 +1,8 @@
-import { Button } from "@infrahub/ui";
-import { Card } from "@infrahub/ui/card";
+import { Button, Card, Checkbox, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Tooltip } from "@/shared/components/aria/tooltip";
-import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
@@ -142,33 +139,27 @@ export const Thread = (props: tThread) => {
     })) ?? [];
 
   const isResolved = thread?.resolved?.value;
-  const idForLabel = `checkbox-resolve-thread${thread?.id}`;
 
   const MarkAsResolved = (
-    <div className="flex items-center gap-2 text-sm">
-      <Checkbox
-        id={idForLabel}
-        disabled={isResolved}
-        checked={isResolved || markAsResolved}
-        onChange={() => setConfirmModal(true)}
-      />
-      <label htmlFor={idForLabel} className={isResolved ? "cursor-default" : "cursor-pointer"}>
-        {isResolved ? "Resolved" : "Resolve thread"}
-      </label>
-    </div>
+    <Checkbox
+      isDisabled={isResolved}
+      isSelected={isResolved || markAsResolved}
+      onChange={() => setConfirmModal(true)}
+    >
+      {isResolved ? "Resolved" : "Resolve thread"}
+    </Checkbox>
   );
 
   const MarkAsResolvedWithTooltip = (
-    <Tooltip message={"The resolution will be done after submitting the comment"}>
+    <Tooltip message="The resolution will be done after submitting the comment">
       {MarkAsResolved}
     </Tooltip>
   );
 
   return (
     <Card
-      className={classNames("relative gap-2 rounded-md p-2", isResolved && "bg-gray-200")}
+      className={classNames("relative gap-2 p-2", isResolved && "to-gray-200")}
       data-testid="thread"
-      data-cy="thread"
     >
       {displayContext && getThreadTitle(thread)}
 

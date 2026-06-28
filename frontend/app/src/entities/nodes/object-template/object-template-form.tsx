@@ -1,8 +1,8 @@
+import { Popover } from "@infrahub/ui";
 import { FileBoxIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { Button, type ButtonProps, Dialog, DialogTrigger } from "react-aria-components";
 
-import { Popover } from "@/shared/components/aria/popover";
 import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 import { classNames } from "@/shared/utils/common";
 

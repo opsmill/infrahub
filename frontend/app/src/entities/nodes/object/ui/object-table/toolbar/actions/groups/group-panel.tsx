@@ -1,4 +1,4 @@
-import { Card, type CardProps } from "@infrahub/ui/card";
+import { Card, type CardProps } from "@infrahub/ui";
 import type React from "react";
 
 import { classNames } from "@/shared/utils/common";

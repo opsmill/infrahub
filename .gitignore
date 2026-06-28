@@ -51,5 +51,6 @@ schema/node_modules/*
 # AI and SDD
 **/.playwright-mcp/**
 **/.worktrees/
+.claude/worktrees/
 .bug-analysis-*.md
 .specify/**/.cache/

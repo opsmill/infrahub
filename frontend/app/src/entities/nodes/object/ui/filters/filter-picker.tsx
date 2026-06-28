@@ -1,13 +1,10 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Autocomplete, Button, ListBox, ListBoxItem, Popover, PopoverTrigger } from "@infrahub/ui";
 import { ChevronRightIcon } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 
-import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
-import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
@@ -76,9 +73,10 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
             <ListBox
               aria-label="Filter fields"
               selectionMode="single"
+              selectionIndicator="highlight"
               selectedKeys={selectedField ? [selectedField] : []}
               onAction={handleAction}
-              className="max-h-72 p-1"
+              className="max-h-72"
             >
               {fields.map((field) => {
                 const name = getFilterDefinitionName(field);
@@ -127,13 +125,7 @@ function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItem
   const label = getFilterDefinitionLabel(definition);
 
   return (
-    <ListBoxItem
-      id={name}
-      textValue={label}
-      selectionIndicator="none"
-      className={({ isSelected }) => classNames(isSelected && "bg-stone-700/10 text-stone-800")}
-      ref={ref}
-    >
+    <ListBoxItem id={name} textValue={label} ref={ref}>
       {definition.type === "relationship" ? (
         <FieldSchemaIcon fieldSchema={definition.schema} />
       ) : (

@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Tooltip } from "@infrahub/ui";
 import { format } from "date-fns";
 
 import { Link } from "@/shared/components/ui/link";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
 import type { EventType } from "@/entities/events/types";
@@ -72,7 +72,10 @@ export const Event = (props: EventType) => {
       )}
     >
       <div className="flex items-center whitespace-nowrap font-medium text-gray-500 text-xs">
-        <Tooltip enabled content={format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}>
+        <Tooltip
+          message={format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}
+          nonInteractiveTrigger
+        >
           <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
         </Tooltip>
       </div>
@@ -97,7 +100,7 @@ export const Event = (props: EventType) => {
         </Link>
 
         {props.has_children && (
-          <Tooltip enabled content="Contains sub activities">
+          <Tooltip message="Contains sub activities" nonInteractiveTrigger>
             <Icon
               icon={"mdi:subtasks"}
               className="absolute right-2 rounded-full bg-custom-blue-500/10 p-1.5 text-custom-blue-500"

@@ -20,6 +20,7 @@ from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
+from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
     SchemaDiff,
@@ -44,7 +45,7 @@ from infrahub.core.validators.models.validate_migration import (
 )
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
-from infrahub.events.schema_action import SchemaUpdatedEvent
+from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
 from infrahub.exceptions import BranchStatusError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
@@ -330,7 +331,9 @@ async def load_schema(
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
     try:
-        BranchStatusChecker().check(branch=branch)
+        await BranchStatusChecker(
+            db=db, merge_write_blocker=MergeWriteBlocker(cache=request.app.state.service.cache)
+        ).check(branch=branch)
     except BranchStatusError as err:
         raise ValidationError(input_value=str(err)) from err
 
@@ -386,17 +389,17 @@ async def load_schema(
 
         coordinator = SchemaUpdateCoordinator(
             db=db,
-            branch=branch,
             schema_manager=registry.schema,
-            origin_schema=origin_schema,
             workflow=service.workflow,
-            context=context,
-            migration_executor=MigrationExecutor.WORKFLOW,
         )
 
         updated_hash = await coordinator.execute(
+            branch=branch,
+            origin_schema=origin_schema,
             candidate_schema=candidate_schema,
             at=Timestamp(),
+            context=context,
+            migration_executor=MigrationExecutor.WORKFLOW,
             diff=result.diff,
             migrations=result.migrations,
             limit=result.diff.all,
@@ -411,6 +414,7 @@ async def load_schema(
     event = SchemaUpdatedEvent(
         branch_name=branch.name,
         schema_hash=branch.active_schema_hash.main,
+        changed_elements=build_changed_elements_payload(result.diff),
         meta=EventMeta(
             initiator_id=WORKER_IDENTITY,
             request_id=request_id,
