@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from graphene import Boolean, Mutation, String
@@ -21,9 +22,18 @@ MANAGE_GLOBAL_PREFERENCES_PERMISSION = GlobalPermission(
     decision=PermissionDecision.ALLOW_ALL.value,
 )
 
-# Sentinel distinguishing "argument not provided" (leave field unchanged) from an explicit
-# `null` (reset the field). Graphene passes the GraphQL argument only when it is present.
-_UNSET = object()
+
+class _Unset(Enum):
+    """Typed sentinel for an omitted mutation argument.
+
+    Distinguishes "argument not provided" (leave the field unchanged) from an explicit `null`
+    (reset the field). Graphene passes the GraphQL argument only when it is present.
+    """
+
+    token = 0
+
+
+_UNSET = _Unset.token
 
 
 class InfrahubUserPreferenceUpsert(Mutation):
@@ -48,8 +58,8 @@ class InfrahubUserPreferenceUpsert(Mutation):
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
-        date_format: str | None = _UNSET,  # type: ignore[assignment]
-        timezone: str | None = _UNSET,  # type: ignore[assignment]
+        date_format: str | _Unset | None = _UNSET,
+        timezone: str | _Unset | None = _UNSET,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
@@ -94,8 +104,8 @@ class InfrahubGlobalPreferenceUpdate(Mutation):
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
-        date_format: str | None = _UNSET,  # type: ignore[assignment]
-        timezone: str | None = _UNSET,  # type: ignore[assignment]
+        date_format: str | _Unset | None = _UNSET,
+        timezone: str | _Unset | None = _UNSET,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
