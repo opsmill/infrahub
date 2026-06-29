@@ -3,12 +3,7 @@ import { Button, LinkButton } from "@infrahub/ui";
 import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
-import {
-  type ButtonProps as AriaButtonProps,
-  Collection,
-  ListLayout,
-  Virtualizer,
-} from "react-aria-components";
+import { type ButtonProps as AriaButtonProps, Collection } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
@@ -71,7 +66,7 @@ export function BranchSelector() {
         <ChevronsUpDownIcon className="ml-0.5" />
       </Button>
 
-      <Popover className="w-(--trigger-width)">
+      <Popover placement="bottom start">
         <PopoverDialog>
           {({ close }) =>
             isCreating ? (
@@ -123,54 +118,47 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
         onInputChange={setSearch}
         suffix={<BranchFormTriggerButton onPress={() => openCreateForm(trimmedSearch)} />}
       >
-        <Virtualizer
-          layout={ListLayout}
-          layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
+        <ListBox
+          aria-label="branch list"
+          className="max-h-125 p-1"
+          renderEmptyState={() =>
+            !isPending && (
+              <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
+            )
+          }
         >
-          <ListBox
-            aria-label="branch list"
-            className="max-h-125"
-            renderEmptyState={() =>
-              !isPending && (
-                <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
-              )
-            }
-          >
-            <Collection items={branches}>
-              {(branch) => (
-                <ListBoxItem textValue={branch.name} onAction={() => handleBranchChange(branch)}>
-                  <span className="truncate" title={branch.name}>
-                    {branch.name}
-                  </span>
+          <Collection items={branches}>
+            {(branch) => (
+              <ListBoxItem textValue={branch.name} onAction={() => handleBranchChange(branch)}>
+                <span className="truncate" title={branch.name}>
+                  {branch.name}
+                </span>
 
-                  <Row className="ml-auto">
-                    {currentBranch.name === branch.name && (
-                      <CheckIcon className="size-4 shrink-0" />
-                    )}
-                    {branch.is_default && <BranchDefaultBadge />}
-                    <BranchStatusBadge status={branch.status} />
-                    {branch.sync_with_git && <Icon icon="mdi:source-branch-sync" />}
-                  </Row>
-                </ListBoxItem>
-              )}
-            </Collection>
-
-            <ListBoxLoadMoreItem
-              isLoading={isPending || isFetchingNextPage}
-              onLoadMore={fetchNextPage}
-            />
-
-            {isAuthenticated && trimmedSearch && (
-              <ListBoxItem
-                textValue={CREATE_BRANCH_ITEM_VALUE}
-                onAction={() => openCreateForm(trimmedSearch)}
-                className="gap-1 whitespace-nowrap"
-              >
-                Create branch <span className="truncate font-semibold">{trimmedSearch}</span>
+                <Row className="ml-auto">
+                  {currentBranch.name === branch.name && <CheckIcon className="size-4 shrink-0" />}
+                  {branch.is_default && <BranchDefaultBadge />}
+                  {branch.sync_with_git && <Icon icon="mdi:source-branch-sync" />}
+                  <BranchStatusBadge status={branch.status} />
+                </Row>
               </ListBoxItem>
             )}
-          </ListBox>
-        </Virtualizer>
+          </Collection>
+
+          <ListBoxLoadMoreItem
+            isLoading={isPending || isFetchingNextPage}
+            onLoadMore={fetchNextPage}
+          />
+
+          {isAuthenticated && trimmedSearch && (
+            <ListBoxItem
+              textValue={CREATE_BRANCH_ITEM_VALUE}
+              onAction={() => openCreateForm(trimmedSearch)}
+              className="gap-1 whitespace-nowrap"
+            >
+              Create branch <span className="truncate font-semibold">{trimmedSearch}</span>
+            </ListBoxItem>
+          )}
+        </ListBox>
       </Autocomplete>
 
       <Separator />
