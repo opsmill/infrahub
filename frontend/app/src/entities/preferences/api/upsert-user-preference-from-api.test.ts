@@ -16,9 +16,8 @@ describe("upsertUserPreferenceFromApi", () => {
     vi.clearAllMocks();
   });
 
-  test("sends an id-less lazy payload targeting the account with both values", async () => {
+  test("sends date_format and timezone with no account argument", async () => {
     await upsertUserPreferenceFromApi({
-      accountId: "account-1",
       dateFormat: "dd/MM/yyyy",
       timezone: "Europe/Paris",
     });
@@ -26,27 +25,31 @@ describe("upsertUserPreferenceFromApi", () => {
     expect(graphqlClient.mutate).toHaveBeenCalledTimes(1);
     const { variables } = vi.mocked(graphqlClient.mutate).mock.calls[0]?.[0] ?? {};
     expect(variables).toEqual({
-      data: {
-        account: { id: "account-1" },
-        date_format: { value: "dd/MM/yyyy" },
-        timezone: { value: "Europe/Paris" },
-      },
+      dateFormat: "dd/MM/yyyy",
+      timezone: "Europe/Paris",
     });
-    expect(variables?.data).not.toHaveProperty("id");
+    expect(variables).not.toHaveProperty("account");
+    expect(variables).not.toHaveProperty("id");
   });
 
-  test("sends explicit null values to clear an override", async () => {
+  test("sends explicit null to reset a field to the global default", async () => {
     await upsertUserPreferenceFromApi({
-      accountId: "account-1",
       dateFormat: null,
       timezone: "UTC",
     });
 
     const { variables } = vi.mocked(graphqlClient.mutate).mock.calls[0]?.[0] ?? {};
-    expect(variables?.data).toEqual({
-      account: { id: "account-1" },
-      date_format: { value: null },
-      timezone: { value: "UTC" },
+    expect(variables).toEqual({
+      dateFormat: null,
+      timezone: "UTC",
     });
+  });
+
+  test("omits a field that is not provided so it is left unchanged", async () => {
+    await upsertUserPreferenceFromApi({ timezone: "UTC" });
+
+    const { variables } = vi.mocked(graphqlClient.mutate).mock.calls[0]?.[0] ?? {};
+    expect(variables).toEqual({ timezone: "UTC" });
+    expect(variables).not.toHaveProperty("dateFormat");
   });
 });

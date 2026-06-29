@@ -1,37 +1,30 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { getGlobalPreference } from "@/entities/preferences/domain/get-global-preference";
-import { getMyUserPreference } from "@/entities/preferences/domain/get-my-user-preference";
-import { resetMyUserPreference } from "@/entities/preferences/domain/reset-my-user-preference";
+import { getEffectivePreferences } from "@/entities/preferences/domain/get-effective-preferences";
+import type { EffectivePreferences } from "@/entities/preferences/domain/types";
 import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
 
 import { render } from "../../../../tests/components/render";
 import TabPreferences from "./tab-preferences";
 
-vi.mock("@/entities/preferences/domain/get-global-preference");
-vi.mock("@/entities/preferences/domain/get-my-user-preference");
+vi.mock("@/entities/preferences/domain/get-effective-preferences");
 vi.mock("@/entities/preferences/domain/upsert-my-user-preference");
-vi.mock("@/entities/preferences/domain/reset-my-user-preference");
-vi.mock("@/entities/authentication/ui/useAuth", () => ({
-  useAuth: () => ({
-    accessToken: "",
-    isAuthenticated: true,
-    setToken: () => {},
-    user: { id: "account-1" },
-  }),
-}));
+
+const baseEffective: EffectivePreferences = {
+  dateFormat: "dd/MM/yyyy",
+  timezone: "Europe/Paris",
+  userDateFormat: null,
+  userTimezone: null,
+  globalDateFormat: "dd/MM/yyyy",
+  globalTimezone: "Europe/Paris",
+  canEditGlobalPreferences: false,
+};
 
 describe("TabPreferences", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getGlobalPreference).mockResolvedValue({
-      id: "global-1",
-      dateFormat: "dd/MM/yyyy",
-      timezone: "Europe/Paris",
-    });
-    vi.mocked(getMyUserPreference).mockResolvedValue(null);
+    vi.mocked(getEffectivePreferences).mockResolvedValue(baseEffective);
     vi.mocked(upsertMyUserPreference).mockResolvedValue();
-    vi.mocked(resetMyUserPreference).mockResolvedValue();
   });
 
   test("renders preset selects, not free-text inputs", async () => {
@@ -53,8 +46,30 @@ describe("TabPreferences", () => {
       .toBeVisible();
   });
 
-  test("still renders and saves the form when the global preferences query fails", async () => {
-    vi.mocked(getGlobalPreference).mockRejectedValue(new Error("global read failed"));
+  test("pre-fills the form from the caller's own override", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      userDateFormat: "relative",
+      userTimezone: "UTC",
+    });
+
+    const component = await render(<TabPreferences />);
+
+    // The user's own override is shown, not the inherited hint.
+    await expect
+      .element(component.getByRole("combobox", { name: /timezone/i }))
+      .toHaveTextContent("UTC");
+    expect(component.getByText(/inherited from organisation defaults/i).elements()).toHaveLength(0);
+  });
+
+  test("still renders and saves the form when the effective query resolves with no global values", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: null,
+      timezone: null,
+      globalDateFormat: null,
+      globalTimezone: null,
+    });
 
     const component = await render(<TabPreferences />);
 
@@ -69,7 +84,6 @@ describe("TabPreferences", () => {
 
     await vi.waitFor(() => {
       expect(upsertMyUserPreference).toHaveBeenCalledWith({
-        accountId: "account-1",
         dateFormat: "relative",
         timezone: null,
       });
@@ -87,7 +101,7 @@ describe("TabPreferences", () => {
     await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
-  test("saving triggers the lazy upsert with the selected values", async () => {
+  test("saving triggers the upsert with the selected values", async () => {
     const component = await render(<TabPreferences />);
 
     await component.getByRole("button", { name: /date format/i }).click();
@@ -96,18 +110,17 @@ describe("TabPreferences", () => {
 
     await vi.waitFor(() => {
       expect(upsertMyUserPreference).toHaveBeenCalledWith({
-        accountId: "account-1",
         dateFormat: "relative",
         timezone: null,
       });
     });
   });
 
-  test("reset to global deletes the override row when one exists", async () => {
-    vi.mocked(getMyUserPreference).mockResolvedValue({
-      id: "user-pref-1",
-      dateFormat: "relative",
-      timezone: null,
+  test("reset to global sends an explicit-null upsert when the user has an override", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      userDateFormat: "relative",
+      userTimezone: null,
     });
 
     const component = await render(<TabPreferences />);
@@ -115,7 +128,17 @@ describe("TabPreferences", () => {
     await component.getByRole("button", { name: /reset to global/i }).click();
 
     await vi.waitFor(() => {
-      expect(vi.mocked(resetMyUserPreference).mock.calls[0]?.[0]).toEqual({ id: "user-pref-1" });
+      expect(vi.mocked(upsertMyUserPreference).mock.calls[0]?.[0]).toEqual({
+        dateFormat: null,
+        timezone: null,
+      });
     });
+  });
+
+  test("hides the reset button when the user has no override", async () => {
+    const component = await render(<TabPreferences />);
+
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
+    expect(component.getByRole("button", { name: /reset to global/i }).elements()).toHaveLength(0);
   });
 });

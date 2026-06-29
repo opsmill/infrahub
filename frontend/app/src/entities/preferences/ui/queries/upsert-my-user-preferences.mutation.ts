@@ -1,28 +1,21 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { PreferenceValues } from "@/entities/preferences/domain/types";
+import type { UpsertMyUserPreferenceParams } from "@/entities/preferences/domain/upsert-my-user-preference";
 import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 
-export function useUpsertMyUserPreferences() {
+/**
+ * Writes the caller's own preference row via `InfrahubUserPreferenceUpsert`.
+ * Pass explicit `null` for a field to reset it to the global default; omit a
+ * field to leave it unchanged. Invalidates the effective-preferences query.
+ */
+export function useUpdateMyUserPreferences() {
   const queryClient = useQueryClient();
-  const auth = useAuth();
-  const accountId = auth.user?.id;
 
   return useMutation({
-    mutationFn: (values: PreferenceValues) => {
-      if (!accountId) {
-        return Promise.reject(
-          new Error("Cannot save preferences without an authenticated account")
-        );
-      }
-      // Lazy upsert: no id — the backend resolves or creates the row from the account.
-      return upsertMyUserPreference({ accountId, ...values });
-    },
+    mutationFn: (params: UpsertMyUserPreferenceParams) => upsertMyUserPreference(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.effective() });
-      queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.user(accountId) });
     },
   });
 }

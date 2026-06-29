@@ -10,10 +10,8 @@ import {
   DEFAULT_DATE_FORMAT,
 } from "@/entities/preferences/domain/date-format-presets";
 import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
-import { useGlobalPreferences } from "@/entities/preferences/ui/queries/get-global-preferences.query";
-import { useMyUserPreferences } from "@/entities/preferences/ui/queries/get-my-user-preferences.query";
-import { useResetMyUserPreferences } from "@/entities/preferences/ui/queries/reset-my-user-preferences.mutation";
-import { useUpsertMyUserPreferences } from "@/entities/preferences/ui/queries/upsert-my-user-preferences.mutation";
+import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
+import { useUpdateMyUserPreferences } from "@/entities/preferences/ui/queries/upsert-my-user-preferences.mutation";
 
 function inheritedHint(globalValue: string | null | undefined, builtinFallback: string) {
   return `Inherited from organisation defaults: ${globalValue ?? builtinFallback}`;
@@ -25,23 +23,20 @@ function presetLabel(value: string | null | undefined) {
 }
 
 export default function TabPreferences() {
-  const globalQuery = useGlobalPreferences();
-  const userQuery = useMyUserPreferences();
-  const upsertPreferences = useUpsertMyUserPreferences();
-  const resetPreferences = useResetMyUserPreferences();
+  const effectiveQuery = useEffectivePreferences();
+  const updatePreferences = useUpdateMyUserPreferences();
 
-  if (userQuery.error) {
+  if (effectiveQuery.error) {
     return <ErrorScreen message="Something went wrong when fetching your preferences" />;
   }
 
-  if (globalQuery.isPending || userQuery.isPending) {
+  if (effectiveQuery.isPending) {
     return <LoadingIndicator className="h-32" />;
   }
 
-  // Global preferences only power the inheritance hints: if that read fails,
-  // treat the global values as unset instead of blocking the user's own form.
-  const globalPreference = globalQuery.error ? undefined : globalQuery.data;
-  const userPreference = userQuery.data;
+  const preferences = effectiveQuery.data;
+  // The user has a personal override when either of their own values is set.
+  const hasUserOverride = preferences.userDateFormat !== null || preferences.userTimezone !== null;
 
   return (
     <main className="p-2">
@@ -55,25 +50,25 @@ export default function TabPreferences() {
 
           <PreferencesForm
             values={{
-              dateFormat: userPreference?.dateFormat ?? null,
-              timezone: userPreference?.timezone ?? null,
+              dateFormat: preferences.userDateFormat,
+              timezone: preferences.userTimezone,
             }}
             dateFormatHint={
-              userPreference?.dateFormat
+              preferences.userDateFormat
                 ? undefined
                 : inheritedHint(
-                    presetLabel(globalPreference?.dateFormat),
+                    presetLabel(preferences.globalDateFormat),
                     `${DEFAULT_DATE_FORMAT} (built-in default)`
                   )
             }
             timezoneHint={
-              userPreference?.timezone
+              preferences.userTimezone
                 ? undefined
-                : inheritedHint(globalPreference?.timezone, "browser timezone")
+                : inheritedHint(preferences.globalTimezone, "browser timezone")
             }
             onSubmit={async (values) => {
               try {
-                await upsertPreferences.mutateAsync(values);
+                await updatePreferences.mutateAsync(values);
                 toast(<Alert type={ALERT_TYPES.SUCCESS} message="Preferences updated" />);
               } catch (error) {
                 toast(
@@ -86,16 +81,18 @@ export default function TabPreferences() {
                 );
               }
             }}
-            isSubmitDisabled={resetPreferences.isPending}
+            isSubmitDisabled={updatePreferences.isPending}
           >
-            {userPreference && (
+            {hasUserOverride && (
               <Button
                 variant="outline"
-                isPending={resetPreferences.isPending}
-                isDisabled={upsertPreferences.isPending}
+                isPending={updatePreferences.isPending}
+                isDisabled={updatePreferences.isPending}
                 onPress={async () => {
                   try {
-                    await resetPreferences.mutateAsync({ id: userPreference.id });
+                    // Reset to global = clear the caller's own override by
+                    // upserting explicit null for every field (no delete).
+                    await updatePreferences.mutateAsync({ dateFormat: null, timezone: null });
                     toast(
                       <Alert type={ALERT_TYPES.SUCCESS} message="Preferences reset to global" />
                     );

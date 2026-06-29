@@ -1,24 +1,22 @@
+import type { UseQueryResult } from "@tanstack/react-query";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { Permission } from "@/entities/permission/types";
-import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
+import type { EffectivePreferences } from "@/entities/preferences/domain/types";
+import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 
 import { render } from "../../../../tests/components/render";
 import { ProfileTabs } from "./profile-tabs";
 
-vi.mock("@/entities/permission/ui/queries/get-object-permissions.query", () => ({
-  useGetObjectPermissions: vi.fn(),
+vi.mock("@/entities/preferences/ui/queries/get-effective-preferences.query", () => ({
+  useEffectivePreferences: vi.fn(),
 }));
 
-const allowed = { isAllowed: true } as const;
-const denied = { isAllowed: false, message: "denied" } as const;
-
-function mockPermissions(update: Permission["update"]) {
-  vi.mocked(useGetObjectPermissions).mockReturnValue({
+function mockCanEdit(canEditGlobalPreferences: boolean) {
+  vi.mocked(useEffectivePreferences).mockReturnValue({
     isPending: false,
     error: null,
-    data: { view: allowed, create: allowed, update, delete: allowed },
-  } as ReturnType<typeof useGetObjectPermissions>);
+    data: { canEditGlobalPreferences } as EffectivePreferences,
+  } as UseQueryResult<EffectivePreferences>);
 }
 
 describe("ProfileTabs", () => {
@@ -26,8 +24,8 @@ describe("ProfileTabs", () => {
     vi.clearAllMocks();
   });
 
-  test("hides the Organisation defaults tab without update permission on CoreGlobalPreference", async () => {
-    mockPermissions(denied);
+  test("hides the Organisation defaults tab when the user cannot edit global preferences", async () => {
+    mockCanEdit(false);
 
     const component = await render(<ProfileTabs />);
 
@@ -37,14 +35,13 @@ describe("ProfileTabs", () => {
     );
   });
 
-  test("shows the Organisation defaults tab with update permission on CoreGlobalPreference", async () => {
-    mockPermissions(allowed);
+  test("shows the Organisation defaults tab when the user can edit global preferences", async () => {
+    mockCanEdit(true);
 
     const component = await render(<ProfileTabs />);
 
     await expect
       .element(component.getByRole("link", { name: "Organisation defaults" }))
       .toBeVisible();
-    expect(useGetObjectPermissions).toHaveBeenCalledWith("CoreGlobalPreference");
   });
 });

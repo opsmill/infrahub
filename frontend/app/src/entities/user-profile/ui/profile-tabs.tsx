@@ -1,16 +1,13 @@
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
 
-import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
-import { GLOBAL_PREFERENCE_OBJECT_KIND } from "@/entities/preferences/constants";
+import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 
 export function ProfileTabs() {
-  // The frontend has no super-admin flag: update permission on
-  // CoreGlobalPreference is the only gating mechanism for the admin tab.
-  const { data: globalPreferencePermission } = useGetObjectPermissions(
-    GLOBAL_PREFERENCE_OBJECT_KIND
-  );
-  const canManageGlobalPreferences = globalPreferencePermission?.update.isAllowed ?? false;
+  // `GlobalPreference` is a StandardNode with no object permission; the
+  // effective query's `can_edit_global_preferences` flag is the gating signal.
+  const { data: preferences } = useEffectivePreferences();
+  const canManageGlobalPreferences = preferences?.canEditGlobalPreferences ?? false;
 
   return (
     <nav aria-label="Tabs">

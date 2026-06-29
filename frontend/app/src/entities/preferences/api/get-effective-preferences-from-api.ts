@@ -7,6 +7,11 @@ const GET_EFFECTIVE_PREFERENCES = graphql(`
     InfrahubEffectivePreferences {
       date_format
       timezone
+      user_date_format
+      user_timezone
+      global_date_format
+      global_timezone
+      can_edit_global_preferences
     }
   }
 `);
