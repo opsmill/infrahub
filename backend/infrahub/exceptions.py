@@ -373,7 +373,11 @@ class DiffError(Error):
         self.message = message
 
 
-class HFIDViolatedError(ValidationError):
+class UniquenessViolationError(ValidationError):
+    """Raised when a node's uniqueness constraint is violated."""
+
+
+class HFIDViolatedError(UniquenessViolationError):
     matching_nodes_ids: set[str]
 
     def __init__(self, input_value: str | dict | list, matching_nodes_ids: set[str]) -> None:
