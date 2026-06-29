@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "biomejs.biome",
+    "bradlc.vscode-tailwindcss",
+    "graphql.vscode-graphql",
+    "graphql.vscode-graphql-syntax",
+    "ms-playwright.playwright",
+    "vitest.explorer",
+    "blazejkustra.react-compiler-marker"
+  ]
+}

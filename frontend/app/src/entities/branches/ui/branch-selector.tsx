@@ -73,7 +73,7 @@ export function BranchSelector() {
         <ChevronsUpDownIcon className="ml-0.5" />
       </Button>
 
-      <Popover className="w-(--trigger-width)">
+      <Popover placement="bottom start">
         <PopoverDialog>
           {({ close }) =>
             isCreating ? (
@@ -141,8 +141,8 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
                 <Row className="ml-auto">
                   {currentBranch.name === branch.name && <CheckIcon className="size-4 shrink-0" />}
                   {branch.is_default && <BranchDefaultBadge />}
-                  <BranchStatusBadge status={branch.status} />
                   {branch.sync_with_git && <Icon icon="mdi:source-branch-sync" />}
+                  <BranchStatusBadge status={branch.status} />
                 </Row>
               </ListBoxItem>
             )}
