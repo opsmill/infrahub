@@ -125,6 +125,41 @@ async def test_user_upsert_lazy_create_then_update(
     assert len(rows) == 1
 
 
+async def test_user_upsert_explicit_null_resets_field(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    """Pin the load-bearing graphene behaviour behind "reset to global": an explicit null
+    clears a field, while an omitted argument leaves it unchanged (see _UNSET sentinel)."""
+    await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_first_account,
+        query=USER_UPSERT,
+        variables={"date_format": "dd/MM/yyyy", "timezone": "Europe/Paris"},
+    )
+
+    # Explicit null on date_format resets it; timezone omitted stays unchanged.
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_first_account,
+        query=USER_UPSERT,
+        variables={"date_format": None},
+    )
+    assert result.errors is None
+    assert result.data["InfrahubUserPreferenceUpsert"]["date_format"] is None
+    assert result.data["InfrahubUserPreferenceUpsert"]["timezone"] == "Europe/Paris"
+
+    reset = await UserPreference.get_for_account(db=db, account_id=first_account.id)
+    assert reset is not None
+    assert reset.date_format is None
+    assert reset.timezone == "Europe/Paris"
+
+
 async def test_user_upsert_two_accounts_distinct_rows(
     db: InfrahubDatabase,
     default_branch: Branch,
