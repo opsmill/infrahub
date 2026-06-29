@@ -16,7 +16,7 @@ from infrahub.message_bus.types import KVTTL
 from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
-from ..classifier import StatusClass, WebhookDeliveryError, WebhookFailureClassifier
+from ..classifier import EXPECTED_DELIVERY_ERRORS, WebhookDeliveryError, WebhookFailureClassifier
 from ..constants import CACHE_KEY_PREFIX
 from ..models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, TransformWebhook, Webhook, WebhookHeader
 
@@ -69,12 +69,9 @@ async def webhook_send(webhook_id: str, webhook_kind: str, webhook_name: str, pa
         response = await webhook_post(
             webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload
         )
-    except Exception as cause:
-        # Broad by design: classify the expected delivery failures and re-raise the rest untouched.
+    except EXPECTED_DELIVERY_ERRORS as cause:
         elapsed_ms = (time.monotonic() - started) * 1_000
         failure = WebhookFailureClassifier().classify(cause=cause)
-        if failure.status_class is StatusClass.UNKNOWN:
-            raise
         log.error(
             f"Webhook delivery failed [{failure.status_class}] after {elapsed_ms:.0f} ms: "
             f"{failure.message.rstrip('.')}. {failure.remediation}"

@@ -60,6 +60,14 @@ class WebhookDeliveryError(Exception):
         self.failure = failure
 
 
+EXPECTED_DELIVERY_ERRORS: tuple[type[Exception], ...] = (
+    WebhookHeaderResolutionError,
+    HTTPServerError,
+    httpx.HTTPStatusError,
+)
+"""Delivery failures with a known, user-facing classification; any other exception is an unexpected crash."""
+
+
 class WebhookFailureClassifier:
     """Maps a delivery exception to a stable, user-facing failure.
 
