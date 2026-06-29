@@ -163,7 +163,7 @@ class TransformPythonInformation(BaseModel):
 
 
 @dataclass
-class GeneratorDefinitionInformation:
+class GeneratorDefinitionWithClosure:
     """A generator definition read from disk, paired with the dependency closure computed for it.
 
     The closure is computed at build time while the worktree is in scope and travels with its
@@ -189,7 +189,7 @@ class ObjectImportPlan:
     transform_definitions: list[TransformPythonInformation]
     jinja2_definitions: dict[str, InfrahubRepositoryJinja2]
     check_definitions: list[CheckDefinitionInformation]
-    generator_definitions: list[GeneratorDefinitionInformation]
+    generator_definitions: list[GeneratorDefinitionWithClosure]
     artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
 
 
@@ -991,7 +991,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     async def _build_generator_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
-    ) -> list[GeneratorDefinitionInformation]:
+    ) -> list[GeneratorDefinitionWithClosure]:
         """Build the desired generator definitions by reading the pinned commit worktree.
 
         Each returned item pairs a generator config with the dependency closure computed for it.
@@ -1005,7 +1005,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        generators: list[GeneratorDefinitionInformation] = []
+        generators: list[GeneratorDefinitionWithClosure] = []
         log.info(f"Found {len(config_file.generator_definitions)} generator definitions in the repository")
 
         closure_builder = build_default_closure_builder(logger=log)
@@ -1024,14 +1024,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 transform_config=generator,
                 worktree_root=Path(branch_wt.directory),
             )
-            generators.append(GeneratorDefinitionInformation(config=generator, closure=closure))
+            generators.append(GeneratorDefinitionWithClosure(config=generator, closure=closure))
 
         return generators
 
     async def _apply_generator_definitions(
         self,
         branch_name: str,
-        definitions: list[GeneratorDefinitionInformation],
+        definitions: list[GeneratorDefinitionWithClosure],
     ) -> None:
         """Reconcile the desired generator definitions against the graph by creating, updating and deleting.
 
