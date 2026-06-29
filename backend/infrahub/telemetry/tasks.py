@@ -3,6 +3,7 @@ import json
 import logging
 import platform
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from prefect import flow, task
@@ -26,6 +27,7 @@ from .constants import (
 from .database import gather_database_information
 from .models import (
     TelemetryAccountData,
+    TelemetryActivity24hData,
     TelemetryBranchData,
     TelemetryData,
     TelemetrySchemaData,
@@ -114,17 +116,64 @@ async def count_active_branches() -> int:
     return len([branch for branch in registry.branch.values() if not branch.is_default and not branch.is_global])
 
 
+def _empty_account_data() -> TelemetryAccountData:
+    """Null-filled accounts object used when the whole accounts source fails."""
+    return TelemetryAccountData(active=None, groups=None)
+
+
+def _empty_activity_24h_data() -> TelemetryActivity24hData:
+    """Null-filled activity_24h object used when the whole activity source fails."""
+    return TelemetryActivity24hData(
+        logins=None,
+        unique_logins=None,
+        checks_started=None,
+        checks_passed=None,
+        checks_failed=None,
+        artifacts_created=None,
+        artifacts_updated=None,
+        branches_created=None,
+        branches_merged=None,
+        branches_deleted=None,
+        webhooks_fired_success=None,
+        webhooks_fired_failure=None,
+    )
+
+
+async def _default_activity_24h_gatherer() -> TelemetryActivity24hData:
+    """Open a Prefect client and assemble the windowed 24h activity metrics."""
+    async with get_prefect_client(sync_client=False) as prefect_client:
+        return await gather_activity_24h(client=prefect_client)
+
+
 @task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
-async def gather_anonymous_telemetry_data() -> TelemetryData:
+async def gather_anonymous_telemetry_data(
+    account_gatherer: Callable[[InfrahubDatabase], Awaitable[TelemetryAccountData]] | None = None,
+    activity_gatherer: Callable[[], Awaitable[TelemetryActivity24hData]] | None = None,
+    active_branch_counter: Callable[[], Awaitable[int]] | None = None,
+) -> TelemetryData:
+    """Assemble the full telemetry payload, isolating every metric source.
+
+    Each new metric source is gathered through the degradation helper so a single failing
+    source degrades only its own field(s) to ``null`` while the rest of the payload is still
+    built, stored, and sent. A source that succeeds with nothing to count yields ``0``.
+
+    The three ``*_gatherer`` / ``*_counter`` parameters are optional injection seams with
+    production defaults; they exist so the orchestrator's per-source isolation can be exercised
+    with a real failing collaborator instead of patching. Production callers pass none of them.
+    """
     start_time = time.time()
+
+    account_gatherer = account_gatherer or gather_account_information
+    activity_gatherer = activity_gatherer or _default_activity_24h_gatherer
+    active_branch_counter = active_branch_counter or count_active_branches
 
     default_branch = registry.get_branch_from_registry()
     database = await get_database()
     component = await get_component()
     workers = await component.list_workers(branch=default_branch.name, schema_hash=False)
 
-    async with get_prefect_client(sync_client=False) as prefect_client:
-        activity_24h = await gather_activity_24h(client=prefect_client)
+    accounts = await safe_metric(account_gatherer(database))
+    activity_24h = await safe_metric(activity_gatherer())
 
     data = TelemetryData(
         deployment_id=registry.id,
@@ -139,13 +188,13 @@ async def gather_anonymous_telemetry_data() -> TelemetryData:
         ),
         branches=TelemetryBranchData(
             total=len(registry.branch),
-            active=await safe_metric(count_active_branches()),
+            active=await safe_metric(active_branch_counter()),
         ),
-        accounts=await gather_account_information(db=database),
-        activity_24h=activity_24h,
+        accounts=accounts if accounts is not None else _empty_account_data(),
+        activity_24h=activity_24h if activity_24h is not None else _empty_activity_24h_data(),
         features=await gather_feature_information(),
         schema_info=await gather_schema_information(branch=default_branch),
-        database=await gather_database_information(db=await get_database()),
+        database=await gather_database_information(db=database),
         prefect=await gather_prefect_information(),
     )
 

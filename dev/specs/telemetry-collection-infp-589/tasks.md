@@ -176,12 +176,12 @@ others populated, and the payload is still built and stored. Assert genuine-empt
 
 ### Tests for User Story 4 (write first, must fail) ⚠️
 
-- [ ] T024 [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: run `gather_anonymous_telemetry_data` on a healthy stack and assert presence of `accounts.{active,groups}`, `branches.active`, `database.node_count.corenode`, and all `activity_24h` fields (`logins`, `unique_logins`, `checks_started/passed/failed`, `artifacts_created/updated`, `branches_created/merged/deleted`, `webhooks_fired_success/failure`).
-- [ ] T025 [US4] Resilience test in `backend/tests/component/telemetry/test_tasks.py`: make one source fail via an injected failing collaborator/fixture (no mock); assert that field is `null`, every other field is populated, and the snapshot is still stored. Add a genuine-empty case asserting `0`, not `null`.
+- [X] T024 [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: run `gather_anonymous_telemetry_data` on a healthy stack and assert presence of `accounts.{active,groups}`, `branches.active`, `database.node_count.corenode`, and all `activity_24h` fields (`logins`, `unique_logins`, `checks_started/passed/failed`, `artifacts_created/updated`, `branches_created/merged/deleted`, `webhooks_fired_success/failure`).
+- [X] T025 [US4] Resilience test in `backend/tests/component/telemetry/test_tasks.py`: make one source fail via an injected failing collaborator/fixture (no mock); assert that field is `null`, every other field is populated, and the snapshot is still stored. Add a genuine-empty case asserting `0`, not `null`.
 
 ### Implementation for User Story 4
 
-- [ ] T026 [US4] Audit `gather_anonymous_telemetry_data` in `backend/infrahub/telemetry/tasks.py` to ensure every new metric (accounts, branches.active, corenode, each activity_24h field incl. checks/artifacts) is gathered through the degradation helper — no new metric can raise out of the orchestrator. If the current wiring doesn't expose a clean no-mock failure seam for T025, introduce one (e.g. an injectable gather collaborator) following backend component-design DI rules.
+- [X] T026 [US4] Audit `gather_anonymous_telemetry_data` in `backend/infrahub/telemetry/tasks.py` to ensure every new metric (accounts, branches.active, corenode, each activity_24h field incl. checks/artifacts) is gathered through the degradation helper — no new metric can raise out of the orchestrator. If the current wiring doesn't expose a clean no-mock failure seam for T025, introduce one (e.g. an injectable gather collaborator) following backend component-design DI rules.
 
 **Checkpoint**: Whole payload resilient; one failing source never drops the rest.
 
