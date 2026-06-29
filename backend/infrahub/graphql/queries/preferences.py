@@ -52,6 +52,9 @@ async def resolve_effective_preferences(
 
     db = graphql_context.db
 
+    # StandardNode reads (GetList/GetItem) carry no branch filter, so these lookups are global /
+    # branch-agnostic regardless of the request branch on graphql_context.db (same as Branch's own
+    # resolver). Preferences intentionally have no per-branch semantics.
     global_preference = await GlobalPreference.get_global(db=db)
     user_preference = await UserPreference.get_for_account(db=db, account_id=graphql_context.account_session.account_id)
 

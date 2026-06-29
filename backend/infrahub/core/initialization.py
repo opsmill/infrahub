@@ -28,6 +28,7 @@ from infrahub.core.node.proposed_change import CoreProposedChange
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.preferences import GlobalPreference
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -554,6 +555,11 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     await create_root_node(db=db)
     default_branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
+
+    # Seed the GlobalPreference singleton so new installs have it and the effective-preferences
+    # read path (GlobalPreference.get_global) stays lock-free. Existing installs rely on that
+    # method's lazy create-with-lock instead.
+    await GlobalPreference.get_global(db=db)
 
     # --------------------------------------------------
     # Load the internal and core schema in the database

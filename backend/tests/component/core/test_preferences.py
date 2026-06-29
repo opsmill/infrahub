@@ -27,6 +27,23 @@ async def test_global_preference_get_global_lazy_create(db: InfrahubDatabase, de
     assert len(await GlobalPreference.get_list(db=db)) == 1
 
 
+async def test_global_preference_get_global_idempotent_under_lock(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """Repeated get_global calls when none exists still yield exactly one row.
+
+    get_global runs on every effective-preferences READ, so the lazy-create path must be
+    guarded against producing duplicate singletons (double-checked locking in models.py).
+    """
+    assert await GlobalPreference.get_list(db=db) == []
+
+    results = [await GlobalPreference.get_global(db=db) for _ in range(5)]
+
+    # Every call returns the same singleton uuid, and only one row was ever created.
+    assert len({obj.uuid for obj in results}) == 1
+    assert len(await GlobalPreference.get_list(db=db)) == 1
+
+
 async def test_global_preference_persists_values(db: InfrahubDatabase, default_branch: Branch) -> None:
     obj = await GlobalPreference.get_global(db=db)
     obj.date_format = "yyyy-MM-dd"

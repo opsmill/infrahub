@@ -125,6 +125,33 @@ async def test_user_upsert_lazy_create_then_update(
     assert len(rows) == 1
 
 
+async def test_user_upsert_repeated_never_creates_second_row(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    """Repeated upserts for one account always target the single locked row.
+
+    The per-account distributed lock around get_for_account -> create/update -> save means
+    concurrent (and here, repeated) first-upserts can never fabricate a duplicate row.
+    """
+    for tz in ("Europe/Paris", "UTC", "America/New_York", "Asia/Tokyo"):
+        result = await run_mutation(
+            db=db,
+            branch=default_branch,
+            account_session=session_first_account,
+            query=USER_UPSERT,
+            variables={"timezone": tz},
+        )
+        assert result.errors is None
+
+    rows = [p for p in await UserPreference.get_list(db=db) if p.account_id == first_account.id]
+    assert len(rows) == 1
+    assert rows[0].timezone == "Asia/Tokyo"
+
+
 async def test_user_upsert_explicit_null_resets_field(
     db: InfrahubDatabase,
     default_branch: Branch,
