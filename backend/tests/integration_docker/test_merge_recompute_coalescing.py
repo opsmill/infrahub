@@ -40,9 +40,7 @@ class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
     def profile_schema(self) -> dict:
         return build_profile_schema_dict()
 
-    async def test_merge_recomputes_destination_only_reader(
-        self, client: InfrahubClient, profile_schema: dict
-    ) -> None:
+    async def test_merge_recomputes_destination_only_reader(self, client: InfrahubClient, profile_schema: dict) -> None:
         loaded = await client.schema.load(schemas=[profile_schema], wait_until_converged=True)
         assert loaded.schema_updated
 
@@ -81,8 +79,7 @@ class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
             refreshed_node1 = await client.get(kind=PROFILE_NODE_KIND, id=node1.id)
             refreshed_node2 = await client.get(kind=PROFILE_NODE_KIND, id=node2.id)
             return (
-                refreshed_node1.summary.value == "node1 on omega"
-                and refreshed_node2.summary.value == "node2 on omega"
+                refreshed_node1.summary.value == "node1 on omega" and refreshed_node2.summary.value == "node2 on omega"
             )
 
         await _wait_until(_both_recomputed)
@@ -115,9 +112,7 @@ class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
 
         # A reader created only on the user branch. The default branch never sees it, so the
         # default's recompute cannot refresh it; only the coalesced rebase recompute can.
-        node = await client.create(
-            kind=PROFILE_NODE_KIND, data={"name": "rnode", "peer": peer}, branch=branch.name
-        )
+        node = await client.create(kind=PROFILE_NODE_KIND, data={"name": "rnode", "peer": peer}, branch=branch.name)
         await node.save()
 
         async def _node_initial() -> bool:

@@ -53,9 +53,7 @@ def derive_hfid_targets(
     targets: dict[tuple[str, str], HFIDRecomputeTarget] = {}
 
     if include_self and hfids.targets_node(kind):
-        targets[kind, "ids"] = HFIDRecomputeTarget(
-            target_kind=kind, filter_key="ids", reads_across_relationship=False
-        )
+        targets[kind, "ids"] = HFIDRecomputeTarget(target_kind=kind, filter_key="ids", reads_across_relationship=False)
 
     if include_cross:
         relationship_triggers = hfids.get_related_trigger_nodes().get(kind)
