@@ -21,6 +21,10 @@ query {
   InfrahubEffectivePreferences {
     date_format
     timezone
+    user_date_format
+    user_timezone
+    global_date_format
+    global_timezone
     can_edit_global_preferences
   }
 }
@@ -75,6 +79,11 @@ async def test_effective_no_global_no_user(
     data = result.data["InfrahubEffectivePreferences"]
     assert data["date_format"] is None
     assert data["timezone"] is None
+    # Raw user/global values are all null: no UserPreference row, empty global singleton.
+    assert data["user_date_format"] is None
+    assert data["user_timezone"] is None
+    assert data["global_date_format"] is None
+    assert data["global_timezone"] is None
     # A fresh-user read lazily materialises the global singleton but never a UserPreference row.
     assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
 
@@ -96,6 +105,11 @@ async def test_effective_global_only_fresh_user_fallback(
     data = result.data["InfrahubEffectivePreferences"]
     assert data["date_format"] == "yyyy-MM-dd"
     assert data["timezone"] == "UTC"
+    # Merged equals global here; raw user values are null (no override), raw global is exposed.
+    assert data["user_date_format"] is None
+    assert data["user_timezone"] is None
+    assert data["global_date_format"] == "yyyy-MM-dd"
+    assert data["global_timezone"] == "UTC"
     # No user row was fabricated for the fallback.
     assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
 
@@ -121,6 +135,37 @@ async def test_effective_user_overrides_and_per_field_merge(
     data = result.data["InfrahubEffectivePreferences"]
     assert data["date_format"] == "dd/MM/yyyy"  # user override wins
     assert data["timezone"] == "UTC"  # per-field fallback to global
+    # Raw values are exposed separately so the frontend can show inherited-value hints:
+    assert data["user_date_format"] == "dd/MM/yyyy"  # caller's own override
+    assert data["user_timezone"] is None  # caller has no timezone override
+    assert data["global_date_format"] == "yyyy-MM-dd"  # org default (the inherited hint)
+    assert data["global_timezone"] == "UTC"
+
+
+async def test_effective_admin_override_merged_differs_from_global(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    """An admin who also has a personal override: merged != global.
+
+    The "Organisation defaults" editor relies on global_* (not the merged values) so it
+    edits the org-wide default rather than the admin's personal override.
+    """
+    global_pref = await GlobalPreference.get_global(db=db)
+    global_pref.timezone = "UTC"
+    await global_pref.save(db=db)
+
+    await UserPreference(account_id=first_account.id, timezone="Europe/Paris").create(db=db)
+
+    result = await run_effective(db=db, branch=default_branch, account_session=session_first_account)
+    assert result.errors is None
+    data = result.data["InfrahubEffectivePreferences"]
+    assert data["timezone"] == "Europe/Paris"  # merged: user override wins
+    assert data["user_timezone"] == "Europe/Paris"  # caller's own raw override
+    assert data["global_timezone"] == "UTC"  # org-wide default, what the defaults editor edits
 
 
 async def test_effective_is_private_per_caller(
@@ -132,6 +177,10 @@ async def test_effective_is_private_per_caller(
     session_first_account: AccountSession,
     session_second_account: AccountSession,
 ) -> None:
+    # A shared org-wide default exists.
+    global_pref = await GlobalPreference.get_global(db=db)
+    global_pref.timezone = "UTC"
+    await global_pref.save(db=db)
     # Account A sets a personal override.
     await UserPreference(account_id=first_account.id, timezone="Europe/Paris").create(db=db)
     # Account B sets a different one.
@@ -141,9 +190,17 @@ async def test_effective_is_private_per_caller(
     result_b = await run_effective(db=db, branch=default_branch, account_session=session_second_account)
     assert result_a.errors is None
     assert result_b.errors is None
+    data_a = result_a.data["InfrahubEffectivePreferences"]
+    data_b = result_b.data["InfrahubEffectivePreferences"]
     # Each caller sees only their own value; A never sees B's.
-    assert result_a.data["InfrahubEffectivePreferences"]["timezone"] == "Europe/Paris"
-    assert result_b.data["InfrahubEffectivePreferences"]["timezone"] == "America/New_York"
+    assert data_a["timezone"] == "Europe/Paris"
+    assert data_b["timezone"] == "America/New_York"
+    # user_* is the caller's OWN raw override only — never the other account's.
+    assert data_a["user_timezone"] == "Europe/Paris"
+    assert data_b["user_timezone"] == "America/New_York"
+    # global_* is org-wide and identical for both sessions.
+    assert data_a["global_timezone"] == "UTC"
+    assert data_b["global_timezone"] == "UTC"
 
 
 async def test_effective_can_edit_false_for_normal_account(

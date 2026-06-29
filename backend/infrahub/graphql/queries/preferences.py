@@ -28,10 +28,24 @@ class EffectivePreferencesType(ObjectType):
     Scalar fields on purpose: this is not a node, `null` means "no opinion stored" and the
     client applies its own built-in default. `can_edit_global_preferences` drives the
     "Organisation defaults" tab; the backend remains the source of truth.
+
+    The raw `user_*` / `global_*` values are exposed alongside the merged values so the
+    frontend can render inherited-value hints and edit the right thing: the "Organisation
+    defaults" editor edits `global_*` (not the merged value, which an admin's own override
+    would otherwise corrupt), and the user "Preferences" tab uses `global_*` as the inherited
+    placeholder while `user_*` populates the form with the caller's own override.
+
+    Privacy: `global_*` is org-wide and safe to expose to any authenticated account; `user_*`
+    is the caller's OWN override only (the query is account-bound to account_session.account_id),
+    so no account ever sees another account's user preferences.
     """
 
     date_format = Field(String, required=False)
     timezone = Field(String, required=False)
+    user_date_format = Field(String, required=False)
+    user_timezone = Field(String, required=False)
+    global_date_format = Field(String, required=False)
+    global_timezone = Field(String, required=False)
     can_edit_global_preferences = Field(Boolean, required=True)
 
 
@@ -60,9 +74,14 @@ async def resolve_effective_preferences(
 
     response: dict[str, str | bool | None] = {}
     for attribute_name in PREFERENCE_ATTRIBUTES:
+        # user_* = caller's OWN override (or null); global_* = the org-wide singleton's value
+        # (or null); the merged value is user-else-global. global_* is fine to expose to any
+        # authenticated account; user_* is account-bound so privacy is preserved.
         user_value: str | None = getattr(user_preference, attribute_name) if user_preference else None
         global_value: str | None = getattr(global_preference, attribute_name)
         response[attribute_name] = user_value if user_value is not None else global_value
+        response[f"user_{attribute_name}"] = user_value
+        response[f"global_{attribute_name}"] = global_value
 
     response["can_edit_global_preferences"] = graphql_context.active_permissions.has_permission(
         permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION
