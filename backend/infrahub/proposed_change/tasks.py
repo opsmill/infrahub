@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from enum import Enum, IntFlag
 from pathlib import Path
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 import pytest
 from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
@@ -58,7 +57,13 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, ProposedChangeMergedEvent
-from infrahub.exceptions import MergeFailedError, SchemaNotFoundError, ValidationError
+from infrahub.exceptions import (
+    MergeConflictsUnresolvedError,
+    MergeConstraintsViolatedError,
+    MergeFailedError,
+    SchemaNotFoundError,
+    ValidationError,
+)
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
@@ -158,39 +163,68 @@ async def _proposed_change_transition_state(
 #     )
 
 
-async def _rerun_proposed_change_integrity_checks(
-    proposed_change_id: str, source_branch: Branch, destination_branch_name: str
+def _build_schema_integrity_validator_recorder(db: InfrahubDatabase) -> ObjectConflictValidatorRecorder:
+    return ObjectConflictValidatorRecorder(
+        db=db,
+        validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+        validator_label="Schema Integrity",
+        check_schema_kind=InfrahubKind.SCHEMACHECK,
+    )
+
+
+async def _record_schema_integrity_failure(
+    database: InfrahubDatabase, proposed_change_id: str, schema_conflicts: list[SchemaConflict]
 ) -> None:
-    """Re-run the data and schema integrity checks against the current destination state.
+    """Record schema constraint violations found at merge time on the Schema Integrity validator."""
+    async with database.start_transaction() as db:
+        recorder = _build_schema_integrity_validator_recorder(db=db)
+        await recorder.record_conflicts(proposed_change_id=proposed_change_id, conflicts=schema_conflicts)
 
-    Both checks are recalculated from a freshly updated diff so that the validator conclusions read
-    by the merge gate reflect the destination branch as it is now, not as it was when the proposed
-    change pipeline last ran.
+
+async def _merge_branch_for_proposed_change(
+    db: InfrahubDatabase,
+    proposed_change: InternalCoreProposedChange,
+    source_branch: Branch,
+    context: InfrahubContext,
+) -> State | None:
+    """Merge the proposed change's source branch.
+
+    Returns a ``Failed`` state if the merge is rejected or fails, or ``None`` if it succeeds. On any
+    handled failure the proposed change is transitioned back to OPEN before the state is returned;
+    unexpected exceptions propagate after the same transition.
     """
-    branch_diff = ProposedChangeBranchDiff(pipeline_id=uuid4())
-    data_integrity_model = RequestProposedChangeDataIntegrity(
-        proposed_change=proposed_change_id,
-        source_branch=source_branch.name,
-        source_branch_sync_with_git=source_branch.sync_with_git,
-        destination_branch=destination_branch_name,
-        branch_diff=branch_diff,
-    )
-    # Recalculates the diff (and its conflicts) for the current state.
-    await run_proposed_change_data_integrity_check(model=data_integrity_model)
-
-    # The schema integrity check reads the diff summary from the cache, so refresh it first.
-    diff_summary = await get_client().get_diff_summary(branch=source_branch.name)
-    await set_diff_summary_cache(
-        pipeline_id=branch_diff.pipeline_id, diff_summary=diff_summary, cache=await get_cache()
-    )
-    schema_integrity_model = RequestProposedChangeSchemaIntegrity(
-        proposed_change=proposed_change_id,
-        source_branch=source_branch.name,
-        source_branch_sync_with_git=source_branch.sync_with_git,
-        destination_branch=destination_branch_name,
-        branch_diff=branch_diff,
-    )
-    await run_proposed_change_schema_integrity_check(model=schema_integrity_model)
+    log = get_run_logger()
+    merge_succeeded = False
+    proposed_change_id = proposed_change.get_id()
+    try:
+        await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
+        merge_succeeded = True
+        return None
+    except MergeConstraintsViolatedError as exc:
+        # Record the violation so the Schema Integrity validator reflects the failure.
+        await _record_schema_integrity_failure(
+            database=db, proposed_change_id=proposed_change_id, schema_conflicts=exc.schema_conflicts
+        )
+        return Failed(message="Unable to merge proposed change containing failing checks")
+    except MergeConflictsUnresolvedError as exc:
+        # Cannot merge a branch with unresolved conflicts.
+        return Failed(message=exc.message)
+    except MergeFailedError as exc:
+        return Failed(message=exc.message)
+    except Exception as exc:
+        log.exception("Unexpected failure during proposed change merge")
+        return Failed(message=f"Merge failure when trying to merge {source_branch.name}: {exc}")
+    except BaseException as exc:
+        log.exception("Unexpected failure during proposed change merge")
+        raise exc
+    finally:
+        if not merge_succeeded:
+            await _proposed_change_transition_state(
+                proposed_change=proposed_change,
+                state=ProposedChangeState.OPEN,
+                database=db,
+                user_id=context.account.account_id,
+            )
 
 
 @flow(
@@ -238,14 +272,6 @@ async def merge_proposed_change(
             return Failed(message=str(exc))
 
         source_branch = await Branch.get_by_name(db=db, name=proposed_change.source_branch.value)
-        # Re-run the integrity checks against the current destination state. The pipeline runs them
-        # when the proposed change is opened or updated, but the destination branch may have changed
-        # since (e.g. another branch was merged), making the stored validator conclusions stale.
-        await _rerun_proposed_change_integrity_checks(
-            proposed_change_id=proposed_change_id,
-            source_branch=source_branch,
-            destination_branch_name=proposed_change.destination_branch.value,
-        )
         validations = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
         for validation in validations.values():
             validator_kind = validation.get_kind()
@@ -277,26 +303,14 @@ async def merge_proposed_change(
 
         log.info("Proposed change is eligible to be merged")
 
-        merge_succeeded = False
-        try:
-            await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
-            merge_succeeded = True
-        except MergeFailedError as exc:
-            return Failed(message=exc.message)
-        except Exception as exc:
-            log.exception("Unexpected failure during proposed change merge")
-            return Failed(message=f"Merge failure when trying to merge {source_branch.name}: {exc}")
-        except BaseException as exc:
-            log.exception("Unexpected failure during proposed change merge")
-            raise exc
-        finally:
-            if not merge_succeeded:
-                await _proposed_change_transition_state(
-                    proposed_change=proposed_change,
-                    state=ProposedChangeState.OPEN,
-                    database=db,
-                    user_id=context.account.account_id,
-                )
+        merge_failure = await _merge_branch_for_proposed_change(
+            db=db,
+            proposed_change=proposed_change,
+            source_branch=source_branch,
+            context=context,
+        )
+        if merge_failure is not None:
+            return merge_failure
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
@@ -504,12 +518,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         schema_path = f"schema/{kind}"
         database = await get_database()
         async with database.start_transaction() as db:
-            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-                db=db,
-                validator_kind=InfrahubKind.SCHEMAVALIDATOR,
-                validator_label="Schema Integrity",
-                check_schema_kind=InfrahubKind.SCHEMACHECK,
-            )
+            object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
             await object_conflict_validator_recorder.record_conflicts(
                 proposed_change_id=model.proposed_change,
                 conflicts=[
@@ -585,12 +594,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
             )
 
     async with database.start_transaction() as db:
-        object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-            db=db,
-            validator_kind=InfrahubKind.SCHEMAVALIDATOR,
-            validator_label="Schema Integrity",
-            check_schema_kind=InfrahubKind.SCHEMACHECK,
-        )
+        object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
         await object_conflict_validator_recorder.record_conflicts(
             proposed_change_id=model.proposed_change, conflicts=conflicts
         )
