@@ -131,9 +131,11 @@ async def configure_webhook(
 
     match parsed.action:
         case WebhookAction.CONFIGURE:
-            webhook_node = await NodeManager.get_one(
-                id=parsed.required_webhook_id, db=await get_database(), kind=CoreWebhookNode, raise_on_error=True
-            )
+            database = await get_database()
+            async with database.start_session(read_only=True) as db:
+                webhook_node = await NodeManager.get_one(
+                    id=parsed.required_webhook_id, db=db, kind=CoreWebhookNode, raise_on_error=True
+                )
             async with get_prefect_client(sync_client=False) as prefect_client:
                 configurer = SingleWebhookConfigurer(
                     syncer=WebhookAutomationPrefectSyncer(prefect_client=prefect_client),
