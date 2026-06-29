@@ -22,6 +22,7 @@ from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.display_label import UpdateDisplayLabel
 from .mutations.generator import GeneratorDefinitionRequestRun
 from .mutations.hfid import UpdateHFID
+from .mutations.preferences import InfrahubGlobalPreferenceUpdate, InfrahubUserPreferenceUpsert
 from .mutations.profile import InfrahubProfilesRefresh
 from .mutations.proposed_change import (
     ProposedChangeCheckForApprovalRevoke,
@@ -132,3 +133,6 @@ class InfrahubBaseMutation(ObjectType):
     ConvertObjectType = ConvertObjectType.Field()
     CoreProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
     InfrahubProfilesRefresh = InfrahubProfilesRefresh.Field()
+
+    InfrahubUserPreferenceUpsert = InfrahubUserPreferenceUpsert.Field()
+    InfrahubGlobalPreferenceUpdate = InfrahubGlobalPreferenceUpdate.Field()
