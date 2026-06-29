@@ -75,11 +75,13 @@ Three webhook types form a class hierarchy inheriting from the `Webhook` base cl
 
 ### `WebhookTriggerDefinition`
 
-Bridges Infrahub webhooks to Prefect automations. Extends `TriggerDefinition` with webhook-specific name generation (`webhook:<id>`). The `from_object()` class method converts a `CoreWebhook` node into trigger configuration including:
+Bridges Infrahub webhooks to Prefect automations. Extends `TriggerDefinition` with webhook-specific name generation (`webhook:<id>`). `WebhookTriggerDefinitionBuilder.build()` converts a `CoreWebhook` node into a `WebhookTriggerDefinition`, including:
 
 - Event pattern matching (`infrahub.*` for "all", or specific event type)
 - Branch filtering via `match_related` (default branch, other branches, or all)
 - Node kind filtering via `match` (only for node-level events)
+
+The action parameters that carry event data to `webhook_process` (event id, occurred time, branch, payload) are rendered server-side by Prefect; see [Trigger action parameters](events.md#trigger-action-parameters) for how single-expression values are emitted as Jinja templates.
 
 ### `EventContext`
 
