@@ -1,0 +1,19 @@
+{
+  "folders": [
+    {
+      "name": "infrahub",
+      "path": "."
+    },
+    {
+      "name": "frontend · app",
+      "path": "frontend/app"
+    }
+  ],
+  "settings": {
+    // Hide the nested frontend/app from the infrahub root tree so it
+    // only appears once, under its own "frontend · app" folder.
+    "files.exclude": {
+      "frontend/app": true
+    }
+  }
+}
