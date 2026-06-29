@@ -182,7 +182,7 @@ When a matched event fires, Prefect runs the `webhook_process` flow:
 5. Calls `webhook.compute_payload()` to build the payload
 6. Hands the payload to the `webhook_send` subflow, which resolves the webhook config, builds the headers (with optional HMAC), and POSTs to the target URL
 
-The `webhook_send` subflow has 3 retries configured and calls `response.raise_for_status()`. It is invoked directly by `webhook_process` rather than registered in the workflow catalogue.
+The `webhook_send` subflow has 3 retries configured and calls `response.raise_for_status()`. `webhook_process` invokes it directly as a subflow, and it is also registered in the workflow catalogue as `WEBHOOK_SEND` so a settled delivery can be re-submitted as an independent run when retried.
 
 ## Failure handling
 
@@ -203,6 +203,19 @@ Each class carries a clean message and a remediation hint. `webhook_send` classi
 A `TLS` failure reaches this layer wrapped by httpx as a generic transport error, so the HTTP adapter's `SSLErrorExtractor` walks the exception chain to recognize the certificate problem and raise a TLS-specific error rather than a generic connection error.
 
 The `transient` flag on `ClassifiedFailure` records whether a class could plausibly succeed on a retry. `webhook_send` currently retries every failure (3 attempts, fixed 120s delay); the flag is reserved for a future transient-only retry policy.
+
+## Delivery operability
+
+A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskActionGenerator` derives the actions from the run's workflow name and current state. Only `WEBHOOK_SEND` runs expose actions today; any other task type exposes none.
+
+| Action | Available when | Effect |
+|--------|----------------|--------|
+| `RETRY` | The delivery has settled (a terminal state) | Submits `WEBHOOK_SEND` again with the original run's frozen parameters, as a new independent run. The original run is left unchanged as a record. |
+| `CANCEL` | The delivery has not settled | Requests the `CANCELLING` state without forcing it. A run with no infrastructure (a delivery awaiting a retry) is routed straight to `CANCELLED` by Prefect's orchestration; a running delivery is torn down by its worker. An in-flight HTTP request is not recalled, but no further attempts run. |
+
+The `available_actions` field on the task query reports each action with whether it currently applies and, when it does not, the reason. Selecting `available_actions` forces resolution of the run's workflow name, since the field is derived from it.
+
+`InfrahubTaskRetry` and `InfrahubTaskCancel` carry out the actions. Each loads the delivery through a query-only Prefect client (`DeliveryReader`), then authorizes it (`DeliveryActionAuthorizer`): the action must apply to the run's current state, and the caller must hold the `UPDATE` permission on the webhook's node kind. Loading is kept separate from authorization so the read uses the narrowest client capability it needs.
 
 ## Security
 
@@ -238,6 +251,7 @@ Three headers are added to signed requests:
 | Workflow | Type | Cron | Purpose |
 |----------|------|------|---------|
 | `WEBHOOK_PROCESS` | INTERNAL | — | Resolves the webhook, computes the payload, and invokes the `webhook_send` subflow on event match |
+| `WEBHOOK_SEND` | CORE | — | Resolves the webhook config, builds headers (with optional HMAC), and POSTs the payload; invoked as a subflow and re-submitted on retry |
 | `WEBHOOK_CONFIGURE` | INTERNAL | daily at 3 AM (random minute) | Unified webhook automation configuration (configure, delete, reconcile) |
 | `WEBHOOK_INVALIDATE_HEADERS` | INTERNAL | — | Invalidates cached webhook data when a referenced KeyValue header changes |
 
@@ -265,6 +279,8 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 | Gathering | `backend/infrahub/webhook/gather.py` |
 | Schema definitions | `backend/infrahub/core/schema/definitions/core/webhook.py` |
 | GraphQL mutations | `backend/infrahub/graphql/mutations/webhook.py` |
+| Delivery action generator | `backend/infrahub/graphql/queries/task_actions.py` |
+| Delivery retry/cancel mutations | `backend/infrahub/graphql/mutations/task.py` |
 | Workflow catalogue | `backend/infrahub/workflows/catalogue.py` |
 | KeyValue schema | `backend/infrahub/core/schema/definitions/core/key_value.py` |
 | Unit tests (models) | `backend/tests/unit/webhook/test_models.py` |
@@ -272,6 +288,8 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 | Unit tests (triggers) | `backend/tests/unit/webhook/test_triggers.py` |
 | Functional tests (configure) | `backend/tests/functional/webhook/test_configure.py` |
 | Functional tests (process) | `backend/tests/functional/webhook/test_process.py` |
+| Functional tests (retry) | `backend/tests/functional/webhook/test_retry.py` |
+| Functional tests (cancel) | `backend/tests/functional/webhook/test_cancel.py` |
 | Mutation tests | `backend/tests/component/graphql/mutations/test_webhook.py` |
 
 ## See Also
