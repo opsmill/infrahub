@@ -4,11 +4,20 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
+from prefect.client.schemas.filters import FlowFilter, FlowFilterName
+from prefect.client.schemas.objects import State, StateType
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.webhook.tasks import process
-from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_INVALIDATE_HEADERS, WEBHOOK_PROCESS, WORKER_POOLS
+from infrahub.workflows.catalogue import (
+    WEBHOOK_CONFIGURE,
+    WEBHOOK_INVALIDATE_HEADERS,
+    WEBHOOK_PROCESS,
+    WEBHOOK_SEND,
+    WORKER_POOLS,
+)
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -18,9 +27,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
+    from prefect.client.schemas.objects import FlowRun
 
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.task_manager.flow_run.prefect_client import FlowRunQuerying
 
 
 BRANCH_CREATED_PAYLOAD: dict[str, Any] = {
@@ -100,9 +111,28 @@ async def prefect_client(prefect_test_fixture: None) -> AsyncGenerator[PrefectCl
 
 
 @pytest.fixture(scope="class")
+def flow_run_querier(prefect_client: PrefectClient) -> FlowRunQuerying:
+    """A read-only view of the Prefect client, exposing only flow-run querying to tests."""
+    return PrefectClientAdapter(prefect_client)
+
+
+async def read_send_runs(querier: FlowRunQuerying) -> list[FlowRun]:
+    return await querier.read_flow_runs(flow_filter=FlowFilter(name=FlowFilterName(any_=["webhook-send"])))
+
+
+def only_new_run(runs: list[FlowRun], seen: set[str]) -> FlowRun:
+    # Other tests in the session leave their own webhook-send runs in the shared Prefect server, so a
+    # test must identify the delivery it just created rather than assume a clean slate.
+    new = [run for run in runs if str(run.id) not in seen]
+    assert len(new) == 1, f"expected exactly one new delivery, found {len(new)}"
+    return new[0]
+
+
+@pytest.fixture(scope="class")
 async def webhook_deployment(db: InfrahubDatabase, prefect_client: PrefectClient) -> None:
     await setup_worker_pools(client=prefect_client)
     await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+    await WEBHOOK_SEND.save(client=prefect_client, work_pool=WORKER_POOLS[0])
     await WEBHOOK_CONFIGURE.save(client=prefect_client, work_pool=WORKER_POOLS[0])
     await WEBHOOK_INVALIDATE_HEADERS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
 
@@ -121,6 +151,36 @@ async def webhook1(db: InfrahubDatabase, initial_dataset: None, client: Infrahub
     )
     await webhook.save(db=db)
     return webhook
+
+
+async def _create_send_run(prefect_client: PrefectClient, webhook: Node, state: State) -> FlowRun:
+    return await prefect_client.create_flow_run(
+        flow=process.webhook_send,
+        parameters={
+            "webhook_id": webhook.id,
+            "webhook_kind": InfrahubKind.STANDARDWEBHOOK,
+            "webhook_name": "Webhook1",
+            "payload": BRANCH_CREATED_PAYLOAD,
+            "branch_name": "main",
+        },
+        state=state,
+    )
+
+
+@pytest.fixture
+async def scheduled_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A webhook-send delivery parked in a non-terminal state with no infrastructure.
+
+    Stands in for a delivery still in progress or awaiting a retry, so action gating and
+    cancellation can be exercised without a worker driving the delivery to a terminal state.
+    """
+    return await _create_send_run(prefect_client, webhook1, State(type=StateType.SCHEDULED))
+
+
+@pytest.fixture
+async def settled_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A webhook-send delivery in a terminal state, eligible for retry."""
+    return await _create_send_run(prefect_client, webhook1, State(type=StateType.COMPLETED))
 
 
 @pytest.fixture(scope="class")

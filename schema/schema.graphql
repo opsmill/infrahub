@@ -8763,6 +8763,22 @@ type InfrahubRelationshipMetadata {
   updated_by: CoreGenericAccount
 }
 
+"""
+Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request.
+"""
+type InfrahubTaskCancel {
+  ok: Boolean
+  task: TaskInfo
+}
+
+"""
+Retry a settled delivery by replaying its frozen payload as a new, independent delivery.
+"""
+type InfrahubTaskRetry {
+  ok: Boolean
+  task: TaskInfo
+}
+
 """Token for User Account"""
 type InternalAccountToken implements CoreNode {
   account: NestedEdgedCoreGenericAccount!
@@ -9683,6 +9699,14 @@ type Mutation {
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
   InfrahubRepositoryProcess(data: IdentifierInput!): ProcessRepository
+  """
+  Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request.
+  """
+  InfrahubTaskCancel(data: TaskActionInput!): InfrahubTaskCancel
+  """
+  Retry a settled delivery by replaying its frozen payload as a new, independent delivery.
+  """
+  InfrahubTaskRetry(data: TaskActionInput!): InfrahubTaskRetry
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
   InfrahubUpdateDisplayLabel(context: ContextInput, data: InfrahubDisplayLabelUpdateInput!): UpdateDisplayLabel
   InfrahubUpdateHFID(context: ContextInput, data: InfrahubHFIDUpdateInput!): UpdateHFID
@@ -25924,6 +25948,10 @@ type TaskAction {
   action: TaskActionType!
   available: Boolean!
   unavailability_reason: String
+}
+
+input TaskActionInput {
+  id: String!
 }
 
 """Recovery actions a task run can expose."""
