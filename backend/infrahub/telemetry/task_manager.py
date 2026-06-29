@@ -133,13 +133,16 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
             state=FlowRunFilterState(type=FlowRunFilterStateType(any_=states)),
         )
 
-    success_runs = await client.read_flow_runs(
+    # Count server-side rather than reading run objects: read_flow_runs caps at the server
+    # default page size (PREFECT_API_DEFAULT_LIMIT), which would silently undercount a busy
+    # deployment's daily webhook volume. count_flow_runs returns an exact, unpaginated total.
+    success = await client.count_flow_runs(
         flow_filter=flow_filter, flow_run_filter=runs_in_states([StateType.COMPLETED])
     )
-    failure_runs = await client.read_flow_runs(
+    failure = await client.count_flow_runs(
         flow_filter=flow_filter, flow_run_filter=runs_in_states(WEBHOOK_FAILURE_STATES)
     )
-    return len(success_runs), len(failure_runs)
+    return success, failure
 
 
 @task(name="telemetry-gather-activity-24h", task_run_name="Gather 24h Activity", cache_policy=NONE)

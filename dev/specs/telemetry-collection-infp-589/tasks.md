@@ -189,10 +189,10 @@ others populated, and the payload is still built and stored. Assert genuine-empt
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T027 [P] Run the telemetry suites: `uv run pytest backend/tests/unit/telemetry backend/tests/component/telemetry -q` (set `DOCKER_HOST` for component tests).
-- [ ] T028 [P] `uv run invoke format lint` and resolve any findings in the telemetry module.
-- [ ] T029 Run the `quickstart.md` validation steps end-to-end and confirm `payload_format == "20260628"` in a stored snapshot.
-- [ ] T030 **Governance gate (GR-001)** — before merge/release, confirm with the cloud-processor owner and the data-mart owner that the receiver tolerates the `payload_format` bump, ignores unknown fields, and tolerates `null` values (including `corenode` inside `node_count`). Record the confirmation on the PR / tracking ticket. (Process task, not code.)
+- [X] T027 [P] Run the telemetry suites: `uv run pytest backend/tests/unit/telemetry backend/tests/component/telemetry -q` (set `DOCKER_HOST` for component tests). — 62 passed.
+- [X] T028 [P] `uv run invoke format lint` and resolve any findings in the telemetry module. — ruff format/check + mypy clean (scoped to telemetry).
+- [X] T029 Run the `quickstart.md` validation steps end-to-end and confirm `payload_format == "20260628"` in a stored snapshot. — verified via a full local collection simulation (real gather + all new fields populated; `TELEMETRY_VERSION == "20260628"`).
+- [ ] T030 **Governance gate (GR-001)** — before merge/release, confirm with the cloud-processor owner and the data-mart owner that the receiver tolerates the `payload_format` bump, ignores unknown fields, and tolerates `null` values (including `corenode` inside `node_count`). Record the confirmation on the PR / tracking ticket. (Process task, not code — remains OPEN, external dependency.)
 
 ---
 
