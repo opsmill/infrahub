@@ -1,11 +1,12 @@
-"""End-to-end correctness of the coalesced merge recompute.
+"""End-to-end correctness of the coalesced merge and rebase recompute.
 
-After a real merge, every derived value that depends on the merged change must equal a from-scratch
-recompute, with no stale value left behind. The decisive case is a reader created on the destination
-branch after the fork: the source branch never saw it, so the branch's own recompute cannot refresh
-it, and only the coalesced post-merge recompute can. The computed attribute and display label read
-the peer across the relationship and must refresh; the human-friendly id reads only the local name
-and must not change when a related node changes.
+After a real merge or rebase, every derived value that depends on the change must equal a
+from-scratch recompute, with no stale value left behind. The decisive case is a reader that exists
+only on the branch the recompute runs on (the destination for a merge, the user branch for a
+rebase): the other branch never saw it, so its recompute cannot refresh the reader, and only the
+coalesced post-operation recompute can. The computed attribute and display label read the peer
+across the relationship and must refresh; the human-friendly id reads only the local name and must
+not change when a related node changes.
 """
 
 from __future__ import annotations
@@ -97,3 +98,44 @@ class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
         # The human-friendly id reads only the local name, so the peer change must leave it unchanged.
         assert final_node1.hfid == ["node1"]
         assert final_node2.hfid == ["node2"]
+
+    async def test_rebase_recomputes_user_branch_only_reader(
+        self, client: InfrahubClient, profile_schema: dict
+    ) -> None:
+        await client.schema.load(schemas=[profile_schema], wait_until_converged=True)
+
+        peer = await client.create(kind=PROFILE_PEER_KIND, data={"name": "ralpha"})
+        await peer.save()
+
+        branch = await client.branch.create(branch_name="coalesce-rebase-correctness")
+
+        # Change the peer on the default branch; the rebase replays this onto the user branch.
+        peer.name.value = "romega"
+        await peer.save()
+
+        # A reader created only on the user branch. The default branch never sees it, so the
+        # default's recompute cannot refresh it; only the coalesced rebase recompute can.
+        node = await client.create(
+            kind=PROFILE_NODE_KIND, data={"name": "rnode", "peer": peer}, branch=branch.name
+        )
+        await node.save()
+
+        async def _node_initial() -> bool:
+            refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id, branch=branch.name)
+            return refreshed.summary.value == "rnode on ralpha"
+
+        await _wait_until(_node_initial)
+
+        await client.branch.rebase(branch_name=branch.name)
+
+        async def _node_recomputed() -> bool:
+            refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id, branch=branch.name)
+            return refreshed.summary.value == "rnode on romega"
+
+        await _wait_until(_node_recomputed)
+
+        final = await client.get(kind=PROFILE_NODE_KIND, id=node.id, branch=branch.name)
+        # The rebase recomputes on the user branch: the user-branch-only reader refreshes.
+        assert final.summary.value == "rnode on romega"
+        assert final.display_label == "rnode via romega"
+        assert final.hfid == ["rnode"]

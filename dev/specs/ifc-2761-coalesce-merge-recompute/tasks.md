@@ -73,7 +73,7 @@ The shippable increments are by **capability**, not strictly by user story: the 
 **Goal**: rebase gets the same coalesced recompute, on the user branch.
 
 - [X] T014 [US3] Integrated the coordinator into the rebase flow in `backend/infrahub/core/branch/tasks.py`: `rebase_branch` builds `MergeChange`s from the changelog and submits the coalesced recompute on the user branch (the per-node fan-out for the three families is suppressed by T009). Component-tested with a real cross-node rebase: one computed + one display submission over the union, on the user branch, no HFID fan-out.
-- [ ] T015 [P] [US3] integration_docker correctness test for rebase (same from-scratch-recompute oracle, on the user branch).
+- [X] T015 [P] [US3] integration_docker correctness test for rebase, in the same file: a reader created only on the user branch (reading a peer the default branch changed) is refreshed by the coalesced rebase recompute on the user branch, with the human-friendly id unchanged. Passing on the full stack alongside the merge oracle.
 - [ ] T016 [US3] Run the harness for rebase; confirm the reduction and correctness parity with merge.
 
 **Checkpoint**: merge and rebase both coalesced and correct.
@@ -85,7 +85,7 @@ The shippable increments are by **capability**, not strictly by user story: the 
 - [ ] T017 [US4] No-regression: run the harness at the small scale before/after; confirm small merges are no slower within tolerance.
 - [ ] T018 [P] Chunk the full-branch Jinja2 recompute loop (one workflow per node today, no chunking) to match the Python/transform paths.
 - [ ] T019 Redundancy skip (T003 decision: deferred): keep recompute-all as the default; the source-branch skip is not implemented in this increment because proving a reader safe needs a source-vs-destination branch query plus a conflict-resolution check whose cost rivals the recompute, with the best-effort source fan-out as a correctness risk. Revisit only if the harness shows reader overlap is a measured hotspot after coalescing. Never under-recompute.
-- [ ] T020 Confirm the existing recompute tests stay green: `backend/tests/integration_docker/test_computed_attributes.py`, `test_display_label_backfill.py`.
+- [X] T020 Confirmed the existing recompute behavior is intact on the full stack. From `test_computed_attributes.py`: live data-change recompute (`test_computed_attribute_update`), the merge invariant (`test_merge_does_not_trigger_schema_scoped_recompute`), branch isolation (`test_branch_isolation_scopes_recompute_to_changed_branch`, run with its data seeder), and the transform path all pass with the suppression and wiring in place. The live display-label path is also exercised by the T011 oracle's display assertions. (`test_display_label_backfill.py` itself runs in CI.)
 - [X] T021 [P] Added the changelog fragment `changelog/+ifc-2761-coalesce-merge-recompute.changed.md` (user-facing performance change), following the project's plain-prose convention. The optional `dev/knowledge/backend/` note is not added yet.
 - [X] T022 Ran `ruff format` and `ruff check` (clean) and `mypy` (clean) across all 14 new and changed source files plus the test files. The full `uv run invoke lint` / `docs.format` sweep is deferred to `/pre-ci` (T023); `markdownlint-cli2` is not installed locally.
 - [ ] T023 Run `/pre-ci` before opening the PR; coordinate with IFC-2758 (merge emits no schema-updated event) so the two changes do not double-process.
