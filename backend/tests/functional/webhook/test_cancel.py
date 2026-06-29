@@ -6,6 +6,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from infrahub_sdk.graphql import Mutation
+from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterId
 from prefect.client.schemas.objects import StateType
 
 from infrahub.core.constants import InfrahubKind
@@ -49,10 +50,10 @@ class TestWebhookCancel(TestInfrahubApp):
         assert result["InfrahubTaskCancel"]["ok"] is True
 
         # A delivery with no running infrastructure has its cancellation routed to a terminal state.
-        settled = next(
-            run for run in await read_send_runs(flow_run_querier) if str(run.id) == str(scheduled_send_run.id)
+        settled = await flow_run_querier.read_flow_runs(
+            flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=[scheduled_send_run.id]))
         )
-        assert settled.state_type == StateType.CANCELLED
+        assert settled[0].state_type == StateType.CANCELLED
 
     async def test_cancel_settled_delivery_is_rejected(
         self,

@@ -6,6 +6,7 @@ import pytest
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.filters import FlowFilter, FlowFilterName
 from prefect.client.schemas.objects import State, StateType
+from prefect.client.schemas.sorting import FlowRunSort
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -117,7 +118,13 @@ def flow_run_querier(prefect_client: PrefectClient) -> FlowRunQuerying:
 
 
 async def read_send_runs(querier: FlowRunQuerying) -> list[FlowRun]:
-    return await querier.read_flow_runs(flow_filter=FlowFilter(name=FlowFilterName(any_=["webhook-send"])))
+    # The session-scoped Prefect server accumulates webhook-send runs across the suite, and an
+    # unfiltered read is capped at the server's default page size. Sorting newest-first keeps a run
+    # a test just created within the returned page.
+    return await querier.read_flow_runs(
+        flow_filter=FlowFilter(name=FlowFilterName(any_=["webhook-send"])),
+        sort=FlowRunSort.EXPECTED_START_TIME_DESC,
+    )
 
 
 def only_new_run(runs: list[FlowRun], seen: set[str]) -> FlowRun:
