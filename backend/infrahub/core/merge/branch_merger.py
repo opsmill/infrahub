@@ -63,6 +63,7 @@ class BranchMerger:
         self._source_schema: SchemaBranch | None = None
         self._destination_schema: SchemaBranch | None = None
         self._initial_source_schema: SchemaBranch | None = None
+        self._has_schema_changes: bool | None = None
 
         self._workflow = workflow
 
@@ -111,15 +112,18 @@ class BranchMerger:
         return self._initial_source_schema
 
     async def has_schema_changes(self) -> bool:
+        if self._has_schema_changes is not None:
+            return self._has_schema_changes
         diff_summary = await self.diff_repository.summary(
             base_branch_name=self.destination_branch.name,
             diff_branch_names=[self.source_branch.name],
             tracking_id=BranchTrackingId(name=self.source_branch.name),
             filters={"kind": {"includes": ["SchemaNode", "SchemaAttribute", "SchemaRelationship"]}},
         )
-        if not diff_summary:
-            return False
-        return bool(diff_summary.num_added or diff_summary.num_removed or diff_summary.num_updated)
+        self._has_schema_changes = bool(
+            diff_summary and (diff_summary.num_added or diff_summary.num_removed or diff_summary.num_updated)
+        )
+        return self._has_schema_changes
 
     def get_candidate_schema(self) -> SchemaBranch:
         # For now, we retrieve the latest schema for each branch from the registry
@@ -220,10 +224,10 @@ class BranchMerger:
 
         """
         candidate_schema = self.get_candidate_schema()
+        # Gate on the freshly-recomputed diff (same check the migration calculation uses) rather than
+        # the branch's cached schema-hash flag, so a schema change is never missed at merge time.
         schema_diff_constraints = (
-            await self.calculate_validations(target_schema=candidate_schema)
-            if self.source_branch.has_schema_changes
-            else []
+            await self.calculate_validations(target_schema=candidate_schema) if await self.has_schema_changes() else []
         )
         result = await self.constraint_validator.validate(
             candidate_schema=candidate_schema, schema_diff_constraints=schema_diff_constraints
