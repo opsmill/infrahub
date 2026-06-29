@@ -35,16 +35,21 @@ The changed-node set collapses to a few signatures. Derive affected targets **pe
 
 ```python
 @dataclass(frozen=True)
+class ReaderLookup:
+    filter_key: str                  # "ids" for self/creation; "<relationship>__ids" for cross-node
+    source_node_ids: frozenset[str]  # the changed node ids this filter runs over
+
+@dataclass(frozen=True)
 class AffectedTarget:
     family: str                 # "computed_attribute" | "display_label" | "hfid"
     target_kind: str
     attribute_name: str | None  # set for computed attributes; None for display label / hfid
-    reads_across_relationship: bool   # True only when an async peer trigger exists for this target
-    node_filter: object         # how to find the reader nodes (reuse the deriver/facade filter type)
-    precise: bool               # False when produced by the bounded fallback (research R8)
+    reads_across_relationship: bool   # True when any reader lookup crosses a relationship
+    reader_lookups: frozenset[ReaderLookup]   # union of every way the change set reaches this target
+    precise: bool = True        # False when produced by the bounded fallback (research R8)
 ```
 
-`reads_across_relationship` captures the per-family difference the code analysis flagged: a self-only HFID has no peer trigger and is not in the cross-node set; a peer-reading display label is. The coordinator does not apply one rule across families.
+`reads_across_relationship` captures the per-family difference the code analysis flagged: a self-only HFID has no peer trigger and is not in the cross-node set; a peer-reading display label is. The coordinator does not apply one rule across families. `reader_lookups` is what makes the reader query a single union per family: the dedup merges every change reaching a target into one set of `(filter_key, source_node_ids)` pairs, so submission resolves readers once instead of per changed node.
 
 ### `CoalescedRecompute` (the deduplicated work the operation submits)
 
@@ -53,7 +58,10 @@ class AffectedTarget:
 class CoalescedRecompute:
     branch: str                 # destination branch for merge; user branch for rebase (FR-014)
     targets: frozenset[AffectedTarget]   # deduplicated across all changes and families
-    fallback_used: bool                  # any AffectedTarget with precise=False
+
+    @property
+    def fallback_used(self) -> bool:     # any AffectedTarget with precise=False
+        ...
 ```
 
 `branch` carries the per-operation difference (merge → destination, rebase → user). `targets` is the union over all changes, deduplicated, so a derived value is recomputed at most once (FR-003), with reader node ids resolved by one query over the union (no per-target re-query, Constitution V).
