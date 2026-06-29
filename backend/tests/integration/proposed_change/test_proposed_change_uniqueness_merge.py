@@ -240,12 +240,16 @@ class TestProposedChangeDataConflictMerge(TestInfrahubApp):
         await tag.save(db=db)
 
         branch_one = await client.branch.create(branch_name="edit_desc_one")
-        tag_one = await NodeManager.get_one(db=db, id=tag.id, branch=branch_one.name, kind=BuiltinTag, raise_on_error=True)
+        tag_one = await NodeManager.get_one(
+            db=db, id=tag.id, branch=branch_one.name, kind=BuiltinTag, raise_on_error=True
+        )
         tag_one.description.value = "from_one"
         await tag_one.save(db=db)
 
         branch_two = await client.branch.create(branch_name="edit_desc_two")
-        tag_two = await NodeManager.get_one(db=db, id=tag.id, branch=branch_two.name, kind=BuiltinTag, raise_on_error=True)
+        tag_two = await NodeManager.get_one(
+            db=db, id=tag.id, branch=branch_two.name, kind=BuiltinTag, raise_on_error=True
+        )
         tag_two.description.value = "from_two"
         await tag_two.save(db=db)
 
@@ -327,12 +331,16 @@ class TestProposedChangeDataConflictMergeBackstop(TestInfrahubApp):
         await tag.save(db=db)
 
         branch_one = await client.branch.create(branch_name="backstop_desc_one")
-        tag_one = await NodeManager.get_one(db=db, id=tag.id, branch=branch_one.name, kind=BuiltinTag, raise_on_error=True)
+        tag_one = await NodeManager.get_one(
+            db=db, id=tag.id, branch=branch_one.name, kind=BuiltinTag, raise_on_error=True
+        )
         tag_one.description.value = "from_one"
         await tag_one.save(db=db)
 
         branch_two = await client.branch.create(branch_name="backstop_desc_two")
-        tag_two = await NodeManager.get_one(db=db, id=tag.id, branch=branch_two.name, kind=BuiltinTag, raise_on_error=True)
+        tag_two = await NodeManager.get_one(
+            db=db, id=tag.id, branch=branch_two.name, kind=BuiltinTag, raise_on_error=True
+        )
         tag_two.description.value = "from_two"
         await tag_two.save(db=db)
 
