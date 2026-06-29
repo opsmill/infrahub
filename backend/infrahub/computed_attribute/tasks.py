@@ -300,11 +300,12 @@ async def computed_attribute_jinja2_update_value(
 async def process_jinja2(
     branch_name: str,
     node_kind: str,
-    object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
     context: EventContext,
+    object_id: str | None = None,
     updated_fields: list[str] | None = None,
+    object_ids: list[str] | None = None,
 ) -> None:
     """Recompute a single Jinja2 computed attribute in response to a node mutation.
 
@@ -324,6 +325,13 @@ async def process_jinja2(
     """
     log = get_run_logger()
     client = get_client()
+
+    # The live trigger passes a single object_id; the coalesced merge/rebase recompute passes the
+    # union of changed node ids. Both feed the same relationship filter.
+    filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
+    if not filter_id:
+        log.debug("No object id provided for computed attribute recompute")
+        return
 
     await add_tags(branches=[branch_name])
     updates: list[str] = updated_fields or []
@@ -353,7 +361,7 @@ async def process_jinja2(
         )
 
         for id_filter in resolved.node_filters:
-            query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=object_id)
+            query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=filter_id)
             try:
                 response = await client.execute_graphql(query=query, branch_name=branch_name)
             except URLNotFoundError:

@@ -35,8 +35,8 @@ def _by_identity(result: CoalescedRecompute) -> dict[tuple[str, str, str | None]
     return {(target.family, target.target_kind, target.attribute_name): target for target in result.targets}
 
 
-def _lookups(target: AffectedTarget) -> set[tuple[str, frozenset[str]]]:
-    return {(lookup.filter_key, lookup.source_node_ids) for lookup in target.reader_lookups}
+def _lookups(target: AffectedTarget) -> set[tuple[str, str, frozenset[str]]]:
+    return {(lookup.source_kind, lookup.filter_key, lookup.source_node_ids) for lookup in target.reader_lookups}
 
 
 async def _profile_schema_branch(db: InfrahubDatabase) -> SchemaBranch:
@@ -66,7 +66,7 @@ async def test_cross_node_update_coalesces_readers(
     }
     for target in by_identity.values():
         assert target.reads_across_relationship is True
-        assert _lookups(target) == {("peer__ids", frozenset(peer_ids))}
+        assert _lookups(target) == {(PROFILE_PEER_KIND, "peer__ids", frozenset(peer_ids))}
     assert result.fallback_used is False
 
 
@@ -108,7 +108,7 @@ async def test_creation_fans_out_to_all_families(
     }
     for target in by_identity.values():
         assert target.reads_across_relationship is False
-        assert _lookups(target) == {("ids", frozenset({"node-new"}))}
+        assert _lookups(target) == {(PROFILE_NODE_KIND, "ids", frozenset({"node-new"}))}
 
 
 async def test_deleted_node_refreshes_readers(
@@ -128,7 +128,7 @@ async def test_deleted_node_refreshes_readers(
         (DISPLAY_LABEL, PROFILE_NODE_KIND, None),
     }
     for target in by_identity.values():
-        assert _lookups(target) == {("peer__ids", frozenset({"peer-gone"}))}
+        assert _lookups(target) == {(PROFILE_PEER_KIND, "peer__ids", frozenset({"peer-gone"}))}
 
 
 async def test_hfid_does_not_fan_out_on_related_change(
@@ -162,7 +162,7 @@ async def test_changes_to_same_target_are_deduplicated(
     result = build_coalesced_recompute(changes=changes, schema_branch=schema_branch, branch="main")
 
     computed = _by_identity(result)[COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"]
-    assert _lookups(computed) == {("peer__ids", frozenset({"peer-0", "peer-1"}))}
+    assert _lookups(computed) == {(PROFILE_PEER_KIND, "peer__ids", frozenset({"peer-0", "peer-1"}))}
 
 
 async def test_update_without_fields_is_a_bounded_fallback(

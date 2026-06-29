@@ -36,8 +36,9 @@ The changed-node set collapses to a few signatures. Derive affected targets **pe
 ```python
 @dataclass(frozen=True)
 class ReaderLookup:
+    source_kind: str                 # changed node kind; the process flow resolves the relationship from it
     filter_key: str                  # "ids" for self/creation; "<relationship>__ids" for cross-node
-    source_node_ids: frozenset[str]  # the changed node ids this filter runs over
+    source_node_ids: frozenset[str]  # the changed node ids this lookup runs over
 
 @dataclass(frozen=True)
 class AffectedTarget:
@@ -65,6 +66,22 @@ class CoalescedRecompute:
 ```
 
 `branch` carries the per-operation difference (merge → destination, rebase → user). `targets` is the union over all changes, deduplicated, so a derived value is recomputed at most once (FR-003), with reader node ids resolved by one query over the union (no per-target re-query, Constitution V).
+
+### `CoalescedSubmission` (one reuse of an existing per-family process flow)
+
+```python
+@dataclass(frozen=True)
+class CoalescedSubmission:
+    family: str
+    source_kind: str            # passed as the process flow's node_kind
+    target_kind: str
+    attribute_name: str | None
+    filter_key: str
+    branch: str
+    node_ids: tuple[str, ...]   # the union of changed node ids, sorted for determinism
+```
+
+`plan_coalesced_submissions(coalesced)` flattens the targets into one submission per `(family, target, source_kind)`, ordered deterministically. `submit_coalesced_recompute(...)` runs each through the existing per-family process flow (`computed_attribute_process_jinja2` / `display-label-process-jinja2` / `hfid-process`) over `node_ids` (the flows gained an `object_ids` union parameter, leaving the live single-id path unchanged), so the merge and rebase path submits one flow per affected derived value rather than one per changed node.
 
 ## Deriver inputs (what the display/HFID deriver reads)
 
