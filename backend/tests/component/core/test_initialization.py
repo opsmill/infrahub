@@ -14,9 +14,7 @@ async def test_first_time_initialization(db: InfrahubDatabase, default_branch: B
     assert True
 
 
-async def test_first_time_initialization_seeds_global_preference(
-    db: InfrahubDatabase, default_branch: Branch
-) -> None:
+async def test_first_time_initialization_seeds_global_preference(db: InfrahubDatabase, default_branch: Branch) -> None:
     """A fresh install seeds exactly one GlobalPreference singleton.
 
     This keeps the effective-preferences read path lock-free on new installs (the lazy

@@ -27,9 +27,7 @@ async def test_global_preference_get_global_lazy_create(db: InfrahubDatabase, de
     assert len(await GlobalPreference.get_list(db=db)) == 1
 
 
-async def test_global_preference_get_global_idempotent_under_lock(
-    db: InfrahubDatabase, default_branch: Branch
-) -> None:
+async def test_global_preference_get_global_idempotent_under_lock(db: InfrahubDatabase, default_branch: Branch) -> None:
     """Repeated get_global calls when none exists still yield exactly one row.
 
     get_global runs on every effective-preferences READ, so the lazy-create path must be
