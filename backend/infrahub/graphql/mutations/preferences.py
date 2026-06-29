@@ -146,7 +146,7 @@ class InfrahubUserPreferenceMutation(InfrahubMutation):
         if not schema.human_friendly_id and schema.default_filter is not None:
             node = await node_getter_default_filter.get_node(node_schema=schema, data=data, branch=branch)
         if "hfid" in data:
-            node = await NodeManager.get_one_by_hfid(db=db, hfid=dict(data)["hfid"], kind=schema.kind, branch=branch)
+            node = await NodeManager.get_one_by_hfid(db=db, hfid=data["hfid"], kind=schema.kind, branch=branch)
         if node is not None:
             return node
 
