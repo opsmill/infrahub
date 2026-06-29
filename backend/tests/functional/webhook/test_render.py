@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterId
 from prefect.events.schemas.events import Event, Resource
+from prefect.types import DateTime
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -68,6 +70,7 @@ class TestWebhookRender(TestInfrahubApp):
         event = Event(
             id=uuid4(),
             event="infrahub.node.created",
+            occurred=DateTime(2026, 1, 1, tzinfo=UTC),
             payload={"data": {"node_id": "abc"}, "context": {}},
             resource=Resource({"prefect.resource.id": "infrahub.account.xyz"}),
         )
