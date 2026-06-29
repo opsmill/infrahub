@@ -38,7 +38,6 @@ from .mutations.ipam import (
 )
 from .mutations.main import InfrahubMutation
 from .mutations.menu import InfrahubCoreMenuMutation
-from .mutations.preferences import InfrahubGlobalPreferenceMutation, InfrahubUserPreferenceMutation
 from .mutations.proposed_change import InfrahubProposedChangeMutation
 from .mutations.repository import InfrahubRepositoryMutation
 from .mutations.resource_manager import (
@@ -555,8 +554,6 @@ class GraphQLSchemaManager:
                 InfrahubKind.NODETRIGGERRULE: InfrahubTriggerRuleMutation,
                 InfrahubKind.NODETRIGGERATTRIBUTEMATCH: InfrahubTriggerRuleMatchMutation,
                 InfrahubKind.NODETRIGGERRELATIONSHIPMATCH: InfrahubTriggerRuleMatchMutation,
-                InfrahubKind.GLOBALPREFERENCE: InfrahubGlobalPreferenceMutation,
-                InfrahubKind.USERPREFERENCE: InfrahubUserPreferenceMutation,
             }
 
             if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix:

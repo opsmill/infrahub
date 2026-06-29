@@ -435,11 +435,6 @@ class CoreGlobalPermission(CoreBasePermission):
     decision: Enum
 
 
-class CoreGlobalPreference(CoreNode):
-    date_format: StringOptional
-    timezone: StringOptional
-
-
 class CoreGraphQLQuery(CoreNode):
     name: String
     description: StringOptional
@@ -602,12 +597,6 @@ class CoreTransformPython(CoreTransformation):
     file_path: String
     class_name: String
     convert_query_response: BooleanOptional
-
-
-class CoreUserPreference(CoreNode):
-    date_format: StringOptional
-    timezone: StringOptional
-    account: RelationshipManager[CoreGenericAccount]
 
 
 class CoreUserValidator(CoreValidator):

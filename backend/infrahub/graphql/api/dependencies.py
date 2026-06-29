@@ -7,7 +7,6 @@ from ..auth.query_permission_checker.default_branch_checker import DefaultBranch
 from ..auth.query_permission_checker.merge_operation_checker import MergeBranchPermissionChecker
 from ..auth.query_permission_checker.object_permission_checker import (
     AccountManagerPermissionChecker,
-    GlobalPreferenceManagerPermissionChecker,
     ObjectPermissionChecker,
     PermissionManagerPermissionChecker,
     RepositoryManagerPermissionChecker,
@@ -31,7 +30,6 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
             MergeBranchPermissionChecker(),
             RebaseBranchPermissionChecker(),
             AccountManagerPermissionChecker(),
-            GlobalPreferenceManagerPermissionChecker(),
             RepositoryManagerPermissionChecker(),
             PermissionManagerPermissionChecker(),
             ObjectPermissionChecker(),
