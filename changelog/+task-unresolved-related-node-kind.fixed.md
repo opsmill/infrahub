@@ -1,0 +1,1 @@
+Task and flow run views no longer fail to load when a related node's kind cannot be resolved. The task manager labels an unresolvable tagged node with a placeholder kind so the run still lists, and the web UI skips querying a kind that is absent from the schema, showing a fallback instead.

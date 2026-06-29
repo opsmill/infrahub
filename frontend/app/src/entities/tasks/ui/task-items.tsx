@@ -1,3 +1,4 @@
+import { useAtomValue } from "jotai";
 import { useLocation } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -17,6 +18,7 @@ import useFilters from "@/shared/hooks/useFilters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/ui/queries/get-task-list.query";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
@@ -30,6 +32,7 @@ interface TaskItemsProps {
 export function TaskItems({ relatedNodeId }: TaskItemsProps) {
   const location = useLocation();
   const [filters] = useFilters();
+  const schemaKindName = useAtomValue(schemaKindNameState);
 
   const search = filters.find((filter) => filter.name === SEARCH_ANY_FILTER)?.value;
   const branchName = filters.find((filter) => filter.name === "branch__value")?.value;
@@ -132,6 +135,21 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
 
                 if (!item.id || !item.kind) return null;
 
+                const idDisplay = (
+                  <Id
+                    id={item.id}
+                    kind={item.kind}
+                    branch={task.branch}
+                    date={new Date(task.updated_at)}
+                    preventCopy
+                  />
+                );
+
+                // An unresolvable kind has no object page to link to.
+                if (!(item.kind in schemaKindName)) {
+                  return <span key={item.id}>{idDisplay}</span>;
+                }
+
                 return (
                   <Link
                     key={item.id}
@@ -139,13 +157,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
                       { name: QSP.BRANCH, value: task.branch },
                     ])}
                   >
-                    <Id
-                      id={item.id}
-                      kind={item.kind}
-                      branch={task.branch}
-                      date={new Date(task.updated_at)}
-                      preventCopy
-                    />
+                    {idDisplay}
                   </Link>
                 );
               }}

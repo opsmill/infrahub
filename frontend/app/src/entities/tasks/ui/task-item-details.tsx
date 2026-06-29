@@ -1,3 +1,4 @@
+import { useAtomValue } from "jotai";
 import React from "react";
 import { useParams } from "react-router";
 
@@ -13,6 +14,7 @@ import { Link } from "@/shared/components/ui/link";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useGetTaskDetails } from "@/entities/tasks/ui/queries/get-task-details.query";
 
 import { Logs, type tLog } from "./logs";
@@ -35,6 +37,7 @@ interface TaskItemDetailsProps {
 
 export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
   const [search, setSearch] = React.useState("");
+  const schemaKindName = useAtomValue(schemaKindNameState);
 
   const { taskId } = useParams();
   const ids = taskId ? [taskId] : undefined;
@@ -100,6 +103,21 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
 
             if (!item.id || !item.kind) return null;
 
+            const idDisplay = (
+              <Id
+                id={item.id}
+                kind={item.kind}
+                branch={object.branch ?? undefined}
+                date={new Date(object.updated_at)}
+                preventCopy
+              />
+            );
+
+            // An unresolvable kind has no object page to link to.
+            if (!(item.kind in schemaKindName)) {
+              return <span key={item.id}>{idDisplay}</span>;
+            }
+
             return (
               <Link
                 key={item.id}
@@ -107,13 +125,7 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
                   { name: QSP.BRANCH, value: object.branch ?? undefined },
                 ])}
               >
-                <Id
-                  id={item.id}
-                  kind={item.kind}
-                  branch={object.branch ?? undefined}
-                  date={new Date(object.updated_at)}
-                  preventCopy
-                />
+                {idDisplay}
               </Link>
             );
           }}
