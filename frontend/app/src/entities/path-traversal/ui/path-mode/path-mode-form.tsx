@@ -1,6 +1,7 @@
 import { Button } from "@infrahub/ui";
 import type { UseFormReturn } from "react-hook-form";
 
+import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
 import {
   Accordion,
@@ -169,6 +170,27 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                   placeholder="Select kinds to exclude..."
                   filter={isVisibleNamespace}
                 />
+              )}
+            />
+
+            <FormField
+              name="shortestPathsOnly"
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <FormInput>
+                      <Checkbox
+                        checked={Boolean(field.value)}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                    </FormInput>
+                    <FormLabel className="cursor-pointer">Shortest paths only</FormLabel>
+                  </div>
+                  <p className="text-gray-500 text-xs">
+                    Only return the shortest path through each intermediate object. Uncheck to
+                    return all loopless paths within the max depth.
+                  </p>
+                </div>
               )}
             />
           </AccordionContent>

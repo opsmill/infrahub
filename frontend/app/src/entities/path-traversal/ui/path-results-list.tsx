@@ -1,5 +1,7 @@
 import { Button } from "@infrahub/ui";
 import { Command } from "cmdk";
+import { TriangleAlertIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
@@ -36,6 +38,8 @@ const VARIANT_CLASSES: Record<
 type PathResultsListProps = {
   paths: PathResult[];
   countLabel: string;
+  /** Optional warning shown as a banner directly under the count header. */
+  warning?: ReactNode;
   selectedIndex: number;
   onSelect: (index: number) => void;
   variant: Variant;
@@ -50,6 +54,7 @@ type PathResultsListProps = {
 export function PathResultsList({
   paths,
   countLabel,
+  warning,
   selectedIndex,
   onSelect,
   variant,
@@ -80,6 +85,13 @@ export function PathResultsList({
           </Tooltip>
         )}
       </div>
+
+      {warning && (
+        <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-800 text-xs">
+          <TriangleAlertIcon className="mt-px size-4 shrink-0 text-amber-500" aria-hidden="true" />
+          <div>{warning}</div>
+        </div>
+      )}
 
       {paths.length > 0 ? (
         <Command
