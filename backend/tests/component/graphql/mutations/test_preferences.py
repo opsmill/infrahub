@@ -278,6 +278,39 @@ class TestUserPreferenceOwnerScoping:
         assert owner is not None
         assert owner.id == first_account.id
 
+    async def test_non_owner_lazy_upsert_with_foreign_account_peer_denied(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: None,
+        default_permission_backend: None,
+        first_account: Node,
+        second_account: Node,
+        session_first_account: AccountSession,
+    ) -> None:
+        """Ownership-contract guard: the id-less account-peer resolution path must validate the owner.
+
+        Together with test_non_owner_upsert_with_id_of_other_row_denied (explicit foreign id) this
+        locks ownership on every _resolve_existing_node path. If a future change lets the account
+        uniqueness-key lookup skip _validate_row_owner, this fails loudly.
+        """
+        default_branch.update_schema_hash()
+        other_row = await _create_user_preference(db=db, account=second_account, date_format="relative")
+
+        result = await _run_mutation(
+            db=db,
+            branch=default_branch,
+            account_session=session_first_account,
+            query=USER_PREFERENCE_UPSERT,
+            variables={"account_id": second_account.id, "date_format": "yyyy-MM-dd"},
+        )
+
+        assert result.errors
+        assert any("preferences of another account" in str(error) for error in result.errors)
+
+        unchanged = await NodeManager.get_one(db=db, id=other_row.id)
+        assert unchanged.date_format.value == "relative"
+
     async def test_non_owner_cannot_create_for_other_account(
         self,
         db: InfrahubDatabase,
