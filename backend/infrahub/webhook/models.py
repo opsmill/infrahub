@@ -252,6 +252,18 @@ class Webhook(BaseModel):
         return {"data": data, **context.model_dump()}
 
     def _build_headers(self, payload: Any, uuid: UUID | None = None, at: Timestamp | None = None) -> dict[str, Any]:
+        """Build the request headers, resolving each configured custom header.
+
+        A header whose value cannot be resolved (for example an environment-sourced header whose
+        variable is unset) fails the delivery rather than being silently dropped, so the
+        misconfiguration surfaces as a clear configuration error instead of sending a partial or
+        unauthenticated request.
+
+        Raises:
+            WebhookHeaderResolutionError: When a configured header cannot be resolved; the message
+                names the webhook and the header so the operator knows what to reconfigure.
+
+        """
         headers: dict[str, Any] = {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -269,7 +281,9 @@ class Webhook(BaseModel):
             try:
                 headers[header.key] = header.resolve()
             except WebhookHeaderResolutionError as exc:
-                logger.warning("Webhook '%s': %s, skipping header '%s'", self.name, exc, header.key)
+                raise WebhookHeaderResolutionError(
+                    f"Webhook '{self.name}': could not resolve header '{header.key}': {exc}"
+                ) from exc
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"

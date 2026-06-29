@@ -27,7 +27,7 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 
 **Purpose**: Lightweight — dependencies and stack already exist on the branch.
 
-- [X] T001 [P] Add towncrier changelog fragment `changelog/+ifc-2755-webhook-delivery-operability.added.md` describing the delivery operability feature (user-facing).
+- [ ] T001 [P] Add towncrier changelog fragment `changelog/+ifc-2755-webhook-delivery-operability.added.md` describing the delivery operability feature (user-facing). This single fragment covers the whole feature, including the landed failure classification; the classification slice does not ship its own fragment.
 - [ ] T002 [P] Add a controllable HTTP-target test fixture (endpoint that can return success / 4xx / 5xx / timeout / TLS error / be unreachable) under `backend/tests/functional/webhook/conftest.py`, reusing existing webhook fixtures.
 
 ---
@@ -87,8 +87,8 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 ### Implementation for User Story 2
 
 - [X] T024 [P] [US2] Implement the pure `WebhookFailureClassifier.classify(exc, response) -> ClassifiedFailure` (CONFIG/CONNECTION/TLS/TIMEOUT/HTTP_CLIENT_ERROR/HTTP_SERVER_ERROR/UNKNOWN, each with remediation + `transient` flag) in `backend/infrahub/webhook/classifier.py`.
-- [ ] T025 [US2] Use the classifier in the `webhook_send` body: catch expected delivery failures and re-raise a clean `WebhookDeliveryFailed(message)` (no stacktrace); let unexpected errors propagate as a genuine crash, in `backend/infrahub/webhook/tasks/process.py` (depends on T024, T015).
-- [ ] T026 [US2] Add a `retry_condition_fn` (transient-only) reusing the classifier on the `webhook_send` flow, keeping the fixed 120s delay / 3 attempts, in `backend/infrahub/webhook/tasks/process.py` (depends on T024).
+- [X] T025 [US2] Use the classifier in the `webhook_send` body: catch expected delivery failures and surface a clean classified reason without a stacktrace (the `webhook_process` flow settles them into a failed state); let unexpected errors propagate as a genuine crash, in `backend/infrahub/webhook/tasks/process.py` (depends on T024).
+- [X] ~~T026 [US2] Add a `retry_condition_fn` (transient-only) reusing the classifier on the `webhook_send` flow, keeping the fixed 120s delay / 3 attempts, in `backend/infrahub/webhook/tasks/process.py` (depends on T024).~~ Descoped: retries stay flow-level and unconditional — a transient-only condition requires task-level `retry_condition_fn`, which we chose not to introduce. The `transient` flag remains on `ClassifiedFailure` for future use.
 - [ ] T027 [US2] Include the classified error (`status_class`, `message`, `remediation`) in the `http` artifact and map it onto `DeliveryError` in the serializer, in `backend/infrahub/webhook/capture.py` and `backend/infrahub/graphql/queries/task.py` (depends on T024, T017).
 - [X] T028 [P] [US2] Unit test the classifier across every class and the transient predicate (using the typed HTTP adapter exceptions + status codes) in `backend/tests/unit/webhook/test_classifier.py`.
 - [ ] T029 [P] [US2] Functional test that each failure class surfaces a clean reason, only transient classes retry, the final reason reflects the settling attempt, and per-attempt progress remains visible in the run logs across retries, in `backend/tests/functional/webhook/test_classification.py` (depends on T025, T026).
