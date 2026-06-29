@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.services.adapters.http.httpx import HttpxAdapter, SSLErrorExtractor
+from infrahub.services.adapters.http.httpx import HttpxAdapter
 from infrahub.tls.registry import TlsContextRegistry
 from tests.helpers.http_server import SelfSignedTlsServer, SilentTcpServer
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 @pytest.fixture
 def http_adapter() -> HttpxAdapter:
     """The HTTP adapter wired with its real collaborators, as it is constructed in production."""
-    return HttpxAdapter(tls_registry=TlsContextRegistry(), ssl_error_extractor=SSLErrorExtractor())
+    return HttpxAdapter(tls_registry=TlsContextRegistry())
 
 
 @pytest.fixture

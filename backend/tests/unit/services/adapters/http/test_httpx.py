@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import httpx
 import pytest
 
-from infrahub.services.adapters.http.httpx import SSLErrorExtractor
+from infrahub.services.adapters.http.httpx import HttpxAdapter
 
 
 def _connect_error_wrapping(inner: BaseException, *, via: str) -> httpx.ConnectError:
@@ -44,14 +44,14 @@ EXTRACT_CASES = [
 
 
 @pytest.mark.parametrize("case", EXTRACT_CASES, ids=[case.name for case in EXTRACT_CASES])
-def test_extract(case: ExtractCase) -> None:
-    assert SSLErrorExtractor().extract(case.exc) is case.expected
+def test_extract_ssl_error(case: ExtractCase) -> None:
+    assert HttpxAdapter._extract_ssl_error(case.exc) is case.expected
 
 
-def test_extract_tolerates_a_cycle() -> None:
+def test_extract_ssl_error_tolerates_a_cycle() -> None:
     first = httpx.ConnectError("a")
     second = httpx.ConnectError("b")
     first.__context__ = second
     second.__context__ = first
 
-    assert SSLErrorExtractor().extract(first) is None
+    assert HttpxAdapter._extract_ssl_error(first) is None

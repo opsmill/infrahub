@@ -14,7 +14,7 @@ from infrahub.log_forwarding.service import LogForwardingService, LogForwardingS
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
 from infrahub.services.adapters.http import InfrahubHTTP
-from infrahub.services.adapters.http.httpx import HttpxAdapter, SSLErrorExtractor
+from infrahub.services.adapters.http.httpx import HttpxAdapter
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -157,9 +157,7 @@ def get_tls_registry(tls_registry: TlsContextRegistry = Depends(build_tls_regist
 
 def build_http_service() -> InfrahubHTTP:
     if "http_service" not in _singletons:
-        _singletons["http_service"] = HttpxAdapter(
-            tls_registry=build_tls_registry(), ssl_error_extractor=SSLErrorExtractor()
-        )
+        _singletons["http_service"] = HttpxAdapter(tls_registry=build_tls_registry())
     return _singletons["http_service"]
 
 

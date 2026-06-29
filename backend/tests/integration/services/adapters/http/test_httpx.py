@@ -9,11 +9,10 @@ from prefect.client.orchestration import get_client
 
 from infrahub import config
 from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerTimeoutError
-from infrahub.services.adapters.http.httpx import SSLErrorExtractor
+from infrahub.services.adapters.http.httpx import HttpxAdapter
 from tests.helpers.http_server import unused_tcp_port
 
 if TYPE_CHECKING:
-    from infrahub.services.adapters.http.httpx import HttpxAdapter
     from tests.helpers.http_server import SelfSignedTlsServer, SilentTcpServer
 
 
@@ -67,7 +66,7 @@ async def test_failed_handshake_buries_the_ssl_error_in_a_transport_error(
     assert isinstance(raised, httpx.ConnectError)
     assert not isinstance(raised, ssl.SSLError)
 
-    extracted = SSLErrorExtractor().extract(raised)
+    extracted = HttpxAdapter._extract_ssl_error(raised)
     assert isinstance(extracted, ssl.SSLError)
 
 

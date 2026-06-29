@@ -16,25 +16,6 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
-class SSLErrorExtractor:
-    """Finds the SSL error buried in a transport exception's cause/context chain.
-
-    A failed TLS handshake reaches this layer wrapped in a transport-level error, with the
-    original ssl.SSLError preserved only in the chained context, so the chain has to be walked
-    to recognize a certificate problem rather than a generic connection failure.
-    """
-
-    def extract(self, exc: BaseException) -> ssl.SSLError | None:
-        seen: set[int] = set()
-        current: BaseException | None = exc
-        while current is not None and id(current) not in seen:
-            if isinstance(current, ssl.SSLError):
-                return current
-            seen.add(id(current))
-            current = current.__cause__ or current.__context__
-        return None
-
-
 class HttpxAdapter(InfrahubHTTP):
     """The HttpxAdapter is a generic interface for InfrahubHTTP.
 
@@ -46,10 +27,26 @@ class HttpxAdapter(InfrahubHTTP):
     and eventually proxy settings in one location.
     """
 
-    def __init__(self, tls_registry: TlsContextRegistry, ssl_error_extractor: SSLErrorExtractor) -> None:
+    def __init__(self, tls_registry: TlsContextRegistry) -> None:
         self._tls_registry = tls_registry
-        self._ssl_error_extractor = ssl_error_extractor
         self._settings: config.HTTPSettings | None = None
+
+    @staticmethod
+    def _extract_ssl_error(exc: BaseException) -> ssl.SSLError | None:
+        """Return the TLS error buried in a transport exception's cause/context chain, if any.
+
+        A failed handshake reaches this layer wrapped in a transport-level error, with the original
+        ssl.SSLError preserved only in the chained context, so the chain has to be walked to tell a
+        certificate problem apart from a generic connection failure.
+        """
+        seen: set[int] = set()
+        current: BaseException | None = exc
+        while current is not None and id(current) not in seen:
+            if isinstance(current, ssl.SSLError):
+                return current
+            seen.add(id(current))
+            current = current.__cause__ or current.__context__
+        return None
 
     @property
     def settings(self) -> config.HTTPSettings:
@@ -118,7 +115,7 @@ class HttpxAdapter(InfrahubHTTP):
                     message=f"Connection to {url} timed out after {self.settings.timeout}"
                 ) from exc
             except httpx.RequestError as exc:
-                ssl_error = self._ssl_error_extractor.extract(exc)
+                ssl_error = self._extract_ssl_error(exc)
                 if ssl_error is not None:
                     log.info(f"TLS error for connection to {url}")
                     if isinstance(ssl_error, ssl.SSLCertVerificationError):
