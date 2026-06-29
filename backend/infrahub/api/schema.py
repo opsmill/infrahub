@@ -49,6 +49,7 @@ from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elem
 from infrahub.exceptions import BranchStatusError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
+from infrahub.tasks.registry import serialize_process_schema_refresh
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_VALIDATE_MIGRATION
@@ -363,7 +364,12 @@ async def load_schema(
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
 
-    async with lock.registry.global_schema_lock():
+    # The redis global lock serializes schema writes across workers/replicas; the
+    # process-wide refresh lock additionally excludes the in-process schema-refresh
+    # path, which mutates the SAME process-global schema registry from other worker
+    # threads under the free-threaded backend. Without it a refresh thread can rebuild
+    # the shared registry/cache while this load is mid-update, leaving it inconsistent.
+    async with lock.registry.global_schema_lock(), serialize_process_schema_refresh():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
         original_hash = branch_schema.get_hash()
 
