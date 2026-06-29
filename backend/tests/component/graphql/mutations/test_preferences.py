@@ -132,8 +132,11 @@ async def test_user_upsert_explicit_null_resets_field(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """Pin the load-bearing graphene behaviour behind "reset to global": an explicit null
-    clears a field, while an omitted argument leaves it unchanged (see _UNSET sentinel)."""
+    """Pin the load-bearing graphene behaviour behind "reset to global".
+
+    An explicit null clears a field, while an omitted argument leaves it unchanged
+    (see the _UNSET sentinel in the mutation).
+    """
     await run_mutation(
         db=db,
         branch=default_branch,
