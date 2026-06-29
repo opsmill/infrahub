@@ -25,7 +25,6 @@ from infrahub.events.constants import (
     NODE_ORIGIN_LIVE,
     NODE_ORIGIN_MERGE,
     NODE_ORIGIN_REBASE,
-    excluded_replayed_origins_match,
 )
 from infrahub.events.models import EventMeta
 from infrahub.events.node_action import NodeUpdatedEvent
@@ -63,11 +62,7 @@ def test_rebase_node_event_carries_the_rebase_origin() -> None:
     assert _node_event(origin=NODE_ORIGIN_REBASE).get_resource()[NODE_ORIGIN_LABEL] == NODE_ORIGIN_REBASE
 
 
-def test_excluded_match_rejects_only_replayed_origins() -> None:
-    assert excluded_replayed_origins_match() == [f"!{NODE_ORIGIN_MERGE}", f"!{NODE_ORIGIN_REBASE}"]
-
-
-def test_display_label_trigger_suppresses_replayed_origins() -> None:
+def test_display_label_trigger_matches_only_live_origin() -> None:
     definition = DisplayLabelTriggerDefinition.new(
         branch="main",
         node_kind="TestingPeer",
@@ -75,10 +70,10 @@ def test_display_label_trigger_suppresses_replayed_origins() -> None:
         template_hash="hash",
         fields=["name"],
     )
-    assert definition.trigger.match[NODE_ORIGIN_LABEL] == excluded_replayed_origins_match()
+    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NODE_ORIGIN_LIVE
 
 
-def test_hfid_trigger_suppresses_replayed_origins() -> None:
+def test_hfid_trigger_matches_only_live_origin() -> None:
     definition = HFIDTriggerDefinition.new(
         branch="main",
         node_kind="TestingPeer",
@@ -86,10 +81,10 @@ def test_hfid_trigger_suppresses_replayed_origins() -> None:
         hfid_hash="hash",
         fields=["name"],
     )
-    assert definition.trigger.match[NODE_ORIGIN_LABEL] == excluded_replayed_origins_match()
+    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NODE_ORIGIN_LIVE
 
 
-def test_computed_jinja2_trigger_suppresses_replayed_origins() -> None:
+def test_computed_jinja2_trigger_matches_only_live_origin() -> None:
     attribute = AttributeSchema(
         name="summary",
         kind="Text",
@@ -105,4 +100,4 @@ def test_computed_jinja2_trigger_suppresses_replayed_origins() -> None:
         computed_attribute=target,
         trigger_node=trigger_node,
     )
-    assert definition.trigger.match[NODE_ORIGIN_LABEL] == excluded_replayed_origins_match()
+    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NODE_ORIGIN_LIVE
