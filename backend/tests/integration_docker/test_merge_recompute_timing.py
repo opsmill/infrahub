@@ -1,16 +1,18 @@
-"""Timing layer for the merge recompute profile (full distributed stack).
+"""Timing layer for the merge and rebase recompute (full distributed stack).
 
-On-demand and gated: set ``INFRAHUB_PROFILE_TIMING`` to run it. It drives a real
-merge on the running stack with a real task worker and attributes wall-clock
-across the merge critical path and the trailing recompute window, and counts the
-executed recompute runs (the authoritative recompute count). Scale is set with
-``INFRAHUB_PROFILE_SCALE`` (changed-node count, default 100).
+On-demand and gated: set ``INFRAHUB_PROFILE_TIMING`` to run it. It drives a real merge and rebase on
+the running stack with a real task worker and reports, per operation:
 
-The executed-recompute count uses a branch + recompute-deployment filter measured
-as a before/after delta on the default branch; the merge runs on a dedicated
-branch with the stack otherwise idle, so the delta isolates this merge's recompute
-(a seeded-node-id-set filter is not supported by the flow-run query). Timings are
-reported with no hard thresholds because they are stack-relative.
+- the merge/rebase critical path (synchronous, in-transaction cost),
+- the trailing recompute window (merge return to queue drained),
+- the executed per-reader recompute runs (``*-update-value`` flows), and
+- the recompute process-flow dispatches (``*-process`` flows).
+
+The process-flow dispatch count is the coalescing signal: the per-node path dispatched one process
+flow per changed node per family (about ``2 * changed_nodes`` here), while the coalesced path
+dispatches one per affected derived value (about two), independent of the changed-node count. Scale
+is set with ``INFRAHUB_PROFILE_SCALE`` (changed-node count, default 100). Timings are reported with
+no hard thresholds because they are stack-relative; only the structural bound is asserted.
 """
 
 from __future__ import annotations
@@ -26,19 +28,28 @@ from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
+    COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
+    DISPLAY_LABELS_PROCESS_JINJA2,
+    HFID_PROCESS,
     HFID_UPDATE_VALUE,
 )
 from tests.helpers.merge_recompute.dataset import PROFILE_NODE_KIND, PROFILE_PEER_KIND, build_profile_schema_dict
-from tests.helpers.merge_recompute.metrics import CostCenterTiming
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
+# Per-reader value writes: roughly the same count old or new, since every affected reader is written.
 RECOMPUTE_WORKFLOWS = [
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name,
     DISPLAY_LABEL_JINJA2_UPDATE_VALUE.name,
     HFID_UPDATE_VALUE.name,
+]
+# Process-flow dispatches: the coalescing signal (one per affected derived value, not per node).
+PROCESS_WORKFLOWS = [
+    COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name,
+    DISPLAY_LABELS_PROCESS_JINJA2.name,
+    HFID_PROCESS.name,
 ]
 
 
@@ -54,33 +65,25 @@ async def _wait_idle(client: InfrahubClient, *, max_wait: int = 2400) -> None:
     raise TimeoutError("background tasks did not drain within the timeout")
 
 
-async def _recompute_count(client: InfrahubClient, *, branch: str) -> int:
-    return await client.task.count(filters=TaskFilter(workflow=RECOMPUTE_WORKFLOWS, branch=branch))
+async def _count(client: InfrahubClient, *, workflows: list[str], branch: str) -> int:
+    return await client.task.count(filters=TaskFilter(workflow=workflows, branch=branch))
 
 
 @pytest.mark.skipif(
     not os.environ.get("INFRAHUB_PROFILE_TIMING"),
-    reason="on-demand merge timing profile; set INFRAHUB_PROFILE_TIMING to run",
+    reason="on-demand merge/rebase timing profile; set INFRAHUB_PROFILE_TIMING to run",
 )
 class TestMergeRecomputeTiming(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
         return "local"
 
-    @pytest.mark.timeout(5400)
-    async def test_merge_timing(self, client: InfrahubClient) -> None:
-        changed_nodes = int(os.environ.get("INFRAHUB_PROFILE_SCALE", "100"))
-
-        await client.schema.load(schemas=[build_profile_schema_dict()], wait_until_converged=True)
-
-        # Baseline on the default branch: each main reads its own peer. The merge
-        # payload is a change to the peers, so the dependent mains recompute. (A
-        # node's own derived values recompute inline on save and create no async
-        # work; the merge recompute cost is this cross-node fan-out.)
+    async def _seed(self, client: InfrahubClient, *, changed_nodes: int, prefix: str) -> list:
+        """Create ``changed_nodes`` peers and one main per peer (each main reads its peer)."""
         peers = []
         peer_batch = await client.create_batch()
         for index in range(changed_nodes):
-            peer = await client.create(kind=PROFILE_PEER_KIND, data={"name": f"timing-peer-{index:05d}"})
+            peer = await client.create(kind=PROFILE_PEER_KIND, data={"name": f"{prefix}-peer-{index:05d}"})
             peer_batch.add(task=peer.save, node=peer)
             peers.append(peer)
         async for _, _ in peer_batch.execute():
@@ -89,60 +92,94 @@ class TestMergeRecomputeTiming(TestInfrahubDockerClient):
         main_batch = await client.create_batch()
         for index in range(changed_nodes):
             main = await client.create(
-                kind=PROFILE_NODE_KIND, data={"name": f"timing-node-{index:05d}", "peer": peers[index]}
+                kind=PROFILE_NODE_KIND, data={"name": f"{prefix}-node-{index:05d}", "peer": peers[index]}
             )
             main_batch.add(task=main.save, node=main)
         async for _, _ in main_batch.execute():
             pass
 
-        # Let baseline recompute settle so only the merge's recompute is measured.
         await _wait_idle(client)
+        return peers
 
-        # Change the peers on a dedicated branch; this is the merge payload.
-        branch = await client.branch.create(branch_name="merge-recompute-timing")
-        update_batch = await client.create_batch()
+    async def _mutate_peers(self, client: InfrahubClient, *, peers: list, prefix: str, branch: str) -> None:
+        batch = await client.create_batch()
         for index, peer in enumerate(peers):
-            obj = await client.get(kind=PROFILE_PEER_KIND, id=peer.id, branch=branch.name)
-            obj.name.value = f"timing-peer-{index:05d}-edited"
-            update_batch.add(task=obj.save, node=obj)
-        async for _, _ in update_batch.execute():
+            obj = await client.get(kind=PROFILE_PEER_KIND, id=peer.id, branch=branch)
+            obj.name.value = f"{prefix}-peer-{index:05d}-edited"
+            batch.add(task=obj.save, node=obj)
+        async for _, _ in batch.execute():
             pass
-
         await _wait_idle(client)
-        before = await _recompute_count(client, branch="main")
 
-        # Merge critical path: the synchronous, in-transaction cost.
-        start = time.monotonic()
-        merged = await client.branch.merge(branch_name=branch.name)
-        merge_critical_path_s = time.monotonic() - start
-        assert merged
-
-        # Trailing recompute window. Recompute is dispatched asynchronously by the
-        # event-to-automation engine after the merge returns, so poll until it rises
-        # above the pre-merge baseline and the queue drains in the same pass.
+    async def _measure_window(self, client: InfrahubClient, *, branch: str, before_updates: int) -> float:
+        """Poll until the per-reader recompute rises above the baseline and the queue drains."""
         window_start = time.monotonic()
         deadline = time.monotonic() + 2400
-        after = before
         while time.monotonic() < deadline:
             await sleep(2)
             await _wait_idle(client)
-            after = await _recompute_count(client, branch="main")
-            if after > before:
+            if await _count(client, workflows=RECOMPUTE_WORKFLOWS, branch=branch) > before_updates:
                 break
-        recompute_window_s = time.monotonic() - window_start
-        recompute_flow_runs = after - before
+        return time.monotonic() - window_start
 
-        timing = CostCenterTiming(
-            merge_critical_path_s=merge_critical_path_s,
-            recompute_total_s=recompute_window_s,
-            recompute_window_s=recompute_window_s,
-            recompute_flow_runs=recompute_flow_runs,
-            schema_migration_s=None,
-            db_commit_s=None,
+    @pytest.mark.timeout(5400)
+    async def test_merge_timing(self, client: InfrahubClient) -> None:
+        changed_nodes = int(os.environ.get("INFRAHUB_PROFILE_SCALE", "100"))
+        await client.schema.load(schemas=[build_profile_schema_dict()], wait_until_converged=True)
+
+        peers = await self._seed(client, changed_nodes=changed_nodes, prefix="merge")
+        branch = await client.branch.create(branch_name="merge-recompute-timing")
+        await self._mutate_peers(client, peers=peers, prefix="merge", branch=branch.name)
+
+        before_updates = await _count(client, workflows=RECOMPUTE_WORKFLOWS, branch="main")
+        before_process = await _count(client, workflows=PROCESS_WORKFLOWS, branch="main")
+
+        start = time.monotonic()
+        merged = await client.branch.merge(branch_name=branch.name)
+        critical_path_s = time.monotonic() - start
+        assert merged
+
+        window_s = await self._measure_window(client, branch="main", before_updates=before_updates)
+        update_runs = await _count(client, workflows=RECOMPUTE_WORKFLOWS, branch="main") - before_updates
+        process_runs = await _count(client, workflows=PROCESS_WORKFLOWS, branch="main") - before_process
+
+        print(
+            f"\n[merge-recompute-timing] changed_nodes={changed_nodes} "
+            f"critical_path_s={critical_path_s:.2f} window_s={window_s:.2f} "
+            f"process_flows={process_runs} update_value_runs={update_runs}"
         )
-        print(f"\n[merge-recompute-timing] changed_nodes={changed_nodes} {timing}")
+        assert critical_path_s > 0
+        assert update_runs > 0
+        # Coalescing: process-flow dispatch is bounded by the affected derived values, not the
+        # changed-node count. The per-node path would dispatch about 2 * changed_nodes.
+        assert process_runs < changed_nodes
 
-        # Stack-relative: assert the mechanism (merge ran and the cross-node fan-out
-        # recomputed), not absolute durations.
-        assert merge_critical_path_s > 0
-        assert recompute_flow_runs > 0
+    @pytest.mark.timeout(5400)
+    async def test_rebase_timing(self, client: InfrahubClient) -> None:
+        changed_nodes = int(os.environ.get("INFRAHUB_PROFILE_SCALE", "100"))
+        await client.schema.load(schemas=[build_profile_schema_dict()], wait_until_converged=True)
+
+        peers = await self._seed(client, changed_nodes=changed_nodes, prefix="rebase")
+        branch = await client.branch.create(branch_name="rebase-recompute-timing")
+        # Rebase replays the default branch's intervening changes, so mutate the peers on default.
+        await self._mutate_peers(client, peers=peers, prefix="rebase", branch="main")
+
+        before_updates = await _count(client, workflows=RECOMPUTE_WORKFLOWS, branch=branch.name)
+        before_process = await _count(client, workflows=PROCESS_WORKFLOWS, branch=branch.name)
+
+        start = time.monotonic()
+        await client.branch.rebase(branch_name=branch.name)
+        critical_path_s = time.monotonic() - start
+
+        window_s = await self._measure_window(client, branch=branch.name, before_updates=before_updates)
+        update_runs = await _count(client, workflows=RECOMPUTE_WORKFLOWS, branch=branch.name) - before_updates
+        process_runs = await _count(client, workflows=PROCESS_WORKFLOWS, branch=branch.name) - before_process
+
+        print(
+            f"\n[rebase-recompute-timing] changed_nodes={changed_nodes} "
+            f"critical_path_s={critical_path_s:.2f} window_s={window_s:.2f} "
+            f"process_flows={process_runs} update_value_runs={update_runs}"
+        )
+        assert critical_path_s > 0
+        assert update_runs > 0
+        assert process_runs < changed_nodes
