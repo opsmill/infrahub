@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import assert_never
 
 import httpx
 
@@ -23,18 +24,26 @@ class StatusClass(StrEnum):
 
     @property
     def remediation(self) -> str:
-        return _REMEDIATION[self]
-
-
-_REMEDIATION: dict[StatusClass, str] = {
-    StatusClass.CONFIG: "Check the webhook's headers; a configured header value could not be resolved.",
-    StatusClass.CONNECTION: "Verify the target endpoint is reachable from Infrahub.",
-    StatusClass.TLS: "Check the endpoint's TLS certificate, or disable certificate validation if that is intended.",
-    StatusClass.TIMEOUT: "The target did not respond in time; retry or check the target's responsiveness.",
-    StatusClass.HTTP_CLIENT_ERROR: "The target rejected the request; check the URL and authentication.",
-    StatusClass.HTTP_SERVER_ERROR: "The target returned a server error; retry, or check the target.",
-    StatusClass.UNKNOWN: "An unexpected error occurred during delivery.",
-}
+        match self:
+            case StatusClass.CONFIG:
+                remediation = "Check the webhook's headers; a configured header value could not be resolved."
+            case StatusClass.CONNECTION:
+                remediation = "Verify the target endpoint is reachable from Infrahub."
+            case StatusClass.TLS:
+                remediation = (
+                    "Check the endpoint's TLS certificate, or disable certificate validation if that is intended."
+                )
+            case StatusClass.TIMEOUT:
+                remediation = "The target did not respond in time; retry or check the target's responsiveness."
+            case StatusClass.HTTP_CLIENT_ERROR:
+                remediation = "The target rejected the request; check the URL and authentication."
+            case StatusClass.HTTP_SERVER_ERROR:
+                remediation = "The target returned a server error; retry, or check the target."
+            case StatusClass.UNKNOWN:
+                remediation = "An unexpected error occurred during delivery."
+            case _:
+                assert_never(self)
+        return remediation
 
 
 @dataclass(frozen=True)
