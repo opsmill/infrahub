@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import ssl
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
 from prefect.client.orchestration import get_client
 
 from infrahub import config
 from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerTimeoutError
+from infrahub.services.adapters.http.httpx import SSLErrorExtractor
 from tests.helpers.http_server import unused_tcp_port
 
 if TYPE_CHECKING:
@@ -45,6 +48,27 @@ async def test_self_signed_certificate_is_http_server_ssl_error(
     assert (
         exc_info.value.message == f"Unable to validate TLS certificate for connection to {self_signed_tls_server.url}"
     )
+
+
+async def test_failed_handshake_buries_the_ssl_error_in_a_transport_error(
+    self_signed_tls_server: SelfSignedTlsServer,
+) -> None:
+    """A rejected handshake surfaces as a transport error, never as a bare ssl error.
+
+    The ssl error is preserved only in the exception chain, so a certificate problem can be
+    recognized only by walking that chain, not by catching the ssl error type directly. This
+    pins the upstream behavior the classifier depends on.
+    """
+    async with httpx.AsyncClient(verify=True) as client:
+        with pytest.raises(httpx.RequestError) as exc_info:
+            await client.post(self_signed_tls_server.url, json={})
+
+    raised = exc_info.value
+    assert isinstance(raised, httpx.ConnectError)
+    assert not isinstance(raised, ssl.SSLError)
+
+    extracted = SSLErrorExtractor().extract(raised)
+    assert isinstance(extracted, ssl.SSLError)
 
 
 async def test_unresponsive_target_is_http_server_timeout_error(
