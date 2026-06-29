@@ -10,6 +10,7 @@ from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.lock import InfrahubMultiLock
 
 from .main import DeleteResult, InfrahubMutation, UpsertResult
+from .node_getter.by_account import MutationNodeGetterByAccount
 
 if TYPE_CHECKING:
     from graphene import InputObjectType
@@ -128,49 +129,33 @@ class InfrahubUserPreferenceMutation(InfrahubMutation):
         db: InfrahubDatabase,
         data: InputObjectType,
         branch: Branch,
-        node_getter_default_filter: MutationNodeGetterByDefaultFilter,
         graphql_context: GraphqlContext,
     ) -> Node | None:
-        """Resolve the existing node an upsert payload targets, mirroring the base-class resolution order.
+        """Resolve the existing node an upsert payload targets.
 
-        On top of the base-class lookups (id, default_filter, hfid), the id-less "lazy" payload is
-        resolved to the target account's existing row: the uniqueness constraint on the `account`
-        relationship does not yield an hfid, so without this lookup the base class would always take
-        the create path and the second id-less upsert would fail on the uniqueness violation.
+        CoreUserPreference is identified by an explicit `id` or by its `account` uniqueness key;
+        it has no hfid/default_filter, so there is no base-class resolution order to mirror. We
+        therefore resolve only those two things: an explicit row `id`, otherwise the row owned by
+        the `account` peer (via MutationNodeGetterByAccount). When no `account` peer is given, the
+        id-less "lazy" payload resolves to the caller's own row using the session account id.
         """
         schema = cls._meta.active_schema
         if "id" in data:
             return await NodeManager.get_one(db=db, id=data["id"], kind=schema.kind, branch=branch, raise_on_error=True)
 
-        node: Node | None = None
-        if not schema.human_friendly_id and schema.default_filter is not None:
-            node = await node_getter_default_filter.get_node(node_schema=schema, data=data, branch=branch)
-        if "hfid" in data:
-            node = await NodeManager.get_one_by_hfid(db=db, hfid=data["hfid"], kind=schema.kind, branch=branch)
-        if node is not None:
-            return node
+        if data.get("account") is not None:
+            getter = MutationNodeGetterByAccount(db=db, node_manager=NodeManager())
+            return await getter.get_node(node_schema=schema, data=data, branch=branch)
 
-        account_data = data.get("account")
-        if account_data is not None:
-            target_account_id = account_data.get("id")
-            account_hfid = account_data.get("hfid")
-            if target_account_id is None and account_hfid is not None:
-                # Resolve an hfid peer spec to its id so admin upserts stay idempotent; non-admin
-                # callers are rejected later by _validate_account_input regardless.
-                account_node = await NodeManager.get_one_by_hfid(
-                    db=db, hfid=list(account_hfid), kind=InfrahubKind.GENERICACCOUNT, branch=branch
-                )
-                target_account_id = account_node.id if account_node else None
-        elif graphql_context.account_session:
-            target_account_id = graphql_context.account_session.account_id
-        else:
-            target_account_id = None
-
-        if target_account_id is None:
+        # Id-less payload with no account peer: resolve the caller's own row, if any.
+        if not graphql_context.account_session:
             return None
-
         results = await NodeManager.query(
-            db=db, schema=schema.kind, filters={"account__ids": [target_account_id]}, branch=branch, limit=1
+            db=db,
+            schema=schema.kind,
+            filters={"account__ids": [graphql_context.account_session.account_id]},
+            branch=branch,
+            limit=1,
         )
         return results[0] if results else None
 
@@ -188,13 +173,12 @@ class InfrahubUserPreferenceMutation(InfrahubMutation):
         db = database or graphql_context.db
 
         # Resolve first, then validate: whatever node this upsert would update must pass the
-        # ownership check before any write, regardless of how it was identified (id, hfid,
-        # default_filter or the lazy account lookup).
+        # ownership check before any write, regardless of how it was identified (explicit id or
+        # the account uniqueness key, incl. the caller's own-row lazy path).
         node = await cls._resolve_existing_node(
             db=db,
             data=data,
             branch=branch,
-            node_getter_default_filter=node_getter_default_filter,
             graphql_context=graphql_context,
         )
 
