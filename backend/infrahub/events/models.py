@@ -75,6 +75,10 @@ class EventMeta(BaseModel):
 
     parent: UUID | None = Field(default=None, description="The UUID of the parent event if applicable")
     ancestors: list[ParentEvent] = Field(default_factory=list, description="Any event used to trigger this event")
+    origin: str | None = Field(
+        default=None,
+        description="The operation that replayed this event (a merge or a rebase), or None for a live mutation",
+    )
     _created_with_context: bool = PrivateAttr(default=False)
 
     def get_branch_id(self) -> str:

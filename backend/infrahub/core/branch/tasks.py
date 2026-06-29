@@ -38,6 +38,7 @@ from infrahub.events.branch_action import (
     BranchMigratedEvent,
     BranchRebasedEvent,
 )
+from infrahub.events.constants import NODE_ORIGIN_REBASE
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
@@ -266,12 +267,16 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     )
     for action, node_changelog in changelog_collector.collect_changelogs():
         node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+        meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
+        # Mark the event as rebase-originated so the coalesced recompute owns these families and
+        # their per-node automations skip the replayed change.
+        meta.origin = NODE_ORIGIN_REBASE
         mutate_event = node_event_class(
             kind=node_changelog.node_kind,
             node_id=node_changelog.node_id,
             changelog=node_changelog,
             fields=node_changelog.updated_fields,
-            meta=EventMeta.from_parent(parent=rebase_event, branch=user_branch),
+            meta=meta,
         )
         events.append(mutate_event)
 

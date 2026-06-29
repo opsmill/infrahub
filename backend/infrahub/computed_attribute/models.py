@@ -18,6 +18,7 @@ from infrahub.core.schema.schema_branch_computed import (  # noqa: TC001
     PythonDefinition,
 )
 from infrahub.events import NodeCreatedEvent, NodeUpdatedEvent
+from infrahub.events.constants import NODE_ORIGIN_LABEL, excluded_replayed_origins_match
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer  # noqa: TC001
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import (
@@ -166,6 +167,9 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
+        # The coalesced merge and rebase recompute owns the Jinja2 family, so its per-node
+        # automation must not also fire for a replayed merge or rebase change.
+        event_trigger.match[NODE_ORIGIN_LABEL] = excluded_replayed_origins_match()
 
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],

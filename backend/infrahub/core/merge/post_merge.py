@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub import config
 from infrahub.core.constants import MutationAction
 from infrahub.events.branch_action import BranchMergedEvent
+from infrahub.events.constants import NODE_ORIGIN_MERGE
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
@@ -135,6 +136,9 @@ class PostMergeDispatcher:
             )
         for action, node_changelog in node_events:
             meta = EventMeta.from_parent(parent=merge_event, branch=self.default_branch)
+            # Mark the event as merge-originated so the coalesced recompute owns these families and
+            # their per-node automations skip the replayed change.
+            meta.origin = NODE_ORIGIN_MERGE
             node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
             mutate_event = node_event_class(
                 kind=node_changelog.node_kind,
