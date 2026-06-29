@@ -8,6 +8,7 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.webhook.models import EventContext
 from infrahub.webhook.tasks import convert_node_to_webhook, webhook_process
+from infrahub.workers.dependencies import build_http_service
 from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.http import MemoryHTTP
 from tests.helpers.test_app import TestInfrahubApp
@@ -21,6 +22,9 @@ if TYPE_CHECKING:
 
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
+
+
+WEBHOOK_TARGET_URL = "https://url.mock"
 
 
 class TestWebhookProcess(TestInfrahubApp):
@@ -106,8 +110,6 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook_deployment: None,
         dependency_provider: Provider,
     ) -> None:
-        from infrahub.workers.dependencies import build_http_service
-
         http = MemoryHTTP()
         http.add_post_response(
             url="https://url.mock",
@@ -129,25 +131,57 @@ class TestWebhookProcess(TestInfrahubApp):
         applied_tags = {tag for flow_run in flow_runs for tag in flow_run.tags}
         assert related_node_tag in applied_tags
 
-    async def test_process_standard_webhook_failure(
+    async def test_process_webhook_failure_is_classified(
         self,
         db: InfrahubDatabase,
-        prefect_client: PrefectClient,
         webhook1: Node,
-        webhook2: Node,
         webhook_deployment: None,
         dependency_provider: Provider,
         immediate_webhook_retries: None,
     ) -> None:
-        from infrahub.workers.dependencies import build_http_service
-
+        # One representative case is enough here: per-class classification is covered by the unit tests;
+        # this asserts the classifier is wired into the send flow and the run ends in a clean failed
+        # state carrying the reason and remediation, without a stacktrace.
         http = MemoryHTTP()
         http.add_post_response(
-            url="https://url.mock",
-            response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=404),
+            url=WEBHOOK_TARGET_URL,
+            response=httpx.Response(request=httpx.Request(method="POST", url=WEBHOOK_TARGET_URL), status_code=404),
         )
 
-        with pytest.raises(httpx.HTTPStatusError), dependency_provider.scope(build_http_service, lambda: http):
+        with dependency_provider.scope(build_http_service, lambda: http):
+            state = await webhook_process(
+                webhook_id=webhook1.id,
+                webhook_name="Webhook1",
+                webhook_kind=InfrahubKind.STANDARDWEBHOOK,
+                branch_name="main",
+                event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
+                event_type="infrahub.branch.created",
+                event_occured_at="2025-02-28T08:37:09.969Z",
+                event_payload=BRANCH_CREATED_PAYLOAD,
+                return_state=True,
+            )
+
+        assert state.is_failed()
+        assert (
+            state.message
+            == "The target responded with HTTP 404. The target rejected the request; check the URL and authentication."
+        )
+
+    async def test_process_webhook_unexpected_error_crashes(
+        self,
+        db: InfrahubDatabase,
+        webhook1: Node,
+        webhook_deployment: None,
+        dependency_provider: Provider,
+        immediate_webhook_retries: None,
+    ) -> None:
+        http = MemoryHTTP()
+        http.add_post_response(url=WEBHOOK_TARGET_URL, response=RuntimeError("boom"))
+
+        with (
+            pytest.raises(RuntimeError, match=r"^boom$"),
+            dependency_provider.scope(build_http_service, lambda: http),
+        ):
             await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",

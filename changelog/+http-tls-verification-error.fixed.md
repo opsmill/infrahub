@@ -1,0 +1,1 @@
+A TLS certificate verification failure when Infrahub connects to an external HTTPS endpoint (such as a webhook target or an SSO provider) is now reported as a TLS error instead of a generic connection error.
