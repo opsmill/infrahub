@@ -30,6 +30,7 @@ class Migration074(ArbitraryMigration):
     """
 
     name: str = "074_create_global_preference_singleton"
+    description: str = "Create the manage_global_preferences permission and the CoreGlobalPreference singleton"
     minimum_version: int = 73
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
