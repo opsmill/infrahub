@@ -94,7 +94,7 @@ Normalized representation of the event extracted from Prefect's raw event payloa
 
 ### `WebhookHeader`
 
-Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up the environment variable and raises `WebhookHeaderResolutionError` if the variable is missing (the caller catches this and skips the header with a warning log).
+Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up the environment variable and raises `WebhookHeaderResolutionError` if the variable is missing, which fails the delivery with a configuration error rather than sending the request without that header.
 
 ### `Webhook` class hierarchy
 
@@ -107,7 +107,7 @@ The base class handles:
 - HTTP delivery of a precomputed payload via `send_payload()`
 - Cache serialization (`to_cache` / `from_cache`)
 
-The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_build_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time (missing vars are skipped with a warning log).
+The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_build_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time. A missing variable fails the delivery with a configuration error (the `CONFIG` failure class) rather than being skipped.
 
 ## Schema (GraphQL)
 
@@ -184,6 +184,26 @@ When a matched event fires, Prefect runs the `webhook_process` flow:
 
 The `webhook_send` subflow has 3 retries configured and calls `response.raise_for_status()`. It is invoked directly by `webhook_process` rather than registered in the workflow catalogue.
 
+## Failure handling
+
+When a delivery fails, `WebhookFailureClassifier.classify()` maps the cause (and any HTTP response) to a stable `StatusClass`, so the run surfaces a clean reason instead of a raw stacktrace:
+
+| Class | Cause | Transient |
+|-------|-------|-----------|
+| `CONFIG` | A configured header value cannot be resolved (for example an unset environment variable) | No |
+| `CONNECTION` | The target endpoint is unreachable | Yes |
+| `TLS` | The target's certificate cannot be validated | No |
+| `TIMEOUT` | The target did not respond within the configured timeout | Yes |
+| `HTTP_CLIENT_ERROR` | The target returned a 4xx status | No |
+| `HTTP_SERVER_ERROR` | The target returned a 5xx status | Yes |
+| `UNKNOWN` | Any unexpected error | No |
+
+Each class carries a clean message and a remediation hint. `webhook_send` classifies the failure, logs the outcome, and raises a `WebhookDeliveryError`; `webhook_process` settles a classified failure into a failed run state with no stacktrace. An `UNKNOWN` error is re-raised so it keeps its traceback and surfaces as a genuine crash.
+
+A `TLS` failure reaches this layer wrapped by httpx as a generic transport error, so the HTTP adapter's `SSLErrorExtractor` walks the exception chain to recognize the certificate problem and raise a TLS-specific error rather than a generic connection error.
+
+The `transient` flag on `ClassifiedFailure` records whether a class could plausibly succeed on a retry. `webhook_send` currently retries every failure (3 attempts, fixed 120s delay); the flag is reserved for a future transient-only retry policy.
+
 ## Security
 
 HMAC-SHA256 signing is performed when a `shared_key` is set:
@@ -234,6 +254,8 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 | Component | Path |
 |-----------|------|
 | Models | `backend/infrahub/webhook/models.py` |
+| Failure classifier | `backend/infrahub/webhook/classifier.py` |
+| HTTP adapter (TLS handling) | `backend/infrahub/services/adapters/http/httpx.py` |
 | Tasks/Workflows (configure) | `backend/infrahub/webhook/tasks/configure.py` |
 | Tasks/Workflows (process) | `backend/infrahub/webhook/tasks/process.py` |
 | Tasks/Workflows (invalidate) | `backend/infrahub/webhook/tasks/invalidate.py` |
@@ -246,6 +268,7 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 | Workflow catalogue | `backend/infrahub/workflows/catalogue.py` |
 | KeyValue schema | `backend/infrahub/core/schema/definitions/core/key_value.py` |
 | Unit tests (models) | `backend/tests/unit/webhook/test_models.py` |
+| Unit tests (classifier) | `backend/tests/unit/webhook/test_classifier.py` |
 | Unit tests (triggers) | `backend/tests/unit/webhook/test_triggers.py` |
 | Functional tests (configure) | `backend/tests/functional/webhook/test_configure.py` |
 | Functional tests (process) | `backend/tests/functional/webhook/test_process.py` |
