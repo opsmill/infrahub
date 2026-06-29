@@ -143,8 +143,6 @@ async def test_effective_preferences_merge_matrix(
     await _set_global_preference(db=db, **global_values)
     if user_values is not None:
         await _set_user_preference(db=db, account=first_account, **user_values)
-    else:
-        await _set_user_preference(db=db, account=first_account, date_format=None, timezone=None)
 
     response = await _query_effective_preferences(db=db, branch=default_branch, account_session=session_first_account)
 

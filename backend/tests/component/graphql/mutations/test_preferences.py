@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.auth.session import AnonymousSession
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -119,7 +120,7 @@ mutation {
 async def _run_mutation(
     db: InfrahubDatabase,
     branch: Branch,
-    account_session: AccountSession,
+    account_session: AccountSession | None,
     query: str,
     variables: dict | None = None,
 ) -> ExecutionResult:
@@ -414,6 +415,57 @@ class TestUserPreferenceOwnerScoping:
         )
         assert len(rows) == 1
         assert rows[0].timezone.value == "Europe/Paris"
+
+    async def test_unauthenticated_session_denied(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: None,
+        default_permission_backend: None,
+        first_account: Node,
+    ) -> None:
+        """An unauthenticated (no account_session) caller is rejected by the fail-closed guard."""
+        default_branch.update_schema_hash()
+        result = await _run_mutation(
+            db=db,
+            branch=default_branch,
+            account_session=None,
+            query=USER_PREFERENCE_UPSERT,
+            variables={"account_id": first_account.id, "date_format": "dd/MM/yyyy"},
+        )
+
+        assert result.errors
+        assert any("preferences of another account" in str(error) for error in result.errors)
+
+        rows = await NodeManager.query(
+            db=db, schema=InfrahubKind.USERPREFERENCE, filters={"account__ids": [first_account.id]}
+        )
+        assert rows == []
+
+    async def test_anonymous_session_denied(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: None,
+        default_permission_backend: None,
+        first_account: Node,
+    ) -> None:
+        """An anonymous (unauthenticated) session is rejected by the fail-closed guard."""
+        default_branch.update_schema_hash()
+        result = await _run_mutation(
+            db=db,
+            branch=default_branch,
+            account_session=AnonymousSession(),
+            query=USER_PREFERENCE_UPSERT,
+            variables={"account_id": first_account.id, "date_format": "dd/MM/yyyy"},
+        )
+
+        assert result.errors
+
+        rows = await NodeManager.query(
+            db=db, schema=InfrahubKind.USERPREFERENCE, filters={"account__ids": [first_account.id]}
+        )
+        assert rows == []
 
 
 class TestGlobalPreferenceSingletonGuard:

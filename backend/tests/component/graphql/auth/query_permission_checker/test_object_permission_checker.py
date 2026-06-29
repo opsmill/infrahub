@@ -1001,13 +1001,15 @@ class TestGlobalPreferenceManagerPermissions:
             schema_branch=schema_branch,
         )
 
-        await checker.check(
+        resolution = await checker.check(
             db=db,
             account_session=session,
             analyzed_query=analyzed_query,
             branch=permissions_helper.default_branch,
             query_parameters=gql_params,
         )
+        # ObjectPermissionChecker terminates the pipeline once object permissions are satisfied.
+        assert resolution == CheckerResolution.TERMINATE
 
 
 class TestRepositoryManagerPermissions:
