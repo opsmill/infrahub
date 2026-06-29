@@ -9,7 +9,12 @@ from typing_extensions import Self
 from infrahub import lock
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
-from infrahub.core.preferences import GlobalPreference, UserPreference
+from infrahub.core.preferences import (
+    GLOBAL_PREFERENCE_LOCK_NAME,
+    GLOBAL_PREFERENCE_LOCK_NAMESPACE,
+    GlobalPreference,
+    UserPreference,
+)
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import PermissionDeniedError
 
@@ -126,14 +131,21 @@ class InfrahubGlobalPreferenceUpdate(Mutation):
 
         graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
 
-        async with graphql_context.db.start_transaction() as db:
-            obj = await GlobalPreference.get_global(db=db)
+        # Serialise the singleton read-modify-write: GlobalPreference.save() rewrites the whole node,
+        # so two concurrent updates of *different* fields would otherwise lose one writer's change
+        # (last write wins). The same lock guards get_global()'s lazy create, so an update can never
+        # race the initial materialisation either.
+        async with lock.registry.get(
+            name=GLOBAL_PREFERENCE_LOCK_NAME, namespace=GLOBAL_PREFERENCE_LOCK_NAMESPACE, local=False
+        ):
+            async with graphql_context.db.start_transaction() as db:
+                obj = await GlobalPreference.get_global(db=db)
 
-            if date_format is not _UNSET:
-                obj.date_format = date_format
-            if timezone is not _UNSET:
-                obj.timezone = timezone
+                if date_format is not _UNSET:
+                    obj.date_format = date_format
+                if timezone is not _UNSET:
+                    obj.timezone = timezone
 
-            await obj.save(db=db, user_id=graphql_context.account_session.account_id)
+                await obj.save(db=db, user_id=graphql_context.account_session.account_id)
 
         return cls(ok=True, date_format=obj.date_format, timezone=obj.timezone)  # type: ignore[call-arg]

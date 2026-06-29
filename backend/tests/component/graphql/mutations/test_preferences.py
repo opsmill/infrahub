@@ -309,3 +309,37 @@ async def test_global_update_allowed_for_super_admin(
 
     global_pref = await GlobalPreference.get_global(db=db)
     assert global_pref.timezone == "Europe/London"
+
+
+async def test_global_update_preserves_other_field(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    create_test_admin: Node,
+    session_admin: AccountSession,
+) -> None:
+    """Two separate updates of different fields accumulate; neither clobbers the other.
+
+    Each update is a serialized read-modify-write under the singleton lock, so updating only
+    `timezone` re-reads the row and leaves a previously-set `date_format` intact (no lost write).
+    """
+    await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        query=GLOBAL_UPDATE,
+        variables={"date_format": "yyyy-MM-dd"},
+    )
+    await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        query=GLOBAL_UPDATE,
+        variables={"timezone": "UTC"},
+    )
+
+    global_pref = await GlobalPreference.get_global(db=db)
+    assert global_pref.date_format == "yyyy-MM-dd"  # preserved across the second update
+    assert global_pref.timezone == "UTC"
+    assert len(await GlobalPreference.get_list(db=db)) == 1
