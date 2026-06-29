@@ -126,6 +126,14 @@ class ProposedChangeArtifactDefinition(BaseModel):
     )
 
     @property
+    def source_noun(self) -> str:
+        return "transform"
+
+    @property
+    def instance_noun(self) -> str:
+        return "artifacts"
+
+    @property
     def transform_location(self) -> str:
         if self.transform_kind == InfrahubKind.TRANSFORMJINJA2:
             return self.template_path
