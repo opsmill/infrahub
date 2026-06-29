@@ -61,7 +61,7 @@ The shippable increments are by **capability**, not strictly by user story: the 
 
 - [X] T010 [P] [US2] Component tests in `backend/tests/component/merge_recompute_coalescing/test_build_coalesced_recompute.py` for `build_coalesced_recompute`: cross-node update (coalesced to one union lookup), same-node update (no async targets), creation (all three families), reader-of-deleted-node, dedup, per-family scope (HFID no peer fan-out), bounded fallback. Real profile schema, no worker. 7 passing.
 - [ ] T011 [P] [US2] integration_docker correctness test `backend/tests/integration_docker/test_merge_recompute_coalescing.py`: after a real merge, every affected computed attribute / display label / HFID equals a from-scratch recompute (cross-node, transitive, creation, deletion), on the destination branch.
-- [ ] T012 [US2] Integrate the coordinator into the merge post-process in `backend/infrahub/core/merge/post_merge.py`: build and submit the coalesced recompute on the destination branch; stop the per-node cross-node fan-out (uses T009). Behavior-preserving.
+- [X] T012 [US2] Integrated the coordinator into the merge post-process in `backend/infrahub/core/merge/post_merge.py`: `dispatch_events` builds `MergeChange`s from the diff changelog, runs `build_coalesced_recompute` on the destination branch, and submits via `submit_coalesced_recompute`. The per-node cross-node fan-out for the three families is stopped by T009's suppression; other consumers still get the events. Component-tested with a real cross-node merge: one computed + one display submission over the union of changed peers, no HFID fan-out.
 - [ ] T013 [US1] Run the profiling harness before/after for merge at small/medium/large; confirm recompute jobs are bounded by affected derived values and the trailing window is cut versus the baseline; merged data identical.
 
 **Checkpoint**: merge is correct and faster — shippable MVP.
@@ -72,7 +72,7 @@ The shippable increments are by **capability**, not strictly by user story: the 
 
 **Goal**: rebase gets the same coalesced recompute, on the user branch.
 
-- [ ] T014 [US3] Integrate the coordinator into the rebase flow in `backend/infrahub/core/branch/tasks.py`: build and submit the coalesced recompute on the user branch; stop the per-node fan-out.
+- [X] T014 [US3] Integrated the coordinator into the rebase flow in `backend/infrahub/core/branch/tasks.py`: `rebase_branch` builds `MergeChange`s from the changelog and submits the coalesced recompute on the user branch (the per-node fan-out for the three families is suppressed by T009). Component-tested with a real cross-node rebase: one computed + one display submission over the union, on the user branch, no HFID fan-out.
 - [ ] T015 [P] [US3] integration_docker correctness test for rebase (same from-scratch-recompute oracle, on the user branch).
 - [ ] T016 [US3] Run the harness for rebase; confirm the reduction and correctness parity with merge.
 

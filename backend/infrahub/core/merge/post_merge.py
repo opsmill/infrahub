@@ -3,7 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub import config
+from infrahub.core import registry
 from infrahub.core.constants import MutationAction
+from infrahub.core.merge.recompute_coalescing import (
+    MergeChange,
+    build_coalesced_recompute,
+    submit_coalesced_recompute,
+)
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.constants import NODE_ORIGIN_MERGE
 from infrahub.events.models import EventMeta, InfrahubEvent
@@ -134,12 +140,14 @@ class PostMergeDispatcher:
                     meta=EventMeta.from_parent(parent=merge_event, branch=self.default_branch),
                 )
             )
+        changes: list[MergeChange] = []
         for action, node_changelog in node_events:
+            mutation_action = MutationAction.from_diff_action(diff_action=action)
             meta = EventMeta.from_parent(parent=merge_event, branch=self.default_branch)
             # Mark the event as merge-originated so the coalesced recompute owns these families and
             # their per-node automations skip the replayed change.
             meta.origin = NODE_ORIGIN_MERGE
-            node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+            node_event_class = get_node_event(mutation_action)
             mutate_event = node_event_class(
                 kind=node_changelog.node_kind,
                 node_id=node_changelog.node_id,
@@ -148,6 +156,14 @@ class PostMergeDispatcher:
                 meta=meta,
             )
             events.append(mutate_event)
+            changes.append(
+                MergeChange(
+                    node_id=node_changelog.node_id,
+                    kind=node_changelog.node_kind,
+                    action=mutation_action.value,
+                    changed_fields=frozenset(node_changelog.updated_fields),
+                )
+            )
 
         # The merge is already committed by the time events are dispatched, so a failed send must not
         # surface as a merge failure: log it and continue, like the other post-merge follow-ups.
@@ -156,6 +172,18 @@ class PostMergeDispatcher:
                 await self.event_service.send(event=event)
             except Exception:
                 self.log.exception("Failed to send post-merge event '%s'", type(event).__name__)
+
+        # One coalesced recompute on the destination branch replaces the per-node fan-out for the
+        # families it owns; their per-node automations were suppressed for these merge-origin events.
+        # The merge is already committed, so a failure here must not surface as a merge failure.
+        try:
+            schema_branch = registry.schema.get_schema_branch(name=self.default_branch.name)
+            coalesced = build_coalesced_recompute(
+                changes=changes, schema_branch=schema_branch, branch=self.default_branch.name
+            )
+            await submit_coalesced_recompute(coalesced=coalesced, workflow=self.workflow, context=event_context)
+        except Exception:
+            self.log.exception("Failed to submit the coalesced post-merge recompute")
 
     async def _submit_workflow(
         self,

@@ -23,6 +23,11 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
+from infrahub.core.merge.recompute_coalescing import (
+    MergeChange,
+    build_coalesced_recompute,
+    submit_coalesced_recompute,
+)
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -262,16 +267,17 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         meta=EventMeta(branch=user_branch, context=event_context),
     )
     events: list[InfrahubEvent] = [rebase_event]
+    changes: list[MergeChange] = []
     changelog_collector = DiffChangelogCollector(
         diff=default_branch_diff, branch=user_branch, db=db, migration_tracker=MigrationTracker(migrations=migrations)
     )
     for action, node_changelog in changelog_collector.collect_changelogs():
-        node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+        mutation_action = MutationAction.from_diff_action(diff_action=action)
         meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
         # Mark the event as rebase-originated so the coalesced recompute owns these families and
         # their per-node automations skip the replayed change.
         meta.origin = NODE_ORIGIN_REBASE
-        mutate_event = node_event_class(
+        mutate_event = get_node_event(mutation_action)(
             kind=node_changelog.node_kind,
             node_id=node_changelog.node_id,
             changelog=node_changelog,
@@ -279,10 +285,31 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             meta=meta,
         )
         events.append(mutate_event)
+        changes.append(
+            MergeChange(
+                node_id=node_changelog.node_id,
+                kind=node_changelog.node_kind,
+                action=mutation_action.value,
+                changed_fields=frozenset(node_changelog.updated_fields),
+            )
+        )
 
     event_service = await get_event_service()
     for event in events:
         await event_service.send(event)
+
+    # Rebase recomputes on the user branch (a merge recomputes on the destination). One coalesced
+    # recompute replaces the per-node fan-out for the families it owns; a submission failure must not
+    # fail the rebase, which is already applied.
+    try:
+        schema_name = (
+            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
+        )
+        schema_branch = registry.schema.get_schema_branch(name=schema_name)
+        coalesced = build_coalesced_recompute(changes=changes, schema_branch=schema_branch, branch=user_branch.name)
+        await submit_coalesced_recompute(coalesced=coalesced, workflow=get_workflow(), context=event_context)
+    except Exception:
+        log.exception("Failed to submit the coalesced post-rebase recompute")
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
