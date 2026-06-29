@@ -4,9 +4,11 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub import config
 from infrahub.core.constants import MutationAction
+from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
+from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
@@ -21,6 +23,7 @@ if TYPE_CHECKING:
     from infrahub.core.changelog.models import NodeChangelog
     from infrahub.core.constants import DiffAction
     from infrahub.core.diff.ipam_diff_parser import IpamNodeDetails
+    from infrahub.core.models import SchemaDiff
     from infrahub.log import InfrahubLogger
     from infrahub.services.adapters.event import InfrahubEventService
     from infrahub.services.adapters.workflow import InfrahubWorkflow
@@ -101,6 +104,7 @@ class PostMergeDispatcher:
         proposed_change_id: str | None,
         node_events: Sequence[tuple[DiffAction, NodeChangelog]],
         context: InfrahubContext,
+        schema_diff: SchemaDiff | None = None,
     ) -> None:
         event_context = context.to_event_context()
         merge_event = BranchMergedEvent(
@@ -111,6 +115,17 @@ class PostMergeDispatcher:
         )
 
         events: list[InfrahubEvent] = [merge_event]
+        if schema_diff is not None:
+            # Drive the display-label, HFID and computed-attribute backfills for destination-only nodes,
+            # scoped to the elements the merge changed so the recompute stays narrow.
+            events.append(
+                SchemaUpdatedEvent(
+                    branch_name=self.default_branch.name,
+                    schema_hash=registry.schema.get_schema_branch(name=self.default_branch.name).get_hash(),
+                    changed_elements=build_changed_elements_payload(schema_diff),
+                    meta=EventMeta.from_parent(parent=merge_event, branch=self.default_branch),
+                )
+            )
         for action, node_changelog in node_events:
             meta = EventMeta.from_parent(parent=merge_event, branch=self.default_branch)
             node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))

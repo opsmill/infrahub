@@ -418,16 +418,12 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         assert branch_after > branch_before
         assert main_after == main_before
 
-    async def test_merge_does_not_trigger_schema_scoped_recompute(
-        self, client: InfrahubClient, schema_computed_tshirt: dict
-    ) -> None:
-        """Merging a branch's schema change does not run this feature's schema-scoped recompute.
+    async def test_merge_triggers_scoped_recompute(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:
+        """Merging a branch's computed-attribute template change recomputes the affected attribute on main.
 
-        Merge and rebase emit branch and node events, not a schema-update event, so the
-        computed-attribute setup flow is not triggered on merge. A schema-only change applied by a
-        merge (no object-data change) therefore does not recompute on the target branch; merged
-        data changes are recomputed by the separate data-change path. This characterizes the
-        boundary and confirms a merge never broadens recompute onto the default branch.
+        The merge applies the new schema to the default branch and emits a scoped schema-update event, so
+        the computed-attribute setup refreshes the changed attribute on main-only nodes instead of leaving
+        them stale until their next mutation.
         """
         branch = await client.branch.create(branch_name="merge-scope")
 
@@ -447,11 +443,16 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         merged = await client.branch.merge(branch_name=branch.name)
         assert merged
 
-        # Give any merge-driven work time to surface, then confirm no schema-scoped recompute ran.
-        await sleep(2)
-        await wait_for_all_tasks_to_be_completed(client)
-        main_after = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
-        )
+        # The merge-driven backfill is asynchronous; poll until the scoped recompute surfaces on main.
+        main_after = main_before
+        deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            main_after = await client.task.count(
+                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
+            )
+            if main_after > main_before:
+                break
 
-        assert main_after == main_before
+        assert main_after > main_before
