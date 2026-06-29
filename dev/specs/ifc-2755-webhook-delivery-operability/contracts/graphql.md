@@ -39,7 +39,7 @@ type HttpResponse { status_code: Int, body: String, latency_ms: Float }
 type DeliveryError { status_class: String!, message: String!, remediation: String! }
 
 type TaskAction { action: TaskActionName!, available: Boolean!, unavailability_reason: String }
-enum TaskActionName { RESEND, CANCEL }
+enum TaskActionName { RETRY, CANCEL }
 ```
 
 **Backward compatibility**: `TaskNodes.node` changes from `TaskNode` (object) to `TaskNodeInterface`. Existing selections of common fields continue to resolve. `TaskNode` keeps its name, so SDK / fragments / `__typename` checks for `TaskNode` are unaffected. `WebhookDeliveryTask` is reachable only through `resolve_type` and must be registered explicitly.
@@ -77,9 +77,9 @@ Bespoke (non-CRUD) mutations modeled on `BranchCreate`, registered as direct fie
 ```graphql
 input TaskActionInput { id: String! }
 
-type TaskResend {
+type TaskRetry {
   ok: Boolean!
-  task: TaskNodeInterface     # the NEW delivery produced by the resend
+  task: TaskNodeInterface     # the NEW delivery produced by the retry
 }
 
 type TaskCancel {
@@ -88,24 +88,24 @@ type TaskCancel {
 }
 
 extend type Mutation {
-  InfrahubTaskResend(data: TaskActionInput!): TaskResend
+  InfrahubTaskRetry(data: TaskActionInput!): TaskRetry
   InfrahubTaskCancel(data: TaskActionInput!): TaskCancel
 }
 ```
 
 ### Behavioral contract
 
-**InfrahubTaskResend(id)**
+**InfrahubTaskRetry(id)**
 - Auth: requires update permission on the target webhook node (resolved from the run's `webhook_id`). Mutating op ⇒ authentication required.
-- Precondition: target is a `WEBHOOK_SEND` run in a **terminal** state (any, including COMPLETED). Otherwise → error "resend unavailable: delivery still in progress".
+- Precondition: target is a `WEBHOOK_SEND` run in a **terminal** state (any, including COMPLETED). Otherwise → error "retry unavailable: delivery still in progress".
 - Not found: original run purged from retention → error "delivery no longer available" (FR-020).
 - Effect: read frozen `parameters` by id; resubmit `WEBHOOK_SEND` with the same `{webhook_id, webhook_kind, webhook_name, payload}`; new standalone run re-tags + re-resolves config + re-signs. Original unchanged. Returns the new task.
 - Re-validates availability at execution (rejects a stale action, FR-026).
 
 **InfrahubTaskCancel(id)**
-- Auth: same as resend.
+- Auth: same as retry.
 - Precondition: target is a `WEBHOOK_SEND` run in a **non-terminal** state. Otherwise → error "cancel unavailable: delivery already settled".
-- Effect: set run state to CANCELLING (force). Stops further scheduled auto-retries. Best-effort for an in-flight request (not recalled). Returns the task.
+- Effect: set run state to CANCELLED (force). Stops further scheduled auto-retries. Best-effort for an in-flight request (not recalled). Returns the task.
 
 ### Error surface
 
@@ -115,4 +115,4 @@ Errors are returned as GraphQL errors with clean messages (no stacktrace, Princi
 
 - No change to existing task list filters/pagination.
 - No new global permission type.
-- No webhook-specific mutation names (`CoreWebhookResend`/`CoreWebhookCancel` are explicitly **not** introduced).
+- No webhook-specific mutation names (`CoreWebhookRetry`/`CoreWebhookCancel` are explicitly **not** introduced).

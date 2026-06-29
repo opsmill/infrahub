@@ -7,10 +7,10 @@ All decisions are grounded in the current branch code (paths are project-relativ
 **Decision**: Add a `WEBHOOK_SEND` `WorkflowDefinition` to `backend/infrahub/workflows/catalogue.py` and register it in `WORKFLOWS`. `webhook_process` invokes it as a deployment via the existing `submit_workflow` path so each delivery is a standalone, resubmittable run.
 
 **Rationale**: Today `webhook_send` is an inline `@flow(name="webhook-send")` in `backend/infrahub/webhook/tasks/process.py:45` called directly as a subflow (`process.py:154`); it is **not** in the catalogue (only `WEBHOOK_PROCESS`, `WEBHOOK_CONFIGURE`, `WEBHOOK_INVALIDATE_HEADERS` exist). Two features require it to be a registered workflow:
-- **Resend** resubmits by workflow name with the frozen parameters (`run_deployment` / `submit_workflow` need a deployment, per `services/adapters/workflow/worker.py:86`).
+- **Retry** resubmits by workflow name with the frozen parameters (`run_deployment` / `submit_workflow` need a deployment, per `services/adapters/workflow/worker.py:86`).
 - **Type discrimination** keys `TASK_TYPES` on the catalogue constant's `name` (`WEBHOOK_SEND.name → WebhookDeliveryTask`); the discriminant is the run's workflow name, already resolved into `EnrichedFlowRun.workflow_name` (`task_manager/flow_run/service.py:85`).
 
-**Alternatives considered**: Keep `webhook_send` an inline subflow and resend by re-invoking `webhook_process` — rejected: that re-runs the transform and re-derives the payload (not a true frozen replay), and re-introduces the orchestrator parent the design deliberately drops for resends.
+**Alternatives considered**: Keep `webhook_send` an inline subflow and retry by re-invoking `webhook_process` — rejected: that re-runs the transform and re-derives the payload (not a true frozen replay), and re-introduces the orchestrator parent the design deliberately drops for retrys.
 
 ## D2 — Retry policy: fixed delay, transient-only (resolves spec Q1)
 
@@ -24,7 +24,7 @@ All decisions are grounded in the current branch code (paths are project-relativ
 
 **Decision**: Write a single grouped `http` artifact per run (request + response + error together), reflecting the **last attempt**. The payload is not in the artifact — it is read from the run's frozen parameters.
 
-**Rationale**: The design doc left two open points: (a) one grouped artifact vs separate request/response artifacts, (b) per-attempt vs last-attempt. One artifact keyed per run mirrors the existing `progress` artifact read path exactly (`task_manager/flow_run/reader.py:108`, `read_artifacts(ArtifactFilter(...), FlowRunFilter(id=...))`), so read-back is one batched call and the serializer projection is trivial. Last-attempt matches the operator's mental model (the run shows AwaitingRetry between attempts; only the settling attempt's request/response is meaningful) and avoids unbounded artifact growth. The artifact is written from the `webhook_send` body so Prefect binds it to the visible run id regardless of trigger (event, resend, cron).
+**Rationale**: The design doc left two open points: (a) one grouped artifact vs separate request/response artifacts, (b) per-attempt vs last-attempt. One artifact keyed per run mirrors the existing `progress` artifact read path exactly (`task_manager/flow_run/reader.py:108`, `read_artifacts(ArtifactFilter(...), FlowRunFilter(id=...))`), so read-back is one batched call and the serializer projection is trivial. Last-attempt matches the operator's mental model (the run shows AwaitingRetry between attempts; only the settling attempt's request/response is meaningful) and avoids unbounded artifact growth. The artifact is written from the `webhook_send` body so Prefect binds it to the visible run id regardless of trigger (event, retry, cron).
 
 **Implementation note**: The existing `progress` artifact stores a float (`type="progress"`). The `http` artifact stores a JSON-serializable dict; use a result/JSON artifact with a fixed key (e.g. `infrahub-webhook-http`) so it is filterable like progress. Confirm artifact `data` accepts a dict at write time and round-trips on read.
 
@@ -62,26 +62,26 @@ A pure function with injected inputs satisfies the no-mock testing rule and the 
 
 **Alternatives considered**: A `task_type` enum/field or a tag — rejected by the design: the workflow name is intrinsic to every run, so historical runs type correctly with no backfill and no extra stored field.
 
-## D7 — Generic, task-id-addressable resend/cancel mutations (IFC-2119, IFC-2753; resolves spec Q on genericity)
+## D7 — Generic, task-id-addressable retry/cancel mutations (IFC-2119, IFC-2753; resolves spec Q on genericity)
 
-**Decision**: Two new mutations, `InfrahubTaskResend(id)` and `InfrahubTaskCancel(id)`, modeled on the custom (non-CRUD) `BranchCreate` mutation pattern (`graphql/mutations/branch.py:55-114`), registered as direct fields on `InfrahubBaseMutation` (`graphql/schema.py`). They accept a task id and dispatch by the run's workflow type. The mutation **interface** is generic; support is per task type — only `WEBHOOK_SEND` runs are actionable, anything else returns the action as unavailable.
+**Decision**: Two new mutations, `InfrahubTaskRetry(id)` and `InfrahubTaskCancel(id)`, modeled on the custom (non-CRUD) `BranchCreate` mutation pattern (`graphql/mutations/branch.py:55-114`), registered as direct fields on `InfrahubBaseMutation` (`graphql/schema.py`). They accept a task id and dispatch by the run's workflow type. The mutation **interface** is generic; support is per task type — only `WEBHOOK_SEND` runs are actionable, anything else returns the action as unavailable.
 
-- **Resend**: read the original run's frozen parameters by id (`read_flow_runs` with id filter → `flow_run.parameters`), then `submit_workflow(WEBHOOK_SEND, parameters=...)`. New standalone run; original left immutable.
-- **Cancel**: `set_flow_run_state(id, State(type=CANCELLING), force=True)` via the retention client (`task_manager/flow_run/prefect_client.py:85`).
+- **Retry**: read the original run's frozen parameters by id (`read_flow_runs` with id filter → `flow_run.parameters`), then `submit_workflow(WEBHOOK_SEND, parameters=...)`. New standalone run; original left immutable.
+- **Cancel**: `set_flow_run_state(id, State(type=CANCELLED), force=True)` via the retention client (`task_manager/flow_run/prefect_client.py:85`).
 
-**Rationale**: Honors the clarified directive — the query/mutation surface is generic (not `CoreWebhookCancel`), but genericity is confined to the interface (FR-017). CRUD-schema mutations (`InfrahubMutationMixin`) are the wrong base; `BranchCreate` is the precedent for a bespoke action mutation. Resend retention failure (run purged) surfaces as a clear "not found" (FR-020); config-no-longer-resolves surfaces at runtime on the new run (FR-005-class CONFIG failure, US3 scenario 5).
+**Rationale**: Honors the clarified directive — the query/mutation surface is generic (not `CoreWebhookCancel`), but genericity is confined to the interface (FR-017). CRUD-schema mutations (`InfrahubMutationMixin`) are the wrong base; `BranchCreate` is the precedent for a bespoke action mutation. Retry retention failure (run purged) surfaces as a clear "not found" (FR-020); config-no-longer-resolves surfaces at runtime on the new run (FR-005-class CONFIG failure, US3 scenario 5).
 
 **Alternatives considered**: Webhook-specific mutations — rejected by Q2/Q3 direction. A generic mutation that every task type implements — rejected: only webhook deliveries support the actions; others resolve unavailable.
 
 ## D8 — `available_actions` computed server-side from run state
 
-**Decision**: Compute `available_actions` in the task serializer from the already-fetched run state + workflow type. For a `WEBHOOK_SEND` run: `RESEND` available iff terminal (COMPLETED/FAILED/CRASHED/CANCELLED); `CANCEL` available iff non-terminal (RUNNING/SCHEDULED/PENDING/AwaitingRetry). Each unavailable action carries a reason. Non-webhook runs get an empty list.
+**Decision**: Compute `available_actions` in the task serializer from the already-fetched run state + workflow type. For a `WEBHOOK_SEND` run: `RETRY` available iff terminal (COMPLETED/FAILED/CRASHED/CANCELLED); `CANCEL` available iff non-terminal (RUNNING/SCHEDULED/PENDING/AwaitingRetry). Each unavailable action carries a reason. Non-webhook runs get an empty list.
 
-**Rationale**: Single source of truth server-side (FR-016, Principle "Backend Authoritative"). Derived from data the task query already loads — no extra round-trip (Principle V). Note the resend gate is **any terminal state including COMPLETED**, per spec Q (FR-018); a succeeded resend is allowed but the UI confirmation calls out re-delivery (FR-021). Mutations re-check availability at execution time and reject a stale action (FR-026).
+**Rationale**: Single source of truth server-side (FR-016, Principle "Backend Authoritative"). Derived from data the task query already loads — no extra round-trip (Principle V). Note the retry gate is **any terminal state including COMPLETED**, per spec Q (FR-018); a succeeded retry is allowed but the UI confirmation calls out re-delivery (FR-021). Mutations re-check availability at execution time and reject a stale action (FR-026).
 
 ## D9 — Authorization reuses object-level webhook permission
 
-**Decision**: `TaskResend`/`TaskCancel` on a webhook delivery authorize against the **object-level update permission on the target webhook node** (resolved from the run's `webhook_id` parameter/tag), via `active_permissions.raise_for_permission(...)` at the mutation layer.
+**Decision**: `TaskRetry`/`TaskCancel` on a webhook delivery authorize against the **object-level update permission on the target webhook node** (resolved from the run's `webhook_id` parameter/tag), via `active_permissions.raise_for_permission(...)` at the mutation layer.
 
 **Rationale**: Research found no `MANAGE_WEBHOOKS` global permission; webhooks are governed by object permissions on the Standard/CustomWebhook nodes (`graphql/manager.py:542-556` maps both kinds to `InfrahubWebhookMutation`; no global permission gate). The clarified spec (FR-027) says "no new permission model", so reuse the existing object update permission rather than add a global one. Authorization is enforced at the API layer (Principle VI).
 

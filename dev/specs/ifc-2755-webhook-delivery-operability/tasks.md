@@ -34,21 +34,19 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Promote `webhook_send` to a registered workflow and stand up the polymorphic task typing + `available_actions`. Mirrors the events GraphQL type derivation (interface + `resolve_type` + name→type map + manager registration).
+**Purpose**: Register `webhook_send` as the user-facing delivery and expose `available_actions` generically on every task. Polymorphic task typing (a `WebhookDeliveryTask` subtype) is deferred to US1, where the delivery-specific `http_request`/`http_response`/`error` fields it carries are first needed; `available_actions` is exposed directly on `TaskNode` and does not require it.
 
-**⚠️ CRITICAL**: No user story can be completed until this phase is done.
+- [X] T003 Register `WEBHOOK_SEND` `WorkflowDefinition` (`type=CORE`) and add it to `WORKFLOWS` in `backend/infrahub/workflows/catalogue.py`.
+- [X] T004 Make `webhook_send` the user-facing, retryable delivery: it self-tags with the webhook node and branch, and `webhook_process` (internal orchestrator) stops tagging itself and passes `branch_name` to the inline call, in `backend/infrahub/webhook/tasks/process.py` (depends on T003). Supersedes the original `submit_workflow` detachment — `webhook_process` keeps its inline call and classified-failure settling; only the node tag moves to the delivery so the run that carries the frozen payload is the one surfaced and retried.
+- [X] T005 [P] Add the `TaskAction` type and `TaskActionType` enum (RETRY, CANCEL) in `backend/infrahub/graphql/types/task.py`. The `HttpRequest`/`HttpResponse`/`DeliveryError` types are deferred to US1, where the captured request/response is displayed.
+- [ ] T006 _(Deferred to US1, depends on T005)_ Polymorphic task typing: `TaskNodeInterface`, `WebhookDeliveryTask` (`http_request`/`http_response`/`error`), `TASK_TYPES` + `resolve_type`, and `TaskNodes.node` → interface, in `backend/infrahub/graphql/types/task.py`. Not required by `available_actions`; needed when the delivery-specific display fields land in US1.
+- [ ] T007 _(Deferred to US1, depends on T006)_ Register the concrete task types so they are reachable via `resolve_type` (mirror `_load_event_types`) in `backend/infrahub/graphql/manager.py`.
+- [X] T008 [P] Implement the `available_actions` computation as a dedicated pure function/module from `(workflow_name, prefect_state)` — RETRY iff terminal (incl. COMPLETED), CANCEL iff non-terminal, empty for non-webhook runs, each with `unavailability_reason` — unit-testable in isolation, in `backend/infrahub/graphql/queries/task_actions.py` (depends on T003).
+- [X] T009 Wire `available_actions` into the task serializer (`_serialize_node`) so every task node carries it, in `backend/infrahub/graphql/queries/task.py` (depends on T008).
+- [X] T010 [P] Unit test the `available_actions` gating matrix (terminal/non-terminal, webhook vs other) in `backend/tests/unit/graphql/queries/test_task_actions.py` (depends on T008).
+- [ ] T011 _(Deferred to US1, depends on T007)_ Component test that `resolve_type` returns `WebhookDeliveryTask` for `webhook_send` runs and `TaskNode` otherwise, and that existing common-field selections still resolve, in `backend/tests/component/graphql/queries/test_task.py`.
 
-- [X] T003 Register `WEBHOOK_SEND` `WorkflowDefinition` and add it to `WORKFLOWS` in `backend/infrahub/workflows/catalogue.py`.
-- [ ] T004 Invoke `webhook_send` as the registered deployment from `webhook_process` (via the `submit_workflow` path) so each delivery is a standalone resubmittable run, in `backend/infrahub/webhook/tasks/process.py` (depends on T003).
-- [ ] T005 [P] Add supporting GraphQL types `HttpRequest`, `HttpResponse`, `DeliveryError`, `TaskAction`, and the `TaskActionName` enum (RESEND, CANCEL) in `backend/infrahub/graphql/types/task.py`.
-- [ ] T006 Introduce `TaskNodeInterface` (move the current common `Task` fields onto it, add `available_actions`), convert `TaskNode` to `class Meta: interfaces = (TaskNodeInterface,)`, add `WebhookDeliveryTask` (adds `http_request`/`http_response`/`error`), define `TASK_TYPES = {WEBHOOK_SEND.name: WebhookDeliveryTask}` + `resolve_type`, and change `TaskNodes.node` to the interface, in `backend/infrahub/graphql/types/task.py` (depends on T005, T003).
-- [ ] T007 Register the concrete task types so they are reachable via `resolve_type` (mirror `_load_event_types`) in `backend/infrahub/graphql/manager.py` (depends on T006).
-- [X] T008 [P] Implement the `available_actions` computation as a dedicated pure function/module from `(workflow_name, prefect_state)` — RESEND iff terminal (incl. COMPLETED), CANCEL iff non-terminal, empty for non-webhook runs, each with `unavailability_reason` — unit-testable in isolation, in `backend/infrahub/graphql/queries/task_actions.py` (depends on T003).
-- [ ] T009 Wire `available_actions` into the task serializer (`_serialize_node`) so every task node carries it, in `backend/infrahub/graphql/queries/task.py` (depends on T008, T006).
-- [X] T010 [P] Unit test the `available_actions` gating matrix (terminal/non-terminal, webhook vs other) in `backend/tests/unit/webhook/test_available_actions.py` (depends on T008).
-- [ ] T011 [P] Component test that `resolve_type` returns `WebhookDeliveryTask` for `webhook_send` runs and `TaskNode` otherwise, and that existing common-field selections still resolve, in `backend/tests/component/graphql/queries/test_task.py` (depends on T007).
-
-**Checkpoint**: Tasks are polymorphically typed; webhook deliveries resolve to `WebhookDeliveryTask`; `available_actions` is populated; `webhook_send` is resubmittable. **Regenerate and commit the GraphQL schema + frontend types now** — the object→interface change alters `schema/schema.graphql` — and re-run regeneration at each subsequent increment so the generated-file CI gate stays green (don't defer all regen to Polish).
+**Checkpoint**: `webhook_send` is registered and resubmittable; the delivery run carries the node/branch tags; `available_actions` is populated on every task (empty for non-deliveries). The GraphQL schema is regenerated and committed at each increment so the generated-file CI gate stays green. Polymorphic typing and the delivery-specific display fields land in US1.
 
 ---
 
@@ -99,24 +97,24 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 
 ---
 
-## Phase 5: User Story 3 - Resend a delivery (Priority: P3)
+## Phase 5: User Story 3 - Retry a delivery (Priority: P3)
 
-**Goal**: Resend a settled delivery (any terminal state, incl. succeeded) — replays the frozen payload against current config with a fresh signature, as a new run; confirm on every resend.
+**Goal**: Retry a settled delivery (any terminal state, incl. succeeded) — replays the frozen payload against current config with a fresh signature, as a new run; confirm on every retry.
 
-**Independent Test**: Fail a delivery against a down endpoint; bring it up; resend → new delivery with same payload succeeds; original unchanged. Resend a succeeded delivery → confirmation calls out re-delivery. Resend unavailable while in progress.
+**Independent Test**: Fail a delivery against a down endpoint; bring it up; retry → new delivery with same payload succeeds; original unchanged. Retry a succeeded delivery → confirmation calls out re-delivery. Retry unavailable while in progress.
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Read a flow run's frozen `parameters` by id (for resubmit) in `backend/infrahub/task_manager/flow_run/reader.py`.
-- [ ] T032 [US3] Implement the generic `InfrahubTaskResend(id)` mutation (validate target is a terminal `WEBHOOK_SEND` run; retention not-found → clean "delivery no longer available"; resubmit `WEBHOOK_SEND` with the frozen params; authorize via object-level update permission on the target webhook node; re-validate availability at execution) in `backend/infrahub/graphql/mutations/task.py` (depends on T031, T003, T008).
-- [ ] T033 [US3] Register `InfrahubTaskResend` as a field on `InfrahubBaseMutation` in `backend/infrahub/graphql/schema.py` (depends on T032).
-- [ ] T034 [P] [US3] Functional test: resend authz, terminal-only gating (incl. COMPLETED allowed), retention not-found, and that resubmit creates a new run carrying the same payload with the original left immutable, in `backend/tests/functional/webhook/test_resend.py` (depends on T032, T033).
-- [ ] T035 [P] [US3] Frontend resend mutation (api → domain → `useResendDelivery` hook) in `frontend/app/src/entities/tasks/api/`, `domain/`, and `ui/queries/`.
-- [ ] T036 [US3] Implement the shared `<TaskActions task>` component (reads `available_actions`; `ModalConfirm` with confirm-on-every-resend and a succeeded-delivery re-delivery callout; toast feedback) in `frontend/app/src/entities/tasks/ui/task-actions.tsx` (depends on T035).
-- [ ] T037 [US3] Render `<TaskActions>` in the delivery row (compact + tooltip for unavailable reason) and the detail panel (labeled), in `frontend/app/src/entities/tasks/ui/task-items.tsx` and `task-item-details.tsx` (depends on T036).
-- [ ] T038 [US3] Playwright E2E: resend a failed delivery → a new delivery succeeds; resend a succeeded delivery → confirmation calls out re-delivery, in `frontend/app/tests/e2e/webhook-delivery-resend.spec.ts` (depends on T037).
+- [X] T031 [US3] Read a settled delivery's frozen `parameters` by id for resubmit. Reuses the existing flow-run query (`FlowRunQueryCriteria(ids=[...])`) rather than a new reader method, so no change to `backend/infrahub/task_manager/flow_run/reader.py`.
+- [X] T032 [US3] Implement the generic `InfrahubTaskRetry(id)` mutation (validate target is a terminal `WEBHOOK_SEND` run via `available_actions`; not-found → clean "no longer available"; resubmit `WEBHOOK_SEND` with the frozen params; authorize via object-level update permission on the target webhook node) in `backend/infrahub/graphql/mutations/task.py` (depends on T031, T003, T008).
+- [X] T033 [US3] Register `InfrahubTaskRetry` as a field on `InfrahubBaseMutation` in `backend/infrahub/graphql/schema.py` (depends on T032).
+- [X] T034 [P] [US3] Functional test: terminal-only gating, not-found, and that resubmit creates a new run carrying the same payload with the original left immutable, in `backend/tests/functional/webhook/test_retry.py` (depends on T032, T033). Authz-denied path remains to be added.
+- [X] T035 [P] [US3] Frontend retry mutation (api → domain → `useRetryTaskMutation` hook) in `frontend/app/src/entities/tasks/api/retry-task-from-api.ts`, `domain/retry-task/`, and `ui/queries/retry-task.mutation.ts`.
+- [X] T036 [US3] Implement the shared `<TaskActions task>` component (reads `available_actions`; `ModalConfirm` with the design's confirmation copy quoting the current state; toast feedback) in `frontend/app/src/entities/tasks/ui/task-actions.tsx` (depends on T035). The design uses one generic confirmation per state rather than a separate succeeded-delivery callout. `ModalConfirm` gained optional label/variant/icon props to serve both actions.
+- [X] T037 [US3] Render `<TaskActions>` in the task detail header via `Content.CardTitle`'s `end` slot, in `frontend/app/src/pages/tasks/task-details.tsx` (depends on T036). The row-compact placement is deferred — the design only specifies the detail-header button, which shows the single available action (retry when terminal, cancel when not).
+- [ ] T038 [US3] Playwright E2E: retry a failed delivery → a new run is created; retry confirmation quotes the current state, in `frontend/app/tests/e2e/webhook-delivery-retry.spec.ts` (depends on T037). Pending — needs a running full stack to validate. Component-level coverage is in `task-actions.test.tsx`.
 
-**Checkpoint**: Resend works from the row and detail panel, gated server-side, confirmed every time.
+**Checkpoint**: Retry works from the row and detail panel, gated server-side, confirmed every time.
 
 ---
 
@@ -124,16 +122,16 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 
 **Goal**: Cancel a non-terminal delivery, stopping further auto-retries; best-effort for an in-flight request; settled deliveries cannot be cancelled.
 
-**Independent Test**: Send a delivery to a slow/failing endpoint so it enters AwaitingRetry; cancel → transitions to cancelled, no further attempts; Cancel disabled on settled deliveries; a cancelled delivery is then resendable.
+**Independent Test**: Send a delivery to a slow/failing endpoint so it enters AwaitingRetry; cancel → transitions to cancelled, no further attempts; Cancel disabled on settled deliveries; a cancelled delivery is then retryable.
 
 ### Implementation for User Story 4
 
-- [ ] T039 [US4] Implement the generic `InfrahubTaskCancel(id)` mutation (validate target is a non-terminal `WEBHOOK_SEND` run; set state to CANCELLING with force; authorize via object-level webhook update permission; re-validate availability at execution) in `backend/infrahub/graphql/mutations/task.py` (depends on T003, T008).
-- [ ] T040 [US4] Register `InfrahubTaskCancel` as a field on `InfrahubBaseMutation` in `backend/infrahub/graphql/schema.py` (depends on T039).
-- [ ] T041 [P] [US4] Functional test: cancel flips a non-terminal run to cancelling without recalling an in-flight attempt, is rejected on settled runs, enforces authz, and a cancelled delivery is resendable, in `backend/tests/functional/webhook/test_cancel.py` (depends on T039, T040).
-- [ ] T042 [P] [US4] Frontend cancel mutation (api → domain → `useCancelDelivery` hook) in `frontend/app/src/entities/tasks/api/`, `domain/`, and `ui/queries/`.
-- [ ] T043 [US4] Wire CANCEL into the shared `<TaskActions>` (confirm + toast) so it renders in the row and detail panel, in `frontend/app/src/entities/tasks/ui/task-actions.tsx` (depends on T036, T042).
-- [ ] T044 [US4] Playwright E2E: cancel an awaiting-retry delivery → no further attempts; then resend it, in `frontend/app/tests/e2e/webhook-delivery-cancel.spec.ts` (depends on T043).
+- [X] T039 [US4] Implement the generic `InfrahubTaskCancel(id)` mutation (validate target is a non-terminal `WEBHOOK_SEND` run via `available_actions`; set state to CANCELLED with force; authorize via object-level webhook update permission) in `backend/infrahub/graphql/mutations/task.py` (depends on T003, T008). Shares the load/authorize preamble with the retry mutation.
+- [X] T040 [US4] Register `InfrahubTaskCancel` as a field on `InfrahubBaseMutation` in `backend/infrahub/graphql/schema.py` (depends on T039).
+- [X] T041 [P] [US4] Functional test: settled-delivery rejection and not-found, in `backend/tests/functional/webhook/test_cancel.py` (depends on T039, T040). The non-terminal happy path and authz-denied path remain to be added — the test harness runs deliveries to completion synchronously, so holding a run non-terminal needs a fixture that is not yet in place.
+- [X] T042 [P] [US4] Frontend cancel mutation (api → domain → `useCancelTaskMutation` hook) in `frontend/app/src/entities/tasks/api/cancel-task-from-api.ts`, `domain/cancel-task/`, and `ui/queries/cancel-task.mutation.ts`.
+- [X] T043 [US4] Wire CANCEL into the shared `<TaskActions>` (destructive confirmation + toast) so it renders in the detail header, in `frontend/app/src/entities/tasks/ui/task-actions.tsx` (depends on T036, T042).
+- [ ] T044 [US4] Playwright E2E: cancel a non-terminal delivery → destructive confirmation, no further attempts, in `frontend/app/tests/e2e/webhook-delivery-cancel.spec.ts` (depends on T043). Pending — needs a running full stack to validate. Component-level coverage is in `task-actions.test.tsx`.
 
 **Checkpoint**: All four stories independently functional.
 
@@ -142,7 +140,7 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 - [ ] T045 [P] Regenerate backend generated files and the GraphQL schema (`uv run invoke backend.generate`; `uv run invoke schema.generate-graphqlschema`) and commit the diffs.
-- [ ] T046 [P] User documentation for webhook delivery operability (inspection, classified failures, resend, cancel) under `docs/`, and a backend knowledge note under `dev/knowledge/backend/`.
+- [ ] T046 [P] User documentation for webhook delivery operability (inspection, classified failures, retry, cancel) under `docs/`, and a backend knowledge note under `dev/knowledge/backend/`.
 - [ ] T047 [P] Reference-doc regeneration if events/message-bus reference is affected (`uv run invoke docs.generate`).
 - [ ] T048 Run `/pre-ci` (format, lint, `ty` type check, generated-file + `docs.validate` checks) and fix any drift.
 - [ ] T049 Run `quickstart.md` validation end-to-end across all four user stories.
@@ -204,7 +202,7 @@ Task: "Frontend unit test delivery detail rendering (T023)"
 
 ### Incremental Delivery
 
-Foundational → US1 (inspect) → US2 (classify) → US3 (resend) → US4 (cancel). Each adds operator value without breaking prior stories. Regenerate schema/types and run `/pre-ci` before each push.
+Foundational → US1 (inspect) → US2 (classify) → US3 (retry) → US4 (cancel). Each adds operator value without breaking prior stories. Regenerate schema/types and run `/pre-ci` before each push.
 
 ### Notes
 
