@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, Modal } from "@infrahub/ui";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Heading } from "react-aria-components";
 
 import { Col, Row } from "@/shared/components/container";
@@ -12,6 +12,12 @@ interface ModalConfirmProps {
   description?: ReactNode;
   onConfirm: () => void | Promise<void>;
   isLoading?: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  confirmVariant?: ComponentProps<typeof Button>["variant"];
+  icon?: string;
+  iconClassName?: string;
+  iconContainerClassName?: string;
 }
 
 export function ModalConfirm({
@@ -21,13 +27,21 @@ export function ModalConfirm({
   description,
   onConfirm,
   isLoading,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  confirmVariant = "primary",
+  icon = "mdi:alert-circle-outline",
+  iconClassName = "text-yellow-600",
+  iconContainerClassName = "bg-yellow-100",
 }: ModalConfirmProps) {
   return (
     <Modal isDismissable={!isLoading} isOpen={isOpen} onOpenChange={onOpenChange}>
       <Col className="p-3">
         <Heading slot="title" className="flex items-center gap-2 p-1 font-semibold">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-yellow-100">
-            <Icon icon="mdi:alert-circle-outline" className="text-yellow-600" />
+          <div
+            className={`flex size-8 shrink-0 items-center justify-center rounded-full ${iconContainerClassName}`}
+          >
+            <Icon icon={icon} className={iconClassName} />
           </div>
           {title}
         </Heading>
@@ -37,10 +51,15 @@ export function ModalConfirm({
 
       <Row className="justify-end bg-gray-50 p-3">
         <Button variant="outline" onPress={() => onOpenChange(false)} isDisabled={isLoading}>
-          Cancel
+          {cancelLabel}
         </Button>
-        <Button variant="primary" onPress={onConfirm} isPending={isLoading} isDisabled={isLoading}>
-          Confirm
+        <Button
+          variant={confirmVariant}
+          onPress={onConfirm}
+          isPending={isLoading}
+          isDisabled={isLoading}
+        >
+          {confirmLabel}
         </Button>
       </Row>
     </Modal>
