@@ -86,8 +86,8 @@ The shippable increments are by **capability**, not strictly by user story: the 
 - [ ] T018 [P] Chunk the full-branch Jinja2 recompute loop (one workflow per node today, no chunking) to match the Python/transform paths.
 - [ ] T019 Redundancy skip (T003 decision: deferred): keep recompute-all as the default; the source-branch skip is not implemented in this increment because proving a reader safe needs a source-vs-destination branch query plus a conflict-resolution check whose cost rivals the recompute, with the best-effort source fan-out as a correctness risk. Revisit only if the harness shows reader overlap is a measured hotspot after coalescing. Never under-recompute.
 - [ ] T020 Confirm the existing recompute tests stay green: `backend/tests/integration_docker/test_computed_attributes.py`, `test_display_label_backfill.py`.
-- [ ] T021 [P] Add a changelog fragment (user-facing performance change); confirm wording against project convention. Optional `dev/knowledge/backend/` note on the coalesced path.
-- [ ] T022 Run `uv run invoke format` and `uv run invoke lint`; resolve `mypy` on all new files.
+- [X] T021 [P] Added the changelog fragment `changelog/+ifc-2761-coalesce-merge-recompute.changed.md` (user-facing performance change), following the project's plain-prose convention. The optional `dev/knowledge/backend/` note is not added yet.
+- [X] T022 Ran `ruff format` and `ruff check` (clean) and `mypy` (clean) across all 14 new and changed source files plus the test files. The full `uv run invoke lint` / `docs.format` sweep is deferred to `/pre-ci` (T023); `markdownlint-cli2` is not installed locally.
 - [ ] T023 Run `/pre-ci` before opening the PR; coordinate with IFC-2758 (merge emits no schema-updated event) so the two changes do not double-process.
 
 ---
