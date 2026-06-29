@@ -193,7 +193,7 @@ async def test_effective_preferences_rejected_without_account_session(
     )
 
     assert result.errors
-    assert any("account_session is mandatory" in str(error) for error in result.errors)
+    assert any("requires an authenticated account" in str(error) for error in result.errors)
 
 
 async def test_effective_preferences_rejected_for_anonymous_session(

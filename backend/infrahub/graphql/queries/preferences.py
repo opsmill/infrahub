@@ -35,7 +35,7 @@ async def resolve_effective_preferences(
     graphql_context: GraphqlContext = info.context
 
     if not graphql_context.account_session:
-        raise ValueError("An account_session is mandatory to execute this query")
+        raise PermissionDeniedError("This operation requires an authenticated account")
 
     # Account-scoped view: reject anonymous sessions, whose account_id is empty/untrusted.
     # Unlike resolve_account_tokens this stays open to API-token sessions (their account_id is
