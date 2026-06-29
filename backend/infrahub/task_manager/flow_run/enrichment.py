@@ -8,6 +8,10 @@ from infrahub.database import InfrahubDatabase
 from .models import RelatedNodesInfo
 from .tags import WorkflowTagDecoder
 
+# Placeholder kind for a tagged id the graph does not resolve to a node, so the run still lists
+# with a non-null kind instead of failing the query.
+UNRESOLVED_NODE_KIND = "Unknown"
+
 
 class RelatedNodeEnricherProtocol(Protocol):
     async def enrich(self, flows: list[FlowRun]) -> RelatedNodesInfo: ...
@@ -37,5 +41,9 @@ class RelatedNodeEnricher:
             for node_id, node_kind in unique_related_node_ids_kind.items():
                 if node_id in related_nodes.nodes:
                     related_nodes.nodes[node_id].kind = node_kind
+
+        for node in related_nodes.nodes.values():
+            if node.kind is None:
+                node.kind = UNRESOLVED_NODE_KIND
 
         return related_nodes
