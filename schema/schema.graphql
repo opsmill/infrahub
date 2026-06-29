@@ -25920,6 +25920,18 @@ type Subscription {
   query(interval: Int, name: String, params: GenericScalar): GenericScalar
 }
 
+type TaskAction {
+  action: TaskActionType!
+  available: Boolean!
+  unavailability_reason: String
+}
+
+"""Recovery actions a task run can expose."""
+enum TaskActionType {
+  CANCEL
+  RETRY
+}
+
 type TaskInfo {
   id: String
 }
@@ -25942,6 +25954,7 @@ type TaskLogNodes {
 }
 
 type TaskNode {
+  available_actions: [TaskAction!]!
   branch: String
   conclusion: String!
   created_at: String!
