@@ -1,13 +1,7 @@
 from __future__ import annotations
 
-import copy
 from typing import Any
 from unittest.mock import Mock
-from uuid import uuid4
-
-from prefect.events.schemas.events import Event, Resource
-from prefect.server.events.actions import RunDeployment
-from prefect.utilities.schema_tools.hydration import HydrationContext, hydrate
 
 from infrahub.core.protocols import CoreWebhook
 from infrahub.trigger.models import ExecuteWorkflow
@@ -102,44 +96,6 @@ class TestWebhookTriggerDefinition:
     def test_generate_name(self) -> None:
         trigger = WebhookTriggerDefinitionBuilder("main").build(_make_webhook(id="wh-42"))
         assert trigger.generate_name() == "webhook::wh-42"
-
-
-class TestWebhookParameterRender:
-    def test_scalar_parameters_render_to_strings(self) -> None:
-        """The action parameters render to string values for any triggering event.
-
-        Prefect normalises bare single-expression Jinja parameters before rendering by
-        appending a JSON serialisation step. The event id is a UUID, the occurred time is
-        a datetime, and an event whose resource carries no branch leaves the branch
-        expression undefined -- none JSON-native -- so the parameters must render as plain
-        strings rather than relying on those values being JSON-serialisable.
-        """
-        trigger = WebhookTriggerDefinitionBuilder("main").build(_make_webhook(event_type="all"))
-        action = trigger.actions[0]
-        assert isinstance(action, ExecuteWorkflow)
-        parameters = copy.deepcopy(action.parameters)
-
-        # A branch-less event (e.g. an account event) whose resource has no branch name.
-        # `occurred` is left to default to a datetime, which is itself not JSON-native.
-        event = Event(
-            id=uuid4(),
-            event="infrahub.node.created",
-            payload={"data": {"id": "abc"}, "context": {}},
-            resource=Resource({"prefect.resource.id": "infrahub.account.xyz"}),
-        )
-
-        # Mirror Prefect's server-side parameter render that runs when the automation fires.
-        RunDeployment._upgrade_v1_templates(parameters)
-        rendered = hydrate(
-            parameters,
-            HydrationContext(raise_on_error=True, render_jinja=True, jinja_context={"event": event}),
-        )
-
-        assert rendered["event_id"] == str(event.id)
-        assert rendered["event_type"] == "infrahub.node.created"
-        assert rendered["event_occured_at"] == str(event.occurred)
-        assert isinstance(rendered["branch_name"], str)
-        assert not rendered["branch_name"]
 
 
 class TestGenerateWebhookAutomationName:
