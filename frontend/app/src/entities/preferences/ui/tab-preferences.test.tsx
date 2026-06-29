@@ -5,6 +5,7 @@ import type { EffectivePreferences } from "@/entities/preferences/domain/types";
 import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
 
 import { render } from "../../../../tests/components/render";
+import { selectOption } from "../../../../tests/components/utils";
 import TabPreferences from "./tab-preferences";
 
 vi.mock("@/entities/preferences/domain/get-effective-preferences");
@@ -78,8 +79,7 @@ describe("TabPreferences", () => {
       component.getByText(/something went wrong when fetching your preferences/i).elements()
     ).toHaveLength(0);
 
-    await component.getByRole("button", { name: /date format/i }).click();
-    await component.getByRole("option", { name: /relative/i }).click();
+    await selectOption(component, "Relative (2 days ago)");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
@@ -95,8 +95,7 @@ describe("TabPreferences", () => {
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeDisabled();
 
-    await component.getByRole("button", { name: /date format/i }).click();
-    await component.getByRole("option", { name: /relative/i }).click();
+    await selectOption(component, "Relative (2 days ago)");
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
   });
@@ -104,8 +103,7 @@ describe("TabPreferences", () => {
   test("saving triggers the upsert with the selected values", async () => {
     const component = await render(<TabPreferences />);
 
-    await component.getByRole("button", { name: /date format/i }).click();
-    await component.getByRole("option", { name: /relative/i }).click();
+    await selectOption(component, "Relative (2 days ago)");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {

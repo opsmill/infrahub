@@ -5,6 +5,7 @@ import type { EffectivePreferences } from "@/entities/preferences/domain/types";
 import { updateGlobalPreference } from "@/entities/preferences/domain/update-global-preference";
 
 import { render } from "../../../../tests/components/render";
+import { selectOption } from "../../../../tests/components/utils";
 import TabOrganisationDefaults from "./tab-organisation-defaults";
 
 vi.mock("@/entities/preferences/domain/get-effective-preferences");
@@ -42,8 +43,7 @@ describe("TabOrganisationDefaults", () => {
   test("edits the raw global_* values via the global mutation when allowed", async () => {
     const component = await render(<TabOrganisationDefaults />);
 
-    await component.getByRole("button", { name: /date format/i }).click();
-    await component.getByRole("option", { name: /relative/i }).click();
+    await selectOption(component, "Relative (2 days ago)");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
