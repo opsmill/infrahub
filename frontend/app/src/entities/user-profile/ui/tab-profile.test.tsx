@@ -40,12 +40,9 @@ vi.mock("@/entities/preferences/domain/get-effective-preferences");
 vi.mock("@/entities/preferences/domain/upsert-my-user-preference");
 
 const baseEffective: EffectivePreferences = {
-  dateFormat: "dd/MM/yyyy",
-  timezone: "Europe/Paris",
-  userDateFormat: null,
-  userTimezone: null,
-  globalDateFormat: "dd/MM/yyyy",
-  globalTimezone: "Europe/Paris",
+  dateFormat: { value: "dd/MM/yyyy", source: "global" },
+  timezone: { value: "Europe/Paris", source: "global" },
+  global: { dateFormat: "dd/MM/yyyy", timezone: "Europe/Paris" },
   canEditGlobalPreferences: false,
 };
 

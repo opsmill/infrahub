@@ -5,12 +5,15 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 const GET_EFFECTIVE_PREFERENCES = graphql(`
   query GetEffectivePreferences {
     InfrahubEffectivePreferences {
-      date_format
-      timezone
-      user_date_format
-      user_timezone
-      global_date_format
-      global_timezone
+      preferences {
+        key
+        value
+        source
+      }
+      global {
+        date_format
+        timezone
+      }
       can_edit_global_preferences
     }
   }

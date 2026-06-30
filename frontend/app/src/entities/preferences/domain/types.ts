@@ -4,20 +4,39 @@ export interface PreferenceValues {
 }
 
 /**
- * The single effective-preferences view (IFC-2720). One round trip exposes the
- * merged values (rendering), the caller's own override (`user*`, null when none),
- * the org default (`global*`, null when unset) and the org-tab gating flag.
+ * Where a field's effective value comes from. Lowercased mirror of the GraphQL
+ * `PreferenceSource` enum (USER / GLOBAL / DEFAULT):
+ *   - "user"    → the caller set a personal override.
+ *   - "global"  → inherited from the organisation default (no personal override).
+ *   - "default" → neither a personal nor an org value is set; falls back to the browser.
+ */
+export type PreferenceSource = "user" | "global" | "default";
+
+/**
+ * A single resolved field: the effective value to render with (null when nothing
+ * is defined anywhere) plus the source it came from.
+ */
+export interface ResolvedPreference {
+  value: string | null;
+  source: PreferenceSource;
+}
+
+/**
+ * The single effective-preferences view (IFC-2720). One round trip exposes each
+ * field already resolved (value + source) for rendering, the raw organisation
+ * defaults (for the admin-only org-defaults editor) and the org-tab gating flag.
+ * Consumers never inspect raw user_/global_ fields — the resolution lives here.
  */
 export interface EffectivePreferences {
-  /** Merged value to render with: user override > global default > null. */
-  dateFormat: string | null;
-  timezone: string | null;
-  /** The caller's OWN override, or null when they have none. */
-  userDateFormat: string | null;
-  userTimezone: string | null;
-  /** The organisation default, or null when unset. */
-  globalDateFormat: string | null;
-  globalTimezone: string | null;
+  /** Resolved date-format field: effective value + where it came from. */
+  dateFormat: ResolvedPreference;
+  /** Resolved timezone field: effective value + where it came from. */
+  timezone: ResolvedPreference;
+  /** Raw org-wide defaults from the GlobalPreference singleton (org-defaults editor). */
+  global: {
+    dateFormat: string | null;
+    timezone: string | null;
+  };
   /** Gates the "Organisation defaults" tab. */
   canEditGlobalPreferences: boolean;
 }

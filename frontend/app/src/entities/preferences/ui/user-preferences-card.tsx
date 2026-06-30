@@ -7,6 +7,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { formatDateFormatExample } from "@/entities/preferences/domain/date-format-presets";
+import type { ResolvedPreference } from "@/entities/preferences/domain/types";
 import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
 import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 import { useUpdateMyUserPreferences } from "@/entities/preferences/ui/queries/upsert-my-user-preferences.mutation";
@@ -31,21 +32,22 @@ function presetExample(value: string, referenceDate: Date) {
 }
 
 /**
- * Builds the (i) tooltip text describing the SOURCE of a field's current effective
- * value. Selecting "Automatic" (no override) is the common case here, so the text
- * resolves to where the value actually comes from:
- *   - user override set  → "Your preference."
- *   - no override + global set → "From the organisation default: <value>."
- *   - no override + no global  → "From your browser: <value>."
+ * Builds the (i) tooltip text describing the SOURCE of a field's effective value.
+ * The source is read directly from the resolved preference (no comparison logic):
+ *   - "user"    → "Your preference."
+ *   - "global"  → "From the organisation default: <resolved value>." (when the source
+ *                 is global the resolved value IS the org default).
+ *   - "default" → "From your browser: <browser value>." (computed client-side).
  */
-function sourceTooltip(
-  userValue: string | null,
-  globalValue: string | null,
-  browserValue: string
-): string {
-  if (userValue !== null) return "Your preference.";
-  if (globalValue !== null) return `From the organisation default: ${globalValue}.`;
-  return `From your browser: ${browserValue}.`;
+function sourceTooltip(resolved: ResolvedPreference, browserValue: string): string {
+  switch (resolved.source) {
+    case "user":
+      return "Your preference.";
+    case "global":
+      return `From the organisation default: ${resolved.value}.`;
+    default:
+      return `From your browser: ${browserValue}.`;
+  }
 }
 
 /**
@@ -72,18 +74,24 @@ export function UserPreferencesCard() {
 
   const preferences = effectiveQuery.data;
 
-  // The (i) tooltip resolves to the field's effective source: the user's own
-  // preference, the inherited organisation default, or the browser fallback.
-  const dateFormatSourceTooltip = sourceTooltip(
-    preferences.userDateFormat,
-    preferences.globalDateFormat ? presetExample(preferences.globalDateFormat, now) : null,
-    browserDateExample(now)
-  );
-  const timezoneSourceTooltip = sourceTooltip(
-    preferences.userTimezone,
-    preferences.globalTimezone,
-    browserTimezone()
-  );
+  // The (i) tooltip reads the resolved source directly. For the date-format field a
+  // raw pattern is unhelpful in prose, so when it resolves to a concrete value we
+  // render it as a live preset example (e.g. "30/06/2026 (dd/MM/yyyy)").
+  const dateFormatResolved: ResolvedPreference = {
+    source: preferences.dateFormat.source,
+    value: preferences.dateFormat.value
+      ? presetExample(preferences.dateFormat.value, now)
+      : preferences.dateFormat.value,
+  };
+  const dateFormatSourceTooltip = sourceTooltip(dateFormatResolved, browserDateExample(now));
+  const timezoneSourceTooltip = sourceTooltip(preferences.timezone, browserTimezone());
+
+  // The form shows the caller's OWN override per field: when the value is inherited
+  // (source !== "user") the field shows "Automatic" instead.
+  const dateFormatOverride =
+    preferences.dateFormat.source === "user" ? preferences.dateFormat.value : null;
+  const timezoneOverride =
+    preferences.timezone.source === "user" ? preferences.timezone.value : null;
 
   return (
     <Card className="w-full">
@@ -95,8 +103,8 @@ export function UserPreferencesCard() {
 
       <PreferencesForm
         values={{
-          dateFormat: preferences.userDateFormat,
-          timezone: preferences.userTimezone,
+          dateFormat: dateFormatOverride,
+          timezone: timezoneOverride,
         }}
         includeAutomatic
         dateFormatSourceTooltip={dateFormatSourceTooltip}

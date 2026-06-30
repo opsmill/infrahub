@@ -12,12 +12,10 @@ vi.mock("@/entities/preferences/domain/get-effective-preferences");
 vi.mock("@/entities/preferences/domain/update-global-preference");
 
 const baseEffective: EffectivePreferences = {
-  dateFormat: "Europe/Paris",
-  timezone: "Europe/Paris",
-  userDateFormat: null,
-  userTimezone: null,
-  globalDateFormat: null,
-  globalTimezone: "Europe/Paris",
+  // The resolved values are irrelevant to this tab — it edits the raw `global` block.
+  dateFormat: { value: "Europe/Paris", source: "global" },
+  timezone: { value: "Europe/Paris", source: "global" },
+  global: { dateFormat: null, timezone: "Europe/Paris" },
   canEditGlobalPreferences: true,
 };
 
@@ -93,5 +91,26 @@ describe("TabOrganisationDefaults", () => {
         timezone: "Europe/Paris",
       });
     });
+  });
+
+  test("prefills from the raw global block, not the admin's own personal override", async () => {
+    // An admin who also set personal overrides: the org-defaults form must show the
+    // organisation's own values (the `global` block), never the admin's overrides.
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: { value: "relative", source: "user" },
+      timezone: { value: "UTC", source: "user" },
+      global: { dateFormat: "yyyy-MM-dd HH:mm", timezone: "Europe/Paris" },
+    });
+
+    const component = await render(<TabOrganisationDefaults />);
+
+    // The form prefills from the global block (the org default), not the user override.
+    await expect
+      .element(component.getByRole("combobox", { name: /date format/i }))
+      .toHaveTextContent("yyyy-MM-dd HH:mm");
+    await expect
+      .element(component.getByRole("combobox", { name: /timezone/i }))
+      .toHaveTextContent("Europe/Paris");
   });
 });

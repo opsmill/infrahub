@@ -1,19 +1,47 @@
 import { getEffectivePreferencesFromApi } from "@/entities/preferences/api/get-effective-preferences-from-api";
-import type { EffectivePreferences } from "@/entities/preferences/domain/types";
+import type {
+  EffectivePreferences,
+  PreferenceSource,
+  ResolvedPreference,
+} from "@/entities/preferences/domain/types";
 
 export type GetEffectivePreferences = () => Promise<EffectivePreferences>;
 
+/** Maps the GraphQL `PreferenceSource` enum (USER/GLOBAL/DEFAULT) to our lowercase union. */
+function toSource(source: string): PreferenceSource {
+  switch (source) {
+    case "USER":
+      return "user";
+    case "GLOBAL":
+      return "global";
+    default:
+      return "default";
+  }
+}
+
+/** Resolved fallback used when a key is missing from the `preferences` list entirely. */
+const UNSET: ResolvedPreference = { value: null, source: "default" };
+
 export const getEffectivePreferences: GetEffectivePreferences = async () => {
   const { data } = await getEffectivePreferencesFromApi();
-  const preferences = data.InfrahubEffectivePreferences;
+  const effective = data.InfrahubEffectivePreferences;
+
+  // Key the flat list of {key,value,source} entries so each field is looked up
+  // by name rather than positionally.
+  const byKey = new Map<string, ResolvedPreference>(
+    effective.preferences.map((entry) => [
+      entry.key,
+      { value: entry.value ?? null, source: toSource(entry.source) },
+    ])
+  );
 
   return {
-    dateFormat: preferences.date_format ?? null,
-    timezone: preferences.timezone ?? null,
-    userDateFormat: preferences.user_date_format ?? null,
-    userTimezone: preferences.user_timezone ?? null,
-    globalDateFormat: preferences.global_date_format ?? null,
-    globalTimezone: preferences.global_timezone ?? null,
-    canEditGlobalPreferences: preferences.can_edit_global_preferences,
+    dateFormat: byKey.get("date_format") ?? UNSET,
+    timezone: byKey.get("timezone") ?? UNSET,
+    global: {
+      dateFormat: effective.global.date_format ?? null,
+      timezone: effective.global.timezone ?? null,
+    },
+    canEditGlobalPreferences: effective.can_edit_global_preferences,
   };
 };

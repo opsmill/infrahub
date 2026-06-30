@@ -38,8 +38,8 @@ export default function TabOrganisationDefaults() {
 
         <PreferencesForm
           values={{
-            dateFormat: preferences.globalDateFormat,
-            timezone: preferences.globalTimezone,
+            dateFormat: preferences.global.dateFormat,
+            timezone: preferences.global.timezone,
           }}
           onSubmit={async (values) => {
             try {
