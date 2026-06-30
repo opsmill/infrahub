@@ -13,7 +13,7 @@ export const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm";
 export interface DateFormatPreset {
   /** Stored value: a date-fns pattern, or the RELATIVE_DATE_FORMAT sentinel. */
   key: string;
-  /** Display label: a live example of `key` applied to the reference date. */
+  /** Display label: the pattern/sentinel itself (always equal to `key`). */
   label: string;
 }
 
@@ -46,12 +46,10 @@ export function formatDateFormatExample(key: string, referenceDate: Date = new D
 }
 
 /**
- * Builds the preset list with labels showing a live example of the reference date
- * rendered with each pattern, e.g. "2026-06-30 14:30 (yyyy-MM-dd HH:mm)".
+ * Builds the preset list. The label is the pattern/sentinel itself (key === label),
+ * e.g. "yyyy-MM-dd HH:mm", "dd/MM/yyyy", "relative". A live example of the selected
+ * pattern is rendered next to the control via {@link formatDateFormatExample}.
  */
-export function buildDateFormatPresets(referenceDate: Date = new Date()): Array<DateFormatPreset> {
-  return DATE_FORMAT_KEYS.map((key) => ({
-    key,
-    label: `${formatDateFormatExample(key, referenceDate)} (${key})`,
-  }));
+export function buildDateFormatPresets(): Array<DateFormatPreset> {
+  return DATE_FORMAT_KEYS.map((key) => ({ key, label: key }));
 }

@@ -13,7 +13,12 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface SelectFieldProps
   extends FormFieldProps,
-    Omit<DynamicSelectFieldProps, "defaultValue" | "name" | "type"> {}
+    Omit<DynamicSelectFieldProps, "defaultValue" | "name" | "type"> {
+  /** Extra classes for the field's own label (e.g. `sr-only` to hide it visually). */
+  labelClassName?: string;
+  /** Forwarded to the trigger so a hint/example can be announced by screen readers. */
+  "aria-describedby"?: string;
+}
 
 export function SelectField({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
@@ -21,11 +26,13 @@ export function SelectField({
   isBulkUpdate,
   description,
   label,
+  labelClassName,
   name,
   rules,
   unique,
   items,
   shouldUnregister,
+  "aria-describedby": ariaDescribedBy,
   ...props
 }: SelectFieldProps) {
   return (
@@ -55,8 +62,8 @@ export function SelectField({
                 }}
                 placeholder=""
               >
-                <Label>{label}</Label>
-                <SelectTrigger />
+                <Label className={labelClassName}>{label}</Label>
+                <SelectTrigger aria-describedby={ariaDescribedBy} />
 
                 <SelectList items={items}>
                   {(item) => (

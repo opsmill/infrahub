@@ -45,7 +45,7 @@ export default function TabPreferences() {
   return (
     <main className="p-2">
       <Card className="w-full max-w-md">
-        <CardHeader>Preferences</CardHeader>
+        <CardHeader>Personal date and time</CardHeader>
         <CardContent>
           <p className="mb-4 text-gray-600 text-sm">
             Personal overrides of the organisation defaults. Empty fields inherit the

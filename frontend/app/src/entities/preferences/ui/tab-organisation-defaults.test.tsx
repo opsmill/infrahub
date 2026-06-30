@@ -47,6 +47,12 @@ describe("TabOrganisationDefaults", () => {
     expect(component.getByRole("button", { name: "Save" }).elements()).toHaveLength(0);
   });
 
+  test("uses the global card title", async () => {
+    const component = await render(<TabOrganisationDefaults />);
+
+    await expect.element(component.getByText("Global date and time")).toBeVisible();
+  });
+
   test("edits the raw global_* values via the global mutation when allowed", async () => {
     const component = await render(<TabOrganisationDefaults />);
 

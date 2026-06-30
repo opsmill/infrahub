@@ -19,6 +19,10 @@ const TIMEZONES = Intl.supportedValuesOf("timeZone");
 export interface TimezoneFieldProps {
   name: string;
   label: string;
+  /** Extra classes for the field's own label (e.g. `sr-only` to hide it visually). */
+  labelClassName?: string;
+  /** Forwarded to the trigger so a hint can be announced by screen readers. */
+  "aria-describedby"?: string;
   defaultValue?: FormAttributeValue;
 }
 
@@ -26,6 +30,8 @@ export interface TimezoneFieldProps {
 export function TimezoneField({
   name,
   label,
+  labelClassName,
+  "aria-describedby": ariaDescribedBy,
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
 }: TimezoneFieldProps) {
   const [open, setOpen] = useState(false);
@@ -40,11 +46,11 @@ export function TimezoneField({
 
         return (
           <div className="flex flex-col gap-2">
-            <LabelFormField label={label} />
+            <LabelFormField label={label} className={labelClassName} />
 
             <Combobox open={open} onOpenChange={setOpen}>
               <FormInput>
-                <ComboboxTrigger>
+                <ComboboxTrigger aria-describedby={ariaDescribedBy}>
                   {currentValue ?? <span className="text-gray-400">Select timezone</span>}
                 </ComboboxTrigger>
               </FormInput>

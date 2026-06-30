@@ -31,7 +31,7 @@ export default function TabOrganisationDefaults() {
   return (
     <main className="p-2">
       <Card className="w-full max-w-md">
-        <CardHeader>Organisation defaults</CardHeader>
+        <CardHeader>Global date and time</CardHeader>
         <CardContent>
           <p className="mb-4 text-gray-600 text-sm">
             Defaults applied to every user unless they set a personal override.

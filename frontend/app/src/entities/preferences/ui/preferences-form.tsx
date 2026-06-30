@@ -1,12 +1,16 @@
 import type React from "react";
-import { useMemo } from "react";
-import { useFormState } from "react-hook-form";
+import { useId, useMemo } from "react";
+import { useFormState, useWatch } from "react-hook-form";
 
+import { DetailRow } from "@/shared/components/display/detail-row";
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
-import { buildDateFormatPresets } from "@/entities/preferences/domain/date-format-presets";
+import {
+  buildDateFormatPresets,
+  formatDateFormatExample,
+} from "@/entities/preferences/domain/date-format-presets";
 import type { PreferenceValues } from "@/entities/preferences/domain/types";
 import { TimezoneField } from "@/entities/preferences/ui/timezone.field";
 
@@ -31,6 +35,25 @@ function toFieldValue(value: string | null): FormAttributeValue {
   return { source: { type: "user" }, value };
 }
 
+/**
+ * Live example of the currently-selected date format, sitting beside the control.
+ * Watches the `date_format` field (whose value is a `{ source, value }` attribute)
+ * and re-renders the example as the selection changes. `now` is memoised once per
+ * mount so the example is stable across renders.
+ */
+function DateFormatExample({ id, now }: { id: string; now: Date }) {
+  const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
+  const selected = (fieldValue?.value as string | null | undefined) ?? null;
+
+  if (!selected) return null;
+
+  return (
+    <p id={id} className="text-gray-500 text-xs">
+      Example: {formatDateFormatExample(selected, now)}
+    </p>
+  );
+}
+
 /** Shared date-format + timezone form for the user and organisation tabs. */
 export function PreferencesForm({
   values,
@@ -41,8 +64,21 @@ export function PreferencesForm({
   children,
 }: PreferencesFormProps) {
   // Memoised so the item array identity is stable across renders, which the
-  // React Aria Select relies on; built once from the current date.
+  // React Aria Select relies on.
   const items = useMemo(() => buildDateFormatPresets(), []);
+  // Single reference instant for the live example, memoised so it does not churn.
+  const now = useMemo(() => new Date(), []);
+
+  const dateFormatLabelId = useId();
+  const timezoneLabelId = useId();
+  const dateFormatExampleId = useId();
+  const dateFormatHintId = useId();
+  const timezoneHintId = useId();
+
+  // The example and the inherited hint both describe the date-format control.
+  const dateFormatDescribedBy =
+    [dateFormatExampleId, dateFormatHint ? dateFormatHintId : null].filter(Boolean).join(" ") ||
+    undefined;
 
   return (
     <Form
@@ -57,15 +93,35 @@ export function PreferencesForm({
         });
       }}
     >
-      <div className="space-y-1">
-        <SelectField name="date_format" label="Date format" items={items} />
-        {dateFormatHint && <p className="text-gray-600 text-sm">{dateFormatHint}</p>}
-      </div>
+      <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
+        <SelectField
+          name="date_format"
+          label="Date format"
+          labelClassName="sr-only"
+          items={items}
+          aria-describedby={dateFormatDescribedBy}
+        />
+        <DateFormatExample id={dateFormatExampleId} now={now} />
+        {dateFormatHint && (
+          <p id={dateFormatHintId} className="text-gray-500 text-xs">
+            {dateFormatHint}
+          </p>
+        )}
+      </DetailRow>
 
-      <div className="space-y-1">
-        <TimezoneField name="timezone" label="Timezone" />
-        {timezoneHint && <p className="text-gray-600 text-sm">{timezoneHint}</p>}
-      </div>
+      <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>
+        <TimezoneField
+          name="timezone"
+          label="Timezone"
+          labelClassName="sr-only"
+          aria-describedby={timezoneHint ? timezoneHintId : undefined}
+        />
+        {timezoneHint && (
+          <p id={timezoneHintId} className="text-gray-500 text-xs">
+            {timezoneHint}
+          </p>
+        )}
+      </DetailRow>
 
       <div className="flex items-center justify-end gap-2">
         {children}
