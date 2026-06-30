@@ -19,7 +19,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.events.utils import get_all_infrahub_node_kind_events
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.trigger.constants import NAME_SEPARATOR
-from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
+from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType, jinja_parameter
 from infrahub.trigger.setup import gather_all_automations
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
@@ -82,10 +82,10 @@ class WebhookTriggerDefinitionBuilder:
                         "webhook_id": webhook_id,
                         "webhook_name": webhook_name,
                         "webhook_kind": webhook_kind,
-                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                        "event_id": "{{ event.id }}",
-                        "event_type": "{{ event.event }}",
-                        "event_occured_at": "{{ event.occurred }}",
+                        "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                        "event_id": jinja_parameter("{{ event.id }}"),
+                        "event_type": jinja_parameter("{{ event.event }}"),
+                        "event_occured_at": jinja_parameter("{{ event.occurred }}"),
                         "event_payload": {
                             "__prefect_kind": "json",
                             "value": {"__prefect_kind": "jinja", "template": "{{ event.payload | tojson }}"},

@@ -60,7 +60,7 @@ def branch_diff_01_summary() -> list[NodeDiff]:
             "elements": [
                 {
                     "name": "name",
-                    "element_type": DiffElementType.ATTRIBUTE.value,
+                    "element_type": DiffElementType.ATTRIBUTE.name,
                     "action": DiffAction.UPDATED.value,
                     "summary": {"added": 0, "updated": 1, "removed": 0},
                 }
@@ -75,13 +75,13 @@ def branch_diff_01_summary() -> list[NodeDiff]:
             "elements": [
                 {
                     "name": "height",
-                    "element_type": DiffElementType.ATTRIBUTE.value,
+                    "element_type": DiffElementType.ATTRIBUTE.name,
                     "action": DiffAction.UPDATED.value,
                     "summary": {"added": 0, "updated": 1, "removed": 0},
                 },
                 {
                     "name": "cars",
-                    "element_type": DiffElementType.RELATIONSHIP_MANY.value,
+                    "element_type": DiffElementType.RELATIONSHIP_MANY.name,
                     "action": DiffAction.UPDATED.value,
                     "summary": {"added": 0, "updated": 1, "removed": 0},
                     "peers": [

@@ -6,7 +6,12 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+<<<<<<< HEAD
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
+=======
+from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.constraints import MergeConstraintValidator
+>>>>>>> origin/stable
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath, SchemaPathType
@@ -22,12 +27,24 @@ async def _get_schema_analyzer(
 ) -> MergeSchemaAnalyzer:
     component_registry = get_component_registry()
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
+<<<<<<< HEAD
     return MergeSchemaAnalyzer(
+=======
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=source_branch)
+    constraint_validator = MergeConstraintValidator(db=db, branch=source_branch, diff_repository=diff_repository)
+    return BranchMerger(
+>>>>>>> origin/stable
         db=db,
         source_branch=source_branch,
         destination_branch=destination_branch,
+<<<<<<< HEAD
         diff_repository=diff_repository,
         schema_manager=registry.schema,
+=======
+        diff_locker=DiffLocker(),
+        constraint_validator=constraint_validator,
+>>>>>>> origin/stable
     )
 
 

@@ -12,6 +12,7 @@ describe("paramsToFormValues", () => {
         maxPaths: 25,
         kindFilter: ["InfraDevice"],
         excludedKinds: ["InfraInterface"],
+        shortestPathsOnly: false,
         selectedPath: 3,
       })
     ).toEqual({
@@ -21,6 +22,7 @@ describe("paramsToFormValues", () => {
       maxPaths: 25,
       kindFilter: ["InfraDevice"],
       excludedKinds: ["InfraInterface"],
+      shortestPathsOnly: false,
     });
   });
 });
@@ -35,6 +37,7 @@ describe("formValuesToParams", () => {
         maxPaths: 12,
         kindFilter: ["InfraDevice"],
         excludedKinds: [],
+        shortestPathsOnly: true,
       })
     ).toEqual({
       source: "src-id",
@@ -43,6 +46,7 @@ describe("formValuesToParams", () => {
       maxPaths: 12,
       kindFilter: ["InfraDevice"],
       excludedKinds: [],
+      shortestPathsOnly: true,
       selectedPath: 0,
     });
   });

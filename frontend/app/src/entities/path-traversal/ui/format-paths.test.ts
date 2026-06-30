@@ -43,6 +43,7 @@ const response: PathTraversalResponse = {
   source: a,
   destination: c,
   count: 1,
+  truncated_at_depth: null,
 };
 
 describe("formatPathAsText", () => {

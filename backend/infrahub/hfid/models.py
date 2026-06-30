@@ -16,6 +16,7 @@ from infrahub.trigger.models import (
     ExecuteWorkflow,
     TriggerBranchDefinition,
     TriggerType,
+    jinja_parameter,
 )
 from infrahub.workflows.catalogue import HFID_PROCESS
 
@@ -134,9 +135,9 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
         workflow = ExecuteWorkflow(
             workflow=HFID_PROCESS,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                 "node_kind": node_kind,
-                "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
                 "target_kind": target_kind,
                 "context": {
                     "__prefect_kind": "json",

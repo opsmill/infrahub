@@ -29,17 +29,34 @@ query Traverse($data: PathTraversalInput!) {
 """
 
 
+PATH_TRAVERSAL_MODE_QUERY = """
+query Traverse($data: PathTraversalInput!) {
+  InfrahubPathTraversal(data: $data) {
+    count
+    truncated_at_depth
+    paths {
+      depth
+      hops {
+        node { id kind }
+      }
+    }
+  }
+}
+"""
+
+
 async def _run_resolver(
     *,
     db: InfrahubDatabase,
     branch: Branch,
     session: AccountSession,
     variables: dict,
+    source: str = PATH_TRAVERSAL_QUERY,
 ) -> tuple[dict | None, list | None]:
     gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=session)
     result = await graphql(
         schema=gql_params.schema,
-        source=PATH_TRAVERSAL_QUERY,
+        source=source,
         context_value=gql_params.context,
         variable_values=variables,
     )
@@ -119,6 +136,42 @@ class TestPathTraversalResolver:
         only = result["paths"][0]
         assert only["depth"] == 1
         assert [hop["node"]["id"] for hop in only["hops"]] == [car_a.id, person.id]
+
+    async def test_resolver_exposes_shortest_paths_only_input_and_truncated_at_depth(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        default_permission_backend_scope_class: None,
+        session_admin_scope_class: AccountSession,
+        two_cars_one_owner_scope_class: tuple[Node, Node, Node],
+    ) -> None:
+        # The GraphQL surface accepts shortest_paths_only and returns truncated_at_depth.
+        car_a, _car_b, person = two_cars_one_owner_scope_class
+        default_branch_scope_class.update_schema_hash()
+
+        variables = {
+            "data": {
+                "source_id": car_a.id,
+                "destination_id": person.id,
+                "max_depth": 1,
+                "max_paths": 10,
+                "shortest_paths_only": False,
+            }
+        }
+
+        data, errors = await _run_resolver(
+            db=db,
+            branch=default_branch_scope_class,
+            session=session_admin_scope_class,
+            variables=variables,
+            source=PATH_TRAVERSAL_MODE_QUERY,
+        )
+
+        assert errors is None
+        assert data is not None
+        result = data["InfrahubPathTraversal"]
+        assert result["count"] == 1  # car_a -> person at depth 1
+        assert result["truncated_at_depth"] is None  # the search completed within max_depth
 
     async def test_resolver_kind_filter_blocks_intermediate_kind(
         self,

@@ -7,10 +7,13 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.repository.repository import DiffRepository
+<<<<<<< HEAD
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
+=======
+>>>>>>> origin/stable
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
 from infrahub.workers.dependencies import get_database, get_workflow
@@ -34,11 +37,12 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
         async for _ in diff_repository.get_all_conflicts_for_diff(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         ):
-            # if there are any conflicts, raise the error
+            # A direct branch merge has no way to record conflict resolutions, so any conflict blocks it.
             raise ValidationError(
                 f"Branch {obj.name} contains conflicts with the default branch."
                 " Please create a Proposed Change to resolve the conflicts or manually update them before merging."
             )
+<<<<<<< HEAD
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
@@ -63,5 +67,7 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
             error_messages = [violation.message for response in responses for violation in response.violations]
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
+=======
+>>>>>>> origin/stable
 
         await get_workflow().execute_workflow(workflow=BRANCH_MERGE, context=context, parameters={"branch": obj.name})
