@@ -205,6 +205,7 @@ class EventContext(BaseModel):
 
 
 MASKED_HEADER_VALUE = "***"
+WEBHOOK_SIGNATURE_HEADER = "webhook-signature"
 
 
 class HeaderKind(StrEnum):
@@ -297,7 +298,7 @@ class Webhook(BaseModel):
             signature = self._sign(data=unsigned_data)
             headers["webhook-id"] = message_id
             headers["webhook-timestamp"] = timestamp
-            headers["webhook-signature"] = f"v1,{base64.b64encode(signature).decode('utf-8')}"
+            headers[WEBHOOK_SIGNATURE_HEADER] = f"v1,{base64.b64encode(signature).decode('utf-8')}"
 
         return headers
 
@@ -309,7 +310,7 @@ class Webhook(BaseModel):
         exposing credentials.
         """
         sensitive = {header.key for header in self.custom_headers if header.kind is HeaderKind.ENVIRONMENT}
-        sensitive.add("webhook-signature")
+        sensitive.add(WEBHOOK_SIGNATURE_HEADER)
         return {key: (MASKED_HEADER_VALUE if key in sensitive else value) for key, value in headers.items()}
 
     @computed_field  # type: ignore[prop-decorator]
