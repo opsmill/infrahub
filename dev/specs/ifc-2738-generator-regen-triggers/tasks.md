@@ -69,12 +69,12 @@ This feature is parallel wiring into the already-shipped INFP-409 machinery, not
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Replace the `DefinitionSelect.FILE_CHANGES` clause in `run_generators` (backend/infrahub/proposed_change/tasks.py) with `_query_changed OR _definition_changed OR _transform_changed(repo_diff)`, evaluated against the per-definition repo diff via `_repo_diff_or_none(...)`; keep the `MODIFIED_KINDS` clause unchanged; log each `PredicateOutcome.reason` at INFO. (FR-006, FR-010; contracts/definition-protocol.md call-site matrix)
+- [X] T019 [US1] Replace the `DefinitionSelect.FILE_CHANGES` clause in `run_generators` (backend/infrahub/proposed_change/tasks.py) with `_query_changed OR _definition_changed OR _transform_changed(repo_diff)`, evaluated against the per-definition repo diff via `_repo_diff_or_none(...)`; keep the `MODIFIED_KINDS` clause unchanged; log each `PredicateOutcome.reason` at INFO. (FR-006, FR-010; contracts/definition-protocol.md call-site matrix)
 
 ### Tests for User Story 1
 
-- [ ] T020 [P] [US1] Create backend/tests/component/proposed_change/test_generator_regen_selection.py (mirror test_artifact_regen_selection.py; reuse conftest helpers + test_request_generator_definition_check fixtures): a PC whose only repo change is `README.md` dispatches zero generators; a `.py` edit outside every package floor and unread by any query also dispatches zero. Also assert that the `MODIFIED_KINDS` data-change path still selects the generator exactly as before this feature (SC-008), and that a generator definition present on the source branch but not the destination branch is selected and runs for every target-group member (spec Edge Case: new definition on source branch). (SC-001, SC-008, US1 acceptance 1 & 2)
-- [ ] T021 [P] [US1] Unit test in backend/tests/unit/proposed_change/ for generator-model predicate variants: `_transform_changed` yields `matched=False` for an unrelated-file diff when `dependencies` is non-empty and `dependencies_complete=True`; and `_definition_changed` yields `matched=True` when `diff_summary` contains an entry whose `id == definition.definition_id` (definition node modified, e.g. an attribute change or `targets` repoint). (US1, FR-005, FR-011)
+- [X] T020 [P] [US1] Create backend/tests/component/proposed_change/test_generator_regen_selection.py (mirror test_artifact_regen_selection.py; reuse conftest helpers + test_request_generator_definition_check fixtures): a PC whose only repo change is `README.md` dispatches zero generators; a `.py` edit outside every package floor and unread by any query also dispatches zero. Also assert that the `MODIFIED_KINDS` data-change path still selects the generator exactly as before this feature (SC-008), and that a generator definition present on the source branch but not the destination branch is selected and runs for every target-group member (spec Edge Case: new definition on source branch). (SC-001, SC-008, US1 acceptance 1 & 2)
+- [X] T021 [P] [US1] Unit test in backend/tests/unit/proposed_change/ for generator-model predicate variants: `_transform_changed` yields `matched=False` for an unrelated-file diff when `dependencies` is non-empty and `dependencies_complete=True`; and `_definition_changed` yields `matched=True` when `diff_summary` contains an entry whose `id == definition.definition_id` (definition node modified, e.g. an attribute change or `targets` repoint). (US1, FR-005, FR-011)
 
 **Checkpoint**: MVP — unrelated commits no longer trigger generators.
 
@@ -88,13 +88,13 @@ This feature is parallel wiring into the already-shipped INFP-409 machinery, not
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Swap the per-member gate in `request_generator_definition_check` / `_run_generator` (~1256) in backend/infrahub/proposed_change/tasks.py: compute `managed_branch = (_query_changed OR _definition_changed OR _transform_changed(repo_diff)).matched` instead of unconditional `source_branch_sync_with_git`; everything else in `_run_generator` unchanged. **Primary risk area** — preserve the never-under-run invariant in the interaction with `impacted_instances`. (FR-007, research Decision 4; contracts/definition-protocol.md never-under-run proof)
+- [X] T022 [US2] Swap the per-member gate in `request_generator_definition_check` / `_run_generator` (~1256) in backend/infrahub/proposed_change/tasks.py: compute `managed_branch = (_query_changed OR _definition_changed OR _transform_changed(repo_diff)).matched` instead of unconditional `source_branch_sync_with_git`; everything else in `_run_generator` unchanged. **Primary risk area** — preserve the never-under-run invariant in the interaction with `impacted_instances`. (FR-007, research Decision 4; contracts/definition-protocol.md never-under-run proof)
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Extend test_generator_regen_selection.py: editing `generators/a/a.py` re-runs gen_a's instances only (gen_b untouched); editing the sibling `generators/a/helpers.py` re-runs gen_a (package-directory floor includes the sibling). (SC-002, US2 acceptance 1 & 2)
-- [ ] T024 [P] [US2] Unit test for `_transform_changed` generator variant in backend/tests/unit/proposed_change/: a diff file inside the package floor intersects the closure -> `matched=True`; a sibling module in the same package -> `matched=True`. (US2)
-- [ ] T025 [P] [US2] Unit test asserting the never-under-run proof for `_run_generator` after the swap: new member (`instance_id is None`) runs regardless of `managed_branch`; a data-changed instance in `impacted_instances` runs regardless; a legacy/failed-closure generator yields `managed_branch=True` on any file change. (FR-007, spec Edge Cases)
+- [X] T023 [P] [US2] Extend test_generator_regen_selection.py: editing `generators/a/a.py` re-runs gen_a's instances only (gen_b untouched); editing the sibling `generators/a/helpers.py` re-runs gen_a (package-directory floor includes the sibling). (SC-002, US2 acceptance 1 & 2)
+- [X] T024 [P] [US2] Unit test for `_transform_changed` generator variant in backend/tests/unit/proposed_change/: a diff file inside the package floor intersects the closure -> `matched=True`; a sibling module in the same package -> `matched=True`. (US2)
+- [X] T025 [P] [US2] Unit test asserting the never-under-run proof for `_run_generator` after the swap: new member (`instance_id is None`) runs regardless of `managed_branch`; a data-changed instance in `impacted_instances` runs regardless; a legacy/failed-closure generator yields `managed_branch=True` on any file change. (FR-007, spec Edge Cases)
 - [X] T026 [P] [US2] `PythonClosure` generator-config support test in backend/tests/unit/git/closure_builder/: `supports()` returns True for `InfrahubGeneratorDefinitionConfig` and `build()` produces the package-directory floor from `file_path` + `name`. (FR-002, FR-011) (pulled forward into the foundation PR: it guards code that ships there - T004/T005)
 - [X] T027 [P] [US2] Generator-import closure test in backend/tests/component/ (or git integration tests): importing a repository builds and persists `dependencies` / `dependencies_complete` on `CoreGeneratorDefinition` for each generator. (FR-003, FR-011) (pulled forward into the foundation PR: it guards code that ships there - T016/T017, and adds a re-import case covering the `_generator_requires_update` closure comparison - T018)
 
@@ -112,8 +112,8 @@ This feature is parallel wiring into the already-shipped INFP-409 machinery, not
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Extend test_generator_regen_selection.py: editing a `.gql` query used by exactly one generator re-runs only that generator; a query used by two generators selects both when changed; editing both a generator's query and source dispatches it once (no double-dispatch). (SC-003, US3 acceptance + edge cases)
-- [ ] T029 [P] [US3] Unit test for `_query_changed` generator variant in backend/tests/unit/proposed_change/: a `diff_summary` entry whose `id == definition.query_id` -> `matched=True`; an unresolvable query peer never matches here but the other signals still cover it. (US3, spec Edge Cases)
+- [X] T028 [P] [US3] Extend test_generator_regen_selection.py: editing a `.gql` query used by exactly one generator re-runs only that generator; a query used by two generators selects both when changed; editing both a generator's query and source dispatches it once (no double-dispatch). (SC-003, US3 acceptance + edge cases)
+- [X] T029 [P] [US3] Unit test for `_query_changed` generator variant in backend/tests/unit/proposed_change/: a `diff_summary` entry whose `id == definition.query_id` -> `matched=True`; an unresolvable query peer never matches here but the other signals still cover it. (US3, spec Edge Cases)
 
 **Checkpoint**: Query edits precisely target the consuming generators.
 
@@ -127,8 +127,8 @@ This feature is parallel wiring into the already-shipped INFP-409 machinery, not
 
 ### Tests for User Story 5
 
-- [ ] T030 [P] [US5] Predicate-logging unit test in backend/tests/unit/proposed_change/ asserting the generator reason strings render with `source_noun="generator source"` / `instance_noun="instances"` for each predicate (query matched, definition matched, precise transform match, legacy `dependencies=null` fallback, incomplete `dependencies_complete=False` fallback), and that both gates (`run_generators`, `request_generator_definition_check`) emit each `PredicateOutcome.reason` at INFO with a non-triggered generator reflected as not-run. (FR-010, SC-006; contracts/definition-protocol.md reason templates)
-- [ ] T031 [P] [US5] Extend backend/tests/unit/proposed_change/test_predicate_logging.py to assert artifact reason strings remain byte-for-byte identical (`source_noun="transform"` / `instance_noun="artifacts"`). (FR-013, SC-007)
+- [X] T030 [P] [US5] Predicate-logging unit test in backend/tests/unit/proposed_change/ asserting the generator reason strings render with `source_noun="generator source"` / `instance_noun="instances"` for each predicate (query matched, definition matched, precise transform match, legacy `dependencies=null` fallback, incomplete `dependencies_complete=False` fallback), and that both gates (`run_generators`, `request_generator_definition_check`) emit each `PredicateOutcome.reason` at INFO with a non-triggered generator reflected as not-run. (FR-010, SC-006; contracts/definition-protocol.md reason templates)
+- [X] T031 [P] [US5] Extend backend/tests/unit/proposed_change/test_predicate_logging.py to assert artifact reason strings remain byte-for-byte identical (`source_noun="transform"` / `instance_noun="artifacts"`). (FR-013, SC-007)
 
 **Checkpoint**: Every generator run/skip decision is explained in the log.
 
