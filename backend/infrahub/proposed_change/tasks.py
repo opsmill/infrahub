@@ -44,10 +44,11 @@ from infrahub.core.constants import (
 )
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
-from infrahub.core.diff.model.path import BranchTrackingId, NodeDiffFieldSummary
+from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.constraints import build_merge_constraint_result, gather_conflicted_fields
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.timestamp import Timestamp
@@ -558,41 +559,19 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         )
     )
 
-    # A node/field with a diff conflict is reconciled by the data-conflict resolution applied during
-    # the merge. Validating its pre-resolution cross-branch state here would report a spurious
-    # (and non-resolvable) schema violation, so those fields are skipped.
     component_registry = get_component_registry()
     database = await get_database()
-    conflicted_fields: set[tuple[str, str]] = set()
     async with database.start_session() as db:
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
-        async for conflict_path, _conflict in diff_repository.get_all_conflicts_for_diff(
-            diff_branch_name=model.source_branch,
-            tracking_id=BranchTrackingId(name=model.source_branch),
-        ):
-            # path_identifier is "data/<node_uuid>/<field>/...".
-            path_parts = conflict_path.split("/")
-            if len(path_parts) >= 3 and path_parts[0] == "data":
-                conflicted_fields.add((path_parts[1], path_parts[2]))
+        conflicted_fields = await gather_conflicted_fields(
+            diff_repository=diff_repository, branch_name=model.source_branch
+        )
+
+    conflicts = build_merge_constraint_result(
+        responses=responses, conflicted_fields=conflicted_fields, branch="placeholder"
+    ).schema_conflicts
 
     # TODO we need to report a failure if an error happened during the execution of a validator
-    conflicts: list[SchemaConflict] = []
-    for response in responses:
-        for violation in response.violations:
-            if (violation.node_id, response.schema_path.field_name) in conflicted_fields:
-                continue
-            conflicts.append(
-                SchemaConflict(
-                    name=response.schema_path.get_path(),
-                    type=response.constraint_name,
-                    kind=violation.node_kind,
-                    id=violation.node_id,
-                    path=response.schema_path.get_path(),
-                    value=violation.message,
-                    branch="placeholder",
-                )
-            )
-
     async with database.start_transaction() as db:
         object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
         await object_conflict_validator_recorder.record_conflicts(
