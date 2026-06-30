@@ -19,12 +19,15 @@ if TYPE_CHECKING:
 EFFECTIVE_QUERY = """
 query {
   InfrahubEffectivePreferences {
-    date_format
-    timezone
-    user_date_format
-    user_timezone
-    global_date_format
-    global_timezone
+    preferences {
+      key
+      value
+      source
+    }
+    global {
+      date_format
+      timezone
+    }
     can_edit_global_preferences
   }
 }
@@ -45,6 +48,11 @@ async def run_effective(
     )
 
 
+def _entries_by_key(data: dict) -> dict[str, dict]:
+    """Index the `preferences` list by its `key` for easy per-attribute assertions."""
+    return {entry["key"]: entry for entry in data["preferences"]}
+
+
 async def _grant_manage_global_preferences(db: InfrahubDatabase, account: Node) -> None:
     """Assign the manage_global_preferences global permission to `account` via a role + group."""
     permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -63,8 +71,8 @@ async def _grant_manage_global_preferences(db: InfrahubDatabase, account: Node) 
     await group.new(db=db, name="prefs-managers", roles=[role])
     await group.save(db=db)
 
-    await group.members.add(db=db, data={"id": account.id})
-    await group.members.save(db=db)
+    await group.members.add(db=db, data={"id": account.id})  # type: ignore[attr-defined]
+    await group.members.save(db=db)  # type: ignore[attr-defined]
 
 
 async def test_effective_no_global_no_user(
@@ -76,19 +84,19 @@ async def test_effective_no_global_no_user(
 ) -> None:
     result = await run_effective(db=db, branch=default_branch, account_session=session_first_account)
     assert result.errors is None
+    assert result.data is not None
     data = result.data["InfrahubEffectivePreferences"]
-    assert data["date_format"] is None
-    assert data["timezone"] is None
-    # Raw user/global values are all null: no UserPreference row, empty global singleton.
-    assert data["user_date_format"] is None
-    assert data["user_timezone"] is None
-    assert data["global_date_format"] is None
-    assert data["global_timezone"] is None
+    entries = _entries_by_key(data)
+    # Nothing defined anywhere: every entry resolves to value null, source DEFAULT.
+    assert entries["date_format"] == {"key": "date_format", "value": None, "source": "DEFAULT"}
+    assert entries["timezone"] == {"key": "timezone", "value": None, "source": "DEFAULT"}
+    # The raw org-defaults block is empty too.
+    assert data["global"] == {"date_format": None, "timezone": None}
     # A fresh-user read lazily materialises the global singleton but never a UserPreference row.
     assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
 
 
-async def test_effective_global_only_fresh_user_fallback(
+async def test_effective_global_only_source_global(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
@@ -102,19 +110,19 @@ async def test_effective_global_only_fresh_user_fallback(
 
     result = await run_effective(db=db, branch=default_branch, account_session=session_first_account)
     assert result.errors is None
+    assert result.data is not None
     data = result.data["InfrahubEffectivePreferences"]
-    assert data["date_format"] == "yyyy-MM-dd"
-    assert data["timezone"] == "UTC"
-    # Merged equals global here; raw user values are null (no override), raw global is exposed.
-    assert data["user_date_format"] is None
-    assert data["user_timezone"] is None
-    assert data["global_date_format"] == "yyyy-MM-dd"
-    assert data["global_timezone"] == "UTC"
+    entries = _entries_by_key(data)
+    # No user override: resolved value comes from global, source GLOBAL.
+    assert entries["date_format"] == {"key": "date_format", "value": "yyyy-MM-dd", "source": "GLOBAL"}
+    assert entries["timezone"] == {"key": "timezone", "value": "UTC", "source": "GLOBAL"}
+    # The raw org-defaults block mirrors the singleton.
+    assert data["global"] == {"date_format": "yyyy-MM-dd", "timezone": "UTC"}
     # No user row was fabricated for the fallback.
     assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
 
 
-async def test_effective_user_overrides_and_per_field_merge(
+async def test_effective_user_override_source_user(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
@@ -126,33 +134,59 @@ async def test_effective_user_overrides_and_per_field_merge(
     global_pref.timezone = "UTC"
     await global_pref.save(db=db)
 
-    # User overrides only date_format; timezone falls back to global.
-    user_pref = UserPreference(account_id=first_account.id, date_format="dd/MM/yyyy")
-    await user_pref.create(db=db)
+    await UserPreference(account_id=first_account.id, date_format="dd/MM/yyyy", timezone="Europe/Paris").create(db=db)
 
     result = await run_effective(db=db, branch=default_branch, account_session=session_first_account)
     assert result.errors is None
+    assert result.data is not None
     data = result.data["InfrahubEffectivePreferences"]
-    assert data["date_format"] == "dd/MM/yyyy"  # user override wins
-    assert data["timezone"] == "UTC"  # per-field fallback to global
-    # Raw values are exposed separately so the frontend can show inherited-value hints:
-    assert data["user_date_format"] == "dd/MM/yyyy"  # caller's own override
-    assert data["user_timezone"] is None  # caller has no timezone override
-    assert data["global_date_format"] == "yyyy-MM-dd"  # org default (the inherited hint)
-    assert data["global_timezone"] == "UTC"
+    entries = _entries_by_key(data)
+    # User override wins for both attributes: source USER, value is the user's.
+    assert entries["date_format"] == {"key": "date_format", "value": "dd/MM/yyyy", "source": "USER"}
+    assert entries["timezone"] == {"key": "timezone", "value": "Europe/Paris", "source": "USER"}
+    # The raw org-defaults block still reports the org value, unaffected by the override.
+    assert data["global"] == {"date_format": "yyyy-MM-dd", "timezone": "UTC"}
 
 
-async def test_effective_admin_override_merged_differs_from_global(
+async def test_effective_mixed_per_attribute_sources(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """An admin who also has a personal override: merged != global.
+    """Per-attribute resolution: one USER, one GLOBAL, one DEFAULT — all in a single read."""
+    global_pref = await GlobalPreference.get_global(db=db)
+    # Global defines timezone only; date_format is left unset on the singleton.
+    global_pref.timezone = "UTC"
+    await global_pref.save(db=db)
 
-    The "Organisation defaults" editor relies on global_* (not the merged values) so it
-    edits the org-wide default rather than the admin's personal override.
+    # User overrides date_format only; timezone falls back to global.
+    await UserPreference(account_id=first_account.id, date_format="dd/MM/yyyy").create(db=db)
+
+    result = await run_effective(db=db, branch=default_branch, account_session=session_first_account)
+    assert result.errors is None
+    assert result.data is not None
+    data = result.data["InfrahubEffectivePreferences"]
+    entries = _entries_by_key(data)
+    # date_format: user override present -> USER.
+    assert entries["date_format"] == {"key": "date_format", "value": "dd/MM/yyyy", "source": "USER"}
+    # timezone: no user override, global present -> GLOBAL.
+    assert entries["timezone"] == {"key": "timezone", "value": "UTC", "source": "GLOBAL"}
+    assert data["global"] == {"date_format": None, "timezone": "UTC"}
+
+
+async def test_effective_admin_override_global_block_keeps_org_value(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    """An admin with a personal override: the `global` block must still report the raw org value.
+
+    The "Organisation defaults" editor relies on the `global` block (not the resolved
+    `preferences` value) so it edits the org-wide default rather than the admin's override.
     """
     global_pref = await GlobalPreference.get_global(db=db)
     global_pref.timezone = "UTC"
@@ -162,10 +196,13 @@ async def test_effective_admin_override_merged_differs_from_global(
 
     result = await run_effective(db=db, branch=default_branch, account_session=session_first_account)
     assert result.errors is None
+    assert result.data is not None
     data = result.data["InfrahubEffectivePreferences"]
-    assert data["timezone"] == "Europe/Paris"  # merged: user override wins
-    assert data["user_timezone"] == "Europe/Paris"  # caller's own raw override
-    assert data["global_timezone"] == "UTC"  # org-wide default, what the defaults editor edits
+    entries = _entries_by_key(data)
+    # Resolved preference reflects the admin's own override.
+    assert entries["timezone"] == {"key": "timezone", "value": "Europe/Paris", "source": "USER"}
+    # But the org-defaults block keeps the raw org value, what the defaults editor edits.
+    assert data["global"]["timezone"] == "UTC"
 
 
 async def test_effective_is_private_per_caller(
@@ -183,24 +220,23 @@ async def test_effective_is_private_per_caller(
     await global_pref.save(db=db)
     # Account A sets a personal override.
     await UserPreference(account_id=first_account.id, timezone="Europe/Paris").create(db=db)
-    # Account B sets a different one.
+    # Account B sets a different personal override.
     await UserPreference(account_id=second_account.id, timezone="America/New_York").create(db=db)
 
     result_a = await run_effective(db=db, branch=default_branch, account_session=session_first_account)
     result_b = await run_effective(db=db, branch=default_branch, account_session=session_second_account)
     assert result_a.errors is None
     assert result_b.errors is None
-    data_a = result_a.data["InfrahubEffectivePreferences"]
-    data_b = result_b.data["InfrahubEffectivePreferences"]
-    # Each caller sees only their own value; A never sees B's.
-    assert data_a["timezone"] == "Europe/Paris"
-    assert data_b["timezone"] == "America/New_York"
-    # user_* is the caller's OWN raw override only — never the other account's.
-    assert data_a["user_timezone"] == "Europe/Paris"
-    assert data_b["user_timezone"] == "America/New_York"
-    # global_* is org-wide and identical for both sessions.
-    assert data_a["global_timezone"] == "UTC"
-    assert data_b["global_timezone"] == "UTC"
+    assert result_a.data is not None
+    assert result_b.data is not None
+    entries_a = _entries_by_key(result_a.data["InfrahubEffectivePreferences"])
+    entries_b = _entries_by_key(result_b.data["InfrahubEffectivePreferences"])
+    # Each caller sees only their own resolved value, sourced USER; A never sees B's.
+    assert entries_a["timezone"] == {"key": "timezone", "value": "Europe/Paris", "source": "USER"}
+    assert entries_b["timezone"] == {"key": "timezone", "value": "America/New_York", "source": "USER"}
+    # The org-defaults block is org-wide and identical for both sessions.
+    assert result_a.data["InfrahubEffectivePreferences"]["global"]["timezone"] == "UTC"
+    assert result_b.data["InfrahubEffectivePreferences"]["global"]["timezone"] == "UTC"
 
 
 async def test_effective_can_edit_false_for_normal_account(
@@ -213,6 +249,7 @@ async def test_effective_can_edit_false_for_normal_account(
 ) -> None:
     result = await run_effective(db=db, branch=default_branch, account_session=session_first_account)
     assert result.errors is None
+    assert result.data is not None
     assert result.data["InfrahubEffectivePreferences"]["can_edit_global_preferences"] is False
 
 
@@ -228,6 +265,7 @@ async def test_effective_can_edit_true_for_manager(
 
     result = await run_effective(db=db, branch=default_branch, account_session=session)
     assert result.errors is None
+    assert result.data is not None
     assert result.data["InfrahubEffectivePreferences"]["can_edit_global_preferences"] is True
 
 
@@ -241,4 +279,22 @@ async def test_effective_can_edit_true_for_super_admin(
 ) -> None:
     result = await run_effective(db=db, branch=default_branch, account_session=session_admin)
     assert result.errors is None
+    assert result.data is not None
     assert result.data["InfrahubEffectivePreferences"]["can_edit_global_preferences"] is True
+
+
+async def test_effective_rejects_anonymous(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+) -> None:
+    # No account session at all: rejected.
+    result = await run_effective(db=db, branch=default_branch, account_session=None)
+    assert result.errors is not None
+    assert any("authenticated account" in str(error) for error in result.errors)
+
+    # Unauthenticated/anonymous session: also rejected.
+    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
+    result = await run_effective(db=db, branch=default_branch, account_session=anonymous)
+    assert result.errors is not None
+    assert any("authenticated account" in str(error) for error in result.errors)
