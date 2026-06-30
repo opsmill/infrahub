@@ -86,6 +86,8 @@ class TestMergeCardinalityOneCrossBranch(TestInfrahubApp):
 
         merged_car = await NodeManager.get_one(db=db, id=initial_dataset["car_id"], branch=default_branch)
         assert merged_car
+        # The direct branch merge rejects the cross-branch conflict, so main keeps its own peer (Sarah)
+        # and never ends up with two peers on the cardinality-one relationship.
         previous_owners = await merged_car.get_relationship("previous_owner").get_relationships(db=db)
-        # TODO: should assert the actual expected peer
-        assert len(previous_owners) <= 1
+        assert len(previous_owners) == 1
+        assert previous_owners[0].get_peer_id() == initial_dataset["sarah_id"]

@@ -71,13 +71,12 @@ class TestProposedChangeCardinalityOneConflict(TestInfrahubApp):
         branch = await client.branch.create(branch_name="rival_manufacturers")
         car_on_branch = await NodeManager.get_one(db=db, id=initial_dataset["car_id"], branch=branch.name)
         assert car_on_branch
-        # TODO: use get_relationship("manufacturer") to clear typing ignore
-        await car_on_branch.manufacturer.update(db=db, data={"id": initial_dataset["omnicorp_id"]})  # type: ignore[attr-defined]
+        await car_on_branch.get_relationship("manufacturer").update(db=db, data={"id": initial_dataset["omnicorp_id"]})
         await car_on_branch.save(db=db)
 
         car_on_main = await NodeManager.get_one(db=db, id=initial_dataset["car_id"], branch=default_branch)
         assert car_on_main
-        await car_on_main.manufacturer.update(db=db, data={"id": initial_dataset["cyberdyne_id"]})  # type: ignore[attr-defined]
+        await car_on_main.get_relationship("manufacturer").update(db=db, data={"id": initial_dataset["cyberdyne_id"]})
         await car_on_main.save(db=db)
 
         proposed_change_create = await client.create(
