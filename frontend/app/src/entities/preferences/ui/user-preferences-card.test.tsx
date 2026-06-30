@@ -5,7 +5,7 @@ import type { EffectivePreferences } from "@/entities/preferences/domain/types";
 import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
 
 import { render } from "../../../../tests/components/render";
-import { selectComboboxOption } from "../../../../tests/components/utils";
+import { initPointerTracking, selectComboboxOption } from "../../../../tests/components/utils";
 import { UserPreferencesCard } from "./user-preferences-card";
 
 vi.mock("@/entities/preferences/domain/get-effective-preferences");
@@ -98,43 +98,34 @@ describe("UserPreferencesCard", () => {
     expect(actionRow.querySelector("button")).not.toBeNull();
   });
 
-  test("shows the inherited global value as hint when the user has no override", async () => {
+  test("offers an 'Automatic' (inherit) option at the top of both dropdowns", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    // globalDateFormat is "dd/MM/yyyy"; the hint shows a live example of the
-    // frozen current date rendered with that pattern, then the pattern.
-    await expect
-      .element(
-        component.getByText(/inherited from organisation defaults: 30\/06\/2026 \(dd\/MM\/yyyy\)/i)
-      )
-      .toBeVisible();
-    await expect
-      .element(component.getByText(/inherited from organisation defaults: Europe\/Paris/i))
-      .toBeVisible();
+    await component.getByRole("combobox", { name: /date format/i }).click();
+    await expect.element(component.getByRole("option", { name: "Automatic" })).toBeVisible();
+    // It sits at the top, before the first real preset.
+    const dateOptions = Array.from(component.container.querySelectorAll('[role="option"]')).map(
+      (option) => option.textContent?.trim()
+    );
+    expect(dateOptions[0]).toBe("Automatic");
+    // Close the popover before opening the next one.
+    await component.getByRole("combobox", { name: /date format/i }).click();
+
+    await component.getByRole("combobox", { name: /timezone/i }).click();
+    await expect.element(component.getByRole("option", { name: "Automatic" })).toBeVisible();
   });
 
-  test("falls back to the browser default hint when neither user nor global is set", async () => {
-    vi.mocked(getEffectivePreferences).mockResolvedValue({
-      ...baseEffective,
-      dateFormat: null,
-      timezone: null,
-      globalDateFormat: null,
-      globalTimezone: null,
-    });
-
+  test("shows 'Automatic' as the selected value when the user has no override", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    // No fixed "yyyy-MM-dd HH:mm (built-in default)" any more: the effective default
-    // is the browser's own locale/timezone. The date hint shows a concrete
-    // browser-formatted example of the frozen current date.
-    const expectedDateExample = new Date("2026-06-30T14:30:00").toLocaleString();
-    const expectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
+    // userDateFormat / userTimezone are null in baseEffective, so both triggers
+    // display Automatic rather than an empty placeholder.
     await expect
-      .element(component.getByText(`Browser default: ${expectedDateExample}`))
-      .toBeVisible();
-    await expect.element(component.getByText(`Browser default: ${expectedTimezone}`)).toBeVisible();
-    expect(component.getByText(/built-in default/i).elements()).toHaveLength(0);
+      .element(component.getByRole("combobox", { name: /date format/i }))
+      .toHaveTextContent("Automatic");
+    await expect
+      .element(component.getByRole("combobox", { name: /timezone/i }))
+      .toHaveTextContent("Automatic");
   });
 
   test("date-format options are labelled by the pattern itself", async () => {
@@ -152,7 +143,8 @@ describe("UserPreferencesCard", () => {
   test("shows a live example next to the date-format control that updates on selection", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    // No personal override yet, so no example is shown until a format is picked.
+    // Automatic (no override) is selected, so no concrete example is shown until a
+    // real format is picked.
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
 
     // Frozen at 2026-06-30T14:30:00; the ISO preset renders that instant.
@@ -164,6 +156,16 @@ describe("UserPreferencesCard", () => {
     await expect.element(component.getByText("Example: 2 days ago")).toBeVisible();
   });
 
+  test("hides the example again when switching back to Automatic (inherit)", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await selectComboboxOption(component, /date format/i, "relative");
+    await expect.element(component.getByText("Example: 2 days ago")).toBeVisible();
+
+    await selectComboboxOption(component, /date format/i, "Automatic");
+    expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
+  });
+
   test("pre-fills the form from the caller's own override", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
@@ -173,14 +175,81 @@ describe("UserPreferencesCard", () => {
 
     const component = await render(<UserPreferencesCard />);
 
-    // The user's own override is shown, not the inherited hint.
+    // The user's own override is shown, not "Automatic".
     await expect
       .element(component.getByRole("combobox", { name: /timezone/i }))
       .toHaveTextContent("UTC");
-    expect(component.getByText(/inherited from organisation defaults/i).elements()).toHaveLength(0);
+    await expect
+      .element(component.getByRole("combobox", { name: /date format/i }))
+      .toHaveTextContent("relative");
   });
 
-  test("still renders and saves the form when the effective query resolves with no global values", async () => {
+  test("does not render the below-input source/inheritance sentence", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+
+    // The old "Inherited from organisation defaults: …" / "Browser default: …"
+    // sentences are gone — the source is now in the (i) tooltip instead.
+    expect(component.getByText(/inherited from organisation defaults/i).elements()).toHaveLength(0);
+    expect(component.getByText(/browser default:/i).elements()).toHaveLength(0);
+  });
+
+  test("provides one accessible, focusable (i) source tooltip trigger per field", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+
+    // One info trigger per field, each a real <button> (a natural tab stop, so it is
+    // keyboard-reachable, not hover-only) with an accessible name.
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    expect(triggers.elements()).toHaveLength(2);
+    for (const trigger of triggers.elements()) {
+      expect(trigger.tagName).toBe("BUTTON");
+    }
+  });
+
+  test("the (i) tooltip resolves to the organisation default when no override is set", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+
+    // No user override + global set → the date-format tooltip resolves to the org
+    // default (a live example of the frozen date with the inherited pattern).
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: /from the organisation default: 30\/06\/2026 \(dd\/MM\/yyyy\)/i,
+        })
+      )
+      .toBeVisible();
+  });
+
+  test("the (i) tooltip reflects the user's own preference when an override is set", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      userDateFormat: "relative",
+      userTimezone: "UTC",
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    await expect
+      .element(component.getByRole("tooltip", { name: "Your preference." }))
+      .toBeVisible();
+  });
+
+  test("the (i) tooltip falls back to the browser source when neither user nor global is set", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
       dateFormat: null,
@@ -191,21 +260,18 @@ describe("UserPreferencesCard", () => {
 
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
-    expect(
-      component.getByText(/something went wrong when fetching your preferences/i).elements()
-    ).toHaveLength(0);
+    await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
 
-    // Select by the stable preset key, not the (date-dependent) label.
-    await selectComboboxOption(component, /date format/i, "relative");
-    await component.getByRole("button", { name: "Save" }).click();
+    const expectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    await vi.waitFor(() => {
-      expect(upsertMyUserPreference).toHaveBeenCalledWith({
-        dateFormat: "relative",
-        timezone: null,
-      });
-    });
+    // The timezone field is the second info trigger.
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    await expect
+      .element(component.getByRole("tooltip", { name: `From your browser: ${expectedTimezone}.` }))
+      .toBeVisible();
   });
 
   test("disables Save while the form is pristine", async () => {
@@ -234,7 +300,33 @@ describe("UserPreferencesCard", () => {
     });
   });
 
-  test("reset to global sends an explicit-null upsert when the user has an override", async () => {
+  test("selecting 'Automatic' clears the override with an explicit-null upsert", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      userDateFormat: "relative",
+      userTimezone: "UTC",
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    // Pre-filled from the override; switching back to Automatic resets to inherit.
+    await expect
+      .element(component.getByRole("combobox", { name: /date format/i }))
+      .toHaveTextContent("relative");
+
+    await selectComboboxOption(component, /date format/i, "Automatic");
+    await component.getByRole("button", { name: "Save" }).click();
+
+    await vi.waitFor(() => {
+      // date_format cleared to null; timezone keeps the existing UTC override.
+      expect(vi.mocked(upsertMyUserPreference).mock.calls[0]?.[0]).toEqual({
+        dateFormat: null,
+        timezone: "UTC",
+      });
+    });
+  });
+
+  test("no longer renders a separate 'reset to global' button (Automatic replaces it)", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
       userDateFormat: "relative",
@@ -243,20 +335,35 @@ describe("UserPreferencesCard", () => {
 
     const component = await render(<UserPreferencesCard />);
 
-    await component.getByRole("button", { name: /reset to global/i }).click();
-
-    await vi.waitFor(() => {
-      expect(vi.mocked(upsertMyUserPreference).mock.calls[0]?.[0]).toEqual({
-        dateFormat: null,
-        timezone: null,
-      });
-    });
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
+    expect(component.getByRole("button", { name: /reset to global/i }).elements()).toHaveLength(0);
   });
 
-  test("hides the reset button when the user has no override", async () => {
+  test("still renders and saves the form when the effective query resolves with no global values", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: null,
+      timezone: null,
+      globalDateFormat: null,
+      globalTimezone: null,
+    });
+
     const component = await render(<UserPreferencesCard />);
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
-    expect(component.getByRole("button", { name: /reset to global/i }).elements()).toHaveLength(0);
+    expect(
+      component.getByText(/something went wrong when fetching your preferences/i).elements()
+    ).toHaveLength(0);
+
+    // Select by the stable preset key, not the (date-dependent) label.
+    await selectComboboxOption(component, /date format/i, "relative");
+    await component.getByRole("button", { name: "Save" }).click();
+
+    await vi.waitFor(() => {
+      expect(upsertMyUserPreference).toHaveBeenCalledWith({
+        dateFormat: "relative",
+        timezone: null,
+      });
+    });
   });
 });

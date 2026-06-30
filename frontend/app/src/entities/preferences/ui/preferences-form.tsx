@@ -1,3 +1,5 @@
+import { Icon } from "@iconify-icon/react";
+import { Button, Tooltip } from "@infrahub/ui";
 import type React from "react";
 import { useId, useMemo } from "react";
 import { useFormState, useWatch } from "react-hook-form";
@@ -14,13 +16,53 @@ import {
 import type { PreferenceValues } from "@/entities/preferences/domain/types";
 import { TimezoneField } from "@/entities/preferences/ui/timezone.field";
 
+/** Label for the "inherit / no personal override" entry shared by both dropdowns. */
+export const AUTOMATIC_OPTION_LABEL = "Automatic";
+
 export interface PreferencesFormProps {
   values: PreferenceValues;
-  dateFormatHint?: string;
-  timezoneHint?: string;
+  /**
+   * Adds the "Automatic" (= no override) entry to both dropdowns and makes a
+   * null/unset value display as Automatic. Used on the user tab, where clearing a
+   * field means "inherit"; left off for the organisation-defaults tab, whose values
+   * are the defaults themselves, not overrides.
+   */
+  includeAutomatic?: boolean;
+  /** Tooltip body explaining where the date-format field's effective value comes from. */
+  dateFormatSourceTooltip?: React.ReactNode;
+  /** Tooltip body explaining where the timezone field's effective value comes from. */
+  timezoneSourceTooltip?: React.ReactNode;
   onSubmit: (values: PreferenceValues) => Promise<void>;
   isSubmitDisabled?: boolean;
   children?: React.ReactNode;
+}
+
+/**
+ * Small (i) trigger sitting to the right of a field, explaining the SOURCE of the
+ * field's current effective value via a Tooltip. The trigger is a real `<button>`
+ * (a natural tab stop) with an accessible name, so the explanation is reachable by
+ * keyboard, not hover-only.
+ */
+function SourceInfo({ message }: { message: React.ReactNode }) {
+  if (!message) return null;
+  return (
+    <Tooltip message={<div className="max-w-60">{message}</div>}>
+      {/*
+        A real react-aria Button so the trigger is a keyboard tab stop with an
+        accessible name and the Tooltip wires up hover/focus + aria correctly
+        (a plain <button> is not picked up by react-aria's TooltipTrigger).
+      */}
+      <Button
+        variant="ghost"
+        shape="square"
+        size="xs"
+        aria-label="Where this value comes from"
+        className="shrink-0 text-gray-400"
+      >
+        <Icon icon="mdi:information-outline" />
+      </Button>
+    </Tooltip>
+  );
 }
 
 /** Save button disabled while the form is pristine, so an untouched form cannot be submitted. */
@@ -57,12 +99,14 @@ function DateFormatExample({ id, now }: { id: string; now: Date }) {
 /** Shared date-format + timezone form for the user and organisation tabs. */
 export function PreferencesForm({
   values,
-  dateFormatHint,
-  timezoneHint,
+  includeAutomatic,
+  dateFormatSourceTooltip,
+  timezoneSourceTooltip,
   onSubmit,
   isSubmitDisabled,
   children,
 }: PreferencesFormProps) {
+  const automaticOption = includeAutomatic ? { label: AUTOMATIC_OPTION_LABEL } : undefined;
   // Memoised so the item array identity is stable across renders. The presets are
   // `{ key, label }`; the ComboboxField takes `{ value, label }`, and the stored
   // value is the preset key.
@@ -76,13 +120,11 @@ export function PreferencesForm({
   const dateFormatLabelId = useId();
   const timezoneLabelId = useId();
   const dateFormatExampleId = useId();
-  const dateFormatHintId = useId();
-  const timezoneHintId = useId();
 
-  // The example and the inherited hint both describe the date-format control.
-  const dateFormatDescribedBy =
-    [dateFormatExampleId, dateFormatHint ? dateFormatHintId : null].filter(Boolean).join(" ") ||
-    undefined;
+  // The live example describes the date-format control. The source explanation now
+  // lives in an adjacent (i) tooltip with its own focusable trigger, so it is no
+  // longer wired in via aria-describedby.
+  const dateFormatDescribedBy = dateFormatExampleId;
 
   return (
     <Form
@@ -107,36 +149,38 @@ export function PreferencesForm({
       */}
       <div className="divide-y divide-gray-200">
         <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
-          <ComboboxField
-            name="date_format"
-            label="Date format"
-            labelClassName="sr-only"
-            items={items}
-            placeholder="Select date format"
-            searchPlaceholder="Filter date formats..."
-            emptyMessage="No date format found."
-            aria-describedby={dateFormatDescribedBy}
-          />
+          {/* Control + (i) source tooltip on one row; the live example sits below. */}
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <ComboboxField
+                name="date_format"
+                label="Date format"
+                labelClassName="sr-only"
+                items={items}
+                placeholder="Select date format"
+                searchPlaceholder="Filter date formats..."
+                emptyMessage="No date format found."
+                aria-describedby={dateFormatDescribedBy}
+                automaticOption={automaticOption}
+              />
+            </div>
+            <SourceInfo message={dateFormatSourceTooltip} />
+          </div>
           <DateFormatExample id={dateFormatExampleId} now={now} />
-          {dateFormatHint && (
-            <p id={dateFormatHintId} className="text-gray-500 text-xs">
-              {dateFormatHint}
-            </p>
-          )}
         </DetailRow>
 
         <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>
-          <TimezoneField
-            name="timezone"
-            label="Timezone"
-            labelClassName="sr-only"
-            aria-describedby={timezoneHint ? timezoneHintId : undefined}
-          />
-          {timezoneHint && (
-            <p id={timezoneHintId} className="text-gray-500 text-xs">
-              {timezoneHint}
-            </p>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <TimezoneField
+                name="timezone"
+                label="Timezone"
+                labelClassName="sr-only"
+                automaticOption={automaticOption}
+              />
+            </div>
+            <SourceInfo message={timezoneSourceTooltip} />
+          </div>
         </DetailRow>
 
         <div className="flex items-center justify-end gap-2 px-3 py-2">

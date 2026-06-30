@@ -1,4 +1,4 @@
-import { Button, Card, CardHeader } from "@infrahub/ui";
+import { Card, CardHeader } from "@infrahub/ui";
 import { useMemo } from "react";
 import { toast } from "react-toastify";
 
@@ -26,24 +26,39 @@ function browserTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-function inheritedHint(globalValue: string, source: string) {
-  return `Inherited from organisation defaults: ${globalValue} (${source})`;
-}
-
 function presetExample(value: string, referenceDate: Date) {
   return `${formatDateFormatExample(value, referenceDate)} (${value})`;
 }
 
 /**
+ * Builds the (i) tooltip text describing the SOURCE of a field's current effective
+ * value. Selecting "Automatic" (no override) is the common case here, so the text
+ * resolves to where the value actually comes from:
+ *   - user override set  → "Your preference."
+ *   - no override + global set → "From the organisation default: <value>."
+ *   - no override + no global  → "From your browser: <value>."
+ */
+function sourceTooltip(
+  userValue: string | null,
+  globalValue: string | null,
+  browserValue: string
+): string {
+  if (userValue !== null) return "Your preference.";
+  if (globalValue !== null) return `From the organisation default: ${globalValue}.`;
+  return `From your browser: ${browserValue}.`;
+}
+
+/**
  * The user's personal date/time preferences, surfaced as a card on the Profile
- * tab below the object details. Empty fields inherit the organisation default,
- * and when that is also unset they fall back to the browser's own locale and
- * timezone (the hint shows a concrete browser-formatted example).
+ * tab below the object details. Each field offers an "Automatic" option meaning
+ * "no personal override": the value then inherits the organisation default, or the
+ * browser's own locale/timezone when that is also unset. The (i) tooltip beside
+ * each field spells out where the current effective value comes from.
  */
 export function UserPreferencesCard() {
   const effectiveQuery = useEffectivePreferences();
   const updatePreferences = useUpdateMyUserPreferences();
-  // Single reference instant for the inherited hint's live example, memoised so
+  // Single reference instant for the source tooltip's live date example, memoised so
   // it does not churn across renders.
   const now = useMemo(() => new Date(), []);
 
@@ -56,29 +71,26 @@ export function UserPreferencesCard() {
   }
 
   const preferences = effectiveQuery.data;
-  // The user has a personal override when either of their own values is set.
-  const hasUserOverride = preferences.userDateFormat !== null || preferences.userTimezone !== null;
 
-  // When the user has no override the field inherits the organisation default;
-  // when that is also unset the effective default is the browser's own value.
-  const dateFormatHint = preferences.userDateFormat
-    ? undefined
-    : preferences.globalDateFormat
-      ? inheritedHint(presetExample(preferences.globalDateFormat, now), "organisation default")
-      : `Browser default: ${browserDateExample(now)}`;
-
-  const timezoneHint = preferences.userTimezone
-    ? undefined
-    : preferences.globalTimezone
-      ? inheritedHint(preferences.globalTimezone, "organisation default")
-      : `Browser default: ${browserTimezone()}`;
+  // The (i) tooltip resolves to the field's effective source: the user's own
+  // preference, the inherited organisation default, or the browser fallback.
+  const dateFormatSourceTooltip = sourceTooltip(
+    preferences.userDateFormat,
+    preferences.globalDateFormat ? presetExample(preferences.globalDateFormat, now) : null,
+    browserDateExample(now)
+  );
+  const timezoneSourceTooltip = sourceTooltip(
+    preferences.userTimezone,
+    preferences.globalTimezone,
+    browserTimezone()
+  );
 
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>Preferences</CardHeader>
       <p className="px-3 py-2 text-gray-600 text-sm">
-        Personal overrides of the organisation defaults. Empty fields inherit the organisation-wide
-        value, or the browser default when none is set.
+        Personal overrides of the organisation defaults. Choose "Automatic" to inherit the
+        organisation-wide value, or the browser default when none is set.
       </p>
 
       <PreferencesForm
@@ -86,8 +98,9 @@ export function UserPreferencesCard() {
           dateFormat: preferences.userDateFormat,
           timezone: preferences.userTimezone,
         }}
-        dateFormatHint={dateFormatHint}
-        timezoneHint={timezoneHint}
+        includeAutomatic
+        dateFormatSourceTooltip={dateFormatSourceTooltip}
+        timezoneSourceTooltip={timezoneSourceTooltip}
         onSubmit={async (values) => {
           try {
             await updatePreferences.mutateAsync(values);
@@ -102,32 +115,7 @@ export function UserPreferencesCard() {
           }
         }}
         isSubmitDisabled={updatePreferences.isPending}
-      >
-        {hasUserOverride && (
-          <Button
-            variant="outline"
-            isPending={updatePreferences.isPending}
-            isDisabled={updatePreferences.isPending}
-            onPress={async () => {
-              try {
-                // Reset to global = clear the caller's own override by
-                // upserting explicit null for every field (no delete).
-                await updatePreferences.mutateAsync({ dateFormat: null, timezone: null });
-                toast(<Alert type={ALERT_TYPES.SUCCESS} message="Preferences reset to global" />);
-              } catch (error) {
-                toast(
-                  <Alert
-                    type={ALERT_TYPES.ERROR}
-                    message={error instanceof Error ? error.message : "Failed to reset preferences"}
-                  />
-                );
-              }
-            }}
-          >
-            Reset to global
-          </Button>
-        )}
-      </PreferencesForm>
+      />
     </Card>
   );
 }
