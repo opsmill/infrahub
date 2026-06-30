@@ -5,7 +5,7 @@ import type { EffectivePreferences } from "@/entities/preferences/domain/types";
 import { updateGlobalPreference } from "@/entities/preferences/domain/update-global-preference";
 
 import { render } from "../../../../tests/components/render";
-import { selectOption } from "../../../../tests/components/utils";
+import { selectComboboxOption } from "../../../../tests/components/utils";
 import TabOrganisationDefaults from "./tab-organisation-defaults";
 
 vi.mock("@/entities/preferences/domain/get-effective-preferences");
@@ -57,7 +57,7 @@ describe("TabOrganisationDefaults", () => {
     const component = await render(<TabOrganisationDefaults />);
 
     // Select by the stable preset key, not the (date-dependent) label.
-    await selectOption(component, "", { value: "relative" });
+    await selectComboboxOption(component, /date format/i, "relative");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {

@@ -5,7 +5,7 @@ import type { EffectivePreferences } from "@/entities/preferences/domain/types";
 import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
 
 import { render } from "../../../../tests/components/render";
-import { selectOption } from "../../../../tests/components/utils";
+import { selectComboboxOption } from "../../../../tests/components/utils";
 import TabPreferences from "./tab-preferences";
 
 vi.mock("@/entities/preferences/domain/get-effective-preferences");
@@ -39,7 +39,8 @@ describe("TabPreferences", () => {
   test("renders preset selects, not free-text inputs", async () => {
     const component = await render(<TabPreferences />);
 
-    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+    // Both dropdowns are the shared Combobox now, so both expose role="combobox".
+    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
     await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
     expect(component.getByRole("textbox").elements()).toHaveLength(0);
   });
@@ -54,7 +55,7 @@ describe("TabPreferences", () => {
     const component = await render(<TabPreferences />);
 
     // The controls keep their accessible names even though their own labels are sr-only.
-    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
     await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
 
     // The DetailRow term cells carry the visible field labels next to a leading icon,
@@ -88,19 +89,12 @@ describe("TabPreferences", () => {
   test("date-format options are labelled by the pattern itself", async () => {
     const component = await render(<TabPreferences />);
 
-    // React Aria mounts the Select's hidden native <select> lazily; it is the only
-    // <select> in this form (timezone is a Combobox), so poll for it to appear.
-    let dateFormatSelect: HTMLSelectElement | null = null;
-    await vi.waitFor(() => {
-      dateFormatSelect = component.container.querySelector<HTMLSelectElement>("select");
-      if (!dateFormatSelect) throw new Error("date-format <select> not mounted yet");
-    });
-
-    const labels = Array.from(dateFormatSelect!.options).map((o) => o.textContent?.trim());
+    // Open the date-format Combobox; its options are cmdk role="option" entries.
+    await component.getByRole("combobox", { name: /date format/i }).click();
 
     // The option label is now the pattern/sentinel itself, not a live example.
-    expect(labels).toContain("yyyy-MM-dd HH:mm");
-    expect(labels).toContain("relative");
+    await expect.element(component.getByRole("option", { name: "yyyy-MM-dd HH:mm" })).toBeVisible();
+    await expect.element(component.getByRole("option", { name: "relative" })).toBeVisible();
   });
 
   test("shows a live example next to the date-format control that updates on selection", async () => {
@@ -110,11 +104,11 @@ describe("TabPreferences", () => {
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
 
     // Frozen at 2026-06-30T14:30:00; the ISO preset renders that instant.
-    await selectOption(component, "", { value: "yyyy-MM-dd HH:mm" });
+    await selectComboboxOption(component, /date format/i, "yyyy-MM-dd HH:mm");
     await expect.element(component.getByText("Example: 2026-06-30 14:30")).toBeVisible();
 
     // Switching the selection updates the example deterministically.
-    await selectOption(component, "", { value: "relative" });
+    await selectComboboxOption(component, /date format/i, "relative");
     await expect.element(component.getByText("Example: 2 days ago")).toBeVisible();
   });
 
@@ -151,7 +145,7 @@ describe("TabPreferences", () => {
     ).toHaveLength(0);
 
     // Select by the stable preset key, not the (date-dependent) label.
-    await selectOption(component, "", { value: "relative" });
+    await selectComboboxOption(component, /date format/i, "relative");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
@@ -168,7 +162,7 @@ describe("TabPreferences", () => {
     await expect.element(component.getByRole("button", { name: "Save" })).toBeDisabled();
 
     // Select by the stable preset key, not the (date-dependent) label.
-    await selectOption(component, "", { value: "relative" });
+    await selectComboboxOption(component, /date format/i, "relative");
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
   });
@@ -177,7 +171,7 @@ describe("TabPreferences", () => {
     const component = await render(<TabPreferences />);
 
     // Select by the stable preset key, not the (date-dependent) label.
-    await selectOption(component, "", { value: "relative" });
+    await selectComboboxOption(component, /date format/i, "relative");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {

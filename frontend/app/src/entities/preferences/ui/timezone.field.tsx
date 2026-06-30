@@ -1,18 +1,8 @@
-import { useState } from "react";
+import { useMemo } from "react";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { LabelFormField } from "@/shared/components/form/fields/common";
+import { ComboboxField } from "@/shared/components/form/fields/combobox.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
-import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-} from "@/shared/components/ui/combobox";
-import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 const TIMEZONES = Intl.supportedValuesOf("timeZone");
 
@@ -34,52 +24,23 @@ export function TimezoneField({
   "aria-describedby": ariaDescribedBy,
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
 }: TimezoneFieldProps) {
-  const [open, setOpen] = useState(false);
+  // Stable item identity across renders; the timezone list never changes at runtime.
+  const items = useMemo(
+    () => TIMEZONES.map((timezone) => ({ value: timezone, label: timezone })),
+    []
+  );
 
   return (
-    <FormField
+    <ComboboxField
       name={name}
+      label={label}
+      items={items}
+      placeholder="Select timezone"
+      searchPlaceholder="Search timezone..."
+      emptyMessage="No timezone found."
+      labelClassName={labelClassName}
+      aria-describedby={ariaDescribedBy}
       defaultValue={defaultValue}
-      render={({ field }) => {
-        const fieldData: FormAttributeValue = field.value;
-        const currentValue = (fieldData?.value as string | undefined) ?? null;
-
-        return (
-          <div className="flex flex-col gap-2">
-            <LabelFormField label={label} className={labelClassName} />
-
-            <Combobox open={open} onOpenChange={setOpen}>
-              <FormInput>
-                <ComboboxTrigger aria-describedby={ariaDescribedBy}>
-                  {currentValue ?? <span className="text-gray-400">Select timezone</span>}
-                </ComboboxTrigger>
-              </FormInput>
-
-              <ComboboxContent>
-                <ComboboxList placeholder="Search timezone...">
-                  <ComboboxEmpty>No timezone found.</ComboboxEmpty>
-                  {TIMEZONES.map((timezone) => (
-                    <ComboboxItem
-                      key={timezone}
-                      value={timezone}
-                      selectedValue={currentValue}
-                      onSelect={() => {
-                        const newValue = timezone === currentValue ? null : timezone;
-                        field.onChange(updateFormFieldValue(newValue, defaultValue));
-                        setOpen(false);
-                      }}
-                    >
-                      {timezone}
-                    </ComboboxItem>
-                  ))}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-
-            <FormMessage />
-          </div>
-        );
-      }}
     />
   );
 }

@@ -44,7 +44,7 @@ export default function TabPreferences() {
 
   return (
     <main className="p-2">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-2xl">
         <CardHeader>Personal date and time</CardHeader>
         <CardContent>
           <p className="mb-4 text-gray-600 text-sm">

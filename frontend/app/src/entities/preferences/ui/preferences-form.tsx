@@ -3,7 +3,7 @@ import { useId, useMemo } from "react";
 import { useFormState, useWatch } from "react-hook-form";
 
 import { DetailRow } from "@/shared/components/display/detail-row";
-import { SelectField } from "@/shared/components/form/fields/select.field";
+import { ComboboxField } from "@/shared/components/form/fields/combobox.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
@@ -63,9 +63,13 @@ export function PreferencesForm({
   isSubmitDisabled,
   children,
 }: PreferencesFormProps) {
-  // Memoised so the item array identity is stable across renders, which the
-  // React Aria Select relies on.
-  const items = useMemo(() => buildDateFormatPresets(), []);
+  // Memoised so the item array identity is stable across renders. The presets are
+  // `{ key, label }`; the ComboboxField takes `{ value, label }`, and the stored
+  // value is the preset key.
+  const items = useMemo(
+    () => buildDateFormatPresets().map(({ key, label }) => ({ value: key, label })),
+    []
+  );
   // Single reference instant for the live example, memoised so it does not churn.
   const now = useMemo(() => new Date(), []);
 
@@ -93,35 +97,41 @@ export function PreferencesForm({
         });
       }}
     >
-      <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
-        <SelectField
-          name="date_format"
-          label="Date format"
-          labelClassName="sr-only"
-          items={items}
-          aria-describedby={dateFormatDescribedBy}
-        />
-        <DateFormatExample id={dateFormatExampleId} now={now} />
-        {dateFormatHint && (
-          <p id={dateFormatHintId} className="text-gray-500 text-xs">
-            {dateFormatHint}
-          </p>
-        )}
-      </DetailRow>
+      {/* Separator between the rows, matching the object-details card layout. */}
+      <div className="divide-y divide-gray-200">
+        <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
+          <ComboboxField
+            name="date_format"
+            label="Date format"
+            labelClassName="sr-only"
+            items={items}
+            placeholder="Select date format"
+            searchPlaceholder="Filter date formats..."
+            emptyMessage="No date format found."
+            aria-describedby={dateFormatDescribedBy}
+          />
+          <DateFormatExample id={dateFormatExampleId} now={now} />
+          {dateFormatHint && (
+            <p id={dateFormatHintId} className="text-gray-500 text-xs">
+              {dateFormatHint}
+            </p>
+          )}
+        </DetailRow>
 
-      <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>
-        <TimezoneField
-          name="timezone"
-          label="Timezone"
-          labelClassName="sr-only"
-          aria-describedby={timezoneHint ? timezoneHintId : undefined}
-        />
-        {timezoneHint && (
-          <p id={timezoneHintId} className="text-gray-500 text-xs">
-            {timezoneHint}
-          </p>
-        )}
-      </DetailRow>
+        <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>
+          <TimezoneField
+            name="timezone"
+            label="Timezone"
+            labelClassName="sr-only"
+            aria-describedby={timezoneHint ? timezoneHintId : undefined}
+          />
+          {timezoneHint && (
+            <p id={timezoneHintId} className="text-gray-500 text-xs">
+              {timezoneHint}
+            </p>
+          )}
+        </DetailRow>
+      </div>
 
       <div className="flex items-center justify-end gap-2">
         {children}
