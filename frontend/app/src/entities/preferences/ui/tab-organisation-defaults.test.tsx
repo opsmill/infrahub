@@ -53,6 +53,33 @@ describe("TabOrganisationDefaults", () => {
     await expect.element(component.getByText("Global date and time")).toBeVisible();
   });
 
+  test("renders the card wide enough (max-w-3xl) for the inline date-format example", async () => {
+    const component = await render(<TabOrganisationDefaults />);
+
+    await expect.element(component.getByText("Global date and time")).toBeVisible();
+
+    const title = component.getByText("Global date and time").element() as HTMLElement;
+    // The card is the title's ancestor carrying the width cap; widened from
+    // max-w-2xl to max-w-3xl so the longest inline example never clips.
+    const card = title.closest(".max-w-3xl");
+    expect(card).not.toBeNull();
+    expect(card?.className).not.toMatch(/max-w-2xl/);
+  });
+
+  test("shows the live date-format example inline next to the control", async () => {
+    const component = await render(<TabOrganisationDefaults />);
+
+    // Frozen at 2026-06-30T14:30:00; selecting a concrete preset surfaces the example.
+    await selectComboboxOption(component, /date format/i, "yyyy-MM-dd HH:mm");
+
+    const combobox = component.getByRole("combobox", { name: /date format/i }).element();
+    const example = component.getByText("Example: 2026-06-30 14:30").element();
+
+    const row = combobox.closest("div.flex.items-center") as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(row.contains(example)).toBe(true);
+  });
+
   test("edits the raw global_* values via the global mutation when allowed", async () => {
     const component = await render(<TabOrganisationDefaults />);
 

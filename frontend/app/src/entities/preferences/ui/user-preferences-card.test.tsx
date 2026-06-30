@@ -156,6 +156,29 @@ describe("UserPreferencesCard", () => {
     await expect.element(component.getByText("Example: 2 days ago")).toBeVisible();
   });
 
+  test("renders the live example inline, on the same row as the date-format control", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await selectComboboxOption(component, /date format/i, "relative");
+
+    const combobox = component.getByRole("combobox", { name: /date format/i }).element();
+    const example = component.getByText("Example: 2 days ago").element();
+
+    // The example and the combobox share the same horizontal row container
+    // ([combobox] [example] [(i)]), rather than the example sitting on a row below.
+    const row = combobox.closest("div.flex.items-center") as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(row.contains(example)).toBe(true);
+
+    // The example follows the control in document order (to its right): the row's
+    // direct child holding the combobox precedes the example's child.
+    const children = Array.from(row.children);
+    const controlIndex = children.findIndex((child) => child.contains(combobox));
+    const exampleIndex = children.findIndex((child) => child.contains(example));
+    expect(controlIndex).toBeGreaterThanOrEqual(0);
+    expect(exampleIndex).toBeGreaterThan(controlIndex);
+  });
+
   test("hides the example again when switching back to Automatic (inherit)", async () => {
     const component = await render(<UserPreferencesCard />);
 

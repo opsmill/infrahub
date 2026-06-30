@@ -8,6 +8,7 @@ import { DetailRow } from "@/shared/components/display/detail-row";
 import { ComboboxField } from "@/shared/components/form/fields/combobox.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { classNames } from "@/shared/utils/common";
 
 import {
   buildDateFormatPresets,
@@ -78,19 +79,23 @@ function toFieldValue(value: string | null): FormAttributeValue {
 }
 
 /**
- * Live example of the currently-selected date format, sitting beside the control.
- * Watches the `date_format` field (whose value is a `{ source, value }` attribute)
- * and re-renders the example as the selection changes. `now` is memoised once per
- * mount so the example is stable across renders.
+ * Live example of the currently-selected date format, sitting INLINE to the right
+ * of the control. Watches the `date_format` field (whose value is a
+ * `{ source, value }` attribute) and re-renders the example as the selection
+ * changes. `now` is memoised once per mount so the example is stable across renders.
+ *
+ * The example can shrink and truncate (it carries `min-w-0` + `truncate` from the
+ * caller) so the longest preset never overflows the row or forces the combobox to
+ * reflow; hidden entirely when "Automatic"/no value is selected.
  */
-function DateFormatExample({ id, now }: { id: string; now: Date }) {
+function DateFormatExample({ id, now, className }: { id: string; now: Date; className?: string }) {
   const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
   const selected = (fieldValue?.value as string | null | undefined) ?? null;
 
   if (!selected) return null;
 
   return (
-    <p id={id} className="text-gray-500 text-xs">
+    <p id={id} className={classNames("text-gray-500 text-xs", className)}>
       Example: {formatDateFormatExample(selected, now)}
     </p>
   );
@@ -149,7 +154,13 @@ export function PreferencesForm({
       */}
       <div className="divide-y divide-gray-200">
         <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
-          {/* Control + (i) source tooltip on one row; the live example sits below. */}
+          {/*
+            Control + live example + (i) source tooltip on a single row:
+            [combobox (flex-1, min-w-0)] [example (shrinkable, truncates)] [(i)].
+            The combobox keeps a sensible min width while the example is allowed to
+            shrink/truncate, so neither overflows the card nor causes layout shift
+            when the example appears.
+          */}
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
               <ComboboxField
@@ -164,9 +175,13 @@ export function PreferencesForm({
                 automaticOption={automaticOption}
               />
             </div>
+            <DateFormatExample
+              id={dateFormatExampleId}
+              now={now}
+              className="min-w-0 shrink truncate"
+            />
             <SourceInfo message={dateFormatSourceTooltip} />
           </div>
-          <DateFormatExample id={dateFormatExampleId} now={now} />
         </DetailRow>
 
         <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>

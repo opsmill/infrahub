@@ -86,7 +86,7 @@ export function UserPreferencesCard() {
   );
 
   return (
-    <Card className="w-full max-w-2xl">
+    <Card className="w-full">
       <CardHeader>Preferences</CardHeader>
       <p className="px-3 py-2 text-gray-600 text-sm">
         Personal overrides of the organisation defaults. Choose "Automatic" to inherit the

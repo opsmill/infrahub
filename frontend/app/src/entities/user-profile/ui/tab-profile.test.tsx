@@ -1,3 +1,4 @@
+import type React from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { getEffectivePreferences } from "@/entities/preferences/domain/get-effective-preferences";
@@ -8,10 +9,17 @@ import { render } from "../../../../tests/components/render";
 import TabProfile from "./tab-profile";
 
 // The object-details subtree pulls in schema/query machinery that is out of scope
-// here; we only assert that the profile tab composes <ObjectDetails/> above the
-// user-preferences card, so stub the details with a sentinel.
+// here; we only assert that the profile tab composes <ObjectDetails/> with the
+// user-preferences card slotted into its left column. The stub mirrors the real
+// component by rendering the details sentinel and then the leftColumnExtra slot
+// (below it), so the composition under test is preserved.
 vi.mock("@/entities/nodes/object/ui/object-details/object-details", () => ({
-  ObjectDetails: () => <div data-testid="object-details">object details</div>,
+  ObjectDetails: ({ leftColumnExtra }: { leftColumnExtra?: React.ReactNode }) => (
+    <div data-testid="object-details">
+      <div>object details</div>
+      {leftColumnExtra}
+    </div>
+  ),
 }));
 
 vi.mock("@/entities/schema/ui/hooks/useSchema", () => ({

@@ -47,13 +47,16 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     return <ErrorScreen message={objectError?.message || permissionError?.message} />;
   }
 
-  // The profile tab stacks the object details and the user's preferences card with
-  // a single small, consistent gap (no extra padding wrapper that would double-pad
-  // the preferences card and push it away from the details above).
+  // The preferences card is slotted into the object-details left column (below the
+  // account-details card) so it shares the SAME column width, gap, and grid padding
+  // as the other cards — rather than sitting flush against the page edge outside the
+  // padded grid.
   return (
-    <div className="flex flex-col gap-2">
-      <ObjectDetails objectSchema={schema} objectData={objectData} permission={permission} />
-      <UserPreferencesCard />
-    </div>
+    <ObjectDetails
+      objectSchema={schema}
+      objectData={objectData}
+      permission={permission}
+      leftColumnExtra={<UserPreferencesCard />}
+    />
   );
 }
