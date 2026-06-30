@@ -341,6 +341,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
 async def run_generators(model: RequestProposedChangeRunGenerators, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
+    log = get_run_logger()
     client = get_client()
 
     generators = await client.filters(
@@ -377,18 +378,35 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for generator_definition in generator_definitions:
-        # Request generator definitions if the source branch that is managed in combination
-        # to the Git repository containing modifications which could indicate changes to the transforms
-        # in code
-        # Alternatively if the queries used touches models that have been modified in the path
-        # impacted artifact definitions will be included for consideration
-
+        # Select a generator definition when its query node or definition node was modified, when a
+        # file inside its stored dependency closure changed, or when the diff touches a data kind the
+        # query reads. The closure-based file gate replaces the previous "any file changed in a synced
+        # repository" heuristic so an unrelated commit no longer re-runs every generator.
         select = DefinitionSelect.NONE
-        select = select.add_flag(
-            current=select,
-            flag=DefinitionSelect.FILE_CHANGES,
-            condition=model.source_branch_sync_with_git and model.branch_diff.has_file_modifications,
+        for outcome, flag in (
+            (
+                _query_changed(definition=generator_definition, diff_summary=diff_summary),
+                DefinitionSelect.QUERY_CHANGED,
+            ),
+            (
+                _definition_changed(definition=generator_definition, diff_summary=diff_summary),
+                DefinitionSelect.DEFINITION_CHANGED,
+            ),
+        ):
+            select = select.add_flag(current=select, flag=flag, condition=outcome.matched)
+            if outcome.reason is not None:
+                log.info(outcome.reason)
+
+        repo_diff_for_definition = _repo_diff_or_none(
+            branch_diff=model.branch_diff, repository_id=generator_definition.repository_id
         )
+        if repo_diff_for_definition is not None:
+            transform_outcome = _transform_changed(definition=generator_definition, repo_diff=repo_diff_for_definition)
+            select = select.add_flag(
+                current=select, flag=DefinitionSelect.FILE_CHANGES, condition=transform_outcome.matched
+            )
+            if transform_outcome.reason is not None:
+                log.info(transform_outcome.reason)
 
         for changed_model in modified_kinds:
             select = select.add_flag(
@@ -1208,13 +1226,28 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     else:
         impacted_instances = impacted.ids
 
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    repo_diff_for_definition = _repo_diff_or_none(
+        branch_diff=model.branch_diff, repository_id=model.generator_definition.repository_id
+    )
+    managed_branch = (
+        _query_changed(definition=model.generator_definition, diff_summary=diff_summary).matched
+        or _definition_changed(definition=model.generator_definition, diff_summary=diff_summary).matched
+        or (
+            repo_diff_for_definition is not None
+            and _transform_changed(definition=model.generator_definition, repo_diff=repo_diff_for_definition).matched
+        )
+    )
+    if managed_branch:
+        log.info("Query, definition or repository file change detected, all instances will be processed")
+
     check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
         member = relationship.peer
         generator_instance = instance_by_member.get(member.id)
         if _run_generator(
             instance_id=generator_instance,
-            managed_branch=model.source_branch_sync_with_git,
+            managed_branch=managed_branch,
             impacted_instances=impacted_instances,
         ):
             requested_instances += 1
