@@ -9,18 +9,18 @@ describe("PoolPrefixLengthInput", () => {
     const component = await render(<PoolPrefixLengthInput value={32} onChange={() => {}} />);
 
     await expect.element(component.getByLabelText("Prefix length")).toBeVisible();
-    await expect.element(component.getByTestId("pool-prefix-length-input")).toHaveValue("32");
+    await expect.element(component.getByTestId("pool-prefix-length-input")).toHaveValue(32);
   });
 
   test("renders empty when there is no value", async () => {
     const component = await render(<PoolPrefixLengthInput value={undefined} onChange={() => {}} />);
 
-    await expect.element(component.getByTestId("pool-prefix-length-input")).toHaveValue("");
+    await expect.element(component.getByTestId("pool-prefix-length-input")).toHaveValue(null);
   });
 
   test("shows the pool default prefix length as a placeholder", async () => {
     const component = await render(
-      <PoolPrefixLengthInput value={undefined} placeholder={16} onChange={() => {}} />
+      <PoolPrefixLengthInput value={undefined} placeholder="16" onChange={() => {}} />
     );
 
     await expect
@@ -46,12 +46,12 @@ describe("PoolPrefixLengthInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
 
-  test("rejects non-integer input (prefix length is integer-only)", async () => {
+  test("emits the raw number for a decimal (integer enforcement is delegated to field validation)", async () => {
     const onChange = vi.fn<(value: number | null) => void>();
     const component = await render(<PoolPrefixLengthInput value={undefined} onChange={onChange} />);
 
     await component.getByTestId("pool-prefix-length-input").fill("24.5");
 
-    expect(onChange).not.toHaveBeenCalledWith(24.5);
+    expect(onChange).toHaveBeenLastCalledWith(24.5);
   });
 });

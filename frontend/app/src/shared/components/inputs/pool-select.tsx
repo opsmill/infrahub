@@ -100,7 +100,7 @@ export function PoolSelect({
             <PoolPrefixLengthInput
               value={field.value}
               invalid={!!fieldState.error}
-              placeholder={defaultPrefixLength}
+              placeholder={defaultPrefixLength == null ? undefined : String(defaultPrefixLength)}
               onChange={field.onChange}
             />
           )}

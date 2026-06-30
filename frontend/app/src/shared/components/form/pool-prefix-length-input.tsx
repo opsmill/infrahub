@@ -1,22 +1,21 @@
 import { Row } from "@/shared/components/container";
-import { Input } from "@/shared/components/ui/input";
-import { inputErrorStyle } from "@/shared/components/ui/style";
+import { focusWithinStyle, inputErrorStyle, inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
+
+import { MAX_PREFIX_LENGTH, MIN_PREFIX_LENGTH } from "@/entities/resource-manager/constants";
 
 export interface PoolPrefixLengthInputProps {
   value: number | null | undefined;
   invalid?: boolean;
   /** Pool's default prefix length, shown as a hint of the mask used when left blank. */
-  placeholder?: number | null;
+  placeholder?: string;
   onChange: (value: number | null) => void;
 }
 
 /**
- * Compact inline editor for a from-pool allocation's prefix-length override. It is a
- * plain controlled number input; the surrounding pool field decides when it is shown
- * and owns how its value is validated and persisted. Clearing emits `null` (rather
- * than `undefined`) so react-hook-form actually writes the empty state. When left
- * blank, the pool's default prefix length is shown as a placeholder.
+ * Compact inline editor for a from-pool allocation's prefix-length override. The pool field
+ * decides when it is shown and validates the value (integer, 1-128); this just edits it.
+ * Clearing emits `null` so react-hook-form writes the empty state.
  */
 export function PoolPrefixLengthInput({
   value,
@@ -24,34 +23,26 @@ export function PoolPrefixLengthInput({
   placeholder,
   onChange,
 }: PoolPrefixLengthInputProps) {
-  const handleChange = (raw: string) => {
-    if (raw === "") {
-      onChange(null);
-      return;
-    }
-    // Prefix length is integer-only: reject anything that isn't whole digits
-    // ("24.5", "1e2", "-1", " 5"). The controlled input reverts the rejected keystroke.
-    if (!/^\d+$/.test(raw)) return;
-    onChange(Number(raw));
-  };
-
   return (
     <Row
-      className={classNames(
-        "h-10 w-16 shrink-0 items-center gap-1 rounded-lg border border-neutral-300 px-2",
-        invalid && inputErrorStyle
-      )}
+      className={classNames(inputStyle, focusWithinStyle, "w-18 gap-1", invalid && inputErrorStyle)}
       title="Prefix length"
     >
       <span className="text-gray-500">/</span>
-      <Input
+      <input
+        type="number"
+        min={MIN_PREFIX_LENGTH}
+        max={MAX_PREFIX_LENGTH}
         value={value ?? ""}
-        onChange={(event) => handleChange(event.target.value)}
-        placeholder={placeholder == null ? undefined : String(placeholder)}
-        inputMode="numeric"
+        onChange={(event) => {
+          // type="number" yields NaN for an empty or intermediate-invalid value; treat as cleared.
+          const next = event.target.valueAsNumber;
+          onChange(Number.isNaN(next) ? null : next);
+        }}
+        placeholder={placeholder}
         aria-label="Prefix length"
         data-testid="pool-prefix-length-input"
-        className="min-h-0 w-full min-w-0 border-0 bg-transparent p-0 focus-visible:ring-0"
+        className="w-full min-w-0 appearance-none border-0 bg-transparent p-0 outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
     </Row>
   );
