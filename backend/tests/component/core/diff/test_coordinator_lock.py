@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub import config, lock
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
@@ -12,12 +13,9 @@ from infrahub.core.diff.merger.exclusion_plan import MergeExclusionPlanBuilder
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
-<<<<<<< HEAD
-from infrahub.core.merge.graph_merger import GraphMerger
-=======
-from infrahub.core.merge import BranchMerger
 from infrahub.core.merge.constraints import MergeConstraintValidator
->>>>>>> origin/stable
+from infrahub.core.merge.graph_merger import GraphMerger
+from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -200,6 +198,13 @@ class TestDiffCoordinatorLocks:
             source_branch=diff_branch,
             destination_branch=default_branch,
             diff_locker=DiffLocker(),
+            schema_analyzer=MergeSchemaAnalyzer(
+                db=db,
+                source_branch=diff_branch,
+                destination_branch=default_branch,
+                diff_repository=diff_repository,
+                schema_manager=registry.schema,
+            ),
             constraint_validator=MergeConstraintValidator(db=db, branch=diff_branch, diff_repository=diff_repository),
         )
 
@@ -245,6 +250,13 @@ class TestDiffCoordinatorLocks:
             source_branch=diff_branch,
             destination_branch=default_branch,
             diff_locker=DiffLocker(),
+            schema_analyzer=MergeSchemaAnalyzer(
+                db=db2,
+                source_branch=diff_branch,
+                destination_branch=default_branch,
+                diff_repository=diff_repository_2,
+                schema_manager=registry.schema,
+            ),
             constraint_validator=MergeConstraintValidator(
                 db=db2, branch=diff_branch, diff_repository=diff_repository_2
             ),
