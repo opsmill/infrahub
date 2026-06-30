@@ -121,6 +121,118 @@ def build_profile_schema_dict() -> dict:
     }
 
 
+CHAIN_NAMESPACE = "Testing"
+
+
+def chain_kind(level: int) -> str:
+    """Schema kind for one level of the computed-attribute chain (level 1 is the root)."""
+    return f"{CHAIN_NAMESPACE}ChainL{level}"
+
+
+def chain_kinds(levels: int) -> list[str]:
+    return [chain_kind(level) for level in range(1, levels + 1)]
+
+
+def _chain_template(level: int) -> str:
+    # Level 2 reads the root's plain name; deeper levels read the level below's computed
+    # summary, so one root edit only reaches the tip by propagating hop by hop.
+    return "{{ source__name__value }}" if level == 2 else "{{ source__summary__value }}"
+
+
+def build_chain_schema(levels: int = 3) -> SchemaRoot:
+    """A linear chain of computed attributes: level i reads level i-1 across ``source``.
+
+    Level 1 carries a plain ``name``; every deeper level adds a ``summary`` computed from
+    the level below it, so a single root edit has to cascade through every level to settle.
+
+    Raises:
+        ValueError: if ``levels`` is below two (a chain needs a root and one reader).
+
+    """
+    if levels < 2:
+        raise ValueError("a computed-attribute chain needs at least two levels")
+    nodes: list[NodeSchema] = []
+    for level in range(1, levels + 1):
+        attributes = [AttributeSchema(name="name", kind="Text", optional=False, unique=True)]
+        relationships: list[RelationshipSchema] = []
+        if level > 1:
+            attributes.append(
+                AttributeSchema(
+                    name="summary",
+                    kind="Text",
+                    optional=True,
+                    read_only=True,
+                    computed_attribute=ComputedAttribute(
+                        kind=ComputedAttributeKind.JINJA2,
+                        jinja2_template=_chain_template(level),
+                    ),
+                )
+            )
+            relationships.append(
+                RelationshipSchema(
+                    name="source",
+                    optional=False,
+                    peer=chain_kind(level - 1),
+                    cardinality=RelationshipCardinality.ONE,
+                )
+            )
+        nodes.append(
+            NodeSchema(
+                name=f"ChainL{level}",
+                namespace=CHAIN_NAMESPACE,
+                label=f"Chain Level {level}",
+                default_filter="name__value",
+                display_label="{{ name__value }}",
+                human_friendly_id=["name__value"],
+                uniqueness_constraints=[["name__value"]],
+                attributes=attributes,
+                relationships=relationships,
+            )
+        )
+    return SchemaRoot(nodes=nodes)
+
+
+async def load_chain_schema(db: InfrahubDatabase, levels: int = 3, branch_name: str | None = None) -> None:
+    await load_schema(db=db, schema=build_chain_schema(levels=levels), branch_name=branch_name, update_db=True)
+
+
+def build_chain_schema_dict(levels: int = 3) -> dict:
+    """The chain schema in the user-facing (SDK ``schema.load``) format for full-stack tests.
+
+    Raises:
+        ValueError: if ``levels`` is below two (a chain needs a root and one reader).
+
+    """
+    if levels < 2:
+        raise ValueError("a computed-attribute chain needs at least two levels")
+    nodes: list[dict] = []
+    for level in range(1, levels + 1):
+        attributes: list[dict] = [{"name": "name", "kind": "Text", "optional": False, "unique": True}]
+        node: dict = {
+            "name": f"ChainL{level}",
+            "namespace": CHAIN_NAMESPACE,
+            "default_filter": "name__value",
+            "display_label": "{{ name__value }}",
+            "human_friendly_id": ["name__value"],
+            "attributes": attributes,
+        }
+        if level > 1:
+            attributes.append(
+                {
+                    "name": "summary",
+                    "kind": "Text",
+                    "optional": True,
+                    "read_only": True,
+                    "computed_attribute": {"kind": "Jinja2", "jinja2_template": _chain_template(level)},
+                }
+            )
+            node["relationships"] = [
+                {"name": "source", "peer": chain_kind(level - 1), "optional": False, "cardinality": "one"}
+            ]
+        nodes.append(node)
+    return {"version": "1.0", "nodes": nodes}
+
+
 @dataclass(frozen=True)
 class SeededDataset:
     branch: Branch
