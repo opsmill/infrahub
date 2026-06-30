@@ -4,9 +4,7 @@ from typing import TYPE_CHECKING
 
 from graphene import Boolean, Field, ObjectType, String
 
-from infrahub.core.account import GlobalPermission
-from infrahub.core.constants import GlobalPermissions, PermissionDecision
-from infrahub.core.preferences import GlobalPreference, UserPreference
+from infrahub.core.preferences import MANAGE_GLOBAL_PREFERENCES_PERMISSION, GlobalPreference, UserPreference
 from infrahub.exceptions import PermissionDeniedError
 
 if TYPE_CHECKING:
@@ -15,11 +13,6 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 PREFERENCE_ATTRIBUTES = ("date_format", "timezone")
-
-MANAGE_GLOBAL_PREFERENCES_PERMISSION = GlobalPermission(
-    action=GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value,
-    decision=PermissionDecision.ALLOW_ALL.value,
-)
 
 
 class EffectivePreferencesType(ObjectType):
@@ -55,13 +48,10 @@ async def resolve_effective_preferences(
 ) -> dict:
     graphql_context: GraphqlContext = info.context
 
-    if not graphql_context.account_session:
-        raise PermissionDeniedError("This operation requires an authenticated account")
-
     # Account-scoped view: reject anonymous sessions, whose account_id is empty/untrusted.
     # Unlike resolve_account_tokens this stays open to API-token sessions (their account_id is
     # trusted); the JWT-only guard there exists to keep token management off API tokens.
-    if not graphql_context.account_session.authenticated:
+    if not graphql_context.account_session or not graphql_context.account_session.authenticated:
         raise PermissionDeniedError("This operation requires an authenticated account")
 
     db = graphql_context.db

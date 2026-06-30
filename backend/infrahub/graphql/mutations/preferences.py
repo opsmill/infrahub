@@ -7,11 +7,10 @@ from graphene import Boolean, Mutation, String
 from typing_extensions import Self
 
 from infrahub import lock
-from infrahub.core.account import GlobalPermission
-from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.core.preferences import (
     GLOBAL_PREFERENCE_LOCK_NAME,
     GLOBAL_PREFERENCE_LOCK_NAMESPACE,
+    MANAGE_GLOBAL_PREFERENCES_PERMISSION,
     GlobalPreference,
     UserPreference,
 )
@@ -22,11 +21,6 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from ..initialization import GraphqlContext
-
-MANAGE_GLOBAL_PREFERENCES_PERMISSION = GlobalPermission(
-    action=GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value,
-    decision=PermissionDecision.ALLOW_ALL.value,
-)
 
 # Per-account distributed lock namespace for UserPreference upserts. Keyed on account_id so two
 # accounts never contend, while concurrent upserts for the SAME account serialise — preventing both

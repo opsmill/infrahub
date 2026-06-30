@@ -35,3 +35,8 @@ class UserPreferenceGetByAccountQuery(StandardNodeQuery):
 
         self.add_to_query(query=query)
         self.return_labels = ["n"]
+        # The per-account upsert lock prevents duplicate rows being created, so there is normally at
+        # most one. Order by uuid and cap at one as defense-in-depth: if a duplicate ever did exist,
+        # this keeps the read deterministic (mirrors get_global's deterministic-first guarantee).
+        self.order_by = ["n.uuid"]
+        self.limit = 1
