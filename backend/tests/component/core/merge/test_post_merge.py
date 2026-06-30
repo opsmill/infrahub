@@ -79,12 +79,14 @@ class TestPostMergeSchemaEvent:
             node_events=[],
             context=self._context(default_branch),
             schema_diff=schema_diff,
+            schema_hash=candidate.get_hash(),
         )
 
         schema_events = [event for event in memory_event.events if isinstance(event, SchemaUpdatedEvent)]
         assert len(schema_events) == 1
         event = schema_events[0]
         assert event.branch_name == default_branch.name
+        assert event.schema_hash == candidate.get_hash()
         assert event.changed_elements is not None
         assert "display_labels" in event.changed_elements.changed_fields.get("TestCar", [])
 

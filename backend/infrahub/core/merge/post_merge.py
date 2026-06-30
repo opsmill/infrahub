@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub import config
 from infrahub.core.constants import MutationAction
-from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
@@ -105,6 +104,7 @@ class PostMergeDispatcher:
         node_events: Sequence[tuple[DiffAction, NodeChangelog]],
         context: InfrahubContext,
         schema_diff: SchemaDiff | None = None,
+        schema_hash: str | None = None,
     ) -> None:
         event_context = context.to_event_context()
         merge_event = BranchMergedEvent(
@@ -115,13 +115,13 @@ class PostMergeDispatcher:
         )
 
         events: list[InfrahubEvent] = [merge_event]
-        if schema_diff is not None:
+        if schema_diff is not None and schema_hash is not None:
             # Drive the display-label, HFID and computed-attribute backfills for destination-only nodes,
             # scoped to the elements the merge changed so the recompute stays narrow.
             events.append(
                 SchemaUpdatedEvent(
                     branch_name=self.default_branch.name,
-                    schema_hash=registry.schema.get_schema_branch(name=self.default_branch.name).get_hash(),
+                    schema_hash=schema_hash,
                     changed_elements=build_changed_elements_payload(schema_diff),
                     meta=EventMeta.from_parent(parent=merge_event, branch=self.default_branch),
                 )

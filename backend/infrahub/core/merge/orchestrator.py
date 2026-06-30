@@ -76,6 +76,7 @@ class BranchMergeOrchestrator:
         pre_merge_schema = registry.schema.get_schema_branch(name=self.destination_branch.name).duplicate()
         pre_merge_branched_from = self.source_branch.branched_from
         schema_diff: SchemaDiff | None = None
+        schema_updated_hash: str | None = None
 
         try:
             # Publish the shared write-protection key before any graph write so every worker rejects
@@ -108,6 +109,7 @@ class BranchMergeOrchestrator:
                 )
                 # Scope for the post-merge derived-value refresh: what the merge changed on the destination.
                 schema_diff = pre_merge_schema.diff(other=candidate_schema)
+                schema_updated_hash = candidate_schema.get_hash()
                 migrations = await self.schema_analyzer.calculate_migrations(target_schema=candidate_schema)
                 await self.schema_update_coordinator.execute(
                     branch=self.destination_branch,
@@ -171,4 +173,5 @@ class BranchMergeOrchestrator:
             node_events=node_events,
             context=context,
             schema_diff=schema_diff,
+            schema_hash=schema_updated_hash,
         )
