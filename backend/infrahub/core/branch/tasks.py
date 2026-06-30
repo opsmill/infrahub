@@ -25,6 +25,7 @@ from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.constraints import MergeConstraintValidator
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
@@ -133,6 +134,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
         diff_coordinator.set_logger(log)
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
+        constraint_validator = MergeConstraintValidator(db=db, branch=obj, diff_repository=diff_repository)
         initial_from_time = Timestamp(obj.get_branched_from())
         merger = BranchMerger(
             db=db,
@@ -141,6 +143,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             diff_repository=diff_repository,
             source_branch=obj,
             diff_locker=DiffLocker(),
+            constraint_validator=constraint_validator,
             workflow=workflow,
         )
 
@@ -398,6 +401,7 @@ async def _do_merge_branch(
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    constraint_validator = MergeConstraintValidator(db=db, branch=branch, diff_repository=diff_repository)
     merger = BranchMerger(
         db=db,
         diff_coordinator=diff_coordinator,
@@ -405,6 +409,7 @@ async def _do_merge_branch(
         diff_repository=diff_repository,
         source_branch=branch,
         diff_locker=DiffLocker(),
+        constraint_validator=constraint_validator,
         workflow=workflow,
     )
     schema_was_updated = False

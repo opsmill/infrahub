@@ -13,6 +13,7 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.constraints import MergeConstraintValidator
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -194,6 +195,7 @@ class TestDiffCoordinatorLocks:
             diff_repository=diff_repository,
             source_branch=diff_branch,
             diff_locker=DiffLocker(),
+            constraint_validator=MergeConstraintValidator(db=db, branch=diff_branch, diff_repository=diff_repository),
         )
 
         results = await asyncio.gather(
@@ -237,6 +239,9 @@ class TestDiffCoordinatorLocks:
             diff_repository=diff_repository_2,
             source_branch=diff_branch,
             diff_locker=DiffLocker(),
+            constraint_validator=MergeConstraintValidator(
+                db=db2, branch=diff_branch, diff_repository=diff_repository_2
+            ),
         )
 
         results = await asyncio.gather(
