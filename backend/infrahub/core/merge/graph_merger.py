@@ -55,8 +55,9 @@ class GraphMerger:
         """Merge the current branch into the default branch.
 
         Raises:
-            ValidationError: When the source branch is the default branch or when there are
-                unresolved conflicts.
+            ValidationError: When the source branch is the default branch.
+            MergeConflictsUnresolvedError: When the branch has conflicts that are not resolved.
+            MergeConstraintsViolatedError: When the merged state would violate a constraint.
             MergeFailedError: When the underlying graph merge raises an exception.
 
         """
