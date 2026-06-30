@@ -183,10 +183,6 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/pages/profile/password-tab"),
                   },
                   {
-                    path: "preferences",
-                    lazy: () => import("@/pages/profile/preferences-tab"),
-                  },
-                  {
                     path: "organisation-defaults",
                     lazy: () => import("@/pages/profile/organisation-defaults-tab"),
                   },

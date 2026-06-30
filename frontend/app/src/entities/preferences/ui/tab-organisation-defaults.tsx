@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader } from "@infrahub/ui";
+import { Card, CardHeader } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -32,35 +32,33 @@ export default function TabOrganisationDefaults() {
     <main className="p-2">
       <Card className="w-full max-w-2xl">
         <CardHeader>Global date and time</CardHeader>
-        <CardContent>
-          <p className="mb-4 text-gray-600 text-sm">
-            Defaults applied to every user unless they set a personal override.
-          </p>
+        <p className="px-3 py-2 text-gray-600 text-sm">
+          Defaults applied to every user unless they set a personal override.
+        </p>
 
-          <PreferencesForm
-            values={{
-              dateFormat: preferences.globalDateFormat,
-              timezone: preferences.globalTimezone,
-            }}
-            onSubmit={async (values) => {
-              try {
-                await updatePreferences.mutateAsync(values);
-                toast(<Alert type={ALERT_TYPES.SUCCESS} message="Organisation defaults updated" />);
-              } catch (error) {
-                toast(
-                  <Alert
-                    type={ALERT_TYPES.ERROR}
-                    message={
-                      error instanceof Error
-                        ? error.message
-                        : "Failed to update organisation defaults"
-                    }
-                  />
-                );
-              }
-            }}
-          />
-        </CardContent>
+        <PreferencesForm
+          values={{
+            dateFormat: preferences.globalDateFormat,
+            timezone: preferences.globalTimezone,
+          }}
+          onSubmit={async (values) => {
+            try {
+              await updatePreferences.mutateAsync(values);
+              toast(<Alert type={ALERT_TYPES.SUCCESS} message="Organisation defaults updated" />);
+            } catch (error) {
+              toast(
+                <Alert
+                  type={ALERT_TYPES.ERROR}
+                  message={
+                    error instanceof Error
+                      ? error.message
+                      : "Failed to update organisation defaults"
+                  }
+                />
+              );
+            }
+          }}
+        />
       </Card>
     </main>
   );

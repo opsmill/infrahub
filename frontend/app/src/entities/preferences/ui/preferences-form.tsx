@@ -97,7 +97,14 @@ export function PreferencesForm({
         });
       }}
     >
-      {/* Separator between the rows, matching the object-details card layout. */}
+      {/*
+        Full-bleed separators, matching the object-details card layout: the
+        `divide-y` container carries NO horizontal padding so the divider lines
+        reach both card edges, while each child (the rows via DetailRow's `px-3`
+        and the action row below) carries its own horizontal padding. The action
+        row is the last child of the same container, so it sits under a
+        full-width line too.
+      */}
       <div className="divide-y divide-gray-200">
         <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
           <ComboboxField
@@ -131,11 +138,11 @@ export function PreferencesForm({
             </p>
           )}
         </DetailRow>
-      </div>
 
-      <div className="flex items-center justify-end gap-2">
-        {children}
-        <SaveButton isDisabled={isSubmitDisabled} />
+        <div className="flex items-center justify-end gap-2 px-3 py-2">
+          {children}
+          <SaveButton isDisabled={isSubmitDisabled} />
+        </div>
       </div>
     </Form>
   );

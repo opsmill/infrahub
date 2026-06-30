@@ -15,7 +15,6 @@ export function ProfileTabs() {
         <LinkTab to="/profile">Profile</LinkTab>
         <LinkTab to="/profile/tokens">Tokens</LinkTab>
         <LinkTab to="/profile/password">Password</LinkTab>
-        <LinkTab to="/profile/preferences">Preferences</LinkTab>
         {canManageGlobalPreferences && (
           <LinkTab to="/profile/organisation-defaults">Organisation defaults</LinkTab>
         )}

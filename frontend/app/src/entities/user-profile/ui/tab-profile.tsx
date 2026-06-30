@@ -8,6 +8,7 @@ import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
+import { UserPreferencesCard } from "@/entities/preferences/ui/user-preferences-card";
 import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -46,5 +47,14 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     return <ErrorScreen message={objectError?.message || permissionError?.message} />;
   }
 
-  return <ObjectDetails objectSchema={schema} objectData={objectData} permission={permission} />;
+  // The profile tab stacks the object details and the user's preferences card,
+  // both with consistent vertical spacing.
+  return (
+    <div className="flex flex-col gap-4">
+      <ObjectDetails objectSchema={schema} objectData={objectData} permission={permission} />
+      <div className="p-2">
+        <UserPreferencesCard />
+      </div>
+    </div>
+  );
 }

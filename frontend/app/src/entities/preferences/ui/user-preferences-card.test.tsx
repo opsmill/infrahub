@@ -6,7 +6,7 @@ import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-
 
 import { render } from "../../../../tests/components/render";
 import { selectComboboxOption } from "../../../../tests/components/utils";
-import TabPreferences from "./tab-preferences";
+import { UserPreferencesCard } from "./user-preferences-card";
 
 vi.mock("@/entities/preferences/domain/get-effective-preferences");
 vi.mock("@/entities/preferences/domain/upsert-my-user-preference");
@@ -21,7 +21,7 @@ const baseEffective: EffectivePreferences = {
   canEditGlobalPreferences: false,
 };
 
-describe("TabPreferences", () => {
+describe("UserPreferencesCard", () => {
   beforeEach(() => {
     // The date-format preset labels embed a live example of the current date, so
     // freeze the clock to keep the rendered labels deterministic.
@@ -37,7 +37,7 @@ describe("TabPreferences", () => {
   });
 
   test("renders preset selects, not free-text inputs", async () => {
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     // Both dropdowns are the shared Combobox now, so both expose role="combobox".
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
@@ -45,14 +45,14 @@ describe("TabPreferences", () => {
     expect(component.getByRole("textbox").elements()).toHaveLength(0);
   });
 
-  test("uses the personal card title", async () => {
-    const component = await render(<TabPreferences />);
+  test("uses the preferences card title", async () => {
+    const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByText("Personal date and time")).toBeVisible();
+    await expect.element(component.getByText("Preferences")).toBeVisible();
   });
 
   test("lays the fields out as detail rows with a visible label and an accessible control", async () => {
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     // The controls keep their accessible names even though their own labels are sr-only.
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
@@ -71,8 +71,35 @@ describe("TabPreferences", () => {
     );
   });
 
+  test("renders the row and action separators full-bleed (no horizontal inset)", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+
+    // Mirrors object-data-display: a single `divide-y divide-gray-200` container
+    // with NO horizontal padding, so the divider lines reach both card edges.
+    const divider = component.container.querySelector("div.divide-y.divide-gray-200");
+    expect(divider).not.toBeNull();
+    const dividerClasses = divider?.className ?? "";
+    expect(dividerClasses).not.toMatch(/(^|\s)px-/);
+    expect(dividerClasses).not.toMatch(/(^|\s)pl-/);
+    expect(dividerClasses).not.toMatch(/(^|\s)pr-/);
+
+    // The field rows carry their own px-3 (so the values are inset, the lines are not).
+    const rows = divider ? Array.from(divider.children) : [];
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    for (const row of rows) {
+      expect(row.className).toMatch(/(^|\s)px-3(\s|$)/);
+    }
+
+    // The Save button lives in the last child of the same divide container, so it
+    // sits under a full-width line.
+    const actionRow = rows.at(-1) as HTMLElement;
+    expect(actionRow.querySelector("button")).not.toBeNull();
+  });
+
   test("shows the inherited global value as hint when the user has no override", async () => {
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     // globalDateFormat is "dd/MM/yyyy"; the hint shows a live example of the
     // frozen current date rendered with that pattern, then the pattern.
@@ -86,19 +113,44 @@ describe("TabPreferences", () => {
       .toBeVisible();
   });
 
+  test("falls back to the browser default hint when neither user nor global is set", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: null,
+      timezone: null,
+      globalDateFormat: null,
+      globalTimezone: null,
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    // No fixed "yyyy-MM-dd HH:mm (built-in default)" any more: the effective default
+    // is the browser's own locale/timezone. The date hint shows a concrete
+    // browser-formatted example of the frozen current date.
+    const expectedDateExample = new Date("2026-06-30T14:30:00").toLocaleString();
+    const expectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    await expect
+      .element(component.getByText(`Browser default: ${expectedDateExample}`))
+      .toBeVisible();
+    await expect.element(component.getByText(`Browser default: ${expectedTimezone}`)).toBeVisible();
+    expect(component.getByText(/built-in default/i).elements()).toHaveLength(0);
+  });
+
   test("date-format options are labelled by the pattern itself", async () => {
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     // Open the date-format Combobox; its options are cmdk role="option" entries.
     await component.getByRole("combobox", { name: /date format/i }).click();
 
-    // The option label is now the pattern/sentinel itself, not a live example.
+    // The option label is the pattern/sentinel itself, not a live example. The
+    // "yyyy-MM-dd HH:mm" pattern remains a selectable preset (just not THE default).
     await expect.element(component.getByRole("option", { name: "yyyy-MM-dd HH:mm" })).toBeVisible();
     await expect.element(component.getByRole("option", { name: "relative" })).toBeVisible();
   });
 
   test("shows a live example next to the date-format control that updates on selection", async () => {
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     // No personal override yet, so no example is shown until a format is picked.
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
@@ -119,7 +171,7 @@ describe("TabPreferences", () => {
       userTimezone: "UTC",
     });
 
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     // The user's own override is shown, not the inherited hint.
     await expect
@@ -137,7 +189,7 @@ describe("TabPreferences", () => {
       globalTimezone: null,
     });
 
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
     expect(
@@ -157,7 +209,7 @@ describe("TabPreferences", () => {
   });
 
   test("disables Save while the form is pristine", async () => {
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeDisabled();
 
@@ -168,7 +220,7 @@ describe("TabPreferences", () => {
   });
 
   test("saving triggers the upsert with the selected values", async () => {
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     // Select by the stable preset key, not the (date-dependent) label.
     await selectComboboxOption(component, /date format/i, "relative");
@@ -189,7 +241,7 @@ describe("TabPreferences", () => {
       userTimezone: null,
     });
 
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     await component.getByRole("button", { name: /reset to global/i }).click();
 
@@ -202,7 +254,7 @@ describe("TabPreferences", () => {
   });
 
   test("hides the reset button when the user has no override", async () => {
-    const component = await render(<TabPreferences />);
+    const component = await render(<UserPreferencesCard />);
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
     expect(component.getByRole("button", { name: /reset to global/i }).elements()).toHaveLength(0);

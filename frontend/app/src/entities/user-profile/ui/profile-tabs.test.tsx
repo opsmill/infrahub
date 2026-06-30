@@ -24,12 +24,23 @@ describe("ProfileTabs", () => {
     vi.clearAllMocks();
   });
 
+  test("renders the core profile tabs without a standalone Preferences tab", async () => {
+    mockCanEdit(false);
+
+    const component = await render(<ProfileTabs />);
+
+    await expect.element(component.getByRole("link", { name: "Profile" })).toBeVisible();
+    await expect.element(component.getByRole("link", { name: "Tokens" })).toBeVisible();
+    await expect.element(component.getByRole("link", { name: "Password" })).toBeVisible();
+    // User preferences now live inside the Profile tab, so there is no standalone tab.
+    expect(component.getByRole("link", { name: "Preferences" }).elements()).toHaveLength(0);
+  });
+
   test("hides the Organisation defaults tab when the user cannot edit global preferences", async () => {
     mockCanEdit(false);
 
     const component = await render(<ProfileTabs />);
 
-    await expect.element(component.getByRole("link", { name: "Preferences" })).toBeVisible();
     expect(component.getByRole("link", { name: "Organisation defaults" }).elements()).toHaveLength(
       0
     );
