@@ -21,12 +21,7 @@ from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, En
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
-<<<<<<< HEAD
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
-=======
-from infrahub.core.merge import BranchMerger
-from infrahub.core.merge.constraints import MergeConstraintValidator
->>>>>>> origin/stable
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
@@ -136,30 +131,16 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=user_branch)
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=user_branch)
         diff_coordinator.set_logger(log)
-<<<<<<< HEAD
         initial_from_time = Timestamp(user_branch.get_branched_from())
         schema_analyzer = MergeSchemaAnalyzer(
-=======
-        diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
-        constraint_validator = MergeConstraintValidator(db=db, branch=obj, diff_repository=diff_repository)
-        initial_from_time = Timestamp(obj.get_branched_from())
-        merger = BranchMerger(
->>>>>>> origin/stable
             db=db,
             source_branch=user_branch,
             destination_branch=base_branch,
             diff_repository=diff_repository,
-<<<<<<< HEAD
             schema_manager=registry.schema,
         )
         schema_update_coordinator = SchemaUpdateCoordinator(
             db=db, schema_manager=registry.schema, workflow=workflow, logger=log
-=======
-            source_branch=obj,
-            diff_locker=DiffLocker(),
-            constraint_validator=constraint_validator,
-            workflow=workflow,
->>>>>>> origin/stable
         )
 
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
@@ -326,37 +307,12 @@ async def _do_merge_branch(
     source_branch: Branch,
     destination_branch: Branch,
     context: InfrahubContext,
-<<<<<<< HEAD
     proposed_change_id: str | None,
     log: Logger | LoggerAdapter[Logger],
 ) -> None:
     """Run the merge body for an OPEN source branch."""
     orchestrator = await build_branch_merge_orchestrator(
         db=db, source_branch=source_branch, destination_branch=destination_branch, logger=log
-=======
-    proposed_change_id: str | None = None,
-) -> MergeBranchResult:
-    component_registry = get_component_registry()
-    workflow = get_workflow()
-    merge_at = Timestamp()
-    user_id = context.account.account_id
-    pre_merge_schema = registry.schema.get_schema_branch(name=registry.default_branch).duplicate()
-    pre_merge_branched_from = branch.branched_from
-
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
-    constraint_validator = MergeConstraintValidator(db=db, branch=branch, diff_repository=diff_repository)
-    merger = BranchMerger(
-        db=db,
-        diff_coordinator=diff_coordinator,
-        diff_merger=diff_merger,
-        diff_repository=diff_repository,
-        source_branch=branch,
-        diff_locker=DiffLocker(),
-        constraint_validator=constraint_validator,
-        workflow=workflow,
->>>>>>> origin/stable
     )
     await orchestrator.merge(context=context, proposed_change_id=proposed_change_id)
 
