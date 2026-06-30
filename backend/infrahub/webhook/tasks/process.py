@@ -34,14 +34,30 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 
 WEBHOOK_SEND_RETRIES: int = 3
 WEBHOOK_SEND_RETRY_DELAY_SECONDS: float = 120  # fixed 2m delay between attempts
+PAYLOAD_LOG_LIMIT: int = 2048  # characters shown inline; the full payload is logged at debug level
+
+
+def _truncate_for_log(text: str) -> str:
+    if len(text) <= PAYLOAD_LOG_LIMIT:
+        return text
+    remaining = len(text) - PAYLOAD_LOG_LIMIT
+    return f"{text[:PAYLOAD_LOG_LIMIT]}… (+{remaining} characters; enable debug logging for the full payload)"
 
 
 @task(name="webhook-post", task_run_name="Send webhook {webhook_name}", cache_policy=NONE)
-async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:  # noqa: ARG001
-    """Resolve the webhook config, assign its headers, and POST the prepared payload."""
+async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:
+    """Resolve the webhook config, log the outgoing request, and POST the prepared payload."""
+    log = get_run_logger()
     http_service = get_http()
     webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
-    response = await webhook.send_payload(payload=payload, http_service=http_service)
+    headers = webhook.build_headers(payload=payload)
+    payload_json = ujson.dumps(payload)
+    log.info(
+        f"Webhook '{webhook_name}': POST {webhook.url} "
+        f"with headers {webhook.redact_headers(headers)} and payload {_truncate_for_log(payload_json)}"
+    )
+    log.debug(f"Webhook '{webhook_name}' full payload: {payload_json}")
+    response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
     response.raise_for_status()
     return response
 

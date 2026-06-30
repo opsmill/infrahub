@@ -6,6 +6,7 @@ import pytest
 
 from infrahub.core.timestamp import Timestamp
 from infrahub.webhook.models import (
+    MASKED_HEADER_VALUE,
     CustomWebhook,
     HeaderKind,
     StandardWebhook,
@@ -40,7 +41,7 @@ def test_standard_webhook_header() -> None:
     )
     test_id = UUID("217b4ebc-b84f-4736-b1ee-222182aed371")
     time1 = Timestamp("2025-02-27T11:43:49.064807Z")
-    headers = webhook._build_headers(payload=None, uuid=test_id, at=time1)
+    headers = webhook.build_headers(payload=None, uuid=test_id, at=time1)
 
     assert headers == {
         "Accept": "application/json",
@@ -60,7 +61,7 @@ def test_build_headers_with_static_custom_header() -> None:
         validate_certificates=True,
         custom_headers=[WebhookHeader(key="Authorization", value="Bearer token", kind=HeaderKind.STATIC)],
     )
-    headers = webhook._build_headers(payload=None)
+    headers = webhook.build_headers(payload=None)
 
     assert headers["Authorization"] == "Bearer token"
     assert headers["Accept"] == "application/json"
@@ -76,7 +77,7 @@ def test_custom_header_overrides_default() -> None:
         validate_certificates=True,
         custom_headers=[WebhookHeader(key="Content-Type", value="text/plain", kind=HeaderKind.STATIC)],
     )
-    headers = webhook._build_headers(payload=None)
+    headers = webhook.build_headers(payload=None)
 
     assert headers["Content-Type"] == "text/plain"
 
@@ -116,7 +117,7 @@ def test_build_headers_resolves_environment_variable() -> None:
     )
 
     with patch.dict("os.environ", {"MY_API_KEY": "secret123"}):
-        headers = webhook._build_headers(payload=None)
+        headers = webhook.build_headers(payload=None)
 
     assert headers["X-API-Key"] == "secret123"
     assert headers["Accept"] == "application/json"
@@ -139,7 +140,7 @@ def test_build_headers_fails_on_missing_environment_variable(cleared_environment
         WebhookHeaderResolutionError,
         match=r"^Webhook 'test': could not resolve header 'X-API-Key': Environment variable 'MISSING_VAR' not found$",
     ):
-        webhook._build_headers(payload=None)
+        webhook.build_headers(payload=None)
 
 
 def test_build_headers_warns_on_duplicate_keys(caplog: pytest.LogCaptureFixture) -> None:
@@ -156,7 +157,7 @@ def test_build_headers_warns_on_duplicate_keys(caplog: pytest.LogCaptureFixture)
     )
 
     with caplog.at_level(logging.WARNING, logger="infrahub.webhook.models"):
-        headers = webhook._build_headers(payload=None)
+        headers = webhook.build_headers(payload=None)
 
     assert headers["X-Token"] == "second"
     assert "duplicate header key 'X-Token'" in caplog.text
@@ -182,7 +183,7 @@ def test_webhook_signature_with_payload() -> None:
     }
     test_id = UUID("217b4ebc-b84f-4736-b1ee-222182aed371")
     time1 = Timestamp("2025-02-27T11:43:49.064807Z")
-    headers = webhook._build_headers(payload=payload, uuid=test_id, at=time1)
+    headers = webhook.build_headers(payload=payload, uuid=test_id, at=time1)
 
     assert headers == {
         "Accept": "application/json",
@@ -191,3 +192,54 @@ def test_webhook_signature_with_payload() -> None:
         "webhook-timestamp": "1740656629",
         "webhook-signature": "v1,5JQxZW3lMNdaSnofcSV0Y3krxQ7aZI7EyThUqHVDGc4=",
     }
+
+
+def test_redact_headers_masks_environment_value_and_signature() -> None:
+    """Environment-sourced values and the signature are masked; everything else stays verbatim."""
+    webhook = CustomWebhook(
+        name="test",
+        url="http://test.com",
+        event_type="test",
+        validate_certificates=True,
+        custom_headers=[
+            WebhookHeader(key="X-Static", value="plain", kind=HeaderKind.STATIC),
+            WebhookHeader(key="Authorization", value="SECRET_TOKEN", kind=HeaderKind.ENVIRONMENT),
+        ],
+    )
+    headers = {
+        "Accept": "application/json",
+        "X-Static": "plain",
+        "Authorization": "resolved-secret-value",
+        "webhook-id": "msg_1",
+        "webhook-timestamp": "1740656629",
+        "webhook-signature": "v1,c2lnbmF0dXJl",
+    }
+
+    redacted = webhook.redact_headers(headers)
+
+    assert redacted == {
+        "Accept": "application/json",
+        "X-Static": "plain",
+        "Authorization": MASKED_HEADER_VALUE,
+        "webhook-id": "msg_1",
+        "webhook-timestamp": "1740656629",
+        "webhook-signature": MASKED_HEADER_VALUE,
+    }
+    assert headers["Authorization"] == "resolved-secret-value"  # the source mapping is left untouched
+
+
+def test_redact_headers_without_sensitive_headers_returns_equal_copy() -> None:
+    """With no environment header and no signature, nothing is masked."""
+    webhook = CustomWebhook(
+        name="test",
+        url="http://test.com",
+        event_type="test",
+        validate_certificates=True,
+        custom_headers=[WebhookHeader(key="X-Static", value="plain", kind=HeaderKind.STATIC)],
+    )
+    headers = {"Accept": "application/json", "X-Static": "plain"}
+
+    redacted = webhook.redact_headers(headers)
+
+    assert redacted == headers
+    assert redacted is not headers

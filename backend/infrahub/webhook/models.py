@@ -204,6 +204,9 @@ class EventContext(BaseModel):
         )
 
 
+MASKED_HEADER_VALUE = "***"
+
+
 class HeaderKind(StrEnum):
     STATIC = "static"
     ENVIRONMENT = "environment"
@@ -252,7 +255,7 @@ class Webhook(BaseModel):
         """Build and return the payload to deliver."""
         return {"data": data, **context.model_dump()}
 
-    def _build_headers(self, payload: Any, uuid: UUID | None = None, at: Timestamp | None = None) -> dict[str, Any]:
+    def build_headers(self, payload: Any, uuid: UUID | None = None, at: Timestamp | None = None) -> dict[str, Any]:
         """Build the request headers, resolving each configured custom header.
 
         A header whose value cannot be resolved (for example an environment-sourced header whose
@@ -298,6 +301,17 @@ class Webhook(BaseModel):
 
         return headers
 
+    def redact_headers(self, headers: dict[str, Any]) -> dict[str, Any]:
+        """Return a copy of the headers with secret-bearing values masked for logging.
+
+        Values resolved from the environment and the request signature are masked, while standard
+        and statically configured headers are kept verbatim so the log stays useful without
+        exposing credentials.
+        """
+        sensitive = {header.key for header in self.custom_headers if header.kind is HeaderKind.ENVIRONMENT}
+        sensitive.add("webhook-signature")
+        return {key: (MASKED_HEADER_VALUE if key in sensitive else value) for key, value in headers.items()}
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def webhook_type(self) -> str:
@@ -315,9 +329,16 @@ class Webhook(BaseModel):
             return self.shared_key
         raise ValueError("Shared key is not set for the webhook")
 
-    async def send_payload(self, payload: Any, http_service: InfrahubHTTP) -> Response:
-        """Assign the headers for the given payload and POST it to the webhook endpoint."""
-        headers = self._build_headers(payload=payload)
+    async def send_payload(
+        self, payload: Any, http_service: InfrahubHTTP, headers: dict[str, Any] | None = None
+    ) -> Response:
+        """POST the payload to the webhook endpoint, building the headers when not supplied.
+
+        A caller that needs to inspect or log the exact headers builds them once and passes them
+        in, so the request that is sent matches the one that was logged.
+        """
+        if headers is None:
+            headers = self.build_headers(payload=payload)
         return await http_service.post(url=self.url, json=payload, headers=headers, verify=self.validate_certificates)
 
     def to_cache(self) -> dict[str, Any]:
