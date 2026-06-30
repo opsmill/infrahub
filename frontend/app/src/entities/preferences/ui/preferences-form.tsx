@@ -156,13 +156,13 @@ export function PreferencesForm({
         <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
           {/*
             Control + live example + (i) source tooltip on a single row:
-            [combobox (flex-1, min-w-0)] [example (shrinkable, truncates)] [(i)].
-            The combobox keeps a sensible min width while the example is allowed to
-            shrink/truncate, so neither overflows the card nor causes layout shift
-            when the example appears.
+            [combobox (capped at max-w-xs)] [example (flex-1, truncates)] [(i)].
+            The input is width-capped (not full-width) so there is always reserved
+            room to its right for the example to appear without pushing/clipping
+            the row; the example fills that space and truncates if very long.
           */}
           <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
+            <div className="w-full max-w-xs">
               <ComboboxField
                 name="date_format"
                 label="Date format"
@@ -178,7 +178,7 @@ export function PreferencesForm({
             <DateFormatExample
               id={dateFormatExampleId}
               now={now}
-              className="min-w-0 shrink truncate"
+              className="min-w-0 flex-1 truncate"
             />
             <SourceInfo message={dateFormatSourceTooltip} />
           </div>
