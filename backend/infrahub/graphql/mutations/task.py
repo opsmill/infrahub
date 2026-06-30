@@ -17,6 +17,7 @@ from infrahub.graphql.queries.task_actions import TaskActionGenerator
 from infrahub.graphql.types.task import TaskActionType, TaskInfo
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.workflows.catalogue import WEBHOOK_SEND
+from infrahub.workflows.constants import WorkflowTag
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -129,16 +130,18 @@ class InfrahubTaskRetry(Mutation):
 
         build_delivery_action_authorizer(graphql_context).authorize(delivery, TaskActionType.RETRY)
 
+        webhook_id = delivery.parameters["webhook_id"]
         workflow = await graphql_context.active_service.workflow.submit_workflow(
             workflow=WEBHOOK_SEND,
             context=graphql_context.get_context(),
             parameters={
-                "webhook_id": delivery.parameters["webhook_id"],
+                "webhook_id": webhook_id,
                 "webhook_kind": delivery.parameters["webhook_kind"],
                 "webhook_name": delivery.parameters["webhook_name"],
                 "payload": delivery.parameters["payload"],
                 "branch_name": delivery.parameters.get("branch_name"),
             },
+            tags=[WorkflowTag.RELATED_NODE.render(identifier=webhook_id)],
         )
         return cls(ok=True, task={"id": workflow.id})
 

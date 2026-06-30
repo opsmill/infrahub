@@ -3,6 +3,7 @@ import { Button } from "@infrahub/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRightIcon } from "lucide-react";
 import { useState } from "react";
+import { useLocation } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -39,19 +40,21 @@ const isActionAvailable = (task: TaskActionsTask, action: string) =>
 
 export const TaskActions = ({ task }: { task: TaskActionsTask }) => {
   const queryClient = useQueryClient();
+  const { pathname } = useLocation();
   const [isRetryConfirmOpen, setIsRetryConfirmOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
   const retryMutation = useRetryTaskMutation({
     onSuccess: async (result: Awaited<ReturnType<typeof retryTask>>) => {
       setIsRetryConfirmOpen(false);
+      // The new run is a sibling of the current one, so swap the task id in the path we are
+      // already on. This keeps the link pointing at whichever task view the retry was triggered
+      // from — the standalone task page or an object's task tab.
+      const newRunPath = constructPath(`${pathname.replace(/\/[^/]+\/?$/, "")}/${result.taskId}`);
       const message = result.taskId ? (
         <>
           Task retried.{" "}
-          <Link
-            to={constructPath(`/tasks/${result.taskId}`)}
-            className="inline-flex items-center gap-1 underline"
-          >
+          <Link to={newRunPath} className="inline-flex items-center gap-1 underline">
             View new run <ArrowUpRightIcon className="size-3.5" />
           </Link>
         </>
@@ -90,7 +93,7 @@ export const TaskActions = ({ task }: { task: TaskActionsTask }) => {
           onPress={() => setIsRetryConfirmOpen(true)}
           className="flex items-center gap-2"
         >
-          <Icon icon="mdi:refresh" />
+          <Icon icon="mdi:restore" />
           Retry
         </Button>
       )}
@@ -112,7 +115,7 @@ export const TaskActions = ({ task }: { task: TaskActionsTask }) => {
         title={`Retry "${task.title ?? "this"}" task?`}
         description={`This creates a new task with the same settings. The current one stays ${formatState(task.state)}. Track progress in the new run.`}
         confirmLabel="Retry"
-        icon="mdi:refresh"
+        icon="mdi:restore"
         iconClassName="text-gray-500"
         iconContainerClassName="bg-gray-100"
         isLoading={retryMutation.isPending}
