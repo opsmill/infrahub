@@ -9,6 +9,7 @@ from infrahub_sdk.protocols import CoreTransformPython, CoreWebhook
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
+from prefect.runtime import flow_run
 from prefect.states import Failed
 
 from infrahub.core.constants import InfrahubKind
@@ -34,6 +35,7 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 
 WEBHOOK_SEND_RETRIES: int = 3
 WEBHOOK_SEND_RETRY_DELAY_SECONDS: float = 120  # fixed 2m delay between attempts
+WEBHOOK_SEND_ATTEMPTS: int = WEBHOOK_SEND_RETRIES + 1  # the initial try plus its retries
 PAYLOAD_LOG_LIMIT: int = 2048  # characters shown inline; the full payload is logged at debug level
 
 
@@ -45,7 +47,7 @@ def _truncate_for_log(text: str) -> str:
 
 
 @task(name="webhook-post", task_run_name="Send webhook {webhook_name}", cache_policy=NONE)
-async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:
+async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int) -> Response:
     """Resolve the webhook config, log the outgoing request, and POST the prepared payload."""
     log = get_run_logger()
     http_service = get_http()
@@ -53,10 +55,10 @@ async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, pa
     headers = webhook.build_headers(payload=payload)
     payload_json = ujson.dumps(payload)
     log.info(
-        f"Webhook '{webhook_name}': POST {webhook.url} "
+        f"Webhook '{webhook_name}' attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS}: POST {webhook.url} "
         f"with headers {webhook.redact_headers(headers)} and payload {_truncate_for_log(payload_json)}"
     )
-    log.debug(f"Webhook '{webhook_name}' full payload: {payload_json}")
+    log.debug(f"Webhook '{webhook_name}' attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS} full payload: {payload_json}")
     response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
     response.raise_for_status()
     return response
@@ -84,21 +86,30 @@ async def webhook_send(
     """
     log = get_run_logger()
     await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
+    # flow_run.run_count is the 1-based attempt number within a flow run; it is None outside one (e.g. a test).
+    attempt = flow_run.run_count or 1
     started = time.monotonic()
     try:
         response = await webhook_post(
-            webhook_id=webhook_id, webhook_kind=webhook_kind, webhook_name=webhook_name, payload=payload
+            webhook_id=webhook_id,
+            webhook_kind=webhook_kind,
+            webhook_name=webhook_name,
+            payload=payload,
+            attempt=attempt,
         )
     except EXPECTED_DELIVERY_ERRORS as cause:
         elapsed_ms = (time.monotonic() - started) * 1_000
         failure = WebhookFailureClassifier().classify(cause=cause)
         log.error(
-            f"Webhook delivery failed [{failure.status_class}] after {elapsed_ms:.0f} ms: "
-            f"{failure.message.rstrip('.')}. {failure.remediation}"
+            f"Webhook delivery failed [{failure.status_class}] on attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS} "
+            f"after {elapsed_ms:.0f} ms: {failure.message.rstrip('.')}. {failure.remediation}"
         )
         raise WebhookDeliveryError(failure) from None
     elapsed_ms = (time.monotonic() - started) * 1_000
-    log.info(f"Webhook delivered to {response.url}, HTTP {response.status_code} in {elapsed_ms:.0f} ms")
+    log.info(
+        f"Webhook delivered to {response.url} on attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS}, "
+        f"HTTP {response.status_code} in {elapsed_ms:.0f} ms"
+    )
     return response
 
 
