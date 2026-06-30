@@ -10,7 +10,7 @@ from .shared import (
     PYTHON_PRIMITIVE_MAP,
     execute_command,
 )
-from .utils import ESCAPED_REPO_PATH
+from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 MAIN_DIRECTORY = "backend"
 NAMESPACE = "BACKEND"
@@ -351,8 +351,8 @@ def _generate_schemas(context: Context) -> None:
         relationship_schema,
     )
 
-    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
-    generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core/schema/generated"
+    env = Environment(loader=FileSystemLoader(f"{REPO_BASE}/backend/templates"), undefined=StrictUndefined)
+    generated = f"{REPO_BASE}/backend/infrahub/core/schema/generated"
     template = env.get_template("generate_schema.j2")
 
     attributes_rendered = template.render(schema="AttributeSchema", node=attribute_schema, parent="HashableModel")
@@ -449,16 +449,16 @@ def _generate_protocols(context: Context) -> None:
     # We need to insert this folder in the search order to ensure
     # that it appears before the python_sdk folder since that folder also has
     # a 'tests' module and the sys.path seems to be random between runs.
-    sys.path.insert(0, f"{ESCAPED_REPO_PATH}/backend")
+    sys.path.insert(0, f"{REPO_BASE}/backend")
     from tests.helpers.schema import test_models
 
-    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
+    env = Environment(loader=FileSystemLoader(f"{REPO_BASE}/backend/templates"), undefined=StrictUndefined)
     env.filters["inheritance"] = _jinja2_filter_inheritance
     env.filters["render_attribute"] = _jinja2_filter_render_attribute
     env.filters["render_relationship"] = _jinja2_filter_render_relationship
 
     # Export protocols for backend code use
-    generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core"
+    generated = f"{REPO_BASE}/backend/infrahub/core"
     template = env.get_template("generate_protocols.j2")
 
     protocols_rendered = template.render(
@@ -471,7 +471,7 @@ def _generate_protocols(context: Context) -> None:
     execute_command(context=context, command=f"ruff check --fix {protocols_output}")
 
     # Export test protocols for backend code use
-    generated = f"{ESCAPED_REPO_PATH}/backend/tests/"
+    generated = f"{REPO_BASE}/backend/tests/"
 
     test_models["nodes"].extend(core_models["nodes"])
     test_models["generics"].extend(core_models["generics"])
@@ -485,7 +485,7 @@ def _generate_protocols(context: Context) -> None:
     execute_command(context=context, command=f"ruff check --fix {protocols_output}")
 
     # Export protocols for Python SDK code use
-    generated = f"{ESCAPED_REPO_PATH}/python_sdk/infrahub_sdk"
+    generated = f"{REPO_BASE}/python_sdk/infrahub_sdk"
     template = env.get_template("generate_protocols_sdk.j2")
 
     protocols_rendered = template.render(
