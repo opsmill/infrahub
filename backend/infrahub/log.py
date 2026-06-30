@@ -14,6 +14,20 @@ INFRAHUB_PRODUCTION = TypeAdapter(bool).validate_python(os.environ.get("INFRAHUB
 INFRAHUB_LOG_LEVEL = os.environ.get("INFRAHUB_LOG_LEVEL", "INFO")
 
 
+class SuppressMarkedTracebackFilter(logging.Filter):
+    """Drop the traceback record Prefect emits for exceptions that opt out of being a stacktrace.
+
+    Prefect's flow/task engine logs every raised exception with ``logger.exception(...)``, attaching
+    a traceback. An exception carrying a truthy ``suppress_traceback`` marker represents an expected,
+    already-reported operational outcome (its clean reason is logged separately), so the redundant
+    traceback record is dropped before it reaches any handler.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        exception = record.exc_info[1] if record.exc_info else None
+        return not getattr(exception, "suppress_traceback", False)
+
+
 def clear_log_context() -> None:
     structlog.contextvars.clear_contextvars()
 
@@ -40,6 +54,13 @@ def configure_logging(production: bool, log_level: str) -> None:
     # starts from a clean slate. After this has been imported once we can reinject
     # the infrahub logger
     importlib.import_module("prefect.main")
+
+    # Prefect ships flow/task run logs to its API (the Tasks tab); drop tracebacks for failures that
+    # are reported as a clean classified reason rather than a crash to debug.
+    traceback_filter = SuppressMarkedTracebackFilter()
+    for prefect_logger_name in ("prefect.flow_runs", "prefect.task_runs"):
+        logging.getLogger(prefect_logger_name).addFilter(traceback_filter)
+
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.StackInfoRenderer(),

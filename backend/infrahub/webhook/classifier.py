@@ -62,7 +62,14 @@ class ClassifiedFailure:
 
 
 class WebhookDeliveryError(Exception):
-    """A delivery failed with a classified, user-facing reason and no stacktrace."""
+    """A delivery failed with a classified, user-facing reason and no stacktrace.
+
+    Carries the ``suppress_traceback`` marker so the logging layer drops the raised traceback from
+    the run logs: the failure is an expected operational outcome, already reported as a clean
+    classified message, not a crash to debug.
+    """
+
+    suppress_traceback = True
 
     def __init__(self, failure: ClassifiedFailure) -> None:
         super().__init__(failure.message)
