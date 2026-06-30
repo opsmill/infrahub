@@ -1,18 +1,4 @@
-"""Synthetic dataset for the merge/rebase recompute profile.
-
-One kind carries all three derived-value families plus a cross-node read so the
-relationship-driven automations are represented:
-
-- a Jinja2 computed attribute (``summary``) that reads a local field and the peer,
-- a display label that reads a local field and the peer,
-- a human-friendly id built from a local field,
-- a relationship to a peer kind.
-
-Seeding creates the baseline on the default branch, forks a branch, and mutates
-``changed_nodes`` of the main nodes on that branch so they land in the merge diff
-as updates. The mutated field feeds all three families, so every changed node is
-a recompute candidate.
-"""
+"""Synthetic dataset for the merge/rebase recompute profile."""
 
 from __future__ import annotations
 

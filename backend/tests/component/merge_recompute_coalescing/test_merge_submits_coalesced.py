@@ -1,11 +1,4 @@
-"""The merge and rebase post-process submit one coalesced recompute, not per-node fan-out.
-
-Drives a real cross-node merge and rebase (peers the main nodes read) with the event, workflow, and
-cache recorders injected, then asserts the operation submits one process flow per affected derived
-value over the union of changed ids, rather than one per changed node, on the correct branch
-(destination for merge, user branch for rebase). No task worker runs, so the submissions are
-recorded but not executed; end-to-end recompute is covered by the integration tests.
-"""
+"""The merge and rebase post-process submit one coalesced recompute, not per-node fan-out."""
 
 from __future__ import annotations
 

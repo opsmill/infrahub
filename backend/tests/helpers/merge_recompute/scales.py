@@ -1,9 +1,4 @@
-"""Shared scale set for the merge/rebase recompute profile.
-
-``changed_nodes`` is the only knob that varies between scales; the synthetic
-schema is constant. Both layers draw from the same set so counts and timings
-line up scale-for-scale.
-"""
+"""Shared scale set for the merge/rebase recompute profile."""
 
 from __future__ import annotations
 

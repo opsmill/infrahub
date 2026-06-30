@@ -1,13 +1,4 @@
-"""End-to-end correctness of the coalesced merge and rebase recompute.
-
-After a real merge or rebase, every derived value that depends on the change must equal a
-from-scratch recompute, with no stale value left behind. The decisive case is a reader that exists
-only on the branch the recompute runs on (the destination for a merge, the user branch for a
-rebase): the other branch never saw it, so its recompute cannot refresh the reader, and only the
-coalesced post-operation recompute can. The computed attribute and display label read the peer
-across the relationship and must refresh; the human-friendly id reads only the local name and must
-not change when a related node changes.
-"""
+"""End-to-end correctness of the coalesced merge and rebase recompute."""
 
 from __future__ import annotations
 

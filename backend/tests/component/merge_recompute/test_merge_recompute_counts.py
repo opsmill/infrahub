@@ -1,20 +1,4 @@
-"""Counting layer for the merge/rebase recompute profile.
-
-Drives a real, data-only merge or rebase over a seeded branch with the event
-service and workflow recorders injected through the dependency-provider scope,
-then counts the node events emitted and derives the cross-node recompute fan-out.
-No task worker runs, so recompute is never dispatched; the timing layer is the
-authority on executed recompute.
-
-Two cases are profiled:
-
-- same-node: a node's own ``name`` changes. The merge emits one node event per
-  changed node, but the node's derived values recompute inline on save, so there
-  is no asynchronous fan-out.
-- cross-node: a peer that the mains read changes. The merge still emits one node
-  event per changed peer, and each reader recomputes asynchronously: this is the
-  fan-out the merge path pays for.
-"""
+"""Count the merge/rebase node events and derive the cross-node recompute fan-out."""
 
 from __future__ import annotations
 

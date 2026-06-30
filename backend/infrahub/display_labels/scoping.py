@@ -1,12 +1,4 @@
-"""Derive the display-label targets a data change affects.
-
-Maps a changed node's kind, action, and changed fields to the display-label
-targets that must recompute, reading the dependency metadata the schema already
-records (the same maps the per-node triggers are built from). Keeping this on the
-recorded metadata is what stops the coalesced merge and rebase path from drifting
-from the live per-node recompute path. The decision is pure: it reads only the
-structures passed in and touches no database.
-"""
+"""Derive the display-label targets a data change affects."""
 
 from __future__ import annotations
 

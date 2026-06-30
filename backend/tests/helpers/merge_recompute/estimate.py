@@ -1,19 +1,4 @@
-"""In-process derived expected-recompute estimate for the counting layer.
-
-A node's own derived values (computed attribute, display label, human-friendly id
-that read only that node's fields) are recomputed inline when the node is saved,
-so they create no asynchronous recompute work. The asynchronous recompute fan-out
-that the merge/rebase path pays for is the *cross-node* case: when a node that
-other nodes read changes, each reader recomputes asynchronously.
-
-Given the node events a merge emits and the schema, this predicts which derived
-families fan out across a relationship for each changed node, using the same
-pre-computed dependency facades the production processors consult. It counts, per
-family, the number of changed nodes whose change fans out to that family. The
-per-node job count is that figure times the number of readers of each changed
-node, which depends on graph cardinality and is left to the authoritative timing
-layer (in a one-reader-per-node dataset the two coincide).
-"""
+"""In-process derived expected-recompute estimate for the counting layer."""
 
 from __future__ import annotations
 

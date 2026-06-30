@@ -1,13 +1,4 @@
-"""Derive the human-friendly-id targets a data change affects.
-
-Maps a changed node's kind, action, and changed fields to the human-friendly-id
-targets that must recompute, reading the dependency metadata the schema already
-records. A human-friendly id built only from the node's own fields registers no
-relationship, so it has no related-trigger entry and does not appear for a related
-node's change. It still recomputes on its own creation through the self path. No
-special-casing is needed: the metadata encodes the difference. The decision is
-pure and touches no database.
-"""
+"""Derive the human-friendly-id targets a data change affects."""
 
 from __future__ import annotations
 

@@ -1,11 +1,4 @@
-"""Immutable measurement records produced by the merge/rebase recompute profile.
-
-These are in-memory only; no persisted model. The counting layer fills
-``RecomputeCounts``; the full-stack timing layer fills ``CostCenterTiming``.
-Keep the three quantities distinct: *emitted events* (counted), *derived
-expected recompute* (in-process estimate), *executed recompute runs* (observed
-on the real stack, authoritative).
-"""
+"""Immutable measurement records for the merge/rebase recompute profile."""
 
 from __future__ import annotations
 

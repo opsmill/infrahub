@@ -1,19 +1,4 @@
-"""Timing layer for the merge and rebase recompute (full distributed stack).
-
-On-demand and gated: set ``INFRAHUB_PROFILE_TIMING`` to run it. It drives a real merge and rebase on
-the running stack with a real task worker and reports, per operation:
-
-- the merge/rebase critical path (synchronous, in-transaction cost),
-- the trailing recompute window (merge return to queue drained),
-- the executed per-reader recompute runs (``*-update-value`` flows), and
-- the recompute process-flow dispatches (``*-process`` flows).
-
-The process-flow dispatch count is the coalescing signal: the per-node path dispatched one process
-flow per changed node per family (about ``2 * changed_nodes`` here), while the coalesced path
-dispatches one per affected derived value (about two), independent of the changed-node count. Scale
-is set with ``INFRAHUB_PROFILE_SCALE`` (changed-node count, default 100). Timings are reported with
-no hard thresholds because they are stack-relative; only the structural bound is asserted.
-"""
+"""On-demand merge/rebase recompute timing (set INFRAHUB_PROFILE_TIMING; scale via INFRAHUB_PROFILE_SCALE)."""
 
 from __future__ import annotations
 

@@ -1,10 +1,4 @@
-"""Submission of the coalesced recompute.
-
-``plan_coalesced_submissions`` turns the deduplicated target set into one submission per derived
-target and source kind, each carrying the union of changed node ids. ``submit_coalesced_recompute``
-reuses the existing per-family process flows, recorded here through the workflow adapter so the
-dispatch is asserted without a task worker.
-"""
+"""Submission of the coalesced recompute."""
 
 from __future__ import annotations
 

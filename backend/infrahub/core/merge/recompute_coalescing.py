@@ -1,25 +1,4 @@
-"""Coalesce a merge or rebase change set into one deduplicated recompute.
-
-Turns the diff changelog the merge or rebase already collects (a set of changed
-nodes) into the deduplicated set of derived-value targets that must recompute,
-across Jinja2 computed attributes, display labels, and human-friendly ids. It
-reuses the computed-attribute data-change deriver and the display and HFID
-derivers built to the same pattern, so the selection cannot diverge from the live
-per-node recompute path.
-
-The build is pure: it reads the schema branch and the change set and writes
-nothing. Resolving the affected reader nodes and submitting the recompute runs
-separately, so this core is unit-testable in isolation.
-
-Per-action coverage:
-
-- created: the new node's own derived values across all three families (self).
-- updated: the derived values of other nodes that read the changed node across a
-  relationship (cross-node). The changed node's own values recompute inline on
-  save and are not part of the asynchronous set.
-- deleted: the same cross-node readers, so their derived values no longer reflect
-  the removed node.
-"""
+"""Coalesce a merge or rebase change set into one deduplicated recompute."""
 
 from __future__ import annotations
 

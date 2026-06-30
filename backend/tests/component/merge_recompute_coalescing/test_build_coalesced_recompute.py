@@ -1,13 +1,4 @@
-"""Selection logic for the coalesced merge/rebase recompute.
-
-Drives ``build_coalesced_recompute`` over a registered profile schema and asserts
-the deduplicated target set, with no task worker. The profile schema carries all
-three families on one kind: a Jinja2 computed attribute and a display label that
-both read a peer across a relationship, and a human-friendly id built from the
-local name only. That mix exercises cross-node fan-out, the per-family difference
-(the human-friendly id does not fan out on a related change), creation, deletion,
-coalescing, and the bounded fallback.
-"""
+"""Selection logic for the coalesced merge/rebase recompute."""
 
 from __future__ import annotations
 
