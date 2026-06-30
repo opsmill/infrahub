@@ -59,7 +59,7 @@ mutation { InfrahubTaskRetry(data: {id: "<run-id>"}) { ok task { id state } } }
 1. Trigger a delivery against a slow/failing endpoint so it enters AwaitingRetry.
 2. Click **Cancel** → the delivery transitions to cancelled and no further attempts are made.
 3. Confirm Cancel is disabled (with a reason) on already-settled deliveries.
-4. Confirm a cancelled delivery can then be **resent** (cancel→retry is the two-step restart).
+4. Confirm a cancelled delivery can then be **retried** (cancel→retry is the two-step restart).
 
 GraphQL check:
 ```graphql

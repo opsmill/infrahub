@@ -126,9 +126,9 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 
 ### Implementation for User Story 4
 
-- [X] T039 [US4] Implement the generic `InfrahubTaskCancel(id)` mutation (validate target is a non-terminal `WEBHOOK_SEND` run via `available_actions`; set state to CANCELLED with force; authorize via object-level webhook update permission) in `backend/infrahub/graphql/mutations/task.py` (depends on T003, T008). Shares the load/authorize preamble with the retry mutation.
+- [X] T039 [US4] Implement the generic `InfrahubTaskCancel(id)` mutation (validate target is a non-terminal `WEBHOOK_SEND` run via `available_actions`; set state to CANCELLING; authorize via object-level webhook update permission) in `backend/infrahub/graphql/mutations/task.py` (depends on T003, T008). Shares the load/authorize preamble with the retry mutation.
 - [X] T040 [US4] Register `InfrahubTaskCancel` as a field on `InfrahubBaseMutation` in `backend/infrahub/graphql/schema.py` (depends on T039).
-- [X] T041 [P] [US4] Functional test: settled-delivery rejection and not-found, in `backend/tests/functional/webhook/test_cancel.py` (depends on T039, T040). The non-terminal happy path and authz-denied path remain to be added — the test harness runs deliveries to completion synchronously, so holding a run non-terminal needs a fixture that is not yet in place.
+- [X] T041 [P] [US4] Functional test: cancel of a non-terminal delivery, settled-delivery rejection, authz-denied, and not-found, in `backend/tests/functional/webhook/test_cancel.py` (depends on T039, T040).
 - [X] T042 [P] [US4] Frontend cancel mutation (api → domain → `useCancelTaskMutation` hook) in `frontend/app/src/entities/tasks/api/cancel-task-from-api.ts`, `domain/cancel-task/`, and `ui/queries/cancel-task.mutation.ts`.
 - [X] T043 [US4] Wire CANCEL into the shared `<TaskActions>` (destructive confirmation + toast) so it renders in the detail header, in `frontend/app/src/entities/tasks/ui/task-actions.tsx` (depends on T036, T042).
 - [ ] T044 [US4] Playwright E2E: cancel a non-terminal delivery → destructive confirmation, no further attempts, in `frontend/app/tests/e2e/webhook-delivery-cancel.spec.ts` (depends on T043). Pending — needs a running full stack to validate. Component-level coverage is in `task-actions.test.tsx`.

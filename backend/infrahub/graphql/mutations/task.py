@@ -50,10 +50,14 @@ class DeliveryReader:
         """Return the delivery's workflow, state, and frozen parameters.
 
         Raises:
-            ValidationError: When the delivery has aged out of retention.
+            ValidationError: When the id is malformed or the delivery has aged out of retention.
 
         """
-        runs = await self.client.read_flow_runs(flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=[UUID(task_id)])))
+        try:
+            flow_run_id = UUID(task_id)
+        except ValueError:
+            raise ValidationError(input_value="This delivery is no longer available.") from None
+        runs = await self.client.read_flow_runs(flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=[flow_run_id])))
         run = runs[0] if runs else None
         if run is None:
             raise ValidationError(input_value="This delivery is no longer available.")

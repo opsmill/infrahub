@@ -105,7 +105,7 @@ extend type Mutation {
 **InfrahubTaskCancel(id)**
 - Auth: same as retry.
 - Precondition: target is a `WEBHOOK_SEND` run in a **non-terminal** state. Otherwise → error "cancel unavailable: delivery already settled".
-- Effect: set run state to CANCELLED (force). Stops further scheduled auto-retries. Best-effort for an in-flight request (not recalled). Returns the task.
+- Effect: set run state to CANCELLING. Stops further scheduled auto-retries. Best-effort for an in-flight request (not recalled). Returns the task.
 
 ### Error surface
 

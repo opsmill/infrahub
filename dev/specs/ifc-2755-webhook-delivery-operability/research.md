@@ -10,7 +10,7 @@ All decisions are grounded in the current branch code (paths are project-relativ
 - **Retry** resubmits by workflow name with the frozen parameters (`run_deployment` / `submit_workflow` need a deployment, per `services/adapters/workflow/worker.py:86`).
 - **Type discrimination** keys `TASK_TYPES` on the catalogue constant's `name` (`WEBHOOK_SEND.name → WebhookDeliveryTask`); the discriminant is the run's workflow name, already resolved into `EnrichedFlowRun.workflow_name` (`task_manager/flow_run/service.py:85`).
 
-**Alternatives considered**: Keep `webhook_send` an inline subflow and retry by re-invoking `webhook_process` — rejected: that re-runs the transform and re-derives the payload (not a true frozen replay), and re-introduces the orchestrator parent the design deliberately drops for retrys.
+**Alternatives considered**: Keep `webhook_send` an inline subflow and retry by re-invoking `webhook_process` — rejected: that re-runs the transform and re-derives the payload (not a true frozen replay), and re-introduces the orchestrator parent the design deliberately drops for retries.
 
 ## D2 — Retry policy: fixed delay, transient-only (resolves spec Q1)
 

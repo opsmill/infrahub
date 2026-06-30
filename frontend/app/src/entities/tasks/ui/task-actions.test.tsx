@@ -71,6 +71,7 @@ describe("TaskActions", () => {
     const component = await render(<TaskActions task={task} />);
 
     await expect.element(component.getByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    await expect.element(component.getByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
     expect(retryTaskFromApiMock).not.toHaveBeenCalled();
   });
 });
