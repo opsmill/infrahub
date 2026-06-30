@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { getEffectivePreferences } from "@/entities/preferences/domain/get-effective-preferences";
 import type { EffectivePreferences } from "@/entities/preferences/domain/types";
@@ -23,9 +23,16 @@ const baseEffective: EffectivePreferences = {
 
 describe("TabOrganisationDefaults", () => {
   beforeEach(() => {
+    // Date-format preset labels embed a live date example; freeze the clock.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-30T14:30:00"));
     vi.clearAllMocks();
     vi.mocked(getEffectivePreferences).mockResolvedValue(baseEffective);
     vi.mocked(updateGlobalPreference).mockResolvedValue();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test("shows an unauthorized screen when the user cannot edit global preferences", async () => {
@@ -43,7 +50,8 @@ describe("TabOrganisationDefaults", () => {
   test("edits the raw global_* values via the global mutation when allowed", async () => {
     const component = await render(<TabOrganisationDefaults />);
 
-    await selectOption(component, "Relative (2 days ago)");
+    // Select by the stable preset key, not the (date-dependent) label.
+    await selectOption(component, "", { value: "relative" });
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {

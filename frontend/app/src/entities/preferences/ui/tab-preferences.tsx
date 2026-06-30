@@ -1,4 +1,5 @@
 import { Button, Card, CardContent, CardHeader } from "@infrahub/ui";
+import { useMemo } from "react";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -6,8 +7,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import {
-  DATE_FORMAT_PRESETS,
   DEFAULT_DATE_FORMAT,
+  formatDateFormatExample,
 } from "@/entities/preferences/domain/date-format-presets";
 import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
 import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
@@ -17,14 +18,17 @@ function inheritedHint(globalValue: string | null | undefined, builtinFallback: 
   return `Inherited from organisation defaults: ${globalValue ?? builtinFallback}`;
 }
 
-function presetLabel(value: string | null | undefined) {
+function presetLabel(value: string | null | undefined, referenceDate: Date) {
   if (!value) return;
-  return DATE_FORMAT_PRESETS.find((preset) => preset.key === value)?.label ?? value;
+  return `${formatDateFormatExample(value, referenceDate)} (${value})`;
 }
 
 export default function TabPreferences() {
   const effectiveQuery = useEffectivePreferences();
   const updatePreferences = useUpdateMyUserPreferences();
+  // Single reference instant for the inherited hint's live example, memoised so
+  // it does not churn across renders.
+  const now = useMemo(() => new Date(), []);
 
   if (effectiveQuery.error) {
     return <ErrorScreen message="Something went wrong when fetching your preferences" />;
@@ -40,7 +44,7 @@ export default function TabPreferences() {
 
   return (
     <main className="p-2">
-      <Card className="m-auto w-full max-w-md">
+      <Card className="w-full max-w-md">
         <CardHeader>Preferences</CardHeader>
         <CardContent>
           <p className="mb-4 text-gray-600 text-sm">
@@ -57,7 +61,7 @@ export default function TabPreferences() {
               preferences.userDateFormat
                 ? undefined
                 : inheritedHint(
-                    presetLabel(preferences.globalDateFormat),
+                    presetLabel(preferences.globalDateFormat, now),
                     `${DEFAULT_DATE_FORMAT} (built-in default)`
                   )
             }

@@ -1,11 +1,12 @@
 import type React from "react";
+import { useMemo } from "react";
 import { useFormState } from "react-hook-form";
 
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
-import { DATE_FORMAT_PRESETS } from "@/entities/preferences/domain/date-format-presets";
+import { buildDateFormatPresets } from "@/entities/preferences/domain/date-format-presets";
 import type { PreferenceValues } from "@/entities/preferences/domain/types";
 import { TimezoneField } from "@/entities/preferences/ui/timezone.field";
 
@@ -39,6 +40,10 @@ export function PreferencesForm({
   isSubmitDisabled,
   children,
 }: PreferencesFormProps) {
+  // Memoised so the item array identity is stable across renders, which the
+  // React Aria Select relies on; built once from the current date.
+  const items = useMemo(() => buildDateFormatPresets(), []);
+
   return (
     <Form
       defaultValues={{
@@ -53,7 +58,7 @@ export function PreferencesForm({
       }}
     >
       <div className="space-y-1">
-        <SelectField name="date_format" label="Date format" items={DATE_FORMAT_PRESETS} />
+        <SelectField name="date_format" label="Date format" items={items} />
         {dateFormatHint && <p className="text-gray-600 text-sm">{dateFormatHint}</p>}
       </div>
 

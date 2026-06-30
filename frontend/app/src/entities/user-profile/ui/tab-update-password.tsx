@@ -36,7 +36,7 @@ export default function TabUpdatePassword() {
   if (account?.is_externally_managed !== false) {
     return (
       <main className="p-2">
-        <Card className="m-auto w-full max-w-md">
+        <Card className="w-full max-w-md">
           <CardHeader>Password managed externally</CardHeader>
           <CardContent>
             <p className="text-gray-600 text-sm">
@@ -51,7 +51,7 @@ export default function TabUpdatePassword() {
 
   return (
     <main className="p-2">
-      <Card className="m-auto w-full max-w-md">
+      <Card className="w-full max-w-md">
         <CardHeader>Update your password</CardHeader>
         <CardContent>
           <Form

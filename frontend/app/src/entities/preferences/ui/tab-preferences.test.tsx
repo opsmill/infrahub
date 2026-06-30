@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { getEffectivePreferences } from "@/entities/preferences/domain/get-effective-preferences";
 import type { EffectivePreferences } from "@/entities/preferences/domain/types";
@@ -23,9 +23,17 @@ const baseEffective: EffectivePreferences = {
 
 describe("TabPreferences", () => {
   beforeEach(() => {
+    // The date-format preset labels embed a live example of the current date, so
+    // freeze the clock to keep the rendered labels deterministic.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-30T14:30:00"));
     vi.clearAllMocks();
     vi.mocked(getEffectivePreferences).mockResolvedValue(baseEffective);
     vi.mocked(upsertMyUserPreference).mockResolvedValue();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test("renders preset selects, not free-text inputs", async () => {
@@ -39,12 +47,35 @@ describe("TabPreferences", () => {
   test("shows the inherited global value as hint when the user has no override", async () => {
     const component = await render(<TabPreferences />);
 
+    // globalDateFormat is "dd/MM/yyyy"; the hint shows a live example of the
+    // frozen current date rendered with that pattern, then the pattern.
     await expect
-      .element(component.getByText(/inherited from organisation defaults:.*dd\/MM\/yyyy/i))
+      .element(
+        component.getByText(/inherited from organisation defaults: 30\/06\/2026 \(dd\/MM\/yyyy\)/i)
+      )
       .toBeVisible();
     await expect
       .element(component.getByText(/inherited from organisation defaults: Europe\/Paris/i))
       .toBeVisible();
+  });
+
+  test("date-format options show a live example of the current date", async () => {
+    const component = await render(<TabPreferences />);
+
+    // React Aria mounts the Select's hidden native <select> lazily; it is the only
+    // <select> in this form (timezone is a Combobox), so poll for it to appear.
+    let dateFormatSelect: HTMLSelectElement | null = null;
+    await vi.waitFor(() => {
+      dateFormatSelect = component.container.querySelector<HTMLSelectElement>("select");
+      if (!dateFormatSelect) throw new Error("date-format <select> not mounted yet");
+    });
+
+    const labels = Array.from(dateFormatSelect!.options).map((o) => o.textContent?.trim());
+
+    // Frozen at 2026-06-30T14:30:00, so the ISO preset renders that instant.
+    expect(labels).toContain("2026-06-30 14:30 (yyyy-MM-dd HH:mm)");
+    // The relative sentinel renders deterministically as "2 days ago".
+    expect(labels).toContain("2 days ago (relative)");
   });
 
   test("pre-fills the form from the caller's own override", async () => {
@@ -79,7 +110,8 @@ describe("TabPreferences", () => {
       component.getByText(/something went wrong when fetching your preferences/i).elements()
     ).toHaveLength(0);
 
-    await selectOption(component, "Relative (2 days ago)");
+    // Select by the stable preset key, not the (date-dependent) label.
+    await selectOption(component, "", { value: "relative" });
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
@@ -95,7 +127,8 @@ describe("TabPreferences", () => {
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeDisabled();
 
-    await selectOption(component, "Relative (2 days ago)");
+    // Select by the stable preset key, not the (date-dependent) label.
+    await selectOption(component, "", { value: "relative" });
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
   });
@@ -103,7 +136,8 @@ describe("TabPreferences", () => {
   test("saving triggers the upsert with the selected values", async () => {
     const component = await render(<TabPreferences />);
 
-    await selectOption(component, "Relative (2 days ago)");
+    // Select by the stable preset key, not the (date-dependent) label.
+    await selectOption(component, "", { value: "relative" });
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {

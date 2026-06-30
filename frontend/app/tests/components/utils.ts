@@ -32,11 +32,16 @@ export async function initPointerTracking(locator: {
  * Scoped to the rendered component's `container` so renders from earlier tests in
  * the same file (vitest-browser does not unmount between tests) cannot match.
  * `name` disambiguates when one form has more than one `SelectField`.
+ *
+ * The option can be addressed by its visible label (the native option's
+ * `textContent`) or — preferred when the label is volatile (e.g. it embeds a live
+ * date) — by its stable `value` (the native option's `value`, which for the
+ * preferences selects is the preset key) via `options.value`.
  */
 export async function selectOption(
   component: { container: ParentNode },
   label: string,
-  options: { name?: string } = {}
+  options: { name?: string; value?: string } = {}
 ) {
   const findSelects = () => {
     const selects = Array.from(component.container.querySelectorAll<HTMLSelectElement>("select"));
@@ -63,10 +68,16 @@ export async function selectOption(
   }
 
   const select = candidates[0];
-  const option = Array.from(select.options).find((o) => o.textContent?.trim() === label);
+  const option =
+    options.value !== undefined
+      ? Array.from(select.options).find((o) => o.value === options.value)
+      : Array.from(select.options).find((o) => o.textContent?.trim() === label);
   if (!option) {
-    const available = Array.from(select.options).map((o) => o.textContent?.trim());
-    throw new Error(`option "${label}" not found; available: ${JSON.stringify(available)}`);
+    const target = options.value !== undefined ? `value "${options.value}"` : `option "${label}"`;
+    const available = Array.from(select.options).map((o) =>
+      options.value !== undefined ? o.value : o.textContent?.trim()
+    );
+    throw new Error(`${target} not found; available: ${JSON.stringify(available)}`);
   }
 
   await userEvent.selectOptions(select, option.value);

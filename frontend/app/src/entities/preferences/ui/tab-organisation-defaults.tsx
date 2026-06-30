@@ -30,7 +30,7 @@ export default function TabOrganisationDefaults() {
 
   return (
     <main className="p-2">
-      <Card className="m-auto w-full max-w-md">
+      <Card className="w-full max-w-md">
         <CardHeader>Organisation defaults</CardHeader>
         <CardContent>
           <p className="mb-4 text-gray-600 text-sm">
