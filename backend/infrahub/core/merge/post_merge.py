@@ -11,7 +11,7 @@ from infrahub.core.merge.recompute_coalescing import (
     submit_coalesced_recompute,
 )
 from infrahub.events.branch_action import BranchMergedEvent
-from infrahub.events.constants import NODE_ORIGIN_MERGE
+from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
@@ -146,7 +146,7 @@ class PostMergeDispatcher:
             meta = EventMeta.from_parent(parent=merge_event, branch=self.default_branch)
             # Mark the event as merge-originated so the coalesced recompute owns these families and
             # their per-node automations skip the replayed change.
-            meta.origin = NODE_ORIGIN_MERGE
+            meta.origin = NodeMutationOrigin.MERGE
             node_event_class = get_node_event(mutation_action)
             mutate_event = node_event_class(
                 kind=node_changelog.node_kind,

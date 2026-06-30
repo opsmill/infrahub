@@ -10,7 +10,7 @@ from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema  # noqa: TC001
 from infrahub.events import NodeUpdatedEvent
-from infrahub.events.constants import NODE_ORIGIN_LABEL, NODE_ORIGIN_LIVE
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.trigger.constants import NAME_SEPARATOR, TRIGGER_PLACEHOLDER_FIELD
 from infrahub.trigger.models import (
     EventTrigger,
@@ -129,7 +129,7 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
             event_trigger.match["infrahub.branch.name"] = branch
         # The coalesced merge and rebase recompute owns this family, so its per-node automation
         # fires only for live mutations, excluding the replayed merge and rebase changes.
-        event_trigger.match[NODE_ORIGIN_LABEL] = NODE_ORIGIN_LIVE
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
 
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],

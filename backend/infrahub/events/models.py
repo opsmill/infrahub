@@ -12,7 +12,7 @@ from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.worker import WORKER_IDENTITY
 
-from .constants import EVENT_NAMESPACE
+from .constants import EVENT_NAMESPACE, NodeMutationOrigin
 
 
 class EventNode(BaseModel):
@@ -75,7 +75,7 @@ class EventMeta(BaseModel):
 
     parent: UUID | None = Field(default=None, description="The UUID of the parent event if applicable")
     ancestors: list[ParentEvent] = Field(default_factory=list, description="Any event used to trigger this event")
-    origin: str | None = Field(
+    origin: NodeMutationOrigin | None = Field(
         default=None,
         description="The operation that replayed this event (a merge or a rebase), or None for a live mutation",
     )

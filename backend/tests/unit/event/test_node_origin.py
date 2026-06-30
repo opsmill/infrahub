@@ -20,18 +20,13 @@ from infrahub.core.schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.schema_branch_computed import ComputedAttributeTarget, ComputedAttributeTriggerNode
 from infrahub.display_labels.models import DisplayLabelTriggerDefinition
-from infrahub.events.constants import (
-    NODE_ORIGIN_LABEL,
-    NODE_ORIGIN_LIVE,
-    NODE_ORIGIN_MERGE,
-    NODE_ORIGIN_REBASE,
-)
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.events.models import EventMeta
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.hfid.models import HFIDTriggerDefinition
 
 
-def _node_event(origin: str | None) -> NodeUpdatedEvent:
+def _node_event(origin: NodeMutationOrigin | None) -> NodeUpdatedEvent:
     branch = Branch(name="test-node-origin", uuid=uuid.uuid4())
     meta = EventMeta(
         branch=branch,
@@ -51,15 +46,25 @@ def _node_event(origin: str | None) -> NodeUpdatedEvent:
 
 
 def test_live_node_event_carries_the_default_origin() -> None:
-    assert _node_event(origin=None).get_resource()[NODE_ORIGIN_LABEL] == NODE_ORIGIN_LIVE
+    assert _node_event(origin=None).get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE
 
 
 def test_merge_node_event_carries_the_merge_origin() -> None:
-    assert _node_event(origin=NODE_ORIGIN_MERGE).get_resource()[NODE_ORIGIN_LABEL] == NODE_ORIGIN_MERGE
+    assert _node_event(origin=NodeMutationOrigin.MERGE).get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.MERGE
 
 
 def test_rebase_node_event_carries_the_rebase_origin() -> None:
-    assert _node_event(origin=NODE_ORIGIN_REBASE).get_resource()[NODE_ORIGIN_LABEL] == NODE_ORIGIN_REBASE
+    assert _node_event(origin=NodeMutationOrigin.REBASE).get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.REBASE
+
+
+def test_origin_label_is_a_plain_string_on_the_wire() -> None:
+    """Prefect matches on the serialized resource, so the label must be a plain str, not the enum."""
+    resource_value = _node_event(origin=NodeMutationOrigin.MERGE).get_resource()[NODE_ORIGIN_LABEL]
+    assert type(resource_value) is str
+    match_value = DisplayLabelTriggerDefinition.new(
+        branch="main", node_kind="TestingPeer", target_kind="TestingNode", template_hash="hash", fields=["name"]
+    ).trigger.match[NODE_ORIGIN_LABEL]
+    assert type(match_value) is str
 
 
 def test_display_label_trigger_matches_only_live_origin() -> None:
@@ -70,7 +75,7 @@ def test_display_label_trigger_matches_only_live_origin() -> None:
         template_hash="hash",
         fields=["name"],
     )
-    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NODE_ORIGIN_LIVE
+    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE
 
 
 def test_hfid_trigger_matches_only_live_origin() -> None:
@@ -81,7 +86,7 @@ def test_hfid_trigger_matches_only_live_origin() -> None:
         hfid_hash="hash",
         fields=["name"],
     )
-    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NODE_ORIGIN_LIVE
+    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE
 
 
 def test_computed_jinja2_trigger_matches_only_live_origin() -> None:
@@ -100,4 +105,4 @@ def test_computed_jinja2_trigger_matches_only_live_origin() -> None:
         computed_attribute=target,
         trigger_node=trigger_node,
     )
-    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NODE_ORIGIN_LIVE
+    assert definition.trigger.match[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE
