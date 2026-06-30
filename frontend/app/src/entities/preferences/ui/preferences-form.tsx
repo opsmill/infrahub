@@ -156,13 +156,13 @@ export function PreferencesForm({
         <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
           {/*
             Control + live example + (i) source tooltip on a single row:
-            [combobox (capped at max-w-xs)] [example (flex-1, truncates)] [(i)].
-            The input is width-capped (not full-width) so there is always reserved
-            room to its right for the example to appear without pushing/clipping
-            the row; the example fills that space and truncates if very long.
+            [combobox (fixed w-64, shrink-0)] [example (flex-1, truncates)] [(i)].
+            Both fields' inputs use the SAME fixed width (so they line up and one is
+            not squeezed smaller than the other), leaving reserved room to the right
+            for the example to fill — it appears without pushing/clipping the row.
           */}
           <div className="flex items-center gap-2">
-            <div className="w-full max-w-xs">
+            <div className="w-64 shrink-0">
               <ComboboxField
                 name="date_format"
                 label="Date format"
