@@ -61,6 +61,9 @@ export default function TabOrganisationDefaults() {
                   }
                 />
               );
+              // Re-throw so the shared Form skips its post-submit reset(): a failed update must
+              // keep the form dirty with the unsaved values, not look as though it saved.
+              throw error;
             }
           }}
         />

@@ -8,7 +8,6 @@ import { DetailRow } from "@/shared/components/display/detail-row";
 import { ComboboxField } from "@/shared/components/form/fields/combobox.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { classNames } from "@/shared/utils/common";
 
 import {
   buildDateFormatPresets,
@@ -84,18 +83,18 @@ function toFieldValue(value: string | null): FormAttributeValue {
  * `{ source, value }` attribute) and re-renders the example as the selection
  * changes. `now` is memoised once per mount so the example is stable across renders.
  *
- * The example can shrink and truncate (it carries `min-w-0` + `truncate` from the
- * caller) so the longest preset never overflows the row or forces the combobox to
- * reflow; hidden entirely when "Automatic"/no value is selected.
+ * The example truncates so the longest preset never overflows the row or forces the
+ * combobox to reflow; it renders nothing when "Automatic"/no value is selected (the
+ * always-present flex-1 wrapper in the row keeps the (i) icon pinned right regardless).
  */
-function DateFormatExample({ id, now, className }: { id: string; now: Date; className?: string }) {
+function DateFormatExample({ id, now }: { id: string; now: Date }) {
   const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
   const selected = (fieldValue?.value as string | null | undefined) ?? null;
 
   if (!selected) return null;
 
   return (
-    <p id={id} className={classNames("text-gray-500 text-xs", className)}>
+    <p id={id} className="truncate text-gray-500 text-xs">
       Example: {formatDateFormatExample(selected, now)}
     </p>
   );
@@ -156,10 +155,12 @@ export function PreferencesForm({
         <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
           {/*
             Control + live example + (i) source tooltip on a single row:
-            [combobox (fixed w-64, shrink-0)] [example (flex-1, truncates)] [(i)].
+            [combobox (fixed w-64, shrink-0)] [example slot (flex-1, truncates)] [(i)].
             Both fields' inputs use the SAME fixed width (so they line up and one is
-            not squeezed smaller than the other), leaving reserved room to the right
-            for the example to fill — it appears without pushing/clipping the row.
+            not squeezed smaller than the other). The example slot is an always-present
+            flex-1 wrapper — exactly like the timezone row's spacer — so the (i) icon is
+            pinned to the far right whether or not an example is shown, and the two rows'
+            (i) icons stay aligned.
           */}
           <div className="flex items-center gap-2">
             <div className="w-64 shrink-0">
@@ -175,11 +176,9 @@ export function PreferencesForm({
                 automaticOption={automaticOption}
               />
             </div>
-            <DateFormatExample
-              id={dateFormatExampleId}
-              now={now}
-              className="min-w-0 flex-1 truncate"
-            />
+            <div className="min-w-0 flex-1 truncate">
+              <DateFormatExample id={dateFormatExampleId} now={now} />
+            </div>
             <SourceInfo message={dateFormatSourceTooltip} />
           </div>
         </DetailRow>

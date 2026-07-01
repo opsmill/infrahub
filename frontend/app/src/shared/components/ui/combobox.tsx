@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import type React from "react";
+import { useState } from "react";
 
 import {
   Command,
@@ -72,6 +73,16 @@ export interface ComboboxListProps extends React.ComponentProps<typeof CommandLi
   shouldFilter?: boolean;
   onValueChange?: (search: string) => void;
   placeholder?: string;
+  /**
+   * The item `value` that should be ACTIVE (highlighted + scrolled into view) when the
+   * list first mounts — pass the currently-selected option here. Without it cmdk seeds
+   * its active item to the FIRST option on open, so a value selected further down the
+   * list (e.g. a timezone) is neither highlighted nor scrolled to. Must be the exact
+   * same string used as the matching item's `value`: cmdk matches the active item on the
+   * trimmed value case-SENSITIVELY (only its fuzzy search filter lowercases), so
+   * mixed-case values like "Europe/Paris" or "ISO_DATETIME" line up as-is.
+   */
+  activeValue?: string | null;
 }
 
 export const ComboboxList = ({
@@ -80,11 +91,26 @@ export const ComboboxList = ({
   autoFocus,
   onValueChange,
   placeholder = "Filter...",
+  activeValue,
   ref,
   ...props
 }: ComboboxListProps) => {
+  // Drive cmdk's active item as a controlled value so the selected option starts
+  // highlighted/scrolled-in. It's seeded from `activeValue` but kept in local state and
+  // updated via `onValueChange` so keyboard/pointer navigation still moves the highlight;
+  // a purely-static controlled value would freeze cmdk's internal navigation. Undefined
+  // when no `activeValue` is given, preserving the previous uncontrolled behaviour for the
+  // many call sites that don't opt in.
+  const [activeItemValue, setActiveItemValue] = useState<string | undefined>(
+    activeValue ?? undefined
+  );
   return (
-    <Command shouldFilter={shouldFilter} className={className}>
+    <Command
+      shouldFilter={shouldFilter}
+      className={className}
+      value={activeValue == null ? undefined : activeItemValue}
+      onValueChange={activeValue == null ? undefined : setActiveItemValue}
+    >
       <CommandInput placeholder={placeholder} autoFocus={autoFocus} onValueChange={onValueChange} />
       <CommandList ref={ref} {...props} />
     </Command>

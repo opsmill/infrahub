@@ -33,10 +33,10 @@ describe("preferences mutations", () => {
     vi.mocked(upsertMyUserPreference).mockResolvedValue();
 
     const { result } = await renderHook(() => useUpdateMyUserPreferences(), { wrapper });
-    await result.current.mutateAsync({ dateFormat: "relative", timezone: "UTC" });
+    await result.current.mutateAsync({ dateFormat: "ISO_DATETIME", timezone: "UTC" });
 
     expect(upsertMyUserPreference).toHaveBeenCalledWith({
-      dateFormat: "relative",
+      dateFormat: "ISO_DATETIME",
       timezone: "UTC",
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
@@ -63,12 +63,12 @@ describe("preferences mutations", () => {
 
     const { result } = await renderHook(() => useUpdateGlobalPreferences(), { wrapper });
     await result.current.mutateAsync({
-      dateFormat: "dd/MM/yyyy",
+      dateFormat: "EU_DATETIME",
       timezone: "Europe/Paris",
     });
 
     expect(vi.mocked(updateGlobalPreference).mock.calls[0]?.[0]).toEqual({
-      dateFormat: "dd/MM/yyyy",
+      dateFormat: "EU_DATETIME",
       timezone: "Europe/Paris",
     });
     expect(invalidateSpy).toHaveBeenCalledWith({

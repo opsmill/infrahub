@@ -16,7 +16,7 @@ vi.mock("@/entities/preferences/domain/update-global-preference");
 // The effective query only supplies the `can_edit_global_preferences` gate here;
 // its resolved values are irrelevant to this tab (it edits the raw GLOBAL scope).
 const baseEffective: EffectivePreferences = {
-  dateFormat: { value: "Europe/Paris", source: "global" },
+  dateFormat: { value: "EU_DATETIME", source: "global" },
   timezone: { value: "Europe/Paris", source: "global" },
   canEditGlobalPreferences: true,
 };
@@ -87,13 +87,13 @@ describe("TabOrganisationDefaults", () => {
   test("edits the raw global_* values via the global mutation when allowed", async () => {
     const component = await render(<TabOrganisationDefaults />);
 
-    // Select by the stable preset key, not the (date-dependent) label.
-    await selectComboboxOption(component, /date format/i, "relative");
+    // Select an option by its visible label; the stored value is the semantic key behind it.
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
       expect(vi.mocked(updateGlobalPreference).mock.calls[0]?.[0]).toEqual({
-        dateFormat: "relative",
+        dateFormat: "EU_DATETIME",
         timezone: "Europe/Paris",
       });
     });
@@ -105,11 +105,11 @@ describe("TabOrganisationDefaults", () => {
     // own values from the GLOBAL scope, never the admin's overrides.
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "relative", source: "user" },
+      dateFormat: { value: "EU_DATETIME", source: "user" },
       timezone: { value: "UTC", source: "user" },
     });
     vi.mocked(getGlobalPreferences).mockResolvedValue({
-      dateFormat: "yyyy-MM-dd HH:mm",
+      dateFormat: "ISO_DATETIME",
       timezone: "Europe/Paris",
     });
 

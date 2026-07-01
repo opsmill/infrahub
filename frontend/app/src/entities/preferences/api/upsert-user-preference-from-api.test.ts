@@ -18,14 +18,14 @@ describe("upsertUserPreferenceFromApi", () => {
 
   test("sends date_format and timezone with no account argument", async () => {
     await upsertUserPreferenceFromApi({
-      dateFormat: "dd/MM/yyyy",
+      dateFormat: "EU_DATETIME",
       timezone: "Europe/Paris",
     });
 
     expect(graphqlClient.mutate).toHaveBeenCalledTimes(1);
     const { variables } = vi.mocked(graphqlClient.mutate).mock.calls[0]?.[0] ?? {};
     expect(variables).toEqual({
-      dateFormat: "dd/MM/yyyy",
+      dateFormat: "EU_DATETIME",
       timezone: "Europe/Paris",
     });
     expect(variables).not.toHaveProperty("account");

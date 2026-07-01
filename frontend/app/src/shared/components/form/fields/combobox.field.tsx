@@ -108,7 +108,11 @@ export function ComboboxField({
               </FormInput>
 
               <ComboboxContent>
-                <ComboboxList placeholder={searchPlaceholder}>
+                {/* `activeValue` makes the currently-selected option open highlighted and
+                    scrolled into view (cmdk otherwise activates the first item). It's the
+                    same string used as each item's `value`, so the sentinel/mixed-case
+                    values match exactly. */}
+                <ComboboxList placeholder={searchPlaceholder} activeValue={currentValue}>
                   <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
                   {displayedItems.map((item) => (
                     <ComboboxItem

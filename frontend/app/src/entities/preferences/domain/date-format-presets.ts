@@ -1,60 +1,78 @@
-// Curated date-format presets (IFC-2720). Presets are a UI constraint only:
-// the backend stores the pattern verbatim, so the SDK can write any pattern.
-// A later PR consolidates these with shared/utils/date.ts.
+// Curated date-format presets (IFC-2720). The STORED value is a semantic key (e.g. "ISO_DATETIME"),
+// validated backend-side by the `DateFormat` GraphQL enum — it is NOT a date-fns pattern. Each
+// client maps the key to its own renderer; here we map key -> date-fns pattern for the dropdown's
+// live example (and, later, DateDisplay). The key set mirrors the backend exactly
+// (backend/infrahub/core/preferences/formats.py, where the map is key -> strftime).
+//
+// Every preset includes date AND time. The set is deliberately limited to formats that render
+// identically on every client (no locale library, no relative mode) — see
+// dev/specs/2026-04-user-preferences.md.
 
-import { format, formatDistance, subDays } from "date-fns";
+import { format } from "date-fns";
 
-/** Literal preset value enabling relative-time rendering ("2 days ago"). */
-export const RELATIVE_DATE_FORMAT = "relative";
+/** Semantic date-format keys. Must stay in sync with the backend `DateFormat` enum. */
+export type DateFormatKey =
+  | "ISO_8601"
+  | "ISO_DATETIME"
+  | "ISO_DATETIME_SECONDS"
+  | "EU_DATETIME"
+  | "US_12H";
 
-/** Built-in default applied when neither user nor global preference is set. */
-export const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm";
+/** Applied when neither the user nor the organisation has set date_format (same key as backend). */
+export const DEFAULT_DATE_FORMAT: DateFormatKey = "ISO_DATETIME";
+
+interface DateFormatPresetDef {
+  /** Human-facing dropdown label (the pattern itself, or a name where the pattern is unfriendly). */
+  label: string;
+  /** date-fns pattern this key renders with on the web client. */
+  pattern: string;
+}
+
+/** Ordered semantic key -> { label, date-fns pattern }. Mirror of the backend key set. */
+const DATE_FORMAT_PRESETS: Record<DateFormatKey, DateFormatPresetDef> = {
+  ISO_8601: { label: "ISO 8601", pattern: "yyyy-MM-dd'T'HH:mm:ssXXX" },
+  ISO_DATETIME: { label: "yyyy-MM-dd HH:mm", pattern: "yyyy-MM-dd HH:mm" },
+  ISO_DATETIME_SECONDS: { label: "yyyy-MM-dd HH:mm:ss", pattern: "yyyy-MM-dd HH:mm:ss" },
+  EU_DATETIME: { label: "dd/MM/yyyy HH:mm", pattern: "dd/MM/yyyy HH:mm" },
+  US_12H: { label: "MM/dd/yyyy hh:mm a", pattern: "MM/dd/yyyy hh:mm a" },
+};
+
+const DATE_FORMAT_KEYS = Object.keys(DATE_FORMAT_PRESETS) as Array<DateFormatKey>;
 
 export interface DateFormatPreset {
-  /** Stored value: a date-fns pattern, or the RELATIVE_DATE_FORMAT sentinel. */
-  key: string;
-  /** Display label: the pattern/sentinel itself (always equal to `key`). */
+  /** Stored value: a semantic key. */
+  key: DateFormatKey;
+  /** Display label shown in the dropdown. */
   label: string;
 }
 
 /**
- * Ordered list of preset keys — all include a time component (hours & minutes), since
- * these preferences drive date *and time* rendering across the app. Each is a date-fns
- * pattern except the trailing relative sentinel. The stored value is always the raw key.
+ * Builds the preset list for the dropdown: each entry's `key` is the stored value and `label` is
+ * what the user sees. A live example of the selected key is rendered next to the control via
+ * {@link formatDateFormatExample}.
  */
-const DATE_FORMAT_KEYS: ReadonlyArray<string> = [
-  DEFAULT_DATE_FORMAT, //          2026-07-01 14:30      (ISO, 24h)
-  "yyyy-MM-dd HH:mm:ss", //        2026-07-01 14:30:00   (ISO, with seconds)
-  "dd/MM/yyyy HH:mm", //           01/07/2026 14:30      (European, 24h)
-  "MM/dd/yyyy hh:mm a", //         07/01/2026 02:30 PM   (US, 12h)
-  "d MMM yyyy, HH:mm", //          1 Jul 2026, 14:30     (month name)
-  "PPpp", //                       locale-aware long date + time
-  RELATIVE_DATE_FORMAT, //         2 days ago
-];
+export function buildDateFormatPresets(): Array<DateFormatPreset> {
+  return DATE_FORMAT_KEYS.map((key) => ({ key, label: DATE_FORMAT_PRESETS[key].label }));
+}
 
-/**
- * Returns just the example portion for a given key — i.e. how the reference date
- * renders with that pattern. The relative sentinel yields a deterministic
- * "2 days ago". Any valid date-fns pattern is formatted (so a stored value written
- * via the SDK, or a preset removed from the list, still renders); an invalid pattern
- * is returned verbatim.
- */
-export function formatDateFormatExample(key: string, referenceDate: Date = new Date()): string {
-  if (key === RELATIVE_DATE_FORMAT) {
-    return formatDistance(subDays(referenceDate, 2), referenceDate, { addSuffix: true });
-  }
-  try {
-    return format(referenceDate, key);
-  } catch {
-    return key;
-  }
+/** The date-fns pattern for a semantic key, falling back to the default (mirrors the backend). */
+function patternForKey(key: string): string {
+  return (
+    (DATE_FORMAT_PRESETS as Record<string, DateFormatPresetDef>)[key]?.pattern ??
+    DATE_FORMAT_PRESETS[DEFAULT_DATE_FORMAT].pattern
+  );
+}
+
+/** Human label for a semantic key, falling back to the raw key when it is unknown. */
+export function dateFormatLabel(key: string): string {
+  return (DATE_FORMAT_PRESETS as Record<string, DateFormatPresetDef>)[key]?.label ?? key;
 }
 
 /**
- * Builds the preset list. The label is the pattern/sentinel itself (key === label),
- * e.g. "yyyy-MM-dd HH:mm", "dd/MM/yyyy", "relative". A live example of the selected
- * pattern is rendered next to the control via {@link formatDateFormatExample}.
+ * Renders `referenceDate` the way the given semantic key formats dates — the live example shown
+ * beside the control. An unknown/invalid key falls back to the default pattern, so a value written
+ * by an out-of-date client or the SDK still yields a real example.
  */
-export function buildDateFormatPresets(): Array<DateFormatPreset> {
-  return DATE_FORMAT_KEYS.map((key) => ({ key, label: key }));
+export function formatDateFormatExample(key: string, referenceDate: Date = new Date()): string {
+  return format(referenceDate, patternForKey(key));
 }

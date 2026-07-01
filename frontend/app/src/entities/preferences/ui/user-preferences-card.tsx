@@ -6,7 +6,10 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { formatDateFormatExample } from "@/entities/preferences/domain/date-format-presets";
+import {
+  dateFormatLabel,
+  formatDateFormatExample,
+} from "@/entities/preferences/domain/date-format-presets";
 import type { ResolvedPreference } from "@/entities/preferences/domain/types";
 import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
 import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
@@ -28,7 +31,9 @@ function browserTimezone(): string {
 }
 
 function presetExample(value: string, referenceDate: Date) {
-  return `${formatDateFormatExample(value, referenceDate)} (${value})`;
+  // `value` is a semantic key (e.g. "EU_DATETIME"); show its live example plus the human label,
+  // never the raw key — e.g. "01/07/2026 14:30 (dd/MM/yyyy HH:mm)".
+  return `${formatDateFormatExample(value, referenceDate)} (${dateFormatLabel(value)})`;
 }
 
 /**
@@ -75,8 +80,8 @@ export function UserPreferencesCard() {
   const preferences = effectiveQuery.data;
 
   // The (i) tooltip reads the resolved source directly. For the date-format field a
-  // raw pattern is unhelpful in prose, so when it resolves to a concrete value we
-  // render it as a live preset example (e.g. "30/06/2026 (dd/MM/yyyy)").
+  // raw semantic key is unhelpful in prose, so when it resolves to a concrete value we
+  // render it as a live preset example (e.g. "30/06/2026 14:30 (dd/MM/yyyy HH:mm)").
   const dateFormatResolved: ResolvedPreference = {
     source: preferences.dateFormat.source,
     value: preferences.dateFormat.value
@@ -120,6 +125,9 @@ export function UserPreferencesCard() {
                 message={error instanceof Error ? error.message : "Failed to update preferences"}
               />
             );
+            // Re-throw so the shared Form does not run its post-submit reset(): a failed update
+            // must keep the form dirty with the unsaved values, not look as though it saved.
+            throw error;
           }
         }}
         isSubmitDisabled={updatePreferences.isPending}

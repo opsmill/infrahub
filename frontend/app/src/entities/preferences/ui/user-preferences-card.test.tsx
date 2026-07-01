@@ -13,7 +13,8 @@ vi.mock("@/entities/preferences/domain/upsert-my-user-preference");
 
 const baseEffective: EffectivePreferences = {
   // No personal override → both fields resolve to the org default (source "global").
-  dateFormat: { value: "dd/MM/yyyy", source: "global" },
+  // date_format is a semantic key (see DateFormatKey), not a pattern.
+  dateFormat: { value: "EU_DATETIME", source: "global" },
   timezone: { value: "Europe/Paris", source: "global" },
   canEditGlobalPreferences: false,
 };
@@ -131,13 +132,13 @@ describe("UserPreferencesCard", () => {
     // Open the date-format Combobox; its options are cmdk role="option" entries.
     await component.getByRole("combobox", { name: /date format/i }).click();
 
-    // The option label is the pattern/sentinel itself, not a live example. The
-    // "yyyy-MM-dd HH:mm" pattern remains a selectable preset (just not THE default).
+    // The option label is the human-facing pattern text, not a live example. The stored value is
+    // the semantic key behind the label.
     // exact: true — otherwise "yyyy-MM-dd HH:mm" also matches the "yyyy-MM-dd HH:mm:ss" preset.
     await expect
       .element(component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }))
       .toBeVisible();
-    await expect.element(component.getByRole("option", { name: "relative" })).toBeVisible();
+    await expect.element(component.getByRole("option", { name: "dd/MM/yyyy HH:mm" })).toBeVisible();
   });
 
   test("shows a live example next to the date-format control that updates on selection", async () => {
@@ -152,17 +153,17 @@ describe("UserPreferencesCard", () => {
     await expect.element(component.getByText("Example: 2026-06-30 14:30")).toBeVisible();
 
     // Switching the selection updates the example deterministically.
-    await selectComboboxOption(component, /date format/i, "relative");
-    await expect.element(component.getByText("Example: 2 days ago")).toBeVisible();
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
   });
 
   test("renders the live example inline, on the same row as the date-format control", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await selectComboboxOption(component, /date format/i, "relative");
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
 
     const combobox = component.getByRole("combobox", { name: /date format/i }).element();
-    const example = component.getByText("Example: 2 days ago").element();
+    const example = component.getByText("Example: 30/06/2026 14:30").element();
 
     // The example and the combobox share the same horizontal row container
     // ([combobox] [example] [(i)]), rather than the example sitting on a row below.
@@ -182,8 +183,8 @@ describe("UserPreferencesCard", () => {
   test("hides the example again when switching back to Automatic (inherit)", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await selectComboboxOption(component, /date format/i, "relative");
-    await expect.element(component.getByText("Example: 2 days ago")).toBeVisible();
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
 
     await selectComboboxOption(component, /date format/i, "Automatic");
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
@@ -192,7 +193,7 @@ describe("UserPreferencesCard", () => {
   test("pre-fills the form from the caller's own override", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "relative", source: "user" },
+      dateFormat: { value: "EU_DATETIME", source: "user" },
       timezone: { value: "UTC", source: "user" },
     });
 
@@ -204,7 +205,7 @@ describe("UserPreferencesCard", () => {
       .toHaveTextContent("UTC");
     await expect
       .element(component.getByRole("combobox", { name: /date format/i }))
-      .toHaveTextContent("relative");
+      .toHaveTextContent("dd/MM/yyyy HH:mm");
   });
 
   test("does not render the below-input source/inheritance sentence", async () => {
@@ -238,7 +239,7 @@ describe("UserPreferencesCard", () => {
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
 
     // No user override + global set → the date-format tooltip resolves to the org
-    // default (a live example of the frozen date with the inherited pattern).
+    // default (a live example of the frozen date plus the inherited format's label).
     const triggers = component.getByRole("button", { name: "Where this value comes from" });
     await initPointerTracking(component.locator);
     await triggers.first().hover();
@@ -246,7 +247,7 @@ describe("UserPreferencesCard", () => {
     await expect
       .element(
         component.getByRole("tooltip", {
-          name: /from the organisation default: 30\/06\/2026 \(dd\/MM\/yyyy\)/i,
+          name: /from the organisation default: 30\/06\/2026 14:30 \(dd\/MM\/yyyy HH:mm\)/i,
         })
       )
       .toBeVisible();
@@ -255,7 +256,7 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip reflects the user's own preference when an override is set", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "relative", source: "user" },
+      dateFormat: { value: "EU_DATETIME", source: "user" },
       timezone: { value: "UTC", source: "user" },
     });
 
@@ -301,7 +302,7 @@ describe("UserPreferencesCard", () => {
     await expect.element(component.getByRole("button", { name: "Save" })).toBeDisabled();
 
     // Select by the stable preset key, not the (date-dependent) label.
-    await selectComboboxOption(component, /date format/i, "relative");
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
   });
@@ -310,12 +311,12 @@ describe("UserPreferencesCard", () => {
     const component = await render(<UserPreferencesCard />);
 
     // Select by the stable preset key, not the (date-dependent) label.
-    await selectComboboxOption(component, /date format/i, "relative");
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
       expect(upsertMyUserPreference).toHaveBeenCalledWith({
-        dateFormat: "relative",
+        dateFormat: "EU_DATETIME",
         timezone: null,
       });
     });
@@ -324,7 +325,7 @@ describe("UserPreferencesCard", () => {
   test("selecting 'Automatic' clears the override with an explicit-null upsert", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "relative", source: "user" },
+      dateFormat: { value: "EU_DATETIME", source: "user" },
       timezone: { value: "UTC", source: "user" },
     });
 
@@ -333,7 +334,7 @@ describe("UserPreferencesCard", () => {
     // Pre-filled from the override; switching back to Automatic resets to inherit.
     await expect
       .element(component.getByRole("combobox", { name: /date format/i }))
-      .toHaveTextContent("relative");
+      .toHaveTextContent("dd/MM/yyyy HH:mm");
 
     await selectComboboxOption(component, /date format/i, "Automatic");
     await component.getByRole("button", { name: "Save" }).click();
@@ -350,7 +351,7 @@ describe("UserPreferencesCard", () => {
   test("no longer renders a separate 'reset to global' button (Automatic replaces it)", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "relative", source: "user" },
+      dateFormat: { value: "EU_DATETIME", source: "user" },
       timezone: { value: "Europe/Paris", source: "global" },
     });
 
@@ -375,12 +376,12 @@ describe("UserPreferencesCard", () => {
     ).toHaveLength(0);
 
     // Select by the stable preset key, not the (date-dependent) label.
-    await selectComboboxOption(component, /date format/i, "relative");
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
       expect(upsertMyUserPreference).toHaveBeenCalledWith({
-        dateFormat: "relative",
+        dateFormat: "EU_DATETIME",
         timezone: null,
       });
     });
