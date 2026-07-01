@@ -25,11 +25,7 @@ export function Component() {
           All tasks
         </Link>
 
-        {taskData && (
-          <div className="ml-auto flex items-center gap-2 p-2">
-            <TaskActions task={taskData} />
-          </div>
-        )}
+        {taskData && <TaskActions task={taskData} className="ml-auto p-2" />}
       </div>
 
       <TaskItemDetails />

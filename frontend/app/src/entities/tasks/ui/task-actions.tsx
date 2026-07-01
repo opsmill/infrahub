@@ -10,6 +10,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
+import { classNames } from "@/shared/utils/common";
 
 import type { cancelTask } from "@/entities/tasks/domain/cancel-task/cancel-task";
 import type { retryTask } from "@/entities/tasks/domain/retry-task/retry-task";
@@ -38,7 +39,7 @@ const formatState = (state?: string | null) => {
 const isActionAvailable = (task: TaskActionsTask, action: string) =>
   (task.available_actions ?? []).some((entry) => entry?.action === action && entry?.available);
 
-export const TaskActions = ({ task }: { task: TaskActionsTask }) => {
+export const TaskActions = ({ task, className }: { task: TaskActionsTask; className?: string }) => {
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const [isRetryConfirmOpen, setIsRetryConfirmOpen] = useState(false);
@@ -86,7 +87,7 @@ export const TaskActions = ({ task }: { task: TaskActionsTask }) => {
   const canCancel = isActionAvailable(task, "CANCEL");
 
   return (
-    <>
+    <div className={classNames("flex items-center gap-2", className)}>
       {canRetry && (
         <Button
           variant="outline"
@@ -136,6 +137,6 @@ export const TaskActions = ({ task }: { task: TaskActionsTask }) => {
         isLoading={cancelMutation.isPending}
         onConfirm={() => cancelMutation.mutate({ id: task.id as string })}
       />
-    </>
+    </div>
   );
 };
