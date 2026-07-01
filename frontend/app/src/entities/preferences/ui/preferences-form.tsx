@@ -194,6 +194,9 @@ export function PreferencesForm({
                 automaticOption={automaticOption}
               />
             </div>
+            {/* Spacer so the (i) icon sits at the far right, aligned with the date-format
+                row's (i) (which the flex-1 example pushes there). */}
+            <div className="flex-1" />
             <SourceInfo message={timezoneSourceTooltip} />
           </div>
         </DetailRow>
