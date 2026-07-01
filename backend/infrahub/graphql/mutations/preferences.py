@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from graphene import Boolean, Mutation, String
+from graphene import Argument, Boolean, Mutation, String
 from typing_extensions import Self
 
 from infrahub import lock
@@ -15,7 +15,9 @@ from infrahub.core.preferences import (
     UserPreference,
 )
 from infrahub.database import retry_db_transaction
-from infrahub.exceptions import PermissionDeniedError
+from infrahub.exceptions import PermissionDeniedError, ValidationError
+
+from ..queries.preferences import SCOPE_EFFECTIVE, SCOPE_GLOBAL, SCOPE_USER, PreferenceScope
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -41,15 +43,22 @@ class _Unset(Enum):
 _UNSET = _Unset.token
 
 
-class InfrahubUserPreferenceUpsert(Mutation):
-    """Upsert the calling account's own UserPreference row.
+class InfrahubSetPreferences(Mutation):
+    """Write preferences on a single axis — the requested `scope` — using typed StandardNode fields.
 
-    The mutation never accepts an account/target argument: it always operates on the row owned by
-    `account_session.account_id`, so there is no path to write another user's preferences. The row
-    is lazily created on first write. A field passed as explicit `null` resets it.
+    scope=USER   → the calling account's OWN UserPreference row only (bound to
+                   account_session.account_id, no account argument, so there is no path to write
+                   another user's preferences). Lazily created on first write, per-account lock.
+    scope=GLOBAL → the org-wide GlobalPreference singleton, gated on manage_global_preferences
+                   (super admins bypass via the permission manager) checked BEFORE any read.
+    scope=EFFECTIVE → not writable (the resolved view is read-only); rejected fail-closed.
+
+    The _UNSET sentinel means an omitted argument leaves the field unchanged while an explicit
+    `null` resets it.
     """
 
     class Arguments:
+        scope = Argument(PreferenceScope, required=True)
         date_format = String(required=False)
         timezone = String(required=False)
 
@@ -58,26 +67,51 @@ class InfrahubUserPreferenceUpsert(Mutation):
     timezone = String(required=False)
 
     @classmethod
-    @retry_db_transaction(name="user_preference_upsert")
+    @retry_db_transaction(name="set_preferences")
     async def mutate(
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
+        scope: str,
         date_format: str | _Unset | None = _UNSET,
         timezone: str | _Unset | None = _UNSET,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
+        # Fail-closed: reject anonymous/unauthenticated sessions before any scope-specific logic.
         if not graphql_context.account_session or not graphql_context.account_session.authenticated:
             raise PermissionDeniedError("This operation requires an authenticated account")
 
         account_id = graphql_context.account_session.account_id
 
+        if scope == SCOPE_USER:
+            return await cls._set_user(
+                graphql_context, account_id=account_id, date_format=date_format, timezone=timezone
+            )
+        if scope == SCOPE_GLOBAL:
+            return await cls._set_global(
+                graphql_context, account_id=account_id, date_format=date_format, timezone=timezone
+            )
+        if scope == SCOPE_EFFECTIVE:
+            # The resolved view is a read-only projection; there is nothing concrete to write.
+            raise ValidationError("The EFFECTIVE scope is read-only; write to USER or GLOBAL instead")
+
+        raise ValidationError(f"Unsupported preference scope: {scope}")  # pragma: no cover
+
+    @classmethod
+    async def _set_user(
+        cls,
+        graphql_context: GraphqlContext,
+        account_id: str,
+        date_format: str | _Unset | None,
+        timezone: str | _Unset | None,
+    ) -> Self:
+        # account_id is the caller's own (account_session.account_id); there is no account argument,
+        # so there is no path to write another user's preferences.
         # Per-account distributed lock: the read-create-or-update-save block below is not atomic on
         # its own, so concurrent first-upserts for the same account could otherwise each see "no row"
         # and create a duplicate (and concurrent updates could lose writes). Keyed on account_id so
-        # distinct accounts never contend. The effective-query READ path (get_for_account) stays
-        # lock-free.
+        # distinct accounts never contend. The READ path (get_for_account) stays lock-free.
         async with lock.registry.get(name=account_id, namespace=USER_PREFERENCE_LOCK_NAMESPACE, local=False):
             async with graphql_context.db.start_transaction() as db:
                 obj = await UserPreference.get_for_account(db=db, account_id=account_id)
@@ -93,36 +127,16 @@ class InfrahubUserPreferenceUpsert(Mutation):
 
         return cls(ok=True, date_format=obj.date_format, timezone=obj.timezone)  # type: ignore[call-arg]
 
-
-class InfrahubGlobalPreferenceUpdate(Mutation):
-    """Update the GlobalPreference singleton.
-
-    Gated on `manage_global_preferences` (super admins bypass via the permission manager), checked
-    imperatively before any write. The singleton is lazily materialised by `get_global`.
-    """
-
-    class Arguments:
-        date_format = String(required=False)
-        timezone = String(required=False)
-
-    ok = Boolean()
-    date_format = String(required=False)
-    timezone = String(required=False)
-
     @classmethod
-    @retry_db_transaction(name="global_preference_update")
-    async def mutate(
+    async def _set_global(
         cls,
-        root: dict,  # noqa: ARG003
-        info: GraphQLResolveInfo,
-        date_format: str | _Unset | None = _UNSET,
-        timezone: str | _Unset | None = _UNSET,
+        graphql_context: GraphqlContext,
+        account_id: str,
+        date_format: str | _Unset | None,
+        timezone: str | _Unset | None,
     ) -> Self:
-        graphql_context: GraphqlContext = info.context
-
-        if not graphql_context.account_session or not graphql_context.account_session.authenticated:
-            raise PermissionDeniedError("This operation requires an authenticated account")
-
+        # Gated: raise BEFORE any read-modify-write (fail-closed). Super admins bypass via the
+        # permission manager.
         graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
 
         # Serialise the singleton read-modify-write: GlobalPreference.save() rewrites the whole node,
@@ -140,6 +154,6 @@ class InfrahubGlobalPreferenceUpdate(Mutation):
                 if timezone is not _UNSET:
                     obj.timezone = timezone
 
-                await obj.save(db=db, user_id=graphql_context.account_session.account_id)
+                await obj.save(db=db, user_id=account_id)
 
         return cls(ok=True, date_format=obj.date_format, timezone=obj.timezone)  # type: ignore[call-arg]

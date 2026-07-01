@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from graphene import Boolean, Enum, Field, List, NonNull, ObjectType, String
+from graphene import Argument, Boolean, Enum, Field, List, NonNull, ObjectType, String
 
 from infrahub.core.preferences import MANAGE_GLOBAL_PREFERENCES_PERMISSION, GlobalPreference, UserPreference
 from infrahub.exceptions import PermissionDeniedError
@@ -15,11 +15,32 @@ if TYPE_CHECKING:
 PREFERENCE_ATTRIBUTES = ("date_format", "timezone")
 
 
+# Scope string values. Kept as plain constants (not read off the graphene Enum members via
+# `.value`) because graphene's Enum metaclass makes static type-checkers treat members as `str`,
+# which breaks `.value`. Graphene passes these string values to the resolver/mutation at runtime.
+SCOPE_EFFECTIVE = "effective"
+SCOPE_GLOBAL = "global"
+SCOPE_USER = "user"
+
+
+class PreferenceScope(Enum):
+    """Which axis of the preferences store a read/write operates on.
+
+    EFFECTIVE = the caller's resolved view (user-else-global-else-default), read-only.
+    GLOBAL    = the org-wide GlobalPreference singleton's raw values (manage_global_preferences).
+    USER      = the caller's OWN raw UserPreference values (account-bound, never another account).
+    """
+
+    EFFECTIVE = SCOPE_EFFECTIVE
+    GLOBAL = SCOPE_GLOBAL
+    USER = SCOPE_USER
+
+
 class PreferenceSource(Enum):
     """Where a resolved preference value came from.
 
-    USER    = the caller's OWN override.
-    GLOBAL  = the org-wide GlobalPreference singleton.
+    USER    = the caller's OWN override (or a raw USER-scope read).
+    GLOBAL  = the org-wide GlobalPreference singleton (or a raw GLOBAL-scope read).
     DEFAULT = nothing is stored anywhere; the client applies its built-in default.
     """
 
@@ -29,10 +50,10 @@ class PreferenceSource(Enum):
 
 
 class PreferenceEntryType(ObjectType):
-    """A single resolved preference: its key, the resolved value, and where it came from.
+    """A single preference: its key, the value, and where it came from.
 
-    `value` is null only when `source` is DEFAULT (nothing stored anywhere). Consumers read
-    `value` + `source` directly and never compare user/global themselves.
+    For EFFECTIVE reads `value` is null only when `source` is DEFAULT. For raw USER/GLOBAL reads
+    `value` may be null (nothing stored for that key) while `source` still reports the scope.
     """
 
     key = Field(String, required=True)
@@ -40,83 +61,97 @@ class PreferenceEntryType(ObjectType):
     source = Field(PreferenceSource, required=True)
 
 
-class GlobalPreferencesType(ObjectType):
-    """Raw org-wide defaults from the GlobalPreference singleton (admin-only org-defaults editor).
+class PreferencesType(ObjectType):
+    """Per-key preference entries for the requested scope plus the org-defaults edit gate.
 
-    Exposed separately from the resolved `preferences` so the "Organisation defaults" editor
-    edits the org-wide default rather than an admin's personal override. Safe for any
-    authenticated account: it is org-wide, never account-bound.
-    """
-
-    date_format = Field(String, required=False)
-    timezone = Field(String, required=False)
-
-
-class EffectivePreferencesType(ObjectType):
-    """Computed view merging the GlobalPreference singleton with the caller's UserPreference.
-
-    `preferences` is the authoritative per-key resolution (value + source); `global` exposes the
-    raw org defaults for the admin editor; `can_edit_global_preferences` gates that editor.
-
-    Privacy: `global` is org-wide and safe to expose to any authenticated account; the resolved
-    `preferences` value is account-bound (the query reads account_session.account_id only), so no
-    account ever sees another account's user preferences.
+    Privacy: EFFECTIVE and USER entries are account-bound (the resolver reads only
+    account_session.account_id), so no account ever sees another account's user preferences.
+    GLOBAL entries are org-wide and returned only after the manage_global_preferences gate.
     """
 
     preferences = Field(List(of_type=NonNull(PreferenceEntryType), required=True), required=True)
-    # `global` is a Python keyword, so the attribute is `global_values` and the GraphQL field
-    # name is pinned to `global` via graphene's `name=`.
-    global_values = Field(GlobalPreferencesType, required=True, name="global")
     can_edit_global_preferences = Field(Boolean, required=True)
 
 
-async def resolve_effective_preferences(
+def _entry(key: str, value: str | None, source: object) -> dict:
+    # `source` is a PreferenceSource member; graphene serialises it to the GraphQL enum name.
+    return {"key": key, "value": value, "source": source}
+
+
+async def resolve_preferences(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
+    scope: str = SCOPE_EFFECTIVE,
 ) -> dict:
     graphql_context: GraphqlContext = info.context
 
-    # Account-scoped view: reject anonymous sessions, whose account_id is empty/untrusted.
-    # Unlike resolve_account_tokens this stays open to API-token sessions (their account_id is
-    # trusted); the JWT-only guard there exists to keep token management off API tokens.
+    # Fail-closed: reject anonymous/unauthenticated sessions before any scope-specific logic.
+    # Their account_id is empty/untrusted. Stays open to API-token sessions (trusted account_id),
+    # matching the effective read's original guard.
     if not graphql_context.account_session or not graphql_context.account_session.authenticated:
         raise PermissionDeniedError("This operation requires an authenticated account")
 
     db = graphql_context.db
+    account_id = graphql_context.account_session.account_id
 
-    # StandardNode reads (GetList/GetItem) carry no branch filter, so these lookups are global /
-    # branch-agnostic regardless of the request branch on graphql_context.db (same as Branch's own
-    # resolver). Preferences intentionally have no per-branch semantics.
-    global_preference = await GlobalPreference.get_global(db=db)
-    user_preference = await UserPreference.get_for_account(db=db, account_id=graphql_context.account_session.account_id)
+    # Computed for every scope so the client can gate the org-defaults editor regardless of which
+    # view it just read.
+    can_edit_global_preferences = graphql_context.active_permissions.has_permission(
+        permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION
+    )
 
-    preferences: list[dict[str, str | None]] = []
-    for attribute_name in PREFERENCE_ATTRIBUTES:
-        # user_value = caller's OWN override (or null); global_value = the org-wide singleton's
-        # value (or null). The resolved value is user-else-global, with an explicit source so
-        # consumers never compare the two themselves.
-        user_value: str | None = getattr(user_preference, attribute_name) if user_preference else None
-        global_value: str | None = getattr(global_preference, attribute_name)
-        if user_value is not None:
-            value, source = user_value, PreferenceSource.USER
-        elif global_value is not None:
-            value, source = global_value, PreferenceSource.GLOBAL
-        else:
-            value, source = None, PreferenceSource.DEFAULT
-        preferences.append({"key": attribute_name, "value": value, "source": source})
+    preferences: list[dict]
 
-    return {
-        "preferences": preferences,
-        # Raw org-wide defaults for the admin org-defaults editor (never account-bound).
-        "global_values": {attr: getattr(global_preference, attr) for attr in PREFERENCE_ATTRIBUTES},
-        "can_edit_global_preferences": graphql_context.active_permissions.has_permission(
-            permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION
-        ),
-    }
+    if scope == SCOPE_EFFECTIVE:
+        # Any authenticated caller. The global singleton is read INTERNALLY (no permission gate):
+        # the caller only ever gets their own resolved view, never the raw org values as such.
+        # StandardNode reads carry no branch filter, so these lookups are branch-agnostic.
+        global_preference = await GlobalPreference.get_global(db=db)
+        user_preference = await UserPreference.get_for_account(db=db, account_id=account_id)
+        preferences = []
+        for attribute_name in PREFERENCE_ATTRIBUTES:
+            user_value: str | None = getattr(user_preference, attribute_name) if user_preference else None
+            global_value: str | None = getattr(global_preference, attribute_name)
+            if user_value is not None:
+                preferences.append(_entry(attribute_name, user_value, PreferenceSource.USER))
+            elif global_value is not None:
+                preferences.append(_entry(attribute_name, global_value, PreferenceSource.GLOBAL))
+            else:
+                preferences.append(_entry(attribute_name, None, PreferenceSource.DEFAULT))
+
+    elif scope == SCOPE_USER:
+        # The caller's OWN raw values only, bound to account_session.account_id via get_for_account.
+        # There is no account argument, so account B can never read account A's row. A missing row
+        # yields null values (source still USER).
+        user_preference = await UserPreference.get_for_account(db=db, account_id=account_id)
+        preferences = [
+            _entry(
+                attribute_name,
+                getattr(user_preference, attribute_name) if user_preference else None,
+                PreferenceSource.USER,
+            )
+            for attribute_name in PREFERENCE_ATTRIBUTES
+        ]
+
+    elif scope == SCOPE_GLOBAL:
+        # Gated: raise BEFORE reading/returning any raw org value (fail-closed). Super admins bypass
+        # via the permission manager.
+        graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
+        global_preference = await GlobalPreference.get_global(db=db)
+        preferences = [
+            _entry(attribute_name, getattr(global_preference, attribute_name), PreferenceSource.GLOBAL)
+            for attribute_name in PREFERENCE_ATTRIBUTES
+        ]
+
+    else:  # pragma: no cover - graphene enum coercion guarantees a known member.
+        raise PermissionDeniedError(f"Unsupported preference scope: {scope}")
+
+    return {"preferences": preferences, "can_edit_global_preferences": can_edit_global_preferences}
 
 
-EffectivePreferences = Field(
-    EffectivePreferencesType,
-    resolver=resolve_effective_preferences,
+Preferences = Field(
+    PreferencesType,
+    scope=Argument(PreferenceScope, default_value=SCOPE_EFFECTIVE),
+    resolver=resolve_preferences,
     required=True,
 )

@@ -22,7 +22,7 @@ from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.display_label import UpdateDisplayLabel
 from .mutations.generator import GeneratorDefinitionRequestRun
 from .mutations.hfid import UpdateHFID
-from .mutations.preferences import InfrahubGlobalPreferenceUpdate, InfrahubUserPreferenceUpsert
+from .mutations.preferences import InfrahubSetPreferences
 from .mutations.profile import InfrahubProfilesRefresh
 from .mutations.proposed_change import (
     ProposedChangeCheckForApprovalRevoke,
@@ -38,7 +38,6 @@ from .queries import (
     AccountPermissions,
     AccountToken,
     BranchQueryList,
-    EffectivePreferences,
     InfrahubBranchQueryList,
     InfrahubGraphQLQueryReport,
     InfrahubInfo,
@@ -50,6 +49,7 @@ from .queries import (
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
     InfrahubStatus,
+    Preferences,
     ProposedChangeAvailableActions,
     Relationship,
 )
@@ -70,7 +70,7 @@ class InfrahubBaseQuery(ObjectType):
     Relationship = Relationship
 
     InfrahubBranch = InfrahubBranchQueryList
-    InfrahubEffectivePreferences = EffectivePreferences
+    InfrahubPreferences = Preferences
     InfrahubGraphQLQueryReport = InfrahubGraphQLQueryReport
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
@@ -134,5 +134,4 @@ class InfrahubBaseMutation(ObjectType):
     CoreProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
     InfrahubProfilesRefresh = InfrahubProfilesRefresh.Field()
 
-    InfrahubUserPreferenceUpsert = InfrahubUserPreferenceUpsert.Field()
-    InfrahubGlobalPreferenceUpdate = InfrahubGlobalPreferenceUpdate.Field()
+    InfrahubSetPreferences = InfrahubSetPreferences.Field()

@@ -16,19 +16,9 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
-USER_UPSERT = """
-mutation ($date_format: String, $timezone: String) {
-  InfrahubUserPreferenceUpsert(date_format: $date_format, timezone: $timezone) {
-    ok
-    date_format
-    timezone
-  }
-}
-"""
-
-GLOBAL_UPDATE = """
-mutation ($date_format: String, $timezone: String) {
-  InfrahubGlobalPreferenceUpdate(date_format: $date_format, timezone: $timezone) {
+SET_PREFERENCES = """
+mutation ($scope: PreferenceScope!, $date_format: String, $timezone: String) {
+  InfrahubSetPreferences(scope: $scope, date_format: $date_format, timezone: $timezone) {
     ok
     date_format
     timezone
@@ -41,7 +31,6 @@ async def run_mutation(
     db: InfrahubDatabase,
     branch: Branch,
     account_session: AccountSession | None,
-    query: str,
     variables: dict[str, Any],
 ) -> ExecutionResult:
     branch.update_schema_hash()
@@ -50,7 +39,7 @@ async def run_mutation(
     )
     return await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=SET_PREFERENCES,
         context_value=gql_params.context,
         root_value=None,
         variable_values=variables,
@@ -79,9 +68,9 @@ async def _grant_manage_global_preferences(db: InfrahubDatabase, account: Node) 
 
 
 # --------------------------------------------------------------------------------------------
-# InfrahubUserPreferenceUpsert
+# scope=USER — caller's OWN row only; lazy create + idempotent; explicit-null reset.
 # --------------------------------------------------------------------------------------------
-async def test_user_upsert_lazy_create_then_update(
+async def test_user_lazy_create_then_update(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
@@ -94,12 +83,11 @@ async def test_user_upsert_lazy_create_then_update(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        query=USER_UPSERT,
-        variables={"date_format": "dd/MM/yyyy", "timezone": "Europe/Paris"},
+        variables={"scope": "USER", "date_format": "dd/MM/yyyy", "timezone": "Europe/Paris"},
     )
     assert result.errors is None
-    assert result.data["InfrahubUserPreferenceUpsert"]["ok"] is True
-    assert result.data["InfrahubUserPreferenceUpsert"]["date_format"] == "dd/MM/yyyy"
+    assert result.data["InfrahubSetPreferences"]["ok"] is True
+    assert result.data["InfrahubSetPreferences"]["date_format"] == "dd/MM/yyyy"
 
     created = await UserPreference.get_for_account(db=db, account_id=first_account.id)
     assert created is not None
@@ -110,11 +98,10 @@ async def test_user_upsert_lazy_create_then_update(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        query=USER_UPSERT,
-        variables={"timezone": "UTC"},
+        variables={"scope": "USER", "timezone": "UTC"},
     )
     assert result.errors is None
-    assert result.data["InfrahubUserPreferenceUpsert"]["timezone"] == "UTC"
+    assert result.data["InfrahubSetPreferences"]["timezone"] == "UTC"
 
     updated = await UserPreference.get_for_account(db=db, account_id=first_account.id)
     assert updated is not None
@@ -125,25 +112,20 @@ async def test_user_upsert_lazy_create_then_update(
     assert len(rows) == 1
 
 
-async def test_user_upsert_repeated_never_creates_second_row(
+async def test_user_repeated_never_creates_second_row(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """Repeated upserts for one account always target the single locked row.
-
-    The per-account distributed lock around get_for_account -> create/update -> save means
-    concurrent (and here, repeated) first-upserts can never fabricate a duplicate row.
-    """
+    """Repeated upserts for one account always target the single locked row."""
     for tz in ("Europe/Paris", "UTC", "America/New_York", "Asia/Tokyo"):
         result = await run_mutation(
             db=db,
             branch=default_branch,
             account_session=session_first_account,
-            query=USER_UPSERT,
-            variables={"timezone": tz},
+            variables={"scope": "USER", "timezone": tz},
         )
         assert result.errors is None
 
@@ -152,24 +134,19 @@ async def test_user_upsert_repeated_never_creates_second_row(
     assert rows[0].timezone == "Asia/Tokyo"
 
 
-async def test_user_upsert_explicit_null_resets_field(
+async def test_user_explicit_null_resets_field(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """Pin the load-bearing graphene behaviour behind "reset to global".
-
-    An explicit null clears a field, while an omitted argument leaves it unchanged
-    (see the _UNSET sentinel in the mutation).
-    """
+    """An explicit null clears a field, while an omitted argument leaves it unchanged."""
     await run_mutation(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        query=USER_UPSERT,
-        variables={"date_format": "dd/MM/yyyy", "timezone": "Europe/Paris"},
+        variables={"scope": "USER", "date_format": "dd/MM/yyyy", "timezone": "Europe/Paris"},
     )
 
     # Explicit null on date_format resets it; timezone omitted stays unchanged.
@@ -177,12 +154,11 @@ async def test_user_upsert_explicit_null_resets_field(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        query=USER_UPSERT,
-        variables={"date_format": None},
+        variables={"scope": "USER", "date_format": None},
     )
     assert result.errors is None
-    assert result.data["InfrahubUserPreferenceUpsert"]["date_format"] is None
-    assert result.data["InfrahubUserPreferenceUpsert"]["timezone"] == "Europe/Paris"
+    assert result.data["InfrahubSetPreferences"]["date_format"] is None
+    assert result.data["InfrahubSetPreferences"]["timezone"] == "Europe/Paris"
 
     reset = await UserPreference.get_for_account(db=db, account_id=first_account.id)
     assert reset is not None
@@ -190,7 +166,7 @@ async def test_user_upsert_explicit_null_resets_field(
     assert reset.timezone == "Europe/Paris"
 
 
-async def test_user_upsert_two_accounts_distinct_rows(
+async def test_user_two_accounts_distinct_rows(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
@@ -199,19 +175,18 @@ async def test_user_upsert_two_accounts_distinct_rows(
     session_first_account: AccountSession,
     session_second_account: AccountSession,
 ) -> None:
+    # No account argument exists on the mutation: each caller can only ever write its own row.
     await run_mutation(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        query=USER_UPSERT,
-        variables={"timezone": "Europe/Paris"},
+        variables={"scope": "USER", "timezone": "Europe/Paris"},
     )
     await run_mutation(
         db=db,
         branch=default_branch,
         account_session=session_second_account,
-        query=USER_UPSERT,
-        variables={"timezone": "America/New_York"},
+        variables={"scope": "USER", "timezone": "America/New_York"},
     )
 
     pref_a = await UserPreference.get_for_account(db=db, account_id=first_account.id)
@@ -223,7 +198,7 @@ async def test_user_upsert_two_accounts_distinct_rows(
     assert pref_b.timezone == "America/New_York"
 
 
-async def test_user_upsert_rejects_unauthenticated(
+async def test_user_rejects_unauthenticated(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
@@ -232,17 +207,16 @@ async def test_user_upsert_rejects_unauthenticated(
         db=db,
         branch=default_branch,
         account_session=None,
-        query=USER_UPSERT,
-        variables={"timezone": "UTC"},
+        variables={"scope": "USER", "timezone": "UTC"},
     )
     assert result.errors is not None
     assert "authenticated" in str(result.errors[0].message).lower()
 
 
 # --------------------------------------------------------------------------------------------
-# InfrahubGlobalPreferenceUpdate
+# scope=GLOBAL — gated on manage_global_preferences; nothing written when denied.
 # --------------------------------------------------------------------------------------------
-async def test_global_update_denied_for_normal_account(
+async def test_global_denied_for_normal_account(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -254,16 +228,15 @@ async def test_global_update_denied_for_normal_account(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        query=GLOBAL_UPDATE,
-        variables={"date_format": "yyyy-MM-dd"},
+        variables={"scope": "GLOBAL", "date_format": "yyyy-MM-dd"},
     )
     assert result.errors is not None
-    # The singleton must not have been mutated.
+    # The singleton must not have been mutated (gate raises BEFORE the read-modify-write).
     global_pref = await GlobalPreference.get_global(db=db)
     assert global_pref.date_format is None
 
 
-async def test_global_update_allowed_for_manager(
+async def test_global_allowed_for_manager(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -277,11 +250,10 @@ async def test_global_update_allowed_for_manager(
         db=db,
         branch=default_branch,
         account_session=session,
-        query=GLOBAL_UPDATE,
-        variables={"date_format": "yyyy-MM-dd", "timezone": "UTC"},
+        variables={"scope": "GLOBAL", "date_format": "yyyy-MM-dd", "timezone": "UTC"},
     )
     assert result.errors is None
-    assert result.data["InfrahubGlobalPreferenceUpdate"]["ok"] is True
+    assert result.data["InfrahubSetPreferences"]["ok"] is True
 
     global_pref = await GlobalPreference.get_global(db=db)
     assert global_pref.date_format == "yyyy-MM-dd"
@@ -289,7 +261,7 @@ async def test_global_update_allowed_for_manager(
     assert len(await GlobalPreference.get_list(db=db)) == 1
 
 
-async def test_global_update_allowed_for_super_admin(
+async def test_global_allowed_for_super_admin(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -301,17 +273,16 @@ async def test_global_update_allowed_for_super_admin(
         db=db,
         branch=default_branch,
         account_session=session_admin,
-        query=GLOBAL_UPDATE,
-        variables={"timezone": "Europe/London"},
+        variables={"scope": "GLOBAL", "timezone": "Europe/London"},
     )
     assert result.errors is None
-    assert result.data["InfrahubGlobalPreferenceUpdate"]["ok"] is True
+    assert result.data["InfrahubSetPreferences"]["ok"] is True
 
     global_pref = await GlobalPreference.get_global(db=db)
     assert global_pref.timezone == "Europe/London"
 
 
-async def test_global_update_preserves_other_field(
+async def test_global_preserves_other_field(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -323,23 +294,44 @@ async def test_global_update_preserves_other_field(
 
     Each update is a serialized read-modify-write under the singleton lock, so updating only
     `timezone` re-reads the row and leaves a previously-set `date_format` intact (no lost write).
+    This pins the concurrency-safety guarantee of the singleton lock.
     """
     await run_mutation(
         db=db,
         branch=default_branch,
         account_session=session_admin,
-        query=GLOBAL_UPDATE,
-        variables={"date_format": "yyyy-MM-dd"},
+        variables={"scope": "GLOBAL", "date_format": "yyyy-MM-dd"},
     )
     await run_mutation(
         db=db,
         branch=default_branch,
         account_session=session_admin,
-        query=GLOBAL_UPDATE,
-        variables={"timezone": "UTC"},
+        variables={"scope": "GLOBAL", "timezone": "UTC"},
     )
 
     global_pref = await GlobalPreference.get_global(db=db)
     assert global_pref.date_format == "yyyy-MM-dd"  # preserved across the second update
     assert global_pref.timezone == "UTC"
     assert len(await GlobalPreference.get_list(db=db)) == 1
+
+
+# --------------------------------------------------------------------------------------------
+# scope=EFFECTIVE — read-only, never writable.
+# --------------------------------------------------------------------------------------------
+async def test_effective_scope_rejected(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_first_account,
+        variables={"scope": "EFFECTIVE", "timezone": "UTC"},
+    )
+    assert result.errors is not None
+    assert "read-only" in str(result.errors[0].message).lower()
+    # Nothing was written for the caller.
+    assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
