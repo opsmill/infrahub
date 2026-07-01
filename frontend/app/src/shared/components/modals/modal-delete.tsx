@@ -12,6 +12,8 @@ interface ModalDeleteProps {
   description?: ReactNode;
   onDelete: () => void | Promise<void>;
   isLoading?: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
 export function ModalDelete({
@@ -21,6 +23,8 @@ export function ModalDelete({
   description,
   onDelete,
   isLoading,
+  confirmLabel = "Delete",
+  cancelLabel = "Cancel",
 }: ModalDeleteProps) {
   return (
     <Modal
@@ -42,7 +46,7 @@ export function ModalDelete({
 
       <Row className="justify-end bg-gray-50 p-3">
         <Button variant="outline" onPress={() => onOpenChange(false)} isDisabled={isLoading}>
-          Cancel
+          {cancelLabel}
         </Button>
         <Button
           variant="danger"
@@ -51,7 +55,7 @@ export function ModalDelete({
           isDisabled={isLoading}
           data-testid="modal-delete-confirm"
         >
-          Delete
+          {confirmLabel}
         </Button>
       </Row>
     </Modal>

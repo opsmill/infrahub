@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 import { classNames } from "@/shared/utils/common";
@@ -119,19 +120,15 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
         onConfirm={() => retryMutation.mutate({ id: task.id })}
       />
 
-      <ModalConfirm
+      <ModalDelete
         isOpen={isCancelConfirmOpen}
         onOpenChange={setIsCancelConfirmOpen}
         title={`Cancel "${task.title}" task?`}
         description="This stops the task and skips its remaining retries. It will be marked cancelled and won't run again."
         confirmLabel="Cancel task"
         cancelLabel="Keep task"
-        confirmVariant="danger"
-        icon="mdi:alert"
-        iconClassName="text-red-600"
-        iconContainerClassName="bg-red-100"
         isLoading={cancelMutation.isPending}
-        onConfirm={() => cancelMutation.mutate({ id: task.id })}
+        onDelete={() => cancelMutation.mutate({ id: task.id })}
       />
     </div>
   );
