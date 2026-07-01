@@ -300,6 +300,30 @@
         "type": "object"
       }
     },
+    "MERGE_RECOVERY_REQUIRED": {
+      "description": "The write was rejected because a previous branch merge failed and left the default branch protected. Recovery is required: an administrator must run `infrahub recover`. Unlike MERGE_IN_PROGRESS this is not retryable.",
+      "stability": "evolving",
+      "http_status": 423,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "branch_name": {
+            "title": "Branch Name",
+            "type": "string"
+          },
+          "merging_branch": {
+            "title": "Merging Branch",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_name",
+          "merging_branch"
+        ],
+        "title": "MergeRecoveryRequiredData",
+        "type": "object"
+      }
+    },
     "UNDEFINED_ERROR": {
       "description": "An error not yet covered by the catalogue. Its occurrence indicates a catalogue gap and should be triaged.",
       "stability": "stable",

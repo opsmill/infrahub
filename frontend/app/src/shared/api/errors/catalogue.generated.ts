@@ -41,6 +41,11 @@ export interface MergeInProgressData {
   merging_branch: string;
 }
 
+export interface MergeRecoveryRequiredData {
+  branch_name: string;
+  merging_branch: string;
+}
+
 export interface NodeNotFoundData {
   node_kind: string;
   identifier: string;
@@ -70,6 +75,7 @@ export const ERROR_CODES = {
   BRANCH_NEEDS_REBASE: "BRANCH_NEEDS_REBASE",
   BRANCH_NOT_FOUND: "BRANCH_NOT_FOUND",
   MERGE_IN_PROGRESS: "MERGE_IN_PROGRESS",
+  MERGE_RECOVERY_REQUIRED: "MERGE_RECOVERY_REQUIRED",
   NODE_NOT_FOUND: "NODE_NOT_FOUND",
   PERMISSION_DENIED: "PERMISSION_DENIED",
   SCHEMA_NOT_FOUND: "SCHEMA_NOT_FOUND",
@@ -91,6 +97,7 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   BRANCH_NEEDS_REBASE: 400,
   BRANCH_NOT_FOUND: 400,
   MERGE_IN_PROGRESS: 423,
+  MERGE_RECOVERY_REQUIRED: 423,
   NODE_NOT_FOUND: 404,
   PERMISSION_DENIED: 403,
   SCHEMA_NOT_FOUND: 422,
@@ -109,6 +116,7 @@ export type CatalogueError =
   | { code: typeof ERROR_CODES.BRANCH_NEEDS_REBASE; http_status: number; data: BranchNeedsRebaseData }
   | { code: typeof ERROR_CODES.BRANCH_NOT_FOUND; http_status: number; data: BranchNotFoundData }
   | { code: typeof ERROR_CODES.MERGE_IN_PROGRESS; http_status: number; data: MergeInProgressData }
+  | { code: typeof ERROR_CODES.MERGE_RECOVERY_REQUIRED; http_status: number; data: MergeRecoveryRequiredData }
   | { code: typeof ERROR_CODES.NODE_NOT_FOUND; http_status: number; data: NodeNotFoundData }
   | { code: typeof ERROR_CODES.PERMISSION_DENIED; http_status: number; data: PermissionDeniedData }
   | { code: typeof ERROR_CODES.SCHEMA_NOT_FOUND; http_status: number; data: SchemaNotFoundData }
