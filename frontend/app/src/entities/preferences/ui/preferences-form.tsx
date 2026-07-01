@@ -186,7 +186,7 @@ export function PreferencesForm({
 
         <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>
           <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
+            <div className="w-64 shrink-0">
               <TimezoneField
                 name="timezone"
                 label="Timezone"
