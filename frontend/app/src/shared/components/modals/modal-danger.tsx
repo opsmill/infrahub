@@ -5,27 +5,27 @@ import { Heading } from "react-aria-components";
 
 import { Col, Row } from "@/shared/components/container";
 
-interface ModalDeleteProps {
+interface ModalDangerProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   title: string;
   description?: ReactNode;
-  onDelete: () => void | Promise<void>;
+  onConfirm: () => void | Promise<void>;
   isLoading?: boolean;
   confirmLabel?: string;
   cancelLabel?: string;
 }
 
-export function ModalDelete({
+export function ModalDanger({
   isOpen,
   onOpenChange,
   title,
   description,
-  onDelete,
+  onConfirm,
   isLoading,
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
-}: ModalDeleteProps) {
+}: ModalDangerProps) {
   return (
     <Modal
       isDismissable={!isLoading}
@@ -50,7 +50,7 @@ export function ModalDelete({
         </Button>
         <Button
           variant="danger"
-          onPress={onDelete}
+          onPress={onConfirm}
           isPending={isLoading}
           isDisabled={isLoading}
           data-testid="modal-delete-confirm"

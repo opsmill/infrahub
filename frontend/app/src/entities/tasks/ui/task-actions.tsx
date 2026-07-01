@@ -8,7 +8,7 @@ import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 import { classNames } from "@/shared/utils/common";
@@ -113,14 +113,11 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
         title={`Retry "${task.title}" task?`}
         description={`This creates a new task with the same settings. The current one stays ${formatState(task.state)}. Track progress in the new run.`}
         confirmLabel="Retry"
-        icon="mdi:restore"
-        iconClassName="text-gray-500"
-        iconContainerClassName="bg-gray-100"
         isLoading={retryMutation.isPending}
         onConfirm={() => retryMutation.mutate({ id: task.id })}
       />
 
-      <ModalDelete
+      <ModalDanger
         isOpen={isCancelConfirmOpen}
         onOpenChange={setIsCancelConfirmOpen}
         title={`Cancel "${task.title}" task?`}
@@ -128,7 +125,7 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
         confirmLabel="Cancel task"
         cancelLabel="Keep task"
         isLoading={cancelMutation.isPending}
-        onDelete={() => cancelMutation.mutate({ id: task.id })}
+        onConfirm={() => cancelMutation.mutate({ id: task.id })}
       />
     </div>
   );
