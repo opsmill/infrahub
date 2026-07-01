@@ -125,3 +125,34 @@ class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
         assert final.summary.value == "rnode on romega"
         assert final.display_label == "rnode via romega"
         assert final.hfid == ["rnode"]
+
+    async def test_merge_recomputes_created_reader(self, client: InfrahubClient, profile_schema: dict) -> None:
+        """A node created on the branch must carry every derived family, correct, after merge."""
+        await client.schema.load(schemas=[profile_schema], wait_until_converged=True)
+
+        peer = await client.create(kind=PROFILE_PEER_KIND, data={"name": "gamma"})
+        await peer.save()
+
+        branch = await client.branch.create(branch_name="coalesce-merge-create")
+        # Creation fans out to every derived family on the new node, including the human-friendly id.
+        node = await client.create(kind=PROFILE_NODE_KIND, data={"name": "cnode", "peer": peer}, branch=branch.name)
+        await node.save()
+
+        async def _created_on_branch() -> bool:
+            refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id, branch=branch.name)
+            return refreshed.summary.value == "cnode on gamma"
+
+        await _wait_until(_created_on_branch)
+
+        await client.branch.merge(branch_name=branch.name)
+
+        async def _on_destination() -> bool:
+            refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id)
+            return refreshed.summary.value == "cnode on gamma"
+
+        await _wait_until(_on_destination)
+
+        final = await client.get(kind=PROFILE_NODE_KIND, id=node.id)
+        assert final.summary.value == "cnode on gamma"
+        assert final.display_label == "cnode via gamma"
+        assert final.hfid == ["cnode"]
