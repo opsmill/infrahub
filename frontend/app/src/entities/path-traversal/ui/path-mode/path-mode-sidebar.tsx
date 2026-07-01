@@ -28,6 +28,7 @@ export function PathModeSidebar() {
       maxPaths: params.maxPaths,
       kindFilter: params.kindFilter,
       excludedKinds: params.excludedKinds,
+      shortestPathsOnly: params.shortestPathsOnly,
     },
     { enabled: !!params.source && !!params.destination }
   );
@@ -46,6 +47,17 @@ export function PathModeSidebar() {
         <PathResultsList
           paths={data.paths}
           countLabel={`${data.count} path${data.count !== 1 ? "s" : ""} found`}
+          warning={
+            data.truncated_at_depth != null && (
+              <>
+                The search ran out of budget at depth {data.truncated_at_depth} and stopped there.
+                Paths shorter than {data.truncated_at_depth} hops are complete, but longer paths may
+                be missing. To reach deeper paths, narrow the search space — add &ldquo;Kinds to
+                include&rdquo; or &ldquo;Kinds to exclude&rdquo; filters to prune the graph the
+                search has to explore.
+              </>
+            )
+          }
           selectedIndex={params.selectedPath}
           onSelect={(index) => setParams({ selectedPath: index })}
           variant="blue"

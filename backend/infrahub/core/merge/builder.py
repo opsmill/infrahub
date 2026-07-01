@@ -12,6 +12,7 @@ from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
 
+from .constraints import MergeConstraintValidator
 from .graph_merger import GraphMerger
 from .orchestrator import BranchMergeOrchestrator
 from .post_merge import PostMergeDispatcher
@@ -50,6 +51,14 @@ async def build_branch_merge_orchestrator(
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=source_branch)
     ipam_diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=source_branch)
 
+    schema_analyzer = MergeSchemaAnalyzer(
+        db=db,
+        source_branch=source_branch,
+        destination_branch=destination_branch,
+        diff_repository=diff_repository,
+        schema_manager=registry.schema,
+    )
+    constraint_validator = MergeConstraintValidator(db=db, branch=source_branch, diff_repository=diff_repository)
     graph_merger = GraphMerger(
         db=db,
         source_branch=source_branch,
@@ -58,6 +67,8 @@ async def build_branch_merge_orchestrator(
         diff_merger=diff_merger,
         diff_repository=diff_repository,
         diff_locker=DiffLocker(),
+        schema_analyzer=schema_analyzer,
+        constraint_validator=constraint_validator,
         logger=logger,
     )
     repository_merge_dispatcher = RepositoryMergeDispatcher(
@@ -66,13 +77,6 @@ async def build_branch_merge_orchestrator(
         destination_branch=destination_branch,
         workflow=workflow,
         logger=logger,
-    )
-    schema_analyzer = MergeSchemaAnalyzer(
-        db=db,
-        source_branch=source_branch,
-        destination_branch=destination_branch,
-        diff_repository=diff_repository,
-        schema_manager=registry.schema,
     )
     schema_update_coordinator = SchemaUpdateCoordinator(
         db=db, schema_manager=registry.schema, workflow=workflow, logger=logger

@@ -104,7 +104,7 @@ async def test_effective_global_only_source_global(
     session_first_account: AccountSession,
 ) -> None:
     global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.date_format = "yyyy-MM-dd"
+    global_pref.date_format = "ISO_DATETIME"
     global_pref.timezone = "UTC"
     await global_pref.save(db=db)
 
@@ -115,7 +115,7 @@ async def test_effective_global_only_source_global(
     assert result.data is not None
     entries = _entries_by_key(result.data["InfrahubPreferences"])
     # No user override: resolved value comes from global, source GLOBAL.
-    assert entries["date_format"] == {"key": "date_format", "value": "yyyy-MM-dd", "source": "GLOBAL"}
+    assert entries["date_format"] == {"key": "date_format", "value": "ISO_DATETIME", "source": "GLOBAL"}
     assert entries["timezone"] == {"key": "timezone", "value": "UTC", "source": "GLOBAL"}
     # No user row was fabricated for the fallback.
     assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
@@ -129,18 +129,18 @@ async def test_effective_user_override_source_user(
     session_first_account: AccountSession,
 ) -> None:
     global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.date_format = "yyyy-MM-dd"
+    global_pref.date_format = "ISO_DATETIME"
     global_pref.timezone = "UTC"
     await global_pref.save(db=db)
 
-    await UserPreference(account_id=first_account.id, date_format="dd/MM/yyyy", timezone="Europe/Paris").create(db=db)
+    await UserPreference(account_id=first_account.id, date_format="EU_DATETIME", timezone="Europe/Paris").create(db=db)
 
     result = await run_preferences(db=db, branch=default_branch, account_session=session_first_account)
     assert result.errors is None
     assert result.data is not None
     entries = _entries_by_key(result.data["InfrahubPreferences"])
     # User override wins for both attributes: source USER, value is the user's.
-    assert entries["date_format"] == {"key": "date_format", "value": "dd/MM/yyyy", "source": "USER"}
+    assert entries["date_format"] == {"key": "date_format", "value": "EU_DATETIME", "source": "USER"}
     assert entries["timezone"] == {"key": "timezone", "value": "Europe/Paris", "source": "USER"}
 
 
@@ -158,14 +158,14 @@ async def test_effective_mixed_per_attribute_sources(
     await global_pref.save(db=db)
 
     # User overrides date_format only; timezone falls back to global.
-    await UserPreference(account_id=first_account.id, date_format="dd/MM/yyyy").create(db=db)
+    await UserPreference(account_id=first_account.id, date_format="EU_DATETIME").create(db=db)
 
     result = await run_preferences(db=db, branch=default_branch, account_session=session_first_account)
     assert result.errors is None
     assert result.data is not None
     entries = _entries_by_key(result.data["InfrahubPreferences"])
     # date_format: user override present -> USER.
-    assert entries["date_format"] == {"key": "date_format", "value": "dd/MM/yyyy", "source": "USER"}
+    assert entries["date_format"] == {"key": "date_format", "value": "EU_DATETIME", "source": "USER"}
     # timezone: no user override, global present -> GLOBAL.
     assert entries["timezone"] == {"key": "timezone", "value": "UTC", "source": "GLOBAL"}
 
@@ -260,7 +260,7 @@ async def test_user_scope_returns_own_raw_values(
     global_pref = await GlobalPreference.get_global(db=db)
     global_pref.timezone = "UTC"
     await global_pref.save(db=db)
-    await UserPreference(account_id=first_account.id, date_format="dd/MM/yyyy").create(db=db)
+    await UserPreference(account_id=first_account.id, date_format="EU_DATETIME").create(db=db)
 
     result = await run_preferences(
         db=db, branch=default_branch, account_session=session_first_account, variables={"scope": "USER"}
@@ -269,7 +269,7 @@ async def test_user_scope_returns_own_raw_values(
     assert result.data is not None
     entries = _entries_by_key(result.data["InfrahubPreferences"])
     # date_format is the user's own; source USER.
-    assert entries["date_format"] == {"key": "date_format", "value": "dd/MM/yyyy", "source": "USER"}
+    assert entries["date_format"] == {"key": "date_format", "value": "EU_DATETIME", "source": "USER"}
     # timezone is unset for THIS user: null, source USER (global default does not bleed in).
     assert entries["timezone"] == {"key": "timezone", "value": None, "source": "USER"}
 
@@ -342,7 +342,7 @@ async def test_global_scope_allowed_for_manager(
     first_account: Node,
 ) -> None:
     global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.date_format = "yyyy-MM-dd"
+    global_pref.date_format = "ISO_DATETIME"
     global_pref.timezone = "UTC"
     await global_pref.save(db=db)
 
@@ -354,7 +354,7 @@ async def test_global_scope_allowed_for_manager(
     assert result.data is not None
     entries = _entries_by_key(result.data["InfrahubPreferences"])
     # Raw org values, source GLOBAL.
-    assert entries["date_format"] == {"key": "date_format", "value": "yyyy-MM-dd", "source": "GLOBAL"}
+    assert entries["date_format"] == {"key": "date_format", "value": "ISO_DATETIME", "source": "GLOBAL"}
     assert entries["timezone"] == {"key": "timezone", "value": "UTC", "source": "GLOBAL"}
 
 

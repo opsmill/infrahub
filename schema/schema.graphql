@@ -7468,6 +7468,15 @@ input CoreWeightedPoolResourceUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
+"""An enumeration."""
+enum DateFormat {
+  EU_DATETIME
+  ISO_8601
+  ISO_DATETIME
+  ISO_DATETIME_SECONDS
+  US_12H
+}
+
 """
 The `DateTime` scalar type represents a DateTime
 value as specified by
@@ -8809,7 +8818,7 @@ The _UNSET sentinel means an omitted argument leaves the field unchanged while a
 `null` resets it.
 """
 type InfrahubSetPreferences {
-  date_format: String
+  date_format: DateFormat
   ok: Boolean
   timezone: String
 }
@@ -9747,7 +9756,7 @@ type Mutation {
   The _UNSET sentinel means an omitted argument leaves the field unchanged while an explicit
   `null` resets it.
   """
-  InfrahubSetPreferences(date_format: String, scope: PreferenceScope!, timezone: String): InfrahubSetPreferences
+  InfrahubSetPreferences(date_format: DateFormat, scope: PreferenceScope!, timezone: String): InfrahubSetPreferences
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
   InfrahubUpdateDisplayLabel(context: ContextInput, data: InfrahubDisplayLabelUpdateInput!): UpdateDisplayLabel
   InfrahubUpdateHFID(context: ContextInput, data: InfrahubHFIDUpdateInput!): UpdateHFID
@@ -12184,6 +12193,10 @@ input PathTraversalInput {
   Filter to only follow relationships with these identifiers (the relationship's schema identifier, e.g. `device__interface`), not relationship names (e.g. `interfaces`).
   """
   relationship_filter: [String!]
+  """
+  When true (default), return only the shortest path through each intermediate object — fast, but excludes longer paths through the same intermediate objects. When false, return all loopless paths up to max_paths.
+  """
+  shortest_paths_only: Boolean = true
   """UUID of the start node"""
   source_id: String!
 }
@@ -12197,12 +12210,14 @@ type PathTraversalResultType {
   Concrete node kinds excluded from this traversal: the default exclusions plus the requested excluded_kinds, minus included_kinds.
   """
   excluded_kinds: [String!]!
-  """
-  Paths found, ordered shortest first. Only the shortest path through each intermediate node is returned; longer routes through the same intermediate are omitted.
-  """
+  """Paths found, ordered shortest first"""
   paths: [PathResultType!]!
   """The start node"""
   source: PathNodeType!
+  """
+  Null when the search completed. Otherwise the depth at which it ran out of budget: the returned paths are complete only for depths below this value, and deeper paths may exist.
+  """
+  truncated_at_depth: Int
 }
 
 type PermissionType {
@@ -25072,9 +25087,7 @@ type Query {
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!
-  """
-  Find the shortest path(s) between two nodes — the shortest route through each intermediate node, up to max_paths.
-  """
+  """Find all shortest paths between two nodes in the graph"""
   InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
   InfrahubPreferences(scope: PreferenceScope = EFFECTIVE): PreferencesType!

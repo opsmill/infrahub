@@ -1,4 +1,4 @@
-import { graphql } from "gql.tada";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
@@ -6,7 +6,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 // field resets it (clearing the personal override so the field falls back to the
 // org default); omitting the variable leaves the stored value unchanged.
 const UPSERT_USER_PREFERENCE = graphql(`
-  mutation UpsertUserPreference($dateFormat: String, $timezone: String) {
+  mutation UpsertUserPreference($dateFormat: DateFormat, $timezone: String) {
     InfrahubSetPreferences(scope: USER, date_format: $dateFormat, timezone: $timezone) {
       ok
       date_format
@@ -33,8 +33,15 @@ export interface UpsertUserPreferenceFromApiParams {
  * unchanged.
  */
 export function upsertUserPreferenceFromApi(params: UpsertUserPreferenceFromApiParams) {
-  const variables: { dateFormat?: string | null; timezone?: string | null } = {};
-  if ("dateFormat" in params) variables.dateFormat = params.dateFormat;
+  // The date-format dropdown constrains values to the DateFormat enum keys; the domain layer
+  // carries date_format as a plain string, so narrow it to the generated variable type here at the
+  // GraphQL boundary (only these keys ever reach this function).
+  const variables: VariablesOf<typeof UPSERT_USER_PREFERENCE> = {};
+  if ("dateFormat" in params) {
+    variables.dateFormat = params.dateFormat as VariablesOf<
+      typeof UPSERT_USER_PREFERENCE
+    >["dateFormat"];
+  }
   if ("timezone" in params) variables.timezone = params.timezone;
 
   return graphqlClient.mutate({

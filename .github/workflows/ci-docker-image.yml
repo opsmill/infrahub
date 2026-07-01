@@ -35,6 +35,15 @@ on:
         required: false
         description: Comma separated platform list to build the image for
         default: "linux/amd64,linux/arm64"
+      artifact_prefix:
+        type: string
+        required: false
+        description: >
+          Prefix used to namespace the per-platform digest artifacts. Must be unique per
+          invocation when this reusable workflow is called more than once within the same
+          caller run (artifacts are scoped to the run, not the invocation), otherwise the
+          merge step mixes digests across invocations.
+        default: digests
 
 permissions:
   contents: read
@@ -121,7 +130,7 @@ jobs:
         if: steps.check.outputs.skip == 'false' && inputs.publish
         uses: actions/upload-artifact@v7
         with:
-          name: digests-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          name: ${{ inputs.artifact_prefix }}-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -137,7 +146,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
-          pattern: digests-*
+          pattern: ${{ inputs.artifact_prefix }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx

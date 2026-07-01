@@ -1,11 +1,11 @@
-import { graphql } from "gql.tada";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 // `scope: GLOBAL` writes the org-wide defaults row. Server-gated on
 // `manage_global_preferences`.
 const UPDATE_GLOBAL_PREFERENCE = graphql(`
-  mutation UpdateGlobalPreference($dateFormat: String, $timezone: String) {
+  mutation UpdateGlobalPreference($dateFormat: DateFormat, $timezone: String) {
     InfrahubSetPreferences(scope: GLOBAL, date_format: $dateFormat, timezone: $timezone) {
       ok
       date_format
@@ -31,7 +31,8 @@ export function updateGlobalPreferenceFromApi({
   return graphqlClient.mutate({
     mutation: UPDATE_GLOBAL_PREFERENCE,
     variables: {
-      dateFormat,
+      // date_format is one of the DateFormat enum keys (dropdown-constrained); narrow from string.
+      dateFormat: dateFormat as VariablesOf<typeof UPDATE_GLOBAL_PREFERENCE>["dateFormat"],
       timezone,
     },
   });

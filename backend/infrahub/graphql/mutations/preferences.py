@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from graphene import Argument, Boolean, Mutation, String
+from graphene import Argument, Boolean, Field, Mutation, String
 from typing_extensions import Self
 
 from infrahub import lock
@@ -17,7 +17,7 @@ from infrahub.core.preferences import (
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import PermissionDeniedError, ValidationError
 
-from ..queries.preferences import SCOPE_EFFECTIVE, SCOPE_GLOBAL, SCOPE_USER, PreferenceScope
+from ..queries.preferences import SCOPE_EFFECTIVE, SCOPE_GLOBAL, SCOPE_USER, DateFormat, PreferenceScope
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -59,11 +59,13 @@ class InfrahubSetPreferences(Mutation):
 
     class Arguments:
         scope = Argument(PreferenceScope, required=True)
-        date_format = String(required=False)
+        # date_format is a semantic key (see DateFormat / core.preferences.formats): the enum type
+        # validates it at the GraphQL layer, so an unknown key is rejected before any write.
+        date_format = Argument(DateFormat, required=False)
         timezone = String(required=False)
 
     ok = Boolean()
-    date_format = String(required=False)
+    date_format = Field(DateFormat, required=False)
     timezone = String(required=False)
 
     @classmethod
