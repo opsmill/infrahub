@@ -205,6 +205,18 @@ TRANSFORM_CHANGED_CASES: list[TransformChangedCase] = [
         files_changed=["unrelated/file.md"],
         expected=True,
     ),
+    TransformChangedCase(
+        name="legacy_null_dependencies_with_no_modifications_is_false",
+        dependencies=None,
+        dependencies_complete=None,
+        expected=False,
+    ),
+    TransformChangedCase(
+        name="incomplete_closure_with_no_modifications_is_false",
+        dependencies=PACKAGE_FLOOR,
+        dependencies_complete=False,
+        expected=False,
+    ),
 ]
 
 
