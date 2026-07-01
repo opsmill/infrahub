@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
-from infrahub_sdk.schema.repository import InfrahubPythonTransformConfig
+from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig, InfrahubPythonTransformConfig
 
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.result import ClosureResult, UnresolvedRef
@@ -16,20 +16,22 @@ if TYPE_CHECKING:
 
 
 class PythonClosure:
-    """Compute a Python transform's dependency closure as the package-directory floor.
+    """Compute a Python source's dependency closure as the package-directory floor.
 
-    The closure is every git-tracked file under the directory containing the
-    transform's ``file_path``, minus ``.pyc`` files and ``__pycache__/`` entries.
-    A transform that sits at the repository root collapses to its own file
-    instead of pulling in the entire repository.
+    Handles any Python-backed config that exposes a ``file_path`` and a ``name``:
+    Python transforms and generator definitions alike. The closure is every
+    git-tracked file under the directory containing the source's ``file_path``,
+    minus ``.pyc`` files and ``__pycache__/`` entries. A source that sits at the
+    repository root collapses to its own file instead of pulling in the entire
+    repository.
     """
 
     def supports(self, transform_config: TransformConfig) -> bool:
-        return isinstance(transform_config, InfrahubPythonTransformConfig)
+        return isinstance(transform_config, (InfrahubPythonTransformConfig, InfrahubGeneratorDefinitionConfig))
 
     def build(
         self,
-        transform_config: InfrahubPythonTransformConfig,
+        transform_config: InfrahubPythonTransformConfig | InfrahubGeneratorDefinitionConfig,
         worktree_root: Path,
     ) -> ClosureResult:
         entry_path = canonicalize_path(str(transform_config.file_path))

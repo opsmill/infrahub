@@ -408,6 +408,8 @@ class CoreGeneratorDefinition(CoreTaskTarget):
     convert_query_response: BooleanOptional
     execute_in_proposed_change: BooleanOptional
     execute_after_merge: BooleanOptional
+    dependencies: ListAttributeOptional
+    dependencies_complete: BooleanOptional
     query: RelationshipManager[CoreGraphQLQuery]
     repository: RelationshipManager[CoreGenericRepository]
     targets: RelationshipManager[CoreGroup]

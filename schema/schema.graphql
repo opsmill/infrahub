@@ -3047,6 +3047,14 @@ type CoreGeneratorDefinition implements CoreNode & CoreTaskTarget {
   class_name: TextAttribute
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttribute
+  """
+  Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttribute
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttribute
   """None"""
   description: TextAttribute
   display_label: String
@@ -3084,6 +3092,14 @@ input CoreGeneratorDefinitionCreateInput {
   class_name: TextAttributeCreate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeCreate
+  """
+  Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeCreate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeCreate
   description: TextAttributeCreate
   """Whether to run this generator after a merge"""
   execute_after_merge: CheckboxAttributeCreate
@@ -3122,6 +3138,14 @@ input CoreGeneratorDefinitionUpdateInput {
   class_name: TextAttributeUpdate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeUpdate
+  """
+  Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   """Whether to run this generator after a merge"""
   execute_after_merge: CheckboxAttributeUpdate
@@ -3154,6 +3178,14 @@ input CoreGeneratorDefinitionUpsertInput {
   class_name: TextAttributeUpdate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeUpdate
+  """
+  Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   """Whether to run this generator after a merge"""
   execute_after_merge: CheckboxAttributeUpdate
@@ -3480,7 +3512,7 @@ interface CoreGenericRepository {
   """Description of the repository"""
   description: TextAttribute
   display_label: String
-  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
+  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
   groups_objects(content__is_protected: Boolean, content__owner__id: ID, content__source__id: ID, content__value: String, content__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreRepositoryGroup!
   """Human friendly identifier"""
   hfid: [String!]
@@ -5532,7 +5564,7 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   """Description of the repository"""
   description: TextAttribute
   display_label: String
-  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
+  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
   groups_objects(content__is_protected: Boolean, content__owner__id: ID, content__source__id: ID, content__value: String, content__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreRepositoryGroup!
   """Human friendly identifier"""
   hfid: [String!]
@@ -5688,7 +5720,7 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   """Description of the repository"""
   description: TextAttribute
   display_label: String
-  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
+  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
   groups_objects(content__is_protected: Boolean, content__owner__id: ID, content__source__id: ID, content__value: String, content__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreRepositoryGroup!
   """Human friendly identifier"""
   hfid: [String!]
@@ -16695,6 +16727,16 @@ type Query {
     generator__convert_query_response__source__id: ID
     generator__convert_query_response__value: Boolean
     generator__convert_query_response__values: [Boolean]
+    generator__dependencies__is_protected: Boolean
+    generator__dependencies__owner__id: ID
+    generator__dependencies__source__id: ID
+    generator__dependencies__value: GenericScalar
+    generator__dependencies__values: [GenericScalar]
+    generator__dependencies_complete__is_protected: Boolean
+    generator__dependencies_complete__owner__id: ID
+    generator__dependencies_complete__source__id: ID
+    generator__dependencies_complete__value: Boolean
+    generator__dependencies_complete__values: [Boolean]
     generator__description__is_protected: Boolean
     generator__description__owner__id: ID
     generator__description__source__id: ID
@@ -17091,6 +17133,18 @@ type Query {
     convert_query_response__source__id: ID
     convert_query_response__value: Boolean
     convert_query_response__values: [Boolean]
+    dependencies__is_protected: Boolean
+    dependencies__isnull: Boolean
+    dependencies__owner__id: ID
+    dependencies__source__id: ID
+    dependencies__value: GenericScalar
+    dependencies__values: [GenericScalar]
+    dependencies_complete__is_protected: Boolean
+    dependencies_complete__isnull: Boolean
+    dependencies_complete__owner__id: ID
+    dependencies_complete__source__id: ID
+    dependencies_complete__value: Boolean
+    dependencies_complete__values: [Boolean]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
@@ -17418,6 +17472,16 @@ type Query {
     definition__convert_query_response__source__id: ID
     definition__convert_query_response__value: Boolean
     definition__convert_query_response__values: [Boolean]
+    definition__dependencies__is_protected: Boolean
+    definition__dependencies__owner__id: ID
+    definition__dependencies__source__id: ID
+    definition__dependencies__value: GenericScalar
+    definition__dependencies__values: [GenericScalar]
+    definition__dependencies_complete__is_protected: Boolean
+    definition__dependencies_complete__owner__id: ID
+    definition__dependencies_complete__source__id: ID
+    definition__dependencies_complete__value: Boolean
+    definition__dependencies_complete__values: [Boolean]
     definition__description__is_protected: Boolean
     definition__description__owner__id: ID
     definition__description__source__id: ID
@@ -17595,6 +17659,16 @@ type Query {
     definition__convert_query_response__source__id: ID
     definition__convert_query_response__value: Boolean
     definition__convert_query_response__values: [Boolean]
+    definition__dependencies__is_protected: Boolean
+    definition__dependencies__owner__id: ID
+    definition__dependencies__source__id: ID
+    definition__dependencies__value: GenericScalar
+    definition__dependencies__values: [GenericScalar]
+    definition__dependencies_complete__is_protected: Boolean
+    definition__dependencies_complete__owner__id: ID
+    definition__dependencies_complete__source__id: ID
+    definition__dependencies_complete__value: Boolean
+    definition__dependencies_complete__values: [Boolean]
     definition__description__is_protected: Boolean
     definition__description__owner__id: ID
     definition__description__source__id: ID
@@ -17921,6 +17995,16 @@ type Query {
     generators__convert_query_response__source__id: ID
     generators__convert_query_response__value: Boolean
     generators__convert_query_response__values: [Boolean]
+    generators__dependencies__is_protected: Boolean
+    generators__dependencies__owner__id: ID
+    generators__dependencies__source__id: ID
+    generators__dependencies__value: GenericScalar
+    generators__dependencies__values: [GenericScalar]
+    generators__dependencies_complete__is_protected: Boolean
+    generators__dependencies_complete__owner__id: ID
+    generators__dependencies_complete__source__id: ID
+    generators__dependencies_complete__value: Boolean
+    generators__dependencies_complete__values: [Boolean]
     generators__description__is_protected: Boolean
     generators__description__owner__id: ID
     generators__description__source__id: ID
@@ -21407,6 +21491,16 @@ type Query {
     generators__convert_query_response__source__id: ID
     generators__convert_query_response__value: Boolean
     generators__convert_query_response__values: [Boolean]
+    generators__dependencies__is_protected: Boolean
+    generators__dependencies__owner__id: ID
+    generators__dependencies__source__id: ID
+    generators__dependencies__value: GenericScalar
+    generators__dependencies__values: [GenericScalar]
+    generators__dependencies_complete__is_protected: Boolean
+    generators__dependencies_complete__owner__id: ID
+    generators__dependencies_complete__source__id: ID
+    generators__dependencies_complete__value: Boolean
+    generators__dependencies_complete__values: [Boolean]
     generators__description__is_protected: Boolean
     generators__description__owner__id: ID
     generators__description__source__id: ID
@@ -21748,6 +21842,16 @@ type Query {
     generators__convert_query_response__source__id: ID
     generators__convert_query_response__value: Boolean
     generators__convert_query_response__values: [Boolean]
+    generators__dependencies__is_protected: Boolean
+    generators__dependencies__owner__id: ID
+    generators__dependencies__source__id: ID
+    generators__dependencies__value: GenericScalar
+    generators__dependencies__values: [GenericScalar]
+    generators__dependencies_complete__is_protected: Boolean
+    generators__dependencies_complete__owner__id: ID
+    generators__dependencies_complete__source__id: ID
+    generators__dependencies_complete__value: Boolean
+    generators__dependencies_complete__values: [Boolean]
     generators__description__is_protected: Boolean
     generators__description__owner__id: ID
     generators__description__source__id: ID

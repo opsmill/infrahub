@@ -6130,6 +6130,10 @@ export type CoreGeneratorDefinition = CoreNode & CoreTaskTarget & {
   class_name: Maybe<TextAttribute>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response: Maybe<CheckboxAttribute>;
+  /** Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   /** None */
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
@@ -6232,6 +6236,10 @@ export type CoreGeneratorDefinitionCreateInput = {
   class_name?: InputMaybe<TextAttributeCreate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeCreate>;
+  /** Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeCreate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   /** Whether to run this generator after a merge */
   execute_after_merge?: InputMaybe<CheckboxAttributeCreate>;
@@ -6268,6 +6276,10 @@ export type CoreGeneratorDefinitionUpdateInput = {
   class_name?: InputMaybe<TextAttributeUpdate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeUpdate>;
+  /** Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Whether to run this generator after a merge */
   execute_after_merge?: InputMaybe<CheckboxAttributeUpdate>;
@@ -6299,6 +6311,10 @@ export type CoreGeneratorDefinitionUpsertInput = {
   class_name?: InputMaybe<TextAttributeUpdate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeUpdate>;
+  /** Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Whether to run this generator after a merge */
   execute_after_merge?: InputMaybe<CheckboxAttributeUpdate>;
@@ -7090,6 +7106,16 @@ export type CoreGenericRepositoryGeneratorsArgs = {
   convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12035,6 +12061,16 @@ export type CoreReadOnlyRepositoryGeneratorsArgs = {
   convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12505,6 +12541,16 @@ export type CoreRepositoryGeneratorsArgs = {
   convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28694,6 +28740,16 @@ export type QueryCoreGeneratorActionArgs = {
   generator__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   generator__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   generator__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  generator__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  generator__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  generator__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  generator__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  generator__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  generator__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  generator__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  generator__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  generator__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  generator__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   generator__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   generator__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   generator__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29066,6 +29122,18 @@ export type QueryCoreGeneratorDefinitionArgs = {
   convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29377,6 +29445,16 @@ export type QueryCoreGeneratorInstanceArgs = {
   definition__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   definition__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   definition__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  definition__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  definition__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  definition__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  definition__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  definition__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  definition__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  definition__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  definition__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  definition__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  definition__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   definition__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   definition__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   definition__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29546,6 +29624,16 @@ export type QueryCoreGeneratorValidatorArgs = {
   definition__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   definition__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   definition__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  definition__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  definition__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  definition__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  definition__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  definition__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  definition__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  definition__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  definition__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  definition__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  definition__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   definition__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   definition__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   definition__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29856,6 +29944,16 @@ export type QueryCoreGenericRepositoryArgs = {
   generators__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   generators__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   generators__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  generators__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  generators__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  generators__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   generators__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   generators__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   generators__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33138,6 +33236,16 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   generators__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   generators__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   generators__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  generators__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  generators__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  generators__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   generators__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   generators__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   generators__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33471,6 +33579,16 @@ export type QueryCoreRepositoryArgs = {
   generators__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   generators__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   generators__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  generators__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  generators__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  generators__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  generators__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  generators__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   generators__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   generators__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   generators__description__source__id?: InputMaybe<Scalars['ID']['input']>;

@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass, field
 from enum import Enum, IntFlag
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import pytest
 from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
@@ -401,6 +401,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
 async def run_generators(model: RequestProposedChangeRunGenerators, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
+    log = get_run_logger()
     client = get_client()
 
     generators = await client.filters(
@@ -417,6 +418,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             class_name=generator.class_name.value,
             file_path=generator.file_path.value,
             query_name=generator.query.peer.name.value,
+            query_id=generator.query.peer.id,
             query_models=generator.query.peer.models.value,
             query_payload=generator.query.peer.query.value,
             repository_id=generator.repository.peer.id,
@@ -425,6 +427,8 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             convert_query_response=generator.convert_query_response.value,
             execute_in_proposed_change=generator.execute_in_proposed_change.value,
             execute_after_merge=generator.execute_after_merge.value,
+            dependencies=generator.dependencies.value,
+            dependencies_complete=generator.dependencies_complete.value,
         )
         for generator in generators
         if generator.execute_in_proposed_change.value
@@ -434,18 +438,35 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for generator_definition in generator_definitions:
-        # Request generator definitions if the source branch that is managed in combination
-        # to the Git repository containing modifications which could indicate changes to the transforms
-        # in code
-        # Alternatively if the queries used touches models that have been modified in the path
-        # impacted artifact definitions will be included for consideration
-
+        # Select a generator definition when its query node or definition node was modified, when a
+        # file inside its stored dependency closure changed, or when the diff touches a data kind the
+        # query reads. The closure-based file gate replaces the previous "any file changed in a synced
+        # repository" heuristic so an unrelated commit no longer re-runs every generator.
         select = DefinitionSelect.NONE
-        select = select.add_flag(
-            current=select,
-            flag=DefinitionSelect.FILE_CHANGES,
-            condition=model.source_branch_sync_with_git and model.branch_diff.has_file_modifications,
+        for outcome, flag in (
+            (
+                _query_changed(definition=generator_definition, diff_summary=diff_summary),
+                DefinitionSelect.QUERY_CHANGED,
+            ),
+            (
+                _definition_changed(definition=generator_definition, diff_summary=diff_summary),
+                DefinitionSelect.DEFINITION_CHANGED,
+            ),
+        ):
+            select = select.add_flag(current=select, flag=flag, condition=outcome.matched)
+            if outcome.reason is not None:
+                log.info(outcome.reason)
+
+        repo_diff_for_definition = _repo_diff_or_none(
+            branch_diff=model.branch_diff, repository_id=generator_definition.repository_id
         )
+        if repo_diff_for_definition is not None:
+            transform_outcome = _transform_changed(definition=generator_definition, repo_diff=repo_diff_for_definition)
+            select = select.add_flag(
+                current=select, flag=DefinitionSelect.FILE_CHANGES, condition=transform_outcome.matched
+            )
+            if transform_outcome.reason is not None:
+                log.info(transform_outcome.reason)
 
         for changed_model in modified_kinds:
             select = select.add_flag(
@@ -1250,13 +1271,28 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     else:
         impacted_instances = impacted.ids
 
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    repo_diff_for_definition = _repo_diff_or_none(
+        branch_diff=model.branch_diff, repository_id=model.generator_definition.repository_id
+    )
+    managed_branch = (
+        _query_changed(definition=model.generator_definition, diff_summary=diff_summary).matched
+        or _definition_changed(definition=model.generator_definition, diff_summary=diff_summary).matched
+        or (
+            repo_diff_for_definition is not None
+            and _transform_changed(definition=model.generator_definition, repo_diff=repo_diff_for_definition).matched
+        )
+    )
+    if managed_branch:
+        log.info("Query, definition or repository file change detected, all instances will be processed")
+
     check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
         member = relationship.peer
         generator_instance = instance_by_member.get(member.id)
         if _run_generator(
             instance_id=generator_instance,
-            managed_branch=model.source_branch_sync_with_git,
+            managed_branch=managed_branch,
             impacted_instances=impacted_instances,
         ):
             requested_instances += 1
@@ -1343,8 +1379,32 @@ class PredicateOutcome:
     reason: str | None = None
 
 
+class RegenerationDefinition(Protocol):
+    """The fields and diagnostic nouns the regeneration predicates read off a definition.
+
+    Both the artifact-definition and generator-definition pipeline models satisfy this
+    structurally, so the same predicates evaluate either kind without branching on type.
+    ``source_noun`` / ``instance_noun`` carry the kind-correct wording into the reason
+    strings (``transform`` / ``artifacts`` versus ``generator source`` / ``instances``).
+    Declare only what the predicates read.
+    """
+
+    definition_id: str
+    definition_name: str
+    query_id: str
+    query_name: str
+    dependencies: list[str] | None
+    dependencies_complete: bool | None
+
+    @property
+    def source_noun(self) -> str: ...
+
+    @property
+    def instance_noun(self) -> str: ...
+
+
 def _query_changed(
-    definition: ProposedChangeArtifactDefinition,
+    definition: RegenerationDefinition,
     diff_summary: list[NodeDiff],
 ) -> PredicateOutcome:
     """Match when the definition's GraphQL query node is modified in the diff.
@@ -1370,22 +1430,22 @@ def _query_changed(
         reason=(
             f"Definition {definition.definition_name} ({definition.definition_id}): "
             f"GraphQL query {definition.query_name} ({definition.query_id}) was modified - "
-            f"all artifacts of this definition will regenerate."
+            f"all {definition.instance_noun} of this definition will regenerate."
         ),
     )
 
 
 def _definition_changed(
-    definition: ProposedChangeArtifactDefinition,
+    definition: RegenerationDefinition,
     diff_summary: list[NodeDiff],
 ) -> PredicateOutcome:
-    """Match when the ``CoreArtifactDefinition`` node itself is modified in the diff.
+    """Match when the definition node itself is modified in the diff.
 
-    Any attribute change or relationship repoint (``targets``, ``transformation``,
-    ``query``) on the definition surfaces as a modification of the definition's own
-    node id, so a single id-based check covers every shape of definition-level
-    change uniformly. The reason names the changed attributes or relationships read
-    from the matching entry's per-field detail.
+    Any attribute change or relationship repoint (e.g. ``targets``, ``query``, and for
+    artifact definitions ``transformation``) on the definition surfaces as a modification
+    of the definition's own node id, so a single id-based check covers every shape of
+    definition-level change uniformly. The reason names the changed attributes or
+    relationships read from the matching entry's per-field detail.
 
     Entries with ``action=unchanged`` are ignored because the diff system enriches
     the tree with parent context nodes that are not themselves modified, and entries
@@ -1411,16 +1471,16 @@ def _definition_changed(
         matched=True,
         reason=(
             f"Definition {definition.definition_name} ({definition.definition_id}): {detail} - "
-            f"all artifacts of this definition will regenerate."
+            f"all {definition.instance_noun} of this definition will regenerate."
         ),
     )
 
 
 def _transform_changed(
-    definition: ProposedChangeArtifactDefinition,
+    definition: RegenerationDefinition,
     repo_diff: ProposedChangeRepository,
 ) -> PredicateOutcome:
-    """Match when the transform's stored dependency closure intersects this repo's file diff.
+    """Match when the definition's stored dependency closure intersects this repo's file diff.
 
     Falls back to "any file changed in the repository" when the closure cannot
     be trusted. On the precise path, both sides are canonicalized before the
@@ -1435,9 +1495,9 @@ def _transform_changed(
     """
     if definition.dependencies is None:
         legacy_reason = (
-            f"Definition {definition.definition_name}: transform was imported before this feature deployed "
-            f"(dependencies=null) - falling back to regenerate-on-any-file-change. The next re-import of this "
-            f"transform will populate its dependency closure."
+            f"Definition {definition.definition_name}: {definition.source_noun} was imported before this feature "
+            f"deployed (dependencies=null) - falling back to regenerate-on-any-file-change. The next re-import of "
+            f"this {definition.source_noun} will populate its dependency closure."
         )
         return PredicateOutcome(
             matched=repo_diff.has_modifications,
@@ -1446,7 +1506,7 @@ def _transform_changed(
 
     if definition.dependencies_complete is not True:
         incomplete_reason = (
-            f"Definition {definition.definition_name}: transform dependency closure is incomplete "
+            f"Definition {definition.definition_name}: {definition.source_noun} dependency closure is incomplete "
             f"(dependencies_complete=False) - falling back to regenerate-on-any-file-change."
         )
         return PredicateOutcome(
@@ -1473,8 +1533,8 @@ def _transform_changed(
     return PredicateOutcome(
         matched=True,
         reason=(
-            f"Definition {definition.definition_name}: file {files} changed and is in this transform's "
-            f"dependency closure - all artifacts will regenerate."
+            f"Definition {definition.definition_name}: file {files} changed and is in this "
+            f"{definition.source_noun}'s dependency closure - all {definition.instance_noun} will regenerate."
         ),
     )
 
