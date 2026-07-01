@@ -15,7 +15,6 @@ const baseEffective: EffectivePreferences = {
   // No personal override → both fields resolve to the org default (source "global").
   dateFormat: { value: "dd/MM/yyyy", source: "global" },
   timezone: { value: "Europe/Paris", source: "global" },
-  global: { dateFormat: "dd/MM/yyyy", timezone: "Europe/Paris" },
   canEditGlobalPreferences: false,
 };
 
@@ -275,7 +274,6 @@ describe("UserPreferencesCard", () => {
       ...baseEffective,
       dateFormat: { value: null, source: "default" },
       timezone: { value: null, source: "default" },
-      global: { dateFormat: null, timezone: null },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -364,7 +362,6 @@ describe("UserPreferencesCard", () => {
       ...baseEffective,
       dateFormat: { value: null, source: "default" },
       timezone: { value: null, source: "default" },
-      global: { dateFormat: null, timezone: null },
     });
 
     const component = await render(<UserPreferencesCard />);

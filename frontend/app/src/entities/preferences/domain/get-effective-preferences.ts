@@ -24,7 +24,7 @@ const UNSET: ResolvedPreference = { value: null, source: "default" };
 
 export const getEffectivePreferences: GetEffectivePreferences = async () => {
   const { data } = await getEffectivePreferencesFromApi();
-  const effective = data.InfrahubEffectivePreferences;
+  const effective = data.InfrahubPreferences;
 
   // Key the flat list of {key,value,source} entries so each field is looked up
   // by name rather than positionally.
@@ -38,10 +38,6 @@ export const getEffectivePreferences: GetEffectivePreferences = async () => {
   return {
     dateFormat: byKey.get("date_format") ?? UNSET,
     timezone: byKey.get("timezone") ?? UNSET,
-    global: {
-      dateFormat: effective.global.date_format ?? null,
-      timezone: effective.global.timezone ?? null,
-    },
     canEditGlobalPreferences: effective.can_edit_global_preferences,
   };
 };

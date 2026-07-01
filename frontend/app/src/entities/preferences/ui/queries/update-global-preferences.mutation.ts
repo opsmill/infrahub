@@ -4,8 +4,10 @@ import { updateGlobalPreference } from "@/entities/preferences/domain/update-glo
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 
 /**
- * Updates the organisation-wide singleton via `InfrahubGlobalPreferenceUpdate`.
- * Invalidates the effective-preferences query on success.
+ * Updates the organisation-wide defaults via `InfrahubSetPreferences(scope: GLOBAL)`.
+ * Invalidates both the effective-preferences query (a changed org default can move
+ * a user's resolved value/source) and the raw GLOBAL-scope query the org-defaults
+ * card reads from.
  */
 export function useUpdateGlobalPreferences() {
   const queryClient = useQueryClient();
@@ -14,6 +16,7 @@ export function useUpdateGlobalPreferences() {
     mutationFn: updateGlobalPreference,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.effective() });
+      queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.global() });
     },
   });
 }

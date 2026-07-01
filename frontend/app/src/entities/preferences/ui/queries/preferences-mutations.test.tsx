@@ -57,7 +57,7 @@ describe("preferences mutations", () => {
     });
   });
 
-  test("useUpdateGlobalPreferences updates the singleton and invalidates the effective key", async () => {
+  test("useUpdateGlobalPreferences updates the org defaults and invalidates the effective and global keys", async () => {
     const { invalidateSpy, wrapper } = setup();
     vi.mocked(updateGlobalPreference).mockResolvedValue();
 
@@ -73,6 +73,9 @@ describe("preferences mutations", () => {
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: preferencesQueryKeys.effective(),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: preferencesQueryKeys.global(),
     });
   });
 });

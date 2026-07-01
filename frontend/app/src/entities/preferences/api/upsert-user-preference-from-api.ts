@@ -2,9 +2,12 @@ import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
+// `scope: USER` writes the caller's OWN row. Passing an explicit `null` for a
+// field resets it (clearing the personal override so the field falls back to the
+// org default); omitting the variable leaves the stored value unchanged.
 const UPSERT_USER_PREFERENCE = graphql(`
   mutation UpsertUserPreference($dateFormat: String, $timezone: String) {
-    InfrahubUserPreferenceUpsert(date_format: $dateFormat, timezone: $timezone) {
+    InfrahubSetPreferences(scope: USER, date_format: $dateFormat, timezone: $timezone) {
       ok
       date_format
       timezone

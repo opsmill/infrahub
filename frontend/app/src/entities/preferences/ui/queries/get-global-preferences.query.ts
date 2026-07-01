@@ -1,0 +1,20 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
+
+import { getGlobalPreferences } from "@/entities/preferences/domain/get-global-preferences";
+import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
+
+export function getGlobalPreferencesQueryOptions() {
+  return queryOptions({
+    queryKey: preferencesQueryKeys.global(),
+    queryFn: getGlobalPreferences,
+  });
+}
+
+/**
+ * The raw organisation defaults (scope GLOBAL). Only the org-defaults card loads
+ * this — and only when that tab opens — so a regular user never issues the gated
+ * GLOBAL-scope request.
+ */
+export function useGlobalPreferences() {
+  return useQuery(getGlobalPreferencesQueryOptions());
+}

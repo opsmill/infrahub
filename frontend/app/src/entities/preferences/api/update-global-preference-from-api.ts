@@ -2,9 +2,11 @@ import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
+// `scope: GLOBAL` writes the org-wide defaults row. Server-gated on
+// `manage_global_preferences`.
 const UPDATE_GLOBAL_PREFERENCE = graphql(`
   mutation UpdateGlobalPreference($dateFormat: String, $timezone: String) {
-    InfrahubGlobalPreferenceUpdate(date_format: $dateFormat, timezone: $timezone) {
+    InfrahubSetPreferences(scope: GLOBAL, date_format: $dateFormat, timezone: $timezone) {
       ok
       date_format
       timezone

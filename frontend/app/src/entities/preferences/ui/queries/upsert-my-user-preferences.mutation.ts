@@ -5,7 +5,7 @@ import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 
 /**
- * Writes the caller's own preference row via `InfrahubUserPreferenceUpsert`.
+ * Writes the caller's own preference row via `InfrahubSetPreferences(scope: USER)`.
  * Pass explicit `null` for a field to reset it to the global default; omit a
  * field to leave it unchanged. Invalidates the effective-preferences query.
  */
