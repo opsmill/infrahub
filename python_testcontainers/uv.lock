@@ -521,7 +521,7 @@ wheels = [
 
 [[package]]
 name = "infrahub-testcontainers"
-version = "1.10.0b0"
+version = "1.10.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
