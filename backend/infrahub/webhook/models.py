@@ -206,7 +206,9 @@ class EventContext(BaseModel):
 
 MASKED_HEADER_VALUE = "***"
 WEBHOOK_SIGNATURE_HEADER = "webhook-signature"
-SENSITIVE_HEADER_NAMES = frozenset({"authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key"})
+SENSITIVE_HEADER_NAMES = frozenset(
+    name.lower() for name in ("Authorization", "Proxy-Authorization", "Cookie", "Set-Cookie", "X-API-Key")
+)
 
 
 class HeaderKind(StrEnum):
