@@ -1207,6 +1207,12 @@ export interface components {
              */
             order_weight?: number | null;
             /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
+            /**
              * Default Value
              * @description Default value of the attribute.
              */
@@ -1322,6 +1328,12 @@ export interface components {
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
              */
             order_weight?: number | null;
+            /**
+             * Ordered
+             * @description Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.
+             * @default true
+             */
+            ordered: boolean;
             /**
              * Default Value
              * @description Default value of the attribute.
