@@ -17,16 +17,16 @@ import { useRetryTaskMutation } from "@/entities/tasks/ui/queries/retry-task.mut
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 type TaskAction = {
-  action: string | null;
-  available: boolean | null;
+  action: string;
+  available: boolean;
   unavailability_reason?: string | null;
 };
 
 export type TaskActionsTask = {
-  id?: string | null;
-  title?: string | null;
+  id: string;
+  title: string;
   state?: string | null;
-  available_actions?: (TaskAction | null)[] | null;
+  available_actions: TaskAction[];
 };
 
 const formatState = (state?: string | null) => {
@@ -35,7 +35,7 @@ const formatState = (state?: string | null) => {
 };
 
 const isActionAvailable = (task: TaskActionsTask, action: string) =>
-  (task.available_actions ?? []).some((entry) => entry?.action === action && entry?.available);
+  task.available_actions.some((entry) => entry.action === action && entry.available);
 
 export const TaskActions = ({ task, className }: { task: TaskActionsTask; className?: string }) => {
   const queryClient = useQueryClient();
@@ -79,8 +79,6 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
     },
   });
 
-  if (!task.id) return null;
-
   const canRetry = isActionAvailable(task, "RETRY");
   const canCancel = isActionAvailable(task, "CANCEL");
 
@@ -111,20 +109,20 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
       <ModalConfirm
         isOpen={isRetryConfirmOpen}
         onOpenChange={setIsRetryConfirmOpen}
-        title={`Retry "${task.title ?? "this"}" task?`}
+        title={`Retry "${task.title}" task?`}
         description={`This creates a new task with the same settings. The current one stays ${formatState(task.state)}. Track progress in the new run.`}
         confirmLabel="Retry"
         icon="mdi:restore"
         iconClassName="text-gray-500"
         iconContainerClassName="bg-gray-100"
         isLoading={retryMutation.isPending}
-        onConfirm={() => retryMutation.mutate({ id: task.id as string })}
+        onConfirm={() => retryMutation.mutate({ id: task.id })}
       />
 
       <ModalConfirm
         isOpen={isCancelConfirmOpen}
         onOpenChange={setIsCancelConfirmOpen}
-        title={`Cancel "${task.title ?? "this"}" task?`}
+        title={`Cancel "${task.title}" task?`}
         description="This stops the task and skips its remaining retries. It will be marked cancelled and won't run again."
         confirmLabel="Cancel task"
         cancelLabel="Keep task"
@@ -133,7 +131,7 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
         iconClassName="text-red-600"
         iconContainerClassName="bg-red-100"
         isLoading={cancelMutation.isPending}
-        onConfirm={() => cancelMutation.mutate({ id: task.id as string })}
+        onConfirm={() => cancelMutation.mutate({ id: task.id })}
       />
     </div>
   );
