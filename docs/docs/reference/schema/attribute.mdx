@@ -31,6 +31,7 @@ Below is the list of all available options to define an Attribute in the schema
 | [**name**](#name) | Attribute | Attribute name, must be unique within a model and must be all lowercase. | True |
 | [**optional**](#optional) | Attribute | Indicate if this attribute is mandatory or optional. | False |
 | [**order_weight**](#order_weight) | Attribute | Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first. | False |
+| [**ordered**](#ordered) | Attribute | Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict. | False |
 | [**parameters**](#parameters) | Attribute | Extra parameters specific to this kind of attribute | False |
 | [**read_only**](#read_only) | Attribute | Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object. | False |
 | [**regex**](#regex) | Attribute | Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead) | False |
@@ -249,6 +250,17 @@ extensions:
 | **Description** | Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first. |
 | **Optional** | True |
 | **Default Value** |  |
+| **Constraints** |  |
+
+### ordered
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | ordered |
+| **Kind** | `Boolean` |
+| **Description** | Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict. |
+| **Optional** | True |
+| **Default Value** | True |
 | **Constraints** |  |
 
 ### parameters

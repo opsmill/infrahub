@@ -1,7 +1,11 @@
 from uuid import uuid4
 
+import ujson
+
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import BranchNotFoundError, InitializationError, SchemaNotFoundError
 
 from .model.path import (
     EnrichedDiffAttribute,
@@ -13,11 +17,18 @@ from .model.path import (
     EnrichedDiffSingleRelationship,
 )
 
+# Attribute kinds whose value is a JSON collection that an "ordered=False" schema flag can make
+# order-insensitive during conflict detection.
+_UNORDERED_CAPABLE_KINDS = {"List", "JSON"}
+
 
 class ConflictsEnricher:
-    def __init__(self) -> None:
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
         self._base_branch_name: str | None = None
         self._diff_branch_name: str | None = None
+        # node kind -> set of attribute names to compare order-insensitively, cached per run
+        self._order_insensitive_attrs: dict[str, set[str]] = {}
 
     @property
     def base_branch_name(self) -> str:
@@ -36,6 +47,7 @@ class ConflictsEnricher:
     ) -> None:
         self._base_branch_name = branch_diff_root.base_branch_name
         self._diff_branch_name = branch_diff_root.diff_branch_name
+        self._order_insensitive_attrs = {}
 
         base_node_map = {n.uuid: n for n in base_diff_root.nodes}
         branch_node_map = {n.uuid: n for n in branch_diff_root.nodes}
@@ -64,10 +76,15 @@ class ConflictsEnricher:
         base_attribute_map = {a.name: a for a in base_node.attributes}
         branch_attribute_map = {a.name: a for a in branch_node.attributes}
         common_attribute_names = set(base_attribute_map.keys()) & set(branch_attribute_map.keys())
+        order_insensitive_attrs = self._get_order_insensitive_attrs(node_kind=branch_node.kind)
         for branch_attribute in branch_node.attributes:
             if branch_attribute.name in common_attribute_names:
                 base_attribute = base_attribute_map[branch_attribute.name]
-                self._add_attribute_conflicts(base_attribute=base_attribute, branch_attribute=branch_attribute)
+                self._add_attribute_conflicts(
+                    base_attribute=base_attribute,
+                    branch_attribute=branch_attribute,
+                    ignore_order=branch_attribute.name in order_insensitive_attrs,
+                )
             else:
                 branch_attribute.clear_conflicts()
         base_relationship_map = {r.name: r for r in base_node.relationships}
@@ -82,6 +99,28 @@ class ConflictsEnricher:
                 )
             else:
                 branch_relationship.clear_conflicts()
+
+    def _get_order_insensitive_attrs(self, node_kind: str) -> set[str]:
+        """Names of the node's attributes whose element order should be ignored when detecting conflicts.
+
+        The schema is resolved from the diff (source) branch so that a branch which itself changes an
+        attribute's ``ordered`` flag is honored within its own diff, rather than the value on the base.
+        """
+        if node_kind in self._order_insensitive_attrs:
+            return self._order_insensitive_attrs[node_kind]
+        names: set[str] = set()
+        try:
+            node_schema = self.db.schema.get(name=node_kind, branch=self._diff_branch_name, duplicate=False)
+        except (SchemaNotFoundError, BranchNotFoundError, InitializationError):
+            # Without a resolvable schema we cannot know the ordering intent; fall back to
+            # order-sensitive comparison rather than risk suppressing a real conflict.
+            self._order_insensitive_attrs[node_kind] = names
+            return names
+        for attribute_schema in node_schema.attributes:
+            if attribute_schema.kind in _UNORDERED_CAPABLE_KINDS and attribute_schema.ordered is False:
+                names.add(attribute_schema.name)
+        self._order_insensitive_attrs[node_kind] = names
+        return names
 
     def _add_node_conflict(self, base_node: EnrichedDiffNode, branch_node: EnrichedDiffNode) -> None:
         if branch_node.conflict:
@@ -110,6 +149,7 @@ class ConflictsEnricher:
         self,
         base_attribute: EnrichedDiffAttribute,
         branch_attribute: EnrichedDiffAttribute,
+        ignore_order: bool = False,
     ) -> None:
         base_property_map = {p.property_type: p for p in base_attribute.properties}
         branch_property_map = {p.property_type: p for p in branch_attribute.properties}
@@ -123,7 +163,13 @@ class ConflictsEnricher:
             if DiffAction.UNCHANGED in property_actions:
                 branch_property.conflict = None
                 continue
-            same_value = self._have_same_value(base_property=base_property, branch_property=branch_property)
+            # only the attribute value edge can hold a reorderable collection
+            value_order_insensitive = ignore_order and branch_property.property_type is DatabaseEdgeType.HAS_VALUE
+            same_value = self._have_same_value(
+                base_property=base_property,
+                branch_property=branch_property,
+                ignore_order=value_order_insensitive,
+            )
             if same_value:
                 branch_property.conflict = None
                 continue
@@ -246,8 +292,15 @@ class ConflictsEnricher:
             selected_branch=selected_branch,
         )
 
-    def _have_same_value(self, base_property: EnrichedDiffProperty, branch_property: EnrichedDiffProperty) -> bool:
+    def _have_same_value(
+        self,
+        base_property: EnrichedDiffProperty,
+        branch_property: EnrichedDiffProperty,
+        ignore_order: bool = False,
+    ) -> bool:
         if base_property.new_value == branch_property.new_value:
+            return True
+        if ignore_order and self._same_unordered_list(base_property.new_value, branch_property.new_value):
             return True
         if {base_property.new_value, branch_property.new_value} <= {NULL_VALUE, None}:
             return True
@@ -257,3 +310,35 @@ class ConflictsEnricher:
         ):
             return True
         return False
+
+    def _same_unordered_list(self, base_value: str | None, branch_value: str | None) -> bool:
+        """True only when both values parse to JSON arrays holding the same elements, ignoring order.
+
+        Element multiplicity is preserved (multiset comparison) and dict/list elements are canonicalized,
+        so ``["a","b"]`` matches ``["b","a"]`` but ``["a","a"]`` does not match ``["a"]``. Any value that
+        is not a JSON array (a dict, a scalar, malformed JSON) yields False so the caller falls back to
+        exact comparison.
+        """
+        base_canonical = self._canonical_list_signature(base_value)
+        if base_canonical is None:
+            return False
+        branch_canonical = self._canonical_list_signature(branch_value)
+        if branch_canonical is None:
+            return False
+        return base_canonical == branch_canonical
+
+    def _canonical_list_signature(self, value: str | None) -> list[str] | None:
+        if value is None or value == NULL_VALUE:
+            return None
+        parsed = value
+        if isinstance(parsed, str):
+            try:
+                parsed = ujson.loads(parsed)
+            except (ValueError, TypeError):
+                return None
+        if not isinstance(parsed, list):
+            return None
+        try:
+            return sorted(ujson.dumps(element, sort_keys=True) for element in parsed)
+        except (ValueError, TypeError):
+            return None
