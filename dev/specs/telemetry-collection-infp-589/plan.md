@@ -122,6 +122,7 @@ the current separation and adds no new top-level structure (Constitution VII).
   data-mart owners that the `payload_format` bump + new fields are tolerated (consumer
   ignores unknown fields). This is a release checklist item carried into `tasks.md`, not a
   code dependency — every change is additive.
-- **Parked**: `database.node_count.user` (IFC-2825) is out of scope; the contract doc notes
-  the three-way distinction (`total` raw / `corenode` managed / `user` future) without
-  implementing `user`.
+- **`node_count.user` (IFC-2825) in scope**: pulled into Phase 1 once the namespace boundary
+  was resolved (count user-defined-namespace kinds via the `RESTRICTED_NAMESPACES` negative
+  filter — excludes `Core` incl. pipeline validators/checks, and `Builtin`). Delivered
+  alongside `corenode`; the three node metrics nest `user ⊆ corenode ⊆ total`.

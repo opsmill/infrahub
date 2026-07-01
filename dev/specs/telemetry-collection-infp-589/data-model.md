@@ -61,12 +61,13 @@ best-effort daily trend signal).
 
 | Key            | Type widening                | Status     | Meaning                                                      |
 |----------------|------------------------------|------------|-------------------------------------------------------------|
-| `node_count`   | `dict[str, int]` → `dict[str, int \| None]` | **widened** | Holds existing keys (`total`, graph labels) + new `corenode`. |
+| `node_count`   | `dict[str, int]` → `dict[str, int \| None]` | **widened** | Holds existing keys (`total`, graph labels) + new `corenode`, `user`. |
 | `…["total"]`   | `int`                        | unchanged  | Raw vertex total (`count_nodes(db)`).                       |
 | `…["corenode"]`| `int \| None`                | **new key**| Managed-node count via `NodeManager.count(CoreNode)`. `0` empty, `null` failure. |
+| `…["user"]`    | `int \| None`                | **new key**| User/business-node count: sum of `NodeManager.count` over node kinds in user-defined (non-restricted) namespaces. `0` empty, `null` failure. |
 
-Widening is additive in practice: existing keys are always populated `int`; only `corenode`
-may be `null`. No existing key changes meaning or name (FR-011).
+Widening is additive in practice: existing keys are always populated `int`; only `corenode` and
+`user` may be `null`. No existing key changes meaning or name (FR-011).
 
 **Three node metrics, defined at the namespace level (FR-009).** `CoreNode` is applied to every
 node outside the `Schema`/`Internal` namespaces (and non-groups), so the three nest strictly —
@@ -75,13 +76,15 @@ node outside the `Schema`/`Internal` namespaces (and non-groups), so the three n
 | Key | Counts | Namespace scope |
 |-----|--------|-----------------|
 | `total` | raw vertices (incl. attributes/values/internal bookkeeping) | n/a (raw graph) |
-| `corenode` | all managed nodes (this phase) | `Core` + `Builtin` + user-defined |
-| `user` (future, IFC-2825) | customer-facing subset | excludes `Core` management namespace; `Builtin` in/out is the parked decision |
+| `corenode` | all managed nodes; **incl. `Core`-namespace pipeline validators/checks**, so it can be inflated by proposed-change activity | `Core` + `Builtin` + user-defined |
+| `user` | customer-facing subset | user-defined namespaces only (namespace ∉ `RESTRICTED_NAMESPACES`) — excludes `Core` (incl. pipeline validators/checks) and `Builtin` (so `BuiltinTag` is not counted) |
 
-Because the `Core` management namespace (accounts, repositories, proposed changes, webhooks,
-profiles, …) is always non-empty and is always in `corenode` but never in `user`, the two can
-never collapse into the same value. Pinning these definitions here prevents a later `user`
-definition from becoming a synonym for `corenode` (which FR-011 would then make unremovable).
+`user` is computed as the sum of `NodeManager.count` over concrete node kinds whose namespace is
+user-editable (`namespace not in RESTRICTED_NAMESPACES`), on the default branch — the negative
+filter Patrick specified. Group-generic kinds are excluded (they don't carry the `CoreNode`
+label), preserving `user ⊆ corenode`. Because the `Core` management namespace is always
+non-empty and always in `corenode` but never in `user`, the two can never collapse into the same
+value.
 
 ### `TelemetryData` (root, extended)
 
@@ -104,11 +107,11 @@ a whole-source failure surfaces as nulled fields, never a missing object (SC-001
   (FR-010, SC-001).
 - **Windowing**: event/flow-run metrics count only records whose occurrence/start is within
   the trailing 24h (SC-002).
-- **Branch-correct**: `corenode`, `accounts.*` computed on the default branch via
+- **Branch-correct**: `corenode`, `user`, `accounts.*` computed on the default branch via
   `NodeManager.count` (Constitution II); `corenode` must equal an independently-computed
-  fixture exactly (SC-003).
+  fixture exactly, and `user` must exclude seeded `Core` nodes with `user ⊆ corenode ⊆ total`
+  (SC-003).
 
 ## Out of model (this phase)
 
-- `database.node_count["user"]` — blocked (IFC-2825), not added.
 - No changes to `TelemetryPrefectData.events` (the existing unwindowed tally).

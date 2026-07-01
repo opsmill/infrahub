@@ -25,8 +25,7 @@ separate, downstream effort.
 The work is deliberately scoped as Phase 1 of a larger telemetry roadmap (epic
 IFC-2789). Phase 2 metrics (licensing, token usage, generator/transformation
 adoption, branch lifetime, PR governance, CLI/MCP/Sync adoption, GraphQL/REST
-metrics) and the blocked `user_node_count` metric are explicitly **not** in
-scope here.
+metrics) are explicitly **not** in scope here.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -224,6 +223,12 @@ in-window events.
 - **FR-003**: The payload MUST report `database.node_count.corenode` as the count
   of managed (`CoreNode`-generic) nodes, computed through the branch-safe,
   temporal-correct count path (not a raw vertex/label count). [IFC-2821]
+- **FR-004**: The payload MUST report `database.node_count.user` as the count of
+  user/business nodes — nodes in user-defined (non-restricted) namespaces —
+  computed through the branch-safe count path. This is the customer-facing subset
+  of `corenode`: it excludes the `Core` management namespace (accounts,
+  repositories, proposed changes, and the pipeline-generated validators/checks) and,
+  by the same restricted-namespace rule, the `Builtin` namespace. [IFC-2825]
 - **FR-005**: The payload MUST report `branches.active` as the count of open,
   non-system branches, excluding the default branch and the global system
   branch. [IFC-2822]
@@ -246,14 +251,19 @@ in-window events.
     the branch-safe `NodeManager.count` path (same as FR-003). By construction this
     is every schema-managed node whose namespace is not internal-only
     (`Schema`/`Internal`); it therefore includes management kinds such as
-    `CoreAccount`, not just user-defined data.
-  - `user` (future / blocked — IFC-2825, not in this feature) — a narrower,
-    customer-facing subset of `corenode`. Its exact namespace boundary — in
-    particular whether the `Builtin` namespace (tags, IPAM addresses/prefixes) counts
-    as user data — is an open product decision and MUST NOT be assumed here.
+    `CoreAccount` **and the pipeline-generated validators/checks created per proposed
+    change**, not just user-defined data. Because of the latter, `corenode` can be
+    inflated by proposed-change pipeline activity — it is a total-managed-footprint
+    number, not a clean customer-data number (that is what `user` is for).
+  - `user` — the customer-facing subset of `corenode`: nodes in user-defined
+    (non-restricted) namespaces. Defined operationally as the sum over node kinds
+    whose namespace is NOT in the restricted-namespace set, which excludes the `Core`
+    management namespace (incl. the pipeline validators/checks) and the `Builtin`
+    namespace. `BuiltinTag` is therefore not counted (it is `Builtin`); this matches
+    current product direction and is revisited if tags move to user-defined schemas.
 
-  The metrics nest by construction (`user ⊆ corenode ⊆ total`), but only `total` and
-  `corenode` are defined and delivered in this phase. [IFC-2821]
+  The metrics nest by construction (`user ⊆ corenode ⊆ total`); all three are
+  defined and delivered in this phase. [IFC-2821, IFC-2825]
 - **FR-010**: When a metric's source fails, that field MUST be set to `null`
   while the rest of the payload is still emitted and stored; when a source
   succeeds with nothing to count, the field MUST be `0`, not `null`. [IFC-2820]
@@ -298,9 +308,10 @@ in-window events.
   `webhooks_fired_failure`.
 - **Node-count metrics (`database.node_count`)**: A map of node counts. `total` =
   raw vertices (existing, unchanged); `corenode` = `CoreNode`-generic count via the
-  branch-safe count path (new, this phase). A future `user` subset is blocked
-  (IFC-2825) and not added here. The map may carry a `null` only on the new
-  `corenode` key (per FR-010 / GR-001).
+  branch-safe count path (new); `user` = the customer-facing subset in user-defined
+  (non-restricted) namespaces, via the branch-safe count path (new). They nest
+  `user ⊆ corenode ⊆ total`. The map may carry a `null` on either new key
+  (`corenode`, `user`) per FR-010 / GR-001; existing keys are always populated.
 - **Account**: A user account with a status (active vs. non-active) used for
   `accounts.active`.
 - **Account group**: A grouping of accounts, counted for `accounts.groups`.
@@ -326,7 +337,9 @@ in-window events.
   but outside the window. Verified with fixtures containing both in-window and
   out-of-window records.
 - **SC-003**: `database.node_count.corenode` matches an independently-computed
-  fixture count exactly (±0).
+  fixture count exactly (±0); `database.node_count.user` counts only user-defined
+  namespace nodes (a seeded `Core` node is excluded), and the nesting invariant
+  `user ⊆ corenode ⊆ total` holds.
 - **SC-004**: No existing telemetry field changes meaning, type, or name across
   this release (the `node_count` map may carry a `null` value only on the new
   `corenode` key); the `payload_format` identifier is advanced and a
@@ -356,8 +369,6 @@ in-window events.
 
 ## Out of Scope
 
-- `database.node_count.user` (FR-004 / IFC-2825) — blocked on a product decision
-  about which namespaces to include; explicitly excluded from this feature.
 - Remaining Phase 2 telemetry items: licensing (cores/RAM), distinct API-token
   usage, generators/transformations adoption, branch lifetime, PR governance,
   CLI/MCP/Sync adoption, and GraphQL/REST metrics. (Checks and artifacts, formerly

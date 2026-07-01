@@ -114,13 +114,15 @@ open/system branches; assert each reported count matches the fixture exactly.
 
 ---
 
-## Phase 5: User Story 3 — Branch-correct managed-node count (Priority: P2)
+## Phase 5: User Story 3 — Branch-correct node counts: `corenode` + `user` (Priority: P2)
 
-**Goal**: Emit `database.node_count.corenode` via the branch/temporal-correct count path,
+**Goal**: Emit `database.node_count.corenode` (all managed nodes) and `database.node_count.user`
+(user/business nodes in user-defined namespaces) via the branch/temporal-correct count path,
 leaving `node_count.total` (raw vertices) unchanged.
 
 **Independent Test**: Seed a known number of managed nodes, independently compute the expected
-count, and assert `node_count["corenode"]` matches exactly (±0).
+count, and assert `node_count["corenode"]` matches exactly (±0); seed user-defined + `Core` nodes
+and assert `node_count["user"]` counts only the user-defined ones with `user ⊆ corenode ⊆ total`.
 
 ### Tests for User Story 3 (write first, must fail) ⚠️
 
@@ -129,9 +131,11 @@ count, and assert `node_count["corenode"]` matches exactly (±0).
 ### Implementation for User Story 3
 
 - [x] T020 [US3] In `backend/infrahub/telemetry/database.py`, set `node_count["corenode"]` via `NodeManager.count(db, schema=InfrahubKind.NODE, branch=<default>)`, wrapped so a failure sets `corenode=None` without affecting `node_count["total"]` or the existing graph-label keys (do NOT use raw `count_nodes(label=...)`).
-- [x] T021 [US3] Add/extend a docstring or module note distinguishing the three node metrics at the namespace level: `total` (raw vertices), `corenode` (all managed nodes — `Core` + `Builtin` + user-defined namespaces), and the future/out-of-scope `user` (customer-facing subset excluding the `Core` management namespace), noting they nest `user ⊆ corenode ⊆ total`. No tickets/IDs in source.
+- [x] T021 [US3] Add/extend a docstring or module note distinguishing the three node metrics at the namespace level: `total` (raw vertices), `corenode` (all managed nodes — `Core` + `Builtin` + user-defined namespaces), and `user` (customer-facing subset excluding the `Core` management namespace), noting they nest `user ⊆ corenode ⊆ total`. No tickets/IDs in source.
+- [ ] T021b [US3] Component test in `backend/tests/component/telemetry/test_datatabase.py`: seed user-defined nodes (`Test` namespace via `car_person_schema`) + at least one `Core` node (a `CoreAccount`); assert `node_count["user"]` equals the user-defined count exactly (Core node excluded) and `user <= corenode <= total`, with `user < corenode` when a Core node exists.
+- [ ] T021c [US3] In `backend/infrahub/telemetry/database.py`, set `node_count["user"]` = sum of `NodeManager.count` over concrete node kinds in user-editable namespaces (`SchemaNamespace.user_editable`, i.e. `namespace not in RESTRICTED_NAMESPACES`), excluding group-generic kinds; wrapped so a failure sets only `user=None`. Update `test_tasks.py` full-payload presence test to assert `node_count["user"]` is present.
 
-**Checkpoint**: `corenode` exact and branch-correct; raw `total` preserved.
+**Checkpoint**: `corenode` + `user` exact and branch-correct; `user` excludes `Core`/`Builtin`; raw `total` preserved.
 
 ---
 
@@ -266,7 +270,7 @@ Task: "Regression test gather_prefect_events unchanged"
 - US5 (checks/artifacts/branch-lifecycle counts) is a user-directed pull-in from Phase 2 —
   cheap because the events already flow; see `alignment-check.md` §6 for the
   sanctioned-scope-expansion record.
-- Out of scope (do not implement): `database.node_count.user` (blocked); branch *lifetime*
+- Out of scope (do not implement): branch *lifetime*
   (duration — needs correlation); PR "merged-without-review" (needs correlation); node churn
   (`node.*` — machine-dominated, noisy); branch `rebased`/`migrated` counts (low-signal);
   remaining Phase 2 metrics (generators/transforms, tokens, CLI/MCP/Sync, licensing);

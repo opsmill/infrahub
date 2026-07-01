@@ -31,9 +31,24 @@ user  ⊆  corenode  ⊆  total
 
 - `total` — raw vertices (incl. attributes/values/internal bookkeeping).
 - `corenode` — **all** managed nodes across `Core` + `Builtin` + user namespaces (this phase).
-- `user` (future, IFC-2825) — customer-facing subset that **excludes the `Core` management
-  namespace**; the parked decision only chooses whether `Builtin` is in or out, i.e. it slides
-  the `user` ⊂ `corenode` gap but never closes it (the `Core` namespace is always non-empty).
+  Note this includes the `Core`-namespace **pipeline validators/checks** created per proposed
+  change, so `corenode` can be inflated by pipeline activity — a total-managed-footprint number.
+- `user` — customer-facing subset in **user-defined namespaces only** (this phase; see decision
+  below). Excludes `Core` (incl. the pipeline validators/checks) and `Builtin`.
+
+**`user` definition (decided per Patrick's guidance; IFC-2825 resolved).** Compute `user` as the
+sum of `NodeManager.count` over the concrete node kinds whose namespace is **user-editable**,
+i.e. `namespace not in RESTRICTED_NAMESPACES` (`Account`, `Branch`, `Builtin`, `Core`,
+`Deprecated`, `Diff`, `Infrahub`, `Internal`, `Lineage`, `Schema`, `Profile`, `Template`). The
+schema branch already exposes this: `SchemaNamespace.user_editable == (namespace not in
+RESTRICTED_NAMESPACES)`, so `get_namespaces()` + `get_schemas_for_namespaces()` yield the
+user-defined kinds without re-deriving the filter. This negative filter naturally drops the
+`Core`-namespace pipeline validators/checks (the high-volume ephemeral nodes Patrick flagged as
+noise) and, being restricted, `Builtin` — so `BuiltinTag` is **not** counted (matches current
+product direction; revisit if tags move to user-defined schemas). Group-generic kinds are
+excluded (no `CoreNode` label), preserving `user ⊆ corenode`. Rationale for summing per-kind
+(vs a single query): `NodeManager.count` is the branch/temporal-correct path (Constitution II);
+the number of user kinds is small and this runs once daily.
 
 This pins the definitions at the namespace level so a later `user` definition cannot
 accidentally equal `corenode` — a real concern given FR-011 forbids removing a shipped field.
