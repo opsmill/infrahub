@@ -214,6 +214,17 @@ Notable resolved decisions carried into the requirements:
   one that contains fields now classified `read` — MUST continue to succeed.
   *Verify:* a stored schema containing a now-`read` field is read back without
   error.
+- **FR-011**: The change MUST ship with a changelog entry and an upgrade note that
+  document the stricter submission behaviour (previously-accepted non-settable
+  fields are now rejected) and tell clients how to produce a submittable payload
+  (strip non-settable fields using the published write description). *Verify:* a
+  changelog fragment exists for this change and the upgrade note names the affected
+  endpoint and the client-side mitigation.
+- **FR-012**: The generated write and read models MUST be committed, version-
+  controlled artifacts shipped inside the published client library package (not
+  build-time-only), so a consumer installing only the library obtains them.
+  *Verify:* the client library's own checks confirm the generated models are present
+  and non-stale, and a consumer install exposes them without any generation step.
 
 ### Key Entities
 
@@ -284,10 +295,21 @@ Notable resolved decisions carried into the requirements:
 - **API / public interface change** — the submission endpoint becomes stricter
   (breaking for payloads that carry non-settable fields) and the read-back shape
   changes. Requires the "ask first" governance discussion before implementation.
+  Must ship with a changelog fragment and an upgrade note (FR-011).
 - **Generated files + client-library changes** — regeneration produces new/changed
   generated models in both the backend and the client library; both must be
-  regenerated and committed together, and CI must validate them on both sides.
-- **No database, dependency, or authentication changes.**
+  regenerated and committed together, and CI must validate them on both sides. The
+  client-library models are committed, shipped artifacts (FR-012).
+- **Server/client release compatibility** — server and client library now ship the
+  same generated contract; they must be released compatibly. The `version` field on
+  a submission is the compatibility anchor; client-side local validation is advisory
+  and the server remains authoritative on skew.
+- **`id`-driven mutations** — because object `id` is user-settable (to rename/delete
+  an existing object), implementation MUST confirm existing authorization and branch
+  scoping prevent an `id` in a payload from targeting an object the caller may not
+  modify; this MUST be covered by a test.
+- **No database, dependency, or authentication changes** (the authorization check
+  above reuses existing controls; it introduces no new auth model).
 
 ## Open Questions
 

@@ -12,6 +12,10 @@ the backend API layer, the SDK, and any agent reading the published JSON-schema.
   - Internal variant → `backend/infrahub/core/schema/generated/*.py` (unchanged location).
   - Write + Read variants → `python_sdk/infrahub_sdk/schema/` (generated; replace hand-written).
 - **Guarantee**: regeneration is byte-stable (idempotent). CI validates no drift on both sides.
+- **Shipping**: the generated SDK write/read models are committed, version-controlled
+  artifacts included in the published SDK package (not build-time-only), so a consumer
+  installing only the SDK obtains them (basis for the "importable with only the SDK
+  installed" contract).
 
 ## Write model contract
 

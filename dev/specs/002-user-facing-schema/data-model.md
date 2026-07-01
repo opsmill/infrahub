@@ -84,4 +84,7 @@ Full table in `schema-field-classification.md`. Key resolved decisions:
 - `write ⊆ read ⊆ internal` (no write-only field).
 - Regeneration is idempotent (byte-stable output).
 - The SDK write/read models import with no backend/server dependency.
+- The generated SDK write/read models are committed, version-controlled artifacts
+  shipped in the SDK package (not build-time-only); the SDK's own CI validates they
+  are present and non-stale.
 - Server and SDK validate against the *same* generated models.

@@ -24,7 +24,7 @@ Separate Infrahub's user-facing schema from its internal schema by generating, f
 
 **Performance Goals**: Not a hot path — schema load/read is infrequent and human/agent-driven. Generation is a dev-time step. No specific latency target.
 
-**Constraints**: Generated files must be byte-stable (idempotent regeneration, validated in CI). SDK write/read models must import with zero backend dependency. Backward compatibility: previously loadable write-shaped schemas must still load; stored schemas must still read back.
+**Constraints**: Generated files must be byte-stable (idempotent regeneration, validated in CI). SDK write/read models must import with zero backend dependency **and be committed, shipped artifacts in the SDK package** (not build-time-only), so a consumer installing only the SDK obtains them. Backward compatibility: previously loadable write-shaped schemas must still load; stored schemas must still read back. Server and SDK ship one contract and must be released compatibly; the submission `version` field is the skew anchor (local validation advisory, server authoritative).
 
 **Scale/Scope**: Four schema families (node, generic, attribute, relationship) × ~20–30 fields each; one generator template; two API endpoints; one SDK schema module.
 
