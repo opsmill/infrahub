@@ -154,6 +154,11 @@ def build_coalesced_recompute(
     Groups the changes by signature so derivation runs once per distinct change
     shape, runs the three family derivers, and merges the results so each derived
     target is recomputed once with its reader lookups unioned.
+
+    Targets come only from the changes in the set. A branch-originated merge carries every level the
+    branch already cascaded, so a transitive chain is covered in one pass; a level absent from the set
+    (a destination-only reader, or a rebase whose source branch had no readers) is reached instead by
+    the live recompute its predecessor's write triggers.
     """
     ids_by_signature: dict[ChangeSignature, set[str]] = {}
     for change in changes:
