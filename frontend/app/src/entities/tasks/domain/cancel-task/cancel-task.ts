@@ -2,15 +2,15 @@ import {
   type CancelTaskFromApiParams,
   cancelTaskFromApi,
 } from "@/entities/tasks/api/cancel-task-from-api";
-import {
-  mapTaskActionResult,
-  type TaskActionResult,
-} from "@/entities/tasks/domain/task-action-result";
 
 export type CancelTaskParams = CancelTaskFromApiParams;
-export type CancelTaskResult = TaskActionResult;
 
-export const cancelTask = async (params: CancelTaskParams): Promise<CancelTaskResult> => {
+export const cancelTask = async (params: CancelTaskParams): Promise<string | undefined> => {
   const { data, errors } = await cancelTaskFromApi(params);
-  return mapTaskActionResult(data?.InfrahubTaskCancel, errors, "Failed to cancel the task");
+
+  if (errors?.length) {
+    throw new Error(errors.map((error) => error.message).join("; "));
+  }
+
+  return data?.InfrahubTaskCancel?.task?.id ?? undefined;
 };

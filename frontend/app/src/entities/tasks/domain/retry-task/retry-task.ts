@@ -2,15 +2,15 @@ import {
   type RetryTaskFromApiParams,
   retryTaskFromApi,
 } from "@/entities/tasks/api/retry-task-from-api";
-import {
-  mapTaskActionResult,
-  type TaskActionResult,
-} from "@/entities/tasks/domain/task-action-result";
 
 export type RetryTaskParams = RetryTaskFromApiParams;
-export type RetryTaskResult = TaskActionResult;
 
-export const retryTask = async (params: RetryTaskParams): Promise<RetryTaskResult> => {
+export const retryTask = async (params: RetryTaskParams): Promise<string | undefined> => {
   const { data, errors } = await retryTaskFromApi(params);
-  return mapTaskActionResult(data?.InfrahubTaskRetry, errors, "Failed to retry the task");
+
+  if (errors?.length) {
+    throw new Error(errors.map((error) => error.message).join("; "));
+  }
+
+  return data?.InfrahubTaskRetry?.task?.id ?? undefined;
 };

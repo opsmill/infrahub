@@ -50,8 +50,8 @@ export const TaskActions = ({ task }: { task: TaskActionsTask }) => {
       // The new run is a sibling of the current one, so swap the task id in the path we are
       // already on. This keeps the link pointing at whichever task view the retry was triggered
       // from — the standalone task page or an object's task tab.
-      const newRunPath = constructPath(`${pathname.replace(/\/[^/]+\/?$/, "")}/${result.taskId}`);
-      const message = result.taskId ? (
+      const newRunPath = constructPath(`${pathname.replace(/\/[^/]+\/?$/, "")}/${result}`);
+      const message = result ? (
         <>
           Task retried.{" "}
           <Link to={newRunPath} className="inline-flex items-center gap-1 underline">
