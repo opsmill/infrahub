@@ -1,6 +1,6 @@
 from infrahub.core.constants import InfrahubKind
 from infrahub.events.node_action import NodeCreatedEvent, NodeDeletedEvent, NodeUpdatedEvent
-from infrahub.trigger.models import BuiltinTriggerDefinition, EventTrigger, ExecuteWorkflow
+from infrahub.trigger.models import BuiltinTriggerDefinition, EventTrigger, ExecuteWorkflow, jinja_parameter
 from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_INVALIDATE_HEADERS
 
 TRIGGER_WEBHOOK_CONFIGURE = BuiltinTriggerDefinition(
@@ -15,7 +15,7 @@ TRIGGER_WEBHOOK_CONFIGURE = BuiltinTriggerDefinition(
         ExecuteWorkflow(
             workflow=WEBHOOK_CONFIGURE,
             parameters={
-                "event_type": "{{ event.event }}",
+                "event_type": jinja_parameter("{{ event.event }}"),
                 "event_data": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['data'] | tojson }}"},
@@ -40,7 +40,7 @@ TRIGGER_KEYVALUE_WEBHOOK_INVALIDATE = BuiltinTriggerDefinition(
         ExecuteWorkflow(
             workflow=WEBHOOK_INVALIDATE_HEADERS,
             parameters={
-                "event_type": "{{ event.event }}",
+                "event_type": jinja_parameter("{{ event.event }}"),
                 "event_data": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['data'] | tojson }}"},

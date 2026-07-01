@@ -4,8 +4,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from tests.helpers.graph_traversal.builders import ShortcutGraph
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -38,6 +41,53 @@ async def three_people_shared_tag(
         people.append(person)
     p1, p2, p3 = people
     return p1, p2, p3, tag_blue_main
+
+
+@pytest.fixture
+async def linked_vertices_with_shortcut(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_schema: None,
+    register_core_models_schema: SchemaBranch,
+) -> ShortcutGraph:
+    # A non-bipartite graph (self-referential ``links``) where the middle is reachable from the
+    # source both directly (a shortcut) and via the detour. Combined with middle-bridge-destination
+    # this gives a shortest route source -> middle -> bridge -> destination (depth 3) and a longer
+    # simple route source -> detour -> middle -> bridge -> destination (depth 4) whose midpoint
+    # (the middle) is NOT at its shortest distance — shortest_paths_only=True omits it, =False keeps it.
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Vertex",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="links",
+                        peer="TestVertex",
+                        identifier="vertex__vertex",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            )
+        ]
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    async def _vertex(name: str, links: list[Node] | None = None) -> Node:
+        node = await Node.init(db=db, schema="TestVertex", branch=default_branch)
+        await node.new(db=db, name=name, links=links or [])
+        await node.save(db=db)
+        return node
+
+    destination = await _vertex("D")
+    bridge = await _vertex("B", [destination])
+    middle = await _vertex("M", [bridge])
+    detour = await _vertex("A", [middle])
+    source = await _vertex("S", [middle, detour])
+    return ShortcutGraph(source=source, detour=detour, middle=middle, bridge=bridge, destination=destination)
 
 
 @pytest.fixture
