@@ -8795,6 +8795,25 @@ type InfrahubRelationshipMetadata {
   updated_by: CoreGenericAccount
 }
 
+"""
+Write preferences on a single axis — the requested `scope` — using typed StandardNode fields.
+
+scope=USER   → the calling account's OWN UserPreference row only (bound to
+               account_session.account_id, no account argument, so there is no path to write
+               another user's preferences). Lazily created on first write, per-account lock.
+scope=GLOBAL → the org-wide GlobalPreference singleton, gated on manage_global_preferences
+               (super admins bypass via the permission manager) checked BEFORE any read.
+scope=EFFECTIVE → not writable (the resolved view is read-only); rejected fail-closed.
+
+The _UNSET sentinel means an omitted argument leaves the field unchanged while an explicit
+`null` resets it.
+"""
+type InfrahubSetPreferences {
+  date_format: String
+  ok: Boolean
+  timezone: String
+}
+
 """Token for User Account"""
 type InternalAccountToken implements CoreNode {
   account: NestedEdgedCoreGenericAccount!
@@ -9715,6 +9734,20 @@ type Mutation {
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
   InfrahubRepositoryProcess(data: IdentifierInput!): ProcessRepository
+  """
+  Write preferences on a single axis — the requested `scope` — using typed StandardNode fields.
+  
+  scope=USER   → the calling account's OWN UserPreference row only (bound to
+                 account_session.account_id, no account argument, so there is no path to write
+                 another user's preferences). Lazily created on first write, per-account lock.
+  scope=GLOBAL → the org-wide GlobalPreference singleton, gated on manage_global_preferences
+                 (super admins bypass via the permission manager) checked BEFORE any read.
+  scope=EFFECTIVE → not writable (the resolved view is read-only); rejected fail-closed.
+  
+  The _UNSET sentinel means an omitted argument leaves the field unchanged while an explicit
+  `null` resets it.
+  """
+  InfrahubSetPreferences(date_format: String, scope: PreferenceScope!, timezone: String): InfrahubSetPreferences
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
   InfrahubUpdateDisplayLabel(context: ContextInput, data: InfrahubDisplayLabelUpdateInput!): UpdateDisplayLabel
   InfrahubUpdateHFID(context: ContextInput, data: InfrahubHFIDUpdateInput!): UpdateHFID
@@ -12209,6 +12242,56 @@ type PoolUtilization {
   utilization_branches: Float!
   """The overall utilization of the pool isolated to the default branch."""
   utilization_default_branch: Float!
+}
+
+"""
+A single preference: its key, the value, and where it came from.
+
+For EFFECTIVE reads `value` is null only when `source` is DEFAULT. For raw USER/GLOBAL reads
+`value` may be null (nothing stored for that key) while `source` still reports the scope.
+"""
+type PreferenceEntryType {
+  key: String!
+  source: PreferenceSource!
+  value: String
+}
+
+"""
+Which axis of the preferences store a read/write operates on.
+
+EFFECTIVE = the caller's resolved view (user-else-global-else-default), read-only.
+GLOBAL    = the org-wide GlobalPreference singleton's raw values (manage_global_preferences).
+USER      = the caller's OWN raw UserPreference values (account-bound, never another account).
+"""
+enum PreferenceScope {
+  EFFECTIVE
+  GLOBAL
+  USER
+}
+
+"""
+Where a resolved preference value came from.
+
+USER    = the caller's OWN override (or a raw USER-scope read).
+GLOBAL  = the org-wide GlobalPreference singleton (or a raw GLOBAL-scope read).
+DEFAULT = nothing is stored anywhere; the client applies its built-in default.
+"""
+enum PreferenceSource {
+  DEFAULT
+  GLOBAL
+  USER
+}
+
+"""
+Per-key preference entries for the requested scope plus the org-defaults edit gate.
+
+Privacy: EFFECTIVE and USER entries are account-bound (the resolver reads only
+account_session.account_id), so no account ever sees another account's user preferences.
+GLOBAL entries are org-wide and returned only after the manage_global_preferences gate.
+"""
+type PreferencesType {
+  can_edit_global_preferences: Boolean!
+  preferences: [PreferenceEntryType!]!
 }
 
 type ProcessRepository {
@@ -24994,6 +25077,7 @@ type Query {
   """
   InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
+  InfrahubPreferences(scope: PreferenceScope = EFFECTIVE): PreferencesType!
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
