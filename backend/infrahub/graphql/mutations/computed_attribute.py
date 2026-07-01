@@ -107,6 +107,8 @@ class UpdateComputedAttribute(Mutation):
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
+            # A recompute write must stay live-origin: a merge/rebase origin here would be suppressed by
+            # the coalesced-recompute triggers, leaving dependent recomputes stale.
             event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
