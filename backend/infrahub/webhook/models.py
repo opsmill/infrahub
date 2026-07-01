@@ -206,6 +206,7 @@ class EventContext(BaseModel):
 
 MASKED_HEADER_VALUE = "***"
 WEBHOOK_SIGNATURE_HEADER = "webhook-signature"
+SENSITIVE_HEADER_NAMES = frozenset({"authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key"})
 
 
 class HeaderKind(StrEnum):
@@ -305,13 +306,15 @@ class Webhook(BaseModel):
     def redact_headers(self, headers: dict[str, Any]) -> dict[str, Any]:
         """Return a copy of the headers with secret-bearing values masked for logging.
 
-        Values resolved from the environment and the request signature are masked, while standard
-        and statically configured headers are kept verbatim so the log stays useful without
-        exposing credentials.
+        Environment-sourced values, the request signature, and any well-known credential-bearing
+        header are masked, while standard and statically configured headers are kept verbatim so
+        the log stays useful without exposing credentials. Matching is case-insensitive because
+        HTTP header names are, so a secret cannot slip through under a different casing.
         """
-        sensitive = {header.key for header in self.custom_headers if header.kind is HeaderKind.ENVIRONMENT}
-        sensitive.add(WEBHOOK_SIGNATURE_HEADER)
-        return {key: (MASKED_HEADER_VALUE if key in sensitive else value) for key, value in headers.items()}
+        sensitive = {header.key.lower() for header in self.custom_headers if header.kind is HeaderKind.ENVIRONMENT}
+        sensitive.add(WEBHOOK_SIGNATURE_HEADER.lower())
+        sensitive |= SENSITIVE_HEADER_NAMES
+        return {key: (MASKED_HEADER_VALUE if key.lower() in sensitive else value) for key, value in headers.items()}
 
     @computed_field  # type: ignore[prop-decorator]
     @property

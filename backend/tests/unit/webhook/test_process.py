@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import re
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -63,11 +62,10 @@ def recording_http() -> Iterator[_RecordingHTTP]:
 
 
 @pytest.fixture
-def webhook_token_env() -> Iterator[str]:
-    """Set the environment variable that the env-sourced header resolves from, and clear it afterwards."""
-    os.environ["WEBHOOK_TOKEN_ENV"] = "super-secret-token"
-    yield "super-secret-token"
-    os.environ.pop("WEBHOOK_TOKEN_ENV", None)
+def webhook_token_env(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Set the environment variable that the env-sourced header resolves from; auto-restored afterwards."""
+    monkeypatch.setenv("WEBHOOK_TOKEN_ENV", "super-secret-token")
+    return "super-secret-token"
 
 
 async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(

@@ -228,6 +228,38 @@ def test_redact_headers_masks_environment_value_and_signature() -> None:
     assert headers["Authorization"] == "resolved-secret-value"  # the source mapping is left untouched
 
 
+def test_redact_headers_masks_well_known_secret_headers_regardless_of_kind() -> None:
+    """Credential-bearing headers are masked even when statically configured, matched case-insensitively."""
+    webhook = CustomWebhook(
+        name="test",
+        url="http://test.com",
+        event_type="test",
+        validate_certificates=True,
+        custom_headers=[
+            WebhookHeader(key="Authorization", value="Bearer static-token", kind=HeaderKind.STATIC),
+            WebhookHeader(key="x-api-key", value="static-key", kind=HeaderKind.STATIC),
+            WebhookHeader(key="X-Safe", value="plain", kind=HeaderKind.STATIC),
+        ],
+    )
+    headers = {
+        "Accept": "application/json",
+        "Authorization": "Bearer static-token",
+        "x-api-key": "static-key",
+        "Cookie": "session=abc",
+        "X-Safe": "plain",
+    }
+
+    redacted = webhook.redact_headers(headers)
+
+    assert redacted == {
+        "Accept": "application/json",
+        "Authorization": MASKED_HEADER_VALUE,
+        "x-api-key": MASKED_HEADER_VALUE,
+        "Cookie": MASKED_HEADER_VALUE,
+        "X-Safe": "plain",
+    }
+
+
 def test_redact_headers_without_sensitive_headers_returns_equal_copy() -> None:
     """With no environment header and no signature, nothing is masked."""
     webhook = CustomWebhook(
