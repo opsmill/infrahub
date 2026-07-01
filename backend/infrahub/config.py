@@ -215,6 +215,12 @@ class MainSettings(BaseSettings):
         default=False,
         description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
     )
+    merge_failure_grace_period_seconds: int = Field(
+        default=180,
+        ge=0,
+        description="How long a branch may stay in MERGING with a dead merge-lock holder before it is "
+        "flagged MERGE_FAILED.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod

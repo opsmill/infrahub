@@ -1,8 +1,33 @@
 import operator
 import time
 from asyncio import gather, sleep
+from dataclasses import dataclass
+
+import pytest
 
 from infrahub import lock
+from infrahub.lock import get_worker_id_from_lock_token
+
+
+@dataclass
+class LockTokenCase:
+    name: str
+    token: str | None
+    expected: str | None
+
+
+LOCK_TOKEN_CASES = [
+    LockTokenCase(name="valid", token="2026-01-01T00:00:00.000000Z::worker-7", expected="worker-7"),
+    LockTokenCase(name="none", token=None, expected=None),
+    LockTokenCase(name="empty", token="", expected=None),
+    LockTokenCase(name="no-separator", token="no-separator", expected=None),
+    LockTokenCase(name="empty-worker-id", token="2026-01-01T00:00:00.000000Z::", expected=None),
+]
+
+
+@pytest.mark.parametrize("case", LOCK_TOKEN_CASES, ids=[c.name for c in LOCK_TOKEN_CASES])
+def test_get_worker_id_from_lock_token(case: LockTokenCase) -> None:
+    assert get_worker_id_from_lock_token(case.token) == case.expected
 
 
 async def do_nothing(id: str, wait_sec: float, lock_name: str = "test1") -> tuple[str, int, int]:
