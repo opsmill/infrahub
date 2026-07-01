@@ -33,7 +33,7 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 - [ ] T001 Create the `backend/infrahub/git/fingerprint/` package with an empty `__init__.py` and empty stub modules `composer.py`, `blob_resolver.py`, `registry.py`, `hasher.py` (or `canonical.py` for canonicalisation helpers), each with module docstring only.
 - [ ] T002 [P] Create the unit test package `backend/tests/unit/git/fingerprint/` with an empty `__init__.py`.
-- [ ] T003 [P] Create the changelog fragment `changelog/+ifc-2844.added.md` describing the new nullable branch-aware `fingerprint` attribute on `CoreGraphQLQuery`, `CoreTransformation`, `CoreArtifactDefinition`, and `CoreGeneratorDefinition`.
+- [X] T003 [P] Create the changelog fragment `changelog/+ifc-2844.added.md` describing the new nullable branch-aware `fingerprint` attribute on `CoreGraphQLQuery`, `CoreTransformation`, `CoreArtifactDefinition`, and `CoreGeneratorDefinition`.
 
 ---
 
@@ -45,12 +45,12 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 ### Schema attributes (FR-001 - FR-004)
 
-- [ ] T004 [P] Add the `fingerprint` `Text` attribute (optional=True, `branch=BranchSupportType.AWARE`, read_only=False, unique=False) to `CoreGraphQLQuery` in `backend/infrahub/core/schema/definitions/core/graphql_query.py`.
-- [ ] T005 [P] Add the same `fingerprint` attribute to the `CoreTransformation` generic in `backend/infrahub/core/schema/definitions/core/transform.py` (declared once; inherited by `CoreTransformPython`/`CoreTransformJinja2`).
-- [ ] T006 [P] Add the same `fingerprint` attribute to `CoreArtifactDefinition` in `backend/infrahub/core/schema/definitions/core/artifact.py`.
-- [ ] T007 [P] Add the same `fingerprint` attribute to `CoreGeneratorDefinition` in `backend/infrahub/core/schema/definitions/core/generator.py`.
-- [ ] T008 Regenerate backend generated files (depends on T004-T007): run `uv run invoke backend.generate` and confirm `fingerprint` appears in `backend/infrahub/core/protocols.py` and `backend/infrahub/core/schema/generated/`.
-- [ ] T009 Regenerate schema/frontend exports (depends on T008): run `uv run invoke schema.generate-graphqlschema`, `uv run invoke schema.generate-jsonschema`, and `cd frontend/app && pnpm codegen`; confirm `fingerprint` in `schema/schema.graphql`, `schema/openapi.json`, and `frontend/app/src/shared/api/graphql/generated/`.
+- [X] T004 [P] Add the `fingerprint` `Text` attribute (optional=True, `branch=BranchSupportType.AWARE`, read_only=False, unique=False) to `CoreGraphQLQuery` in `backend/infrahub/core/schema/definitions/core/graphql_query.py`.
+- [X] T005 [P] Add the same `fingerprint` attribute to the `CoreTransformation` generic in `backend/infrahub/core/schema/definitions/core/transform.py` (declared once; inherited by `CoreTransformPython`/`CoreTransformJinja2`).
+- [X] T006 [P] Add the same `fingerprint` attribute to `CoreArtifactDefinition` in `backend/infrahub/core/schema/definitions/core/artifact.py`.
+- [X] T007 [P] Add the same `fingerprint` attribute to `CoreGeneratorDefinition` in `backend/infrahub/core/schema/definitions/core/generator.py`.
+- [X] T008 Regenerate backend generated files (depends on T004-T007): run `uv run invoke backend.generate` and confirm `fingerprint` appears in `backend/infrahub/core/protocols.py` and `backend/infrahub/core/schema/generated/`.
+- [X] T009 Regenerate schema/frontend exports (depends on T008): run `uv run invoke schema.generate-graphqlschema`, `uv run invoke schema.generate-jsonschema`, and `cd frontend/app && pnpm codegen`; confirm `fingerprint` in `schema/schema.graphql`, `schema/openapi.json`, and `frontend/app/src/shared/api/graphql/generated/`.
 
 ### Shared fingerprint components
 
