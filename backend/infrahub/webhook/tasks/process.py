@@ -46,19 +46,26 @@ def _truncate_for_log(text: str) -> str:
     return f"{text[:PAYLOAD_LOG_LIMIT]}… (+{remaining} characters; enable debug logging for the full payload)"
 
 
-@task(name="webhook-post", task_run_name="Send webhook {webhook_name}", cache_policy=NONE)
-async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int) -> Response:
-    """Resolve the webhook config, log the outgoing request, and POST the prepared payload."""
+def _log_outgoing_request(
+    *, webhook: Webhook, webhook_name: str, attempt: int, headers: dict[str, Any], payload: Any
+) -> None:
+    """Log the outgoing request: a redacted, truncated summary at info and the full payload at debug."""
     log = get_run_logger()
-    http_service = get_http()
-    webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
-    headers = webhook.build_headers(payload=payload)
     payload_json = ujson.dumps(payload)
     log.info(
         f"Webhook '{webhook_name}' attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS}: POST {webhook.url} "
         f"with headers {webhook.redact_headers(headers)} and payload {_truncate_for_log(payload_json)}"
     )
     log.debug(f"Webhook '{webhook_name}' attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS} full payload: {payload_json}")
+
+
+@task(name="webhook-post", task_run_name="Send webhook {webhook_name}", cache_policy=NONE)
+async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int) -> Response:
+    """Resolve the webhook config, log the outgoing request, and POST the prepared payload."""
+    http_service = get_http()
+    webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
+    headers = webhook.build_headers(payload=payload)
+    _log_outgoing_request(webhook=webhook, webhook_name=webhook_name, attempt=attempt, headers=headers, payload=payload)
     response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
     response.raise_for_status()
     return response
