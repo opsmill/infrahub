@@ -273,6 +273,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             relm: RelationshipManager = getattr(self, schema_path.relationship_schema.name)
             await relm.resolve(db=db)
             node = await relm.get_peer(db=db)
+            if node is None:
+                return None
             attr = getattr(node, schema_path.attribute_schema.name)
             return getattr(attr, schema_path.attribute_property_name)
 
