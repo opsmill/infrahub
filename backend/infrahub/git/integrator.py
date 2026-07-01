@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.transforms import InfrahubTransform
 
     from infrahub.artifacts.models import CheckArtifactCreate
+    from infrahub.git.closure_builder.result import ClosureResult
     from infrahub.git.models import RequestArtifactGenerate
 
 
@@ -162,6 +163,18 @@ class TransformPythonInformation(BaseModel):
 
 
 @dataclass
+class GeneratorDefinitionWithClosure:
+    """A generator definition read from disk, paired with the dependency closure computed for it.
+
+    The closure is computed at build time while the worktree is in scope and travels with its
+    config so the downstream apply step never has to recompute it or look it up by name.
+    """
+
+    config: InfrahubGeneratorDefinitionConfig
+    closure: ClosureResult
+
+
+@dataclass
 class ObjectImportPlan:
     """The desired state of a branch's objects, built by reading the pinned commit worktree.
 
@@ -176,7 +189,7 @@ class ObjectImportPlan:
     transform_definitions: list[TransformPythonInformation]
     jinja2_definitions: dict[str, InfrahubRepositoryJinja2]
     check_definitions: list[CheckDefinitionInformation]
-    generator_definitions: list[InfrahubGeneratorDefinitionConfig]
+    generator_definitions: list[GeneratorDefinitionWithClosure]
     artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
 
 
@@ -978,8 +991,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     async def _build_generator_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
-    ) -> list[InfrahubGeneratorDefinitionConfig]:
+    ) -> list[GeneratorDefinitionWithClosure]:
         """Build the desired generator definitions by reading the pinned commit worktree.
+
+        Each returned item pairs a generator config with the dependency closure computed for it.
+        The closure is computed here because the worktree is only in scope at build time; the
+        downstream apply/create/update steps consume it from the paired information object.
 
         Performs no graph mutation, so it does not need to be serialized against concurrent imports.
         """
@@ -988,8 +1005,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        generators: list[InfrahubGeneratorDefinitionConfig] = []
+        generators: list[GeneratorDefinitionWithClosure] = []
         log.info(f"Found {len(config_file.generator_definitions)} generator definitions in the repository")
+
+        closure_builder = build_default_closure_builder(logger=log)
 
         for generator in config_file.generator_definitions:
             log.info(f"Processing generator {generator.name} ({generator.file_path})")
@@ -1000,12 +1019,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
 
             generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
-            generators.append(generator)
+
+            closure = closure_builder.build(
+                transform_config=generator,
+                worktree_root=Path(branch_wt.directory),
+            )
+            generators.append(GeneratorDefinitionWithClosure(config=generator, closure=closure))
 
         return generators
 
     async def _apply_generator_definitions(
-        self, branch_name: str, definitions: list[InfrahubGeneratorDefinitionConfig]
+        self,
+        branch_name: str,
+        definitions: list[GeneratorDefinitionWithClosure],
     ) -> None:
         """Reconcile the desired generator definitions against the graph by creating, updating and deleting.
 
@@ -1014,7 +1040,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         """
         log = get_run_logger()
 
-        local_generator_definitions = {generator.name: generator for generator in definitions}
+        local_generator_definitions = {definition.config.name: definition for definition in definitions}
         generator_definition_in_graph = {
             generator.name.value: generator
             for generator in await self.sdk.filters(
@@ -1028,21 +1054,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for generator_name in only_local:
             log.info(f"New GeneratorDefinition {generator_name!r} found, creating")
+            definition = local_generator_definitions[generator_name]
             await self._create_generator_definition(
-                branch_name=branch_name, generator=local_generator_definitions[generator_name]
+                branch_name=branch_name,
+                generator=definition.config,
+                closure=definition.closure,
             )
 
         for generator_name in present_in_both:
+            definition = local_generator_definitions[generator_name]
             if await self._generator_requires_update(
-                generator=local_generator_definitions[generator_name],
+                generator=definition.config,
                 existing_generator=generator_definition_in_graph[generator_name],
                 branch_name=branch_name,
+                closure=definition.closure,
             ):
                 log.info(f"New version of GeneratorDefinition {generator_name!r} found, updating")
 
                 await self._update_generator_definition(
-                    generator=local_generator_definitions[generator_name],
+                    generator=definition.config,
                     existing_generator=generator_definition_in_graph[generator_name],
+                    closure=definition.closure,
                 )
 
         for generator_name in only_graph:
@@ -1054,6 +1086,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         generator: InfrahubGeneratorDefinitionConfig,
         existing_generator: CoreGeneratorDefinition,
         branch_name: str,
+        closure: ClosureResult,
     ) -> bool:
         graphql_queries = await self.sdk.filters(
             kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, name__value=generator.query, populate_store=True
@@ -1079,6 +1112,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             or existing_generator.targets.id != generator.targets
             or existing_generator.execute_in_proposed_change.value != generator.execute_in_proposed_change
             or existing_generator.execute_after_merge.value != generator.execute_after_merge
+            or existing_generator.dependencies.value != list(closure.dependencies)
+            or existing_generator.dependencies_complete.value != closure.complete
         ):
             return True
         return False
@@ -1352,11 +1387,15 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         return transforms
 
     async def _create_generator_definition(
-        self, generator: InfrahubGeneratorDefinitionConfig, branch_name: str
+        self, generator: InfrahubGeneratorDefinitionConfig, branch_name: str, closure: ClosureResult
     ) -> InfrahubNode:
-        data = generator.model_dump(exclude_none=True, exclude={"file_path"})
+        # `watch` is an SDK-config-only field that drives closure detection; it is not a
+        # graph attribute, so it must not reach the node create payload.
+        data = generator.model_dump(exclude_none=True, exclude={"file_path", "watch"})
         data["file_path"] = str(generator.file_path)
         data["repository"] = self.id
+        data["dependencies"] = list(closure.dependencies)
+        data["dependencies_complete"] = closure.complete
 
         schema = await self.sdk.schema.get(kind=InfrahubKind.GENERATORDEFINITION, branch=branch_name)
 
@@ -1375,6 +1414,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self,
         generator: InfrahubGeneratorDefinitionConfig,
         existing_generator: CoreGeneratorDefinition,
+        closure: ClosureResult,
     ) -> None:
         if existing_generator.query.id != generator.query:
             existing_generator.query = {"id": generator.query, "source": str(self.id), "is_protected": True}
@@ -1399,6 +1439,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if existing_generator.execute_after_merge.value != generator.execute_after_merge:
             existing_generator.execute_after_merge.value = generator.execute_after_merge
+
+        if existing_generator.dependencies.value != list(closure.dependencies):
+            existing_generator.dependencies.value = list(closure.dependencies)
+
+        if existing_generator.dependencies_complete.value != closure.complete:
+            existing_generator.dependencies_complete.value = closure.complete
 
         await existing_generator.save()
 

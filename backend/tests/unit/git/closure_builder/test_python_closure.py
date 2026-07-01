@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from git import Repo
-from infrahub_sdk.schema.repository import InfrahubPythonTransformConfig
+from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig, InfrahubPythonTransformConfig
 
 from infrahub.git.closure_builder.python_closure import PythonClosure
 
@@ -12,6 +12,15 @@ def _config(*, name: str, file_path: str) -> InfrahubPythonTransformConfig:
     return InfrahubPythonTransformConfig(
         name=name,
         file_path=Path(file_path),
+    )
+
+
+def _generator_config(*, name: str, file_path: str) -> InfrahubGeneratorDefinitionConfig:
+    return InfrahubGeneratorDefinitionConfig(
+        name=name,
+        file_path=Path(file_path),
+        query="some_query",
+        targets="some_group",
     )
 
 
@@ -203,3 +212,43 @@ def test_dependencies_are_sorted(tmp_path: Path) -> None:
     assert deps == sorted(deps)
     for entry in expected_subset:
         assert entry in deps
+
+
+def test_supports_generator_definition_config() -> None:
+    """The Python closure builder claims generator definitions, not just transforms.
+
+    Generators share the package-directory floor model with Python transforms, so
+    the same builder must dispatch for them; otherwise the aggregator would have no
+    builder to compute a generator's closure and the import would persist none.
+    """
+    assert PythonClosure().supports(_generator_config(name="gen", file_path="generators/widget/main.py")) is True
+
+
+def test_generator_definition_package_directory_floor(tmp_path: Path) -> None:
+    """A generator's closure is the package-directory floor built from its entry file and name.
+
+    The builder reads only `file_path` and `name`, both present on a generator
+    config, so the package-directory floor that catches sibling helpers applies to
+    generators identically to Python transforms.
+    """
+    repo = _init_repo(tmp_path)
+    _write(tmp_path, "generators/widget/main.py", "# entry\n")
+    _write(tmp_path, "generators/widget/helpers.py", "# helper\n")
+    _write(tmp_path, "generators/other/unrelated.py", "# unrelated\n")
+    _track(
+        repo,
+        "generators/widget/main.py",
+        "generators/widget/helpers.py",
+        "generators/other/unrelated.py",
+    )
+
+    result = PythonClosure().build(
+        transform_config=_generator_config(name="widget", file_path="generators/widget/main.py"),
+        worktree_root=tmp_path,
+    )
+
+    assert "generators/widget/main.py" in result.dependencies
+    assert "generators/widget/helpers.py" in result.dependencies
+    assert "generators/other/unrelated.py" not in result.dependencies
+    assert result.complete is True
+    assert result.unresolved == ()

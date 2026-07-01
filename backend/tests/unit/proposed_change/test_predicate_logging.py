@@ -179,3 +179,17 @@ def test_transform_changed_carries_no_reason_on_a_no_op_complete_closure() -> No
 
     assert outcome.matched is False
     assert outcome.reason is None
+
+
+def test_artifact_definition_diagnostic_nouns_are_unchanged() -> None:
+    """The artifact definition's diagnostic nouns must stay ``transform`` / ``artifacts``.
+
+    The shared predicate refactor parametrizes every reason string by these two properties. The
+    full-string assertions above lock the composed wording; pinning the nouns directly makes a noun
+    drift fail as its own unit test, independent of any one reason template, so artifact log wording
+    cannot silently change when the predicates are reused by another definition kind.
+    """
+    definition = _build_definition()
+
+    assert definition.source_noun == "transform"
+    assert definition.instance_noun == "artifacts"
