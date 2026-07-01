@@ -93,7 +93,7 @@ async def webhook_send(
     """
     log = get_run_logger()
     await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
-    # flow_run.run_count is the 1-based attempt number within a flow run; it is None outside one (e.g. a test).
+    # flow_run.run_count is the 1-based attempt number within a flow run; it is None outside one.
     attempt = flow_run.run_count or 1
     started = time.monotonic()
     try:
