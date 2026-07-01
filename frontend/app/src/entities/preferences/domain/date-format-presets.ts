@@ -18,31 +18,36 @@ export interface DateFormatPreset {
 }
 
 /**
- * Ordered list of preset keys. Each is a date-fns pattern except the trailing
- * relative sentinel. The stored value is always the raw key.
+ * Ordered list of preset keys — all include a time component (hours & minutes), since
+ * these preferences drive date *and time* rendering across the app. Each is a date-fns
+ * pattern except the trailing relative sentinel. The stored value is always the raw key.
  */
 const DATE_FORMAT_KEYS: ReadonlyArray<string> = [
-  DEFAULT_DATE_FORMAT,
-  "yyyy-MM-dd",
-  "dd/MM/yyyy",
-  "dd/MM/yyyy HH:mm",
-  "MM/dd/yyyy",
-  "MM/dd/yyyy hh:mm a",
-  "PPpp",
-  RELATIVE_DATE_FORMAT,
+  DEFAULT_DATE_FORMAT, //          2026-07-01 14:30      (ISO, 24h)
+  "yyyy-MM-dd HH:mm:ss", //        2026-07-01 14:30:00   (ISO, with seconds)
+  "dd/MM/yyyy HH:mm", //           01/07/2026 14:30      (European, 24h)
+  "MM/dd/yyyy hh:mm a", //         07/01/2026 02:30 PM   (US, 12h)
+  "d MMM yyyy, HH:mm", //          1 Jul 2026, 14:30     (month name)
+  "PPpp", //                       locale-aware long date + time
+  RELATIVE_DATE_FORMAT, //         2 days ago
 ];
 
 /**
  * Returns just the example portion for a given key — i.e. how the reference date
  * renders with that pattern. The relative sentinel yields a deterministic
- * "2 days ago"; an unknown key is returned verbatim. Used for the inherited hint.
+ * "2 days ago". Any valid date-fns pattern is formatted (so a stored value written
+ * via the SDK, or a preset removed from the list, still renders); an invalid pattern
+ * is returned verbatim.
  */
 export function formatDateFormatExample(key: string, referenceDate: Date = new Date()): string {
   if (key === RELATIVE_DATE_FORMAT) {
     return formatDistance(subDays(referenceDate, 2), referenceDate, { addSuffix: true });
   }
-  if (!DATE_FORMAT_KEYS.includes(key)) return key;
-  return format(referenceDate, key);
+  try {
+    return format(referenceDate, key);
+  } catch {
+    return key;
+  }
 }
 
 /**

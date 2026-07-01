@@ -133,7 +133,10 @@ describe("UserPreferencesCard", () => {
 
     // The option label is the pattern/sentinel itself, not a live example. The
     // "yyyy-MM-dd HH:mm" pattern remains a selectable preset (just not THE default).
-    await expect.element(component.getByRole("option", { name: "yyyy-MM-dd HH:mm" })).toBeVisible();
+    // exact: true — otherwise "yyyy-MM-dd HH:mm" also matches the "yyyy-MM-dd HH:mm:ss" preset.
+    await expect
+      .element(component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }))
+      .toBeVisible();
     await expect.element(component.getByRole("option", { name: "relative" })).toBeVisible();
   });
 
