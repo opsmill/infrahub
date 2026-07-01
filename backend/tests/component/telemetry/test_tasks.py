@@ -169,6 +169,10 @@ async def test_gather_full_payload_fields_present(telemetry_environment: Infrahu
     assert "corenode" in data.database.node_count
     assert data.database.node_count["corenode"] is not None
 
+    # User-defined-namespace node count is present inside node_count.
+    assert "user" in data.database.node_count
+    assert data.database.node_count["user"] is not None
+
     # Every activity_24h field is present (an empty window is 0, not null).
     for field in _ACTIVITY_FIELDS:
         assert getattr(data.activity_24h, field) is not None, field

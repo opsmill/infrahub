@@ -54,3 +54,47 @@ async def test_gather_database_information_corenode_matches_seeded(
     # Raw vertex total stays as-is and always contains at least the managed-node subset.
     assert data.node_count["total"] == await utils.count_nodes(db=db)
     assert data.node_count["total"] >= data.node_count["corenode"]
+
+
+async def test_gather_database_information_user_counts_only_user_namespaces(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """``node_count["user"]`` counts only nodes in user-defined namespaces, excluding Core.
+
+    The ``Test`` namespace is user-editable, so seeded ``TestPerson`` nodes are user nodes; a
+    ``CoreAccount`` sits in the restricted ``Core`` management namespace and must not be counted
+    by ``user`` even though it is a managed ``CoreNode``. The three node metrics nest strictly —
+    ``user`` ⊆ ``corenode`` ⊆ ``total`` — and the presence of the Core account forces ``user``
+    to be strictly below ``corenode``, proving Core management is excluded from the user subset.
+
+    The Core models are registered alongside the user-defined ``Test`` schema so a real
+    ``CoreAccount`` can be created; every Core kind sits in a restricted namespace, so the
+    user count stays a clean, exact tally of the seeded ``Test`` nodes.
+    """
+    # With only the user-editable Test namespace registered and no user nodes yet, the gather
+    # reports zero user nodes — the independent baseline the seeded count is measured against.
+    baseline = await gather_database_information.fn(db)
+    assert baseline.node_count["user"] == 0
+
+    seeded_users = 4
+    for index in range(seeded_users):
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await person.new(db=db, name=f"user-person-{index}")
+        await person.save(db=db)
+
+    # A single Core management node: a CoreNode that lives outside every user-editable namespace.
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT, branch=default_branch)
+    await account.new(db=db, name="core-account", account_type="User", password="accountPassword123")
+    await account.save(db=db)
+
+    data = await gather_database_information.fn(db)
+
+    # Exactly the seeded user nodes are counted; the Core account is not.
+    assert data.node_count["user"] == seeded_users
+    # Strict nesting: user ⊆ corenode ⊆ total.
+    assert data.node_count["user"] <= data.node_count["corenode"] <= data.node_count["total"]
+    # The Core account is a managed node excluded from user, so user is strictly below corenode.
+    assert data.node_count["user"] < data.node_count["corenode"]

@@ -9,6 +9,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.core.manager import NodeManager
 from infrahub.core.query import QueryType
+from infrahub.core.schema import NodeSchema
 from infrahub.database import DatabaseType, InfrahubDatabase
 
 from .models import TelemetryDatabaseData, TelemetryDatabaseServerData, TelemetryDatabaseSystemInfoData
@@ -67,11 +68,16 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
       ``Builtin``, and user-defined namespaces. The ``Core`` management namespace is always
       non-empty, so ``corenode`` always exceeds the customer-facing subset. Counted through
       the branch/temporal-correct count path on the default branch, not a raw label tally.
-    - ``user`` (future, out of scope here) — the customer-facing subset, which excludes the
-      ``Core`` management namespace.
+    - ``user`` — the customer-facing subset: concrete nodes living in user-defined (non-restricted)
+      namespaces, so it excludes the ``Core`` management namespace, the pipeline validators and
+      checks, and by default ``Builtin`` kinds. Generics, profiles, and templates are not counted,
+      and group-generic kinds are skipped so that ``user`` stays a subset of ``corenode`` (groups
+      do not carry the ``CoreNode`` label). Counted through the same branch/temporal-correct count
+      path on the default branch.
 
-    ``corenode`` is isolated: if its source raises, only that key is set to ``None`` while
-    ``total`` and the per-graph-label keys are still populated and the payload still ships.
+    ``corenode`` and ``user`` are each isolated: if either source raises, only that one key is set
+    to ``None`` while ``total`` and the per-graph-label keys are still populated and the payload
+    still ships.
     """
     async with db.start_session(read_only=True) as dbs:
         server_info = []
@@ -119,5 +125,24 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
         except Exception as exc:
             log.warning("Telemetry metric collection failed; reporting null for this field: %s", exc)
             data.node_count["corenode"] = None
+
+        # Customer-facing node count: concrete nodes in user-defined (non-restricted) namespaces,
+        # counted branch/temporal-correctly on the default branch. Group-generic kinds are skipped
+        # because groups do not carry the CoreNode label, keeping user a subset of corenode.
+        # Isolated in its own try/except so a failure nulls only this key.
+        try:
+            default_branch = registry.get_branch_from_registry()
+            schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+            user_namespaces = [
+                namespace.name for namespace in schema_branch.get_namespaces() if namespace.user_editable
+            ]
+            user_total = 0
+            for node_schema in schema_branch.get_schemas_for_namespaces(namespaces=user_namespaces):
+                if isinstance(node_schema, NodeSchema) and InfrahubKind.GENERICGROUP not in node_schema.inherit_from:
+                    user_total += await NodeManager.count(db=dbs, schema=node_schema.kind, branch=default_branch)
+            data.node_count["user"] = user_total
+        except Exception as exc:
+            log.warning("Telemetry metric collection failed; reporting null for this field: %s", exc)
+            data.node_count["user"] = None
 
         return data
