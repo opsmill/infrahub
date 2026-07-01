@@ -4,7 +4,12 @@ from typing import TYPE_CHECKING
 
 from graphene import Argument, Boolean, Enum, Field, List, NonNull, ObjectType, String
 
-from infrahub.core.preferences import MANAGE_GLOBAL_PREFERENCES_PERMISSION, GlobalPreference, UserPreference
+from infrahub.core.preferences import (
+    DATE_FORMAT_KEYS,
+    MANAGE_GLOBAL_PREFERENCES_PERMISSION,
+    GlobalPreference,
+    UserPreference,
+)
 from infrahub.exceptions import PermissionDeniedError
 
 if TYPE_CHECKING:
@@ -34,6 +39,15 @@ class PreferenceScope(Enum):
     EFFECTIVE = SCOPE_EFFECTIVE
     GLOBAL = SCOPE_GLOBAL
     USER = SCOPE_USER
+
+
+# The stored `date_format` is a SEMANTIC key (e.g. ISO_DATETIME), not a rendering pattern: each
+# client maps the key to its own formatter (web -> date-fns, backend -> strftime). Typing the write
+# arg as this enum validates the value at the GraphQL layer for free — an unknown key is rejected
+# before the resolver runs. Built from the canonical key list so the enum and the render map (see
+# core.preferences.formats) can never drift. The READ side returns the key as a plain String in the
+# generic key/value entry list, since `timezone` shares that field and is free-form.
+DateFormat = Enum("DateFormat", [(key, key) for key in DATE_FORMAT_KEYS])
 
 
 class PreferenceSource(Enum):

@@ -7468,6 +7468,15 @@ input CoreWeightedPoolResourceUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
+"""An enumeration."""
+enum DateFormat {
+  EU_DATETIME
+  ISO_8601
+  ISO_DATETIME
+  ISO_DATETIME_SECONDS
+  US_12H
+}
+
 """
 The `DateTime` scalar type represents a DateTime
 value as specified by
@@ -8809,7 +8818,7 @@ The _UNSET sentinel means an omitted argument leaves the field unchanged while a
 `null` resets it.
 """
 type InfrahubSetPreferences {
-  date_format: String
+  date_format: DateFormat
   ok: Boolean
   timezone: String
 }
@@ -9747,7 +9756,7 @@ type Mutation {
   The _UNSET sentinel means an omitted argument leaves the field unchanged while an explicit
   `null` resets it.
   """
-  InfrahubSetPreferences(date_format: String, scope: PreferenceScope!, timezone: String): InfrahubSetPreferences
+  InfrahubSetPreferences(date_format: DateFormat, scope: PreferenceScope!, timezone: String): InfrahubSetPreferences
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
   InfrahubUpdateDisplayLabel(context: ContextInput, data: InfrahubDisplayLabelUpdateInput!): UpdateDisplayLabel
   InfrahubUpdateHFID(context: ContextInput, data: InfrahubHFIDUpdateInput!): UpdateHFID

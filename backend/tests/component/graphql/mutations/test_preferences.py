@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 SET_PREFERENCES = """
-mutation ($scope: PreferenceScope!, $date_format: String, $timezone: String) {
+mutation ($scope: PreferenceScope!, $date_format: DateFormat, $timezone: String) {
   InfrahubSetPreferences(scope: $scope, date_format: $date_format, timezone: $timezone) {
     ok
     date_format
@@ -83,11 +83,11 @@ async def test_user_lazy_create_then_update(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        variables={"scope": "USER", "date_format": "dd/MM/yyyy", "timezone": "Europe/Paris"},
+        variables={"scope": "USER", "date_format": "EU_DATETIME", "timezone": "Europe/Paris"},
     )
     assert result.errors is None
     assert result.data["InfrahubSetPreferences"]["ok"] is True
-    assert result.data["InfrahubSetPreferences"]["date_format"] == "dd/MM/yyyy"
+    assert result.data["InfrahubSetPreferences"]["date_format"] == "EU_DATETIME"
 
     created = await UserPreference.get_for_account(db=db, account_id=first_account.id)
     assert created is not None
@@ -107,7 +107,7 @@ async def test_user_lazy_create_then_update(
     assert updated is not None
     assert updated.uuid == created.uuid
     assert updated.timezone == "UTC"
-    assert updated.date_format == "dd/MM/yyyy"  # unchanged field preserved
+    assert updated.date_format == "EU_DATETIME"  # unchanged field preserved
     rows = [p for p in await UserPreference.get_list(db=db) if p.account_id == first_account.id]
     assert len(rows) == 1
 
@@ -146,7 +146,7 @@ async def test_user_explicit_null_resets_field(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        variables={"scope": "USER", "date_format": "dd/MM/yyyy", "timezone": "Europe/Paris"},
+        variables={"scope": "USER", "date_format": "EU_DATETIME", "timezone": "Europe/Paris"},
     )
 
     # Explicit null on date_format resets it; timezone omitted stays unchanged.
@@ -213,6 +213,25 @@ async def test_user_rejects_unauthenticated(
     assert "authenticated" in str(result.errors[0].message).lower()
 
 
+async def test_user_rejects_unknown_date_format(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    """date_format is a DateFormat enum: an unknown semantic key is rejected at the GraphQL layer,
+    before any write, so no UserPreference row is created."""
+    result = await run_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=session_first_account,
+        variables={"scope": "USER", "date_format": "NOT_A_FORMAT"},
+    )
+    assert result.errors is not None
+    assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
+
+
 # --------------------------------------------------------------------------------------------
 # scope=GLOBAL — gated on manage_global_preferences; nothing written when denied.
 # --------------------------------------------------------------------------------------------
@@ -228,7 +247,7 @@ async def test_global_denied_for_normal_account(
         db=db,
         branch=default_branch,
         account_session=session_first_account,
-        variables={"scope": "GLOBAL", "date_format": "yyyy-MM-dd"},
+        variables={"scope": "GLOBAL", "date_format": "ISO_DATETIME"},
     )
     assert result.errors is not None
     # The singleton must not have been mutated (gate raises BEFORE the read-modify-write).
@@ -250,13 +269,13 @@ async def test_global_allowed_for_manager(
         db=db,
         branch=default_branch,
         account_session=session,
-        variables={"scope": "GLOBAL", "date_format": "yyyy-MM-dd", "timezone": "UTC"},
+        variables={"scope": "GLOBAL", "date_format": "ISO_DATETIME", "timezone": "UTC"},
     )
     assert result.errors is None
     assert result.data["InfrahubSetPreferences"]["ok"] is True
 
     global_pref = await GlobalPreference.get_global(db=db)
-    assert global_pref.date_format == "yyyy-MM-dd"
+    assert global_pref.date_format == "ISO_DATETIME"
     assert global_pref.timezone == "UTC"
     assert len(await GlobalPreference.get_list(db=db)) == 1
 
@@ -300,7 +319,7 @@ async def test_global_preserves_other_field(
         db=db,
         branch=default_branch,
         account_session=session_admin,
-        variables={"scope": "GLOBAL", "date_format": "yyyy-MM-dd"},
+        variables={"scope": "GLOBAL", "date_format": "ISO_DATETIME"},
     )
     await run_mutation(
         db=db,
@@ -310,7 +329,7 @@ async def test_global_preserves_other_field(
     )
 
     global_pref = await GlobalPreference.get_global(db=db)
-    assert global_pref.date_format == "yyyy-MM-dd"  # preserved across the second update
+    assert global_pref.date_format == "ISO_DATETIME"  # preserved across the second update
     assert global_pref.timezone == "UTC"
     assert len(await GlobalPreference.get_list(db=db)) == 1
 
