@@ -19,6 +19,18 @@ reproduction of the one defect known to break it in production — the silent lo
 write-back on multi-worker deployments (#9568). The audience is the engineering team adopting or
 maintaining the pattern; "the system" under validation is Infrahub's git-integration behaviour.
 
+## Clarifications
+
+### Session 2026-07-01
+
+- Q: For US2, use two real instances or a single instance with two repositories? → A: Two real
+  instances (separate full stacks) sharing one Git remote — the faithful topology; the single-
+  instance/two-repo form is explicitly rejected.
+- Q: How should the full-stack multi-worker write-back reproduction (US1§2) express pass/fail? → A:
+  Drop it — the #9568 signal comes solely from the deterministic prong (US1§1) that reconstructs the
+  failing worker-clone state; no test runs a live multi-worker pool, and the full stack is used only
+  for US2.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Multi-worker write-back defect is caught and tracked (Priority: P1)
@@ -34,10 +46,11 @@ and so the demonstration flips to passing the moment the defect is fixed.
 production-ready on multi-worker deployments. It is the most explicitly requested outcome, and the
 reproduction has lasting value as a regression signal.
 
-**Independent Test**: Stand up a read-write, non-`main`-default, multi-worker instance against a
-shared repository; perform merges that should write back; observe that the environment branch tip on
-the repository does not advance while Infrahub reports success — both via a deterministic mechanism
-check and via an end-to-end demonstration. Delivers a tracked, self-updating defect signal.
+**Independent Test**: Reconstruct the failing worker-clone state (a clone holding only the local
+primary branch plus remote-tracking refs, no local copy of the non-`main` default branch), perform a
+write-back merge, and observe that the environment branch tip on the repository does not advance
+while the operation reports success. Deterministic, zero-flake, and self-updating when the defect is
+fixed.
 
 **Acceptance Scenarios**:
 
@@ -45,11 +58,8 @@ check and via an end-to-end demonstration. Delivers a tracked, self-updating def
    state of a worker that did not perform the initial import), **When** a merge writes back to the
    non-`main` default branch, **Then** the operation reports success but the branch tip on the
    repository does not advance. *(deterministic mechanism check)*
-2. **Given** a read-write, non-`main`-default instance running with multiple workers, **When** a
-   series of valid merges is performed, **Then** at least one merge fails to advance the environment
-   branch on the repository despite Infrahub reporting success. *(end-to-end demonstration)*
-3. **Given** the defect is later fixed, **When** the same checks run, **Then** they pass without any
-   change to the tests.
+2. **Given** the defect is later fixed, **When** the same check runs, **Then** it passes without any
+   change to the test.
 
 ---
 
@@ -195,9 +205,10 @@ the in-filter branches still import. Delivers a clear answer on whether the filt
 
 ### Functional Requirements
 
-- **FR-001**: The validation MUST exercise Approach A topology — a read-write development instance on
-  a non-`main` branch and a read-only consumer instance on its own branch — both backed by a single
-  shared Git repository.
+- **FR-001**: The validation MUST exercise Approach A topology as **two distinct Infrahub instances**
+  (separate full stacks) — a read-write development instance on a non-`main` branch and a read-only
+  consumer instance on its own branch — both backed by a single shared Git repository. A single
+  instance hosting two repositories does not satisfy this requirement.
 - **FR-002**: The validation MUST assert that the development instance imports its configured
   non-`main` default branch onto its internal primary branch with **no** duplicate standalone branch
   named after that default.
@@ -206,10 +217,11 @@ the in-filter branches still import. Delivers a clear answer on whether the filt
 - **FR-004**: The validation MUST assert that a change promoted onto the consumer's branch is not
   reflected on the consumer until an explicit reimport, and that the reimport advances the consumer's
   recorded commit.
-- **FR-005**: The validation MUST reproduce the multi-worker write-back defect: with the development
-  instance running more than one worker, a merge that should write back to the non-`main` default
-  branch can be silently lost — the branch tip on the repository does not advance while the merge
-  reports success.
+- **FR-005**: The validation MUST reproduce the multi-worker write-back defect by reconstructing the
+  failing worker-clone state (a clone with the local primary branch plus remote-tracking refs but no
+  local copy of the non-`main` default branch): a merge that should write back to the default branch
+  is silently lost — the branch tip on the repository does not advance while the merge reports
+  success. No test runs a live multi-worker pool.
 - **FR-006**: The defect reproduction MUST be tracked so that it is expected-to-fail while the defect
   exists and automatically signals success once the defect is fixed, with no manual test change.
 - **FR-007**: The validation MUST include a deterministic (zero-flake) reproduction of the
@@ -261,9 +273,8 @@ the in-filter branches still import. Delivers a clear answer on whether the filt
 - **SC-001**: Every enumerated Approach A guarantee (consumer isolation, promotion-via-reimport,
   non-`main` import with no phantom) has a passing automated assertion — 100% coverage of the listed
   guarantees.
-- **SC-002**: The multi-worker write-back defect is reproduced by at least one deterministic check
-  (0% flake across repeated runs) and at least one end-to-end demonstration; both fail while the
-  defect is present.
+- **SC-002**: The multi-worker write-back defect is reproduced by a deterministic check (0% flake
+  across repeated runs) that fails while the defect is present and passes once it is fixed.
 - **SC-003**: The deterministic defect check and the regression guards run on every
   continuous-integration run within the normal integration-test time budget; the heavy multi-instance
   reproduction is opt-in and absent from the default run.
@@ -280,10 +291,13 @@ the in-filter branches still import. Delivers a clear answer on whether the filt
 
 - **Approach A only.** Read-only consumers are in scope; Approach B (all read-write, filtered,
   auto-synced consumers) is out of scope for this effort.
-- **Two instances suffice.** A development instance plus one read-only consumer; additional consumers
-  (staging vs. prod) behave identically and are not separately modelled.
-- **Multi-worker is intentional.** The development instance runs with more than one worker (no
-  single-worker workaround), specifically so the write-back defect can manifest.
+- **Two instances suffice.** A development instance plus one read-only consumer, as **two separate
+  full stacks** sharing one remote; additional consumers (staging vs. prod) behave identically and
+  are not separately modelled. The two-stack harness (a second stack + shared remote bind-mount) is
+  accepted as in-scope work.
+- **No live multi-worker pool.** #9568 is a multi-worker defect, but it is reproduced by
+  reconstructing the failing worker-clone state deterministically rather than by running a real
+  multi-worker pool (that full-stack demonstration was considered and dropped as too flaky to gate on).
 - **The non-`main`-default import fix (#9601) is present** on the branch under validation; the
   no-phantom guarantee (User Story 3) is a regression guard for it.
 - **The shared repository is a local Git remote provisioned for the validation**, with no dependency
