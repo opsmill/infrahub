@@ -60,6 +60,7 @@ jobs:
       ref: ${{ needs.meta_data.outputs.ref }}
       tags: ${{needs.meta_data.outputs.tags}}
       labels: ${{needs.meta_data.outputs.labels}}
+      artifact_prefix: digests-develop
 
   meta_data_stable:
     runs-on: ubuntu-24.04
@@ -109,3 +110,4 @@ jobs:
       ref: ${{ needs.meta_data_stable.outputs.ref }}
       tags: ${{needs.meta_data_stable.outputs.tags}}
       labels: ${{needs.meta_data_stable.outputs.labels}}
+      artifact_prefix: digests-stable

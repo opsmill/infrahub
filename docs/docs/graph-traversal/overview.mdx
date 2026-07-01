@@ -13,9 +13,10 @@ Graph Traversal was released in 1.10.
 
 Graph Traversal has two modes, each suited to a different question.
 
-**Path mode** — select a source and destination object to see every path between them, ordered
-shortest first, with the hop count for each route. Use it when you know both ends and want to
-understand how they connect.
+**Path mode** — select a source and destination object to see how they connect, ordered shortest
+first with the hop count for each route. By default it returns the shortest path through each
+intermediate object; you can switch it to return every path instead. Use it when you know both
+ends and want to understand how they connect.
 
 **Dependency mode** — select a source object and the kinds of object you care about to find every
 reachable object of those kinds. Use it when you know the starting point but not the endpoints —
@@ -25,7 +26,7 @@ for blast-radius analysis, impact assessment, or dependency discovery.
 
 | Goal | Mode | You provide | Result |
 |---|---|---|---|
-| Trace the connection between two known objects | Path | A source and a destination object | Every path between them, with hop counts |
+| Trace the connection between two known objects | Path | A source and a destination object | The paths between them, with hop counts |
 | Find what an object affects or depends on | Dependency | A source object and one or more target kinds | Every reachable object of those kinds, with the path from the source to each |
 
 Use Path mode when you know both ends — for example, tracing connectivity between two devices

@@ -57,6 +57,14 @@ InfrahubEventService.send(event)
                    └──► emit_event() → Prefect Automations
 ```
 
+## Trigger action parameters
+
+A trigger definition's `ExecuteWorkflow` action passes parameters to the target deployment. Each parameter value is a Jinja template that Prefect renders server-side, against the triggering event, when the automation fires.
+
+Prefect's `RunDeployment._upgrade_v1_templates` (>=3.6.24) rewrites a bare single-expression string such as `"{{ event.id }}"` by appending `| tojson`, which JSON-serializes the rendered value to preserve its type. `json.dumps` raises on values that are not JSON-native (a `UUID` or a `datetime`) or that resolve to an undefined resource key, so the render fails and the deployment never runs.
+
+Emit single-expression parameters through `jinja_parameter()` in `trigger/models.py`, which wraps them as an explicit `{"__prefect_kind": "jinja", "template": ...}` value. Prefect leaves a parameter that already declares a `__prefect_kind` untouched, so it renders as a plain string on every Prefect version. Values that must keep their non-string type use the `{"__prefect_kind": "json", "value": {"__prefect_kind": "jinja", "template": "... | tojson"}}` form instead.
+
 ## Event Metadata
 
 The `EventMeta` class provides rich context:

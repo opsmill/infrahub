@@ -102,5 +102,11 @@ async def test_profile_refresh_trigger_definition_actions(
     assert "context" in action.parameters
 
     assert action.parameters["profile_kind"] == "ProfileTestDevice"
-    assert action.parameters["branch_name"] == "{{ event.resource['infrahub.branch.name'] }}"
-    assert action.parameters["profile_id"] == "{{ event.resource['infrahub.node.id'] }}"
+    assert action.parameters["branch_name"] == {
+        "__prefect_kind": "jinja",
+        "template": "{{ event.resource['infrahub.branch.name'] }}",
+    }
+    assert action.parameters["profile_id"] == {
+        "__prefect_kind": "jinja",
+        "template": "{{ event.resource['infrahub.node.id'] }}",
+    }

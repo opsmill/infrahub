@@ -14,6 +14,7 @@ Reference for the `InfrahubPathTraversal` and `InfrahubReachableNodes` GraphQL q
 | `destination_id` | String | Yes | — | — | UUID of the end node |
 | `max_depth` | Int | No | 5 | 30 | Maximum number of hops |
 | `max_paths` | Int | No | 10 | 100 | Maximum paths to return |
+| `shortest_paths_only` | Boolean | No | true | — | When true, return only the shortest path through each intermediate object. When false, return all loopless paths up to `max_paths`. |
 | `kind_filter` | [String] | No | — | — | Limit traversal to these kinds only |
 | `relationship_filter` | [String] | No | — | — | Limit traversal to these relationship identifiers (schema identifier, e.g. `device__interface`) |
 | `excluded_namespaces` | [String] | No | — | — | Additional namespaces to exclude; unioned with defaults |
@@ -29,6 +30,7 @@ Reference for the `InfrahubPathTraversal` and `InfrahubReachableNodes` GraphQL q
 | `source` | PathNodeType | The start node |
 | `destination` | PathNodeType | The end node |
 | `excluded_kinds` | [String] | All kinds excluded in this traversal |
+| `truncated_at_depth` | Int | `null` when the search completed. Otherwise the depth at which it ran out of budget — the returned paths are complete only for depths below this value, and deeper paths may exist. |
 
 Each `PathResultType` has `depth` (number of edges) and `hops` — an ordered list where each hop
 has a `node` and (except the first) a `relationship`. Each `node` (`PathNodeType`) exposes `id`,
@@ -84,4 +86,4 @@ Use `excluded_namespaces` or `excluded_kinds` to add further exclusions.
 | `Source node not found: <id>` | UUID does not exist on this branch | Verify the UUID and branch |
 | `Destination node not found: <id>` | Destination UUID does not exist on this branch | Verify the UUID and branch |
 | `max_paths must be in [1, 100]` | Out of range for Path mode | Use a value between 1 and 100 |
-| Query timed out | Search space too large | Reduce `max_depth`, lower `max_paths`/`max_results`, or narrow with kind/namespace filters |
+| Query timed out | Search space too large | `InfrahubReachableNodes` aborts and returns an error. `InfrahubPathTraversal` instead returns the paths found so far with `truncated_at_depth` set, rather than failing. In both cases, reduce `max_depth`, lower `max_paths`/`max_results`, or narrow with kind/namespace filters to search deeper. |
