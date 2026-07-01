@@ -12,7 +12,6 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 import { classNames } from "@/shared/utils/common";
 
-import type { cancelTask } from "@/entities/tasks/domain/cancel-task/cancel-task";
 import type { retryTask } from "@/entities/tasks/domain/retry-task/retry-task";
 import { useCancelTaskMutation } from "@/entities/tasks/ui/queries/cancel-task.mutation";
 import { useRetryTaskMutation } from "@/entities/tasks/ui/queries/retry-task.mutation";
@@ -71,7 +70,7 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
   });
 
   const cancelMutation = useCancelTaskMutation({
-    onSuccess: async (_result: Awaited<ReturnType<typeof cancelTask>>) => {
+    onSuccess: async () => {
       setIsCancelConfirmOpen(false);
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Task cancelled." />);
       await queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
