@@ -163,7 +163,9 @@ class InfrahubTaskCancel(Mutation):
             prefect = PrefectClientAdapter(client)
             delivery = await DeliveryReader(prefect).read(str(data.id))
             build_delivery_action_authorizer(graphql_context).authorize(delivery, TaskActionType.CANCEL)
-            await prefect.set_flow_run_state(
+            resulting_state = await prefect.set_flow_run_state(
                 flow_run_id=UUID(str(data.id)), state=State(type=StateType.CANCELLING), force=False
             )
+        if resulting_state not in {StateType.CANCELLING, StateType.CANCELLED}:
+            raise ValidationError(input_value="This delivery settled before it could be cancelled.")
         return cls(ok=True, task={"id": str(data.id)})

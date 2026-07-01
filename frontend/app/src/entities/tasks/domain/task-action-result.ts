@@ -1,5 +1,4 @@
 export interface TaskActionResult {
-  ok: boolean;
   taskId?: string;
 }
 
@@ -9,7 +8,7 @@ interface TaskActionMutationPayload {
 }
 
 // Shared mapping for task-action mutations (retry, cancel): surface a GraphQL error,
-// fail when the mutation returned no payload, otherwise normalise to a TaskActionResult.
+// fail when the mutation did not succeed, otherwise return the resulting task id.
 export const mapTaskActionResult = (
   payload: TaskActionMutationPayload | null | undefined,
   errors: ReadonlyArray<{ message: string }> | null | undefined,
@@ -19,12 +18,11 @@ export const mapTaskActionResult = (
     throw new Error(errors[0].message);
   }
 
-  if (!payload) {
+  if (!payload?.ok) {
     throw new Error(failureMessage);
   }
 
   return {
-    ok: payload.ok ?? false,
     taskId: payload.task?.id ?? undefined,
   };
 };
