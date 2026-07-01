@@ -22,6 +22,15 @@ async def _wait_until(predicate: Callable[[], Awaitable[bool]], *, seconds: int 
             await sleep(2)
 
 
+async def _became_true(predicate: Callable[[], Awaitable[bool]], *, seconds: int = 60) -> bool:
+    """Return True if the predicate becomes true within the timeout, False if it never does."""
+    try:
+        await _wait_until(predicate, seconds=seconds)
+    except TimeoutError:
+        return False
+    return True
+
+
 class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
@@ -156,3 +165,44 @@ class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
         assert final.summary.value == "cnode on gamma"
         assert final.display_label == "cnode via gamma"
         assert final.hfid == ["cnode"]
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "the recompute locates readers with a reverse relationship query that returns nothing "
+            "once the deleted peer's edges are closed, so the reader keeps a value that still names "
+            "the deleted peer"
+        ),
+    )
+    async def test_deleting_read_peer_refreshes_reader_after_merge(self, client: InfrahubClient) -> None:
+        """After a read peer is deleted and merged, the reader's derived values should stop naming it."""
+        schema = build_profile_schema_dict()
+        node_schema = schema["nodes"][1]
+        node_schema["relationships"][0]["optional"] = True
+        # Self-only display label so the scenario exercises the stale computed value, not the separate
+        # missing-peer diff crash that is fixed on its own path.
+        node_schema["display_label"] = "{{ name__value }}"
+        await client.schema.load(schemas=[schema], wait_until_converged=True)
+
+        peer = await client.create(kind=PROFILE_PEER_KIND, data={"name": "beta"})
+        await peer.save()
+        node = await client.create(kind=PROFILE_NODE_KIND, data={"name": "node2", "peer": peer})
+        await node.save()
+
+        async def _reader_initial() -> bool:
+            refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id)
+            return refreshed.summary.value == "node2 on beta"
+
+        await _wait_until(_reader_initial)
+
+        branch = await client.branch.create(branch_name="delete-peer-refresh")
+        peer_on_branch = await client.get(kind=PROFILE_PEER_KIND, id=peer.id, branch=branch.name)
+        await peer_on_branch.delete()
+
+        await client.branch.merge(branch_name=branch.name)
+
+        async def _reader_no_longer_names_peer() -> bool:
+            refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id)
+            return refreshed.summary.value != "node2 on beta"
+
+        assert await _became_true(_reader_no_longer_names_peer, seconds=60)
