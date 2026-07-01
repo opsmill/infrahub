@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
-from tests.helpers.graph_traversal.builders import ShortcutGraph
+from tests.helpers.graph_traversal.builders import BowtieGraph, ShortcutGraph
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -88,6 +88,53 @@ async def linked_vertices_with_shortcut(
     detour = await _vertex("A", [middle])
     source = await _vertex("S", [middle, detour])
     return ShortcutGraph(source=source, detour=detour, middle=middle, bridge=bridge, destination=destination)
+
+
+@pytest.fixture
+async def bowtie_graph(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    data_schema: None,
+    register_core_models_schema: SchemaBranch,
+) -> BowtieGraph:
+    # source -[links]- {a0,a1,a2} -[links]- hub -[links]- {b0,b1,b2} -[links]- destination.
+    # Every depth-4 route funnels through the single hub, so the depth-4 tier joins 3 left halves
+    # (all ending at the hub) with 3 right halves (all starting at the hub) into 3x3 = 9 candidate
+    # paths — while neither half set alone exceeds a small cap. This isolates the joined-tier cap
+    # from the per-half cap. There is no shorter source->destination route.
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Vertex",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="links",
+                        peer="TestVertex",
+                        identifier="vertex__vertex",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            )
+        ]
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    async def _vertex(name: str, links: list[Node] | None = None) -> Node:
+        node = await Node.init(db=db, schema="TestVertex", branch=default_branch)
+        await node.new(db=db, name=name, links=links or [])
+        await node.save(db=db)
+        return node
+
+    destination = await _vertex("D")
+    b_nodes = [await _vertex(f"B{i}", [destination]) for i in range(3)]
+    hub = await _vertex("H", b_nodes)
+    a_nodes = [await _vertex(f"A{i}", [hub]) for i in range(3)]
+    source = await _vertex("S", a_nodes)
+    return BowtieGraph(source=source, hub=hub, destination=destination)
 
 
 @pytest.fixture
