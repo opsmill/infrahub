@@ -394,12 +394,11 @@ _HALF_TO_TARGET = """
 %(target_match)s
 // Resolve each candidate middle UUID to its single active Node vertex (latest IS_PART_OF wins).
 UNWIND $middles AS middle_uuid
-MATCH (m:Node {uuid: middle_uuid})
-CALL (m) {
-    MATCH (m)-[r:IS_PART_OF]->(:Root)
+CALL (middle_uuid) {
+    MATCH (m:Node {uuid: middle_uuid})-[r:IS_PART_OF]->(:Root)
     WHERE %(visible_r)s
-    RETURN r AS part_of
-    ORDER BY r.branch_level DESC, r.from DESC
+    RETURN m, r AS part_of
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
 WITH m, target

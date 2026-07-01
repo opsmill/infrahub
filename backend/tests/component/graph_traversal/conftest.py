@@ -11,9 +11,49 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from tests.helpers.graph_traversal.builders import BowtieGraph, ShortcutGraph
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+
+def _self_referential_vertex_builder(
+    db: InfrahubDatabase, branch: Branch
+) -> Callable[[str, list[Node] | None], Awaitable[Node]]:
+    """Register the self-referential ``TestVertex`` schema and return a ``_vertex(name, links)`` factory.
+
+    ``TestVertex`` has a single bidirectional ``links`` relationship to itself, so a graph of any
+    shape can be built by wiring vertices to each other.
+    """
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Vertex",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="links",
+                        peer="TestVertex",
+                        identifier="vertex__vertex",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            )
+        ]
+    )
+    registry.schema.register_schema(schema=schema, branch=branch.name)
+
+    async def _vertex(name: str, links: list[Node] | None = None) -> Node:
+        node = await Node.init(db=db, schema="TestVertex", branch=branch)
+        await node.new(db=db, name=name, links=links or [])
+        await node.save(db=db)
+        return node
+
+    return _vertex
 
 
 @pytest.fixture
@@ -55,38 +95,12 @@ async def linked_vertices_with_shortcut(
     # this gives a shortest route source -> middle -> bridge -> destination (depth 3) and a longer
     # simple route source -> detour -> middle -> bridge -> destination (depth 4) whose midpoint
     # (the middle) is NOT at its shortest distance — shortest_paths_only=True omits it, =False keeps it.
-    schema = SchemaRoot(
-        nodes=[
-            NodeSchema(
-                name="Vertex",
-                namespace="Test",
-                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-                relationships=[
-                    RelationshipSchema(
-                        name="links",
-                        peer="TestVertex",
-                        identifier="vertex__vertex",
-                        cardinality=RelationshipCardinality.MANY,
-                        optional=True,
-                        direction=RelationshipDirection.BIDIR,
-                    )
-                ],
-            )
-        ]
-    )
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-    async def _vertex(name: str, links: list[Node] | None = None) -> Node:
-        node = await Node.init(db=db, schema="TestVertex", branch=default_branch)
-        await node.new(db=db, name=name, links=links or [])
-        await node.save(db=db)
-        return node
-
-    destination = await _vertex("D")
-    bridge = await _vertex("B", [destination])
-    middle = await _vertex("M", [bridge])
-    detour = await _vertex("A", [middle])
-    source = await _vertex("S", [middle, detour])
+    make_vertex = _self_referential_vertex_builder(db, default_branch)
+    destination = await make_vertex("D")
+    bridge = await make_vertex("B", [destination])
+    middle = await make_vertex("M", [bridge])
+    detour = await make_vertex("A", [middle])
+    source = await make_vertex("S", [middle, detour])
     return ShortcutGraph(source=source, detour=detour, middle=middle, bridge=bridge, destination=destination)
 
 
@@ -102,38 +116,12 @@ async def bowtie_graph(
     # (all ending at the hub) with 3 right halves (all starting at the hub) into 3x3 = 9 candidate
     # paths — while neither half set alone exceeds a small cap. This isolates the joined-tier cap
     # from the per-half cap. There is no shorter source->destination route.
-    schema = SchemaRoot(
-        nodes=[
-            NodeSchema(
-                name="Vertex",
-                namespace="Test",
-                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-                relationships=[
-                    RelationshipSchema(
-                        name="links",
-                        peer="TestVertex",
-                        identifier="vertex__vertex",
-                        cardinality=RelationshipCardinality.MANY,
-                        optional=True,
-                        direction=RelationshipDirection.BIDIR,
-                    )
-                ],
-            )
-        ]
-    )
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-    async def _vertex(name: str, links: list[Node] | None = None) -> Node:
-        node = await Node.init(db=db, schema="TestVertex", branch=default_branch)
-        await node.new(db=db, name=name, links=links or [])
-        await node.save(db=db)
-        return node
-
-    destination = await _vertex("D")
-    b_nodes = [await _vertex(f"B{i}", [destination]) for i in range(3)]
-    hub = await _vertex("H", b_nodes)
-    a_nodes = [await _vertex(f"A{i}", [hub]) for i in range(3)]
-    source = await _vertex("S", a_nodes)
+    make_vertex = _self_referential_vertex_builder(db, default_branch)
+    destination = await make_vertex("D")
+    b_nodes = [await make_vertex(f"B{i}", [destination]) for i in range(3)]
+    hub = await make_vertex("H", b_nodes)
+    a_nodes = [await make_vertex(f"A{i}", [hub]) for i in range(3)]
+    source = await make_vertex("S", a_nodes)
     return BowtieGraph(source=source, hub=hub, destination=destination)
 
 
