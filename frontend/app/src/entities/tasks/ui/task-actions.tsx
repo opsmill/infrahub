@@ -12,7 +12,6 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 import { classNames } from "@/shared/utils/common";
 
-import type { retryTask } from "@/entities/tasks/domain/retry-task/retry-task";
 import { useCancelTaskMutation } from "@/entities/tasks/ui/queries/cancel-task.mutation";
 import { useRetryTaskMutation } from "@/entities/tasks/ui/queries/retry-task.mutation";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
@@ -45,7 +44,7 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
   const retryMutation = useRetryTaskMutation({
-    onSuccess: async (result: Awaited<ReturnType<typeof retryTask>>) => {
+    onSuccess: async (result) => {
       setIsRetryConfirmOpen(false);
       // The new run is a sibling of the current one, so swap the task id in the path we are
       // already on. This keeps the link pointing at whichever task view the retry was triggered
@@ -64,7 +63,7 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
       await queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast(<Alert type={ALERT_TYPES.ERROR} message={`Error: ${error.message}`} />);
     },
   });
@@ -75,7 +74,7 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Task cancelled." />);
       await queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast(<Alert type={ALERT_TYPES.ERROR} message={`Error: ${error.message}`} />);
     },
   });
