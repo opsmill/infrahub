@@ -173,12 +173,14 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
         files_added: list[str] | None = None,
         files_changed: list[str] | None = None,
         files_removed: list[str] | None = None,
+        read_only: bool = False,
+        source_branch_sync_with_git: bool = True,
     ) -> None:
         pipeline_id = uuid.uuid4()
         repository = ProposedChangeRepository(
             repository_id=dataset["repository_id"],
             repository_name=dataset["repository_name"],
-            read_only=False,
+            read_only=read_only,
             source_branch=dataset["source_branch"],
             destination_branch=default_branch.name,
             internal_status=RepositoryInternalStatus.ACTIVE.value,
@@ -194,7 +196,7 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
         model = RequestProposedChangeRunGenerators(
             proposed_change=dataset["proposed_change_id"],
             source_branch=dataset["source_branch"],
-            source_branch_sync_with_git=True,
+            source_branch_sync_with_git=source_branch_sync_with_git,
             destination_branch=default_branch.name,
             branch_diff=branch_diff,
             refresh_artifacts=False,
@@ -214,6 +216,8 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
         files_added: list[str] | None = None,
         files_changed: list[str] | None = None,
         files_removed: list[str] | None = None,
+        read_only: bool = False,
+        source_branch_sync_with_git: bool = True,
     ) -> list[str]:
         await self._run_generators(
             dataset=dataset,
@@ -224,6 +228,8 @@ class GeneratorRegenTestBase(TestInfrahubAppBase):
             files_added=files_added,
             files_changed=files_changed,
             files_removed=files_removed,
+            read_only=read_only,
+            source_branch_sync_with_git=source_branch_sync_with_git,
         )
         return sorted(
             call["parameters"]["model"].generator_definition.definition_name
@@ -543,3 +549,127 @@ class TestGeneratorRegenSelection(GeneratorRegenTestBase):
             files_changed=["generators/a/a.py"],
         )
         assert selected == ["device-gen-a", "device-gen-a2"]
+
+    async def test_read_only_repo_closure_change_selects_without_git_sync(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """A read-only repo bump that touches a closure selects even when the branch does not sync with Git.
+
+        The selection gate keys on the per-repository file diff, not on ``source_branch_sync_with_git``,
+        so a read-only repository whose tracked commit advances into a generator's closure re-runs that
+        generator on a branch with ``sync_with_git = False`` - the read-only deployment pattern participates
+        in precise triggering without any sync flag.
+        """
+        selected = await self._selected_definitions(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            diff_summary=[],
+            files_changed=["generators/a/a.py"],
+            read_only=True,
+            source_branch_sync_with_git=False,
+        )
+        assert selected == ["device-gen-a"]
+
+
+class TestGeneratorRegenLegacyFallback(GeneratorRegenTestBase):
+    """A generator imported before this feature (``dependencies=null``) runs under the legacy gate.
+
+    Drives ``run_generators`` against a single generator whose stored closure is null, the state of
+    every generator imported before this feature shipped. The selection gate must fall back to the
+    pre-feature regenerate-on-any-file-change behavior with no error; self-heal on re-import (the
+    closure being populated) is proven by the import-closure integration coverage, not here.
+    """
+
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+    ) -> dict[str, Any]:
+        await load_schema(db=db, schema=GENERATOR_SCHEMA, update_db=True)
+
+        device = await Node.init(db=db, schema="TestNetworkDevice")
+        await device.new(db=db, name="legacy-dev", color="blue", description="Legacy device")
+        await device.save(db=db)
+
+        repo = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+        await repo.new(
+            db=db, name="generator-legacy-repo", location="https://github.com/test/generator-legacy-repo.git"
+        )
+        await repo.save(db=db)
+
+        query = await Node.init(db=db, schema="CoreGraphQLQuery")
+        await query.new(db=db, name="GetLegacyDevice", query=QUERY_A, models=["TestNetworkDevice"])
+        await query.save(db=db)
+
+        group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+        await group.new(db=db, name="generator-legacy-targets", members=[device])
+        await group.save(db=db)
+
+        # A generator imported before this feature has no stored closure: both attributes are null.
+        gendef = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
+        await gendef.new(
+            db=db,
+            name="device-gen-legacy",
+            query=query,
+            repository=repo,
+            targets=group,
+            file_path="generators/legacy/legacy.py",
+            class_name="DeviceGenerator",
+            parameters={"value": {"name": "name__value"}},
+            convert_query_response=False,
+            execute_in_proposed_change=True,
+            execute_after_merge=True,
+        )
+        await gendef.save(db=db)
+
+        await create_branch(branch_name=SOURCE_BRANCH, db=db)
+        await load_schema(db=db, schema=GENERATOR_SCHEMA, branch_name=SOURCE_BRANCH, update_db=False)
+
+        pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await pc.new(
+            db=db, name="generator-legacy-pc", source_branch=SOURCE_BRANCH, destination_branch=default_branch.name
+        )
+        await pc.save(db=db)
+
+        return {
+            "proposed_change_id": pc.id,
+            "repository_id": repo.id,
+            "repository_name": "generator-legacy-repo",
+            "source_branch": SOURCE_BRANCH,
+            "gendef_legacy_id": gendef.id,
+        }
+
+    async def test_legacy_generator_runs_on_any_file_change(
+        self,
+        dataset: dict[str, Any],
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+    ) -> None:
+        """A generator with ``dependencies=null`` is selected on any file change, with no error.
+
+        An unrelated ``README.md`` edit would dispatch nothing for a generator carrying a complete
+        closure; the null-closure generator instead falls back to the file-change signal and runs, so a
+        pre-feature install never under-runs while it waits to self-heal on its next re-import.
+        """
+        selected = await self._selected_definitions(
+            dataset=dataset,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            memory_cache=memory_cache,
+            workflow_recorder=workflow_recorder,
+            diff_summary=[],
+            files_changed=["README.md"],
+        )
+        assert selected == ["device-gen-legacy"]

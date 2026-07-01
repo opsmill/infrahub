@@ -86,9 +86,9 @@ This dependency management ensures that all resources have what they need when t
 
 ### Declaring extra dependencies with `watch`
 
-Infrahub automatically detects the files a Transformation reads: a Python Transformation's package directory, and the templates a Jinja2 Transformation statically includes, imports, or extends. When a file in that detected set changes in a proposed change, only the artifacts of the affected Transformation regenerate.
+Infrahub automatically detects the files a Transformation or Generator reads: a Python Transformation's or a Generator's package directory, and the templates a Jinja2 Transformation statically includes, imports, or extends. When a file in that detected set changes in a proposed change, only the artifacts of the affected Transformation regenerate, or the instances of the affected Generator re-run.
 
-Some dependencies cannot be detected automatically, such as a template pulled in through a dynamic `{% include some_variable %}` or a helper module imported at runtime from another package. Declare these with the optional `watch` key on a `jinja2_transforms` or `python_transforms` entry. Watched files are added to the Transformation's auto-detected dependencies; they never replace them.
+Some dependencies cannot be detected automatically, such as a template pulled in through a dynamic `{% include some_variable %}` or a helper module imported at runtime from another package. Declare these with the optional `watch` key on a `jinja2_transforms`, `python_transforms`, or `generator_definitions` entry. Watched files are added to the definition's auto-detected dependencies; they never replace them.
 
 `watch` is a strict object. Today it accepts a single key, `files`:
 
@@ -126,7 +126,22 @@ python_transforms:
         - shared/helpers.py
 ```
 
-Declaring any `watch.files` entry also marks the Transformation's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete auto-detection would otherwise trigger. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
+Generator example, where a Generator imports helpers from a sibling top-level package. The `watch` key behaves identically on a `generator_definitions` entry:
+
+```yaml
+generator_definitions:
+  - name: device_tags
+    file_path: generators/device_tags.py
+    class_name: DeviceTags
+    query: device_tags_query
+    targets: device_group
+    watch:
+      files:
+        - shared/
+        - common/constants.py
+```
+
+Declaring any `watch.files` entry also marks the definition's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete auto-detection would otherwise trigger. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
 
 ## Group targeting
 
