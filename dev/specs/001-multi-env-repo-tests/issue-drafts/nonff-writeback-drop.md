@@ -48,7 +48,21 @@ Reproduced deterministically as an `xfail(strict)` integration test
 A write-back blocked by a non-fast-forward remote must either be reconciled (fetch + integrate, then
 push) or reported as a failure — never silently dropped.
 
+## Compounding effect — the graph is left permanently diverged
+
+Worse than a lost push: `merge()` calls `update_commit_value(...)` (records the commit in the graph)
+**before** it calls `push()` (`repository.py:303` then `:305`). So when the push is dropped, the
+graph has already recorded the local merge commit that never reached the remote. On the next periodic
+sync the local default branch is ahead of the remote, the `pull` diverges and fails
+("Unable to pull the branch … there are conflicts that must be resolved"), the branch is **skipped**,
+and the repository stays stuck at the un-pushed commit — it does **not** self-heal on subsequent
+syncs. (Verified: a repo left in this state never converges to the remote tip, whereas a plain
+local/remote divergence *without* a recorded-ahead commit does recover.)
+
 ## Suggested fix
 
-In `push()`, inspect the `PushInfo` flags and raise (or surface a repository error) on any rejected
-or failed push, so both the missing-ref (#9568) and non-fast-forward triggers fail loudly.
+Two parts:
+1. In `push()`, inspect the `PushInfo` flags and raise (or surface a repository error) on any
+   rejected or failed push, so both the missing-ref (#9568) and non-fast-forward triggers fail loudly.
+2. Only call `update_commit_value(...)` **after** the push is confirmed, so a failed write-back does
+   not leave the graph pointing at a commit the remote never received.

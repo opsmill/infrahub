@@ -25,7 +25,7 @@ from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import create_gogs_repo
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Generator
 
     from infrahub_sdk import InfrahubClient
     from testcontainers.core.container import DockerContainer
@@ -84,6 +84,32 @@ def _force_rewrite_remote_branch(container: DockerContainer, repo_name: str, bra
     )
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Force-rewrite of {branch} failed: {result.output.decode()}"
+
+
+async def _register_and_import(client: InfrahubClient, gogs_server: GogsServer, repo_name: str) -> dict:
+    """Create a Gogs repo with main + develop, register it with default_branch=develop, and import it.
+
+    After import the on-disk clone holds a local ``develop`` (the working, "importer" state).
+    """
+    repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+    _create_remote_branch_from_main(gogs_server.container, repo_name, DEV_BRANCH)
+    node = await client.create(
+        kind=InfrahubKind.REPOSITORY,
+        data={"name": repo_name, "location": repo_url, "default_branch": DEV_BRANCH},
+    )
+    await node.save()
+    await sync_remote_repositories()
+    return {"repo_name": repo_name, "node_id": node.id}
+
+
+async def _writeback_merge(repo: InfrahubRepository, feature_name: str, filename: str) -> str | bool:
+    """Commit a change on a new feature branch and merge it into the primary branch (write-back)."""
+    await repo.create_branch_in_git(feature_name, push_origin=False)
+    worktree = repo.get_git_repo_worktree(identifier=feature_name)
+    (Path(str(worktree.working_dir)) / filename).write_text("write-back content\n")
+    worktree.index.add([filename])
+    worktree.index.commit(f"{feature_name}: write-back change")
+    return await repo.merge(source_branch=feature_name, dest_branch="main", push_remote=True)
 
 
 class TestMultiEnvWriteBack(TestInfrahubApp):
@@ -457,3 +483,139 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
         )
         # The in-filter default branch still imported despite the problematic excluded ref.
         assert repo_after.commit.value == develop_target
+
+    # -- Write-back robustness angles (beyond the happy path) ------------------------------------
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="a write-back lost to a non-fast-forward push is not re-delivered by a later sync",
+    )
+    async def test_nonff_writeback_lost_permanently_after_resync(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """After a non-ff write-back drop, a subsequent sync does not re-deliver the write-back.
+
+        Probes whether the drop is transient (self-heals on the next sync) or permanent.
+        """
+        ds = await _register_and_import(client, gogs_server, "multi-env-perm-repo")
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        repo = await InfrahubRepository.init(
+            id=repository.id, name=ds["repo_name"], client=client, default_branch_name=DEV_BRANCH
+        )
+
+        _push_commit_to_remote(gogs_server.container, ds["repo_name"], "out_of_band.txt", branch=DEV_BRANCH)
+        writeback_commit = await _writeback_merge(repo, "feature-perm", "wb.txt")
+
+        await sync_remote_repositories()
+
+        remote_develop = _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH)
+        # Intended contract: the write-back eventually reaches the remote default branch.
+        assert remote_develop == writeback_commit
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="a dropped write-back records the local commit before the push is confirmed, leaving the repo permanently diverged from the remote and unable to converge on a later sync",
+    )
+    async def test_writeback_drop_then_sync_converges_to_remote(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """After a write-back drop, a later sync should converge to the remote default tip.
+
+        It does not: ``merge()`` records the commit (``update_commit_value``) *before* the push is
+        confirmed, so a dropped push leaves the graph pointing at an un-pushed commit. The next sync
+        sees local ahead of remote, the pull fails ("conflicts that must be resolved"), the branch is
+        skipped, and the repo stays stuck at the local write-back commit — it never converges. (Pure
+        divergence without a recorded-ahead commit does recover — see the divergence guard above.)
+        """
+        ds = await _register_and_import(client, gogs_server, "multi-env-converge-repo")
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        repo = await InfrahubRepository.init(
+            id=repository.id, name=ds["repo_name"], client=client, default_branch_name=DEV_BRANCH
+        )
+
+        _push_commit_to_remote(gogs_server.container, ds["repo_name"], "out_of_band.txt", branch=DEV_BRANCH)
+        await _writeback_merge(repo, "feature-converge", "wb.txt")
+        remote_develop = _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH)
+
+        await sync_remote_repositories()
+
+        repo_after: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert repo_after.commit.value == remote_develop
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="repeated non-fast-forward write-backs are each silently dropped",
+    )
+    async def test_repeated_nonff_writebacks_each_dropped(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """A second write-back, after another out-of-band advance, is also silently dropped."""
+        ds = await _register_and_import(client, gogs_server, "multi-env-repeat-repo")
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        repo = await InfrahubRepository.init(
+            id=repository.id, name=ds["repo_name"], client=client, default_branch_name=DEV_BRANCH
+        )
+
+        _push_commit_to_remote(gogs_server.container, ds["repo_name"], "oob1.txt", branch=DEV_BRANCH)
+        await _writeback_merge(repo, "feature-r1", "wb1.txt")
+
+        _push_commit_to_remote(gogs_server.container, ds["repo_name"], "oob2.txt", branch=DEV_BRANCH)
+        writeback_commit = await _writeback_merge(repo, "feature-r2", "wb2.txt")
+
+        remote_develop = _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH)
+        # Intended contract: the second write-back reaches the remote default branch.
+        assert remote_develop == writeback_commit
+
+    @pytest.fixture
+    def explicit_merge_commit(self) -> Generator[None, None, None]:
+        """Force write-back merges to create explicit merge commits (--no-ff)."""
+        original = config.SETTINGS.git.use_explicit_merge_commit
+        config.SETTINGS.git.use_explicit_merge_commit = True
+        yield
+        config.SETTINGS.git.use_explicit_merge_commit = original
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="non-fast-forward write-back is dropped regardless of the explicit-merge-commit setting",
+    )
+    async def test_writeback_drop_independent_of_explicit_merge_commit(
+        self,
+        explicit_merge_commit: None,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """The write-back drop is a push-layer failure — it happens with explicit merge commits too."""
+        ds = await _register_and_import(client, gogs_server, "multi-env-mergecommit-repo")
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        repo = await InfrahubRepository.init(
+            id=repository.id, name=ds["repo_name"], client=client, default_branch_name=DEV_BRANCH
+        )
+
+        _push_commit_to_remote(gogs_server.container, ds["repo_name"], "out_of_band.txt", branch=DEV_BRANCH)
+        develop_before = _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH)
+
+        await _writeback_merge(repo, "feature-mc", "wb.txt")
+
+        develop_after = _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH)
+        # Intended contract: the write-back reached the remote default branch.
+        assert develop_after != develop_before
