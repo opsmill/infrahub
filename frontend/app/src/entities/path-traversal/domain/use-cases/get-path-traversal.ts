@@ -2,7 +2,7 @@ import { getPathTraversalFromApi } from "@/entities/path-traversal/api/get-path-
 import type {
   GetPathTraversalParams,
   PathTraversalResponse,
-} from "@/entities/path-traversal/domain/path-traversal.types";
+} from "@/entities/path-traversal/domain/model/path-traversal";
 
 export async function getPathTraversal(
   params: GetPathTraversalParams

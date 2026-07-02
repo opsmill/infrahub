@@ -18,7 +18,7 @@ import {
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
-import { MAX_TRAVERSAL_DEPTH } from "../../domain/path-traversal.constants";
+import { MAX_TRAVERSAL_DEPTH } from "../../domain/model/path-traversal";
 import { isVisibleNamespace } from "../../domain/rules/visible-namespace";
 import { ObjectPicker } from "../object-picker";
 import type { DependenciesModeFormValues } from "./use-dependencies-mode-params";

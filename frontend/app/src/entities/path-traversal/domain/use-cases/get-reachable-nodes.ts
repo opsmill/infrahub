@@ -2,7 +2,7 @@ import { getReachableNodesFromApi } from "@/entities/path-traversal/api/get-reac
 import type {
   GetReachableNodesParams,
   ReachableNodesResponse,
-} from "@/entities/path-traversal/domain/path-traversal.types";
+} from "@/entities/path-traversal/domain/model/path-traversal";
 
 export async function getReachableNodes(
   params: GetReachableNodesParams
