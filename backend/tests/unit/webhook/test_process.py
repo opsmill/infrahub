@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import logging
-import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import httpx
 import pytest
@@ -11,12 +10,17 @@ import ujson
 
 from infrahub.exceptions import HTTPServerError
 from infrahub.webhook.classifier import WebhookDeliveryError
-from infrahub.webhook.models import CustomWebhook, HeaderKind, WebhookHeader
+from infrahub.webhook.models import CustomWebhook, HeaderKind, Webhook, WebhookHeader
 from infrahub.webhook.tasks import process
-from infrahub.webhook.tasks.process import PAYLOAD_LOG_LIMIT, webhook_post, webhook_send
+from infrahub.webhook.tasks.process import (
+    PAYLOAD_LOG_LIMIT,
+    WEBHOOK_SEND_ATTEMPTS,
+    webhook_post,
+    webhook_send,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable
 
 LOGGER_NAME = "infrahub.webhook.tasks.process"
 
@@ -36,29 +40,40 @@ class _RecordingHTTP:
 
 
 @pytest.fixture(autouse=True)
-def _patch_prefect_logger() -> Iterator[None]:
+def _patch_prefect_logger(monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace Prefect's get_run_logger with a standard logger so caplog captures output."""
-    with patch("infrahub.webhook.tasks.process.get_run_logger", return_value=logging.getLogger(LOGGER_NAME)):
-        yield
+    monkeypatch.setattr(process, "get_run_logger", lambda: logging.getLogger(LOGGER_NAME))
 
 
 @pytest.fixture(autouse=True)
-def _silence_add_tags() -> Iterator[None]:
+def _silence_add_tags(monkeypatch: pytest.MonkeyPatch) -> None:
     """add_tags only talks to the Prefect runtime; it is irrelevant to these logging tests."""
 
     async def _noop(**_kwargs: object) -> None:
         return None
 
-    with patch.object(process, "add_tags", _noop):
-        yield
+    monkeypatch.setattr(process, "add_tags", _noop)
 
 
 @pytest.fixture
-def recording_http() -> Iterator[_RecordingHTTP]:
+def recording_http(monkeypatch: pytest.MonkeyPatch) -> _RecordingHTTP:
     """Stand in for the HTTP service: returns a 200 response and records the POST it received."""
     recorder = _RecordingHTTP(httpx.Response(200, request=httpx.Request("POST", "https://target.example/hook")))
-    with patch.object(process, "get_http", return_value=recorder):
-        yield recorder
+    monkeypatch.setattr(process, "get_http", lambda: recorder)
+    return recorder
+
+
+@pytest.fixture
+def resolve_webhook_to(monkeypatch: pytest.MonkeyPatch) -> Callable[[Webhook], None]:
+    """Resolve any webhook id to the given webhook, bypassing the cache and the client."""
+
+    def _install(webhook: Webhook) -> None:
+        async def _resolve(webhook_id: str, webhook_kind: str) -> Webhook:
+            return webhook
+
+        monkeypatch.setattr(process, "_resolve_webhook", _resolve)
+
+    return _install
 
 
 @pytest.fixture
@@ -69,7 +84,10 @@ def webhook_token_env(monkeypatch: pytest.MonkeyPatch) -> str:
 
 
 async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(
-    caplog: pytest.LogCaptureFixture, recording_http: _RecordingHTTP, webhook_token_env: str
+    caplog: pytest.LogCaptureFixture,
+    recording_http: _RecordingHTTP,
+    webhook_token_env: str,
+    resolve_webhook_to: Callable[[Webhook], None],
 ) -> None:
     # No shared_key: avoids the random webhook-id/timestamp/signature so the logged line is fully fixed.
     webhook = CustomWebhook(
@@ -82,9 +100,7 @@ async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(
             WebhookHeader(key="X-Token", value="WEBHOOK_TOKEN_ENV", kind=HeaderKind.ENVIRONMENT),
         ],
     )
-
-    async def _resolve(webhook_id: str, webhook_kind: str) -> CustomWebhook:
-        return webhook
+    resolve_webhook_to(webhook)
 
     payload = {"event": "branch.created"}
     payload_json = ujson.dumps(payload)
@@ -95,7 +111,7 @@ async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(
         "X-Token": "***",
     }
 
-    with patch.object(process, "_resolve_webhook", _resolve), caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
+    with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
         await webhook_post.fn(
             webhook_id="id-1", webhook_kind="CustomWebhook", webhook_name="hook", payload=payload, attempt=2
         )
@@ -111,7 +127,9 @@ async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(
 
 
 async def test_webhook_post_truncates_large_payload_inline_and_logs_it_in_full_at_debug(
-    caplog: pytest.LogCaptureFixture, recording_http: _RecordingHTTP
+    caplog: pytest.LogCaptureFixture,
+    recording_http: _RecordingHTTP,
+    resolve_webhook_to: Callable[[Webhook], None],
 ) -> None:
     webhook = CustomWebhook(
         name="hook",
@@ -119,9 +137,7 @@ async def test_webhook_post_truncates_large_payload_inline_and_logs_it_in_full_a
         event_type="infrahub.branch.created",
         validate_certificates=False,
     )
-
-    async def _resolve(webhook_id: str, webhook_kind: str) -> CustomWebhook:
-        return webhook
+    resolve_webhook_to(webhook)
 
     payload = {"blob": "x" * (PAYLOAD_LOG_LIMIT * 2)}
     payload_json = ujson.dumps(payload)
@@ -131,7 +147,7 @@ async def test_webhook_post_truncates_large_payload_inline_and_logs_it_in_full_a
     )
     expected_headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
-    with patch.object(process, "_resolve_webhook", _resolve), caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
+    with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
         await webhook_post.fn(
             webhook_id="id-1", webhook_kind="CustomWebhook", webhook_name="hook", payload=payload, attempt=1
         )
@@ -146,12 +162,51 @@ async def test_webhook_post_truncates_large_payload_inline_and_logs_it_in_full_a
     assert debug_messages == [f"Webhook 'hook' attempt 1/4 full payload: {payload_json}"]
 
 
-async def test_webhook_send_logs_and_raises_the_classified_failure(caplog: pytest.LogCaptureFixture) -> None:
+@dataclass
+class FailureLogCase:
+    name: str
+    run_count: int | None
+    location: str  # the attempt phrase in the log line
+    retry_note: str  # the trailing retry note, empty when none is expected
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        FailureLogCase(
+            name="mid_run_attempt_announces_next_retry",
+            run_count=1,
+            location="attempt 1/4",
+            retry_note=" Retrying in 120s (attempt 2/4).",
+        ),
+        FailureLogCase(
+            name="last_attempt_reports_no_retries_remaining",
+            run_count=WEBHOOK_SEND_ATTEMPTS,
+            location=f"attempt {WEBHOOK_SEND_ATTEMPTS}/4",
+            retry_note=" No retries remaining.",
+        ),
+        FailureLogCase(
+            name="outside_flow_run_omits_attempt_and_retry_note",
+            run_count=None,
+            location="outside a flow run",
+            retry_note="",
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_webhook_send_logs_and_raises_the_classified_failure(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch, case: FailureLogCase
+) -> None:
+    monkeypatch.setattr(process.flow_run, "run_count", case.run_count)
+    # Pin the clock so the logged elapsed time is a fixed "0 ms" and the line can be matched exactly.
+    monkeypatch.setattr(process.time, "monotonic", lambda: 0.0)
+
     async def _failing_post(**_kwargs: object) -> httpx.Response:
         raise HTTPServerError(message="Connection to https://target.example failed")
 
+    monkeypatch.setattr(process, "webhook_post", _failing_post)
+
     with (
-        patch.object(process, "webhook_post", _failing_post),
         caplog.at_level(logging.ERROR, logger=LOGGER_NAME),
         pytest.raises(WebhookDeliveryError, match=r"^Connection to https://target\.example failed$"),
     ):
@@ -160,11 +215,8 @@ async def test_webhook_send_logs_and_raises_the_classified_failure(caplog: pytes
         )
 
     error_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR]
-    assert len(error_messages) == 1
-    # The elapsed milliseconds are the only variable part of the line.
-    assert re.fullmatch(
-        r"Webhook delivery failed \[CONNECTION\] on attempt 1/4 after \d+ ms: "
-        r"Connection to https://target\.example failed\. "
-        r"Verify the target endpoint is reachable from Infrahub\.",
-        error_messages[0],
-    )
+    assert error_messages == [
+        f"Webhook delivery failed [CONNECTION] {case.location} after 0 ms: "
+        "Connection to https://target.example failed. "
+        f"Verify the target endpoint is reachable from Infrahub.{case.retry_note}"
+    ]

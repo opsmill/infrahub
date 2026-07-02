@@ -46,21 +46,30 @@ def _truncate_for_log(text: str) -> str:
     return f"{text[:PAYLOAD_LOG_LIMIT]}… (+{remaining} characters; enable debug logging for the full payload)"
 
 
+def _attempt_phrase(attempt: int | None) -> str:
+    """Position this send within its retry sequence, or note that no flow run is driving retries."""
+    if attempt is None:
+        return "outside a flow run"
+    return f"attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS}"
+
+
 def _log_outgoing_request(
-    *, webhook: Webhook, webhook_name: str, attempt: int, headers: dict[str, Any], payload: Any
+    *, webhook: Webhook, webhook_name: str, attempt: int | None, headers: dict[str, Any], payload: Any
 ) -> None:
     """Log the outgoing request: a redacted, truncated summary at info and the full payload at debug."""
     log = get_run_logger()
     payload_json = ujson.dumps(payload)
     log.info(
-        f"Webhook '{webhook_name}' attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS}: POST {webhook.url} "
+        f"Webhook '{webhook_name}' {_attempt_phrase(attempt)}: POST {webhook.url} "
         f"with headers {webhook.redact_headers(headers)} and payload {_truncate_for_log(payload_json)}"
     )
-    log.debug(f"Webhook '{webhook_name}' attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS} full payload: {payload_json}")
+    log.debug(f"Webhook '{webhook_name}' {_attempt_phrase(attempt)} full payload: {payload_json}")
 
 
 @task(name="webhook-post", task_run_name="Send webhook {webhook_name}", cache_policy=NONE)
-async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int) -> Response:
+async def webhook_post(
+    webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int | None
+) -> Response:
     """Resolve the webhook config, log the outgoing request, and POST the prepared payload."""
     http_service = get_http()
     webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
@@ -93,8 +102,9 @@ async def webhook_send(
     """
     log = get_run_logger()
     await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
-    # flow_run.run_count is the 1-based attempt number within a flow run; it is None outside one.
-    attempt = flow_run.run_count or 1
+    # flow_run.run_count is the 1-based attempt number within a flow run; it is None outside one, where
+    # there is no retry sequence to report.
+    attempt = flow_run.run_count
     started = time.monotonic()
     try:
         response = await webhook_post(
@@ -107,14 +117,22 @@ async def webhook_send(
     except EXPECTED_DELIVERY_ERRORS as cause:
         elapsed_ms = (time.monotonic() - started) * 1_000
         failure = WebhookFailureClassifier().classify(cause=cause)
+        # A retry is only scheduled when a flow run is driving the sequence and attempts remain.
+        retry_note = ""
+        if attempt is not None:
+            retry_note = (
+                f" Retrying in {WEBHOOK_SEND_RETRY_DELAY_SECONDS:.0f}s (attempt {attempt + 1}/{WEBHOOK_SEND_ATTEMPTS})."
+                if attempt < WEBHOOK_SEND_ATTEMPTS
+                else " No retries remaining."
+            )
         log.error(
-            f"Webhook delivery failed [{failure.status_class}] on attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS} "
-            f"after {elapsed_ms:.0f} ms: {failure.message.rstrip('.')}. {failure.remediation}"
+            f"Webhook delivery failed [{failure.status_class}] {_attempt_phrase(attempt)} "
+            f"after {elapsed_ms:.0f} ms: {failure.message.rstrip('.')}. {failure.remediation}{retry_note}"
         )
         raise WebhookDeliveryError(failure) from None
     elapsed_ms = (time.monotonic() - started) * 1_000
     log.info(
-        f"Webhook delivered to {response.url} on attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS}, "
+        f"Webhook delivered to {response.url} {_attempt_phrase(attempt)}, "
         f"HTTP {response.status_code} in {elapsed_ms:.0f} ms"
     )
     return response
