@@ -10,9 +10,9 @@ import {
   SortableList,
   Tooltip,
 } from "@infrahub/ui";
-import { InfoIcon, RotateCcwIcon, XIcon } from "lucide-react";
+import { CheckIcon, InfoIcon, RotateCcwIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
 
-import { Col } from "@/shared/components/container";
+import { Row } from "@/shared/components/container";
 
 import { getSchemaDefaultSort, type Sort } from "@/entities/nodes/object/domain/sort";
 import {
@@ -47,55 +47,60 @@ export function SortEditor({ schema }: SortEditorProps) {
   const usedFields = new Set(currentSort.map((entry) => entry.field));
   const unusedFields = sortableFields.filter((field) => !usedFields.has(field.field));
 
+  const isDefaultOrder = sort === null;
+
+  const sortList = (
+    <SortableList aria-label="Sort keys" items={currentSort} onReorder={setSort}>
+      {(entry) => (
+        <SortableItem id={entry.field} textValue={entry.field}>
+          <SortRow schema={schema} sort={entry} />
+        </SortableItem>
+      )}
+    </SortableList>
+  );
+
   return (
     <>
-      <Col className="items-start gap-1 p-1">
-        <SortableList aria-label="Sort keys" items={currentSort} onReorder={setSort}>
-          {(entry) => (
-            <SortableItem id={entry.field} textValue={entry.field}>
-              <SortRow schema={schema} sort={entry} />
-            </SortableItem>
-          )}
-        </SortableList>
-
-        <AddSort fields={unusedFields} onAdd={addSort} />
-      </Col>
-
-      <SortEditorFooter schema={schema} />
-    </>
-  );
-}
-
-interface SortEditorFooterProps {
-  schema: ModelSchema;
-}
-
-function SortEditorFooter({ schema }: SortEditorFooterProps) {
-  const [sort, setSort] = useSort(schema);
-  const resetSort = () => setSort([]);
-
-  return (
-    <div className="border-neutral-300 border-t p-1 text-center">
-      {sort === null ? (
-        <div className="p-1 text-stone-400 text-xs">
-          Default order · edit or add a field to customize
+      {isDefaultOrder ? (
+        <div className="rounded-t-xl bg-stone-200/60 p-1">
+          <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
+            <CheckIcon className="size-3.5 text-cyan-600" />
+            Default order · applied now
+          </Row>
+          {sortList}
         </div>
       ) : (
-        <Button variant="outline" size="xs" className="w-full text-stone-600" onPress={resetSort}>
-          {getSchemaDefaultSort(schema) ? (
-            <>
-              <RotateCcwIcon />
-              Reset to default
-            </>
-          ) : (
-            <>
-              <XIcon />
-              Clear sort
-            </>
-          )}
-        </Button>
+        <div className="p-1 pb-0">
+          <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
+            <SlidersHorizontalIcon className="size-3.5" />
+            Custom order
+            <Button
+              variant="ghost"
+              size="xxs"
+              className="ml-auto text-xxs"
+              onPress={() => setSort([])}
+            >
+              {getSchemaDefaultSort(schema) ? (
+                <>
+                  <RotateCcwIcon />
+                  Reset to default
+                </>
+              ) : (
+                <>
+                  <XIcon />
+                  Clear sort
+                </>
+              )}
+            </Button>
+          </Row>
+          {sortList}
+        </div>
       )}
-    </div>
+
+      <div className="p-1">
+        <AddSort fields={unusedFields} onAdd={addSort} />
+      </div>
+    </>
   );
 }
 
