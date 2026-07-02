@@ -21,7 +21,7 @@ test harness wiring — there is no separate product code. "Green" tasks assert 
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create the deterministic-prong module `backend/tests/integration/git/test_multi_env_writeback.py` (module docstring describing the multi-environment write-back / branch-mapping behaviours under test; imports mirroring `backend/tests/integration/git/test_git_live_remote.py`)
+- [X] T001 Create the deterministic-prong module `backend/tests/integration/git/test_multi_env_writeback.py` (module docstring describing the multi-environment write-back / branch-mapping behaviours under test; imports mirroring `backend/tests/integration/git/test_git_live_remote.py`)
 - [ ] T002 [P] Create the full-stack module `backend/tests/integration_docker/test_multi_env_approach_a.py` with a class based on `TestInfrahubDockerClient` (mirror `backend/tests/integration_docker/test_propose_change_repository.py`). First determine how the existing `integration_docker` tests are kept out of the default CI run (dedicated Docker job vs. a marker); reuse that same mechanism. Only if the Docker job runs the whole directory unconditionally, add an opt-in marker and register it in `pyproject.toml` `[tool.pytest.ini_options].markers`
 
 ---
@@ -30,8 +30,8 @@ test harness wiring — there is no separate product code. "Green" tasks assert 
 
 **⚠️ Blocks the deterministic-prong stories (US1, US3, US4, US5).**
 
-- [ ] T003 Establish a **writable** local Git remote for the deterministic prong (bare clone, or `receive.denyCurrentBranch=updateInstead`) so write-back pushes are accepted; reuse/extend `backend/tests/helpers/file_repo.py` if it serves ≥2 callers, else keep the helper local to `test_multi_env_writeback.py` (resolves research open-verification: remote writability)
-- [ ] T004 [P] Add a repo-registration helper in `backend/tests/integration/git/test_multi_env_writeback.py` that issues `CoreRepositoryCreate` (with `default_branch`) / `CoreReadOnlyRepositoryCreate` (with `ref`) directly, setting the pin **at creation** (never create-then-update)
+- [X] T003 Reuse the existing Gogs remote harness from `backend/tests/integration/git/conftest.py` (`gogs_server`, `create_gogs_repo`, `gogs_clone_url`) on the `TestInfrahubApp` base — the same setup `test_git_live_remote.py` uses; no new remote plumbing (write-back pushes are accepted by the Gogs server)
+- [X] T004 [P] Add a repo-registration helper in `backend/tests/integration/git/test_multi_env_writeback.py` that issues `CoreRepositoryCreate` (with `default_branch`) / `CoreReadOnlyRepositoryCreate` (with `ref`) directly, setting the pin **at creation** (never create-then-update) — done inline via `client.create(kind=REPOSITORY, data={..., "default_branch": ...})`
 - [ ] T005 [P] Add a deadline-bounded poll helper in `backend/tests/integration/git/test_multi_env_writeback.py` that waits on `client.branch.all()` and the repository's recorded `commit` (never `sync_status`, never a fixed sleep)
 
 **Checkpoint**: local writable remote + registration + polling available → deterministic stories can begin.
@@ -44,8 +44,8 @@ test harness wiring — there is no separate product code. "Green" tasks assert 
 
 **Independent Test**: run the file; the reproduction is `xfailed` (drop observed) and stays green-in-CI.
 
-- [ ] T006 [US1] Add `test_writeback_dropped_when_default_branch_absent_locally` in `backend/tests/integration/git/test_multi_env_writeback.py`: reconstruct a clone holding only local primary + `origin/<default>` (no local `<default>`), perform a write-back merge to `<default>`, assert `push` reports success **and** the remote `<default>` tip is unchanged; mark `xfail(strict, reason="write-back push silently dropped when the executing clone has no local default branch")`
-- [ ] T007 [US1] Run the test; confirm it `xfails` (drop reproduced). If it `XPASSes`, fix the clone-state reconstruction until the drop is observed
+- [X] T006 [US1] Add `test_writeback_dropped_when_default_branch_absent_locally` in `backend/tests/integration/git/test_multi_env_writeback.py`: reconstruct a clone holding only local primary + `origin/<default>` (no local `<default>`), perform a write-back merge to `<default>`, assert `push` reports success **and** the remote `<default>` tip is unchanged; mark `xfail(strict, reason="write-back push silently dropped when the executing clone has no local default branch")`
+- [X] T007 [US1] Run the test; confirm it `xfails` (drop reproduced). If it `XPASSes`, fix the clone-state reconstruction until the drop is observed — verified: `1 xfailed in 170.24s`
 
 **Checkpoint**: MVP — the #9568 mechanism is reproduced deterministically and self-updates when fixed.
 

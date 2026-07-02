@@ -53,15 +53,17 @@ reaching the cluster worker-count knob from a test class.
 shows direct-mutation registration. `default_branch` must be set **at creation**, never
 create-then-update (create-then-update strands a permanent phantom — a documented field trap).
 
-## Decision 5 — Writable (bare) remote for write-back
+## Decision 5 — Reuse the existing Gogs remote harness (no invented remote)
 
-**Decision**: The shared remote used by the development (read-write) instance must accept the
-write-back push — provision it bare, or set `receive.denyCurrentBranch=updateInstead` on the remote
-checkout.
-**Rationale**: `GitRepo.init` creates a non-bare repo; pushing to its checked-out branch is rejected
-by default, which would mask the real defect behind an unrelated rejection.
-**Open verification**: confirm whether `remote_repos_dir` repos are bare under the testcontainers
-harness; if not, configure the remote in test setup.
+**Decision**: The deterministic prong reuses the existing `integration/git` Gogs fixtures
+(`gogs_server`, `create_gogs_repo`, `gogs_clone_url`) on the `TestInfrahubApp` base — the same setup
+`test_git_live_remote.py` uses. No new local-bare-remote helper is introduced.
+**Rationale**: This is the established convention for InfrahubRepository push/pull/merge/conflict
+tests; matching it (FR-011) avoids reinventing remote plumbing. Gogs is a real git server, so the
+write-back push is accepted without the non-bare-checkout rejection issue a local remote would raise.
+**Consequence**: The deterministic prong depends on the Gogs testcontainer (like its siblings) and
+runs in the same integration test job — still deterministic (no multi-worker), just not
+container-free.
 
 ## Decision 6 — Determinism of sync/import/reimport
 

@@ -12,10 +12,10 @@ worktree poisoning; the branch filter not bounding fetch-time failures).
 
 Technical approach is two-pronged, mirroring existing harnesses (no new framework):
 
-- **Deterministic prong** — `backend/tests/integration/git/` (mirrors `test_git_live_remote.py`):
-  real local Git remote + real `InfrahubRepository`/`client`/`db`, no container stack. Hosts every
-  mechanism-level guarantee and defect reproduction, including the **sole** #9568 reproduction (by
-  reconstructing the failing worker-clone state — no live worker pool). Runs in CI. Defect
+- **Deterministic prong** — `backend/tests/integration/git/` on `TestInfrahubApp`, reusing the
+  existing Gogs remote fixtures (mirrors `test_git_live_remote.py`). Hosts every mechanism-level
+  guarantee and defect reproduction, including the **sole** #9568 reproduction (by reconstructing the
+  failing worker-clone state — no live worker pool). Runs in the integration test job. Defect
   reproductions are `xfail(strict)`.
 - **Full-stack prong** — `backend/tests/integration_docker/` (mirrors `test_propose_change_repository.py`
   / `test_repositories.py`, base class `TestInfrahubDockerClient`): full testcontainers stack, used
