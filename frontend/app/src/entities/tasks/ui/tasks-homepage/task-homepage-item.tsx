@@ -7,7 +7,7 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 import type { TaskHomepageNode } from "@/entities/tasks/domain/get-tasks-homepage/get-tasks-homepage";

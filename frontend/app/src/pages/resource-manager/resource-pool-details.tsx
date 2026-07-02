@@ -18,8 +18,8 @@ import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/m
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";

@@ -10,8 +10,8 @@ import { Link } from "@/shared/components/ui/link";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface MetaDetailsTooltipProps {

@@ -11,7 +11,7 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import { QSP } from "@/shared/config/qsp";
 import usePagination from "@/shared/hooks/usePagination";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { useGetResourceAllocated } from "@/entities/resource-manager/ui/queries/get-resource-allocated.query";
 
 const ResourceAllocationDetailsPage = () => {

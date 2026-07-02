@@ -7,7 +7,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 
 import ResourcePoolUtilization from "./ResourcePoolUtilization";
 

@@ -1,6 +1,6 @@
 import { BreadcrumbItem } from "@infrahub/ui";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

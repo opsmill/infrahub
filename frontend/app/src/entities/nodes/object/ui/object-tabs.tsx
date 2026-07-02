@@ -3,8 +3,8 @@ import { Spinner } from "@infrahub/ui";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 

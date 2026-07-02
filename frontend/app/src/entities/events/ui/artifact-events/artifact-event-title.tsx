@@ -6,7 +6,7 @@ import { ARTIFACT_DEFINITION_OBJECT, ARTIFACT_OBJECT } from "@/shared/config/con
 import { QSP } from "@/shared/config/qsp";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 
 const ArtifactTitleContent = (props: ArtifactEvent) => {
   return (

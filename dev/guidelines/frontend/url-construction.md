@@ -9,7 +9,7 @@ Guidelines for constructing URLs and paths in the React TypeScript frontend.
 **Always use `getObjectDetailsUrl` for constructing URLs to object detail pages:**
 
 ```typescript
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 
 // ✅ Good - handles all object types consistently
 const url = getObjectDetailsUrl(objectKind, objectId);
@@ -31,7 +31,7 @@ const url = constructPath(`/proposed-changes/${id}`);
 - Custom application routes: `/dashboard`, `/reports`
 - Static pages: `/about`, `/help`
 
-**Location:** `frontend/app/src/entities/nodes/utils.ts`
+**Location:** `frontend/app/src/entities/nodes/object/utils.ts`
 
 ## Tab Navigation Uses Path Segments
 
@@ -54,7 +54,7 @@ Each detail-page family owns a dedicated URL helper. Inline `/feature/${id}/${ta
 
 | Family | Helper | Location |
 |---|---|---|
-| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `frontend/app/src/entities/nodes/utils.ts` |
+| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `frontend/app/src/entities/nodes/object/utils.ts` |
 | Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `frontend/app/src/entities/branches/utils.ts` |
 | Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `frontend/app/src/entities/proposed-changes/utils.ts` |
 

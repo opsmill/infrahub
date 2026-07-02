@@ -20,7 +20,7 @@ import { FormLabel } from "@/shared/components/ui/form";
 import type { LabelProps } from "@/shared/components/ui/label";
 import { classNames } from "@/shared/utils/common";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 
 export const InputUniqueTips = ({ className }: { className: string }) => (
   <span className={classNames("text-gray-600 text-xs italic leading-3", className)}>

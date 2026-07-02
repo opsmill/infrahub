@@ -8,7 +8,7 @@ import { DurationDisplay } from "@/shared/components/display/duration-display";
 import { List } from "@/shared/components/table/list";
 import { Link } from "@/shared/components/ui/link";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 
 import { ValidatorDetails } from "./validator-details";
 

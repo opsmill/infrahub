@@ -12,9 +12,9 @@ import { pluralize } from "@/shared/utils/string";
 
 import type { GroupData } from "@/entities/groups/domain/types";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface ObjectGroupsListProps {

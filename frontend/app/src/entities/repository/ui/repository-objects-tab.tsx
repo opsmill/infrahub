@@ -3,8 +3,8 @@ import { Spinner } from "@infrahub/ui";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { REPOSITORY_GROUP, REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 
 export interface RepositoryObjectsTabProps {

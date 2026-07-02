@@ -13,8 +13,8 @@ import type {
 } from "@/entities/nodes/object/domain/model/node";
 import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 

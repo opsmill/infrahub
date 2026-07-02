@@ -12,8 +12,8 @@ import { classNames } from "@/shared/utils/common";
 
 import { useGetTreeNodesByParent } from "@/entities/nodes/hierarchy/ui/queries/get-tree-nodes-by-parent.query";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

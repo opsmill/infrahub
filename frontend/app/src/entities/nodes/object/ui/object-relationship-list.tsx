@@ -4,12 +4,12 @@ import { Collection } from "react-aria-components";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
   type UseObjectRelationshipsParams,
   useObjectRelationships,
 } from "@/entities/nodes/relationships/ui/queries/get-object-relationships.query";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 

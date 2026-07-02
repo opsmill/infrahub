@@ -1,6 +1,6 @@
 import { BreadcrumbItem } from "@infrahub/ui";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbItemSchema({ kind }: { kind: string }) {

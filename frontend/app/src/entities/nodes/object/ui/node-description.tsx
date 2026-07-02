@@ -5,8 +5,8 @@ import { Link } from "react-router";
 import { classNames } from "@/shared/utils/common";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

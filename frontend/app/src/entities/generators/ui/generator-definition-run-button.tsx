@@ -14,10 +14,10 @@ import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export interface RunGeneratorActionProps {
   generatorId: string;
