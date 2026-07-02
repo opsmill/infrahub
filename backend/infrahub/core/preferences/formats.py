@@ -11,15 +11,18 @@ if TYPE_CHECKING:
 # format is one entry here plus the frontend's key->date-fns map; StandardNode stores the key
 # string, so there is no schema or migration change.
 #
-# The set is deliberately limited to formats that render identically and trivially on every client
-# (plain strftime, no locale library, no ambiguity). Locale-dependent or relative modes were left
-# out for exactly that reason — see dev/specs/2026-04-user-preferences.md.
+# The set is deliberately limited to formats that need no locale LIBRARY and no localized month/day
+# names (which would render differently per client and require babel server-side) and no relative
+# mode — those were left out for exactly that reason (see dev/specs/2026-04-user-preferences.md).
+# The one built-in locale touch is US_12H's `%p` (AM/PM): under the backend's default C/POSIX
+# locale — which Infrahub does not override with locale.setlocale(LC_TIME, ...) — it renders English
+# "AM"/"PM", matching the web client's date-fns `a` token in its default (en-US) locale.
 DATE_FORMAT_STRFTIME: dict[str, str] = {
     "ISO_8601": "%Y-%m-%dT%H:%M:%S%z",  # 2026-07-01T14:30:00+02:00
     "ISO_DATETIME": "%Y-%m-%d %H:%M",  # 2026-07-01 14:30
     "ISO_DATETIME_SECONDS": "%Y-%m-%d %H:%M:%S",  # 2026-07-01 14:30:00
     "EU_DATETIME": "%d/%m/%Y %H:%M",  # 01/07/2026 14:30
-    "US_12H": "%m/%d/%Y %I:%M %p",  # 07/01/2026 02:30 PM
+    "US_12H": "%m/%d/%Y %I:%M %p",  # 07/01/2026 02:30 PM (%p = English AM/PM under the C locale)
 }
 
 # Applied when neither the user nor the global singleton has set date_format. Kept in sync with the

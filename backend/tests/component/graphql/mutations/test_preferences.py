@@ -220,8 +220,11 @@ async def test_user_rejects_unknown_date_format(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """date_format is a DateFormat enum: an unknown semantic key is rejected at the GraphQL layer,
-    before any write, so no UserPreference row is created."""
+    """Reject an unknown date_format at the GraphQL layer.
+
+    date_format is a DateFormat enum, so an unknown semantic key is rejected before any write and no
+    UserPreference row is created.
+    """
     result = await run_mutation(
         db=db,
         branch=default_branch,
@@ -229,6 +232,10 @@ async def test_user_rejects_unknown_date_format(
         variables={"scope": "USER", "date_format": "NOT_A_FORMAT"},
     )
     assert result.errors is not None
+    # Specifically the DateFormat enum-validation error for the bad value — not some unrelated
+    # failure that would also leave no row behind.
+    messages = " ".join(str(error.message) for error in result.errors)
+    assert "NOT_A_FORMAT" in messages or "DateFormat" in messages, messages
     assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
 
 
