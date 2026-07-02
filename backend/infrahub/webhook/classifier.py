@@ -7,6 +7,7 @@ from typing import assert_never
 import httpx
 
 from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerTimeoutError
+from infrahub.log import suppress_traceback_in_logs
 
 from .models import WebhookHeaderResolutionError
 
@@ -61,8 +62,13 @@ class ClassifiedFailure:
         return self.status_class.remediation
 
 
+@suppress_traceback_in_logs
 class WebhookDeliveryError(Exception):
-    """A delivery failed with a classified, user-facing reason and no stacktrace."""
+    """A delivery failed with a classified, user-facing reason and no stacktrace.
+
+    Registered so the logging layer drops the raised traceback from the run logs: the failure is an
+    expected operational outcome, already reported as a clean classified message, not a crash to debug.
+    """
 
     def __init__(self, failure: ClassifiedFailure) -> None:
         super().__init__(failure.message)
