@@ -1,5 +1,5 @@
 import type { User } from "@/entities/authentication/types";
-import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/proposed-change.types";
+import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/model/proposed-change.types";
 
 export const hasUserRejectedProposedChange = (
   proposedChangesDetails: ProposedChangeDetail,

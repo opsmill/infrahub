@@ -13,12 +13,12 @@ import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { GetProposedChangeDetailsResult } from "@/entities/proposed-changes/domain/get-proposed-change-details";
+import type { GetProposedChangeDetailsResult } from "@/entities/proposed-changes/domain/use-cases/get-proposed-change-details";
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
 import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";
+import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/get-proposed-changes-state-badge-type";
 import { Overview } from "@/entities/proposed-changes/ui/overview";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
-import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
 import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 import { useCheckTaskDetails } from "@/entities/tasks/ui/queries/check-task-details.query";
 import { TaskDisplay } from "@/entities/tasks/ui/task-display";

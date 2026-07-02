@@ -96,7 +96,7 @@ description: "Task list for Entities Clean-Architecture Migration"
 - [X] T031 [P] [US3] Migrate `src/entities/object-file/`.
 - [X] T032 [P] [US3] Migrate `src/entities/path-traversal/`.
 - [X] T033 [P] [US3] Migrate `src/entities/permission/` (has `permission/queries/` — fold into `api/` or `ui/queries/` per layer rules).
-- [ ] T034 [P] [US3] Migrate `src/entities/proposed-changes/` (8 domain files → split; has `stores/` and `utils/` to reclassify).
+- [X] T034 [P] [US3] Migrate `src/entities/proposed-changes/` (8 domain files → split; has `stores/` and `utils/` to reclassify).
 - [X] T035 [P] [US3] Migrate `src/entities/repository/`.
 - [X] T036 [P] [US3] Migrate `src/entities/resource-manager/` (has `resource-manager/utils/` to reclassify).
 - [ ] T037 [P] [US3] Migrate `src/entities/schema/` (8 domain files → split; `get-schema-hash`/`add-*`/`remove-*` → `rules/`, `get-/load-schema` → `use-cases/`; has `stores/` + `utils/`).

@@ -1,6 +1,6 @@
 import { useOutletContext } from "react-router";
 
-import type { GetProposedChangeDetailsResult } from "@/entities/proposed-changes/domain/get-proposed-change-details";
+import type { GetProposedChangeDetailsResult } from "@/entities/proposed-changes/domain/use-cases/get-proposed-change-details";
 
 /**
  * Outlet context exposed to children of the proposed-change details route.
