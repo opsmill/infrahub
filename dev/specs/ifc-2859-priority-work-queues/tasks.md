@@ -33,8 +33,8 @@ Backend-only feature. Source under `backend/infrahub/`, tests under `backend/tes
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T002 Add `WorkflowPriority(InfrahubStringEnum)` to `backend/infrahub/workflows/constants.py` with members `HIGH = "high"`, `MEDIUM = "medium"`, `LOW = "low"` and derived properties `queue_name` (returns the enum value, per D1) and `queue_priority` (Prefect precedence ints: high=1, medium=2, low=3). Keep it beside `WorkflowType`/`WorkflowTag`. No comments referencing tickets or callers (code-doc-style rule).
-- [ ] T003 Create `backend/tests/unit/workflows/test_constants.py` asserting: the three members and their string values; `queue_name` equals the value for every member; `queue_priority` values are unique and strictly increasing from HIGH to LOW. Use the dataclass-parametrization pattern from the testing rules if parametrizing.
+- [X] T002 Add `WorkflowPriority(InfrahubStringEnum)` to `backend/infrahub/workflows/constants.py` with members `HIGH = "high"`, `MEDIUM = "medium"`, `LOW = "low"` and derived properties `queue_name` (returns the enum value, per D1) and `queue_priority` (Prefect precedence ints: high=1, medium=2, low=3). Keep it beside `WorkflowType`/`WorkflowTag`. No comments referencing tickets or callers (code-doc-style rule).
+- [X] T003 Create `backend/tests/unit/workflows/test_constants.py` asserting: the three members and their string values; `queue_name` equals the value for every member; `queue_priority` values are unique and strictly increasing from HIGH to LOW. Use the dataclass-parametrization pattern from the testing rules if parametrizing.
 
 **Checkpoint**: `uv run pytest backend/tests/unit/workflows/test_constants.py` green.
 
