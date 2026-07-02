@@ -13,6 +13,7 @@ from . import InfrahubWorkflow, Return
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
+    from infrahub.workflows.constants import WorkflowPriority
 
 
 class WorkflowLocalExecution(InfrahubWorkflow):
@@ -23,6 +24,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,  # noqa: ARG002
+        priority: WorkflowPriority | None = None,  # noqa: ARG002
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}  # avoid mutating input parameters
@@ -37,6 +39,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,  # noqa: ARG002
+        priority: WorkflowPriority | None = None,  # noqa: ARG002
     ) -> WorkflowInfo:
         await self.execute_workflow(workflow=workflow, context=context, parameters=parameters)
         return WorkflowInfo(id=uuid.uuid4())
