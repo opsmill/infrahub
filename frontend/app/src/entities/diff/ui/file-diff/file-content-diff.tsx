@@ -10,7 +10,7 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
 
-import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
+import type { FileDiffFile } from "@/entities/diff/domain/use-cases/get-files-diff";
 import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
 import { useGetFileContentDiff } from "@/entities/diff/ui/queries/get-file-content-diff.query";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";

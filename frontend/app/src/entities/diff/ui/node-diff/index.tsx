@@ -9,7 +9,7 @@ import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { useBranchExists } from "@/entities/branches/ui/hooks/use-branch-exists";
-import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
+import type { GetDiffSummaryParams } from "@/entities/diff/domain/use-cases/get-diff-summary";
 import {
   DiffBranchNotFound,
   isBranchNotFoundError,

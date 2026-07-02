@@ -1,13 +1,10 @@
-import type { components } from "@/shared/api/rest/types.generated";
-
 import {
+  type ArtifactDiff,
   type GetArtifactsDiffFromApiParams,
   getArtifactsDiffFromApi,
 } from "@/entities/diff/api/get-artifacts-diff-from-api";
 
-type BranchDiffArtifact = components["schemas"]["BranchDiffArtifact"];
-
-export type ArtifactDiff = BranchDiffArtifact;
+export type { ArtifactDiff };
 
 export type GetArtifactsDiffParams = GetArtifactsDiffFromApiParams;
 

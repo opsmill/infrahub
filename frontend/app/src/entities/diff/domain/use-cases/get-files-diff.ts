@@ -1,12 +1,11 @@
-import type { components } from "@/shared/api/rest/types.generated";
-
 import {
+  type FileDiff,
+  type FileDiffFile,
   type GetFilesDiffFromApiParams,
   getFilesDiffFromApi,
 } from "@/entities/diff/api/get-files-diff-from-api";
 
-export type FileDiff = components["schemas"]["BranchDiffRepository"];
-export type FileDiffFile = components["schemas"]["BranchDiffFile"];
+export type { FileDiff, FileDiffFile };
 export type GetFilesDiffParams = GetFilesDiffFromApiParams;
 
 export async function getFilesDiff({ branchName }: GetFilesDiffParams): Promise<FileDiff[]> {

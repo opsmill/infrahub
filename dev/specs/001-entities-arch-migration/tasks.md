@@ -85,7 +85,7 @@ description: "Task list for Entities Clean-Architecture Migration"
 - [X] T020 [P] [US3] Migrate `src/entities/artifacts/`.
 - [X] T021 [P] [US3] Migrate `src/entities/authentication/`.
 - [X] T022 [P] [US3] Migrate `src/entities/config/` (2 domain files → stays flat).
-- [ ] T023 [P] [US3] Migrate `src/entities/diff/` (has a `diff/utils/` — rename to meaningful files/rules per naming guidance).
+- [X] T023 [P] [US3] Migrate `src/entities/diff/` (has a `diff/utils/` — rename to meaningful files/rules per naming guidance).
 - [X] T024 [P] [US3] Migrate `src/entities/events/`.
 - [X] T025 [P] [US3] Migrate `src/entities/generators/`.
 - [X] T026 [P] [US3] Migrate `src/entities/graphql/` (ui-only; no `domain/` → no guard glob, verify only).
