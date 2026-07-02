@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from prefect import task
@@ -72,11 +72,18 @@ async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
 
 
 def _windowed_event_filter(event_name: str, window_start: datetime, window_end: datetime) -> dict[str, Any]:
-    """Build the count-by request body: an event-name filter narrowed to ``[start, end)``."""
+    """Build the count-by request body: an event-name filter narrowed to ``[start, end)``.
+
+    Prefect's ``EventOccurredFilter`` treats both ``since`` and ``until`` as inclusive
+    (``since <= occurred <= until``). The window contract is half-open, so ``until`` is pulled
+    back by one microsecond — otherwise an event stamped exactly on the boundary would be
+    counted in two consecutive windows.
+    """
+    until = window_end - timedelta(microseconds=1)
     return {
         "filter": {
             "event": {"name": [event_name]},
-            "occurred": {"since": window_start.isoformat(), "until": window_end.isoformat()},
+            "occurred": {"since": window_start.isoformat(), "until": until.isoformat()},
         }
     }
 
@@ -123,9 +130,11 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
     """
     flow_filter = FlowFilter(name=FlowFilterName(any_=[WEBHOOK_FLOW_NAME]))
     # The flow-run start-time filter is typed with Prefect's own datetime; coerce the stdlib
-    # boundaries to it so the comparison stays well-typed.
+    # boundaries to it so the comparison stays well-typed. ``before_`` is inclusive ("at or
+    # before"), so pull it back one microsecond to keep the window half-open — a run starting
+    # exactly on the boundary must land in exactly one window.
     after = DateTime.fromisoformat(window_start.isoformat())
-    before = DateTime.fromisoformat(window_end.isoformat())
+    before = DateTime.fromisoformat((window_end - timedelta(microseconds=1)).isoformat())
 
     def runs_in_states(states: list[StateType]) -> FlowRunFilter:
         return FlowRunFilter(

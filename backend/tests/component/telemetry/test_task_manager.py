@@ -83,6 +83,9 @@ async def seeded_logins(prefect_client: PrefectClient) -> str:
     [window_start, window_end). Events are placed relative to that real boundary:
     - account ``a``: two logins inside the window (repeat → one unique bucket)
     - account ``b``: one login inside the window
+    - account ``atstart``: one login at exactly window_start (included — half-open interval)
+    - account ``atend``: one login at exactly window_end (excluded — belongs to the next day;
+      counting it here as well would double-count it across two consecutive daily windows)
     - account ``before``: one login one minute before window_start (excluded)
     - account ``after``: one login one minute after window_end (excluded)
 
@@ -99,6 +102,8 @@ async def seeded_logins(prefect_client: PrefectClient) -> str:
         _login_event(acct_a, in_window),
         _login_event(acct_a, in_window + timedelta(minutes=5)),
         _login_event(acct_b, in_window),
+        _login_event(f"atstart-{suffix}", window_start),
+        _login_event(f"atend-{suffix}", window_end),
         _login_event(f"before-{suffix}", window_start - timedelta(minutes=1)),
         _login_event(f"after-{suffix}", window_end + timedelta(minutes=1)),
     ]
@@ -166,9 +171,10 @@ async def test_windowed_logins_count(prefect_client: PrefectClient, seeded_login
         window_start=window_start,
         window_end=window_end,
     )
-    # Three in-window logins (two from account a, one from account b); the before/after
-    # boundary events are excluded — proving the window is anchored to midnight, not now.
-    assert count == 3
+    # Four in-window logins (two from account a, one from account b, one at exactly
+    # window_start). The event at exactly window_end and the before/after events are excluded —
+    # proving the interval is half-open and anchored to midnight, not to now.
+    assert count == 4
 
 
 async def test_windowed_unique_logins_count(prefect_client: PrefectClient, seeded_logins: str) -> None:
@@ -179,8 +185,8 @@ async def test_windowed_unique_logins_count(prefect_client: PrefectClient, seede
         window_start=window_start,
         window_end=window_end,
     )
-    # Two distinct accounts in-window (a, b); account a's repeat login collapses.
-    assert unique == 2
+    # Three distinct accounts in-window (a, b, atstart); account a's repeat login collapses.
+    assert unique == 3
 
 
 async def test_windowed_logins_exclude_out_of_window(prefect_client: PrefectClient, seeded_logins: str) -> None:
@@ -243,9 +249,10 @@ async def test_webhook_split_excludes_out_of_window(prefect_client: PrefectClien
 
 async def test_gather_activity_24h_logins(prefect_client: PrefectClient, seeded_logins: str) -> None:
     data = await gather_activity_24h.fn(client=prefect_client)
-    # Login fields reflect exactly the in-window seeded events.
-    assert data.logins == 3
-    assert data.unique_logins == 2
+    # Login fields reflect exactly the in-window seeded events (incl. the one at exactly
+    # window_start; the one at exactly window_end belongs to the next day).
+    assert data.logins == 4
+    assert data.unique_logins == 3
     # Webhook fields are present (an empty window is 0, not null). Webhook runs seeded by
     # other tests are stamped at "today", which is after the previous-day window the gather
     # computes, so this assertion does not depend on cross-test ordering for a 0.

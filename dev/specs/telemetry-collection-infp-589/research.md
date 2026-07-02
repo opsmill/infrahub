@@ -112,6 +112,15 @@ filter, alongside the existing `event.name` filter. For `account.logged_in`:
 The existing `gather_prefect_events` (no time window) is **left untouched** (FR-007); the new
 path is separate functions feeding `activity_24h`.
 
+**Boundary inclusivity (found via live multi-day simulation)**: Prefect's `EventOccurredFilter`
+treats both `since` and `until` as **inclusive** (`since <= occurred <= until`), and the
+flow-run `start_time.before_` is likewise "at or before". Passing `until = window_end` would
+therefore count an event stamped exactly at midnight in **two consecutive daily windows**
+(observed: a 4-day tiling simulation summed 14 counts over 12 seeded events). Both windowed
+paths pull the upper bound back by one microsecond so the effective interval is the documented
+half-open `[start, end)`; an exact-boundary event now lands in exactly one window (regression
+test seeds events at exactly `window_start` — counted — and exactly `window_end` — excluded).
+
 **Rationale**: Logins are events stored in Prefect (ADR 0002); Neo4j has no `last_login`. The
 event name is `infrahub.account.logged_in` (`AccountLoggedInEvent.event_name`). The 24h
 window (≪ 7-day event retention) guarantees no retention leakage when the `occurred` filter
