@@ -6,8 +6,8 @@ import type { TagProps } from "react-aria-components";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 import { FilterTag } from "./global-filter-tag";

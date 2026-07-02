@@ -5,10 +5,10 @@ import React from "react";
 
 import { Col, Row } from "@/shared/components/container";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import type { UpdateObjectParams } from "@/entities/nodes/object/domain/use-cases/update-object";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

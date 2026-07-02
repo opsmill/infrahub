@@ -16,9 +16,9 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
 
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
 import { objectDecisionOptions } from "@/entities/role-manager/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

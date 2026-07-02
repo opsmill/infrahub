@@ -1,4 +1,8 @@
-import type { NodeAttribute, NodeCore, NodeRelationshipMany } from "@/entities/nodes/types";
+import type {
+  NodeAttribute,
+  NodeCore,
+  NodeRelationshipMany,
+} from "@/entities/nodes/object/domain/model/node";
 
 export interface ProposedChangeDetail extends NodeCore {
   __typename: "CoreProposedChange";

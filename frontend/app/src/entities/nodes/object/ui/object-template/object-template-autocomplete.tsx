@@ -10,9 +10,9 @@ import {
 } from "@/shared/components/ui/combobox";
 import { debounce } from "@/shared/utils/common";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeObject } from "@/entities/nodes/types";
 import type { TemplateSchema } from "@/entities/schema/domain/model/types";
 
 export interface ObjectTemplateAutocompleteProps extends Omit<ComboboxListProps, "onSelect"> {

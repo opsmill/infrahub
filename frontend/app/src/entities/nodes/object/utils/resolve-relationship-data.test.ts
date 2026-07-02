@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import type {
   NodeObject,
   NodeRelationshipManyWithMetadata,
   NodeRelationshipOneWithMetadata,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 const metadata = {

@@ -2,8 +2,8 @@ import type { ContextParams } from "@/shared/api/types";
 import type { FormRelationshipValue } from "@/shared/components/form/type";
 import type { FormContextType } from "@/shared/components/form/utils/form-context";
 
+import type { NodeCore, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getDefaultParentFromApi } from "@/entities/nodes/relationships/api/get-default-parent-from-api";
-import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 

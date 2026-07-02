@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import type { NodeObject } from "@/entities/nodes/types";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 

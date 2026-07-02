@@ -1,10 +1,10 @@
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import {
   getRelationshipsFromApi,
   type getRelationshipsFromApiParams,
 } from "@/entities/nodes/relationships/api/get-relationships-from-api";
-import type { NodeCore } from "@/entities/nodes/types";
 
 export type GetRelationshipsParams = getRelationshipsFromApiParams;
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import * as getObjectAncestorsFromApiModule from "@/entities/nodes/hierarchy/api/get-object-ancestors-from-api";
-import type { NodeCoreWithParent } from "@/entities/nodes/types";
+import type { NodeCoreWithParent } from "@/entities/nodes/object/domain/model/node";
 
 import { getObjectAncestors } from "./get-object-ancestors";
 

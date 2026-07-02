@@ -11,7 +11,7 @@ import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface GetIpAddressListParams extends ContextParams, PaginationParams {

@@ -1,5 +1,5 @@
+import type { RelationshipKind } from "@/entities/nodes/object/domain/model/node";
 import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
-import type { RelationshipKind } from "@/entities/nodes/types";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 const RELATIONSHIP_KIND_VISIBLE_IN_TAB: Array<RelationshipKind> = [

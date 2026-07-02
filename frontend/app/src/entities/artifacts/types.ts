@@ -1,6 +1,6 @@
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
 
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 export type ArtifactStatus = "Error" | "Pending" | "Processing" | "Ready";
 

@@ -14,15 +14,15 @@ import type {
   TemplateSource,
 } from "@/shared/components/form/type";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { isNodeRelationshipMany } from "@/entities/nodes/object/utils/is-node-relationship-many";
 import type {
   NodeFields,
   NodeObject,
   NodeRelationship,
   NodeRelationshipOneWithMetadata,
   NodeRelationshipWithMetadata,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { isNodeRelationshipMany } from "@/entities/nodes/object/utils/is-node-relationship-many";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";

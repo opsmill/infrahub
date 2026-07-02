@@ -13,17 +13,17 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
 import type {
   NodeCore,
   NodeObjectWithMetadata,
   NodeRelationshipManyWithMetadata,
   NodeRelationshipMetadata,
   NodeRelationshipOneWithMetadata,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema, NodeSchema } from "@/entities/schema/domain/model/types";

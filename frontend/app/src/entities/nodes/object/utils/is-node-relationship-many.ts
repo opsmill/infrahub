@@ -1,4 +1,4 @@
-import type { NodeFields, NodeRelationshipMany } from "@/entities/nodes/types";
+import type { NodeFields, NodeRelationshipMany } from "@/entities/nodes/object/domain/model/node";
 
 export const isNodeRelationshipMany = (
   value: NodeFields[string]

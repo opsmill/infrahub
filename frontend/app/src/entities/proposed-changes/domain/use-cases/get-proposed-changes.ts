@@ -1,6 +1,6 @@
 import type { PaginatedResponse } from "@/shared/utils/pagination";
 
-import type { NodeCore, NodeMetadata } from "@/entities/nodes/types";
+import type { NodeCore, NodeMetadata } from "@/entities/nodes/object/domain/model/node";
 import {
   getProposedChangesFromApi,
   type ProposedChangesFromApiParams,

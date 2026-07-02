@@ -9,7 +9,7 @@ import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-lab
 import { ConvertSourceAttributeInput } from "@/entities/nodes/convert/ui/convert-source-attribute-input";
 import { ConvertSourceRelationshipManyInput } from "@/entities/nodes/convert/ui/convert-source-relationship-many-input";
 import { ConvertSourceRelationshipOneInput } from "@/entities/nodes/convert/ui/convert-source-relationship-one-input";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type {
   AttributeSchema,
   ModelSchema,

@@ -4,10 +4,10 @@ import { toast } from "react-toastify";
 import { Row } from "@/shared/components/container";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { RelationshipsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/relationships-buttons";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
-import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";

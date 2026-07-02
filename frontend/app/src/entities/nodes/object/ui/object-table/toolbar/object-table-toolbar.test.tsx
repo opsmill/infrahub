@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import type { NodeObject } from "@/entities/nodes/types";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 
 import { render } from "../../../../../../../tests/components/render";

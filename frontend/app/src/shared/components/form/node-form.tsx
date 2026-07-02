@@ -12,8 +12,12 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import type {
+  NodeCore,
+  NodeFieldsWithMetadata,
+  NodeObject,
+} from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";

@@ -5,7 +5,7 @@ import { store } from "@/shared/stores";
 import type {
   NodeRelationshipManyWithMetadata,
   NodeRelationshipOneWithMetadata,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
 import type { Permission } from "@/entities/permission/types";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";

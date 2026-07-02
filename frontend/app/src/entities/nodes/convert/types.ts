@@ -1,6 +1,6 @@
 import type { EmptyFieldValue, FormFieldValue } from "@/shared/components/form/type";
 
-import type { NodeCore, NodeObject } from "@/entities/nodes/types";
+import type { NodeCore, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface ConvertFieldMapping {

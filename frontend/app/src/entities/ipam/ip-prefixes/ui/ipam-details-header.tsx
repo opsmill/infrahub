@@ -5,18 +5,18 @@ import { Row, type RowProps } from "@/shared/components/container";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
-import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
-import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
-import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type {
   NodeAttribute,
   NodeCore,
   NodeObject,
   NodeRelationshipMany,
   NodeRelationshipOne,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
+import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
+import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type {

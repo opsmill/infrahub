@@ -15,7 +15,10 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 
 import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeAttributeWithMetadata, NodeObject } from "@/entities/nodes/types";
+import type {
+  NodeAttributeWithMetadata,
+  NodeObject,
+} from "@/entities/nodes/object/domain/model/node";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";

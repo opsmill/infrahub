@@ -1,5 +1,5 @@
 import type { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/constants";
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 export interface IpAddressAvailableNode extends NodeCore {
   address: { value: string };

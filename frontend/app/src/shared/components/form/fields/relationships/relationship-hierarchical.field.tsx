@@ -11,12 +11,12 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import {
   RelationshipHierarchicalInput,
   RelationshipHierarchicalManyInput,
 } from "@/entities/nodes/relationships/ui/relationship-hierarchical-input";
-import type { NodeCore } from "@/entities/nodes/types";
 
 export interface RelationshipHierarchicalFieldProps
   extends Omit<DynamicRelationshipFieldProps, "type"> {}

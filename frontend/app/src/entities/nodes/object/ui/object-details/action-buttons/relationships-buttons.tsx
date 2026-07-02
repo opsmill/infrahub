@@ -12,9 +12,9 @@ import { FormContext } from "@/shared/components/form/utils/form-context";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
-import type { NodeObject } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";

@@ -1,4 +1,4 @@
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 export type RelationshipNode = {
   id: string;

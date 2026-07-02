@@ -4,9 +4,9 @@ import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
 import { GENERIC_REPOSITORY_KIND, TASK_TARGET } from "@/shared/config/constants";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTaskTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
-import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";

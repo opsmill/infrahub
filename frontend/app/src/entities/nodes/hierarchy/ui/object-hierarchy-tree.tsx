@@ -11,8 +11,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { classNames } from "@/shared/utils/common";
 
 import { useGetTreeNodesByParent } from "@/entities/nodes/hierarchy/ui/queries/get-tree-nodes-by-parent.query";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";

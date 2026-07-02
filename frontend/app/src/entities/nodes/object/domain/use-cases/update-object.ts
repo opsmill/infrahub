@@ -2,7 +2,7 @@ import {
   type UpdateObjectFromApiParams,
   updateObjectFromApi,
 } from "@/entities/nodes/object/api/update-object-from-api";
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 export type UpdateObjectParams = UpdateObjectFromApiParams;
 

@@ -6,6 +6,12 @@ import { TableCell } from "@/shared/components/table/table-cell";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
+import type {
+  NodeAttribute,
+  NodeObject,
+  NodeRelationship,
+  NodeRelationshipOne,
+} from "@/entities/nodes/object/domain/model/node";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
@@ -22,12 +28,6 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
 import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
-import type {
-  NodeAttribute,
-  NodeObject,
-  NodeRelationship,
-  NodeRelationshipOne,
-} from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 

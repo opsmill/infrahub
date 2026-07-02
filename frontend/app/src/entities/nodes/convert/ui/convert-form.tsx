@@ -12,7 +12,7 @@ import { ConvertFormField } from "@/entities/nodes/convert/ui/convert-form-field
 import { useConvertObjectMutation } from "@/entities/nodes/convert/ui/queries/convert-object.mutation";
 import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/ui/queries/get-object-convert-fields-mapping.query";
 import { getFieldsMappingPayload } from "@/entities/nodes/convert/utils/get-fields-mapping-payload";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 

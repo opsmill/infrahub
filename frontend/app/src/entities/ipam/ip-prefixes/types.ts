@@ -1,4 +1,8 @@
-import type { NodeAttribute, NodeCore, NodeRelationship } from "@/entities/nodes/types";
+import type {
+  NodeAttribute,
+  NodeCore,
+  NodeRelationship,
+} from "@/entities/nodes/object/domain/model/node";
 
 export type IpPrefixNode = NodeCore & {
   parent?: { node: NodeCore & { ancestors: { count: number } } };

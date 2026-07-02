@@ -1,7 +1,7 @@
 import { IP_NAMESPACE_GENERIC, IP_NAMESPACE_KIND } from "@/entities/ipam/constants";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
-import type { NodeObject } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const DEFAULT_NAMESPACE_FILTERS = [{ name: "default__value", value: true }];

@@ -1,4 +1,4 @@
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 // ProfileData represents profile data from the API.
 // Dynamic fields (attributes & relationships) are accessed by name and narrowed at the call site,

@@ -19,8 +19,8 @@ import {
   REPOSITORY_KIND,
 } from "@/shared/config/constants";
 
+import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ProfileData } from "@/entities/nodes/profiles/types";
-import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";

@@ -2,8 +2,8 @@ import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getObjectRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-object-relationships-from-api";
-import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface GetObjectRelationshipsParams extends ContextParams, PaginationParams {

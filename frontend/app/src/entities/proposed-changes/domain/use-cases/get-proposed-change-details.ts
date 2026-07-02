@@ -1,4 +1,4 @@
-import type { NodeMetadata } from "@/entities/nodes/types";
+import type { NodeMetadata } from "@/entities/nodes/object/domain/model/node";
 import {
   getProposedChangeDetailsFromApi,
   type ProposedChangeDetailsFromApiParams,

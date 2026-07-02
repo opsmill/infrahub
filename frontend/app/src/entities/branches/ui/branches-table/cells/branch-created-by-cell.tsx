@@ -1,7 +1,7 @@
 import { TableCell } from "@/shared/components/table/table-cell";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
 
 interface BranchCreatedByCellProps {
   createdBy?: NodeCore | null;

@@ -2,12 +2,15 @@ import { Col } from "@/shared/components/container";
 import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 import { useTitle } from "@/shared/hooks/useTitle";
 
+import type {
+  NodeFileObject,
+  NodeObjectWithMetadata,
+} from "@/entities/nodes/object/domain/model/node";
 import { FilePreviewCard } from "@/entities/nodes/object/ui/object-details/file-preview-card";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeFileObject, NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";

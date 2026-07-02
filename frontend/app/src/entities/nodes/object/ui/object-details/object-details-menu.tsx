@@ -26,12 +26,12 @@ import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";

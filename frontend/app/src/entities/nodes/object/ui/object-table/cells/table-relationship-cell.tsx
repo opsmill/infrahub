@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { LinkButton } from "@infrahub/ui";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
   NodeCore,
   NodeRelationship,
   NodeRelationshipMany,
   NodeRelationshipOne,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";

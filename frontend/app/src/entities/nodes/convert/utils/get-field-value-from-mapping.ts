@@ -9,7 +9,7 @@ import type {
   NodeObject,
   NodeRelationshipMany,
   NodeRelationshipOne,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
 
 export interface getFieldValueFromMappingParams {
   conversionMapping: ConvertFieldMapping | undefined;

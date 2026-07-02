@@ -9,9 +9,9 @@ import ObjectForm from "@/shared/components/form/object-form";
 import { classNames } from "@/shared/utils/common";
 
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 
 export interface IpPrefixAvailableIdentifierProps extends ButtonProps {
   ipPrefixNode: IpPrefixNode;

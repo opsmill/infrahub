@@ -11,6 +11,11 @@ import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { IpPrefixAvailableIdentifier } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-available-identifier";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import type {
+  NodeAttribute,
+  NodeObject,
+  NodeRelationship,
+} from "@/entities/nodes/object/domain/model/node";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
@@ -21,7 +26,6 @@ import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 const columnHelper = createColumnHelper<IpPrefixNode>();

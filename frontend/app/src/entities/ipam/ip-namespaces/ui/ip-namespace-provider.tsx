@@ -12,7 +12,7 @@ import { IP_ADDRESS_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
 import { useGetIpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace.query";
 import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
 import { constructPathForIpam } from "@/entities/ipam/utils";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 

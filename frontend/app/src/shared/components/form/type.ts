@@ -4,7 +4,7 @@ import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import type { FormField } from "@/shared/components/ui/form";
 
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import type {
   AttributeKind,

@@ -2,7 +2,7 @@ import {
   type GetNodeMetadataFromApiParams,
   getNodeMetadataFromApi,
 } from "@/entities/nodes/object/api/get-node-metadata-from-api";
-import type { NodeMetadata } from "@/entities/nodes/types";
+import type { NodeMetadata } from "@/entities/nodes/object/domain/model/node";
 
 export type GetNodeMetadataParams = GetNodeMetadataFromApiParams;
 

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { isNodeRelationshipMany } from "@/entities/nodes/object/utils/is-node-relationship-many";
 import type {
   NodeAttribute,
   NodeRelationshipMany,
   NodeRelationshipOne,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { isNodeRelationshipMany } from "@/entities/nodes/object/utils/is-node-relationship-many";
 
 describe("isNodeRelationshipMany", () => {
   it("should return true for a cardinality-many relationship", () => {

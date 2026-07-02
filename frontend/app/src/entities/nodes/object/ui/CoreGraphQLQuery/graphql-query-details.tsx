@@ -4,10 +4,10 @@ import { GRAPHQL_QUERY_OBJECT } from "@/shared/config/constants";
 
 import GraphQLQueryDetailsPageSkeleton from "@/entities/graphql/ui/graphql-query-details-page-skeleton";
 import { GraphqlQueryViewerCard } from "@/entities/graphql/ui/graphql-query-viewer-card";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 

@@ -2,7 +2,11 @@ import {
   type GetObjectAncestorsFromApiParams,
   getObjectAncestorsFromApi,
 } from "@/entities/nodes/hierarchy/api/get-object-ancestors-from-api";
-import type { NodeCoreWithParent, NodeObject, NodeRelationshipMany } from "@/entities/nodes/types";
+import type {
+  NodeCoreWithParent,
+  NodeObject,
+  NodeRelationshipMany,
+} from "@/entities/nodes/object/domain/model/node";
 
 export interface GetObjectAncestorsParams extends GetObjectAncestorsFromApiParams {}
 

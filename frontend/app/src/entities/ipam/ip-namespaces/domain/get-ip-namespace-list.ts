@@ -4,7 +4,7 @@ import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import { getIpNamespaceListFromApi } from "@/entities/ipam/ip-namespaces/api/get-ip-namespace-list-from-api";
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 export interface GetIpNamespaceListParams extends ContextParams, PaginationParams {
   filters?: Array<Filter>;

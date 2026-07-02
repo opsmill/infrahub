@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
-import type { NodeMetadata } from "@/entities/nodes/types";
+import type { NodeMetadata } from "@/entities/nodes/object/domain/model/node";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../tests/components/render";

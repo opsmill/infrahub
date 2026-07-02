@@ -2,7 +2,7 @@ import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 import { GetTreeNodesByParentFromApi } from "@/entities/nodes/hierarchy/api/get-tree-nodes-by-parent-from-api";
 import { TREE_NODES_PAGE_SIZE } from "@/entities/nodes/hierarchy/ui/queries/get-tree-nodes-by-parent.query";
-import type { NodeCoreWithChildrenCount } from "@/entities/nodes/types";
+import type { NodeCoreWithChildrenCount } from "@/entities/nodes/object/domain/model/node";
 
 export interface GetTreeNodesByParentParams extends PaginationParams, ContextParams {
   objectKind: string;

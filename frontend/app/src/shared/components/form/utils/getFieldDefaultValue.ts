@@ -14,13 +14,13 @@ import type {
 } from "@/shared/components/form/type";
 
 import type { FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
   NodeAttributeWithMetadata,
   NodeCore,
   NodeObject,
   NodeRelationshipOneWithMetadata,
-} from "@/entities/nodes/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";

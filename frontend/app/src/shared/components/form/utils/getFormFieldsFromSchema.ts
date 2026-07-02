@@ -13,7 +13,7 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 
 import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
+import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import type {
   AttributeSchema,

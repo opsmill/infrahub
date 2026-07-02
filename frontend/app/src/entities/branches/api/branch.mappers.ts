@@ -6,7 +6,7 @@ import type {
 import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
 import type { BranchDetail, BranchListItem } from "@/entities/branches/domain/model/branch";
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 export type InfrahubBranchResponse = {
   InfrahubBranch: InfrahubBranchType;

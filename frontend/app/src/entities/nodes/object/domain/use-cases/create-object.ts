@@ -2,7 +2,7 @@ import {
   type CreateObjectFromApiParams,
   createObjectFromApi,
 } from "@/entities/nodes/object/api/create-object-from-api";
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 export type CreateObjectParams = CreateObjectFromApiParams;
 

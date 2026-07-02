@@ -7,9 +7,9 @@ import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
 import { formatFullDate } from "@/shared/utils/date";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useGetNodeMetadata } from "@/entities/nodes/object/ui/queries/get-node-metadata.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 function UserLink({ user }: { user: NodeCore | null }) {

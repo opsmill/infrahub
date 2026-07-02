@@ -1,6 +1,6 @@
 import type { BranchStatus } from "@/shared/api/graphql/generated/types";
 
-import type { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 // Base fields present in both list and detail views
 interface BranchBase {

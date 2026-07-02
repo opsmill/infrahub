@@ -14,11 +14,11 @@ import { Link } from "@/shared/components/ui/link";
 
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
