@@ -1,7 +1,7 @@
-import type { CheckTaskDetailsParams } from "@/entities/tasks/domain/check-task-details/check-task-details";
-import type { GetTaskDetailsParams } from "@/entities/tasks/domain/get-task-details/get-task-details";
-import type { GetTaskDetailsTitleParams } from "@/entities/tasks/domain/get-task-details-title/get-task-details-title";
-import type { GetTaskListParams } from "@/entities/tasks/domain/get-task-list/get-task-list";
+import type { CheckTaskDetailsParams } from "@/entities/tasks/domain/use-cases/check-task-details";
+import type { GetTaskDetailsParams } from "@/entities/tasks/domain/use-cases/get-task-details";
+import type { GetTaskDetailsTitleParams } from "@/entities/tasks/domain/use-cases/get-task-details-title";
+import type { GetTaskListParams } from "@/entities/tasks/domain/use-cases/get-task-list";
 
 export const tasksQueryKeys = {
   all: ["tasks"] as const,
