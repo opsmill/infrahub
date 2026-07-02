@@ -211,6 +211,7 @@ class CoreTransformation(CoreNode):
     label: StringOptional
     description: StringOptional
     timeout: Integer
+    fingerprint: StringOptional
     dependencies: ListAttributeOptional
     dependencies_complete: BooleanOptional
     query: RelationshipManager[CoreGraphQLQuery]
@@ -305,6 +306,7 @@ class CoreArtifactDefinition(CoreTaskTarget):
     description: StringOptional
     parameters: JSONAttribute
     content_type: Enum
+    fingerprint: StringOptional
     targets: RelationshipManager[CoreGroup]
     transformation: RelationshipManager[CoreTransformation]
 
@@ -392,6 +394,7 @@ class CoreGeneratorDefinition(CoreTaskTarget):
     convert_query_response: BooleanOptional
     execute_in_proposed_change: BooleanOptional
     execute_after_merge: BooleanOptional
+    fingerprint: StringOptional
     dependencies: ListAttributeOptional
     dependencies_complete: BooleanOptional
     query: RelationshipManager[CoreGraphQLQuery]
@@ -423,6 +426,7 @@ class CoreGraphQLQuery(CoreNode):
     name: String
     description: StringOptional
     query: String
+    fingerprint: StringOptional
     variables: JSONAttributeOptional
     operations: ListAttributeOptional
     models: ListAttributeOptional
