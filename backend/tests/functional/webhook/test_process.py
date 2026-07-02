@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import httpx
@@ -137,6 +138,7 @@ class TestWebhookProcess(TestInfrahubApp):
         webhook_deployment: None,
         dependency_provider: Provider,
         immediate_webhook_retries: None,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         # One representative case is enough here: per-class classification is covered by the unit tests;
         # this asserts the classifier is wired into the send flow and the run ends in a clean failed
@@ -147,7 +149,11 @@ class TestWebhookProcess(TestInfrahubApp):
             response=httpx.Response(request=httpx.Request(method="POST", url=WEBHOOK_TARGET_URL), status_code=404),
         )
 
-        with dependency_provider.scope(build_http_service, lambda: http):
+        with (
+            dependency_provider.scope(build_http_service, lambda: http),
+            caplog.at_level(logging.INFO, logger="prefect.task_runs"),
+            caplog.at_level(logging.INFO, logger="prefect.flow_runs"),
+        ):
             state = await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",
@@ -165,6 +171,9 @@ class TestWebhookProcess(TestInfrahubApp):
             state.message
             == "The target responded with HTTP 404. The target rejected the request; check the URL and authentication."
         )
+        # The classified failure is reported without a stacktrace: neither the send task nor the send
+        # flow leaks a traceback-bearing record for the transport error.
+        assert [record for record in caplog.records if record.exc_info] == []
 
     async def test_process_webhook_unexpected_error_crashes(
         self,

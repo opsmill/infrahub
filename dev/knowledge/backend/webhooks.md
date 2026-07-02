@@ -199,7 +199,7 @@ When a delivery fails, `WebhookFailureClassifier.classify()` maps the cause (and
 | `HTTP_SERVER_ERROR` | The target returned a 5xx status | Yes |
 | `UNKNOWN` | Any unexpected error | No |
 
-Each class carries a clean message and a remediation hint. `webhook_send` classifies the failure, logs the outcome, and raises a `WebhookDeliveryError`; `webhook_process` settles a classified failure into a failed run state with no stacktrace. An `UNKNOWN` error is re-raised so it keeps its traceback and surfaces as a genuine crash.
+Each class carries a clean message and a remediation hint. `webhook_send` classifies the failure, logs the outcome, and raises a `WebhookDeliveryError`; `webhook_process` settles a classified failure into a failed run state whose message is the classified reason. `WebhookDeliveryError` is registered with `@suppress_traceback_in_logs`, and `TracebackSuppressionFilter` (installed on the `prefect.flow_runs` and `prefect.task_runs` loggers in `backend/infrahub/log.py`) drops the traceback record Prefect's engine would otherwise log for a registered type, so the run logs carry only the classified reason. Matching is by exact type identity against the shared registry, so an unrelated exception cannot be silenced by accident. An `UNKNOWN` error is re-raised unregistered, so it keeps its traceback and surfaces as a genuine crash.
 
 A `TLS` failure reaches this layer wrapped by httpx as a generic transport error, so the HTTP adapter's `SSLErrorExtractor` walks the exception chain to recognize the certificate problem and raise a TLS-specific error rather than a generic connection error.
 
@@ -280,6 +280,7 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 |-----------|------|
 | Models | `backend/infrahub/webhook/models.py` |
 | Failure classifier | `backend/infrahub/webhook/classifier.py` |
+| Traceback suppression filter | `backend/infrahub/log.py` |
 | HTTP adapter (TLS handling) | `backend/infrahub/services/adapters/http/httpx.py` |
 | Tasks/Workflows (configure) | `backend/infrahub/webhook/tasks/configure.py` |
 | Tasks/Workflows (process) | `backend/infrahub/webhook/tasks/process.py` |

@@ -66,17 +66,32 @@ def _log_outgoing_request(
     log.debug(f"Webhook '{webhook_name}' {_attempt_phrase(attempt)} full payload: {payload_json}")
 
 
-@task(name="webhook-post", task_run_name="Send webhook {webhook_name}", cache_policy=NONE)
 async def webhook_post(
     webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int | None
 ) -> Response:
-    """Resolve the webhook config, log the outgoing request, and POST the prepared payload."""
+    """Resolve the webhook config, log the outgoing request, and POST the prepared payload.
+
+    Runs inline within the send flow rather than as its own task, so a failed delivery does not add a
+    second, redundant failure record to the run logs. An expected delivery failure is classified and
+    raised as a delivery error whose traceback is dropped from the run logs, so the failure surfaces
+    as a clean classified reason rather than a raw transport stacktrace. An unexpected error
+    propagates unchanged and surfaces as a genuine crash.
+
+    Raises:
+        WebhookDeliveryError: When an expected delivery failure occurs, carrying the classified reason.
+
+    """
     http_service = get_http()
-    webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
-    headers = webhook.build_headers(payload=payload)
-    _log_outgoing_request(webhook=webhook, webhook_name=webhook_name, attempt=attempt, headers=headers, payload=payload)
-    response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
-    response.raise_for_status()
+    try:
+        webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
+        headers = webhook.build_headers(payload=payload)
+        _log_outgoing_request(
+            webhook=webhook, webhook_name=webhook_name, attempt=attempt, headers=headers, payload=payload
+        )
+        response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
+        response.raise_for_status()
+    except EXPECTED_DELIVERY_ERRORS as cause:
+        raise WebhookDeliveryError(WebhookFailureClassifier().classify(cause=cause)) from None
     return response
 
 
@@ -114,9 +129,9 @@ async def webhook_send(
             payload=payload,
             attempt=attempt,
         )
-    except EXPECTED_DELIVERY_ERRORS as cause:
+    except WebhookDeliveryError as error:
         elapsed_ms = (time.monotonic() - started) * 1_000
-        failure = WebhookFailureClassifier().classify(cause=cause)
+        failure = error.failure
         # A retry is only scheduled when a flow run is driving the sequence and attempts remain.
         retry_note = ""
         if attempt is not None:
@@ -129,7 +144,7 @@ async def webhook_send(
             f"Webhook delivery failed [{failure.status_class}] {_attempt_phrase(attempt)} "
             f"after {elapsed_ms:.0f} ms: {failure.message.rstrip('.')}. {failure.remediation}{retry_note}"
         )
-        raise WebhookDeliveryError(failure) from None
+        raise
     elapsed_ms = (time.monotonic() - started) * 1_000
     log.info(
         f"Webhook delivered to {response.url} {_attempt_phrase(attempt)}, "
