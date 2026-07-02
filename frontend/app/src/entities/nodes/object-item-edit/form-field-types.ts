@@ -8,7 +8,33 @@ import type {
   RelationshipSchema,
 } from "@/entities/schema/domain/model/types";
 
-import type { FormFieldError } from "./form";
+type ErrorRef = {
+  name?: string;
+};
+
+export type FormFieldError = {
+  message?: string;
+  ref?: ErrorRef;
+  type?: string;
+};
+
+// Different kinds of form input control
+export type ControlType =
+  | "text"
+  | "password"
+  | "textarea"
+  | "select"
+  | "select2step"
+  | "multiselect"
+  | "list"
+  | "number"
+  | "checkbox"
+  | "switch"
+  | "datepicker"
+  | "json"
+  | "dropdown"
+  | "enum"
+  | "color";
 
 // Interface for every field in a create/edit form
 export interface DynamicFieldData {
@@ -31,21 +57,3 @@ export interface DynamicFieldData {
   parent?: string;
   field?: AttributeSchema | RelationshipSchema;
 }
-
-// Different kind of form inputs
-export type ControlType =
-  | "text"
-  | "password"
-  | "textarea"
-  | "select"
-  | "select2step"
-  | "multiselect"
-  | "list"
-  | "number"
-  | "checkbox"
-  | "switch"
-  | "datepicker"
-  | "json"
-  | "dropdown"
-  | "enum"
-  | "color";

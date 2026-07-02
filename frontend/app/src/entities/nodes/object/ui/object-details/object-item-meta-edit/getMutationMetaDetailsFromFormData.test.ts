@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import getMutationMetaDetailsFromFormData from "@/entities/nodes/object/ui/object-item-meta-edit/getMutationMetaDetailsFromFormData";
+import getMutationMetaDetailsFromFormData from "@/entities/nodes/object/ui/object-details/object-item-meta-edit/getMutationMetaDetailsFromFormData";
 
-import { generateNodeSchema } from "../../../../../../tests/fake/schema";
+import { generateNodeSchema } from "../../../../../../../tests/fake/schema";
 
 const nodeSchema = generateNodeSchema();
 

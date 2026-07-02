@@ -8,8 +8,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { areObjectArraysEqualById } from "@/shared/utils/array";
 
-import type { DynamicFieldData } from "@/entities/nodes/object/ui/edit-form-hook/dynamic-control-types";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import type { DynamicFieldData } from "@/entities/nodes/object-item-edit/form-field-types";
 import { useGetObjectForEditing } from "@/entities/nodes/object-item-edit/ui/queries/get-object-for-editing.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
