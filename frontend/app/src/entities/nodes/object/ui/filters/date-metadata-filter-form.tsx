@@ -5,7 +5,7 @@ import { FormField } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 import { DATE_TIME_FORMAT } from "@/shared/utils/date";
 
-import type { MetadataDateFilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import type { MetadataDateFilterDefinition } from "@/entities/nodes/object/domain/rules/filter-definition";
 import {
   FILTER_CONDITION,
   type FilterCondition,

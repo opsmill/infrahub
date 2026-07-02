@@ -1,6 +1,6 @@
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/rules/filter-definition";
 import type { AttributeKind } from "@/entities/schema/domain/model/types";
 import { ATTRIBUTE_ICONS } from "@/entities/schema/ui/field-schema-icon";
 

@@ -13,7 +13,7 @@ import {
   type FilterDefinition,
   getFilterDefinitionLabel,
   getFilterDefinitionName,
-} from "@/entities/nodes/object/domain/filter-definition";
+} from "@/entities/nodes/object/domain/rules/filter-definition";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
 import { getFilterDefinitionIcon } from "@/entities/nodes/object/ui/filters/get-filter-definition-icon";
 import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";

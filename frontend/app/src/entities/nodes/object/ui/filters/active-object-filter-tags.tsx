@@ -10,9 +10,9 @@ import {
 } from "@/entities/ipam/constants";
 import { IpAddressAvailabilityFilterTag } from "@/entities/ipam/ip-addresses/ui/ip-address-availability-filter-tag";
 import { IpPrefixAvailabilityFilterTag } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-availability-filter-tag";
-import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
-import { getFilterDefinitionName } from "@/entities/nodes/object/domain/filter-definition";
-import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/rules/filter-definition";
+import { getFilterDefinitionName } from "@/entities/nodes/object/domain/rules/filter-definition";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/rules/metadata-filter-definitions";
 import {
   HIDE_INTERNAL_GROUPS_FILTER,
   InternalGroupsFilterTag,

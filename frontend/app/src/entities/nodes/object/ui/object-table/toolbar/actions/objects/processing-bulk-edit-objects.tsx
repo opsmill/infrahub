@@ -4,7 +4,7 @@ import React from "react";
 import { queryClient } from "@/shared/api/rest/client";
 import { pluralize } from "@/shared/utils/string";
 
-import type { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
+import type { UpdateObjectParams } from "@/entities/nodes/object/domain/use-cases/update-object";
 import {
   GroupCard,
   GroupPanelBody,

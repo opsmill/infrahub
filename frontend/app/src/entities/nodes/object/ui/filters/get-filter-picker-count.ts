@@ -1,7 +1,7 @@
 import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import { getFilterDefinitionName } from "@/entities/nodes/object/domain/filter-definition";
+import { getFilterDefinitionName } from "@/entities/nodes/object/domain/rules/filter-definition";
 import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 

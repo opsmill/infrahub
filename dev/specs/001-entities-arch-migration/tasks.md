@@ -112,15 +112,15 @@ description: "Task list for Entities Clean-Architecture Migration"
 
 **Goal**: Migrate the `nodes/` namespace as its own multi-PR sub-epic without disturbing in-flight sort work. **One PR per sub-module.** Same per-entity recipe as US3.
 
-- [ ] T041 [US4] Plan the `nodes/` sub-epic: enumerate sub-modules and loose top-level files (`getObjectItemDisplayValue.tsx`, `types.ts`, `utils.ts`, `stores/`), decide their target homes, and sequence PRs smallest-first.
-- [ ] T042 [P] [US4] Migrate `src/entities/nodes/edit-form-hook/` (2 files).
-- [ ] T043 [P] [US4] Migrate `src/entities/nodes/object-items/` (1 file) and `src/entities/nodes/object-item-details/` (2 files).
-- [ ] T044 [P] [US4] Migrate `src/entities/nodes/object-template/` (2 files) and `src/entities/nodes/profiles/` (4 files).
-- [ ] T045 [P] [US4] Migrate `src/entities/nodes/object-item-meta-edit/` (4 files) and `src/entities/nodes/object-item-edit/` (6 files).
-- [ ] T046 [P] [US4] Migrate `src/entities/nodes/hierarchy/` (12 files).
-- [ ] T047 [P] [US4] Migrate `src/entities/nodes/convert/` (21 files).
-- [ ] T048 [P] [US4] Migrate `src/entities/nodes/relationships/` (46 files).
-- [ ] T049 [US4] Migrate `src/entities/nodes/object/` (169 files) — the largest; **must not disturb in-flight sort work** (`domain/sort.ts`, `domain/rules/`, `ui/sort/`); confirm sort tests stay green. Likely several PRs.
+- [X] T041 [US4] Plan the `nodes/` sub-epic: enumerate sub-modules and loose top-level files (`getObjectItemDisplayValue.tsx`, `types.ts`, `utils.ts`, `stores/`), decide their target homes, and sequence PRs smallest-first.
+- [X] T042 [P] [US4] Migrate `src/entities/nodes/edit-form-hook/` (2 files).
+- [X] T043 [P] [US4] Migrate `src/entities/nodes/object-items/` (1 file) and `src/entities/nodes/object-item-details/` (2 files).
+- [X] T044 [P] [US4] Migrate `src/entities/nodes/object-template/` (2 files) and `src/entities/nodes/profiles/` (4 files).
+- [X] T045 [P] [US4] Migrate `src/entities/nodes/object-item-meta-edit/` (4 files) and `src/entities/nodes/object-item-edit/` (6 files).
+- [X] T046 [P] [US4] Migrate `src/entities/nodes/hierarchy/` (12 files).
+- [X] T047 [P] [US4] Migrate `src/entities/nodes/convert/` (21 files).
+- [X] T048 [P] [US4] Migrate `src/entities/nodes/relationships/` (46 files).
+- [X] T049 [US4] Migrate `src/entities/nodes/object/` (169 files) — the largest; **must not disturb in-flight sort work** (`domain/sort.ts`, `domain/rules/`, `ui/sort/`); confirm sort tests stay green. Likely several PRs.
 - [ ] T050 [US4] Reclassify `nodes/` loose files and `nodes/stores/` into the appropriate entity layers; remove the now-empty namespace-level scaffolding.
 
 **Checkpoint**: Entire `entities/` folder on the reconciled structure.

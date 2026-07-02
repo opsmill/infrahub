@@ -1,7 +1,7 @@
 import { FormField } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
-import type { MetadataUserFilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import type { MetadataUserFilterDefinition } from "@/entities/nodes/object/domain/rules/filter-definition";
 import { FILTER_CONDITION } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";

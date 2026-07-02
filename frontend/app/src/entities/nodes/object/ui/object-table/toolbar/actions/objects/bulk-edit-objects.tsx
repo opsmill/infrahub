@@ -4,7 +4,7 @@ import { NodeForm } from "@/shared/components/form/node-form";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { pluralize } from "@/shared/utils/string";
 
-import type { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
+import type { UpdateObjectParams } from "@/entities/nodes/object/domain/use-cases/update-object";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import {
   GroupCard,

@@ -4,12 +4,12 @@ import {
   type FilterDefinition,
   getFilterDefinitionLabel,
   getFilterDefinitionName,
-} from "@/entities/nodes/object/domain/filter-definition";
+} from "@/entities/nodes/object/domain/rules/filter-definition";
 
 import {
   generateAttributeSchema,
   generateRelationshipSchema,
-} from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/schema";
 
 describe("getFilterDefinitionName", () => {
   it("returns schema name for attribute definition", () => {

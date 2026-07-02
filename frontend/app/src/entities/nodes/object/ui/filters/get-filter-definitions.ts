@@ -7,8 +7,8 @@ import {
 } from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
-import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/rules/filter-definition";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/rules/metadata-filter-definitions";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
