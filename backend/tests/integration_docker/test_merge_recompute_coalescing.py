@@ -149,7 +149,11 @@ class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
 
         async def _created_on_branch() -> bool:
             refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id, branch=branch.name)
-            return refreshed.summary.value == "cnode on gamma"
+            return (
+                refreshed.summary.value == "cnode on gamma"
+                and refreshed.display_label == "cnode via gamma"
+                and refreshed.hfid == ["cnode"]
+            )
 
         await _wait_until(_created_on_branch)
 
@@ -157,7 +161,11 @@ class TestMergeCoalescedRecompute(TestInfrahubDockerClient):
 
         async def _on_destination() -> bool:
             refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id)
-            return refreshed.summary.value == "cnode on gamma"
+            return (
+                refreshed.summary.value == "cnode on gamma"
+                and refreshed.display_label == "cnode via gamma"
+                and refreshed.hfid == ["cnode"]
+            )
 
         await _wait_until(_on_destination)
 
