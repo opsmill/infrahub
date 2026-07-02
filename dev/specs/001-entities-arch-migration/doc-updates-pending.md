@@ -37,3 +37,4 @@ Moving a `domain/*.ts` into `domain/use-cases|rules/` adds one directory level, 
 - Lift storage/global-state reads out of `domain/` into `ui/` (branches `store`/`branchesState`, schema jotai `store`, auth `localStorage`/`window`).
 - Propose dependency-cruiser (Tier-2 directional enforcement) — new-dependency decision.
 - `nodes/` namespace-level loose files (`types.ts`, `utils.ts`, `getObjectItemDisplayValue.tsx`, `stores/`) left in place.
+- **Pre-existing boundary smell** (surfaced by the boundary audit, not introduced by the migration): `nodes/relationships/api/get-default-parent-from-api.ts` imports `getSchema` (schema's `domain/use-cases`) — an `api/` file calling another entity's use-case, which the layer rules forbid (`api/` → shared + own `domain/model` only). The migration only repointed its path. Fix by lifting the `getSchema` call out of the fetcher into a `relationships` use-case. Tracked for when `relationships` is properly migrated.
