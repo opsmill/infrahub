@@ -135,6 +135,8 @@ class TestMergeRecomputeTiming(TestInfrahubDockerClient):
         )
         assert critical_path_s > 0
         assert update_runs > 0
+        # Guard against a workflow-name change silently zeroing the count and passing the bound below.
+        assert process_runs > 0
         # Coalescing: process-flow dispatch is bounded by the affected derived values, not the
         # changed-node count. The per-node path would dispatch about 2 * changed_nodes.
         assert process_runs < changed_nodes
@@ -167,4 +169,6 @@ class TestMergeRecomputeTiming(TestInfrahubDockerClient):
         )
         assert critical_path_s > 0
         assert update_runs > 0
+        # Guard against a workflow-name change silently zeroing the count and passing the bound below.
+        assert process_runs > 0
         assert process_runs < changed_nodes

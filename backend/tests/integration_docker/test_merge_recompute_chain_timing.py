@@ -145,6 +145,8 @@ class TestChainRecomputeTiming(TestInfrahubDockerClient):
         )
         assert critical_path_s > 0
         assert update_runs > 0
+        # Guard against a workflow-name change silently zeroing the count and passing the bound below.
+        assert process_runs > 0
         # Coalescing reaches at least the first hop, so the dispatch stays below the per-node path,
         # which would fan out on the order of (levels - 1) * changed_nodes.
         assert process_runs < per_node_dispatch
