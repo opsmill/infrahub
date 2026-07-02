@@ -73,7 +73,7 @@ test harness wiring — there is no separate product code. "Green" tasks assert 
 - [X] T010 [US4] Add `test_divergent_default_branch_pull_surfaces_and_recovers` in `backend/tests/integration/git/test_multi_env_writeback.py`: diverge the local `<default>` from the remote (out-of-band commit / force-reset), drive a pull/sync, assert the divergence surfaces as an error for that branch **and** the branch recovers on a subsequent sync — where "recovers" = a later sync of that branch advances its recorded `commit` (or re-imports it) with **no** manual git action against the worktree; `xfail(strict, reason="divergent pull leaves the worktree in a permanent conflicted state")`
 - [X] T011 [US4] Add `test_nonff_writeback_not_silently_dropped` in the same file: advance remote `<default>` out-of-band after import, perform an in-Infrahub merge, assert the write-back either lands or is reported failed — not silently dropped; `xfail(strict, reason="non-fast-forward write-back push is silently swallowed")`
 - [X] T012 [US4] Add `test_merge_conflict_surfaced_and_worktree_clean` in the same file: create a genuine content conflict between an Infrahub branch and `<default>`, merge, assert a failure is raised **and** the worktree is left clean (merge aborted) (green)
-- [X] T013 [US4] Per-branch failure isolation — **already covered upstream**; not duplicated. `backend/tests/component/git/test_git_repository.py::test_sync_continues_after_branch_pull_failure` (added on the develop base) asserts a branch whose pull fails does not prevent syncing the others. Reused per FR-011 rather than reinvented.
+- [X] T013 [US4] Per-branch failure isolation — **not duplicated here** (branch now based on **stable**). This is a component-level concern owned by `backend/tests/component/git/test_git_repository.py::test_sync_continues_after_branch_pull_failure`, which exists on **develop** (commit `53933dbdb`) but **not** in the current stable base. On stable the guarantee is a known gap, already fixed + tested upstream; it lands in stable when develop merges. Replicating it at the integration/Gogs level would duplicate develop's component test, so it is intentionally out of scope for this suite.
 
 **Checkpoint**: conflict/divergence behaviour characterised; two defects reproduced as `xfail`.
 
@@ -85,9 +85,9 @@ test harness wiring — there is no separate product code. "Green" tasks assert 
 
 **Independent Test**: run the file; the green filter test passes; the blast-radius test `xfails`.
 
-- [ ] T014 [US5] Add `test_filter_excludes_branch` in `backend/tests/integration/git/test_multi_env_writeback.py`: set `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` to exclude a branch, drive a sync, assert the branch is not imported as standalone and is not required to be conflict-free (green)
-- [ ] T015 [US5] Empirically confirm the fetch-time trigger (spike): identify a fetch-level failure on an **excluded** ref that a force-pushed branch does *not* cause — likely a moved/clobbering tag under `tags=True`; record the finding in `specs/001-multi-env-repo-tests/research.md`. **If no reproducing trigger is found** (fetch tolerates every excluded-ref condition), record that negative finding and **skip T016** — US5 then ships with only the green T014
-- [ ] T016 [US5] *(only if T015 found a trigger)* Add `test_fetch_failure_on_excluded_ref_breaks_sync` in the same file using the confirmed trigger: assert the in-filter branches still import; `xfail(strict, reason="fetch fetches all refs before filtering, so a problem on an excluded ref aborts the whole sync")`
+- [X] T014 [US5] `test_filter_excludes_branch` — a branch outside `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` (set **before** registration) is not imported as a standalone branch (green). Verified on stable.
+- [X] T015 [US5] Fetch-trigger spike — **resolved: no reproducing trigger via force-push.** `fetch()` uses `prune=True, tags=True, prune_tags=True`, so a rewritten/force-pushed excluded ref force-updates without error. Suspected defect (b) (fetch-before-filter blast radius) is **refuted** in practice; no failing check added.
+- [X] T016 [US5] `test_fetch_tolerates_problematic_excluded_ref` — a force-pushed (rewritten) branch outside the filter does **not** break in-filter syncing; the in-filter default branch still imports. Green guard documenting that the fetch-before-filter blast radius is not reachable via force-push (suspected defect (b) refuted). Verified on stable.
 
 **Checkpoint**: deterministic prong complete — one file, all stories, CI-resident.
 
@@ -114,7 +114,7 @@ deterministic prong is the CI-resident MVP.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T022 [P] For each confirmed defect (T006, T010, T011, T016), draft a GitHub issue via the `infrahub-reporting-issues` skill into `specs/001-multi-env-repo-tests/issue-drafts/<slug>.md` — one file per defect — for user review; **do not submit** (per the recorded issue-drafting workflow)
+- [ ] T022 [P] For each **confirmed** defect — T006 (multi-worker write-back drop / #9568) and T011 (non-fast-forward write-back silently swallowed) — draft a GitHub issue via the `infrahub-reporting-issues` skill into `specs/001-multi-env-repo-tests/issue-drafts/<slug>.md`, one file per defect, for user review; **do not submit** (per the recorded issue-drafting workflow). T010 and T016 were **refuted** (green guards) — no issue.
 - [ ] T023 [P] Grep the two new test files for issue IDs (`#[0-9]`) and confirm none exist; verify every `xfail` reason is behaviour-named (code-doc-style gate)
 - [ ] T024 Run `uv run invoke format` and `uv run invoke lint`; fix any findings in the new test files
 - [ ] T025 Re-run the deterministic prong 3× to confirm zero flake (SC-002) and that each test stays within the repo's `pyproject.toml` `timeout = 300` per-test budget; confirm the full-stack suite is excluded from the default CI run via the mechanism chosen in T002
