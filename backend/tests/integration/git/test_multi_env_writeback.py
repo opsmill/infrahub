@@ -250,3 +250,124 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
 
         # The merge must have been aborted: no unmerged paths remain in the destination worktree.
         assert repo_b.git.status("--porcelain") == ""
+
+    @pytest.fixture(scope="class")
+    async def imported_nonff_dataset(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> dict:
+        """Repo (default_branch=develop) fully imported so the on-disk clone holds a local develop."""
+        repo_name = "multi-env-nonff-repo"
+        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        _create_remote_branch_from_main(gogs_server.container, repo_name, DEV_BRANCH)
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url, "default_branch": DEV_BRANCH},
+        )
+        await node.save()
+        await sync_remote_repositories()
+        return {"repo_name": repo_name, "node_id": node.id}
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="non-fast-forward write-back push is silently swallowed when the remote default branch advanced out of band",
+    )
+    async def test_nonff_writeback_not_silently_dropped(
+        self,
+        imported_nonff_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """A write-back blocked by a non-fast-forward remote must land or fail, not vanish.
+
+        Distinct from the missing-local-branch drop: here a local default branch exists (imported),
+        but the remote advanced out of band, so the write-back push is rejected non-fast-forward and
+        the rejection is swallowed — the remote default branch never receives the write-back.
+        """
+        repo_name = imported_nonff_dataset["repo_name"]
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=imported_nonff_dataset["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        repo = await InfrahubRepository.init(
+            id=repository.id, name=repo_name, client=client, default_branch_name=DEV_BRANCH
+        )
+        assert DEV_BRANCH in repo.get_branches_from_local(include_worktree=False)
+
+        # Remote default branch advances out of band; the local clone does not know yet.
+        _push_commit_to_remote(gogs_server.container, repo_name, "out_of_band.txt", branch=DEV_BRANCH)
+        develop_before = _remote_branch_commit(gogs_server.container, repo_name, DEV_BRANCH)
+
+        # A write-back change merged into the primary branch pushes the (mapped) default branch.
+        await repo.create_branch_in_git("feature-nonff", push_origin=False)
+        feature_repo = repo.get_git_repo_worktree(identifier="feature-nonff")
+        (Path(str(feature_repo.working_dir)) / "wb.txt").write_text("write-back content\n")
+        feature_repo.index.add(["wb.txt"])
+        feature_repo.index.commit("feature-nonff: write-back change")
+
+        await repo.merge(source_branch="feature-nonff", dest_branch="main", push_remote=True)
+
+        develop_after = _remote_branch_commit(gogs_server.container, repo_name, DEV_BRANCH)
+        # Intended contract: the write-back reached the remote default branch.
+        assert develop_after != develop_before
+
+    @pytest.fixture(scope="class")
+    async def imported_divergence_dataset(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> dict:
+        """Repo (default_branch=develop) fully imported so the on-disk clone holds a local develop."""
+        repo_name = "multi-env-divergence-repo"
+        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        _create_remote_branch_from_main(gogs_server.container, repo_name, DEV_BRANCH)
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url, "default_branch": DEV_BRANCH},
+        )
+        await node.save()
+        await sync_remote_repositories()
+        return {"repo_name": repo_name, "node_id": node.id}
+
+    async def test_divergent_default_branch_recovers_on_resync(
+        self,
+        imported_divergence_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """Divergence between the local and remote default branch recovers on a later sync.
+
+        The local clone gains a commit the remote lacks, and the remote gains a different commit, so a
+        sync's pull of the default branch diverges and surfaces an error. A subsequent sync must
+        recover — re-importing to the remote tip — without manual worktree repair. Regression guard:
+        divergence must not permanently strand the branch.
+        """
+        repo_name = imported_divergence_dataset["repo_name"]
+        node_id = imported_divergence_dataset["node_id"]
+
+        repo = await InfrahubRepository.init(
+            id=node_id, name=repo_name, client=client, default_branch_name=DEV_BRANCH
+        )
+        # Local default branch advances (a commit that never reaches the remote).
+        main_worktree = repo.get_git_repo_worktree(identifier="main")
+        (Path(str(main_worktree.working_dir)) / "local_only.txt").write_text("local only\n")
+        main_worktree.index.add(["local_only.txt"])
+        main_worktree.index.commit("local-only develop commit")
+
+        # Remote default branch advances differently -> the two histories diverge.
+        _push_commit_to_remote(gogs_server.container, repo_name, "remote_only.txt", branch=DEV_BRANCH)
+        remote_target = _remote_branch_commit(gogs_server.container, repo_name, DEV_BRANCH)
+
+        # First sync hits the divergence; a second sync is the recovery attempt.
+        await sync_remote_repositories()
+        await sync_remote_repositories()
+
+        repo_after: CoreRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        # Intended contract: the branch recovered and imported the remote tip.
+        assert repo_after.commit.value == remote_target

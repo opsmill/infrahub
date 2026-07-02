@@ -44,9 +44,9 @@ prong (no live worker pool is run).
 
 | Tracked behaviour | Spec ref | Current expectation | Test marker | Flips when |
 |---|---|---|---|---|
-| Multi-worker write-back drop | US1 | broken | `xfail(strict)` | #9568 fixed → XPASS surfaces |
-| Divergent-pull worktree poisoning | US4§1 | broken (predicted) | `xfail(strict)` | fixed → XPASS |
-| Non-ff write-back drop | US4§2 | broken | `xfail(strict)` | fixed → XPASS |
+| Multi-worker write-back drop | US1 | broken (confirmed) | `xfail(strict)` | #9568 fixed → XPASS surfaces |
+| Divergent-pull recovery | US4§1 | **working (refuted defect)** | green guard | regression → fail |
+| Non-ff write-back drop | US4§2 | broken (confirmed) | `xfail(strict)` | fixed → XPASS |
 | Fetch-before-filter blast radius | US5§2 | broken (predicted) | `xfail(strict)` | fixed → XPASS |
 | No phantom on non-main default | US3 | working | green | regression → fail |
 | In-merge conflict surfaced + aborted | US4§3 | working | green | regression → fail |

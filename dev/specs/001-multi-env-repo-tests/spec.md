@@ -136,8 +136,9 @@ without manual worktree repair.
 1. **Given** an instance's local copy of a long-lived branch has diverged from the shared repository
    (an out-of-band commit, or a force-reset of that branch), **When** the periodic sync pulls it,
    **Then** the divergence surfaces as an error for that branch and the branch recovers on a
-   subsequent sync without manual worktree repair. *(current code is expected to leave the worktree
-   in a permanent conflicted state — tracked as a known defect)*
+   subsequent sync without manual worktree repair. *(verified working on the current base — the
+   suspected "permanent conflicted worktree" defect was refuted by the test; this is a green
+   regression guard, not an xfail.)*
 2. **Given** the shared repository's default branch advanced out-of-band after an instance imported
    it, **When** an in-Infrahub merge writes back to that branch, **Then** the write-back either lands
    or is reported as failed — it is not silently dropped. *(distinct from the multi-worker
@@ -307,11 +308,12 @@ the in-filter branches still import. Delivers a clear answer on whether the filt
 - **Out of scope, related but distinct**: artifact generation on a non-`main` default branch
   (#8749), and the merge-before-sync no-op write-back (#9499). The validation must not conflate the
   latter with the silently-dropped push under test.
-- **Suspected unfiled defects to confirm.** Two behaviours surfaced from reading the code and are
-  expected to fail today: (a) a divergent/conflicting branch pull leaves the worktree permanently
-  conflicted (no abort/recover), and (b) the branch filter does not bound fetch-time failures (the
-  whole repository is fetched before filtering). These are confirmed by the tests **first**; only a
-  test-confirmed defect is then drafted as a GitHub issue using the issue-reporting skill, written to
-  a **separate file per defect for the user's review** — never auto-submitted, and filed separately
-  from the multi-worker write-back defect (#9568). The non-fast-forward write-back drop is already
-  observable in the existing push-rejection behaviour.
+- **Suspected unfiled defects — outcomes.** Two behaviours were flagged from reading the code and
+  put under test:
+  - (a) a divergent/conflicting branch pull leaving the worktree permanently conflicted — **REFUTED**
+    on the current (`develop`) base: the test shows divergence surfaces an error and then recovers on
+    a subsequent sync. Now a green regression guard, no issue to file.
+  - (b) the branch filter not bounding fetch-time failures — **still to be confirmed** (US5 spike).
+  Confirmed defects on this base: the multi-worker write-back drop (#9568) and the non-fast-forward
+  write-back drop (US4§2). Each confirmed defect is drafted as a GitHub issue using the issue-
+  reporting skill, one **separate file per defect for the user's review** — never auto-submitted.

@@ -11,7 +11,7 @@ signal each test reads (never `sync_status`, never a merge return value).
 | US1§1 | Write-back drop on a non-importer clone | Clone with local primary + `origin/<default>` only; merge writing back to `<default>` | `push` reports success AND remote `<default>` tip unchanged | xfail(strict) |
 | US3.1 | Non-main default, no phantom | RW repo `default_branch=develop`; run sync cycle | `client.branch.all()` has no standalone `develop`; `develop` maps to primary | green |
 | US3.2 | Non-main default import not frozen | New commit on remote `develop`; run sync | recorded `commit` advances to the new SHA | green |
-| US4§1 | Divergent pull poisons worktree | Diverge local `<default>` from remote (out-of-band commit / force-reset); pull/sync | error surfaced for that branch AND branch recovers on a later sync without manual worktree repair | xfail(strict) |
+| US4§1 | Divergent pull recovers | Diverge local `<default>` from remote (out-of-band commit); two sync cycles | first sync surfaces the error, second sync recovers to the remote tip (recorded commit == remote) | green (refuted defect) |
 | US4§2 | Non-ff write-back drop | Advance remote `<default>` out-of-band, then in-Infrahub merge | write-back applied OR reported failed — not silently dropped | xfail(strict) |
 | US4§3 | In-merge conflict surfaced | Infrahub branch genuinely conflicts with `<default>`; merge | merge fails (error raised) AND worktree left clean (merge aborted) | green |
 | US4§4 | Per-branch failure isolation | One bad branch + one good branch; run sync | good branch imports; failure confined to the bad one | green |
