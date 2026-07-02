@@ -128,7 +128,7 @@ deterministic prong is the CI-resident MVP.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [X] T022 [P] One consolidated draft for review: `issue-drafts/9568-comment.md`. The non-ff drop is **folded into #9568** (same root cause), not a separate issue. The comment covers the deterministic repro, the non-ff trigger, and the compounding permanent-divergence finding, with a two-part fix. Post **after** the PR lands (fill in PR #). Not submitted, per the issue-drafting workflow. (per the recorded issue-drafting workflow). T010 and T016 were **refuted** (green guards) — no issue.
+- [~] T022 Update **#9568 via `gh`** (not a committed file) — fold in the non-ff trigger and the compounding permanent-divergence finding (same root cause), with the two-part fix. Compose from the test docstrings + commit messages. Post **after** the PR lands so it can reference the PR #. (per the recorded issue-drafting workflow). T010 and T016 were **refuted** (green guards) — no issue.
 - [X] T023 [P] Grepped the test file: no issue IDs, no `sync_status`, no sleeps; every `xfail` reason is behaviour-named (code-doc-style gate passes).
 - [X] T024 `ruff check` + `ruff format` clean on `test_multi_env_writeback.py` (fixed a `== ""` comparison and reformatting).
 - [~] T025 Deterministic prong ran consistently across ~6 development runs (2 xfailed, 6 passed each), well within `timeout = 300`. A dedicated 3× flake run + full-stack CI-exclusion check remain deferred until US2 / CI wiring lands.
