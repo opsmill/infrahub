@@ -7,11 +7,11 @@ import { useLocation } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
-import { classNames } from "@/shared/utils/common";
 
 import { useCancelTaskMutation } from "@/entities/tasks/ui/queries/cancel-task.mutation";
 import { useRetryTaskMutation } from "@/entities/tasks/ui/queries/retry-task.mutation";
@@ -84,24 +84,16 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
   const canCancel = isActionAvailable(task, "CANCEL");
 
   return (
-    <div className={classNames("flex items-center gap-2", className)}>
+    <Row className={className}>
       {canRetry && (
-        <Button
-          variant="outline"
-          onPress={() => setIsRetryConfirmOpen(true)}
-          className="flex items-center gap-2"
-        >
+        <Button variant="outline" onPress={() => setIsRetryConfirmOpen(true)}>
           <Icon icon="mdi:restore" />
           Retry
         </Button>
       )}
 
       {canCancel && (
-        <Button
-          variant="outline"
-          onPress={() => setIsCancelConfirmOpen(true)}
-          className="flex items-center gap-2"
-        >
+        <Button variant="outline" onPress={() => setIsCancelConfirmOpen(true)}>
           <Icon icon="mdi:close" />
           Cancel
         </Button>
@@ -127,6 +119,6 @@ export const TaskActions = ({ task, className }: { task: TaskActionsTask; classN
         isLoading={cancelMutation.isPending}
         onConfirm={() => cancelMutation.mutate({ id: task.id })}
       />
-    </div>
+    </Row>
   );
 };

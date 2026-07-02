@@ -21,12 +21,12 @@ describe("retryTask", () => {
     await expect(retryTask({ id: "run-1" })).resolves.toBe("new-run-1");
   });
 
-  it("returns undefined when the response carries no task id", async () => {
+  it("returns null when the response carries no task id", async () => {
     mockRetryTaskFromApi.mockResolvedValueOnce({
       data: { InfrahubTaskRetry: { ok: true, task: null } },
     } as Awaited<ReturnType<typeof retryTaskFromApi>>);
 
-    await expect(retryTask({ id: "run-1" })).resolves.toBeUndefined();
+    await expect(retryTask({ id: "run-1" })).resolves.toBeNull();
   });
 
   it("throws when the response carries errors", async () => {

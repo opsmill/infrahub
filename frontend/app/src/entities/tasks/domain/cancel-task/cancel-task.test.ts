@@ -21,12 +21,12 @@ describe("cancelTask", () => {
     await expect(cancelTask({ id: "run-1" })).resolves.toBe("run-1");
   });
 
-  it("returns undefined when the response carries no task id", async () => {
+  it("returns null when the response carries no task id", async () => {
     mockCancelTaskFromApi.mockResolvedValueOnce({
       data: { InfrahubTaskCancel: { ok: true, task: null } },
     } as Awaited<ReturnType<typeof cancelTaskFromApi>>);
 
-    await expect(cancelTask({ id: "run-1" })).resolves.toBeUndefined();
+    await expect(cancelTask({ id: "run-1" })).resolves.toBeNull();
   });
 
   it("throws when the response carries errors", async () => {
