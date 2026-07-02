@@ -234,6 +234,7 @@ describe("ErrorCode exhaustiveness", () => {
         case ERROR_CODES.BRANCH_ALREADY_MERGED:
         case ERROR_CODES.BRANCH_NEEDS_REBASE:
         case ERROR_CODES.MERGE_IN_PROGRESS:
+        case ERROR_CODES.MERGE_RECOVERY_REQUIRED:
         case ERROR_CODES.SCHEMA_NOT_FOUND:
         case ERROR_CODES.UNDEFINED_ERROR:
           return code;

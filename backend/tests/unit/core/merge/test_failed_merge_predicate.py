@@ -103,7 +103,13 @@ CASES = [
 @pytest.mark.parametrize("case", CASES, ids=[c.name for c in CASES])
 def test_is_failed_merge(case: PredicateCase) -> None:
     now = Timestamp()
-    merge_started_at = now.add(seconds=-case.started_seconds_ago) if case.started_seconds_ago is not None else None
+    # Timestamp.add() is typed as the SDK base class; re-wrap so the value is the core Timestamp the
+    # predicate expects (mirrors how production builds it from the stored string).
+    merge_started_at = (
+        Timestamp(now.add(seconds=-case.started_seconds_ago).to_string())
+        if case.started_seconds_ago is not None
+        else None
+    )
 
     result = _recovery().is_failed_merge(
         status=case.status,
