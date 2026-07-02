@@ -4,7 +4,7 @@ import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";

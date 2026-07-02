@@ -4,7 +4,7 @@ import {
   type CreateBranchFromApiParams,
   createBranchFromApi,
 } from "@/entities/branches/api/create-branch-from-api";
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 
 export type CreateBranchParams = CreateBranchFromApiParams;
 

@@ -2,7 +2,7 @@ import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tan
 import React from "react";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { BranchesToolbar } from "@/entities/branches/ui/branches-table/branches-toolbar";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 

@@ -1,8 +1,9 @@
+import { mapToBranchDetail } from "@/entities/branches/api/branch.mappers";
 import {
   type GetBranchDetailsFromApiParams,
   getBranchDetailsFromApi,
 } from "@/entities/branches/api/get-branch-details-from-api";
-import { type BranchDetail, mapToBranchDetail } from "@/entities/branches/domain/branch.mappers";
+import type { BranchDetail } from "@/entities/branches/domain/model/branch";
 
 export type GetBranchDetailsParams = GetBranchDetailsFromApiParams;
 

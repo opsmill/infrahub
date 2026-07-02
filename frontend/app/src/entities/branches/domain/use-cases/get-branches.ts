@@ -2,16 +2,18 @@ import type { PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { store } from "@/shared/stores";
 
-import { getBranchesFromApi } from "@/entities/branches/api/get-branches-from-api";
 import {
-  type BranchListItem,
+  type InfrahubBranchResponse,
+  mapToBranchListItem,
+} from "@/entities/branches/api/branch.mappers";
+import { getBranchesFromApi } from "@/entities/branches/api/get-branches-from-api";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
+import {
   getBranchDateFilters,
   getCreatedByFilterValue,
   getNameFilterValue,
   getStatusFilterValue,
-  type InfrahubBranchResponse,
-  mapToBranchListItem,
-} from "@/entities/branches/domain/branch.mappers";
+} from "@/entities/branches/domain/rules/branch-filters";
 import { branchesState } from "@/entities/branches/stores";
 
 export type GetBranchesParams = PaginationParams & {

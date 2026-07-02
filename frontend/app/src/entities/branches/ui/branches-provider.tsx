@@ -10,7 +10,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { findSelectedBranch } from "@/entities/branches/utils";

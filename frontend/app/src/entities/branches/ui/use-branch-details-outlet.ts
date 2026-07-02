@@ -1,6 +1,6 @@
 import { useOutletContext } from "react-router";
 
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 
 export interface BranchDetailsOutletContext {
   branch: BranchListItem;

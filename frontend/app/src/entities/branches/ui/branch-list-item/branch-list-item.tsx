@@ -5,7 +5,7 @@ import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { classNames } from "@/shared/utils/common";
 
-import type { BranchListItem as BranchListItemType } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem as BranchListItemType } from "@/entities/branches/domain/model/branch";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/branch-git-sync-badge";
 import { BranchMetadata } from "@/entities/branches/ui/branch-list-item/branch-metadata";

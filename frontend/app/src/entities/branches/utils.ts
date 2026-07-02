@@ -1,6 +1,6 @@
 import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
 
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 
 export type BranchDetailsTab = "data" | "files" | "artifacts" | "schema";
 

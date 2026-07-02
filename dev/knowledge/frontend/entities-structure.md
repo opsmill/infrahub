@@ -6,17 +6,23 @@ Location: `frontend/app/src/entities/`
 
 Each entity is organized into three layers with strict import rules. Dependencies flow in one direction: ui/ -> domain/ -> api/.
 
+`api/` and `ui/` structure is unchanged from earlier revisions. What changed (2026-07): `domain/` is split into `model/` / `rules/` / `use-cases/` when it grows past 4 files, and generated↔domain **mappers now live in `api/`** (not `domain/`).
+
 ```text
 entities/{name}/
-├── api/                              # Transport — raw network calls
-│   ├── get-{noun}-from-api.ts
-│   └── create-{noun}-from-api.ts
-├── domain/                           # Business logic — pure TypeScript
-│   ├── {noun}.types.ts               # Domain types (the canonical contract)
-│   ├── {noun}.mappers.ts             # OPTIONAL — only when transformation is non-trivial
-│   ├── get-{noun}.ts                 # Async function: calls api/, returns domain types
-│   └── create-{noun}.ts
-└── ui/                               # React — framework integration
+├── api/                              # Transport + anti-corruption. Flat (no subfolders).
+│   ├── get-{noun}-from-api.ts        # Raw GraphQL/REST call (owns generated wire types)
+│   ├── create-{noun}-from-api.ts
+│   └── {noun}.mappers.ts             # generated wire shape → DOMAIN type. Imports domain/model (type-only).
+├── domain/                           # Business core — framework-free TypeScript
+│   ├── model/                        # Domain vocabulary: types, IDs, filters, sorts, inputs, results
+│   │   └── {noun}.ts                 # MAY import generated enums/scalars (e.g. BranchStatus) as value types
+│   ├── rules/                        # Pure functions, no I/O (e.g. filter extraction)
+│   │   └── {noun}-filters.ts
+│   └── use-cases/                    # Orchestration; calls own api/ (incl. its mappers)
+│       ├── get-{noun}.ts
+│       └── create-{noun}.ts
+└── ui/                               # React — framework integration (nested subfolders OK)
     ├── queries/
     │   ├── {noun}.query-keys.ts      # Query key factory
     │   ├── get-{noun}.query.ts       # queryOptions factory + useQuery hook
@@ -26,15 +32,30 @@ entities/{name}/
     └── {noun}-table.tsx              # React components
 ```
 
+### When to split `domain/`
+
+Split into `model/`+`rules/`+`use-cases/` **only when `domain/` has more than 4 files**; below that, keep it flat. **Never create a subfolder to hold fewer than 2 files.** Classify each file: type declarations → `model/`; pure no-I/O functions → `rules/`; orchestration that calls `api/` → `use-cases/`. Small entities (e.g. `config`, `role-manager`) stay flat.
+
+### Generated types: DTOs vs enums
+
+- **Wire-shape response DTOs** (e.g. `InfrahubBranch`, `InfrahubNodeMetadata`) and the **mappers** that consume them live in `api/`. They never appear in `domain/`.
+- **Generated enums / scalar value-types** (e.g. `BranchStatus`) **may** be imported into `domain/model` as value types — re-declaring them as domain-local types is unnecessary churn (YAGNI). The goal is to keep the *wire format* out of `domain/`, not every generated symbol.
+
+### Enforcement
+
+Boundaries are enforced by **code review** against this document. There is no automated lint guard. (A dependency-cruiser-based guard was considered and deferred; adding it is a separate new-dependency decision.)
+
 ## Layer Rules
 
 | Layer | Allowed imports | Prohibited |
 |-------|----------------|------------|
-| **api/** | `shared/api/` only | React, domain/, other entities |
-| **domain/** | `api/` (same entity), `shared/utils/`, other entities' `domain/` | React, TanStack, Jotai |
+| **api/** | `shared/api/`, own `domain/model` (type-only, for mapper return types) | `domain/rules`, `domain/use-cases`, `ui/`, other entities |
+| **domain/model** | `shared/` types, generated enums/scalars, other entities' `domain/model` | `api/`, `domain/rules`, `domain/use-cases`, `ui/` (pure leaf) |
+| **domain/rules** | own `domain/model`, `shared/` | `api/`, `ui/`, React, TanStack, Jotai, generated wire DTOs |
+| **domain/use-cases** | own `api/` (incl. mappers), own `domain/model` + `rules`, `shared/` | `ui/`, React, TanStack, Jotai, generated wire DTOs |
 | **ui/** | `domain/` (same entity), `shared/`, other entities' `domain/` and `ui/` | Another entity's `api/` |
 
-Key constraint: no circular dependencies between entities. The dependency graph must be a DAG.
+Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Generated **wire DTOs** never enter `domain/`; generated **enums** may (see above).
 
 ## Data Flow
 
@@ -55,7 +76,7 @@ queryOptions factories and useQuery/useMutation hooks live in `ui/queries/`, not
 Rationale: `queryOptions` configures TanStack Query, a framework concern. Caching strategy, query keys, and reactive subscriptions belong in the UI layer. A TUI or CLI would call domain async functions directly without TanStack.
 
 ```ts
-// domain/get-branches.ts — pure, no framework imports
+// domain/use-cases/get-branches.ts — pure, no framework imports
 export async function getBranches(
   branch: string,
   date?: string,
@@ -97,14 +118,14 @@ import { getSchemaFromApi } from "@/entities/schema/api/get-schema-from-api"; //
 
 ## Mappers
 
-Mappers are optional. Use them only when transformation is non-trivial (more than 5-6 lines of field access). For simple entities, inline the transformation in the domain async function.
+Mappers (generated wire shape ↔ domain type) live in **`api/`**, e.g. `api/{noun}.mappers.ts`. They import the generated types and return `domain/model` types (the only place `api/` imports `domain/`, and type-only). A `domain/use-cases/` function calls its own `api/` fetcher and mapper; it never imports a generated wire type itself. For a trivial mapping, inline it in the `api/` fetcher rather than a separate mappers file.
 
 ## GraphQL fetching: go through the entity layer
 
 The `ui/` layer **never** builds `gql` strings inline or calls `graphqlClient.query` directly. Either:
 
 1. Use a hook from another entity's `ui/queries/` (e.g. `useGetObject` from `entities/nodes/object`).
-2. Add a new fetcher: `api/get-{noun}-from-api.ts` → `domain/get-{noun}.ts` → `ui/queries/get-{noun}.query.ts`.
+2. Add a new fetcher: `api/get-{noun}-from-api.ts` → `domain/use-cases/get-{noun}.ts` (flat `domain/get-{noun}.ts` if the entity is unsplit) → `ui/queries/get-{noun}.query.ts`.
 
 Inline `gql` in `ui/` bypasses caching, branch context, schema typing, and the layered architecture. It is a pattern bug, not a shortcut.
 
@@ -124,15 +145,23 @@ If the client genuinely needs to display a server-side default, surface it via t
 
 ## Reference Example: branches
 
+`branches` is the canonical migrated entity (11 domain files → split).
+
 ```text
 entities/branches/
 ├── api/
-│   ├── get-branches-from-api.ts
-│   └── create-branch-from-api.ts
+│   ├── get-branches-from-api.ts      # raw GraphQL call
+│   ├── create-branch-from-api.ts
+│   └── branch.mappers.ts             # mapToBranchListItem/Detail, InfrahubBranchResponse DTO
 ├── domain/
-│   ├── branch.types.ts
-│   ├── get-branches.ts
-│   └── create-branch.ts
+│   ├── model/
+│   │   └── branch.ts                 # BranchListItem, BranchDetail (imports generated BranchStatus)
+│   ├── rules/
+│   │   └── branch-filters.ts         # pure filter-extraction helpers
+│   └── use-cases/
+│       ├── get-branches.ts           # calls api fetcher + api mapper; extracts filters via rules
+│       ├── create-branch.ts
+│       └── … (delete/merge/rebase/validate/…)
 └── ui/
     ├── queries/
     │   ├── branch.query-keys.ts
@@ -141,6 +170,8 @@ entities/branches/
     ├── branches-table.tsx
     └── branches-provider.tsx
 ```
+
+Note: `model/` and `rules/` hold a single file each here — acceptable for a fully-split reference entity so all three domain roles are visible. A use-case (`domain/use-cases/get-branches.ts`) imports its mapper from `api/branch.mappers.ts` (allowed: `use-cases → own api/`).
 
 ## File Naming
 
