@@ -6,7 +6,7 @@ import { useCurrentFormContext } from "@/shared/components/form/utils/form-conte
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import type { NodeAttribute } from "@/entities/nodes/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 const IpamDetailsIndexPage = () => {
   const { objectKind, objectId } = useParams();

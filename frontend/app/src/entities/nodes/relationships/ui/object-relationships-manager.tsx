@@ -10,7 +10,7 @@ import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationshi
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ObjectRelationshipsManagerProps {

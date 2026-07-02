@@ -13,9 +13,9 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import type { NodeFieldsWithMetadata, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { validateRelationshipMany } from "@/entities/schema/utils/validation/validate-relationship-many";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import { validateRelationshipMany } from "@/entities/schema/domain/rules/validation/validate-relationship-many";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 interface GetFieldLabelParams {
   type?: RelationshipFieldType;

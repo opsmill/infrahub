@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
-import { generateGenericSchema, generateNodeSchema } from "../../../../tests/fake/schema";
+import { generateGenericSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 
 describe("isGenericSchema", () => {
   it("should return true for a generic schema", () => {

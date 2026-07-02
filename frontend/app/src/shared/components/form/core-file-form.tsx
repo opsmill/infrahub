@@ -23,7 +23,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
 
 export type CoreFileFormData = Record<string, FormFieldValue>;
 

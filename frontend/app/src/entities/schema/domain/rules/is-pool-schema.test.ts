@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
+import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
 
-import { generateGenericSchema, generateNodeSchema } from "../../../../tests/fake/schema";
+import { generateGenericSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 
 describe("isPoolSchema", () => {
   it("should return true for a schema that inherits from resource generic kind", () => {

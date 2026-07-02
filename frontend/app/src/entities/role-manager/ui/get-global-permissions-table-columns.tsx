@@ -13,7 +13,7 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { globalDecisionOptions } from "@/entities/role-manager/constants";
 import { getDecisionColumn } from "@/entities/role-manager/ui/get-decision-column";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export const GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES = ["action", "decision"];
 export const GLOBAL_PERMISSIONS_TABLE_RELATIONSHIPS = ["roles"];

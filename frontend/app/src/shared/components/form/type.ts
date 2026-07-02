@@ -11,7 +11,7 @@ import type {
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
-} from "@/entities/schema/types";
+} from "@/entities/schema/domain/model/types";
 
 type SourceType = "schema" | "user";
 

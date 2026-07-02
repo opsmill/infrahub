@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 
-import { generateNodeSchema, generateTemplateSchema } from "../../../../tests/fake/schema";
+import { generateNodeSchema, generateTemplateSchema } from "../../../../../tests/fake/schema";
 
 describe("isTemplateSchema", () => {
   it("should return true for a template schema", () => {

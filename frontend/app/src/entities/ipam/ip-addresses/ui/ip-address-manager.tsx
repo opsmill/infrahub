@@ -7,7 +7,7 @@ import {
 } from "@/entities/ipam/ip-addresses/ui/ip-address-table";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectsManagerToolbar } from "@/entities/nodes/object/ui/objects-manager-toolbar";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface IpAddressManagerProps {
   schema: ModelSchema;

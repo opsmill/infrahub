@@ -9,7 +9,7 @@ import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/o
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
-import type { AttributeSchema } from "@/entities/schema/types";
+import type { AttributeSchema } from "@/entities/schema/domain/model/types";
 
 interface ObjectAttributeRowProps {
   attributeSchema: AttributeSchema;

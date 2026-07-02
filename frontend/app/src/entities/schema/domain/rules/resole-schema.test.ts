@@ -5,14 +5,14 @@ import type {
   NodeSchema,
   ProfileSchema,
   TemplateSchema,
-} from "@/entities/schema/types";
+} from "@/entities/schema/domain/model/types";
 
 import {
   generateGenericSchema,
   generateNodeSchema,
   generateProfileSchema,
   generateTemplateSchema,
-} from "../../../../tests/fake/schema";
+} from "../../../../../tests/fake/schema";
 import { resolveSchema } from "./resolve-schema";
 
 describe("resolveSchema", () => {

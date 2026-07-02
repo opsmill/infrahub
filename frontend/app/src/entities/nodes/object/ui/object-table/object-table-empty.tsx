@@ -3,7 +3,7 @@ import { Button } from "@infrahub/ui";
 
 import useFilters from "@/shared/hooks/useFilters";
 
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
   const [filters, setFilters] = useFilters();

@@ -11,7 +11,7 @@ import {
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import type { DecisionOption } from "@/entities/role-manager/domain/get-decision-options";
-import type { AttributeSchema } from "@/entities/schema/types";
+import type { AttributeSchema } from "@/entities/schema/domain/model/types";
 
 export interface DecisionFilterFormProps {
   attributeSchema: AttributeSchema;

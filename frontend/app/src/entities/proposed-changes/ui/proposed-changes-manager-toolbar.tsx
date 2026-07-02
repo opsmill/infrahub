@@ -9,7 +9,7 @@ import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/activ
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface ProposedChangesManagerToolbarProps {
   schema: ModelSchema;

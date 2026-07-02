@@ -13,7 +13,7 @@ import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface IpPrefixPoolFormProps extends NodeFormProps {}

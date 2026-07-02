@@ -1,9 +1,9 @@
 import { store } from "@/shared/stores";
 
+import type { GenericSchema, ModelSchema, NodeSchema } from "@/entities/schema/domain/model/types";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
+import { isNodeSchema } from "@/entities/schema/domain/rules/is-node-schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { GenericSchema, ModelSchema, NodeSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
 
 export const isHierarchicalSchema = (
   schema: ModelSchema

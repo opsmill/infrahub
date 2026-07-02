@@ -1,4 +1,4 @@
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export function hasExtraFields(schema: ModelSchema): boolean {
   const attributes = schema.attributes ?? [];

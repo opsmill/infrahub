@@ -20,7 +20,7 @@ import {
 } from "@/entities/nodes/convert/ui/source-option-item";
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeAttribute } from "@/entities/nodes/types";
-import type { AttributeSchema } from "@/entities/schema/types";
+import type { AttributeSchema } from "@/entities/schema/domain/model/types";
 
 interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
   attribute: AttributeSchema;

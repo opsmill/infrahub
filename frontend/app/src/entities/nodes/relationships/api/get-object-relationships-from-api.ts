@@ -12,7 +12,7 @@ import type { Filter } from "@/shared/hooks/useFilters";
 
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 type GenerateObjectRelationshipsQueryParams = PaginationParams & {
   parentKind: string;

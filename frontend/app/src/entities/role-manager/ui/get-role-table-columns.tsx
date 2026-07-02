@@ -10,7 +10,7 @@ import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/c
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export const ROLE_TABLE_ATTRIBUTES = ["name", "description"];
 export const ROLE_TABLE_RELATIONSHIPS = ["groups", "permissions"];

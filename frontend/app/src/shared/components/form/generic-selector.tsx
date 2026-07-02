@@ -14,7 +14,7 @@ import Label from "@/shared/components/ui/label";
 import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/shared/config/constants";
 
 import { useGetObjectPermissionsBySubKind } from "@/entities/permission/ui/queries/get-object-permissions-by-sub-kind.query";
-import { getSchema } from "@/entities/schema/domain/get-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type GenericSelectorProps = {

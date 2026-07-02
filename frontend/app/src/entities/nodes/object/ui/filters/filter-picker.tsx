@@ -18,7 +18,7 @@ import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter
 import { getFilterDefinitionIcon } from "@/entities/nodes/object/ui/filters/get-filter-definition-icon";
 import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";
 import { getFilterPickerCount } from "@/entities/nodes/object/ui/filters/get-filter-picker-count";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 interface FilterPickerProps {

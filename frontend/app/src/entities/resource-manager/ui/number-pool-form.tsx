@@ -34,8 +34,8 @@ import {
   NUMBER_POOL_NODE_FIELD,
 } from "@/entities/resource-manager/constants";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 interface NumberPoolFormProps {
   currentObject?: ObjectFormProps["currentObject"];

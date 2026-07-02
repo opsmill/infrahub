@@ -2,8 +2,12 @@ import type { ContextParams } from "@/shared/api/types";
 
 import { getProfilesFromApi } from "@/entities/nodes/profiles/api/get-profiles-from-api";
 import type { ProfileData } from "@/entities/nodes/profiles/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { GenericSchema, NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import type {
+  GenericSchema,
+  NodeSchema,
+  ProfileSchema,
+} from "@/entities/schema/domain/model/types";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export interface GetProfilesParams extends ContextParams {
   schema: NodeSchema;

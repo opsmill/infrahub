@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 import {
   generateAttributeSchema,

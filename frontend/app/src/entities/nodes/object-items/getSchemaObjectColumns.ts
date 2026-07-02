@@ -8,8 +8,8 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 
 import type { RelationshipKind } from "@/entities/nodes/types";
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
-import type { AttributeKind, ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import type { AttributeKind, ModelSchema } from "@/entities/schema/domain/model/types";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
 type tgetObjectAttributes = {
   schema: ModelSchema | undefined;

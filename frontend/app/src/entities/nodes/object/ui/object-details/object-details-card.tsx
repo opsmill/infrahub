@@ -6,7 +6,7 @@ import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/obj
 import { hasExtraFields } from "@/entities/nodes/object/utils/has-extra-fields";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 interface ObjectDetailsCardProps {
   objectSchema: ModelSchema;

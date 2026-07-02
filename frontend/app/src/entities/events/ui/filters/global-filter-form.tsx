@@ -3,7 +3,7 @@ import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters from "@/shared/hooks/useFilters";
 
 import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export type GlobalFilterFormProps = {
   name: string;

@@ -1,4 +1,4 @@
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 const metadataFields = ["source", "owner", "is_protected"];
 

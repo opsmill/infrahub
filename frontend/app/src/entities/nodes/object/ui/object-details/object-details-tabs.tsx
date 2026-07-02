@@ -9,8 +9,8 @@ import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 interface ObjectDetailsTabsProps {
   objectSchema: ModelSchema;

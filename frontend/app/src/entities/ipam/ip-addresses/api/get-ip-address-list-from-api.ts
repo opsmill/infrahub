@@ -12,7 +12,7 @@ import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 
 import { IP_ADDRESS_AVAILABLE_KIND, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export interface GetIpAddressListGraphQLQueryParams extends PaginationParams {
   filters?: Array<Filter>;

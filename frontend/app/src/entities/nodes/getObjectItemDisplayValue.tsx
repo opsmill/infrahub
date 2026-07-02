@@ -27,8 +27,12 @@ import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type {
+  AttributeKind,
+  AttributeSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/types";
 import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
   // If data.node is a node object, use getNodeLabel

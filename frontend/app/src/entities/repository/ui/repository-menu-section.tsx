@@ -13,8 +13,8 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 import type { Permission } from "@/entities/permission/types";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 interface RepositoryMenuSectionProps {
   repositoryId: string;

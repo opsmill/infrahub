@@ -1,4 +1,4 @@
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export const canDisplayResetActions = (
   fieldSchema: AttributeSchema | RelationshipSchema | undefined,

@@ -8,8 +8,8 @@ import {
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export const getObjectDetailsUrl = (
   objectKind: string,

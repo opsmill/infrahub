@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import useFilters from "@/shared/hooks/useFilters";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 import { GlobalFilterForm } from "./global-filter-form";
 import { FilterTag } from "./global-filter-tag";

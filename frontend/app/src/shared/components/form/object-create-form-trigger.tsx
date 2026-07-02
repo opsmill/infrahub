@@ -7,7 +7,7 @@ import ObjectForm from "@/shared/components/form/object-form";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 interface ObjectCreateFormTriggerProps extends ButtonProps {
   schema: ModelSchema;

@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore } from "@/entities/nodes/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 import { generateNodeSchema } from "../../../../../tests/fake/schema";
 
-vi.mock("@/entities/schema/domain/get-schema", () => ({
+vi.mock("@/entities/schema/domain/use-cases/get-schema", () => ({
   getSchema: vi.fn(() => ({
     schema: generateNodeSchema(),
     isGeneric: false,

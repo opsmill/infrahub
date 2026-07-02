@@ -8,7 +8,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { ObjectTemplateAutocomplete } from "@/entities/nodes/object-template/object-template-autocomplete";
 import type { NodeObject } from "@/entities/nodes/types";
-import type { TemplateSchema } from "@/entities/schema/types";
+import type { TemplateSchema } from "@/entities/schema/domain/model/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface StartButtonProps extends ButtonProps {

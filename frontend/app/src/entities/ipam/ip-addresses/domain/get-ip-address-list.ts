@@ -12,7 +12,7 @@ import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addr
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import type { NodeObject } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface GetIpAddressListParams extends ContextParams, PaginationParams {
   schema: ModelSchema;

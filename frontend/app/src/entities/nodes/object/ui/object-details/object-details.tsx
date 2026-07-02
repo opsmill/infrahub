@@ -9,8 +9,8 @@ import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-deta
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeFileObject, NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 interface ObjectDetailsProps {
   objectSchema: ModelSchema;

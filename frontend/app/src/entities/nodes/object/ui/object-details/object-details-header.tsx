@@ -10,7 +10,7 @@ import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.quer
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 interface ObjectDetailsHeaderProps {
   objectSchema: ModelSchema;

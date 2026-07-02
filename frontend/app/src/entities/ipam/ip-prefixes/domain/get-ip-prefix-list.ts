@@ -8,7 +8,7 @@ import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface GetIpPrefixListParams extends ContextParams, PaginationParams {
   schema: ModelSchema;

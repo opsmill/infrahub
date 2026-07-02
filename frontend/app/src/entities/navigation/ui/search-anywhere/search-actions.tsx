@@ -10,8 +10,8 @@ import type { MenuItem } from "@/entities/navigation/types";
 import { useMenu } from "@/entities/navigation/ui/queries/get-menu.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
 
 export const SearchActions = () => {
   const query = useCommandState((state) => state.search);

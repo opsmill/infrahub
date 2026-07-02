@@ -1,7 +1,7 @@
 import type { EmptyFieldValue, FormFieldValue } from "@/shared/components/form/type";
 
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface ConvertFieldMapping {
   is_mandatory: boolean;

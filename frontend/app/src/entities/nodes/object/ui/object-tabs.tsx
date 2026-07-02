@@ -5,7 +5,7 @@ import { LinkTab } from "@/shared/components/ui/link";
 
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 
 export interface RelationshipTabProps {

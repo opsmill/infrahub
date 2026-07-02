@@ -31,9 +31,9 @@ import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form"
 import { AccountRoleForm } from "@/entities/role-manager/ui/account-role-form";
 import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissions-form";
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
+import { getTemplateRelationshipFromSchema } from "@/entities/schema/domain/rules/get-template-relationship-from-schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import {
   NODE_TRIGGER_ATTRIBUTE_MATCH,
   NODE_TRIGGER_RELATIONSHIP_MATCH,

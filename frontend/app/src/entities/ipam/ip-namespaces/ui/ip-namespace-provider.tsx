@@ -13,8 +13,8 @@ import { useGetIpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-n
 import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import type { NodeObject } from "@/entities/nodes/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 type IpNamespaceContext = {
   currentIpNamespace: NodeObject;

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 import { generateRelationshipSchema } from "../../../../../tests/fake/schema";
 

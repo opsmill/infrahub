@@ -33,8 +33,12 @@ import {
   ROLE_TABLE_ATTRIBUTES,
   ROLE_TABLE_RELATIONSHIPS,
 } from "@/entities/role-manager/ui/get-role-table-columns";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/types";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 function mapFieldToDefinition(
   schemaKind: ModelSchema["kind"],

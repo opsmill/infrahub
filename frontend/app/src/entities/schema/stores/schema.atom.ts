@@ -6,7 +6,7 @@ import type {
   NodeSchema,
   ProfileSchema,
   TemplateSchema,
-} from "@/entities/schema/types";
+} from "@/entities/schema/domain/model/types";
 
 export const nodeSchemasAtom = atom<NodeSchema[]>([]);
 export const genericSchemasAtom = atom<GenericSchema[]>([]);

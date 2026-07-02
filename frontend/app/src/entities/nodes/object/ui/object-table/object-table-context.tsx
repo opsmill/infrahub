@@ -7,9 +7,9 @@ import { uniqueItemsArray } from "@/shared/utils/array";
 
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export type ObjectTableContextProps = {
   filters: Filter[];

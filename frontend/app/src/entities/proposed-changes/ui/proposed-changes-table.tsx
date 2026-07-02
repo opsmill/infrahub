@@ -13,7 +13,7 @@ import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-cha
 import { ProposedChangesTableFilters } from "@/entities/proposed-changes/ui/proposed-changes-table-filters";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/domain/model/types";
 
 type ProposedChangesTableProps = {
   schema: NodeSchema;

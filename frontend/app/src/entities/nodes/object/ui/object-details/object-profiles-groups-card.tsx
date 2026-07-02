@@ -26,10 +26,10 @@ import type {
 } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { ModelSchema, NodeSchema } from "@/entities/schema/types";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema, NodeSchema } from "@/entities/schema/domain/model/types";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 const VISIBLE_ITEMS_LIMIT = 5;
 

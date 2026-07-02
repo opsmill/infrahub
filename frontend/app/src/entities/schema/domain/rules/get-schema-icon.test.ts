@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 
-import { generateNodeSchema } from "../../../../tests/fake/schema";
+import { generateNodeSchema } from "../../../../../tests/fake/schema";
 
 describe("getSchemaIcon", () => {
   it("should return default icon when schema is null", () => {

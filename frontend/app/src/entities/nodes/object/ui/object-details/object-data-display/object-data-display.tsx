@@ -21,7 +21,11 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/types";
 
 interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;

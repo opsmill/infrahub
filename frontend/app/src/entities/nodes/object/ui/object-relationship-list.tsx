@@ -10,8 +10,8 @@ import {
   useObjectRelationships,
 } from "@/entities/nodes/relationships/ui/queries/get-object-relationships.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 interface ObjectRelationshipListProps extends UseObjectRelationshipsParams {
   className?: string;

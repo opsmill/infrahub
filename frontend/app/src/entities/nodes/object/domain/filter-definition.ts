@@ -1,7 +1,7 @@
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import type { DecisionOption } from "@/entities/role-manager/domain/get-decision-options";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export type AttributeFilterDefinition = {
   type: "attribute";

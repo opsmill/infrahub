@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
-import { generateNodeSchema } from "../../../../tests/fake/schema";
+import { generateNodeSchema } from "../../../../../tests/fake/schema";
 
 describe("isOfKind", () => {
   it("should match when schema has the exact kind", () => {

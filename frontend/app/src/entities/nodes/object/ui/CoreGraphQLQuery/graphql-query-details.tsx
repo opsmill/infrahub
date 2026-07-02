@@ -9,7 +9,7 @@ import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/obj
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 interface GraphqlQueryDetailsProps {
   graphqlQueryId: string;

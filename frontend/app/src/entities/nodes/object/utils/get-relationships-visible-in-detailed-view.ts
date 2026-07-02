@@ -1,4 +1,4 @@
-import type { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export function isRelationshipVisibleInDetailedView(
   relationshipSchema: RelationshipSchema

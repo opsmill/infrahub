@@ -26,9 +26,9 @@ import type {
   ModelSchema,
   NumberAttributeParameters,
   TextAttributeParameters,
-} from "@/entities/schema/types";
-import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
-import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
+} from "@/entities/schema/domain/model/types";
+import { validateNumberAttribute } from "@/entities/schema/domain/rules/validation/validate-number-attribute";
+import { validateTextAttribute } from "@/entities/schema/domain/rules/validation/validate-text-attribute";
 
 export const getFormFieldFromAttribute = ({
   auth,

@@ -19,8 +19,8 @@ import {
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export interface ActiveObjectsFilterTagsProps extends TagGroupProps {
   schema: ModelSchema;

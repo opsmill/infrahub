@@ -22,7 +22,7 @@ import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-t
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 const columnHelper = createColumnHelper<IpPrefixNode>();
 

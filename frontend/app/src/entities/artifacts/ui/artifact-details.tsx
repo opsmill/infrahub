@@ -13,7 +13,7 @@ import { ArtifactHeader } from "@/entities/artifacts/ui/artifact-header";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface ArtifactsDetailsProps {
   artifactSchema: ModelSchema;

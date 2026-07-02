@@ -24,7 +24,7 @@ import {
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeKind } from "@/entities/schema/types";
+import type { AttributeKind } from "@/entities/schema/domain/model/types";
 
 export function formatAttributeFilterValue({
   kind,

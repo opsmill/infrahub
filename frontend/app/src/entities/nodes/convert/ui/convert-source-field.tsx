@@ -10,8 +10,12 @@ import { ConvertSourceAttributeInput } from "@/entities/nodes/convert/ui/convert
 import { ConvertSourceRelationshipManyInput } from "@/entities/nodes/convert/ui/convert-source-relationship-many-input";
 import { ConvertSourceRelationshipOneInput } from "@/entities/nodes/convert/ui/convert-source-relationship-one-input";
 import type { NodeObject } from "@/entities/nodes/types";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 interface ConvertSourceFieldProps extends Omit<DynamicFieldProps, "defaultValue"> {
   objectDetailsData: NodeObject;

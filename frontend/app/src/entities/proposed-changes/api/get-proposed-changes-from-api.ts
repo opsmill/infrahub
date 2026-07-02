@@ -14,7 +14,11 @@ import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/types";
 
 export interface ProposedChangesFromApiParams extends PaginationParams {
   schema: ModelSchema;

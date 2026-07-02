@@ -8,7 +8,7 @@ import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export default function TabProfile() {

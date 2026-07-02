@@ -9,7 +9,7 @@ import { ObjectDetailsTabs } from "@/entities/nodes/object/ui/object-details/obj
 import type { ObjectDetailsOutletContext } from "@/entities/nodes/object/ui/object-details/use-object-details-outlet";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 interface ObjectDetailsBodyProps {
   objectId: string;

@@ -6,7 +6,7 @@ import type {
   NodeRelationshipManyWithMetadata,
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 const metadata = {
   is_protected: false,

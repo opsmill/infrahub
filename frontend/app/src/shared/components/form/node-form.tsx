@@ -15,8 +15,8 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import type { NodeCore, NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
+import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;

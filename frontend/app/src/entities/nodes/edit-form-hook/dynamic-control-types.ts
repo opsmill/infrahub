@@ -2,7 +2,11 @@ import type { RegisterOptions } from "react-hook-form";
 
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  AttributeKind,
+  AttributeSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/types";
 
 import type { FormFieldError } from "./form";
 

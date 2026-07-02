@@ -1,8 +1,8 @@
 import { partition } from "remeda";
 
 import type { DiffNode, DiffStatus } from "@/entities/diff/ui/node-diff/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export interface BaseTreeItem {
   id: string;

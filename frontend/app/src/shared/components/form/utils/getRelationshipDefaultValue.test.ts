@@ -14,8 +14,8 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
 import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 

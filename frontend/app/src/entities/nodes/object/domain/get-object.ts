@@ -4,7 +4,11 @@ import { getObjectFromApi } from "@/entities/nodes/object/api/get-object-from-ap
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/types";
 
 export interface GetObjectParams extends ContextParams {
   objectSchema: ModelSchema;

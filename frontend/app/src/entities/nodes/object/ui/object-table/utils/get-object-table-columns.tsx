@@ -28,8 +28,8 @@ import type {
   NodeRelationship,
   NodeRelationshipOne,
 } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
 const columnHelper = createColumnHelper<NodeObject>();
 

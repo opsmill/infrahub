@@ -5,7 +5,7 @@ import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { MENU_EXCLUDELIST } from "@/shared/config/constants";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 type SchemaHelpMenuProps = {
   schema: ModelSchema;

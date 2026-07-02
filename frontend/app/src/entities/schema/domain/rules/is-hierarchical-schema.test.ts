@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import {
   getRootSchemaOfHierarchicalSchema,
   isHierarchicalSchema,
-} from "@/entities/schema/utils/is-hierarchical-schema";
+} from "@/entities/schema/domain/rules/is-hierarchical-schema";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { generateNodeSchema } from "../../../../tests/fake/schema";
+import { generateNodeSchema } from "../../../../../tests/fake/schema";
 
 describe("isHierarchicalSchema", () => {
   it("should return true when schema has a hierarchy", () => {

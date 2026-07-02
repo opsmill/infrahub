@@ -6,8 +6,8 @@ import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import type { ModelSchema } from "@/entities/schema/types";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 
 interface TableIdentifierHeaderProps extends CheckboxProps {
   schema: ModelSchema;

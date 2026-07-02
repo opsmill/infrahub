@@ -20,7 +20,7 @@ import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();
 

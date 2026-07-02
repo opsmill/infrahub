@@ -1,5 +1,5 @@
 import type { NodeCore } from "@/entities/nodes/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export function getNodeLabel(node: NodeCore): string {
   const { schema } = getSchema(node.__typename);

@@ -4,8 +4,8 @@ import type * as React from "react";
 import { Badge } from "@/shared/components/ui/badge";
 import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
 
 export interface TargetSchemaComboboxListProps {
   onSelect: (value: ModelSchema) => void;

@@ -1,4 +1,4 @@
-import type { AttributeKind } from "@/entities/schema/types";
+import type { AttributeKind } from "@/entities/schema/domain/model/types";
 
 export const ATTRIBUTE_KIND = {
   ID: "ID",

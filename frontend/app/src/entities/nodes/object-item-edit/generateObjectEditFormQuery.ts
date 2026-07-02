@@ -4,9 +4,9 @@ import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
+import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export const generateObjectEditFormQuery = ({
   schema,

@@ -4,7 +4,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { NodeRelationshipOne } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 interface BreadcrumbObjectDetailsProps {
   objectSchema: ModelSchema;

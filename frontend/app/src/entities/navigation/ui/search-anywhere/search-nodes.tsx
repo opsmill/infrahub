@@ -20,8 +20,8 @@ import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaO
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);

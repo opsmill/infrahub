@@ -16,7 +16,7 @@ import {
   IP_PREFIX_AVAILABLE_KIND,
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export interface GetIpPrefixListFromApiParams extends ContextParams, PaginationParams {
   filters: Array<Filter>;

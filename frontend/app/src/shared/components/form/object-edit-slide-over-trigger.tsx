@@ -7,7 +7,7 @@ import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;

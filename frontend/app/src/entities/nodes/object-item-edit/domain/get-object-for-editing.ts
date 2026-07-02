@@ -3,7 +3,7 @@ import type { ContextParams } from "@/shared/api/types";
 import { getObjectForEditingFromApi } from "@/entities/nodes/object-item-edit/api/get-object-for-editing-from-api";
 import type { ProfileData } from "@/entities/nodes/profiles/types";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
 
 export interface GetObjectForEditingParams extends ContextParams {
   schema: NodeSchema | ProfileSchema;

@@ -12,13 +12,13 @@ import { debounce } from "@/shared/utils/common";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { NodeSchema } from "@/entities/schema/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import type { NodeSchema } from "@/entities/schema/domain/model/types";
 import {
   getRootSchemaOfHierarchicalSchema,
   isHierarchicalSchema,
-} from "@/entities/schema/utils/is-hierarchical-schema";
+} from "@/entities/schema/domain/rules/is-hierarchical-schema";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipHierarchicalComboboxListProps {
   peer: string;

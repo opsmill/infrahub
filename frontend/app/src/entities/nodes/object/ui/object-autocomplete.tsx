@@ -10,8 +10,8 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 interface ObjectAutocompleteProps {
   objectKind: string;

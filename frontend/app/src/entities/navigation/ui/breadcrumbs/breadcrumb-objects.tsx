@@ -6,8 +6,8 @@ import { ARTIFACT_OBJECT, PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/shared/c
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemSchema } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-schema";
+import { isHierarchicalSchema } from "@/entities/schema/domain/rules/is-hierarchical-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-schema";
 
 import { BreadcrumbSchemaHierarchy } from "./breadcrumb-schema-hierarchy";
 

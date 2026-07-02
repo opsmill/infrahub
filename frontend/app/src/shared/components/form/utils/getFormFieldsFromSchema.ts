@@ -15,7 +15,11 @@ import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import type { NumberPool } from "@/entities/resource-manager/domain/type";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/types";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;

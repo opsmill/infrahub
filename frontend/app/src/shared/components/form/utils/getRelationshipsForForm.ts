@@ -5,8 +5,8 @@ import {
   IP_PREFIX_GENERIC,
   IP_SUMMARY_RELATIONSHIPS_BLACKLIST,
 } from "@/entities/ipam/constants";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export const getRelationshipsForForm = (
   schema: ModelSchema,

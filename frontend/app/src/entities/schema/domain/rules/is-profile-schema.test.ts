@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
+import { isProfileSchema } from "@/entities/schema/domain/rules/is-profile-schema";
 
-import { generateNodeSchema, generateProfileSchema } from "../../../../tests/fake/schema";
+import { generateNodeSchema, generateProfileSchema } from "../../../../../tests/fake/schema";
 
 describe("isProfileSchema", () => {
   it("should return true for a profile schema", () => {

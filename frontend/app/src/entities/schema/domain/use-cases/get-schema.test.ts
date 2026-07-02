@@ -14,7 +14,7 @@ import {
   generateNodeSchema,
   generateProfileSchema,
   generateTemplateSchema,
-} from "../../../../tests/fake/schema";
+} from "../../../../../tests/fake/schema";
 import { getSchema } from "./get-schema";
 
 describe("getSchema", () => {

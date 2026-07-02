@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { hasExtraFields } from "@/entities/nodes/object/utils/has-extra-fields";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 import {
   generateAttributeSchema,

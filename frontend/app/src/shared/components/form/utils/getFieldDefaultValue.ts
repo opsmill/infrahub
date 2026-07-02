@@ -21,9 +21,9 @@ import type {
   NodeObject,
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
+import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;

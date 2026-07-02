@@ -12,7 +12,7 @@ import {
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeSchema } from "@/entities/schema/types";
+import type { AttributeSchema } from "@/entities/schema/domain/model/types";
 
 export type AttributeFilterFormProps = {
   attributeSchema: AttributeSchema;
