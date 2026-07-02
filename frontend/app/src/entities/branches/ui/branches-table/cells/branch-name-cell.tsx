@@ -8,7 +8,7 @@ import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/branch-git-sync-badge";
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
-import { getBranchDetailsUrl } from "@/entities/branches/utils";
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
 interface BranchNameCellProps {

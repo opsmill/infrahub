@@ -13,7 +13,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { BranchTabs } from "@/entities/branches/ui/branch-tabs";
-import type { BranchDetailsOutletContext } from "@/entities/branches/ui/use-branch-details-outlet";
+import type { BranchDetailsOutletContext } from "@/entities/branches/ui/routing/use-branch-details-outlet";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 
 function BranchDetailsLayout() {

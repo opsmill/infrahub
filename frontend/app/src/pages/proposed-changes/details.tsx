@@ -13,7 +13,7 @@ import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { getBranchDetailsUrl } from "@/entities/branches/utils";
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";

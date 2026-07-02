@@ -8,7 +8,7 @@ import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
-import { getBranchDetailsUrl } from "@/entities/branches/utils";
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
 export interface BranchActionsCellProps {

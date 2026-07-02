@@ -25,7 +25,7 @@ import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { branchesState } from "@/entities/branches/stores";
-import { branchesToSelectOptions } from "@/entities/branches/utils";
+import { branchesToSelectOptions } from "@/entities/branches/ui/branches-to-select-options";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { DRAFT_STATE, OPEN_STATE } from "@/entities/proposed-changes/constants";
 import { useCreateProposedChange } from "@/entities/proposed-changes/ui/queries/create-proposed-change.mutation";
