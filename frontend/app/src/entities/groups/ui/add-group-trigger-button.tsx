@@ -5,7 +5,7 @@ import { useState } from "react";
 import { queryClient } from "@/shared/api/rest/client";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
-import type { GroupData } from "@/entities/groups/domain/types";
+import type { GroupData } from "@/entities/groups/domain/model/group";
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";

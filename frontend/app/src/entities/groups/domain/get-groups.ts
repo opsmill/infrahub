@@ -2,7 +2,7 @@ import {
   type GetGroupsFromApiParams,
   getGroupsFromApi,
 } from "@/entities/groups/api/get-groups-from-api";
-import type { GroupData } from "@/entities/groups/domain/types";
+import type { GroupData } from "@/entities/groups/domain/model/group";
 import { getPermission } from "@/entities/permission/domain/rules/get-permission";
 import type { Permission } from "@/entities/permission/types";
 
