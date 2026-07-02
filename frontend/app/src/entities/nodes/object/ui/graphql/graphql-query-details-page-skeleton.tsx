@@ -1,6 +1,6 @@
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
-const GraphQLQueryDetailsPageSkeleton = () => {
+export function GraphQLQueryDetailsPageSkeleton() {
   return (
     <div>
       <div className="flex h-16 items-center justify-between gap-2 bg-white px-4">
@@ -14,6 +14,4 @@ const GraphQLQueryDetailsPageSkeleton = () => {
       </section>
     </div>
   );
-};
-
-export default GraphQLQueryDetailsPageSkeleton;
+}
