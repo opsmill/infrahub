@@ -309,19 +309,9 @@ async def process_jinja2(
 ) -> None:
     """Recompute a single Jinja2 computed attribute in response to a node mutation.
 
-    Args:
-        branch_name: Branch on which the triggering mutation occurred.
-        node_kind: Schema kind of the node that was modified (the trigger node).
-        object_id: ID of the modified node, used to scope GraphQL queries.
-        computed_attribute_name: Name of the computed attribute to recompute.
-        computed_attribute_kind: Schema kind that owns the computed attribute (may differ from
-                                node_kind when the dependency crosses a relationship).
-        context: Infrahub execution context.
-        updated_fields: Field names that changed on the trigger node.
-
-    Returns:
-        None
-
+    The live trigger passes a single ``object_id``; the coalesced merge/rebase recompute passes
+    the union of changed node ids in ``object_ids``. ``computed_attribute_kind`` differs from
+    ``node_kind`` when the dependency crosses a relationship.
     """
     log = get_run_logger()
     client = get_client()

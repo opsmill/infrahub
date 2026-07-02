@@ -71,7 +71,7 @@ async def _drive_counts(
 
     if operation == "merge":
         # Production precondition for the merge flow: the enriched diff must be
-        # tracked under BranchTrackingId(name=branch) before the merge loads it.
+        # tracked under the branch tracking id before the merge loads it.
         # Rebase computes its own diff, so it needs no pre-step.
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=seeded.branch)
@@ -79,7 +79,7 @@ async def _drive_counts(
 
     event_recorder = MemoryInfrahubEvent()
     workflow_recorder = WorkflowRecorder()
-    # Develop's merge/rebase path reads a Redis-backed write blocker; inject the
+    # The merge/rebase path reads a Redis-backed write blocker; inject the
     # in-memory cache adapter so the counting layer needs no external Redis.
     cache = MemoryCache()
     context = InfrahubContext.init(
