@@ -8,7 +8,7 @@ import { GraphqlQueryViewerCard } from "@/entities/nodes/object/ui/graphql/graph
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface GraphqlQueryDetailsProps {
