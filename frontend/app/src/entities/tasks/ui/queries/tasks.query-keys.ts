@@ -5,6 +5,7 @@ import type { GetTaskListParams } from "@/entities/tasks/domain/get-task-list/ge
 
 export const tasksQueryKeys = {
   all: ["tasks"] as const,
+  isRunning: (branch: string) => [...tasksQueryKeys.all, "is-task-running", branch] as const,
   list: (filters?: GetTaskListParams) => [...tasksQueryKeys.all, filters] as const,
   count: (filters?: GetTaskListParams) => [...tasksQueryKeys.list(filters), "count"] as const,
   homepage: (filters?: GetTaskListParams) => [...tasksQueryKeys.list(filters), "homepage"] as const,

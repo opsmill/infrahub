@@ -1,6 +1,6 @@
 import { Badge, type BadgeProps } from "@/shared/components/ui/badge";
 
-import type { ArtifactStatus } from "@/entities/artifacts/types";
+import type { ArtifactStatus } from "@/entities/artifacts/domain/artifact";
 
 export interface ArtifactStatusBadge extends BadgeProps {
   status: ArtifactStatus;

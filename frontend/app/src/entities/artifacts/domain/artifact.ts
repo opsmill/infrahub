@@ -2,6 +2,8 @@ import type { DataViewerContentType } from "@/shared/components/data-viewer/type
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
+export const ARTIFACT_DEFINITION_KIND = "CoreArtifactDefinition";
+
 export type ArtifactStatus = "Error" | "Pending" | "Processing" | "Ready";
 
 export interface ArtifactObject extends NodeCore {

@@ -8,7 +8,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { classNames } from "@/shared/utils/common";
 
-import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
+import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/domain/artifact";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
 import {
   GENERATOR_DEFINITION_KIND,
