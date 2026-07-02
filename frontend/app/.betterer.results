@@ -93,7 +93,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/convert/ui/convert-form.tsx:2779246648": [
       [38, 6, 8, "tsc: Type \'{}\' is not assignable to type \'Record<string, ConvertFieldMapping>\'.\\n  Index signature for type \'string\' is missing in type \'{}\'.", "1301887866"]
     ],
-    "src/entities/nodes/object-item-details/action-buttons/details-buttons.tsx:1781614384": [
+    "src/entities/nodes/object/ui/action-buttons/details-buttons.tsx:1781614384": [
       [54, 21, 25, "tsc: \'objectDetailsData.targets\' is possibly \'null\' or \'undefined\'.", "1788660526"],
       [54, 47, 4, "tsc: Property \'node\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"],
       [61, 25, 28, "tsc: \'objectDetailsData.definition\' is possibly \'null\' or \'undefined\'.", "164074553"],

@@ -4,8 +4,8 @@ import { toast } from "react-toastify";
 import { Row } from "@/shared/components/container";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import { RelationshipsButtons } from "@/entities/nodes/object/ui/action-buttons/relationships-buttons";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { RelationshipsButtons } from "@/entities/nodes/object-item-details/action-buttons/relationships-buttons";
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
