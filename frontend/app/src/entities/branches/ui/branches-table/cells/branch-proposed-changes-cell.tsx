@@ -6,7 +6,7 @@ import { Row } from "@/shared/components/container";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { QSP } from "@/shared/config/qsp";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import {
   OPEN_STATE,
   PROPOSED_CHANGE_OBJECT,

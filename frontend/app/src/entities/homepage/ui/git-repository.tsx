@@ -6,7 +6,7 @@ import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 export type GitRepositoryData = {
   id: string;

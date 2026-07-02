@@ -12,7 +12,7 @@ import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
 import { QSP } from "@/shared/config/qsp";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useGetTaskDetails } from "@/entities/tasks/ui/queries/get-task-details.query";
 
 import { Logs, type tLog } from "./logs";

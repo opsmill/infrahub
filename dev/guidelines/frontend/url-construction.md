@@ -9,7 +9,7 @@ Guidelines for constructing URLs and paths in the React TypeScript frontend.
 **Always use `getObjectDetailsUrl` for constructing URLs to object detail pages:**
 
 ```typescript
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 // ✅ Good - handles all object types consistently
 const url = getObjectDetailsUrl(objectKind, objectId);
@@ -31,7 +31,7 @@ const url = constructPath(`/proposed-changes/${id}`);
 - Custom application routes: `/dashboard`, `/reports`
 - Static pages: `/about`, `/help`
 
-**Location:** `frontend/app/src/entities/nodes/object/utils.ts`
+**Location:** `frontend/app/src/entities/nodes/object/ui/routing/object-urls.ts`
 
 ## Tab Navigation Uses Path Segments
 
@@ -54,13 +54,13 @@ Each detail-page family owns a dedicated URL helper. Inline `/feature/${id}/${ta
 
 | Family | Helper | Location |
 |---|---|---|
-| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `frontend/app/src/entities/nodes/object/utils.ts` |
-| Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `frontend/app/src/entities/branches/utils.ts` |
-| Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `frontend/app/src/entities/proposed-changes/utils.ts` |
+| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `frontend/app/src/entities/nodes/object/ui/routing/object-urls.ts` |
+| Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `frontend/app/src/entities/branches/ui/routing/branch-urls.ts` |
+| Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `frontend/app/src/entities/proposed-changes/ui/routing/proposed-change-urls.ts` |
 
 When you add a new detail-page family with tabs:
 
-1. Add `getXxxDetailsUrl(id, tab?, overrideParams?)` in the entity's `utils.ts`.
+1. Add `getXxxDetailsUrl(id, tab?, overrideParams?)` in the entity's `ui/routing/<noun>-urls.ts`.
 2. Use it from the tab bar AND from every external callsite (search bars, table cells, summary widgets, redirects).
 3. Define a small string-literal union for the tab argument and require it on the helper signature:
 

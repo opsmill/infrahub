@@ -18,7 +18,7 @@ import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/m
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";

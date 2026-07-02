@@ -13,7 +13,7 @@ import { useConvertObjectMutation } from "@/entities/nodes/convert/ui/queries/co
 import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/ui/queries/get-object-convert-fields-mapping.query";
 import { getFieldsMappingPayload } from "@/entities/nodes/convert/utils/get-fields-mapping-payload";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export default function ConvertFormWrapper({

@@ -15,7 +15,7 @@ import type { EventType } from "@/entities/events/types";
 import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
 import { EventRelationships } from "@/entities/events/ui/node-events/event-relationships";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 
 const AccountLoggedInEventDetails = ({ event }: { event: AccountLoggedInEventType }) => {

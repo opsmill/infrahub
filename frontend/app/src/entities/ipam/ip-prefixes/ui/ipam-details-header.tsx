@@ -15,7 +15,7 @@ import type {
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { Permission } from "@/entities/permission/types";

@@ -10,7 +10,7 @@ import { classNames } from "@/shared/utils/common";
 
 import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/ui/node-diff/types";
 import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { DiffNodeAttribute } from "./node-attribute";

@@ -21,7 +21,7 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";

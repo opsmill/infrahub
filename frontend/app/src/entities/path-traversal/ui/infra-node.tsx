@@ -2,7 +2,7 @@ import { Handle, type NodeProps, Position } from "@xyflow/react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 import { getKindColor } from "./utils";
 

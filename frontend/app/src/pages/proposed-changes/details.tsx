@@ -15,7 +15,7 @@ import { useTitle } from "@/shared/hooks/useTitle";
 
 import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/model/proposed-change.types";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";

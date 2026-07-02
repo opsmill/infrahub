@@ -16,7 +16,7 @@ import useFilters from "@/shared/hooks/useFilters";
 
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/ui/queries/get-task-list.query";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";

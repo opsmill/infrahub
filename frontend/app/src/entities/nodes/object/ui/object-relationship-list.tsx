@@ -4,7 +4,7 @@ import { Collection } from "react-aria-components";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
   type UseObjectRelationshipsParams,

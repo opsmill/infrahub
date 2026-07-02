@@ -7,7 +7,7 @@ import type {
   NodeRelationshipMany,
   NodeRelationshipOne,
 } from "@/entities/nodes/object/domain/model/node";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";

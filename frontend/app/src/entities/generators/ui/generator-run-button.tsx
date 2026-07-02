@@ -8,7 +8,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 export interface GeneratorRunButtonProps extends ButtonProps {
   generatorId: string;

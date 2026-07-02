@@ -17,7 +17,7 @@ import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/sea
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getSchemaObjectColumns } from "@/entities/nodes/object/ui/object-table/get-schema-object-columns";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
