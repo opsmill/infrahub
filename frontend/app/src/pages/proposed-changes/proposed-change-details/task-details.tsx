@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
-import { useProposedChangeOutlet } from "@/entities/proposed-changes/ui/use-proposed-change-outlet";
-import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
+import { useProposedChangeOutlet } from "@/entities/proposed-changes/ui/routing/use-proposed-change-outlet";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 
 export function Component() {

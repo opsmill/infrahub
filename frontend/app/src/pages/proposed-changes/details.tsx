@@ -20,8 +20,8 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/model/proposed-change.types";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { useGetProposedChangeDetails } from "@/entities/proposed-changes/ui/queries/get-proposed-change-details.query";
+import type { ProposedChangeOutletContext } from "@/entities/proposed-changes/ui/routing/use-proposed-change-outlet";
 import { ProposedChangeTabs } from "@/entities/proposed-changes/ui/tabs/proposed-change-tabs";
-import type { ProposedChangeOutletContext } from "@/entities/proposed-changes/ui/use-proposed-change-outlet";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function Component() {
