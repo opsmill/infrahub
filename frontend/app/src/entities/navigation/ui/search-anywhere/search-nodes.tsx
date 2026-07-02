@@ -14,9 +14,9 @@ import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-cas
 import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
+import { getSchemaObjectColumns } from "@/entities/nodes/object/ui/object-table/get-schema-object-columns";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
