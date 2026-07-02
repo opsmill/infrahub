@@ -15,9 +15,16 @@ How Infrahub enforces read-only constraints on branches based on their lifecycle
 | `NEED_UPGRADE_REBASE` | Schema version behind | `BranchDelete` |
 | `DELETING` | Deletion in progress (internal) | None |
 | `MERGING` | Merge in progress; branch and default branch write-blocked | `BranchCreate`, `BranchDelete` (of uninvolved branches) |
+| `MERGE_FAILED` | A merge died (worker killed mid-merge); branch and default branch stay write-blocked until recovery | `BranchCreate`, `BranchDelete` (of uninvolved branches) |
 | `MERGED` | Successfully merged; permanently read-only | `BranchDelete` only |
 
-`MERGED` is terminal — there is no transition back to `OPEN`. `MERGING` is transient: it becomes `MERGED` on success, or reverts to `OPEN` if the merge rolls back.
+`MERGED` is terminal — there is no transition back to `OPEN`. `MERGING` is transient: it becomes `MERGED` on success, reverts to `OPEN` if the merge rolls back, or is flipped to `MERGE_FAILED` if the merge worker dies. `MERGE_FAILED` is cleared only by recovery (it returns the branch to `OPEN`).
+
+### Failed merge detection
+
+`backend/infrahub/core/merge/failure_recovery.py`
+
+A merge holds the global `all_branches` merge lock for its whole `MERGING` window; the lock token encodes the holder's `worker_id`. When the holding worker dies, the lock stays held by a `worker_id` that is no longer in the active-worker set. `MergeFailureRecovery.detect_and_mark` flips such a branch `MERGING → MERGE_FAILED` (after a configurable grace period, `INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS`, that absorbs a transient heartbeat blip) and updates the `merge:protected` key to `"{branch}::MERGE_FAILED"`. It runs from the recurring `MERGE_WATCHER` workflow (one-minute cron, single-flighted), from a check at worker startup, and the recurring scan also reconciles the cache key against the durable branch status so protection self-heals after a restart or cache flush. A healthy in-progress merge (lock held by a live worker) is never flagged.
 
 ## BranchStatusChecker
 
@@ -45,7 +52,7 @@ While a merge runs, writes are blocked on two branches: the **source branch** (i
 
 The gate is driven by `MergeWriteBlocker`, which manages the shared `merge:protected` cache key with value `"{branch}::{state}"` (`MergeProtectionState.MERGING` or `MERGE_FAILED`). The merge flow in `backend/infrahub/core/branch/tasks.py` sets the key before any graph write and deletes it when the merge completes or rolls back. Every worker sees the same state with a single cache lookup per top-level mutation.
 
-`check_merging_status()` reads the key and raises `MergeInProgressError` when the write target is the merging branch or the default branch. If the cache is unreachable, it falls back to the durable branch status in the database (`_check_merging_status_from_db`), so a cache outage only blocks writes when a merge is genuinely in progress.
+`check_merging_status()` reads the key and raises when the write target is the merging branch or the default branch. The key's state decides which error: a `MERGING` key raises the transient, retryable `MergeInProgressError` (code `MERGE_IN_PROGRESS`), while a `MERGE_FAILED` key raises the durable `MergeRecoveryRequiredError` (code `MERGE_RECOVERY_REQUIRED`, HTTP 423) whose message directs an administrator to run `infrahub recover`. `MergeRecoveryRequiredError` is a sibling of `MergeInProgressError`, not a subclass, so the error-catalogue resolver cannot collapse it onto the retryable code. If the cache is unreachable, it falls back to the durable branch status in the database (`_check_merging_status_from_db`), so a cache outage only blocks writes when a merge is genuinely in progress or failed.
 
 
 ## Enforcement Points

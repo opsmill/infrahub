@@ -214,11 +214,13 @@ recovery needs no UUID list under R8); replay a transaction log (Neo4j exposes n
    (`backend/infrahub/workflows/initialization.py`) iterates `get_workflows()` and creates the
    cron deployment automatically once the definition is in `WORKFLOWS`.
 
-2. **Startup fast path (FR-011a)** — call the detector once from
-   `backend/infrahub/core/initialization.py` after `initialize_registry()` has loaded branches.
-   Both the API server (`server.py:app_initialization`) and the git-agent
-   (`cli/git_agent.py:start`) call `initialization(db)`, so a restart of either records the
-   failure immediately.
+2. **Startup fast path (FR-011a)** — call the detector once from the API server entry point
+   (`server.py:app_initialization`), right after `initialization()` has loaded branches, so a
+   full-stack restart records the failure immediately instead of waiting up to one scan interval.
+   It is kept out of `initialization()` itself (also called by offline CLI/migration paths with no
+   `service`) and out of the git-agent (`cli/git_agent.py:start`), which is a hidden/legacy command
+   that runs no flows and depends on the API server being up — so the API-server startup check plus
+   the recurring cron (run on the task workers) already cover it.
 
 3. **On-demand fast paths (FR-011b/c, FR-012)** — when a write to the default branch finds a branch
    in `MERGING`, escalate by evaluating the predicate so the write returns the recovery message
