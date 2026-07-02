@@ -128,6 +128,10 @@ function SortRow({ schema, sort }: SortRowProps) {
   // Removing the only row while on the schema default is a no-op (it snaps back), so hide it.
   const canRemove = !(userSort === null && currentSort.length === 1);
 
+  // Deleting the last remaining row reverts to the schema default, so frame it as a reset.
+  const removeResetsToDefault =
+    canRemove && currentSort.length === 1 && (getSchemaDefaultSort(schema)?.length ?? 0) > 0;
+
   return (
     <>
       <Select
@@ -167,11 +171,7 @@ function SortRow({ schema, sort }: SortRowProps) {
         </Popover>
       </Select>
 
-      {canRemove ? (
-        <Button variant="ghost" size="sm" shape="square" aria-label="Remove sort" onPress={remove}>
-          <XIcon />
-        </Button>
-      ) : (
+      {!canRemove ? (
         <Tooltip message="This is the default order. Edit it or add a sort to customize.">
           <Button
             variant="ghost"
@@ -182,6 +182,22 @@ function SortRow({ schema, sort }: SortRowProps) {
             <InfoIcon />
           </Button>
         </Tooltip>
+      ) : removeResetsToDefault ? (
+        <Tooltip message="Reset to the default order">
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
+            aria-label="Reset to default"
+            onPress={remove}
+          >
+            <RotateCcwIcon />
+          </Button>
+        </Tooltip>
+      ) : (
+        <Button variant="ghost" size="sm" shape="square" aria-label="Remove sort" onPress={remove}>
+          <XIcon />
+        </Button>
       )}
     </>
   );
