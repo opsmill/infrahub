@@ -1,10 +1,11 @@
-import type { components } from "@/shared/api/rest/types.generated";
-
-import { refreshAccessTokenFromApi } from "@/entities/authentication/api/refresh-access-token-from-api";
+import {
+  type RefreshAccessTokenFromApiResult,
+  refreshAccessTokenFromApi,
+} from "@/entities/authentication/api/refresh-access-token-from-api";
 import { REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
 import { saveTokensInLocalStorage } from "@/entities/authentication/utils";
 
-export type RefreshAccessToken = () => Promise<components["schemas"]["AccessTokenResponse"]>;
+export type RefreshAccessToken = () => Promise<RefreshAccessTokenFromApiResult>;
 
 // Throws on every failure mode (missing refresh token, API error). The caller
 // is responsible for handling the failure — `retryWithRefreshedToken` in

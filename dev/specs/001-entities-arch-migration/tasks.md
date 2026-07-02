@@ -82,27 +82,27 @@ description: "Task list for Entities Clean-Architecture Migration"
 
 **Goal**: Converge every remaining non-`nodes/` entity on the reconciled structure. **One PR per entity**, each following `quickstart.md` and the `branches` template. Each task = {survey → classify → split mappers to `api/` & types to `model/` → purge generated from `domain/` → split `domain/` if >4 files (else flat) → rewrite imports → append guard glob → verify all four commands}.
 
-- [ ] T020 [P] [US3] Migrate `src/entities/artifacts/`.
-- [ ] T021 [P] [US3] Migrate `src/entities/authentication/`.
-- [ ] T022 [P] [US3] Migrate `src/entities/config/` (2 domain files → stays flat).
+- [X] T020 [P] [US3] Migrate `src/entities/artifacts/`.
+- [X] T021 [P] [US3] Migrate `src/entities/authentication/`.
+- [X] T022 [P] [US3] Migrate `src/entities/config/` (2 domain files → stays flat).
 - [ ] T023 [P] [US3] Migrate `src/entities/diff/` (has a `diff/utils/` — rename to meaningful files/rules per naming guidance).
-- [ ] T024 [P] [US3] Migrate `src/entities/events/`.
-- [ ] T025 [P] [US3] Migrate `src/entities/generators/`.
-- [ ] T026 [P] [US3] Migrate `src/entities/graphql/` (ui-only; no `domain/` → no guard glob, verify only).
-- [ ] T027 [P] [US3] Migrate `src/entities/groups/`.
-- [ ] T028 [P] [US3] Migrate `src/entities/homepage/` (ui-only; verify only).
-- [ ] T029 [P] [US3] Migrate `src/entities/ipam/` (sub-modules `ip-addresses`, `ip-namespaces`, `ip-prefixes`, `ipam-tree` — treat as one entity with internal structure; do not flatten sub-features into one `ui/`).
-- [ ] T030 [P] [US3] Migrate `src/entities/navigation/` (has `navigation/stores/` — keep store in `ui/` layer, out of `domain/`).
-- [ ] T031 [P] [US3] Migrate `src/entities/object-file/`.
-- [ ] T032 [P] [US3] Migrate `src/entities/path-traversal/`.
-- [ ] T033 [P] [US3] Migrate `src/entities/permission/` (has `permission/queries/` — fold into `api/` or `ui/queries/` per layer rules).
+- [X] T024 [P] [US3] Migrate `src/entities/events/`.
+- [X] T025 [P] [US3] Migrate `src/entities/generators/`.
+- [X] T026 [P] [US3] Migrate `src/entities/graphql/` (ui-only; no `domain/` → no guard glob, verify only).
+- [X] T027 [P] [US3] Migrate `src/entities/groups/`.
+- [X] T028 [P] [US3] Migrate `src/entities/homepage/` (ui-only; verify only).
+- [X] T029 [P] [US3] Migrate `src/entities/ipam/` (sub-modules `ip-addresses`, `ip-namespaces`, `ip-prefixes`, `ipam-tree` — treat as one entity with internal structure; do not flatten sub-features into one `ui/`).
+- [X] T030 [P] [US3] Migrate `src/entities/navigation/` (has `navigation/stores/` — keep store in `ui/` layer, out of `domain/`).
+- [X] T031 [P] [US3] Migrate `src/entities/object-file/`.
+- [X] T032 [P] [US3] Migrate `src/entities/path-traversal/`.
+- [X] T033 [P] [US3] Migrate `src/entities/permission/` (has `permission/queries/` — fold into `api/` or `ui/queries/` per layer rules).
 - [ ] T034 [P] [US3] Migrate `src/entities/proposed-changes/` (8 domain files → split; has `stores/` and `utils/` to reclassify).
-- [ ] T035 [P] [US3] Migrate `src/entities/repository/`.
-- [ ] T036 [P] [US3] Migrate `src/entities/resource-manager/` (has `resource-manager/utils/` to reclassify).
+- [X] T035 [P] [US3] Migrate `src/entities/repository/`.
+- [X] T036 [P] [US3] Migrate `src/entities/resource-manager/` (has `resource-manager/utils/` to reclassify).
 - [ ] T037 [P] [US3] Migrate `src/entities/schema/` (8 domain files → split; `get-schema-hash`/`add-*`/`remove-*` → `rules/`, `get-/load-schema` → `use-cases/`; has `stores/` + `utils/`).
-- [ ] T038 [P] [US3] Migrate `src/entities/tasks/`.
-- [ ] T039 [P] [US3] Migrate `src/entities/triggers/` (ui-only; verify only).
-- [ ] T040 [P] [US3] Migrate `src/entities/user-profile/`.
+- [X] T038 [P] [US3] Migrate `src/entities/tasks/`.
+- [X] T039 [P] [US3] Migrate `src/entities/triggers/` (ui-only; verify only).
+- [X] T040 [P] [US3] Migrate `src/entities/user-profile/`.
 
 **Checkpoint**: All entities except `nodes/` migrated; guard covers all migrated `domain/` folders.
 

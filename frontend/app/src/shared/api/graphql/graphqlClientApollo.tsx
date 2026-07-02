@@ -17,7 +17,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
-import { redirectToLogin } from "@/entities/authentication/domain/redirect-to-login";
+import { redirectToLogin } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
 
 export const defaultOptions: DefaultOptions = {
