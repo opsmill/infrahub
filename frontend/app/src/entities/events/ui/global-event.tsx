@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Link } from "@/shared/components/ui/link";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
-import type { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/domain/model/event";
 import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/account-logged-in-event-title";
 import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";

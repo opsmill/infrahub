@@ -11,7 +11,7 @@ import { Link } from "@/shared/components/ui/link";
 import { ACCOUNT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
-import type { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/domain/model/event";
 import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
 import { EventRelationships } from "@/entities/events/ui/node-events/event-relationships";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";

@@ -4,7 +4,7 @@ import { useLocation } from "react-router";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 
-import type { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/domain/model/event";
 import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/account-logged-in-event-title";
 import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
