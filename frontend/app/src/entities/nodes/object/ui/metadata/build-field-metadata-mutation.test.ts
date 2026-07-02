@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import getMutationMetaDetailsFromFormData from "@/entities/nodes/object/ui/object-details/object-item-meta-edit/getMutationMetaDetailsFromFormData";
+import buildFieldMetadataMutation from "@/entities/nodes/object/ui/metadata/build-field-metadata-mutation";
 
-import { generateNodeSchema } from "../../../../../../../tests/fake/schema";
+import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 
 const nodeSchema = generateNodeSchema();
 
@@ -205,7 +205,7 @@ const newDataForMetaEdit = {
   is_protected: true,
 };
 
-const updatedObject = getMutationMetaDetailsFromFormData(
+const updatedObject = buildFieldMetadataMutation(
   nodeSchema,
   newDataForMetaEdit,
   nodeData,

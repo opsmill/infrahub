@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 
-export const metaEditFieldDetailsState = atom<{
+export const fieldMetadataEditState = atom<{
   type: "attribute" | "relationship";
   attributeOrRelationshipName: any;
   label: string;

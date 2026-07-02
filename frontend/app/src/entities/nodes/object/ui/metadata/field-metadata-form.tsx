@@ -6,12 +6,12 @@ import DynamicForm from "@/shared/components/form/dynamic-form";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import getMutationMetaDetailsFromFormData from "@/entities/nodes/object/ui/object-details/object-item-meta-edit/getMutationMetaDetailsFromFormData";
+import buildFieldMetadataMutation from "@/entities/nodes/object/ui/metadata/build-field-metadata-mutation";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
-interface ObjectItemMetaEditProps {
+interface FieldMetadataFormProps {
   row: any;
   schema: ModelSchema;
   type: "attribute" | "relationship";
@@ -21,7 +21,7 @@ interface ObjectItemMetaEditProps {
   onCancel?: () => void;
 }
 
-export default function ObjectItemMetaEdit({
+export default function FieldMetadataForm({
   row,
   type,
   attributeOrRelationshipName,
@@ -29,11 +29,11 @@ export default function ObjectItemMetaEdit({
   attributeOrRelationshipToEdit,
   onSuccess,
   onCancel,
-}: ObjectItemMetaEditProps) {
+}: FieldMetadataFormProps) {
   const { mutateAsync: updateObject } = useUpdateObjectMutation();
 
   async function onSubmit(data: any) {
-    const updatedObject = getMutationMetaDetailsFromFormData(
+    const updatedObject = buildFieldMetadataMutation(
       schema,
       data,
       row,

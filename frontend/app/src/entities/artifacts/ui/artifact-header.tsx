@@ -2,7 +2,7 @@ import type { ArtifactObject } from "@/entities/artifacts/types";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
 import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
-import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 

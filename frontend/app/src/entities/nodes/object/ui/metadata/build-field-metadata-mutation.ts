@@ -17,7 +17,7 @@ const isValueValid = (value: any) => {
   return !isNaN(value);
 };
 
-const getMutationMetaDetailsFromFormData = (
+const buildFieldMetadataMutation = (
   schema: ModelSchema,
   data: any,
   row: any,
@@ -83,4 +83,4 @@ const getMutationMetaDetailsFromFormData = (
   };
 };
 
-export default getMutationMetaDetailsFromFormData;
+export default buildFieldMetadataMutation;

@@ -107,7 +107,7 @@ exports[`fix ts error`] = {
       [62, 28, 24, "tsc: \'objectDetailsData.object\' is possibly \'null\' or \'undefined\'.", "865142553"],
       [62, 53, 4, "tsc: Property \'node\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:2276949942": [
+    "src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx:3900591170": [
       [153, 75, 10, "tsc: Property \'properties\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'properties\' does not exist on type \'string\'.", "408285988"]
     ],
     "src/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row.test.tsx:1740980311": [
@@ -270,7 +270,7 @@ exports[`fix ts error`] = {
     "src/pages/resource-manager/resource-allocation-details.tsx:4242828623": [
       [78, 35, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
     ],
-    "src/pages/resource-manager/resource-pool-details.tsx:4234845539": [
+    "src/pages/resource-manager/resource-pool-details.tsx:2174566612": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
     "src/shared/components/display/badge-circle.tsx:698452183": [
