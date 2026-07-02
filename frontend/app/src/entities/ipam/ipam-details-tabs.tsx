@@ -7,7 +7,7 @@ import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-tab";
 import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface IpamDetailsTabsProps {
   objectSchema: ModelSchema;

@@ -1,4 +1,4 @@
-import type { AttributeSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 const IP_ADDRESS_ATTRIBUTES_EXCLUDED_IN_LIST = ["address"];
 

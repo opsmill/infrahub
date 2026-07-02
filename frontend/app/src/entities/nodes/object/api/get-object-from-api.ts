@@ -6,7 +6,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
 
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 interface GetObjectQueryParams {
   schemaKind: string;

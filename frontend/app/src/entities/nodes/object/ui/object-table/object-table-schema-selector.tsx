@@ -16,7 +16,7 @@ import { QSP } from "@/shared/config/qsp";
 import { FilterSchema } from "@/shared/hooks/useFilters";
 
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";

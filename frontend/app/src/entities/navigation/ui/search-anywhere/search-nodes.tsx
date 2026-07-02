@@ -9,7 +9,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import type { ObjectResult } from "@/entities/navigation/domain/search-anywhere";
+import type { ObjectResult } from "@/entities/navigation/domain/use-cases/search-anywhere";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
 import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";

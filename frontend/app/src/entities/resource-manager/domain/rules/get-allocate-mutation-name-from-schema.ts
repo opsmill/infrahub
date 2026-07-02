@@ -1,5 +1,5 @@
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export function getAllocateMutationNameFromSchema(schema: ModelSchema) {

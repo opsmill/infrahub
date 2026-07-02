@@ -4,7 +4,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
 import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GetObjectForEditingFromApiParams extends ContextParams {
   schema: NodeSchema | ProfileSchema;

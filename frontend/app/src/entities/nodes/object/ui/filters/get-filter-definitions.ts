@@ -12,7 +12,7 @@ import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/model/metad
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import { isFromResourcePoolRelationship } from "@/entities/nodes/object/domain/rules/is-from-resource-pool-relationship";
-import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
+import { getDecisionOptions } from "@/entities/role-manager/domain/use-cases/get-decision-options";
 import {
   ACCOUNT_TABLE_ATTRIBUTES,
   ACCOUNT_TABLE_RELATIONSHIPS,
@@ -37,7 +37,7 @@ import type {
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 function mapFieldToDefinition(

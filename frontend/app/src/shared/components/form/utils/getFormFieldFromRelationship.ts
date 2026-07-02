@@ -16,8 +16,8 @@ import type {
   NodeObject,
   NodeRelationship,
 } from "@/entities/nodes/object/domain/model/node";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { validateRelationshipMany } from "@/entities/schema/domain/rules/validation/validate-relationship-many";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 

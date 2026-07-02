@@ -19,7 +19,7 @@ import type {
 } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 
 export type NodeFormSubmitParams = {

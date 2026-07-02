@@ -7,7 +7,7 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export default function TabProfile() {

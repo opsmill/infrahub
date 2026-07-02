@@ -7,8 +7,8 @@ import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
 import { DecisionFilterForm } from "@/entities/nodes/object/ui/filters/decision-filter-form";
-import type { DecisionOption } from "@/entities/role-manager/domain/get-decision-options";
-import type { AttributeSchema } from "@/entities/schema/domain/model/types";
+import type { DecisionOption } from "@/entities/role-manager/domain/use-cases/get-decision-options";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export function DecisionColumnHeader({

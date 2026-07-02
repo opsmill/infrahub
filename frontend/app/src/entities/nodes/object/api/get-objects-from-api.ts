@@ -12,7 +12,7 @@ import {
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 interface GetObjectsQueryParams {
   schemaKind: string;

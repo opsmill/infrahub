@@ -7,7 +7,7 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import type { Permission } from "@/entities/permission/types";
-import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../../tests/components/render";

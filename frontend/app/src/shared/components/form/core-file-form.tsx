@@ -27,7 +27,7 @@ import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/crea
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { useGetNumberPools } from "@/entities/resource-manager/ui/queries/get-number-pools.query";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
 
 export type CoreFileFormData = Record<string, FormFieldValue>;
 

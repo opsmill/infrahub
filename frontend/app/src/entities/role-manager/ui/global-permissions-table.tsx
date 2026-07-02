@@ -8,7 +8,7 @@ import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/utils/get-object-actions-column";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
-import { globalDecisionOptions } from "@/entities/role-manager/constants";
+import { globalDecisionOptions } from "@/entities/role-manager/domain/model/decision";
 import {
   GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES,
   GLOBAL_PERMISSIONS_TABLE_RELATIONSHIPS,

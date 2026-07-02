@@ -1,4 +1,4 @@
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export function getTemplateRelationshipFromSchema(
   schema: ModelSchema

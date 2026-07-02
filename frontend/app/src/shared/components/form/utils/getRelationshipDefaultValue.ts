@@ -24,7 +24,7 @@ import type {
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { isNodeRelationshipMany } from "@/entities/nodes/object/domain/rules/is-node-relationship-many";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 

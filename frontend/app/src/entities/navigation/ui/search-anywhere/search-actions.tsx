@@ -10,7 +10,7 @@ import type { MenuItem } from "@/entities/navigation/domain/model/menu";
 import { useMenu } from "@/entities/navigation/ui/queries/get-menu.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 export const SearchActions = () => {

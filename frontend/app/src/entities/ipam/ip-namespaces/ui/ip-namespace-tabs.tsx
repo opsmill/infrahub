@@ -1,6 +1,6 @@
 import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
 import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface IpNamespaceTabsProps {
   objectId: string;

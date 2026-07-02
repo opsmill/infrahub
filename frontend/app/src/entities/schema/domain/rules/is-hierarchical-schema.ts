@@ -1,6 +1,6 @@
 import { store } from "@/shared/stores";
 
-import type { GenericSchema, ModelSchema, NodeSchema } from "@/entities/schema/domain/model/types";
+import type { GenericSchema, ModelSchema, NodeSchema } from "@/entities/schema/domain/model/schema";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { isNodeSchema } from "@/entities/schema/domain/rules/is-node-schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";

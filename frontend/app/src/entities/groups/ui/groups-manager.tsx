@@ -11,7 +11,7 @@ import { AddGroupTriggerButton } from "@/entities/groups/ui/add-group-trigger-bu
 import { ObjectGroupsList } from "@/entities/groups/ui/object-groups-list";
 import { useGetGroups } from "@/entities/groups/ui/queries/get-groups.query";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GroupsManagerProps {
   className?: string;

@@ -11,7 +11,7 @@ import { store } from "@/shared/stores";
 import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 import { generateNodeAttributeWithMetadata } from "../../../../../tests/fake/node";
 import {

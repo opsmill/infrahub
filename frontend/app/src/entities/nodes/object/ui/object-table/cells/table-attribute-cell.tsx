@@ -8,7 +8,7 @@ import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/drop
 import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import type { AttributeKind, AttributeSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeKind, AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;

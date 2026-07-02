@@ -1,5 +1,5 @@
-import type { DecisionOption } from "@/entities/role-manager/domain/get-decision-options";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { DecisionOption } from "@/entities/role-manager/domain/use-cases/get-decision-options";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export type AttributeFilterDefinition = {
   type: "attribute";

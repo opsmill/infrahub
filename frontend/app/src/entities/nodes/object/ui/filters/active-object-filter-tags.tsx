@@ -18,8 +18,8 @@ import {
   InternalGroupsFilterTag,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import { getDecisionOptions } from "@/entities/role-manager/domain/use-cases/get-decision-options";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export interface ActiveObjectsFilterTagsProps extends TagGroupProps {

@@ -5,7 +5,7 @@ import type {
   NodeRelationshipWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { isNodeRelationshipOne } from "@/entities/nodes/object/domain/rules/is-node-relationship-one";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 
 export function resolveRelationshipData({

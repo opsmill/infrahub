@@ -1,6 +1,9 @@
 import { GLOBAL_PERMISSION_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
 
-import { globalDecisionOptions, objectDecisionOptions } from "@/entities/role-manager/constants";
+import {
+  globalDecisionOptions,
+  objectDecisionOptions,
+} from "@/entities/role-manager/domain/model/decision";
 
 export type DecisionOption = { value: number; label: string };
 

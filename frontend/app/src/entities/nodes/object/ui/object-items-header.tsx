@@ -7,7 +7,7 @@ import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
 import { HeaderContainer } from "@/entities/nodes/object/ui/object-details/object-details-header";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectItemsHeaderProps {
   schema: ModelSchema;

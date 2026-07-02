@@ -6,7 +6,7 @@ import type {
   GenericSchema,
   NodeSchema,
   ProfileSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export interface GetProfilesParams extends ContextParams {

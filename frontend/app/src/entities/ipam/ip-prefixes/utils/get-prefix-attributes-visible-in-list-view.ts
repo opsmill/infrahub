@@ -1,4 +1,4 @@
-import type { AttributeSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 const PREFIX_ATTRIBUTES_EXCLUDED_IN_LIST = [
   "prefix",

@@ -16,7 +16,7 @@ import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/o
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/types";
-import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectRelationshipRowProps {
   relationshipSchema: RelationshipSchema;

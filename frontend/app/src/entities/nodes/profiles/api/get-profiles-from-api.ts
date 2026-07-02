@@ -5,7 +5,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
 
-import type { ProfileSchema } from "@/entities/schema/domain/model/types";
+import type { ProfileSchema } from "@/entities/schema/domain/model/schema";
 
 function buildGetProfilesQuery(profileSchemas: ProfileSchema[]): string {
   return jsonToGraphQLQuery({

@@ -21,7 +21,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 type DetailsButtonsProps = {

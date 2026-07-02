@@ -22,10 +22,10 @@ import {
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ProfileData } from "@/entities/nodes/profiles/types";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
 import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { AccountForm } from "@/entities/role-manager/ui/account-form";
 import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form";
 import { AccountRoleForm } from "@/entities/role-manager/ui/account-role-form";

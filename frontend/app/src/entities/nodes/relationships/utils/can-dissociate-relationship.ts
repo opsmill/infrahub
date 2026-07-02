@@ -1,4 +1,4 @@
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 

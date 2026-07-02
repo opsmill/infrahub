@@ -5,7 +5,7 @@ import {
   getFilterTagDisplay,
 } from "@/shared/components/filters/active-filter-tags";
 
-import { objectDecisionOptions } from "@/entities/role-manager/constants";
+import { objectDecisionOptions } from "@/entities/role-manager/domain/model/decision";
 
 import { generateAttributeSchema, generateRelationshipSchema } from "../../../../tests/fake/schema";
 

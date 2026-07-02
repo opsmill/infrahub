@@ -3,7 +3,7 @@ import { useTitle } from "@/shared/hooks/useTitle";
 
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { ProposedChangesManager } from "@/entities/proposed-changes/ui/proposed-changes-manager";
-import type { NodeSchema } from "@/entities/schema/domain/model/types";
+import type { NodeSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const Component = () => {

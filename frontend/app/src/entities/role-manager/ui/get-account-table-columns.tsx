@@ -14,7 +14,7 @@ import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cel
 import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export const ACCOUNT_TABLE_ATTRIBUTES = ["name", "description", "account_type", "status"];
 export const ACCOUNT_TABLE_RELATIONSHIPS = ["member_of_groups"];

@@ -1,7 +1,7 @@
 import { BreadcrumbItem } from "@infrahub/ui";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

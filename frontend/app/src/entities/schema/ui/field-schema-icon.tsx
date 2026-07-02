@@ -4,7 +4,7 @@ import type {
   AttributeKind,
   AttributeSchema,
   RelationshipSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

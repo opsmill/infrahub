@@ -12,8 +12,8 @@ import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/ui/quer
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/domain/rules/get-allocate-mutation-name-from-schema";
 import { useAllocateResourceMutation } from "@/entities/resource-manager/ui/queries/allocate-resource.mutation";
-import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/utils/get-allocate-mutation-name-from-schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export interface IpamCreationFormProps extends NodeFormProps {}

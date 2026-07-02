@@ -4,7 +4,7 @@ import { TableCell } from "@/shared/components/table/table-cell";
 
 import type { NodeAttribute, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { DecisionColumnHeader } from "@/entities/role-manager/ui/decision-column-header";
-import type { AttributeSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
 const columnHelper = createColumnHelper<NodeObject>();
 

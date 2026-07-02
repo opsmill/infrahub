@@ -14,7 +14,7 @@ import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/ui/qu
 import { getFieldsMappingPayload } from "@/entities/nodes/convert/utils/get-fields-mapping-payload";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export default function ConvertFormWrapper({
   sourceObject,

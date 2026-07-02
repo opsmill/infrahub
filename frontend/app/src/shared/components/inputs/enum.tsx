@@ -15,7 +15,7 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 import { useAddEnumMutation } from "@/entities/schema/ui/queries/add-enum.mutation";
 import { useRemoveEnumMutation } from "@/entities/schema/ui/queries/remove-enum.mutation";

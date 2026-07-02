@@ -19,7 +19,7 @@ import type {
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;

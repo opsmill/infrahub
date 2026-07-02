@@ -7,7 +7,7 @@ import type {
   RelationshipOneType,
   RelationshipType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export const getObjectFromFilters = (
   schema: ModelSchema | null,

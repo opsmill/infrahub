@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { globalDecisionOptions, objectDecisionOptions } from "@/entities/role-manager/constants";
-import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
+import {
+  globalDecisionOptions,
+  objectDecisionOptions,
+} from "@/entities/role-manager/domain/model/decision";
+import { getDecisionOptions } from "@/entities/role-manager/domain/use-cases/get-decision-options";
 
 describe("getDecisionOptions", () => {
   it("returns objectDecisionOptions for CoreObjectPermission decision", () => {

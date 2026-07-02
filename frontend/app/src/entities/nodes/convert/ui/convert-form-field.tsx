@@ -10,7 +10,7 @@ import { ConvertSourceField } from "@/entities/nodes/convert/ui/convert-source-f
 import { getFieldValueFromMapping } from "@/entities/nodes/convert/utils/get-field-value-from-mapping";
 import { hasFieldMapping } from "@/entities/nodes/convert/utils/has-field-mapping";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ConvertFormFieldProps {
   conversionMapping?: ConvertFieldMapping;

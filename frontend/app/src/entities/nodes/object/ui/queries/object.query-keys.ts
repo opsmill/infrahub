@@ -7,7 +7,7 @@ import type {
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 
 export interface ObjectKeysBaseParams extends ContextParams {
   objectKind: string;

@@ -16,8 +16,8 @@ import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
 import type { Permission } from "@/entities/permission/types";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

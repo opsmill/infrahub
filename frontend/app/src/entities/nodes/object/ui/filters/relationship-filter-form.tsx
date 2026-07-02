@@ -11,7 +11,7 @@ import {
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export interface RelationshipFilterFormProps {
   relationshipSchema: RelationshipSchema;

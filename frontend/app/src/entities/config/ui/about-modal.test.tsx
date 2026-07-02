@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 
-import { getAppInfo } from "@/entities/config/domain/get-app-info";
+import { getAppInfo } from "@/entities/config/domain/use-cases/get-app-info";
 import { ConfigContext } from "@/entities/config/ui/config-provider";
 
 import { render } from "../../../../tests/components/render";

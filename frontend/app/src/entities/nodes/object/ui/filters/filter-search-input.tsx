@@ -6,7 +6,7 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import useFilters from "@/shared/hooks/useFilters";
 import { useSearch } from "@/shared/hooks/useSearch";
 
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "value"> {
   schema?: ModelSchema;

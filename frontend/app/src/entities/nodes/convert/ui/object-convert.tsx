@@ -15,7 +15,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ObjectConvertProps {
   objectId: string;

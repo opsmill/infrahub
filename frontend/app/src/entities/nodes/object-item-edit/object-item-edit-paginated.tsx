@@ -11,7 +11,7 @@ import { areObjectArraysEqualById } from "@/shared/utils/array";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import type { DynamicFieldData } from "@/entities/nodes/object-item-edit/form-field-types";
 import { useGetObjectForEditing } from "@/entities/nodes/object-item-edit/ui/queries/get-object-for-editing.query";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface Props {

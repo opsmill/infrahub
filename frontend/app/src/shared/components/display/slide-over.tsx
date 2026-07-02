@@ -5,7 +5,7 @@ import { Badge } from "@/shared/components/ui/badge";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 type SlideOverTitleProps = {
   schema: ModelSchema;

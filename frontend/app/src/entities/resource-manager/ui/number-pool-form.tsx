@@ -34,7 +34,7 @@ import {
   NUMBER_POOL_NODE_FIELD,
 } from "@/entities/resource-manager/domain/model/pool";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 interface NumberPoolFormProps {

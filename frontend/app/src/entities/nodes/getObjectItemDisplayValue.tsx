@@ -31,7 +31,7 @@ import type {
   AttributeKind,
   AttributeSchema,
   RelationshipSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
 
 const getTextValue = (data: any) => {

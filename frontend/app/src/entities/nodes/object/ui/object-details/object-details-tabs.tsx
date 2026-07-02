@@ -9,7 +9,7 @@ import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rul
 import { ObjectTaskTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 interface ObjectDetailsTabsProps {

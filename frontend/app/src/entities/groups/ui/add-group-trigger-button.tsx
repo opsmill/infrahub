@@ -11,7 +11,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface AddGroupTriggerButtonProps {
   schema: ModelSchema;

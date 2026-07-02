@@ -14,7 +14,7 @@ import type {
   AttributeKind,
   AttributeSchema,
   RelationshipSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 
 export interface DynamicFilterInputProps {
   fieldSchema: AttributeSchema | RelationshipSchema;

@@ -18,7 +18,7 @@ import { ACCOUNT_ROLE_OBJECT, GLOBAL_PERMISSION_OBJECT } from "@/shared/config/c
 import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { globalDecisionOptions } from "@/entities/role-manager/constants";
+import { globalDecisionOptions } from "@/entities/role-manager/domain/model/decision";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface GlobalPermissionFormProps {

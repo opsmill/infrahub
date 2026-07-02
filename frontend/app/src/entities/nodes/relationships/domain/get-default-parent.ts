@@ -4,7 +4,7 @@ import type { FormContextType } from "@/shared/components/form/utils/form-contex
 
 import type { NodeCore, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getDefaultParentFromApi } from "@/entities/nodes/relationships/api/get-default-parent-from-api";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export interface DefaultParentInput {

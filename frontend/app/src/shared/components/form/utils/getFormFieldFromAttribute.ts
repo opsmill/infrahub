@@ -21,7 +21,7 @@ import type {
 } from "@/entities/nodes/object/domain/model/node";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
   AttributeKind,
@@ -29,7 +29,7 @@ import type {
   ModelSchema,
   NumberAttributeParameters,
   TextAttributeParameters,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 import { validateNumberAttribute } from "@/entities/schema/domain/rules/validation/validate-number-attribute";
 import { validateTextAttribute } from "@/entities/schema/domain/rules/validation/validate-text-attribute";
 

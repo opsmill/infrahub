@@ -27,7 +27,7 @@ import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/ge
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector from "@/entities/resource-manager/ui/resource-selector";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ResourcePoolDetailsPage = () => {

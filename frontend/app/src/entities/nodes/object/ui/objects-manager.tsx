@@ -6,7 +6,7 @@ import { ObjectTable } from "@/entities/nodes/object/ui/object-table/object-tabl
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectsManagerToolbar } from "@/entities/nodes/object/ui/objects-manager-toolbar";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ObjectsTableManagerProps {
   schema: ModelSchema;

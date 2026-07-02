@@ -14,7 +14,7 @@ import type {
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 
 interface ConvertSourceFieldProps extends Omit<DynamicFieldProps, "defaultValue"> {

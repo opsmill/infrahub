@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { getConfig } from "@/entities/config/domain/get-config";
+import { getConfig } from "@/entities/config/domain/use-cases/get-config";
 
 export const getConfigQueryOptions = () => {
   return queryOptions({

@@ -10,7 +10,7 @@ import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomple
 import { ObjectRelationshipList } from "@/entities/nodes/object/ui/object-relationship-list";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbItemObject({

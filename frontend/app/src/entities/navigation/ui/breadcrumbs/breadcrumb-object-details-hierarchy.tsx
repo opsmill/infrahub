@@ -8,7 +8,7 @@ import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/ui/queries/get-object-ancestors.query";
 import type { NodeCoreWithParent } from "@/entities/nodes/object/domain/model/node";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface BreadcrumbObjectDetailsHierarchyProps {

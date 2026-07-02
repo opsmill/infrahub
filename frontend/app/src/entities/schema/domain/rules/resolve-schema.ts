@@ -3,7 +3,7 @@ import type {
   NodeSchema,
   ProfileSchema,
   TemplateSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 
 export type SchemaResult =
   | {

@@ -6,7 +6,7 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { resolveRelationshipData } from "@/entities/nodes/object/domain/rules/resolve-relationship-data";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 const metadata = {
   is_protected: false,

@@ -14,7 +14,7 @@ import type {
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
-} from "@/entities/schema/domain/model/types";
+} from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {

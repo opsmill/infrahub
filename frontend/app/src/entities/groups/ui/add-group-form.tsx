@@ -10,7 +10,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   objectId: string;

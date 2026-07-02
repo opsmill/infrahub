@@ -28,7 +28,7 @@ import {
   TableRelationshipCell,
 } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
 const columnHelper = createColumnHelper<NodeObject>();

@@ -11,7 +11,7 @@ import { ProposedChangesItemLight } from "@/entities/proposed-changes/ui/propose
 import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 type ProposedChangesTableHomepageProps = {
   schema: ModelSchema;

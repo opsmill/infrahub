@@ -36,7 +36,7 @@ import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-it
 import type { Permission } from "@/entities/permission/types";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
-import type { ModelSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export interface ObjectDetailsMenuProps extends ButtonProps {

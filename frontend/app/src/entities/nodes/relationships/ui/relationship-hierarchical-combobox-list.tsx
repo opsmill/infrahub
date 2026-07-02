@@ -12,7 +12,7 @@ import { debounce } from "@/shared/utils/common";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
-import type { NodeSchema } from "@/entities/schema/domain/model/types";
+import type { NodeSchema } from "@/entities/schema/domain/model/schema";
 import {
   getRootSchemaOfHierarchicalSchema,
   isHierarchicalSchema,

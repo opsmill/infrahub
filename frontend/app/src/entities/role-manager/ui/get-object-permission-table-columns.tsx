@@ -15,9 +15,9 @@ import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cel
 import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
-import { objectDecisionOptions } from "@/entities/role-manager/constants";
+import { objectDecisionOptions } from "@/entities/role-manager/domain/model/decision";
 import { getDecisionColumn } from "@/entities/role-manager/ui/get-decision-column";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export const OBJECT_PERMISSION_TABLE_ATTRIBUTES = ["action", "decision"];
 export const OBJECT_PERMISSION_TABLE_RELATIONSHIPS = ["roles"];

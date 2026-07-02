@@ -2,7 +2,7 @@ import type { Filter } from "@/shared/hooks/useFilters";
 
 import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export type AddAttributesToRequestOptions = {
   withMetadata?: boolean;
