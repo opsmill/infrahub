@@ -4,17 +4,27 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.branch.filters import BranchListFilters
-from infrahub.exceptions import BranchAlreadyMergedError, BranchNeedsRebaseError, MergeInProgressError
+from infrahub.core.merge.write_blocker import MergeProtectionState
+from infrahub.exceptions import (
+    BranchAlreadyMergedError,
+    BranchNeedsRebaseError,
+    MergeInProgressError,
+    MergeRecoveryRequiredError,
+)
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from infrahub.core.merge.write_blocker import MergeWriteBlocker
+    from infrahub.core.merge.write_blocker import MergeProtection, MergeWriteBlocker
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
 
 MERGE_IN_PROGRESS_MESSAGE = "A merge is currently in progress; writes are temporarily blocked. Please retry shortly."
+
+MERGE_RECOVERY_REQUIRED_MESSAGE = (
+    "A previous merge failed and left the default branch protected. Writes stay blocked until an "
+    "administrator runs `infrahub recover`. Please contact an administrator."
+)
 
 
 def _merging_branch_message(branch_name: str) -> str:
@@ -40,14 +50,16 @@ class BranchStatusChecker:
             )
 
     async def check_merging_status(self, branch: Branch) -> None:
-        """Check if writes are blocked by an in-progress merge operation.
+        """Check if writes are blocked by an in-progress or failed merge.
 
-        The block is driven by the shared ``merge:protected`` cache key so every worker sees the same
-        state with a single lookup:
-          - source gate: the key's branch matches the branch being written — rejected with the same
-            read-only message a merged branch gets (it is heading to MERGED), and
-          - target gate: the branch being written is the default branch (the only merge target) —
-            rejected with the transient message, since it becomes writable again after the merge.
+        The block is driven by the shared merge protection (read via ``MergeWriteBlocker``) so every
+        worker sees the same state with a single lookup. Two branches are blocked: the merge *source*
+        (it is heading to MERGED) and the *default* branch (the merge target). Its state decides the
+        rejection:
+          - MERGING: transient — the default branch becomes writable again once the merge completes,
+            so the target gate raises the retryable MergeInProgressError, and
+          - MERGE_FAILED: durable — a previous merge died, so the gate raises MergeRecoveryRequiredError
+            (a distinct, non-retryable code) until an administrator runs ``infrahub recover``.
 
         If the cache lookup fails — unreachable backend, or a present-but-corrupt value that cannot be
         interpreted as "no merge in progress" — the gate falls back to the durable branch status in the
@@ -56,7 +68,8 @@ class BranchStatusChecker:
         a corrupt value can never silently lift the block while a merge is still underway.
 
         Raises:
-            MergeInProgressError: if the branch is blocked by a merge in progress.
+            MergeInProgressError: if the branch is blocked by an in-progress merge.
+            MergeRecoveryRequiredError: if the branch is blocked by a failed merge awaiting recovery.
 
         """
         try:
@@ -69,36 +82,49 @@ class BranchStatusChecker:
         if protection is None:
             return
 
-        if branch.name == protection.branch:
-            raise MergeInProgressError(
+        self._raise_if_blocked(branch=branch, protection=protection)
+
+    def _raise_if_blocked(self, branch: Branch, protection: MergeProtection) -> None:
+        is_source = branch.name == protection.branch
+        if not (is_source or branch.is_default):
+            return
+
+        if protection.state == MergeProtectionState.MERGE_FAILED:
+            raise MergeRecoveryRequiredError(
                 identifier=branch.name,
-                message=_merging_branch_message(branch.name),
+                message=MERGE_RECOVERY_REQUIRED_MESSAGE,
                 merging_branch=protection.branch,
             )
 
-        if branch.is_default:
-            raise MergeInProgressError(
-                identifier=branch.name, message=MERGE_IN_PROGRESS_MESSAGE, merging_branch=protection.branch
-            )
+        message = _merging_branch_message(branch.name) if is_source else MERGE_IN_PROGRESS_MESSAGE
+        raise MergeInProgressError(identifier=branch.name, message=message, merging_branch=protection.branch)
 
     async def _check_merging_status_from_db(self, branch: Branch) -> None:
         """Cache-unreachable fallback: enforce the gate from the durable branch status.
 
         Raises:
-            MergeInProgressError: if the branch is blocked by a merge in progress.
+            MergeInProgressError: if the branch is blocked by an in-progress merge.
+            MergeRecoveryRequiredError: if the branch is blocked by a failed merge awaiting recovery.
 
         """
-        merging = await Branch.get_list(db=self.db, branch_filters=BranchListFilters(status=BranchStatus.MERGING))
-        merging_branch_names = {merging_branch.name for merging_branch in merging}
+        branches = await Branch.get_list(db=self.db)
+        failed = sorted(b.name for b in branches if b.status == BranchStatus.MERGE_FAILED)
+        merging = sorted(b.name for b in branches if b.status == BranchStatus.MERGING)
 
-        if branch.name in merging_branch_names:
+        # A durable MERGE_FAILED takes precedence: it needs recovery and is the more severe state.
+        if failed and (branch.name in failed or branch.is_default):
+            raise MergeRecoveryRequiredError(
+                identifier=branch.name, message=MERGE_RECOVERY_REQUIRED_MESSAGE, merging_branch=failed[0]
+            ) from None
+
+        if branch.name in merging:
             raise MergeInProgressError(
                 identifier=branch.name, message=_merging_branch_message(branch.name), merging_branch=branch.name
             ) from None
 
-        if branch.is_default and merging_branch_names:
+        if branch.is_default and merging:
             raise MergeInProgressError(
-                identifier=branch.name, message=MERGE_IN_PROGRESS_MESSAGE, merging_branch=min(merging_branch_names)
+                identifier=branch.name, message=MERGE_IN_PROGRESS_MESSAGE, merging_branch=merging[0]
             ) from None
 
     async def check(self, branch: Branch) -> None:
