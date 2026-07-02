@@ -11,16 +11,28 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_testcontainers.container import InfrahubDockerCompose
 
-# A killed worker leaves the branch MERGING; the merge-watcher cron (every minute) must flip it to
-# MERGE_FAILED once the lock holder is gone and the grace period (default 180s) has elapsed.
-DETECTION_TIMEOUT_SECONDS = 360
-POLL_INTERVAL_SECONDS = 5
+# The test stack runs with a ~1s merge-failure grace period (set in docker-compose.test.yml), so once
+# a merge's lock holder is gone the next merge-watcher scan (cron, every minute) flips it quickly.
+MERGING_TIMEOUT_SECONDS = 90
+DETECTION_TIMEOUT_SECONDS = 180
+POLL_INTERVAL_SECONDS = 3
 
 
 async def _branch_status(client: InfrahubClient, branch_name: str) -> str | None:
     branches = await client.branch.all()
     branch = branches.get(branch_name)
     return branch.status if branch is not None else None
+
+
+async def _wait_for_status(client: InfrahubClient, branch_name: str, target: str, timeout_seconds: float) -> str | None:
+    deadline = time.monotonic() + timeout_seconds
+    status: str | None = None
+    while time.monotonic() < deadline:
+        status = await _branch_status(client, branch_name)
+        if status == target:
+            return status
+        await asyncio.sleep(POLL_INTERVAL_SECONDS)
+    return status
 
 
 class TestMergeKillDetection(TestInfrahubDockerClient):
@@ -37,32 +49,38 @@ class TestMergeKillDetection(TestInfrahubDockerClient):
     ) -> None:
         branch_name = "merge_kill_detection"
         await client.branch.create(branch_name=branch_name)
-        node = await client.create(kind="BuiltinTag", name="merge-kill-tag", branch=branch_name)
-        await node.save()
+        # Enough changes that the merge stays in MERGING long enough to be caught and killed
+        # mid-flight rather than completing before the SIGKILL lands.
+        for index in range(20):
+            node = await client.create(kind="BuiltinTag", name=f"merge-kill-tag-{index}", branch=branch_name)
+            await node.save()
 
-        # Submit the merge so it runs on a task worker, then SIGKILL the workers before it can reach
-        # the MERGED transition. The merge lock holder is now a dead worker and the branch is stuck
-        # in MERGING.
-        await client.execute_graphql(
-            query=f'mutation {{ BranchMerge(data: {{name: "{branch_name}"}}) {{ ok }} }}',
-            branch_name="main",
+        # Fire the merge without awaiting completion (it runs on a task worker); we kill the worker
+        # while it is in flight, so awaiting here would hang.
+        merge_task = asyncio.create_task(
+            client.execute_graphql(
+                query=f'mutation {{ BranchMerge(data: {{name: "{branch_name}"}}) {{ ok }} }}',
+                branch_name="main",
+            )
         )
-        base_cmd = list(infrahub_compose.compose_command_property)
-        infrahub_compose._run_command(cmd=[*base_cmd, "kill", "-s", "SIGKILL", "task-worker"])
+        try:
+            # Wait until the merge is genuinely in flight, then SIGKILL the worker(s) so the merge
+            # dies mid-flight with the global merge lock still held by the now-dead worker.
+            assert await _wait_for_status(client, branch_name, "MERGING", MERGING_TIMEOUT_SECONDS) == "MERGING", (
+                "merge never reached MERGING; cannot exercise the mid-merge kill"
+            )
+            base_cmd = list(infrahub_compose.compose_command_property)
+            infrahub_compose._run_command(cmd=[*base_cmd, "kill", "-s", "SIGKILL", "task-worker"])
 
-        # Bring the workers back so the recurring merge-watcher can run, but issue no writes — the
-        # flip must happen from the idle scan alone.
-        infrahub_compose.start_container("task-worker")
+            # Bring the worker(s) back so the recurring merge-watcher can run; issue no writes — the
+            # flip must come from the idle scan alone. A restarted worker has a fresh identity, so the
+            # dead lock holder is no longer in the active set.
+            infrahub_compose.start_container("task-worker")
 
-        deadline = time.monotonic() + DETECTION_TIMEOUT_SECONDS
-        status: str | None = None
-        while time.monotonic() < deadline:
-            status = await _branch_status(client, branch_name)
-            if status == "MERGE_FAILED":
-                break
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
-
-        assert status == "MERGE_FAILED", f"branch {branch_name} was not flagged MERGE_FAILED (status={status})"
+            status = await _wait_for_status(client, branch_name, "MERGE_FAILED", DETECTION_TIMEOUT_SECONDS)
+            assert status == "MERGE_FAILED", f"branch {branch_name} was not flagged MERGE_FAILED (status={status})"
+        finally:
+            merge_task.cancel()
 
     @pytest.mark.skip(reason="Recovery half is not implemented yet.")
     async def test_recover_after_kill_remerges(self, client: InfrahubClient) -> None:  # pragma: no cover
