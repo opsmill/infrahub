@@ -9,11 +9,11 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
+import ObjectItemMetaEdit from "@/entities/nodes/object/ui/object-item-meta-edit/object-item-meta-edit";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
 import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
-import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import type {
   NodeAttributeWithMetadata,
