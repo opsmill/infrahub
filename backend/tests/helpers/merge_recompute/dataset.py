@@ -273,21 +273,26 @@ async def seed_branch(
     peer_ids: list[str] = []
     main_ids: list[str] = []
 
+    # Namespace the seeded names by branch so repeated seed_branch calls in one test (e.g. across
+    # scales) do not create duplicate names on the shared default branch, which the merge-time
+    # uniqueness gate rejects.
     for index in range(changed_nodes):
         peer = await Node.init(db=db, schema=PROFILE_PEER_KIND, branch=default_branch)
-        await peer.new(db=db, name=f"profile-peer-{index:05d}")
+        await peer.new(db=db, name=f"{branch_name}-peer-{index:05d}")
         await peer.save(db=db)
         peer_ids.append(peer.id)
 
         node = await Node.init(db=db, schema=PROFILE_NODE_KIND, branch=default_branch)
-        await node.new(db=db, name=f"profile-node-{index:05d}", peer=peer)
+        await node.new(db=db, name=f"{branch_name}-node-{index:05d}", peer=peer)
         await node.save(db=db)
         main_ids.append(node.id)
 
     branch = await create_branch(branch_name=branch_name, db=db)
 
     mutation_branch = branch if mutate_target == "branch" else default_branch
-    target_ids, prefix = (main_ids, "profile-node") if mutate_kind == "main" else (peer_ids, "profile-peer")
+    target_ids, prefix = (
+        (main_ids, f"{branch_name}-node") if mutate_kind == "main" else (peer_ids, f"{branch_name}-peer")
+    )
     changed_node_ids: list[str] = []
     for index, node_id in enumerate(target_ids):
         node_to_mutate = await NodeManager.get_one(id=node_id, branch=mutation_branch, db=db)
