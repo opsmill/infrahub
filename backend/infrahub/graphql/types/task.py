@@ -48,7 +48,7 @@ class HttpResponse(ObjectType):
     latency_ms = Float(required=False)
 
 
-class DeliveryError(ObjectType):
+class TaskError(ObjectType):
     status_class = String(required=True)
     message = String(required=True)
     remediation = String(required=True)
@@ -85,6 +85,9 @@ class TaskNodeInterface(Interface):
     related_nodes = List(TaskRelatedNode)
     logs = Field(TaskLogEdge)
     available_actions = List(NonNull(TaskAction), required=True)
+    error = Field(
+        TaskError, description="Classified failure reason with a remediation hint; null unless the task failed with one"
+    )
 
     @classmethod
     def resolve_type(
@@ -106,7 +109,6 @@ class WebhookDeliveryTask(ObjectType):
 
     http_request = Field(HttpRequest, required=False)
     http_response = Field(HttpResponse, required=False)
-    error = Field(DeliveryError, required=False)
 
 
 TASK_TYPES: dict[str, type[ObjectType]] = {

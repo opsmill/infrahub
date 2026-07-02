@@ -139,6 +139,11 @@ query TaskQuery {
             available
             unavailability_reason
         }
+        error {
+            status_class
+            message
+            remediation
+        }
         ... on WebhookDeliveryTask {
             http_request {
                 url
@@ -148,11 +153,6 @@ query TaskQuery {
                 status_code
                 body
                 latency_ms
-            }
-            error {
-                status_class
-                message
-                remediation
             }
         }
       }
@@ -930,6 +930,8 @@ async def test_task_query_polymorphic_typing(
     assert dummy_node["__typename"] == "TaskNode"
     assert dummy_node["workflow"] == "dummy-flow"
     assert dummy_node["available_actions"] == []
+    # The classified error is a common field carried by every task, null when the task has none.
+    assert dummy_node["error"] is None
     assert "http_request" not in dummy_node
 
 

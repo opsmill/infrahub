@@ -16436,13 +16436,6 @@ export type DeleteInput = {
   id?: InputMaybe<Scalars['String']['input']>;
 };
 
-export type DeliveryError = {
-  __typename: 'DeliveryError';
-  message: Scalars['String']['output'];
-  remediation: Scalars['String']['output'];
-  status_class: Scalars['String']['output'];
-};
-
 /** An enumeration. */
 export const DiffAction = {
   ADDED: 'ADDED',
@@ -37953,6 +37946,13 @@ export const TaskActionType = {
 } as const;
 
 export type TaskActionType = typeof TaskActionType[keyof typeof TaskActionType];
+export type TaskError = {
+  __typename: 'TaskError';
+  message: Scalars['String']['output'];
+  remediation: Scalars['String']['output'];
+  status_class: Scalars['String']['output'];
+};
+
 export type TaskInfo = {
   __typename: 'TaskInfo';
   id: Maybe<Scalars['String']['output']>;
@@ -37984,6 +37984,8 @@ export type TaskNode = TaskNodeInterface & {
   branch: Maybe<Scalars['String']['output']>;
   conclusion: Scalars['String']['output'];
   created_at: Scalars['String']['output'];
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
   id: Scalars['String']['output'];
   logs: Maybe<TaskLogEdge>;
   parameters: Maybe<Scalars['GenericScalar']['output']>;
@@ -38007,6 +38009,8 @@ export type TaskNodeInterface = {
   branch: Maybe<Scalars['String']['output']>;
   conclusion: Scalars['String']['output'];
   created_at: Scalars['String']['output'];
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
   id: Scalars['String']['output'];
   logs: Maybe<TaskLogEdge>;
   parameters: Maybe<Scalars['GenericScalar']['output']>;
@@ -38104,7 +38108,8 @@ export type WebhookDeliveryTask = TaskNodeInterface & {
   branch: Maybe<Scalars['String']['output']>;
   conclusion: Scalars['String']['output'];
   created_at: Scalars['String']['output'];
-  error: Maybe<DeliveryError>;
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
   http_request: Maybe<HttpRequest>;
   http_response: Maybe<HttpResponse>;
   id: Scalars['String']['output'];

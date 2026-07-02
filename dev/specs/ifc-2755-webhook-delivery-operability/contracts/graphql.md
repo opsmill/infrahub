@@ -23,6 +23,7 @@ interface TaskNodeInterface {
   related_nodes: [RelatedNode!]
   logs(...): TaskLogEdge
   available_actions: [TaskAction!]!   # NEW — empty list for non-actionable runs
+  error: TaskError                    # NEW — classified failure reason; null unless the task failed with one
 }
 
 type TaskNode implements TaskNodeInterface { ...all interface fields... }
@@ -31,12 +32,11 @@ type WebhookDeliveryTask implements TaskNodeInterface {
   # ...all interface fields...
   http_request: HttpRequest
   http_response: HttpResponse
-  error: DeliveryError
 }
 
 type HttpRequest  { url: String!, headers: GenericScalar! }   # headers already redacted at capture
 type HttpResponse { status_code: Int, body: String, latency_ms: Float }
-type DeliveryError { status_class: String!, message: String!, remediation: String! }
+type TaskError    { status_class: String!, message: String!, remediation: String! }
 
 type TaskAction { action: TaskActionName!, available: Boolean!, unavailability_reason: String }
 enum TaskActionName { RETRY, CANCEL }
@@ -59,10 +59,10 @@ query GET_TASK_DETAILS($ids: [String], $relatedNodeIds: [String]) {
         workflow
         updated_at
         available_actions { action available unavailability_reason }
+        error { status_class message remediation }
         ... on WebhookDeliveryTask {
           http_request  { url headers }
           http_response { status_code body latency_ms }
-          error { status_class message remediation }
         }
       }
     }
@@ -109,7 +109,7 @@ extend type Mutation {
 
 ### Error surface
 
-Errors are returned as GraphQL errors with clean messages (no stacktrace, Principle VI). Classified delivery failures are surfaced on the run's `error` field, not as mutation errors — a resubmitted run that later fails carries its `DeliveryError` like any delivery.
+Errors are returned as GraphQL errors with clean messages (no stacktrace, Principle VI). Classified delivery failures are surfaced on the run's `error` field, not as mutation errors — a resubmitted run that later fails carries its `TaskError` like any delivery.
 
 ## Non-goals (contract scope)
 

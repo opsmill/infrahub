@@ -13,6 +13,10 @@ This feature makes a delivery a first-class, inspectable, and recoverable object
 
 ## Clarifications
 
+### Session 2026-07-02
+
+- Q: Is the classified error delivery-specific or common to all tasks? → A: Common — every task carries an `error` field (classified reason + remediation, null when absent), mirroring how the recovery actions are generic with deliveries as the first populating type. The UI shows the error section only when it is non-null.
+
 ### Session 2026-06-24
 
 - Q: Retry policy — backoff strategy and attempt count? → A: Fixed delay (~2 min), transient-only, bounded to 3 attempts. Exponential backoff is rejected because a long back-off would leave many flow runs parked, waiting on a delayed retry attempt to resolve.
@@ -109,7 +113,7 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 
 - **FR-001**: The system MUST represent each webhook delivery as a distinct, inspectable object surfaced in the Tasks tab, decoupled from the internal orchestration that triggered it.
 - **FR-002**: The system MUST classify a delivery as a webhook delivery automatically from intrinsic run information, so that historical deliveries are recognized without any backfill.
-- **FR-003**: A webhook delivery MUST expose, in addition to the fields common to all tasks, its request, its response, and its error.
+- **FR-003**: A webhook delivery MUST expose, in addition to the fields common to all tasks, its request and its response. The classified error is NOT delivery-specific: like the recovery actions (FR-016), it is a capability carried by every task — null unless the task failed with a classified reason — and webhook deliveries are the first task type to populate it. The operator-facing view MUST show the error only when one is present.
 - **FR-004**: Tasks that are not webhook deliveries MUST continue to behave exactly as before, with no change to their existing fields or queries.
 
 #### Capture and display
