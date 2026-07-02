@@ -21,7 +21,7 @@ Set up a target you control to observe deliveries — a request bin, a local ech
 
 1. Click a delivery to open its detail.
 2. Verify the **payload** (from run parameters), **request** (URL + headers), **response** (status, body, latency) are shown.
-3. Verify redaction: the ENVIRONMENT-sourced header and `webhook-signature` are masked; `Accept`, `Content-Type`, `webhook-id`, `webhook-timestamp`, and STATIC custom headers are verbatim.
+3. Verify redaction: the ENVIRONMENT-sourced header, `webhook-signature`, and well-known credential headers (`Authorization`, `Cookie`, `X-API-Key`) are masked regardless of kind; `Accept`, `Content-Type`, `webhook-id`, `webhook-timestamp`, and non-credential STATIC custom headers are verbatim.
 4. Point the webhook at an endpoint that returns an error; trigger again; confirm the captured request/response are still present and reflect the **last attempt**.
 
 Backend check: the run carries one `http` artifact (key `infrahub-webhook-http`); no raw secret appears in the artifact.

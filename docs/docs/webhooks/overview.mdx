@@ -283,11 +283,17 @@ When a webhook fires, headers are merged in this order:
 For environment-variable-based headers, the value is resolved from `os.environ` on the Prefect worker at send time:
 
 - If the environment variable exists, its value is used as the header value.
-- If the environment variable is **not found**, the header is skipped, a warning is logged, and all remaining headers are still sent.
+- If the environment variable is **not found**, the delivery fails with a configuration error that names the webhook and the header, rather than sending the request without that header.
 
 :::note
 Authentication header values must include the full value including any type prefix. For example, for Bearer token authentication, set the value to `Bearer eyJhbGci...` (not only the token).
 :::
+
+### Header and payload logging
+
+Every delivery attempt is logged with the target URL, the request headers, and the payload, so you can see what was sent from the delivery's task logs. Secret-bearing header values are masked as `***` in that log: environment-sourced values, the `webhook-signature`, and well-known credential headers (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`) — matched case-insensitively, regardless of whether the header was configured as static or environment-sourced. The payload is truncated in the log, with the full body available only at debug level.
+
+When a delivery attempt fails, the log records why it failed and, while retries remain, when the next attempt will run, so you can tell from the logs whether to wait for an automatic retry or step in.
 
 ## Custom webhook transformation
 
