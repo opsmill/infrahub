@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { Sheet } from "@infrahub/ui";
-import { useAtom } from "jotai";
 import { useState } from "react";
 
 import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
@@ -8,7 +7,6 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import FieldMetadataForm from "@/entities/nodes/object/ui/metadata/field-metadata-form";
-import { fieldMetadataEditState } from "@/entities/nodes/object/ui/metadata/metadata-edit-state";
 import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
@@ -44,7 +42,11 @@ export function ObjectDataDisplay({
 }: ObjectDataDisplayProps) {
   const { currentBranch } = useCurrentBranch();
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
-  const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(fieldMetadataEditState);
+  const [metaEditFieldDetails, setMetaEditFieldDetails] = useState<{
+    type: "attribute" | "relationship";
+    attributeOrRelationshipName: any;
+    label: string;
+  } | null>(null);
 
   const onClickAttributeMetadata = (attribute: AttributeSchema) => {
     setMetaEditFieldDetails({
