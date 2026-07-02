@@ -2,7 +2,7 @@ import type { ContextParams } from "@/shared/api/types";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { arrayBufferToBase64, isBinaryContentType } from "@/shared/utils/file";
 
-import { getObjectFileFromApi } from "@/entities/object-file/api/get-object-file-from-api";
+import { getObjectFileFromApi } from "@/entities/nodes/object-file/api/get-object-file-from-api";
 
 export interface GetObjectFileParams extends ContextParams {
   nodeId: string;

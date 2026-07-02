@@ -14,8 +14,8 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   getObjectFileDownloadUrl,
   getObjectFileRawUrl,
-} from "@/entities/object-file/domain/get-object-file";
-import { useGetObjectFile } from "@/entities/object-file/ui/queries/get-object-file.query";
+} from "@/entities/nodes/object-file/domain/get-object-file";
+import { useGetObjectFile } from "@/entities/nodes/object-file/ui/queries/get-object-file.query";
 
 export interface ObjectFileProps {
   nodeId: string;

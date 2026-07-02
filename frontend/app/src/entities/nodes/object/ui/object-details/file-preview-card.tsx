@@ -3,7 +3,7 @@ import type { DataViewerContentType } from "@/shared/components/data-viewer/type
 import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
 
 import type { NodeFileObject } from "@/entities/nodes/object/domain/model/node";
-import { ObjectFile } from "@/entities/object-file/ui/object-file";
+import { ObjectFile } from "@/entities/nodes/object-file/ui/object-file";
 
 interface FilePreviewCardProps {
   objectData: NodeFileObject;
