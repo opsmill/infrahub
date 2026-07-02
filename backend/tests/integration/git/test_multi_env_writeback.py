@@ -17,6 +17,7 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.exceptions import RepositoryError
 from infrahub.git.repository import InfrahubRepository
 from infrahub.git.tasks import sync_remote_repositories
 from tests.helpers.test_app import TestInfrahubApp
@@ -210,3 +211,42 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
             db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
         )
         assert repo_after.commit.value != commit_before
+
+    async def test_merge_conflict_surfaced_and_worktree_clean(
+        self,
+        nonmain_default_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A genuine content conflict during merge surfaces as an error and leaves a clean worktree.
+
+        Confirms working behaviour: the merge aborts on conflict rather than stranding the worktree
+        mid-merge (which would poison every later operation on it).
+        """
+        repo_name = nonmain_default_dataset["repo_name"]
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db,
+            id=nonmain_default_dataset["node_id"],
+            kind=InfrahubKind.REPOSITORY,
+            raise_on_error=True,
+        )
+        repo = await InfrahubRepository.init(id=repository.id, name=repo_name, client=client)
+
+        await repo.create_branch_in_git("conflict-a", push_origin=False)
+        await repo.create_branch_in_git("conflict-b", push_origin=False)
+
+        repo_a = repo.get_git_repo_worktree(identifier="conflict-a")
+        (Path(str(repo_a.working_dir)) / "conflict.txt").write_text("content from a\n")
+        repo_a.index.add(["conflict.txt"])
+        repo_a.index.commit("conflict-a change")
+
+        repo_b = repo.get_git_repo_worktree(identifier="conflict-b")
+        (Path(str(repo_b.working_dir)) / "conflict.txt").write_text("content from b\n")
+        repo_b.index.add(["conflict.txt"])
+        repo_b.index.commit("conflict-b change")
+
+        with pytest.raises(RepositoryError):
+            await repo.merge(source_branch="conflict-a", dest_branch="conflict-b", push_remote=False)
+
+        # The merge must have been aborted: no unmerged paths remain in the destination worktree.
+        assert repo_b.git.status("--porcelain") == ""
