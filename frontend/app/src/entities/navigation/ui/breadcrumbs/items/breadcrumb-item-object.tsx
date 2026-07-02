@@ -9,7 +9,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { ObjectRelationshipList } from "@/entities/nodes/object/ui/object-relationship-list";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

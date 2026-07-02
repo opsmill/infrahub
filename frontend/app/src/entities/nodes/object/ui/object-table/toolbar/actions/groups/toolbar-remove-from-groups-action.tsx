@@ -8,7 +8,7 @@ import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { removeRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships";
+import { removeRelationships } from "@/entities/nodes/relationships/domain/use-cases/remove-relationships";
 
 export interface ToolbarRemoveFromGroupActionProps {
   selectedRows: Array<NodeCore>;

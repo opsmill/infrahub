@@ -4,7 +4,10 @@ import { store } from "@/shared/stores";
 
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
+import {
+  generateNodeSchema,
+  generateRelationshipSchema,
+} from "../../../../../../tests/fake/schema";
 import { canDissociateRelationship } from "./can-dissociate-relationship";
 
 describe("canDissociateRelationship", () => {

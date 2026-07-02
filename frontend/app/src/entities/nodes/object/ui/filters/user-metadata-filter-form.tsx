@@ -5,7 +5,7 @@ import type { MetadataUserFilterDefinition } from "@/entities/nodes/object/domai
 import { FILTER_CONDITION } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 
 export interface UserMetadataFilterFormProps {
   definition: MetadataUserFilterDefinition;

@@ -8,7 +8,7 @@ import { debounce } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";

@@ -16,7 +16,7 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 
 export interface RunGeneratorActionProps {

@@ -12,7 +12,7 @@ import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import {
   RelationshipHierarchicalInput,
   RelationshipHierarchicalManyInput,

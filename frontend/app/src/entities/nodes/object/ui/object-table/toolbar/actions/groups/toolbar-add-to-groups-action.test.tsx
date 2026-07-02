@@ -5,8 +5,8 @@ import { store } from "@/shared/stores";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
+import { getRelationships } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
@@ -14,7 +14,7 @@ import { render } from "../../../../../../../../../tests/components/render";
 import { generateNodeSchema } from "../../../../../../../../../tests/fake/schema";
 import { ToolbarAddToGroupsAction } from "./toolbar-add-to-groups-action";
 
-vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
+vi.mock("@/entities/nodes/relationships/domain/use-cases/get-relationships");
 
 const schema = generateNodeSchema();
 
