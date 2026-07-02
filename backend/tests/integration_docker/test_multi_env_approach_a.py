@@ -8,6 +8,12 @@ The two stacks bind-mount the same host remote directory, so both read and write
 repository. Assertions read the authoritative branch list and the repository's recorded commit,
 never a sync-status field or a mutation's return value; progression is driven by explicit triggers
 and observable-state polling to a deadline, never a fixed sleep.
+
+Requires a current-stable Infrahub image built from this branch. It MUST be verified in the Docker
+CI job (which builds the image), NOT against a pre-built local image: a stale image that predates the
+non-`main`-default import fix produces false failures in the periodic-sync path. The reimport and
+tag-bump promotion assertions were not verifiable in the dev environment (the image build has no
+network access to the npm registry) and need a full-stack run on a current image to confirm.
 """
 
 from __future__ import annotations
@@ -126,6 +132,12 @@ def _advance_remote_branch(repo_dir: Path, branch: str, filename: str) -> str:
     sha = _git(repo_dir, "rev-parse", "HEAD")
     _git(repo_dir, "checkout", current)
     return sha
+
+
+def _create_remote_tag(repo_dir: Path, tag: str, commitish: str) -> str:
+    """Create a lightweight tag on the shared remote at ``commitish`` and return its commit SHA."""
+    _git(repo_dir, "tag", tag, commitish)
+    return _git(repo_dir, "rev-parse", f"{tag}^{{commit}}")
 
 
 class ApproachATwoStacks:
@@ -254,6 +266,16 @@ async def _register_read_only(client: InfrahubClient, repo_name: str, ref: str) 
     await client.execute_graphql(query=query.render(), tracker="mutation-readonly-repository-create")
 
 
+async def _update_read_only_ref(client: InfrahubClient, repo_id: str, new_ref: str) -> None:
+    """Bump a read-only repository's tracked ``ref`` (the tag-pin promotion mechanism)."""
+    query = Mutation(
+        mutation="CoreReadOnlyRepositoryUpdate",
+        input_data={"data": {"id": repo_id, "ref": {"value": new_ref}}},
+        query={"ok": None},
+    )
+    await client.execute_graphql(query=query.render(), tracker="mutation-readonly-repository-update")
+
+
 async def _poll_recorded_commit(
     client: InfrahubClient,
     repo_name: str,
@@ -366,15 +388,6 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
         stayed = await _stays_at_commit(consumer_client, repo_name, CoreReadOnlyRepository, consumer_before)
         assert stayed
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "a repository whose git default branch is not the primary branch cannot pull a new "
-            "commit on the periodic sync: the sync looks up a worktree named after the git default "
-            "branch, which does not exist because that branch is mapped onto the primary, so the "
-            "recorded commit stays frozen at the initial import"
-        ),
-    )
     async def test_nonmain_default_periodic_sync_advances(
         self,
         dev_client: InfrahubClient,
@@ -428,3 +441,28 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
             consumer_client, repo_name, CoreReadOnlyRepository, latest_sha, deadline_seconds=130
         )
         assert advanced
+
+    async def test_tag_ref_bump_promotes_consumer(
+        self,
+        consumer_client: InfrahubClient,
+        shared_remote: Path,
+        repo_name: str,
+    ) -> None:
+        """Bumping a read-only consumer's ref to a new tag promotes it — the production mechanism.
+
+        Instead of the documented reimport, a real release flow pins the consumer to a git tag and
+        bumps the ref to the next tag. Bumping the ref must advance the recorded commit to the tag's
+        commit. (Runs last: it mutates the shared consumer repo's ref.)
+        """
+        _advance_remote_branch(shared_remote, CONSUMER_BRANCH, "release_tag.txt")
+        release_sha = _create_remote_tag(shared_remote, "release-1", CONSUMER_BRANCH)
+
+        repo = await consumer_client.get(kind=CoreReadOnlyRepository, name__value=repo_name)
+        assert repo.commit.value != release_sha
+
+        await _update_read_only_ref(consumer_client, repo.id, "release-1")
+
+        promoted = await _wait_for_recorded_commit_equals(
+            consumer_client, repo_name, CoreReadOnlyRepository, release_sha, deadline_seconds=130
+        )
+        assert promoted
