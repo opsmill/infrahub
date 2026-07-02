@@ -1,11 +1,10 @@
-import { apiClient } from "@/shared/api/rest/client";
+import { getConfigFromApi } from "@/entities/config/api/get-config-from-api";
+import type { Config } from "@/entities/config/domain/model/config";
 
-import type { ConfigAPI } from "@/entities/config/types";
-
-export type GetConfig = () => Promise<ConfigAPI>;
+export type GetConfig = () => Promise<Config>;
 
 export const getConfig: GetConfig = async () => {
-  const { data, error } = await apiClient.GET("/api/config");
+  const { data, error } = await getConfigFromApi();
 
   if (error) throw error;
 

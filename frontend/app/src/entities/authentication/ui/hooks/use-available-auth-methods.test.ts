@@ -1,26 +1,24 @@
 import { describe, expect, test, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
-import type { ConfigAPI } from "@/entities/config/types";
+import type { Config } from "@/entities/config/domain/model/config";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 import { useAvailableAuthMethods } from "./use-available-auth-methods";
 
 vi.mock("@/entities/config/ui/config-provider");
 
-const configWithSso = (sso: Partial<ConfigAPI["sso"]>): ConfigAPI =>
-  ({ sso }) as unknown as ConfigAPI;
+const configWithSso = (sso: Partial<Config["sso"]>): Config => ({ sso }) as unknown as Config;
 
-const configWithLdap = (ldap: Partial<ConfigAPI["ldap"]>): ConfigAPI =>
-  ({ ldap }) as unknown as ConfigAPI;
+const configWithLdap = (ldap: Partial<Config["ldap"]>): Config => ({ ldap }) as unknown as Config;
 
 const configWith = ({
   sso,
   ldap,
 }: {
-  sso?: Partial<ConfigAPI["sso"]>;
-  ldap?: Partial<ConfigAPI["ldap"]>;
-}): ConfigAPI => ({ sso, ldap }) as unknown as ConfigAPI;
+  sso?: Partial<Config["sso"]>;
+  ldap?: Partial<Config["ldap"]>;
+}): Config => ({ sso, ldap }) as unknown as Config;
 
 const googleProvider = {
   name: "google",

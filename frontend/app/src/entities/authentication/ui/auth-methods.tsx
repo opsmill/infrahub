@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { LdapCredentialsForm } from "@/entities/authentication/ui/ldap-credentials-form";
 import { LocalCredentialsForm } from "@/entities/authentication/ui/local-credentials-form";
 import { LoginWithSSOButtons } from "@/entities/authentication/ui/login-sso-buttons";
-import type { ConfigAPI, SSOProvider } from "@/entities/config/types";
+import type { Config, SSOProvider } from "@/entities/config/domain/model/config";
 
 // Runtime data for each auth method.
 // Adding a method = adding a variant here and an entry in AUTH_METHODS.
@@ -17,7 +17,7 @@ export type AuthMethodKind = AuthMethod["kind"];
 type AuthMethodDefinition<TMethod extends AuthMethod> = {
   toggleLabel: (method: TMethod) => ReactNode;
   preferDefault: boolean;
-  resolve: (config: ConfigAPI) => TMethod | null;
+  resolve: (config: Config) => TMethod | null;
   render: (method: TMethod) => ReactNode;
 };
 
@@ -72,7 +72,7 @@ export function getAuthMethodToggleLabel(method: AuthMethod): ReactNode {
   return def.toggleLabel(method);
 }
 
-export function resolveAvailableAuthMethods(config: ConfigAPI): Array<AuthMethod> {
+export function resolveAvailableAuthMethods(config: Config): Array<AuthMethod> {
   const definitions = Object.values(AUTH_METHODS) as Array<AuthMethodDefinition<AuthMethod>>;
   return definitions.map((def) => def.resolve(config)).filter((m): m is AuthMethod => m !== null);
 }

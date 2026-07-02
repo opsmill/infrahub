@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { LAST_USED_METHOD_KEY } from "@/entities/authentication/ui/hooks/use-last-used-method";
-import type { ConfigAPI, SSOProvider } from "@/entities/config/types";
+import type { Config, SSOProvider } from "@/entities/config/domain/model/config";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 import { render } from "../../../../tests/components/render";
@@ -18,16 +18,15 @@ const ssoProvider: SSOProvider = {
   token_path: "/api/oauth2/google/token",
 };
 
-const configWithSso = (sso: Partial<ConfigAPI["sso"]>): ConfigAPI =>
-  ({ sso }) as unknown as ConfigAPI;
+const configWithSso = (sso: Partial<Config["sso"]>): Config => ({ sso }) as unknown as Config;
 
 const configWith = ({
   sso,
   ldap,
 }: {
-  sso?: Partial<ConfigAPI["sso"]>;
-  ldap?: Partial<ConfigAPI["ldap"]>;
-}): ConfigAPI => ({ sso, ldap }) as unknown as ConfigAPI;
+  sso?: Partial<Config["sso"]>;
+  ldap?: Partial<Config["ldap"]>;
+}): Config => ({ sso, ldap }) as unknown as Config;
 
 const ldapConfig = {
   enabled: true,

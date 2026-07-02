@@ -8,7 +8,7 @@ import {
   pathToString,
   resolveLoginRedirect,
 } from "@/entities/authentication/ui/routing/login-redirect";
-import type { SSOProvider } from "@/entities/config/types";
+import type { SSOProvider } from "@/entities/config/domain/model/config";
 
 export interface LoginWithSSOButtonsProps {
   className?: string;
