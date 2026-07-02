@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
-import type { AuthMethod } from "@/entities/authentication/auth-methods";
-import { LAST_USED_METHOD_KEY } from "@/entities/authentication/constants";
+import type { AuthMethod } from "@/entities/authentication/ui/auth-methods";
 
-import { useLastUsedMethod } from "./use-last-used-method";
+import { LAST_USED_METHOD_KEY, useLastUsedMethod } from "./use-last-used-method";
 
 const local: AuthMethod = { kind: "local" };
 const sso: AuthMethod = { kind: "sso", providers: [] };

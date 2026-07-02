@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { render } from "../../../../tests/components/render";
-import { ACCESS_TOKEN_KEY } from "../constants";
+import { ACCESS_TOKEN_KEY } from "../api/token-storage";
 import { AuthProvider, useAuth } from "./auth-provider";
 
 // Tiny probe component: renders the current auth state so the test can

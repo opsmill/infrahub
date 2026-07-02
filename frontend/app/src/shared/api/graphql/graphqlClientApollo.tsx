@@ -16,7 +16,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
 
-import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import { getAccessToken } from "@/entities/authentication/api/token-storage";
 import { redirectToLogin } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
 
@@ -45,7 +45,7 @@ export const authLink = setContext((_, previousContext) => {
   const { headers } = previousContext;
 
   // Get the token from the session storage
-  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const accessToken = getAccessToken();
 
   if (!accessToken) {
     return {

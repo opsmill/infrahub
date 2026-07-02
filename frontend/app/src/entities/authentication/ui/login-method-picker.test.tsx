@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { LAST_USED_METHOD_KEY } from "@/entities/authentication/constants";
+import { LAST_USED_METHOD_KEY } from "@/entities/authentication/ui/hooks/use-last-used-method";
 import type { ConfigAPI, SSOProvider } from "@/entities/config/types";
 import { useConfig } from "@/entities/config/ui/config-provider";
 

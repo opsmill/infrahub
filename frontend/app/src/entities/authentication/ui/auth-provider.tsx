@@ -3,11 +3,12 @@ import React from "react";
 import { parseJwt } from "@/shared/utils/common";
 
 import {
+  ACCESS_TOKEN_KEY,
+  getAccessToken,
   removeTokensInLocalStorage,
   saveTokensInLocalStorage,
 } from "@/entities/authentication/api/token-storage";
-import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
-import type { User, UserToken } from "@/entities/authentication/types";
+import type { User, UserToken } from "@/entities/authentication/domain/model/user";
 
 export type AuthContextType = {
   accessToken: string;
@@ -42,9 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // write-back wouldn't loop in one tab — but it would bounce a redundant
   // event to peers, doubling work on every cross-tab sync. Storage writes
   // go through `setToken`; pure state updates use `setAccessTokenState`.
-  const [accessToken, setAccessTokenState] = React.useState<string>(
-    () => localStorage.getItem(ACCESS_TOKEN_KEY) ?? ""
-  );
+  const [accessToken, setAccessTokenState] = React.useState<string>(getAccessToken() ?? "");
 
   const setToken: AuthContextType["setToken"] = (token) => {
     if (token) {
@@ -67,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // `.clear()`) delivers `event.key === null`; that case needs to
       // reconcile too, so only skip events keyed at *other* specific keys.
       if (event.key !== null && event.key !== ACCESS_TOKEN_KEY) return;
-      const current = localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
+      const current = getAccessToken() ?? "";
       setAccessTokenState(current);
     }
     window.addEventListener("storage", handleStorage);

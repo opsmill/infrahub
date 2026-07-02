@@ -2,7 +2,7 @@ import {
   type LoginWithLdapFromApiParams,
   loginWithLdapFromApi,
 } from "@/entities/authentication/api/login-with-ldap-from-api";
-import type { UserToken } from "@/entities/authentication/types";
+import type { UserToken } from "@/entities/authentication/domain/model/user";
 
 export type LoginWithLdapParams = LoginWithLdapFromApiParams;
 

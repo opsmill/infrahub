@@ -2,7 +2,7 @@ import {
   type LoginWithCredentialsFromApiParams,
   loginWithCredentialsFromApi,
 } from "@/entities/authentication/api/login-with-credentials-from-api";
-import type { UserToken } from "@/entities/authentication/types";
+import type { UserToken } from "@/entities/authentication/domain/model/user";
 
 export type LoginWithCredentialsParams = LoginWithCredentialsFromApiParams;
 

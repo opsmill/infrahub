@@ -1,11 +1,13 @@
 import { logoutFromApi } from "@/entities/authentication/api/logout-from-api";
-import { removeTokensInLocalStorage } from "@/entities/authentication/api/token-storage";
-import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import {
+  getAccessToken,
+  removeTokensInLocalStorage,
+} from "@/entities/authentication/api/token-storage";
 
 export type Logout = () => Promise<void>;
 
 export const logout: Logout = async () => {
-  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const accessToken = getAccessToken();
   await logoutFromApi(accessToken);
   removeTokensInLocalStorage();
 };

@@ -1,8 +1,15 @@
-import type { LoginError, LoginErrorCode } from "@/entities/authentication/types";
+export type LoginErrorCode =
+  | "invalid_credentials"
+  | "account_collision"
+  | "enterprise_required"
+  | "network"
+  | "server"
+  | "unknown";
 
-export const ACCESS_TOKEN_KEY = "access_token";
-export const REFRESH_TOKEN_KEY = "refresh_token";
-export const LAST_USED_METHOD_KEY = "auth_last_used_method";
+export type LoginError = {
+  code: LoginErrorCode;
+  message: string;
+};
 
 export const LOGIN_ERRORS: Record<LoginErrorCode, LoginError> = {
   invalid_credentials: {

@@ -1,9 +1,12 @@
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
-import type { UserToken } from "@/entities/authentication/types";
+import type { UserToken } from "@/entities/authentication/domain/model/user";
 
-// Token persistence is browser-storage I/O — an api/ (external data access)
-// concern, not domain. Keeping it here lets domain use-cases call it via
-// domain -> api (allowed) instead of reaching into localStorage directly.
+export const ACCESS_TOKEN_KEY = "access_token";
+export const REFRESH_TOKEN_KEY = "refresh_token";
+
+export const getAccessToken = (): string | null => localStorage.getItem(ACCESS_TOKEN_KEY);
+
+export const getRefreshToken = (): string | null => localStorage.getItem(REFRESH_TOKEN_KEY);
+
 export const saveTokensInLocalStorage = (result: Partial<UserToken>) => {
   if (result?.access_token) {
     localStorage.setItem(ACCESS_TOKEN_KEY, result?.access_token);

@@ -7,7 +7,7 @@ import {
   type AuthMethod,
   getAuthMethodToggleLabel,
   renderAuthMethod,
-} from "@/entities/authentication/auth-methods";
+} from "@/entities/authentication/ui/auth-methods";
 import { useAvailableAuthMethods } from "@/entities/authentication/ui/hooks/use-available-auth-methods";
 import { useLastUsedMethod } from "@/entities/authentication/ui/hooks/use-last-used-method";
 

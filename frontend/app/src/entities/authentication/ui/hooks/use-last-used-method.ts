@@ -4,8 +4,9 @@ import {
   AUTH_METHODS,
   type AuthMethod,
   type AuthMethodKind,
-} from "@/entities/authentication/auth-methods";
-import { LAST_USED_METHOD_KEY } from "@/entities/authentication/constants";
+} from "@/entities/authentication/ui/auth-methods";
+
+export const LAST_USED_METHOD_KEY = "auth_last_used_method";
 
 function readStoredKind(): AuthMethodKind | null {
   const raw = localStorage.getItem(LAST_USED_METHOD_KEY);

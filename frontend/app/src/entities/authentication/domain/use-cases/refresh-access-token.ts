@@ -2,8 +2,10 @@ import {
   type RefreshAccessTokenFromApiResult,
   refreshAccessTokenFromApi,
 } from "@/entities/authentication/api/refresh-access-token-from-api";
-import { saveTokensInLocalStorage } from "@/entities/authentication/api/token-storage";
-import { REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
+import {
+  getRefreshToken,
+  saveTokensInLocalStorage,
+} from "@/entities/authentication/api/token-storage";
 
 export type RefreshAccessToken = () => Promise<RefreshAccessTokenFromApiResult>;
 
@@ -14,7 +16,7 @@ export type RefreshAccessToken = () => Promise<RefreshAccessTokenFromApiResult>;
 // dropped in-flight React Query state and double-navigated when the catch
 // site also redirected.
 export const refreshAccessToken: RefreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  const refreshToken = getRefreshToken();
 
   if (!refreshToken) {
     throw new Error("Refresh token not found");

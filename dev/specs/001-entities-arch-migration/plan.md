@@ -8,9 +8,11 @@
 Migrate all ~24 frontend entity modules (and, last, the `nodes/` namespace) toward a DDD-inspired
 layout — `api/` (flat, transport + mappers returning domain types), `ui/` (nested, React/TanStack),
 and `domain/{model,rules,use-cases}` (pure, split only when >4 files) — reconciling with the existing
-`dev/knowledge/frontend/entities-structure.md` rather than replacing it. The transport boundary is
-tightened so `domain/` imports no generated GraphQL/REST types, enforced by an incrementally-scoped
-Biome `noRestrictedImports` guard (Tier 1, no new dependency). Rollout is one entity per PR, each green
+`dev/knowledge/frontend/entities-structure.md` rather than replacing it. Generated GraphQL/REST types
+are the backend↔frontend contract and are permitted in `domain/`; the boundary enforced by the
+incrementally-scoped Biome `noRestrictedImports` guard (Tier 1, no new dependency) is the layout and
+cycle rules, not a generated-type ban.
+Rollout is one entity per PR, each green
 on `pnpm tsc && pnpm build && pnpm test && pnpm biome`, ordered `role-manager` → `branches` (then update
 the knowledge doc) → fan-out → `nodes/`.
 
@@ -24,7 +26,7 @@ the knowledge doc) → fan-out → `nodes/`.
 **Project Type**: Web application frontend (`frontend/app/`)
 **Performance Goals**: No runtime change expected; bundle size must not regress (pure file moves + import rewrites)
 **Constraints**: Each PR green on `pnpm tsc && pnpm build && pnpm test && pnpm biome`; one entity per PR; preserve public behavior
-**Scale/Scope**: 24 entity modules + `nodes/` namespace (~12 sub-modules, ~260 files); 8 `domain/` files currently leak generated types
+**Scale/Scope**: 24 entity modules + `nodes/` namespace (~12 sub-modules, ~260 files). Generated types in `domain/` are permitted, so the migration focuses on layout (no root catch-all files), cycle-freedom, and keeping browser storage / global state out of `domain/`
 
 ## Constitution Check
 
@@ -32,8 +34,8 @@ the knowledge doc) → fan-out → `nodes/`.
 
 | Principle | Status | Notes |
 |---|---|---|
-| I. Schema-Driven Integrity | ✅ PASS | Generated files (`shared/api/`) untouched. Migration moves consumers of generated types out of `domain/` into `api/`; the generated files themselves are never edited. |
-| III. Type Safety & Explicit Contracts | ✅ PASS | Reinforces contracts: `domain/` gains explicit domain types; `api/` maps generated → domain. No new `any`/`as`. `api → domain/model` is type-only. |
+| I. Schema-Driven Integrity | ✅ PASS | Generated files (`shared/api/`) untouched and never edited. Generated types remain the backend↔frontend contract and may be consumed directly in `domain/`. |
+| III. Type Safety & Explicit Contracts | ✅ PASS | Reinforces contracts: `domain/` uses generated types directly or maps to explicit domain types via `api/` when the shapes differ. No new `any`/`as`. `api → domain/model` is type-only. |
 | IV. Test Discipline | ✅ PASS | No behavior change; existing unit/component tests move with their subjects and must pass. E2E happy paths unchanged and must remain green. No new features → no new E2E required, but no regression permitted. |
 | VII. Simplicity & Maintainability | ✅ PASS w/ note | Pragmatic split (>4 files, ≥2 per folder) honors YAGNI — no empty folders, no premature abstraction. **No new dependency** (dependency-cruiser deferred). The one new abstraction (`domain/model` as a named leaf) clarifies an existing dependency rather than inventing one. |
 | Quality Gates (format/lint/type/test) | ✅ PASS | Every PR must pass all four commands. Tier-1 Biome guard added incrementally. |
@@ -100,13 +102,20 @@ kept as `ui → domain → api` with the single new type-only edge `api → doma
 Allowed:                                   Forbidden:
   ui → domain (same entity)                  domain → ui / routing / TanStack / Apollo
   ui → shared                                domain → browser storage / toast libs
-  ui → other-entity domain, ui              domain → generated GraphQL/REST types
-  domain/use-cases → own api/                api → domain/rules, domain/use-cases, ui
-  domain/use-cases → domain/model, rules     domain/model → anything in api/rules/use-cases/ui
-  domain/rules → domain/model                ui → another entity's api/
-  api → domain/model (TYPE-ONLY)             (any import creating a cycle)
+  ui → other-entity domain, ui              api → domain/rules, domain/use-cases, ui
+  domain/use-cases → own api/                domain/model → anything in api/rules/use-cases/ui
+  domain/use-cases → domain/model, rules     ui → another entity's api/
+  domain/rules → domain/model                (any import creating a cycle)
+  domain → generated GraphQL/REST types
+  api → domain/model (TYPE-ONLY)
   api → shared
+  shared → authentication (cross-cutting)
 ```
+
+> **Notes:** generated types (incl. wire DTOs) are the backend↔frontend contract and are
+> allowed in `domain/`; `api/` mappers are optional. `shared/` may depend on the
+> `authentication` entity as a cross-cutting exception (`shared/` stays a leaf for every
+> other entity).
 
 ## Complexity Tracking
 

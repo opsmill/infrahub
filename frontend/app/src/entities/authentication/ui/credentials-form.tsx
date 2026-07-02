@@ -8,8 +8,8 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
-import { LOGIN_ERRORS } from "@/entities/authentication/constants";
-import type { LoginError, UserToken } from "@/entities/authentication/types";
+import { LOGIN_ERRORS, type LoginError } from "@/entities/authentication/domain/model/login-error";
+import type { UserToken } from "@/entities/authentication/domain/model/user";
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 
 export interface CredentialsFormProps {
