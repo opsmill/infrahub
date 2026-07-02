@@ -51,9 +51,7 @@ def configured_logging() -> None:
     configure_logging(production=False, log_level="DEBUG")
 
 
-async def test_classified_failure_logs_no_traceback(
-    configured_logging: None, caplog: pytest.LogCaptureFixture
-) -> None:
+async def test_classified_failure_logs_no_traceback(configured_logging: None, caplog: pytest.LogCaptureFixture) -> None:
     with (
         caplog.at_level(logging.INFO, logger="prefect.flow_runs"),
         pytest.raises(WebhookDeliveryError, match=r"^The target responded with HTTP 404\.$"),
