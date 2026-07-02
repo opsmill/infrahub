@@ -15,7 +15,7 @@ import {
 } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { proposedChangeValidatorsKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { useRunCheckMutation } from "@/entities/diff/ui/queries/run-check.mutation";
 import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";

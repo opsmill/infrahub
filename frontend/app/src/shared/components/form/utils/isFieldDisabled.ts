@@ -1,7 +1,7 @@
 import type { LineageOwner } from "@/shared/api/graphql/generated/types";
 import { store } from "@/shared/stores";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import type { PermissionDecisionData } from "@/entities/permission/types";
 

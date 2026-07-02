@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";

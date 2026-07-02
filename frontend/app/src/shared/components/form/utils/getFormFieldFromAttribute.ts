@@ -13,7 +13,7 @@ import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDef
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeAttributeWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";

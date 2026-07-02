@@ -11,7 +11,7 @@ import { getFormFieldFromRelationship } from "@/shared/components/form/utils/get
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";

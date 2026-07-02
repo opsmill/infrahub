@@ -3,7 +3,7 @@ import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";

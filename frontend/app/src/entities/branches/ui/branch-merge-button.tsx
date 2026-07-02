@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { BranchDetail } from "@/entities/branches/domain/model/branch";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";

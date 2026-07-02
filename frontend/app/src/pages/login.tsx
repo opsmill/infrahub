@@ -4,8 +4,8 @@ import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
 
 import type { RestErrorItem } from "@/shared/api/rest/fetch";
 
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { LoginMethodPicker } from "@/entities/authentication/ui/login-method-picker";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { resolveLoginRedirect } from "@/entities/authentication/utils";
 
 function LoginPage() {

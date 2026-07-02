@@ -1,7 +1,7 @@
 import { Checkbox, LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
