@@ -50,7 +50,7 @@ def _collapse_ipv6(s: str) -> str:
         pass
 
     try:
-        return ipaddress.IPv6Network(s).with_prefixlen
+        return ipaddress.IPv6Interface(s).with_prefixlen
     except ipaddress.AddressValueError:
         pass
 
