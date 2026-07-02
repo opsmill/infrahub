@@ -57,8 +57,8 @@ test harness wiring — there is no separate product code. "Green" tasks assert 
 
 **Independent Test**: run the file; both US3 tests pass (green).
 
-- [ ] T008 [US3] Add `test_nonmain_default_maps_to_primary_no_phantom` in `backend/tests/integration/git/test_multi_env_writeback.py`: register a read-write repo with `default_branch=develop`, drive a sync cycle, assert `client.branch.all()` contains **no** standalone `develop` and that `develop` maps onto the primary branch (green)
-- [ ] T009 [US3] Add `test_nonmain_default_import_not_frozen` in the same file: land a new commit on remote `develop`, drive a sync, assert the repository's recorded `commit` advances to the new SHA (green)
+- [X] T008 [US3] Add `test_nonmain_default_maps_to_primary_no_phantom` in `backend/tests/integration/git/test_multi_env_writeback.py`: register a read-write repo with `default_branch=develop`, drive a sync cycle, assert `client.branch.all()` contains **no** standalone `develop` and that `develop` maps onto the primary branch (green)
+- [X] T009 [US3] Add `test_nonmain_default_import_not_frozen` in the same file: land a new commit on remote `develop`, drive a sync, assert the repository's recorded `commit` advances to the new SHA (green)
 
 **Checkpoint**: non-main default import behaviour is guarded.
 

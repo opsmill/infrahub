@@ -18,6 +18,7 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.git.repository import InfrahubRepository
+from infrahub.git.tasks import sync_remote_repositories
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import create_gogs_repo
 
@@ -44,6 +45,22 @@ def _create_remote_branch_from_main(container: DockerContainer, repo_name: str, 
     )
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Creating remote branch {branch} failed: {result.output.decode()}"
+
+
+def _push_commit_to_remote(container: DockerContainer, repo_name: str, filename: str, branch: str) -> None:
+    """Make a new commit on ``branch`` in the remote server's working clone and push it."""
+    script = (
+        f"set -e && "
+        f"cd /tmp/{repo_name} && "
+        f"git checkout {branch} && "
+        f"git pull origin {branch} && "
+        f"echo 'remote change' > {filename} && "
+        f"git add {filename} && "
+        f"git commit -m 'Remote commit [{filename}]' && "
+        f"git push origin {branch}"
+    )
+    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
+    assert result.exit_code == 0, f"Remote commit on {branch} failed: {result.output.decode()}"
 
 
 def _remote_branch_commit(container: DockerContainer, repo_name: str, branch: str) -> str:
@@ -130,3 +147,66 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
 
         # The intended contract: the write-back reached the remote default branch.
         assert develop_after != develop_before
+
+    @pytest.fixture(scope="class")
+    async def synced_nonmain_default_dataset(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> dict:
+        """A separate repo whose remote has main + develop; registered with default_branch=develop.
+
+        Kept distinct from ``nonmain_default_dataset`` so the sync-driven branch assertions are not
+        perturbed by the write-back reconstruction test.
+        """
+        repo_name = "multi-env-sync-repo"
+        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        _create_remote_branch_from_main(gogs_server.container, repo_name, DEV_BRANCH)
+
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url, "default_branch": DEV_BRANCH},
+        )
+        await node.save()
+        return {"repo_name": repo_name, "node_id": node.id}
+
+    async def test_nonmain_default_maps_to_primary_no_phantom(
+        self,
+        synced_nonmain_default_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A non-primary git default branch maps onto the primary branch with no standalone copy.
+
+        The duplicate ("phantom") branch is created by the periodic sync flow, not the initial
+        import, so the flow is run explicitly before asserting the branch set.
+        """
+        await sync_remote_repositories()
+
+        branches = await client.branch.all()
+        assert DEV_BRANCH not in branches
+
+    async def test_nonmain_default_import_not_frozen(
+        self,
+        synced_nonmain_default_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """A new commit on the configured default branch is imported (the repo is not pinned)."""
+        repo_name = synced_nonmain_default_dataset["repo_name"]
+        node_id = synced_nonmain_default_dataset["node_id"]
+
+        repo_before: CoreRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        commit_before = repo_before.commit.value
+
+        _push_commit_to_remote(gogs_server.container, repo_name, "advance.txt", branch=DEV_BRANCH)
+        await sync_remote_repositories()
+
+        repo_after: CoreRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert repo_after.commit.value != commit_before
