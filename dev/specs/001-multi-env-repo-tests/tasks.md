@@ -89,7 +89,21 @@ test harness wiring — there is no separate product code. "Green" tasks assert 
 - [X] T015 [US5] Fetch-trigger spike — **resolved: no reproducing trigger via force-push.** `fetch()` uses `prune=True, tags=True, prune_tags=True`, so a rewritten/force-pushed excluded ref force-updates without error. Suspected defect (b) (fetch-before-filter blast radius) is **refuted** in practice; no failing check added.
 - [X] T016 [US5] `test_fetch_tolerates_problematic_excluded_ref` — a force-pushed (rewritten) branch outside the filter does **not** break in-filter syncing; the in-filter default branch still imports. Green guard documenting that the fetch-before-filter blast radius is not reachable via force-push (suspected defect (b) refuted). Verified on stable.
 
-**Checkpoint**: deterministic prong complete — one file, all stories, CI-resident.
+### Extra write-back robustness angles (added mid-implementation, approved by user)
+
+Beyond the happy path, in the same file — all verified on stable:
+
+- [X] A1 Permanence — a dropped write-back is not re-delivered by a later sync (`xfail`).
+- [X] A2 Post-drop convergence — the repo does **not** converge; `merge()` records the commit before
+  the push is confirmed, so a dropped push leaves the graph diverged and stuck (`xfail`). Pure
+  divergence recovers; write-back-drop divergence does not. **New finding** — folded into the non-ff
+  issue draft with a two-part fix.
+- [X] A3 Repeated non-ff write-backs are each dropped (`xfail`).
+- [X] A4 Drop is independent of `USE_EXPLICIT_MERGE_COMMIT` (`xfail`).
+- [X] A5 `GIT_CONFIG_GLOBAL` `pull.rebase=true` lever does **not** rescue the stuck state (`xfail`) —
+  confirms the fix must be in code, not a git-config workaround.
+
+**Checkpoint**: deterministic prong complete — 13 tests (6 green guards, 7 `xfail`), one file, CI-resident.
 
 ---
 
