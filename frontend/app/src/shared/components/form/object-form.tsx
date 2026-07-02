@@ -46,7 +46,7 @@ export type { ProfileData };
 const IpPrefixForm = lazy(() => import("@/entities/ipam/ip-prefixes/ui/ipam-creation-form"));
 const RepositoryForm = lazy(() => import("@/entities/repository/ui/repository-form"));
 const ObjectTemplateForm = lazy(
-  () => import("@/entities/nodes/object-template/object-template-form")
+  () => import("@/entities/nodes/object/ui/object-template/object-template-form")
 );
 
 export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {

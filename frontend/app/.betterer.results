@@ -101,9 +101,6 @@ exports[`fix ts error`] = {
       [62, 28, 24, "tsc: \'objectDetailsData.object\' is possibly \'null\' or \'undefined\'.", "865142553"],
       [62, 53, 4, "tsc: Property \'node\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/entities/nodes/object-template/object-template-form.tsx:2586805571": [
-      [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
-    ],
     "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:1468663034": [
       [118, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
     ],
@@ -124,6 +121,9 @@ exports[`fix ts error`] = {
     ],
     "src/entities/nodes/object/ui/object-relationship-list.tsx:2931851258": [
       [38, 54, 5, "tsc: Property \'items\' does not exist on type \'NodeObject[]\'.", "179721187"]
+    ],
+    "src/entities/nodes/object/ui/object-template/object-template-form.tsx:3764076650": [
+      [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
     ],
     "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:2275135453": [
       [18, 34, 2, "tsc: Property \'id\' does not exist on type \'NodeCore | NodeCore[] | { from_pool: { id: string; }; }\'.\\n  Property \'id\' does not exist on type \'NodeCore[]\'.", "5861160"]

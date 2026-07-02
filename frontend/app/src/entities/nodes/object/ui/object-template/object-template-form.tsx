@@ -6,7 +6,7 @@ import { Button, type ButtonProps, Dialog, DialogTrigger } from "react-aria-comp
 import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 import { classNames } from "@/shared/utils/common";
 
-import { ObjectTemplateAutocomplete } from "@/entities/nodes/object-template/object-template-autocomplete";
+import { ObjectTemplateAutocomplete } from "@/entities/nodes/object/ui/object-template/object-template-autocomplete";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { TemplateSchema } from "@/entities/schema/domain/model/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
