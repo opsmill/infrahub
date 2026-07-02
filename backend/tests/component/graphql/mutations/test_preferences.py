@@ -320,7 +320,8 @@ async def test_global_preserves_other_field(
 
     Each update is a serialized read-modify-write under the singleton lock, so updating only
     `timezone` re-reads the row and leaves a previously-set `date_format` intact (no lost write).
-    This pins the concurrency-safety guarantee of the singleton lock.
+    This verifies the read-modify-write is field-preserving across sequential updates (what the
+    lock guarantees under concurrency); it does not itself run concurrent writers.
     """
     await run_mutation(
         db=db,

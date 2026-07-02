@@ -88,7 +88,10 @@ class PreferencesType(ObjectType):
 
 
 def _entry(key: str, value: str | None, source: object) -> dict:
-    # `source` is a PreferenceSource member; graphene serialises it to the GraphQL enum name.
+    # `source` is a PreferenceSource member. It is typed `object` deliberately: graphene's Enum
+    # metaclass makes static type-checkers treat members as `str` (see the PreferenceScope note
+    # above), so annotating it `PreferenceSource` would trip ty. Graphene serialises the member to
+    # the GraphQL enum name at runtime.
     return {"key": key, "value": value, "source": source}
 
 

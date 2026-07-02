@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 # locale — which Infrahub does not override with locale.setlocale(LC_TIME, ...) — it renders English
 # "AM"/"PM", matching the web client's date-fns `a` token in its default (en-US) locale.
 DATE_FORMAT_STRFTIME: dict[str, str] = {
-    "ISO_8601": "%Y-%m-%dT%H:%M:%S%z",  # 2026-07-01T14:30:00+02:00
+    # %z renders the offset without a colon (+0200); the web client's date-fns `XXX` renders it
+    # WITH a colon (+02:00). Same key, intentionally per-client offset formatting — both valid ISO 8601.
+    "ISO_8601": "%Y-%m-%dT%H:%M:%S%z",  # 2026-07-01T14:30:00+0200
     "ISO_DATETIME": "%Y-%m-%d %H:%M",  # 2026-07-01 14:30
     "ISO_DATETIME_SECONDS": "%Y-%m-%d %H:%M:%S",  # 2026-07-01 14:30:00
     "EU_DATETIME": "%d/%m/%Y %H:%M",  # 01/07/2026 14:30

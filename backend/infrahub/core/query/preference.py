@@ -29,6 +29,9 @@ class UserPreferenceGetByAccountQuery(StandardNodeQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["account_id"] = self.account_id
 
+        # `node_type` is a trusted internal constant — always UserPreference.get_type() passed by
+        # the caller (models.py), never user input — so interpolating it as the node label (Cypher
+        # labels can't be parameterised) is safe. `account_id` IS a bound $param.
         query = """
         MATCH (n:%s { account_id: $account_id })
         """ % (self.node_type,)

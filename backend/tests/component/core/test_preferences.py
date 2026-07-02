@@ -28,10 +28,12 @@ async def test_global_preference_get_global_lazy_create(db: InfrahubDatabase, de
 
 
 async def test_global_preference_get_global_idempotent_under_lock(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """Repeated get_global calls when none exists still yield exactly one row.
+    """Repeated get_global calls return the same singleton and never create a second row.
 
-    get_global runs on every effective-preferences READ, so the lazy-create path must be
-    guarded against producing duplicate singletons (double-checked locking in models.py).
+    This exercises the idempotent lazy-create: the first call materialises the singleton and
+    subsequent (sequential) calls take the lock-free fast path and return it. It verifies
+    idempotency, NOT concurrent behaviour — the actual race protection (double-checked locking)
+    lives in GlobalPreference.get_global; a true concurrency test would issue overlapping calls.
     """
     assert await GlobalPreference.get_list(db=db) == []
 
@@ -44,12 +46,12 @@ async def test_global_preference_get_global_idempotent_under_lock(db: InfrahubDa
 
 async def test_global_preference_persists_values(db: InfrahubDatabase, default_branch: Branch) -> None:
     obj = await GlobalPreference.get_global(db=db)
-    obj.date_format = "yyyy-MM-dd"
+    obj.date_format = "ISO_DATETIME"  # a semantic DateFormat key, not a rendering pattern
     obj.timezone = "UTC"
     await obj.save(db=db)
 
     reloaded = await GlobalPreference.get_global(db=db)
-    assert reloaded.date_format == "yyyy-MM-dd"
+    assert reloaded.date_format == "ISO_DATETIME"
     assert reloaded.timezone == "UTC"
     assert len(await GlobalPreference.get_list(db=db)) == 1
 
