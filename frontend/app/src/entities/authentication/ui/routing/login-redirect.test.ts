@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pathToString, safeInternalPath } from "./utils";
+import { pathToString, safeInternalPath } from "./login-redirect";
 
 describe("safeInternalPath", () => {
   // The original window.location.origin in vitest's jsdom is `http://localhost:3000`.

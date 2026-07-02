@@ -1,4 +1,4 @@
-import { removeTokensInLocalStorage } from "@/entities/authentication/utils";
+import { removeTokensInLocalStorage } from "@/entities/authentication/api/token-storage";
 
 // Token is invalid or missing — clear local credentials and bounce to /login.
 // Hard-navigates because callers (Apollo errorLink, REST middleware) run

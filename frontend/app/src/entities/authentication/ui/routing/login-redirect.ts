@@ -1,8 +1,5 @@
 import type { Location, Path } from "react-router";
 
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
-import type { UserToken } from "@/entities/authentication/types";
-
 // Validates that `raw` is a path-absolute, same-origin reference and
 // returns it as a Partial<Path>. Rejects protocol-relative (`//evil`),
 // schemed (`https://evil`), and anything URL() can't parse. Used by the
@@ -48,19 +45,4 @@ export const resolveLoginRedirect = (
   const stateFrom = stateFromRaw ? safeInternalPath(pathToString(stateFromRaw)) : null;
   const queryFrom = safeInternalPath(searchParams.get("from"));
   return stateFrom ?? queryFrom ?? { pathname: "/" };
-};
-
-export const saveTokensInLocalStorage = (result: Partial<UserToken>) => {
-  if (result?.access_token) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, result?.access_token);
-  }
-
-  if (result?.refresh_token) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, result?.refresh_token);
-  }
-};
-
-export const removeTokensInLocalStorage = () => {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
 };

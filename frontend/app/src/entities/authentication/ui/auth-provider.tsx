@@ -2,12 +2,12 @@ import React from "react";
 
 import { parseJwt } from "@/shared/utils/common";
 
-import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
-import type { User, UserToken } from "@/entities/authentication/types";
 import {
   removeTokensInLocalStorage,
   saveTokensInLocalStorage,
-} from "@/entities/authentication/utils";
+} from "@/entities/authentication/api/token-storage";
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import type { User, UserToken } from "@/entities/authentication/types";
 
 export type AuthContextType = {
   accessToken: string;

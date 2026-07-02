@@ -2,8 +2,8 @@ import {
   type RefreshAccessTokenFromApiResult,
   refreshAccessTokenFromApi,
 } from "@/entities/authentication/api/refresh-access-token-from-api";
+import { saveTokensInLocalStorage } from "@/entities/authentication/api/token-storage";
 import { REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
-import { saveTokensInLocalStorage } from "@/entities/authentication/utils";
 
 export type RefreshAccessToken = () => Promise<RefreshAccessTokenFromApiResult>;
 

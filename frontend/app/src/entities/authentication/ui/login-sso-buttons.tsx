@@ -4,7 +4,10 @@ import { useLocation, useSearchParams } from "react-router";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { classNames } from "@/shared/utils/common";
 
-import { pathToString, resolveLoginRedirect } from "@/entities/authentication/utils";
+import {
+  pathToString,
+  resolveLoginRedirect,
+} from "@/entities/authentication/ui/routing/login-redirect";
 import type { SSOProvider } from "@/entities/config/types";
 
 export interface LoginWithSSOButtonsProps {

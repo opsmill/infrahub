@@ -6,7 +6,7 @@ import type { RestErrorItem } from "@/shared/api/rest/fetch";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { LoginMethodPicker } from "@/entities/authentication/ui/login-method-picker";
-import { resolveLoginRedirect } from "@/entities/authentication/utils";
+import { resolveLoginRedirect } from "@/entities/authentication/ui/routing/login-redirect";
 
 function LoginPage() {
   const location = useLocation();
