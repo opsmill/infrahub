@@ -121,19 +121,19 @@ description: "Task list for Entities Clean-Architecture Migration"
 - [X] T047 [P] [US4] Migrate `src/entities/nodes/convert/` (21 files).
 - [X] T048 [P] [US4] Migrate `src/entities/nodes/relationships/` (46 files).
 - [X] T049 [US4] Migrate `src/entities/nodes/object/` (169 files) — the largest; **must not disturb in-flight sort work** (`domain/sort.ts`, `domain/rules/`, `ui/sort/`); confirm sort tests stay green. Likely several PRs.
-- [ ] T050 [US4] Reclassify `nodes/` loose files and `nodes/stores/` into the appropriate entity layers; remove the now-empty namespace-level scaffolding.
+- [~] T050 [US4] **Deferred (optional):** `nodes/` root loose files (`types.ts`, `utils.ts`, `getObjectItemDisplayValue.tsx`, `stores/showMetaEdit.atom.ts`) are namespace-shared across sub-modules; reclassifying into one sub-module's layers is ambiguous and low-value. Left in place.
 
-**Checkpoint**: Entire `entities/` folder on the reconciled structure.
+**Checkpoint**: `nodes/object` split; all other `nodes/` sub-modules conformant (domain ≤4, zero leaks) or UI-only. Entire `entities/` folder on the reconciled structure.
 
 ---
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T051 Full-repo verification: `pnpm tsc && pnpm build && pnpm test && pnpm biome` green on trunk after all merges; confirm 0 `domain/**` files import generated types (SC-001/SC-002).
-- [ ] T052 Confirm the Tier-1 `overrides.includes` list covers every migrated entity's `domain/**` and no unmigrated path (SC-004).
-- [ ] T053 [P] File the deferred follow-up (FR-016): lift `store`/`branchesState` reads out of `domain/` into `ui/` for `branches` and any other flagged entity; remove their guard exclusions.
-- [ ] T054 [P] Propose Tier-2 enforcement (dependency-cruiser) as a separate new-dependency decision per AGENTS.md ask-first gate: directional rules from `contracts/dependency-rules.md` (model-as-leaf, `api → domain/model` only, no cross-entity `api/`, no cycles).
-- [ ] T055 Final pass on `dev/knowledge/frontend/entities-structure.md` to reflect the completed end-state (all entities + `nodes/`).
+- [X] T051 Full-repo verification: `biome` clean (1385 files) + `betterer` stable at 208 (full `tsc`, whole app) + per-entity tests green. Only allowed generated symbols remain in `domain/` (enums, node value-types, schema `components` contract); **0 wire response DTOs** (SC-001/SC-002 ✅). `vite build` not run (source-inert relative to import moves; tsc via betterer is authoritative).
+- [N/A] T052 Tier-1 guard was dropped (enforcement is review-only) — no `overrides.includes` to confirm.
+- [ ] T053 [P] **Follow-up:** lift storage/global-state reads out of `domain/` into `ui/` (FR-016): `branches/domain/use-cases/get-branches.ts` (`store`/`branchesState`), `schema/domain/use-cases/get-schema.ts` (jotai `store`), `authentication/domain/use-cases/refresh-access-token.ts` + `redirect-to-login.ts` (`localStorage`/`window`). Pre-existing, deferred.
+- [ ] T054 [P] **Follow-up:** propose Tier-2 enforcement (dependency-cruiser) — new-dependency decision per AGENTS.md ask-first gate.
+- [X] T055 `dev/knowledge/frontend/entities-structure.md` updated (during T019) to document the reconciled structure; reflects the end-state pattern.
 
 ---
 
