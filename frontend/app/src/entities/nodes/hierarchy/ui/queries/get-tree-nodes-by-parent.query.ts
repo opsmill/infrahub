@@ -8,11 +8,9 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetTreeNodesByParentParams,
   getTreeNodesByParent,
-} from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent";
+  TREE_NODES_PAGE_SIZE,
+} from "@/entities/nodes/hierarchy/domain/use-cases/get-tree-nodes-by-parent";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-
-/** Page size for tree node queries - larger than default to reduce requests for hierarchical data */
-export const TREE_NODES_PAGE_SIZE = 80;
 
 export type GetTreeNodesByParentQueryOptionsParams = Omit<
   GetTreeNodesByParentParams,
