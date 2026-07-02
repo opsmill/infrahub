@@ -31,8 +31,8 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 **Purpose**: Create the new package and test-directory skeletons.
 
-- [ ] T001 Create the `backend/infrahub/git/fingerprint/` package with an empty `__init__.py` and empty stub modules `composer.py`, `blob_resolver.py`, `registry.py`, `hasher.py` (or `canonical.py` for canonicalisation helpers), each with module docstring only.
-- [ ] T002 [P] Create the unit test package `backend/tests/unit/git/fingerprint/` with an empty `__init__.py`.
+- [X] T001 Create the `backend/infrahub/git/fingerprint/` package with an empty `__init__.py` and empty stub modules `composer.py`, `blob_resolver.py`, `registry.py`, `hasher.py` (or `canonical.py` for canonicalisation helpers), each with module docstring only.
+- [X] T002 [P] Create the unit test package `backend/tests/unit/git/fingerprint/` with an empty `__init__.py`.
 - [X] T003 [P] Create the changelog fragment `changelog/+ifc-2844.added.md` describing the new nullable branch-aware `fingerprint` attribute on `CoreGraphQLQuery`, `CoreTransformation`, `CoreArtifactDefinition`, and `CoreGeneratorDefinition`.
 
 ---
@@ -54,15 +54,15 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 ### Shared fingerprint components
 
-- [ ] T010 [P] Implement the SHA-256 hasher and canonicalisation helpers in `backend/infrahub/git/fingerprint/hasher.py`: a function that hashes an ordered tuple of canonicalised inputs to a hex digest, plus `parameters` canonicalisation via `json.dumps(..., sort_keys=True, separators=(",", ":"))` (FR-014).
-- [ ] T011 [P] Implement the blob-SHA resolver in `backend/infrahub/git/fingerprint/blob_resolver.py`: resolve `{repo_relative_path: git_blob_sha}` from the git tree at the imported commit (GitPython `Repo(worktree).commit(commit).tree`), reading git metadata only, never file contents (FR-009b). Constructor-injected worktree/commit.
-- [ ] T011a [P] Implement a closure-path selector helper (in `backend/infrahub/git/fingerprint/composer.py` or `hasher.py`) that, given the stored `dependencies`, returns the paths to hash with `.infrahub.yml` (`closure_builder.post_processing.MANIFEST_PATH`) EXCLUDED. RATIONALE (verified against the codebase): `append_manifest_path` merges `.infrahub.yml` into every transform/generator's stored `dependencies`, so hashing all pairs verbatim would change the fingerprint on any comment-only or unrelated `.infrahub.yml` edit and violate SC-005 / the "comment-only manifest edit" edge case. The manifest's output-affecting fields are folded in separately as parsed scalars (`class_name`, `template_path`, `parameters`, ...), not as bytes. The definition's own source file and any `watch:` files MUST remain in the hashed set. This selector is shared by the transformation (US2) and generator (US4) composers.
-- [ ] T012 [P] Implement the per-import fingerprint registry in `backend/infrahub/git/fingerprint/registry.py`: an in-memory `{(kind, name): fingerprint_hexdigest}` snapshot with set/get, so higher layers read the freshly-computed lower-level value and never a stored graph value (FR-015a).
-- [ ] T013 Define the layered composer skeleton in `backend/infrahub/git/fingerprint/composer.py` (depends on T010-T012, T011a): a class with constructor-injected hasher, blob resolver, registry, and closure-path selector, exposing `compose_query`, `compose_transformation`, `compose_artifact_definition`, `compose_generator_definition` entry methods (bodies stubbed/`NotImplementedError`, filled in per story). Registry lookups for cross-references use the referenced definition's name (artifact def -> transform by `transformation` name across both transform kinds; artifact/generator def -> target group by `targets` name resolved to id); ensure the registry key scheme supports these name-based lookups.
+- [X] T010 [P] Implement the SHA-256 hasher and canonicalisation helpers in `backend/infrahub/git/fingerprint/hasher.py`: a function that hashes an ordered tuple of canonicalised inputs to a hex digest, plus `parameters` canonicalisation via `json.dumps(..., sort_keys=True, separators=(",", ":"))` (FR-014).
+- [X] T011 [P] Implement the blob-SHA resolver in `backend/infrahub/git/fingerprint/blob_resolver.py`: resolve `{repo_relative_path: git_blob_sha}` from the git tree at the imported commit (GitPython `Repo(worktree).commit(commit).tree`), reading git metadata only, never file contents (FR-009b). Constructor-injected worktree/commit.
+- [X] T011a [P] Implement a closure-path selector helper (in `backend/infrahub/git/fingerprint/composer.py` or `hasher.py`) that, given the stored `dependencies`, returns the paths to hash with `.infrahub.yml` (`closure_builder.post_processing.MANIFEST_PATH`) EXCLUDED. RATIONALE (verified against the codebase): `append_manifest_path` merges `.infrahub.yml` into every transform/generator's stored `dependencies`, so hashing all pairs verbatim would change the fingerprint on any comment-only or unrelated `.infrahub.yml` edit and violate SC-005 / the "comment-only manifest edit" edge case. The manifest's output-affecting fields are folded in separately as parsed scalars (`class_name`, `template_path`, `parameters`, ...), not as bytes. The definition's own source file and any `watch:` files MUST remain in the hashed set. This selector is shared by the transformation (US2) and generator (US4) composers.
+- [X] T012 [P] Implement the per-import fingerprint registry in `backend/infrahub/git/fingerprint/registry.py`: an in-memory `{(kind, name): fingerprint_hexdigest}` snapshot with set/get, so higher layers read the freshly-computed lower-level value and never a stored graph value (FR-015a).
+- [X] T013 Define the layered composer skeleton in `backend/infrahub/git/fingerprint/composer.py` (depends on T010-T012, T011a): a class with constructor-injected hasher, blob resolver, registry, and closure-path selector, exposing `compose_query`, `compose_transformation`, `compose_artifact_definition`, `compose_generator_definition` entry methods (bodies stubbed/`NotImplementedError`, filled in per story). Registry lookups for cross-references use the referenced definition's name (artifact def -> transform by `transformation` name across both transform kinds; artifact/generator def -> target group by `targets` name resolved to id); ensure the registry key scheme supports these name-based lookups.
 
 ### Integrator sequencing scaffold (FR-015a)
 
-- [ ] T014 In `backend/infrahub/git/integrator.py`, introduce the per-import fingerprint registry instance and sequence the import phases in dependency order (queries -> transformations/generator-definitions -> artifact-definitions) threading the registry through, WITHOUT yet computing any fingerprint value (no behaviour change, FR-020). This establishes the ordering the composers plug into.
+- [X] T014 In `backend/infrahub/git/integrator.py`, introduce the per-import fingerprint registry instance and sequence the import phases in dependency order (queries -> transformations/generator-definitions -> artifact-definitions) threading the registry through, WITHOUT yet computing any fingerprint value (no behaviour change, FR-020). This establishes the ordering the composers plug into.
 
 **Checkpoint**: Schema field exists and is regenerated; shared components and integrator ordering are in place. User stories can now begin.
 
@@ -76,13 +76,13 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Unit test `compose_query` in `backend/tests/unit/git/fingerprint/test_composer_query.py`: deterministic digest over stored inlined query text; identical text -> identical digest; different text -> different digest; edit-then-revert net-zero (SC-004).
-- [ ] T016 [P] [US1] Integration test in `backend/tests/integration/git/test_fingerprint_query.py` (model on `test_generator_import_closure.py`, reuse `car-dealership` fixture + `FileRepo`/`MultipleStagesFileRepo`): import -> query `fingerprint` non-null (SC-001); no-op re-import unchanged (SC-002); query-text edit changes it (SC-003); unrelated-file edit leaves it unchanged.
+- [X] T015 [P] [US1] Unit test `compose_query` in `backend/tests/unit/git/fingerprint/test_composer_query.py`: deterministic digest over stored inlined query text; identical text -> identical digest; different text -> different digest; edit-then-revert net-zero (SC-004).
+- [X] T016 [P] [US1] Integration test in `backend/tests/integration/git/test_fingerprint_query.py` (model on `test_generator_import_closure.py`, reuse `car-dealership` fixture + `FileRepo`/`MultipleStagesFileRepo`): import -> query `fingerprint` non-null (SC-001); no-op re-import unchanged (SC-002); query-text edit changes it (SC-003); unrelated-file edit leaves it unchanged.
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Implement `compose_query` in `backend/infrahub/git/fingerprint/composer.py` (FR-008): `H(query_text)` over the stored fragment-inlined `query` attribute; populate the registry under the query key.
-- [ ] T018 [US1] In `backend/infrahub/git/integrator.py`, compute the query fingerprint during the query import phase and pass it into the SDK create/update payload for `CoreGraphQLQuery` (FR-005, FR-006, FR-007: overwrite every import via the standard mutation path).
+- [X] T017 [US1] Implement `compose_query` in `backend/infrahub/git/fingerprint/composer.py` (FR-008): `H(query_text)` over the stored fragment-inlined `query` attribute; populate the registry under the query key.
+- [X] T018 [US1] In `backend/infrahub/git/integrator.py`, compute the query fingerprint during the query import phase and pass it into the SDK create/update payload for `CoreGraphQLQuery` (FR-005, FR-006, FR-007: overwrite every import via the standard mutation path).
 
 **Checkpoint**: Query fingerprint works end to end and is stored via the mutation path.
 
@@ -96,12 +96,12 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 ### Tests for User Story 5
 
-- [ ] T019 [P] [US5] Unit test the watch three-state discriminator in `backend/tests/unit/git/fingerprint/test_watch_state.py`: `watch is None` -> fold commit id; `InfrahubWatchConfig` present with empty files -> omit; present with files -> omit and files contribute to the closure input. Confirm parsed config represents `None` vs present as distinct states (FR-019).
+- [X] T019 [P] [US5] Unit test the watch three-state discriminator in `backend/tests/unit/git/fingerprint/test_watch_state.py`: `watch is None` -> fold commit id; `InfrahubWatchConfig` present with empty files -> omit; present with files -> omit and files contribute to the closure input. Confirm parsed config represents `None` vs present as distinct states (FR-019).
 
 ### Implementation for User Story 5
 
-- [ ] T020 [US5] Confirm (and if needed adjust) `python_sdk/infrahub_sdk/schema/repository.py` so the parsed `watch` config distinguishes absent (`None`) from present-but-empty for Jinja2, Python, and generator configs (research Decision 4: `watch: InfrahubWatchConfig | None`, expected no shape change - verify, do not rebuild).
-- [ ] T021 [US5] Add the commit-id fold helper to `backend/infrahub/git/fingerprint/composer.py` (or `hasher.py`): given the imported commit id and the config's `watch`, return the commit-id term iff `watch is None`, else omit it (FR-016/017). This helper is consumed by `compose_transformation` (US2) and `compose_generator_definition` (US4).
+- [X] T020 [US5] Confirm (and if needed adjust) `python_sdk/infrahub_sdk/schema/repository.py` so the parsed `watch` config distinguishes absent (`None`) from present-but-empty for Jinja2, Python, and generator configs (research Decision 4: `watch: InfrahubWatchConfig | None`, expected no shape change - verify, do not rebuild).
+- [X] T021 [US5] Add the commit-id fold helper to `backend/infrahub/git/fingerprint/composer.py` (or `hasher.py`): given the imported commit id and the config's `watch`, return the commit-id term iff `watch is None`, else omit it (FR-016/017). This helper is consumed by `compose_transformation` (US2) and `compose_generator_definition` (US4).
 
 **Checkpoint**: The watch discriminator and commit-id fold are implemented and unit-tested for all three states.
 
@@ -117,14 +117,14 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Unit test `compose_transformation` (Python) in `backend/tests/unit/git/fingerprint/test_composer_transformation.py`: incorporates query fingerprint, sorted `(path, blob_sha)` closure, `class_name`, `convert_query_response`; excludes `timeout` and `description`; folds commit id only when `watch is None`; and asserts the manifest path (`.infrahub.yml`) is excluded from the hashed closure so its blob SHA does not affect the digest, while the own source file and `watch:` files remain included (guards SC-005 at the unit level).
-- [ ] T023 [P] [US2] Unit test `compose_transformation` (Jinja2) in the same or a sibling test file: incorporates query fingerprint, sorted closure (incl. template), `template_path`; excludes `timeout`/`description`; watch-driven commit id.
-- [ ] T024 [P] [US2] Integration test in `backend/tests/integration/git/test_fingerprint_transformation.py`: import Python + Jinja2 transforms -> non-null; no-op re-import unchanged with `watch` declared (SC-002); closure-file blob-SHA change -> changes (US2 #4); connected-query change -> changes (US2 #5); `class_name`/`convert_query_response`/`template_path` change -> changes; `timeout`-only change -> unchanged (US2 #3); `watch: {}` + own-source-file edit -> changes (US2 #6, FR-009a); and, for a transform with declared `watch`, a comment-only / unrelated-section `.infrahub.yml` edit -> fingerprint unchanged (SC-005, FR-022 edge case).
+- [X] T022 [P] [US2] Unit test `compose_transformation` (Python) in `backend/tests/unit/git/fingerprint/test_composer_transformation.py`: incorporates query fingerprint, sorted `(path, blob_sha)` closure, `class_name`, `convert_query_response`; excludes `timeout` and `description`; folds commit id only when `watch is None`; and asserts the manifest path (`.infrahub.yml`) is excluded from the hashed closure so its blob SHA does not affect the digest, while the own source file and `watch:` files remain included (guards SC-005 at the unit level).
+- [X] T023 [P] [US2] Unit test `compose_transformation` (Jinja2) in the same or a sibling test file: incorporates query fingerprint, sorted closure (incl. template), `template_path`; excludes `timeout`/`description`; watch-driven commit id.
+- [X] T024 [P] [US2] Integration test in `backend/tests/integration/git/test_fingerprint_transformation.py`: import Python + Jinja2 transforms -> non-null; no-op re-import unchanged with `watch` declared (SC-002); closure-file blob-SHA change -> changes (US2 #4); connected-query change -> changes (US2 #5); `class_name`/`convert_query_response`/`template_path` change -> changes; `timeout`-only change -> unchanged (US2 #3); `watch: {}` + own-source-file edit -> changes (US2 #6, FR-009a); and, for a transform with declared `watch`, a comment-only / unrelated-section `.infrahub.yml` edit -> fingerprint unchanged (SC-005, FR-022 edge case).
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Implement `compose_transformation` in `backend/infrahub/git/fingerprint/composer.py` (FR-009/009a/009b/010/015b): read connected query fingerprint from the registry; run the stored `dependencies` through the T011a selector (manifest excluded, own source file + `watch:` files retained) and resolve their blob SHAs; hash with `class_name`/`convert_query_response` (Python) or `template_path` (Jinja2), fold commit id via the US5 helper; register the result.
-- [ ] T026 [US2] In `backend/infrahub/git/integrator.py`, compute the transformation fingerprint during the transformation import phase (after queries) and pass it into the SDK create/update payload for `CoreTransformPython`/`CoreTransformJinja2` (FR-006/007).
+- [X] T025 [US2] Implement `compose_transformation` in `backend/infrahub/git/fingerprint/composer.py` (FR-009/009a/009b/010/015b): read connected query fingerprint from the registry; run the stored `dependencies` through the T011a selector (manifest excluded, own source file + `watch:` files retained) and resolve their blob SHAs; hash with `class_name`/`convert_query_response` (Python) or `template_path` (Jinja2), fold commit id via the US5 helper; register the result.
+- [X] T026 [US2] In `backend/infrahub/git/integrator.py`, compute the transformation fingerprint during the transformation import phase (after queries) and pass it into the SDK create/update payload for `CoreTransformPython`/`CoreTransformJinja2` (FR-006/007).
 
 **Checkpoint**: Transformation fingerprint works for both concrete kinds, composing the query fingerprint and honouring watch semantics.
 
@@ -140,13 +140,13 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 ### Tests for User Story 3
 
-- [ ] T027 [P] [US3] Unit test `compose_artifact_definition` in `backend/tests/unit/git/fingerprint/test_composer_artifact_definition.py`: incorporates transformation fingerprint, canonical `parameters`, `content_type`, `artifact_name`, target-group id; identical inputs -> identical digest regardless of `parameters` key ordering (FR-014).
-- [ ] T028 [P] [US3] Integration test in `backend/tests/integration/git/test_fingerprint_artifact_definition.py`: import -> non-null; changes on transformation-fingerprint / `parameters` / `content_type` / `artifact_name` change; re-point target group -> changes; add/remove group member -> unchanged (SC-007).
+- [X] T027 [P] [US3] Unit test `compose_artifact_definition` in `backend/tests/unit/git/fingerprint/test_composer_artifact_definition.py`: incorporates transformation fingerprint, canonical `parameters`, `content_type`, `artifact_name`, target-group id; identical inputs -> identical digest regardless of `parameters` key ordering (FR-014).
+- [X] T028 [P] [US3] Integration test in `backend/tests/integration/git/test_fingerprint_artifact_definition.py`: import -> non-null; changes on transformation-fingerprint / `parameters` / `content_type` / `artifact_name` change; re-point target group -> changes; add/remove group member -> unchanged (SC-007).
 
 ### Implementation for User Story 3
 
-- [ ] T029 [US3] Implement `compose_artifact_definition` in `backend/infrahub/git/fingerprint/composer.py` (FR-011/013): read transformation fingerprint from the registry; resolve target-group id from `targets`; hash with canonical `parameters`, `content_type`, `artifact_name`, group id; register the result.
-- [ ] T030 [US3] In `backend/infrahub/git/integrator.py`, compute the artifact-definition fingerprint during the artifact-definition phase (after transformations) and pass it into the SDK create/update payload for `CoreArtifactDefinition` (FR-006/007).
+- [X] T029 [US3] Implement `compose_artifact_definition` in `backend/infrahub/git/fingerprint/composer.py` (FR-011/013): read transformation fingerprint from the registry; resolve target-group id from `targets`; hash with canonical `parameters`, `content_type`, `artifact_name`, group id; register the result.
+- [X] T030 [US3] In `backend/infrahub/git/integrator.py`, compute the artifact-definition fingerprint during the artifact-definition phase (after transformations) and pass it into the SDK create/update payload for `CoreArtifactDefinition` (FR-006/007).
 
 **Checkpoint**: Artifact-definition fingerprint composes the transformation fingerprint and honours group-identity-not-membership.
 
@@ -162,13 +162,13 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 ### Tests for User Story 4
 
-- [ ] T031 [P] [US4] Unit test `compose_generator_definition` in `backend/tests/unit/git/fingerprint/test_composer_generator_definition.py`: incorporates query fingerprint, sorted `(path, blob_sha)` closure (incl. own `.py`), canonical `parameters`, `class_name`, `convert_query_response`, target-group id; folds commit id iff `watch is None`; excludes `execute_in_proposed_change`/`execute_after_merge`.
-- [ ] T032 [P] [US4] Integration test in `backend/tests/integration/git/test_fingerprint_generator_definition.py`: import -> non-null; changes on query fingerprint / closure / `parameters` / group re-point; `watch` absent -> changes on every commit (SC-006); `watch: {}` + `class_name` change (different class, same unchanged file) or `convert_query_response` toggle -> changes (US4 #4, FR-012a); `watch: {}` + comment-only / unrelated `.infrahub.yml` edit -> unchanged (SC-005); group membership churn -> unchanged (SC-007).
+- [X] T031 [P] [US4] Unit test `compose_generator_definition` in `backend/tests/unit/git/fingerprint/test_composer_generator_definition.py`: incorporates query fingerprint, sorted `(path, blob_sha)` closure (incl. own `.py`), canonical `parameters`, `class_name`, `convert_query_response`, target-group id; folds commit id iff `watch is None`; excludes `execute_in_proposed_change`/`execute_after_merge`.
+- [X] T032 [P] [US4] Integration test in `backend/tests/integration/git/test_fingerprint_generator_definition.py`: import -> non-null; changes on query fingerprint / closure / `parameters` / group re-point; `watch` absent -> changes on every commit (SC-006); `watch: {}` + `class_name` change (different class, same unchanged file) or `convert_query_response` toggle -> changes (US4 #4, FR-012a); `watch: {}` + comment-only / unrelated `.infrahub.yml` edit -> unchanged (SC-005); group membership churn -> unchanged (SC-007).
 
 ### Implementation for User Story 4
 
-- [ ] T033 [US4] Implement `compose_generator_definition` in `backend/infrahub/git/fingerprint/composer.py` (FR-012/012a/013): read connected query fingerprint from the registry; run the closure through the T011a selector (manifest excluded, own `.py` + `watch:` files retained) and resolve blob SHAs; resolve target-group id; hash with canonical `parameters`, `class_name`, `convert_query_response`, group id; fold commit id via the US5 helper; register the result.
-- [ ] T034 [US4] In `backend/infrahub/git/integrator.py`, compute the generator-definition fingerprint during the generator-definition phase (alongside transformations, after queries) and pass it into the SDK create/update payload for `CoreGeneratorDefinition` (FR-006/007).
+- [X] T033 [US4] Implement `compose_generator_definition` in `backend/infrahub/git/fingerprint/composer.py` (FR-012/012a/013): read connected query fingerprint from the registry; run the closure through the T011a selector (manifest excluded, own `.py` + `watch:` files retained) and resolve blob SHAs; resolve target-group id; hash with canonical `parameters`, `class_name`, `convert_query_response`, group id; fold commit id via the US5 helper; register the result.
+- [X] T034 [US4] In `backend/infrahub/git/integrator.py`, compute the generator-definition fingerprint during the generator-definition phase (alongside transformations, after queries) and pass it into the SDK create/update payload for `CoreGeneratorDefinition` (FR-006/007).
 
 **Checkpoint**: All four definition kinds carry a computed, stored fingerprint.
 
@@ -178,11 +178,11 @@ description: "Task list for Definition Fingerprint Foundation (IFC-2844)"
 
 **Purpose**: Cross-cutting invariants, branch behaviour, no-consumer-change regression, and final generated-file validation.
 
-- [ ] T035 [P] Integration test for the consistent snapshot (FR-015a) in `backend/tests/integration/git/test_fingerprint_snapshot.py`: change a query and its dependent artifact definition in the *same* commit/import -> the artifact-definition fingerprint reflects the new query fingerprint in that same import (no one-import lag).
-- [ ] T036 [P] Integration test for branch behaviour (SC-010) in `backend/tests/integration/git/test_fingerprint_branch.py`: the `fingerprint` appears in a branch diff and survives rebase/merge as a normal branch-aware attribute.
-- [ ] T037 Verify no consumer behaviour changed (SC-008, FR-020): run the existing regeneration/recompute regression suites (generator/artifact/computed-attribute trigger tests) and confirm identical trigger counts, all green.
-- [ ] T038 Run `uv run invoke docs.validate` and confirm generated-file/doc validation passes with all regenerated artifacts committed (SC-009).
-- [ ] T039 Run `/pre-ci` (format, lint, unit tests) and the quickstart.md validation walkthrough end to end.
+- [X] T035 [P] Integration test for the consistent snapshot (FR-015a) in `backend/tests/integration/git/test_fingerprint_snapshot.py`: change a query and its dependent artifact definition in the *same* commit/import -> the artifact-definition fingerprint reflects the new query fingerprint in that same import (no one-import lag).
+- [X] T036 [P] Integration test for branch behaviour (SC-010) in `backend/tests/integration/git/test_fingerprint_branch.py`: the `fingerprint` appears in a branch diff and survives rebase/merge as a normal branch-aware attribute.
+- [X] T037 Verify no consumer behaviour changed (SC-008, FR-020): run the existing regeneration/recompute regression suites (generator/artifact/computed-attribute trigger tests) and confirm identical trigger counts, all green.
+- [X] T038 Run `uv run invoke docs.validate` and confirm generated-file/doc validation passes with all regenerated artifacts committed (SC-009).
+- [X] T039 Run `/pre-ci` (format, lint, unit tests) and the quickstart.md validation walkthrough end to end.
 
 ---
 
