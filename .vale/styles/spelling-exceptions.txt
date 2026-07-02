@@ -243,6 +243,7 @@ TOML
 toolchain
 tooltip
 Towncrier
+traceback
 Traefik
 TypeScript
 uniqueness_constraints
