@@ -5,7 +5,7 @@
 
 ## Summary
 
-Make a webhook delivery a first-class, inspectable, recoverable object in the Tasks tab, built entirely on Prefect primitives with no new Neo4j node and no migration. The delivery is the user-visible `webhook_send` run; the operability layer adds: (1) capture of the request/response as a redacted artifact on the run, (2) a pure failure classifier producing a clean reason + smart (transient-only) retry over the existing fixed-delay policy, (3) polymorphic GraphQL task typing (`WebhookDeliveryTask`) discriminated by the run's workflow name, mirroring the events type hierarchy, and (4) generic, task-id-addressable retry and cancel mutations gated by a server-computed `available_actions` capability on every task.
+Make a webhook delivery a first-class, inspectable, recoverable object in the Tasks tab, built entirely on Prefect primitives with no new Neo4j node and no migration. The delivery is the user-visible `webhook_send` run; the operability layer adds: (1) capture of the request/response as a redacted artifact on the run, (2) a pure failure classifier producing a clean reason — with the traceback suppressed in the run logs — over the existing fixed-delay policy (retries stay unconditional; transient-only gating was evaluated and rejected), (3) polymorphic GraphQL task typing (`WebhookDeliveryTask`) discriminated by the run's workflow name, mirroring the events type hierarchy, and (4) generic, task-id-addressable retry and cancel mutations gated by a server-computed `available_actions` capability on every task.
 
 The structural split (orchestrator freezes payload → `webhook_send` carries its own fixed-delay bounded retries) already exists on the branch, along with the retry policy itself (3 attempts, ~120s fixed delay, retrying on every failure) and webhook-node-id tagging on the flow runs — see the Implementation Sync revision below. The one structural prerequisite uncovered in research and still outstanding is that `webhook_send` must be promoted to a registered workflow/deployment so it can be resubmitted by id and discriminated by name.
 
@@ -88,10 +88,10 @@ specs/ifc-2755-webhook-delivery-operability/
 ```text
 backend/infrahub/
 ├── webhook/
-│   ├── tasks/process.py          # add retry_condition_fn (transient-only); write http capture in send body
-│   ├── models.py                 # add CapturedHeaders redaction; captured request/response models
-│   ├── classifier.py             # NEW — pure failure classifier (CONFIG/CONNECTION/TLS/TIMEOUT/4xx/5xx/UNKNOWN)
-│   └── capture.py                # NEW — build + write the redacted http artifact on the run
+│   ├── tasks/process.py          # LANDED: outgoing-request logging (redacted headers, truncated payload, attempt N/M). Outstanding: write http capture in send body
+│   ├── models.py                 # LANDED: header redaction (redact_headers, HeaderKind provenance, sensitive names normalized at definition). Outstanding: captured request/response models
+│   ├── classifier.py             # LANDED — pure failure classifier (CONFIG/CONNECTION/TLS/TIMEOUT/4xx/5xx/UNKNOWN), per-class remediation, suppressible delivery error (clean logs, no stacktrace)
+│   └── capture.py                # NEW — build + write the redacted http artifact on the run (reuses the models.py redaction)
 ├── workflows/
 │   └── catalogue.py              # add WEBHOOK_SEND WorkflowDefinition; register in WORKFLOWS
 ├── graphql/
@@ -130,7 +130,7 @@ The four spec user stories form the delivery order; the typing foundation is a s
 
 - **Foundation (enabler, with US1)**: `TaskNodeInterface` + `resolve_type` + `TASK_TYPES`, `TaskNodes.node` object→interface, manager registration, register `WEBHOOK_SEND` in the catalogue.
 - **US1 (P1) — Inspect request/response**: capture component + redaction, write `http` artifact in the send body, read-back in the serializer, `WebhookDeliveryTask` fields, frontend display section.
-- **US2 (P2) — Classified failure + smart retry**: classifier component, `retry_condition_fn`, clean re-raise, surface reason + remediation hint.
+- **US2 (P2) — Classified failure**: classifier component, clean re-raise with the traceback suppressed in the run logs, surface reason + remediation hint. The `retry_condition_fn` (transient-only gating) was evaluated and rejected — the fixed-delay bounded retry applies uniformly and the classification steers the operator.
 - **US3 (P3) — Retry**: generic `TaskRetry` mutation (read frozen params by run id, resubmit `WEBHOOK_SEND`), `available_actions` RETRY gating (any terminal state), confirm-on-every-retry UI via the shared `<TaskActions>` in both the delivery row and the detail panel.
 - **US4 (P4) — Cancel**: generic `TaskCancel` mutation (state flip to CANCELLED), `available_actions` CANCEL gating (non-terminal), exposed through the same shared `<TaskActions>` in row + detail panel (disabled with tooltip reason when unavailable).
 
@@ -152,3 +152,17 @@ Reason: Reconcile the plan with foundation work merged ahead of the operability 
 | Register `WEBHOOK_SEND` in the workflow catalogue (Phasing → Foundation) | Outstanding |
 | Transient-only `retry_condition_fn` over the landed policy (Phasing → US2) | Outstanding |
 | Capture/redaction, typing, classification, retry, cancel (US1–US4) | Outstanding |
+
+## Revision: Implementation Sync — 2026-07-02
+
+Reason: Reconcile the plan with the operability layer landed since the previous sync. Documentation-only sync; no constitution, `dev/guidelines/`, or `dev/adr/` conflict.
+
+| Plan element | State |
+|---|---|
+| `WEBHOOK_SEND` registered in the catalogue; `webhook_send` is the user-facing, retryable delivery | Landed |
+| Failure classifier with per-class remediation (#9718) + traceback suppression for classified failures in the run logs | Landed — `classifier.py` also registers the delivery error as suppressible, beyond the original plan |
+| Transient-only `retry_condition_fn` | Rejected (decision) — retries stay flow-level and unconditional; see tasks.md T026 |
+| Header redaction | Landed in `models.py` (`redact_headers`, `HeaderKind` provenance, sensitive names normalized at definition) rather than the planned `CapturedHeaders` object in `capture.py` — `capture.py` does not exist yet and, when US1's artifact capture lands, reuses the `models.py` redaction |
+| Outgoing-request logging per attempt (redacted headers, truncated payload, attempt N/M) | Landed — a log-channel visibility layer delivered ahead of the persisted `http` artifact; not in the original plan |
+| Generic `available_actions`, retry/cancel mutations, `<TaskActions>` in the task detail header | Landed |
+| Polymorphic task typing (`WebhookDeliveryTask`), `http` artifact capture + read-back + GraphQL/UI display, Playwright E2E | Outstanding (tracked in tasks.md; typing tracked as IFC-2816, display as IFC-2755) |
