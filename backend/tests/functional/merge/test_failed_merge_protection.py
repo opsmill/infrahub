@@ -23,6 +23,16 @@ if TYPE_CHECKING:
     from tests.adapters.message_bus import BusSimulator
 
 
+def _assert_recovery_error(error: GraphQLError, *, branch_name: str, merging_branch: str) -> None:
+    """Assert the full MERGE_RECOVERY_REQUIRED error contract (message, code, http_status, data)."""
+    first = error.errors[0]
+    assert first["message"] == MERGE_RECOVERY_REQUIRED_MESSAGE
+    extensions = first["extensions"]
+    assert extensions["code"] == "MERGE_RECOVERY_REQUIRED"
+    assert extensions["http_status"] == 423
+    assert extensions["data"] == {"branch_name": branch_name, "merging_branch": merging_branch}
+
+
 class TestFailedMergeProtection(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def initial_dataset(
@@ -70,20 +80,13 @@ class TestFailedMergeProtection(TestInfrahubApp):
         default_node = await client.create(kind="TestingPerson", name="failed target gate", branch="main")
         with pytest.raises(GraphQLError) as default_exc:
             await default_node.save()
-        assert default_exc.value.errors[0]["message"] == MERGE_RECOVERY_REQUIRED_MESSAGE
-        default_extensions = default_exc.value.errors[0]["extensions"]
-        assert default_extensions["code"] == "MERGE_RECOVERY_REQUIRED"
-        assert default_extensions["http_status"] == 423
-        assert default_extensions["data"] == {"branch_name": "main", "merging_branch": source_name}
+        _assert_recovery_error(default_exc.value, branch_name="main", merging_branch=source_name)
 
         # Source gate: the failed source branch is also blocked with the recovery code.
         source_node = await client.create(kind="TestingPerson", name="failed source gate", branch=source_name)
         with pytest.raises(GraphQLError) as source_exc:
             await source_node.save()
-        assert source_exc.value.errors[0]["message"] == MERGE_RECOVERY_REQUIRED_MESSAGE
-        source_extensions = source_exc.value.errors[0]["extensions"]
-        assert source_extensions["code"] == "MERGE_RECOVERY_REQUIRED"
-        assert source_extensions["data"] == {"branch_name": source_name, "merging_branch": source_name}
+        _assert_recovery_error(source_exc.value, branch_name=source_name, merging_branch=source_name)
 
         # An unrelated branch stays writable.
         unrelated_node = await client.create(
@@ -102,4 +105,4 @@ class TestFailedMergeProtection(TestInfrahubApp):
         after_restart = await client.create(kind="TestingPerson", name="after restart", branch="main")
         with pytest.raises(GraphQLError) as restart_exc:
             await after_restart.save()
-        assert restart_exc.value.errors[0]["extensions"]["code"] == "MERGE_RECOVERY_REQUIRED"
+        _assert_recovery_error(restart_exc.value, branch_name="main", merging_branch=source_name)

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.merge.write_blocker import MergeProtectionState
 from infrahub.exceptions import (
     BranchAlreadyMergedError,
@@ -107,7 +108,13 @@ class BranchStatusChecker:
             MergeRecoveryRequiredError: if the branch is blocked by a failed merge awaiting recovery.
 
         """
-        branches = await Branch.get_list(db=self.db)
+        # Filter to protected branches server-side: an unfiltered list is capped at the default page
+        # size, so on a deployment with many branches a merging/failed branch could be missed and the
+        # block wrongly lifted. At most one branch is protected at a time.
+        branches = await Branch.get_list(
+            db=self.db,
+            branch_filters=BranchListFilters(statuses=[BranchStatus.MERGE_FAILED, BranchStatus.MERGING]),
+        )
         failed = sorted(b.name for b in branches if b.status == BranchStatus.MERGE_FAILED)
         merging = sorted(b.name for b in branches if b.status == BranchStatus.MERGING)
 
