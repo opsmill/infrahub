@@ -13,7 +13,7 @@ import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generat
 import {
   GENERATOR_DEFINITION_KIND,
   GENERATOR_INSTANCE_KIND,
-} from "@/entities/generators/constants";
+} from "@/entities/generators/domain/model/generator";
 import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator-definition-run-button";
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
