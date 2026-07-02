@@ -83,6 +83,7 @@ class TestFlowRunConnectionSerializer:
             "branch": "main",
             "tags": ["t1", "t2"],
             "workflow": "my_workflow",
+            "available_actions": [],
             "related_node": "node-1",
             "related_node_kind": "TestThing",
             "related_nodes": [

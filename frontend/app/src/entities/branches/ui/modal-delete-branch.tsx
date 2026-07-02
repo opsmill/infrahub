@@ -5,7 +5,7 @@ import { Heading } from "react-aria-components";
 
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Col, Row } from "@/shared/components/container";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
@@ -76,10 +76,10 @@ export function ModalDeleteBranch({
 
   if (!showScopeChoice && !(hasSyncedBranches && isLoadingRepoCount)) {
     return (
-      <ModalDelete
+      <ModalDanger
         title="Delete"
         description={description}
-        onDelete={() => onDelete(DELETE_BRANCH_SCOPE.LOCAL)}
+        onConfirm={() => onDelete(DELETE_BRANCH_SCOPE.LOCAL)}
         isOpen={isOpen}
         onOpenChange={handleOpenChange}
         isLoading={isLoading}

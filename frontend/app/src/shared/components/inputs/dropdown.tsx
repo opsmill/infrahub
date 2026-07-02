@@ -5,7 +5,7 @@ import React from "react";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
@@ -97,7 +97,7 @@ export const DropdownItem = ({
             <Icon icon="mdi:trash-can-outline" />
           </Button>
 
-          <ModalDelete
+          <ModalDanger
             title="Delete"
             description={
               <>
@@ -120,7 +120,7 @@ export const DropdownItem = ({
             }
             isOpen={showDeleteModal}
             onOpenChange={setShowDeleteModal}
-            onDelete={async () => {
+            onConfirm={async () => {
               if (!schema.kind) return;
               try {
                 await removeDropdownOption({

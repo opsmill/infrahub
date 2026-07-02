@@ -40,9 +40,10 @@ class InMemoryRetentionClient:
         self.deleted.append(flow_run_id)
         self.runs = [run for run in self.runs if run.id != flow_run_id]
 
-    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> None:
+    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> StateType | None:
         self.state_changes.append((flow_run_id, state, force))
         self.runs = [run for run in self.runs if run.id != flow_run_id]
+        return state.type
 
 
 class StuckRetentionClient:
@@ -65,7 +66,7 @@ class StuckRetentionClient:
     async def delete_flow_run(self, flow_run_id: UUID) -> None:
         self.deleted.append(flow_run_id)
 
-    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> None:
+    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> StateType | None:
         raise NotImplementedError
 
 

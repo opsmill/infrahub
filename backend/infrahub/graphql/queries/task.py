@@ -8,6 +8,7 @@ from prefect.client.schemas.objects import StateType
 
 from infrahub.core.constants import TaskConclusion
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.queries.task_actions import TaskActionGenerator
 from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.flow_run.constants import CONCLUSION_STATE_MAPPING, LOG_LEVEL_MAPPING
 from infrahub.task_manager.flow_run.models import (
@@ -28,6 +29,9 @@ if TYPE_CHECKING:
 
 class FlowRunConnectionSerializer:
     """Render flow-run query results into the GraphQL connection shape."""
+
+    def __init__(self) -> None:
+        self._action_generator = TaskActionGenerator()
 
     def serialize(self, result: FlowRunQueryResult) -> dict[str, Any]:
         return {
@@ -57,6 +61,7 @@ class FlowRunConnectionSerializer:
             "branch": run.branch,
             "tags": flow.tags,
             "workflow": run.workflow_name,
+            "available_actions": self._action_generator.generate(run.workflow_name, flow.state_type),
             "related_node": related_node.id if related_node else None,
             "related_node_kind": related_node.kind if related_node else None,
             "related_nodes": [node.model_dump() for node in run.related_nodes],
@@ -77,7 +82,8 @@ def _build_fetch_options(fields: dict[str, Any], log_limit: int | None, log_offs
         include_logs=bool(log_fields),
         include_progress="progress" in node_fields,
         include_related_nodes=any(key in node_fields for key in ("related_nodes", "related_node", "related_node_kind")),
-        include_workflow="workflow" in node_fields,
+        # available_actions is derived from the run's workflow name, so selecting it forces workflow resolution.
+        include_workflow="workflow" in node_fields or "available_actions" in node_fields,
         log_limit=log_limit,
         log_offset=log_offset,
     )

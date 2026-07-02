@@ -292,3 +292,14 @@ Authentication header values must include the full value including any type pref
 ## Custom webhook transformation
 
 The `data` object from the payloads above is passed to the `transform` method of your custom Transformation. For the full setup walkthrough, see [Webhook with custom Transformation](./custom-transformation.mdx).
+
+## Retrying and cancelling deliveries
+
+Each webhook delivery runs as a task. Open a webhook and select a delivery from its related tasks to act on it from the task detail page.
+
+| Action | When it is available | What it does |
+|--------|----------------------|--------------|
+| Retry | The delivery has finished | Re-sends the original payload as a new delivery and leaves the original record unchanged. Useful when a delivery failed because the target was temporarily unavailable or misconfigured. |
+| Cancel | The delivery has not finished | Stops the delivery, including one waiting to be retried, so no further attempts are made. A request already in flight to the target cannot be recalled. |
+
+The Retry and Cancel actions appear only when they apply to the delivery's current state.

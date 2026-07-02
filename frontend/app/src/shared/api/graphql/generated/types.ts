@@ -17822,6 +17822,20 @@ export type InfrahubRelationshipMetadata = {
   updated_by: Maybe<CoreGenericAccount>;
 };
 
+/** Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request. */
+export type InfrahubTaskCancel = {
+  __typename: 'InfrahubTaskCancel';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
+/** Retry a settled delivery by replaying its frozen payload as a new, independent delivery. */
+export type InfrahubTaskRetry = {
+  __typename: 'InfrahubTaskRetry';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
 /** Token for User Account */
 export type InternalAccountToken = CoreNode & {
   __typename: 'InternalAccountToken';
@@ -19438,6 +19452,10 @@ export type Mutation = {
   InfrahubRecomputeComputedAttribute: Maybe<RecomputeComputedAttribute>;
   InfrahubRepositoryConnectivity: Maybe<ValidateRepositoryConnectivity>;
   InfrahubRepositoryProcess: Maybe<ProcessRepository>;
+  /** Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request. */
+  InfrahubTaskCancel: Maybe<InfrahubTaskCancel>;
+  /** Retry a settled delivery by replaying its frozen payload as a new, independent delivery. */
+  InfrahubTaskRetry: Maybe<InfrahubTaskRetry>;
   InfrahubUpdateComputedAttribute: Maybe<UpdateComputedAttribute>;
   InfrahubUpdateDisplayLabel: Maybe<UpdateDisplayLabel>;
   InfrahubUpdateHFID: Maybe<UpdateHfid>;
@@ -21116,6 +21134,16 @@ export type MutationInfrahubRepositoryConnectivityArgs = {
 
 export type MutationInfrahubRepositoryProcessArgs = {
   data: IdentifierInput;
+};
+
+
+export type MutationInfrahubTaskCancelArgs = {
+  data: TaskActionInput;
+};
+
+
+export type MutationInfrahubTaskRetryArgs = {
+  data: TaskActionInput;
 };
 
 
@@ -37886,6 +37914,24 @@ export type SubscriptionQueryArgs = {
   params?: InputMaybe<Scalars['GenericScalar']['input']>;
 };
 
+export type TaskAction = {
+  __typename: 'TaskAction';
+  action: TaskActionType;
+  available: Scalars['Boolean']['output'];
+  unavailability_reason: Maybe<Scalars['String']['output']>;
+};
+
+export type TaskActionInput = {
+  id: Scalars['String']['input'];
+};
+
+/** Recovery actions a task run can expose. */
+export const TaskActionType = {
+  CANCEL: 'CANCEL',
+  RETRY: 'RETRY'
+} as const;
+
+export type TaskActionType = typeof TaskActionType[keyof typeof TaskActionType];
 export type TaskInfo = {
   __typename: 'TaskInfo';
   id: Maybe<Scalars['String']['output']>;
@@ -37913,6 +37959,7 @@ export type TaskLogNodes = {
 
 export type TaskNode = {
   __typename: 'TaskNode';
+  available_actions: Array<TaskAction>;
   branch: Maybe<Scalars['String']['output']>;
   conclusion: Scalars['String']['output'];
   created_at: Scalars['String']['output'];
