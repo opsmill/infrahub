@@ -544,6 +544,13 @@ WEBHOOK_PROCESS = WorkflowDefinition(
     function="webhook_process",
 )
 
+WEBHOOK_SEND = WorkflowDefinition(
+    name="webhook-send",
+    type=WorkflowType.CORE,
+    module="infrahub.webhook.tasks.process",
+    function="webhook_send",
+)
+
 WEBHOOK_INVALIDATE_HEADERS = WorkflowDefinition(
     name="webhook-invalidate-headers",
     type=WorkflowType.INTERNAL,
@@ -776,6 +783,7 @@ WORKFLOWS = [
     WEBHOOK_CONFIGURE,
     WEBHOOK_INVALIDATE_HEADERS,
     WEBHOOK_PROCESS,
+    WEBHOOK_SEND,
 ]
 
 

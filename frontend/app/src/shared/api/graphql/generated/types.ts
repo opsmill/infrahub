@@ -460,7 +460,6 @@ export type BranchRelativePermissionDecision = typeof BranchRelativePermissionDe
 export const BranchStatus = {
   DELETING: 'DELETING',
   MERGED: 'MERGED',
-  MERGE_FAILED: 'MERGE_FAILED',
   MERGING: 'MERGING',
   NEED_REBASE: 'NEED_REBASE',
   NEED_UPGRADE_REBASE: 'NEED_UPGRADE_REBASE',
@@ -16813,16 +16812,6 @@ export type CoreWeightedPoolResourceUpdateInput = {
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
-/** Semantic date-format keys. The stored date_format is one of these keys (not a rendering pattern); each client maps the key to its own formatter. Single source of truth for the value on Preference.date_format. */
-export const DateFormat = {
-  EU_DATETIME: 'EU_DATETIME',
-  ISO_8601: 'ISO_8601',
-  ISO_DATETIME: 'ISO_DATETIME',
-  ISO_DATETIME_SECONDS: 'ISO_DATETIME_SECONDS',
-  US_12H: 'US_12H'
-} as const;
-
-export type DateFormat = typeof DateFormat[keyof typeof DateFormat];
 export type DeleteInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -17675,31 +17664,6 @@ export type EdgedProfileIpamNamespace = {
   node_metadata: Maybe<InfrahubNodeMetadata>;
 };
 
-/**
- * An effective `date_format` value and the source it was resolved from.
- *
- * `value` is a DateFormat key, or null when nothing is set.
- */
-export type EffectiveDateFormat = {
-  __typename: 'EffectiveDateFormat';
-  source: PreferenceSource;
-  value: Maybe<DateFormat>;
-};
-
-/** The caller's resolved preferences (user → global → default) as typed, self-describing fields. */
-export type EffectivePreferencesType = {
-  __typename: 'EffectivePreferencesType';
-  date_format: EffectiveDateFormat;
-  timezone: EffectiveTimezone;
-};
-
-/** An effective `timezone`: the resolved IANA name (null when nothing is set) and its source. */
-export type EffectiveTimezone = {
-  __typename: 'EffectiveTimezone';
-  source: PreferenceSource;
-  value: Maybe<Scalars['String']['output']>;
-};
-
 export type EventNodeInterface = {
   /** The account ID that triggered the event. */
   account_id: Maybe<Scalars['String']['output']>;
@@ -18239,23 +18203,18 @@ export type InfrahubRelationshipMetadata = {
   updated_by: Maybe<CoreGenericAccount>;
 };
 
-/**
- * Write preferences for one writable scope, USER or GLOBAL.
- *
- * scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
- *                no account argument, so there is no path to write another user's preferences).
- * scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
- *                manage_global_preferences (super admins bypass) checked BEFORE any read.
- *
- * The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
- * is lazily created on first write under a per-owner lock — the only path that ever creates a
- * Preference row.
- */
-export type InfrahubSetPreferences = {
-  __typename: 'InfrahubSetPreferences';
-  date_format: Maybe<DateFormat>;
+/** Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request. */
+export type InfrahubTaskCancel = {
+  __typename: 'InfrahubTaskCancel';
   ok: Maybe<Scalars['Boolean']['output']>;
-  timezone: Maybe<Scalars['String']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
+/** Retry a settled delivery by replaying its frozen payload as a new, independent delivery. */
+export type InfrahubTaskRetry = {
+  __typename: 'InfrahubTaskRetry';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
 };
 
 /** Token for User Account */
@@ -19874,19 +19833,10 @@ export type Mutation = {
   InfrahubRecomputeComputedAttribute: Maybe<RecomputeComputedAttribute>;
   InfrahubRepositoryConnectivity: Maybe<ValidateRepositoryConnectivity>;
   InfrahubRepositoryProcess: Maybe<ProcessRepository>;
-  /**
-   * Write preferences for one writable scope, USER or GLOBAL.
-   *
-   * scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
-   *                no account argument, so there is no path to write another user's preferences).
-   * scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
-   *                manage_global_preferences (super admins bypass) checked BEFORE any read.
-   *
-   * The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
-   * is lazily created on first write under a per-owner lock — the only path that ever creates a
-   * Preference row.
-   */
-  InfrahubSetPreferences: Maybe<InfrahubSetPreferences>;
+  /** Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request. */
+  InfrahubTaskCancel: Maybe<InfrahubTaskCancel>;
+  /** Retry a settled delivery by replaying its frozen payload as a new, independent delivery. */
+  InfrahubTaskRetry: Maybe<InfrahubTaskRetry>;
   InfrahubUpdateComputedAttribute: Maybe<UpdateComputedAttribute>;
   InfrahubUpdateDisplayLabel: Maybe<UpdateDisplayLabel>;
   InfrahubUpdateHFID: Maybe<UpdateHfid>;
@@ -21568,10 +21518,13 @@ export type MutationInfrahubRepositoryProcessArgs = {
 };
 
 
-export type MutationInfrahubSetPreferencesArgs = {
-  date_format?: InputMaybe<DateFormat>;
-  scope: PreferenceWriteScope;
-  timezone?: InputMaybe<Scalars['String']['input']>;
+export type MutationInfrahubTaskCancelArgs = {
+  data: TaskActionInput;
+};
+
+
+export type MutationInfrahubTaskRetryArgs = {
+  data: TaskActionInput;
 };
 
 
@@ -24395,21 +24348,6 @@ export type PoolUtilization = {
   utilization_default_branch: Scalars['Float']['output'];
 };
 
-/** Where an effective preference value came from: USER = the caller's own override, GLOBAL = the organisation-wide default, DEFAULT = nothing is stored anywhere and the client applies its built-in default. */
-export const PreferenceSource = {
-  DEFAULT: 'DEFAULT',
-  GLOBAL: 'GLOBAL',
-  USER: 'USER'
-} as const;
-
-export type PreferenceSource = typeof PreferenceSource[keyof typeof PreferenceSource];
-/** The writable axes of the preferences store: USER writes the caller's own preferences, GLOBAL writes the organisation-wide ones (gated on manage_global_preferences). EFFECTIVE is intentionally absent — the resolved view is read-only. */
-export const PreferenceWriteScope = {
-  GLOBAL: 'GLOBAL',
-  USER: 'USER'
-} as const;
-
-export type PreferenceWriteScope = typeof PreferenceWriteScope[keyof typeof PreferenceWriteScope];
 export type ProcessRepository = {
   __typename: 'ProcessRepository';
   ok: Maybe<Scalars['Boolean']['output']>;
@@ -25608,9 +25546,7 @@ export type Query = {
   InfrahubAccountToken: AccountTokenEdges;
   /** Retrieve paginated information about active branches. */
   InfrahubBranch: InfrahubBranchType;
-  InfrahubEffectivePreferences: EffectivePreferencesType;
   InfrahubEvent: Events;
-  InfrahubGlobalPreferences: RawPreferencesType;
   /** Analyze a GraphQL query string and return a report describing how Infrahub will interpret it. */
   InfrahubGraphQLQueryReport: GraphQlQueryReport;
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
@@ -25629,7 +25565,6 @@ export type Query = {
   InfrahubTask: Tasks;
   /** Return the list of all pending or running tasks that can modify the data, for a given branch */
   InfrahubTaskBranchStatus: Tasks;
-  InfrahubUserPreferences: RawPreferencesType;
   IpamNamespace: PaginatedIpamNamespace;
   LineageOwner: PaginatedLineageOwner;
   LineageSource: PaginatedLineageSource;
@@ -38346,18 +38281,6 @@ export type QueryRelationshipArgs = {
   offset?: InputMaybe<Scalars['Int']['input']>;
 };
 
-/**
- * Raw stored preferences for a single scope (USER = the caller's own, GLOBAL = organisation-wide).
- *
- * Each field is null when nothing is stored for it. Unlike the effective view there is no `source`
- * — the scope IS the source.
- */
-export type RawPreferencesType = {
-  __typename: 'RawPreferencesType';
-  date_format: Maybe<DateFormat>;
-  timezone: Maybe<Scalars['String']['output']>;
-};
-
 export type ReachableNodeType = {
   __typename: 'ReachableNodeType';
   /** Hops from source node */
@@ -38647,6 +38570,24 @@ export type SubscriptionQueryArgs = {
   params?: InputMaybe<Scalars['GenericScalar']['input']>;
 };
 
+export type TaskAction = {
+  __typename: 'TaskAction';
+  action: TaskActionType;
+  available: Scalars['Boolean']['output'];
+  unavailability_reason: Maybe<Scalars['String']['output']>;
+};
+
+export type TaskActionInput = {
+  id: Scalars['String']['input'];
+};
+
+/** Recovery actions a task run can expose. */
+export const TaskActionType = {
+  CANCEL: 'CANCEL',
+  RETRY: 'RETRY'
+} as const;
+
+export type TaskActionType = typeof TaskActionType[keyof typeof TaskActionType];
 export type TaskInfo = {
   __typename: 'TaskInfo';
   id: Maybe<Scalars['String']['output']>;
@@ -38674,6 +38615,7 @@ export type TaskLogNodes = {
 
 export type TaskNode = {
   __typename: 'TaskNode';
+  available_actions: Array<TaskAction>;
   branch: Maybe<Scalars['String']['output']>;
   conclusion: Scalars['String']['output'];
   created_at: Scalars['String']['output'];

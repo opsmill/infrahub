@@ -52,18 +52,22 @@ async def webhook_post(webhook_id: str, webhook_kind: str, webhook_name: str, pa
     retries=WEBHOOK_SEND_RETRIES,
     retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAY_SECONDS,
 )
-async def webhook_send(webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any) -> Response:
+async def webhook_send(
+    webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, branch_name: str | None = None
+) -> Response:
     """Send the webhook delivery, retrying the whole send on failure.
 
-    Expected delivery failures (transport, HTTP status, configuration) are classified and
-    re-raised with a clean, user-facing message. An unexpected error keeps its traceback so
-    the run surfaces as a genuine crash.
+    This is the operator-facing delivery: it carries the webhook node and branch tags so it is
+    listed and addressable on its own. Expected delivery failures (transport, HTTP status,
+    configuration) are classified and re-raised with a clean, user-facing message. An unexpected
+    error keeps its traceback so the run surfaces as a genuine crash.
 
     Raises:
         WebhookDeliveryError: When an expected delivery failure occurs, carrying the classified reason.
 
     """
     log = get_run_logger()
+    await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
     started = time.monotonic()
     try:
         response = await webhook_post(
@@ -169,8 +173,6 @@ async def webhook_process(
     """
     client = get_client()
 
-    await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
-
     webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
     webhook_context = EventContext.from_event(
         event_id=event_id,
@@ -185,6 +187,7 @@ async def webhook_process(
         webhook_kind=webhook_kind,
         webhook_name=webhook_name,
         payload=payload,
+        branch_name=branch_name,
         return_state=True,
     )
     if state.is_completed():

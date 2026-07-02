@@ -8,7 +8,14 @@ const GET_TASK_DETAILS_TITLE = graphql(`
       count
       edges {
         node {
+          id
           title
+          state
+          available_actions {
+            action
+            available
+            unavailability_reason
+          }
         }
       }
     }

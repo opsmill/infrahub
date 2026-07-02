@@ -3,21 +3,21 @@
 **Feature Branch**: `pmi-20260624-speckit-end-of-webhooks`
 **Created**: 2026-06-24
 **Status**: Draft
-**Input**: IFC-2753 (manual cancel), IFC-2755 (task typing + HTTP capture/display), IFC-2119 (manual resend), IFC-2754 (enhanced logs + error classification); design: "Webhooks Delivery Operability" and "Webhook Delivery Operability: Prefect-native design"
+**Input**: IFC-2753 (manual cancel), IFC-2755 (task typing + HTTP capture/display), IFC-2119 (manual retry), IFC-2754 (enhanced logs + error classification); design: "Webhooks Delivery Operability" and "Webhook Delivery Operability: Prefect-native design"
 
 ## Overview
 
 A webhook delivery is currently process exhaust: a background run plus log lines. When a delivery fails, an operator sees a raw stacktrace, no record of what was sent or what came back, no classified reason, and has no way to replay or stop it. The only recovery is to re-fire the original business event — impossible once the source node is deleted.
 
-This feature makes a delivery a first-class, inspectable, and recoverable object surfaced in the Tasks tab: operators can see the payload, the request and response, a clean classified failure reason with a remediation hint, and can resend or cancel a delivery. Recovery actions (resend, cancel) are exposed as **generic task actions** — any task carries them, and webhook deliveries are the first task type to populate them — rather than as webhook-specific operations.
+This feature makes a delivery a first-class, inspectable, and recoverable object surfaced in the Tasks tab: operators can see the payload, the request and response, a clean classified failure reason with a remediation hint, and can retry or cancel a delivery. Recovery actions (retry, cancel) are exposed as **generic task actions** — any task carries them, and webhook deliveries are the first task type to populate them — rather than as webhook-specific operations.
 
 ## Clarifications
 
 ### Session 2026-06-24
 
 - Q: Retry policy — backoff strategy and attempt count? → A: Fixed delay (~2 min), transient-only, bounded to 3 attempts. Exponential backoff is rejected because a long back-off would leave many flow runs parked, waiting on a delayed retry attempt to resolve.
-- Q: Resend confirmation scope — confirm only on succeeded deliveries, or on every resend? → A: Confirm on every resend; each resend spawns a new independent flow run that warrants a deliberate acknowledgment. Re-delivering a succeeded delivery remains the higher-stakes case and is called out explicitly in the confirmation.
-- Q: Who may resend or cancel a delivery? → A: Require the existing webhook-management permission — whoever can configure a webhook can operate its deliveries. No new or dedicated permission concept is introduced.
+- Q: Retry confirmation scope — confirm only on succeeded deliveries, or on every retry? → A: Confirm on every retry; each retry spawns a new independent flow run that warrants a deliberate acknowledgment. Re-delivering a succeeded delivery remains the higher-stakes case and is called out explicitly in the confirmation.
+- Q: Who may retry or cancel a delivery? → A: Require the existing webhook-management permission — whoever can configure a webhook can operate its deliveries. No new or dedicated permission concept is introduced.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -42,7 +42,7 @@ An operator opens a webhook delivery in the Tasks tab and sees the delivered pay
 
 When a delivery fails, the operator sees a short, classified reason (for example: a connection problem, a TLS problem, a timeout, a client-side 4xx, a server-side 5xx, a configuration error) accompanied by a remediation hint, instead of a raw stacktrace. Deliveries are retried automatically only for failures that can plausibly succeed on retry (timeouts, connection failures, server 5xx); a 4xx or a configuration error fails immediately without wasting retry attempts.
 
-**Why this priority**: A classified reason turns an opaque failure into an actionable one and tells the operator whether to fix the target, fix the configuration, or simply resend. Smart retry stops the system from burning retry attempts on failures that can never succeed (a bad URL, a 404) while still covering transient outages.
+**Why this priority**: A classified reason turns an opaque failure into an actionable one and tells the operator whether to fix the target, fix the configuration, or simply retry. Smart retry stops the system from burning retry attempts on failures that can never succeed (a bad URL, a 404) while still covering transient outages.
 
 **Independent Test**: Point a webhook at (a) an unreachable host, (b) an endpoint returning 404, (c) an endpoint returning 500, and (d) an endpoint with an invalid certificate; trigger each and confirm the displayed reason is correctly classified, a remediation hint is shown, and only the transient cases (unreachable, 500) are retried.
 
@@ -56,22 +56,22 @@ When a delivery fails, the operator sees a short, classified reason (for example
 
 ---
 
-### User Story 3 - Resend a delivery (Priority: P3)
+### User Story 3 - Retry a delivery (Priority: P3)
 
-An operator resends a settled delivery. The resend replays the original frozen payload against the webhook's current configuration, producing a new delivery with a freshly computed signature. Resend is available on any delivery that has reached a terminal state — including one that previously succeeded — so an operator can re-deliver an event on demand (for example after fixing a downstream system, or to re-trigger a handler during integration testing). Resend is not available while a delivery is still in progress or auto-retrying, because that would race the pending attempt and double-send.
+An operator retrys a settled delivery. The retry replays the original frozen payload against the webhook's current configuration, producing a new delivery with a freshly computed signature. Retry is available on any delivery that has reached a terminal state — including one that previously succeeded — so an operator can re-deliver an event on demand (for example after fixing a downstream system, or to re-trigger a handler during integration testing). Retry is not available while a delivery is still in progress or auto-retrying, because that would race the pending attempt and double-send.
 
-**Why this priority**: Resend is the long-standing recovery gap: today the only way to retry is to re-create the original event, which is impossible once the source node is gone. It depends on the delivery record (US1) existing to resend from. Allowing resend from any terminal state — not only failures — lets operators re-deliver and test on demand.
+**Why this priority**: Retry is the long-standing recovery gap: today the only way to retry is to re-create the original event, which is impossible once the source node is gone. It depends on the delivery record (US1) existing to retry from. Allowing retry from any terminal state — not only failures — lets operators re-deliver and test on demand.
 
-**Independent Test**: Trigger a delivery against an endpoint that is down so it fails; bring the endpoint up; resend the delivery from the UI; confirm a new delivery is created, carries the same payload, recomputes its signature, and succeeds. Separately, resend a previously succeeded delivery and confirm a new delivery is produced.
+**Independent Test**: Trigger a delivery against an endpoint that is down so it fails; bring the endpoint up; retry the delivery from the UI; confirm a new delivery is created, carries the same payload, recomputes its signature, and succeeds. Separately, retry a previously succeeded delivery and confirm a new delivery is produced.
 
 **Acceptance Scenarios**:
 
-1. **Given** a failed delivery whose target is now reachable, **When** the operator resends it and confirms, **Then** a new delivery is created with the same payload and a fresh signature, and it succeeds.
-2. **Given** a delivery that succeeded, **When** the operator resends it, **Then** the confirmation calls out that this re-delivers an already-processed event, and on confirming, a new delivery is created and delivered.
-3. **Given** a delivery still in progress or awaiting an auto-retry, **When** the operator views it, **Then** the resend action is unavailable with a reason indicating the delivery is still in progress.
-4. **Given** a delivery whose original run has aged out of the retention window, **When** the operator attempts to resend, **Then** the system reports the delivery as no longer available rather than producing a broken resend.
-5. **Given** a delivery whose webhook configuration no longer resolves (the webhook was deleted), **When** the operator resends, **Then** the resent delivery is created and fails at runtime with a clear configuration-class reason.
-6. **Given** the original delivery, **When** it is resent, **Then** the original record is left unchanged as an immutable record and the resend appears as a new delivery.
+1. **Given** a failed delivery whose target is now reachable, **When** the operator retrys it and confirms, **Then** a new delivery is created with the same payload and a fresh signature, and it succeeds.
+2. **Given** a delivery that succeeded, **When** the operator retrys it, **Then** the confirmation calls out that this re-delivers an already-processed event, and on confirming, a new delivery is created and delivered.
+3. **Given** a delivery still in progress or awaiting an auto-retry, **When** the operator views it, **Then** the retry action is unavailable with a reason indicating the delivery is still in progress.
+4. **Given** a delivery whose original run has aged out of the retention window, **When** the operator attempts to retry, **Then** the system reports the delivery as no longer available rather than producing a broken retry.
+5. **Given** a delivery whose webhook configuration no longer resolves (the webhook was deleted), **When** the operator retrys, **Then** the retried delivery is created and fails at runtime with a clear configuration-class reason.
+6. **Given** the original delivery, **When** it is resent, **Then** the original record is left unchanged as an immutable record and the retry appears as a new delivery.
 
 ---
 
@@ -79,7 +79,7 @@ An operator resends a settled delivery. The resend replays the original frozen p
 
 An operator cancels a delivery that is still in progress or awaiting an auto-retry, stopping its remaining auto-retry cycle. Cancellation is best-effort for an attempt already in flight — if the HTTP request has already left, it is not recalled — but it prevents any further scheduled attempts. A delivery that has already settled cannot be cancelled.
 
-**Why this priority**: Cancel gives an operator closure on a delivery that is uselessly retrying against a target known to be down or misconfigured, and is the natural counterpart to resend. It is lowest priority because the auto-retry window is bounded, so the cost of not cancelling is limited.
+**Why this priority**: Cancel gives an operator closure on a delivery that is uselessly retrying against a target known to be down or misconfigured, and is the natural counterpart to retry. It is lowest priority because the auto-retry window is bounded, so the cost of not cancelling is limited.
 
 **Independent Test**: Trigger a delivery against a slow/failing endpoint so it enters its auto-retry cycle; cancel it from the UI; confirm it transitions to a cancelled state and no further attempts are made.
 
@@ -87,7 +87,7 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 
 1. **Given** a delivery that is in progress or awaiting an auto-retry, **When** the operator cancels it, **Then** it transitions to a cancelled state and no further auto-retry attempts are made.
 2. **Given** a delivery that has already settled (succeeded, failed, crashed, or already cancelled), **When** the operator views it, **Then** the cancel action is unavailable with a reason indicating the delivery is already settled.
-3. **Given** a cancelled delivery, **When** the operator views it later, **Then** it can be resent (cancel then resend is the two-step way to restart a delivery during its auto-retry window).
+3. **Given** a cancelled delivery, **When** the operator views it later, **Then** it can be resent (cancel then retry is the two-step way to restart a delivery during its auto-retry window).
 
 ---
 
@@ -95,10 +95,10 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 
 - A custom header key appears more than once: the delivery proceeds; behavior on duplicates is deterministic and does not break capture.
 - An environment-sourced header references a variable that is not set: the delivery proceeds without that header and this is surfaced in the logs, not as a crash.
-- The same delivery is resent twice in quick succession: each resend produces its own independent new delivery.
+- The same delivery is resent twice in quick succession: each retry produces its own independent new delivery.
 - A delivery is cancelled at the exact moment an attempt's HTTP request is already in flight: the in-flight request is not recalled, but no further attempts are scheduled.
 - A non-webhook task is viewed: it carries the generic action list (empty when no actions apply) and does not expose webhook-specific request/response fields.
-- An operator attempts an action that has become unavailable since the page was loaded (for example, resending a delivery that has since started auto-retrying again): the action is rejected server-side with a clear reason rather than silently double-sending.
+- An operator attempts an action that has become unavailable since the page was loaded (for example, retrying a delivery that has since started auto-retrying again): the action is rejected server-side with a clear reason rather than silently double-sending.
 
 ## Requirements *(mandatory)*
 
@@ -129,20 +129,20 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 - **FR-014**: An unexpected (non-delivery) error MUST remain distinguishable from an expected delivery failure, retaining its diagnostic detail rather than being flattened into a clean message.
 - **FR-015**: Per-attempt progress MUST remain visible in the delivery's logs.
 
-#### Generic task actions: resend and cancel
+#### Generic task actions: retry and cancel
 
 - **FR-016**: The system MUST expose the available recovery actions for a task as a generic capability carried by every task, computed server-side as the single source of truth, with an availability state and a reason when unavailable.
-- **FR-017**: The resend and cancel mutations MUST present a generic interface addressable by task identifier (not a webhook-specific mutation shape). Genericity is confined to the query/mutation surface: it does NOT imply that every task type supports these actions. Actual support is determined per task type, and webhook deliveries are the only type that supports resend and cancel in this feature; for any other task type the actions resolve as unavailable.
-- **FR-018**: Resend MUST be available for a delivery in any terminal state — including one that succeeded — and MUST be unavailable while a delivery is in progress or awaiting an auto-retry.
-- **FR-019**: Resending a delivery MUST replay its original frozen payload against the webhook's current configuration, producing a new independent delivery with a freshly computed signature, and MUST leave the original delivery unchanged.
-- **FR-020**: Resending a delivery whose underlying record has aged out of retention MUST fail with a clear "no longer available" result rather than producing a broken resend.
-- **FR-021**: Every resend MUST require an explicit confirmation before it proceeds, because each resend spawns a new independent delivery. The confirmation for a succeeded delivery MUST additionally call out that it re-delivers an event the target has already processed.
+- **FR-017**: The retry and cancel mutations MUST present a generic interface addressable by task identifier (not a webhook-specific mutation shape). Genericity is confined to the query/mutation surface: it does NOT imply that every task type supports these actions. Actual support is determined per task type, and webhook deliveries are the only type that supports retry and cancel in this feature; for any other task type the actions resolve as unavailable.
+- **FR-018**: Retry MUST be available for a delivery in any terminal state — including one that succeeded — and MUST be unavailable while a delivery is in progress or awaiting an auto-retry.
+- **FR-019**: Retrying a delivery MUST replay its original frozen payload against the webhook's current configuration, producing a new independent delivery with a freshly computed signature, and MUST leave the original delivery unchanged.
+- **FR-020**: Retrying a delivery whose underlying record has aged out of retention MUST fail with a clear "no longer available" result rather than producing a broken retry.
+- **FR-021**: Every retry MUST require an explicit confirmation before it proceeds, because each retry spawns a new independent delivery. The confirmation for a succeeded delivery MUST additionally call out that it re-delivers an event the target has already processed.
 - **FR-022**: Cancel MUST be available only while a delivery is non-terminal, and MUST stop any further scheduled auto-retry attempts.
 - **FR-023**: Cancellation MUST be best-effort for an attempt already in flight; an HTTP request already sent is not recalled.
 - **FR-024**: A delivery that has settled MUST NOT be cancellable; the cancel action MUST report it as already settled.
-- **FR-025**: The frontend MUST drive the resend and cancel controls from the server-computed availability, disabling each control and showing its unavailability reason when the action does not apply.
+- **FR-025**: The frontend MUST drive the retry and cancel controls from the server-computed availability, disabling each control and showing its unavailability reason when the action does not apply.
 - **FR-026**: Any action attempted after it has become unavailable MUST be rejected server-side with a clear reason rather than performed.
-- **FR-027**: Resend and cancel MUST be authorized against the existing webhook-management permission; an operator who can configure a webhook can operate its deliveries, and no new or elevated permission is introduced.
+- **FR-027**: Retry and cancel MUST be authorized against the existing webhook-management permission; an operator who can configure a webhook can operate its deliveries, and no new or elevated permission is introduced.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -150,8 +150,8 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 - **Captured request**: The URL and headers as sent on the last attempt, with secret-by-design values masked.
 - **Captured response**: The status code, body, and latency of the last attempt's response.
 - **Classified failure reason**: One of a small fixed set of failure classes plus a remediation hint; present only when the delivery failed.
-- **Available actions**: The generic, per-task set of recovery actions (resend, cancel) with, for each, whether it is currently available and, if not, why.
-- **Webhook configuration**: The target URL, custom headers, certificate-validation setting, and signing key, resolved per attempt (not frozen with the payload), so that fixing a misconfiguration and resending works.
+- **Available actions**: The generic, per-task set of recovery actions (retry, cancel) with, for each, whether it is currently available and, if not, why.
+- **Webhook configuration**: The target URL, custom headers, certificate-validation setting, and signing key, resolved per attempt (not frozen with the payload), so that fixing a misconfiguration and retrying works.
 
 ## Success Criteria *(mandatory)*
 
@@ -167,13 +167,13 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 
 ## Assumptions
 
-- The structural foundation — splitting the orchestrator that freezes the payload from the user-visible `webhook_send`, which carries its own fixed-delay bounded auto-retries — is already in place on the current branch (see the Implementation Sync revision below); this feature adds the operability layer (capture, classification, typing, resend, cancel) on top. The landed retry policy currently retries on every failure; FR-012 narrows it to transient-only.
-- Delivery data lives in the background execution system and is subject to its retention window (default 30 days); deliveries older than the window are not inspectable or resendable. This is an accepted trade for requiring no new domain schema or migration.
-- Resend replays the frozen payload against the *current* configuration with a fresh signature; it deliberately does not replay a byte-for-byte frozen request, so that fixing a misconfiguration and resending succeeds.
-- The payload is frozen once at delivery creation; headers, signature, and configuration are recomputed per attempt and per resend.
+- The structural foundation — splitting the orchestrator that freezes the payload from the user-visible `webhook_send`, which carries its own fixed-delay bounded auto-retries — is already in place on the current branch (see the Implementation Sync revision below); this feature adds the operability layer (capture, classification, typing, retry, cancel) on top. The landed retry policy currently retries on every failure; FR-012 narrows it to transient-only.
+- Delivery data lives in the background execution system and is subject to its retention window (default 30 days); deliveries older than the window are not inspectable or retryable. This is an accepted trade for requiring no new domain schema or migration.
+- Retry replays the frozen payload against the *current* configuration with a fresh signature; it deliberately does not replay a byte-for-byte frozen request, so that fixing a misconfiguration and retrying succeeds.
+- The payload is frozen once at delivery creation; headers, signature, and configuration are recomputed per attempt and per retry.
 - Whether the captured request/response is stored as one grouped record or as separate request and response records is an implementation detail not visible to the operator; the operator-facing requirement is only that both are shown.
-- Permission to resend or cancel a delivery is the existing webhook-management permission (see FR-027); this feature introduces no new permission model.
-- Resend and cancel are state-gated rather than coordinated through locking; concurrent or stale attempts are resolved by the server-side availability check at execution time (FR-026).
+- Permission to retry or cancel a delivery is the existing webhook-management permission (see FR-027); this feature introduces no new permission model.
+- Retry and cancel are state-gated rather than coordinated through locking; concurrent or stale attempts are resolved by the server-side availability check at execution time (FR-026).
 - "Terminal" means a delivery has settled (succeeded, failed, crashed, or cancelled); "non-terminal" means it is in progress or awaiting an auto-retry.
 
 ## Revision: Implementation Sync — 2026-06-26
@@ -188,4 +188,4 @@ Landed prerequisites (structural; out of this spec's scope but the layer it buil
 | Fixed-delay bounded retry policy on `webhook_send` (#9676) | FR-012a's retry mechanism (3 attempts, ~120s fixed delay) is implemented. It retries on every failure today; the transient-only gating in FR-012 is the remaining operability layer. |
 | Webhook flow runs tagged with the webhook node id | Underpins the per-delivery, object-level authorization in FR-027 and node-scoped lookup. |
 
-Outstanding (this feature's scope): capture and redaction (FR-005–FR-009), failure classification with remediation hints (FR-010–FR-014), polymorphic task typing (FR-001–FR-004), and the generic resend/cancel actions (FR-016–FR-027).
+Outstanding (this feature's scope): capture and redaction (FR-005–FR-009), failure classification with remediation hints (FR-010–FR-014), polymorphic task typing (FR-001–FR-004), and the generic retry/cancel actions (FR-016–FR-027).

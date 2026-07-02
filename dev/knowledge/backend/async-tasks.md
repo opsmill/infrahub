@@ -293,6 +293,10 @@ class DisplayLabelNodeIDQuery(NodeIDQuery):
 
 Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
 
+## Recovery actions
+
+A task run can expose recovery actions through the GraphQL `Task` type's `available_actions` field, gated by the run's current state. `TaskActionGenerator` derives the action set per workflow, and `InfrahubTaskRetry` and `InfrahubTaskCancel` carry the actions out. Only `WEBHOOK_SEND` runs expose actions today; see [Webhooks](webhooks.md) for the delivery-specific behavior.
+
 ## Key Locations
 
 | Component | Location |

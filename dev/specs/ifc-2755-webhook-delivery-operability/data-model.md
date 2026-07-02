@@ -73,7 +73,7 @@ type HttpRequest      { url: String!, headers: GenericScalar! }            # hea
 type HttpResponse      { status_code: Int, body: String, latency_ms: Float }
 type DeliveryError     { status_class: String!, message: String!, remediation: String! }
 type TaskAction        { action: TaskActionName!, available: Boolean!, unavailability_reason: String }
-enum TaskActionName    { RESEND, CANCEL }
+enum TaskActionName    { RETRY, CANCEL }
 ```
 
 ### resolve_type / registration
@@ -128,11 +128,11 @@ Pure function of `(workflow_name, prefect_state)`:
 
 | Run type | Action | available iff | unavailability_reason |
 |---|---|---|---|
-| WEBHOOK_SEND | RESEND | state is terminal (COMPLETED / FAILED / CRASHED / CANCELLED) | "Delivery still in progress" |
+| WEBHOOK_SEND | RETRY | state is terminal (COMPLETED / FAILED / CRASHED / CANCELLED) | "Delivery still in progress" |
 | WEBHOOK_SEND | CANCEL | state is non-terminal (RUNNING / SCHEDULED / PENDING / AwaitingRetry) | "Delivery already settled" |
 | any other | — | (empty list) | — |
 
-RESEND is available on **any terminal state including COMPLETED** (FR-018).
+RETRY is available on **any terminal state including COMPLETED** (FR-018).
 
 ## State model (delivery lifecycle)
 
@@ -154,12 +154,12 @@ Raw Prefect states; the frontend maps presentation labels over them (no backend 
 - Non-terminal: SCHEDULED, PENDING, RUNNING, AwaitingRetry, CANCELLING.
 - Terminal: COMPLETED, FAILED, CRASHED, CANCELLED.
 - CANCEL: allowed only from non-terminal; flips toward CANCELLED (best-effort for an in-flight request).
-- RESEND: allowed only from terminal; produces a **new** run (does not transition the original).
+- RETRY: allowed only from terminal; produces a **new** run (does not transition the original).
 - `status_class` exists only when conclusion is FAILURE.
 
 ## Relationships & identity
 
 - A delivery is identified by its Prefect flow-run id (the GraphQL task `id`).
 - A delivery references its webhook via the `webhook_id` run parameter and the related-node tag (drives Tasks-tab visibility and authorization).
-- A resend produces a new delivery with no parent link; it carries the same `payload` parameter and re-tags itself. Original and resend are independent records.
-- Validation rules enforced at boundaries: resend/cancel re-validate `available_actions` server-side at execution (reject stale, FR-026); resend re-checks the original run still exists in retention (FR-020).
+- A retry produces a new delivery with no parent link; it carries the same `payload` parameter and re-tags itself. Original and retry are independent records.
+- Validation rules enforced at boundaries: retry/cancel re-validate `available_actions` server-side at execution (reject stale, FR-026); retry re-checks the original run still exists in retention (FR-020).

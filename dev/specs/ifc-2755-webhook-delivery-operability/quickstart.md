@@ -41,17 +41,17 @@ Drive each failure class and confirm the classified reason + remediation hint (n
 
 Confirm per-attempt progress is visible in the delivery **logs**, and the final reason reflects the settling attempt.
 
-## US3 — Resend a delivery (P3)
+## US3 — Retry a delivery (P3)
 
 1. Trigger a delivery against a **down** endpoint so it fails. Bring the endpoint up.
-2. On the failed delivery, click **Resend**, confirm in the dialog → a **new** delivery row appears, carries the same payload, recomputes its signature, and succeeds. The original failed row is unchanged.
-3. On a **succeeded** delivery, click Resend → the confirmation explicitly calls out re-delivering an already-processed event; on confirm, a new delivery is produced.
-4. On an **in-progress / awaiting-retry** delivery, confirm Resend is disabled with a reason.
-5. (Retention) For a delivery whose run has aged out, confirm Resend reports "delivery no longer available".
+2. On the failed delivery, click **Retry**, confirm in the dialog → a **new** delivery row appears, carries the same payload, recomputes its signature, and succeeds. The original failed row is unchanged.
+3. On a **succeeded** delivery, click Retry → the confirmation explicitly calls out re-delivering an already-processed event; on confirm, a new delivery is produced.
+4. On an **in-progress / awaiting-retry** delivery, confirm Retry is disabled with a reason.
+5. (Retention) For a delivery whose run has aged out, confirm Retry reports "delivery no longer available".
 
 GraphQL check:
 ```graphql
-mutation { InfrahubTaskResend(data: {id: "<run-id>"}) { ok task { id state } } }
+mutation { InfrahubTaskRetry(data: {id: "<run-id>"}) { ok task { id state } } }
 ```
 
 ## US4 — Cancel an in-progress delivery (P4)
@@ -59,7 +59,7 @@ mutation { InfrahubTaskResend(data: {id: "<run-id>"}) { ok task { id state } } }
 1. Trigger a delivery against a slow/failing endpoint so it enters AwaitingRetry.
 2. Click **Cancel** → the delivery transitions to cancelled and no further attempts are made.
 3. Confirm Cancel is disabled (with a reason) on already-settled deliveries.
-4. Confirm a cancelled delivery can then be **resent** (cancel→resend is the two-step restart).
+4. Confirm a cancelled delivery can then be **retried** (cancel→retry is the two-step restart).
 
 GraphQL check:
 ```graphql
@@ -68,15 +68,15 @@ mutation { InfrahubTaskCancel(data: {id: "<run-id>"}) { ok task { id state } } }
 
 ## Authorization
 
-As an account **without** update permission on the webhook node, confirm Resend/Cancel are rejected at the API layer with a clear permission error.
+As an account **without** update permission on the webhook node, confirm Retry/Cancel are rejected at the API layer with a clear permission error.
 
 ## Automated tests
 
 ```bash
 uv run invoke backend.test-unit            # classifier, CapturedHeaders redaction, available-actions gating
-uv run invoke backend.test-integration     # capture, resend resubmit, cancel state flip, task typing
+uv run invoke backend.test-integration     # capture, retry resubmit, cancel state flip, task typing
 cd frontend/app && pnpm test               # mutation hooks / rendering
-cd frontend/app && pnpm test:e2e           # resend + cancel happy paths
+cd frontend/app && pnpm test:e2e           # retry + cancel happy paths
 ```
 
 ## Regenerate artifacts after schema changes

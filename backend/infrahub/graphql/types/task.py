@@ -1,12 +1,30 @@
 from __future__ import annotations
 
-from graphene import Enum, Field, Float, List, ObjectType, String
+from enum import StrEnum
+
+from graphene import Boolean, Enum, Field, Float, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
 from prefect.client.schemas.objects import StateType
 
 from .task_log import TaskLogEdge
 
 TaskState = Enum.from_enum(StateType)
+
+
+class TaskActionType(StrEnum):
+    """Recovery actions a task run can expose."""
+
+    RETRY = "RETRY"
+    CANCEL = "CANCEL"
+
+
+TaskActionName = Enum.from_enum(TaskActionType)
+
+
+class TaskAction(ObjectType):
+    action = TaskActionName(required=True)
+    available = Boolean(required=True)
+    unavailability_reason = String(required=False)
 
 
 class TaskInfo(ObjectType):
@@ -44,6 +62,7 @@ class TaskNode(Task):
     )
     related_nodes = List(TaskRelatedNode)
     logs = Field(TaskLogEdge)
+    available_actions = List(NonNull(TaskAction), required=True)
 
 
 class TaskNodes(ObjectType):

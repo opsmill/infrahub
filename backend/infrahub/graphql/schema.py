@@ -34,6 +34,7 @@ from .mutations.relationship import RelationshipAdd, RelationshipRemove
 from .mutations.repository import ProcessRepository, ReadOnlyRepositoryImportLastCommit, ValidateRepositoryConnectivity
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
+from .mutations.task import InfrahubTaskCancel, InfrahubTaskRetry
 from .queries import (
     AccountPermissions,
     AccountToken,
@@ -129,6 +130,9 @@ class InfrahubBaseMutation(ObjectType):
     BranchValidate = BranchValidate.Field()
 
     DiffUpdate = DiffUpdateMutation.Field()
+
+    InfrahubTaskRetry = InfrahubTaskRetry.Field()
+    InfrahubTaskCancel = InfrahubTaskCancel.Field()
 
     InfrahubReadOnlyRepositoryImportLastCommit = ReadOnlyRepositoryImportLastCommit.Field()
     InfrahubRepositoryProcess = ProcessRepository.Field()
