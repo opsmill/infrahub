@@ -9,7 +9,7 @@ import pytest
 import ujson
 
 from infrahub.exceptions import HTTPServerError
-from infrahub.webhook.classifier import WebhookDeliveryError
+from infrahub.webhook.classifier import WebhookDeliveryError, WebhookFailureClassifier
 from infrahub.webhook.models import CustomWebhook, HeaderKind, Webhook, WebhookHeader
 from infrahub.webhook.tasks import process
 from infrahub.webhook.tasks.process import (
@@ -202,7 +202,8 @@ async def test_webhook_send_logs_and_raises_the_classified_failure(
     monkeypatch.setattr(process.time, "monotonic", lambda: 0.0)
 
     async def _failing_post(**_kwargs: object) -> httpx.Response:
-        raise HTTPServerError(message="Connection to https://target.example failed")
+        cause = HTTPServerError(message="Connection to https://target.example failed")
+        raise WebhookDeliveryError(WebhookFailureClassifier().classify(cause=cause)) from None
 
     monkeypatch.setattr(process, "webhook_post", _failing_post)
 
