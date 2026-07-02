@@ -19,7 +19,7 @@ import {
 } from "@/entities/nodes/convert/ui/source-option-item";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeRelationshipOne } from "@/entities/nodes/object/domain/model/node";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 
 export const ConvertSourceRelationshipOneInput = ({
   sourceObject,

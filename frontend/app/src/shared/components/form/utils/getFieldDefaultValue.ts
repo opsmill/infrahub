@@ -20,7 +20,7 @@ import type {
   NodeObject,
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";

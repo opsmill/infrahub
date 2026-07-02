@@ -8,9 +8,9 @@ import { Link } from "@/shared/components/ui/link";
 import { formatFullDate } from "@/shared/utils/date";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useGetNodeMetadata } from "@/entities/nodes/object/ui/queries/get-node-metadata.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 function UserLink({ user }: { user: NodeCore | null }) {
   if (!user) return <>-</>;

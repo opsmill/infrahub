@@ -5,7 +5,7 @@ import type {
   NodeRelationshipManyWithMetadata,
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
-import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
+import { resolveRelationshipData } from "@/entities/nodes/object/domain/rules/resolve-relationship-data";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 const metadata = {

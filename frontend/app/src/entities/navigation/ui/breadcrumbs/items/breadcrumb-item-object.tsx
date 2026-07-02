@@ -5,10 +5,10 @@ import { Link } from "react-router";
 import { Col, Row } from "@/shared/components/container";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { ObjectRelationshipList } from "@/entities/nodes/object/ui/object-relationship-list";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

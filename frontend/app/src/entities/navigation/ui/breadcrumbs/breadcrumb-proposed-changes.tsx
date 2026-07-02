@@ -14,9 +14,9 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbProposedChanges() {

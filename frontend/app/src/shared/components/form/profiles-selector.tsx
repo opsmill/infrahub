@@ -17,7 +17,7 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { ProfileData } from "@/entities/nodes/profiles/types";
 import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
 import type { NodeSchema } from "@/entities/schema/domain/model/types";

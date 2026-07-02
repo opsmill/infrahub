@@ -5,7 +5,7 @@ import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
 import { formatFullDate } from "@/shared/utils/date";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import {
   type UseGetRelationshipPropertiesParams,
   useGetRelationshipProperties,

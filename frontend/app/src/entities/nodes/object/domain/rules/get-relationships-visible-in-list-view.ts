@@ -1,4 +1,4 @@
-import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/domain/rules/is-from-resource-pool-relationship";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/types";
 
 export function getRelationshipsVisibleInListView(

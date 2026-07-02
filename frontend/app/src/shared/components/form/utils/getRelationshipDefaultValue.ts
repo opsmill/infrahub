@@ -21,8 +21,8 @@ import type {
   NodeRelationshipOneWithMetadata,
   NodeRelationshipWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { isNodeRelationshipMany } from "@/entities/nodes/object/utils/is-node-relationship-many";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isNodeRelationshipMany } from "@/entities/nodes/object/domain/rules/is-node-relationship-many";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";

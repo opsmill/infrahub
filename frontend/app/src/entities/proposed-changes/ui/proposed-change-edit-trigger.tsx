@@ -8,8 +8,8 @@ import {
   PROPOSED_CHANGES_OBJECT,
 } from "@/shared/config/constants";
 
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";

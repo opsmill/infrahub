@@ -10,7 +10,7 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 

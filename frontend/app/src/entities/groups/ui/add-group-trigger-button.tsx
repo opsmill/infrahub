@@ -7,9 +7,9 @@ import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import type { GroupData } from "@/entities/groups/domain/model/group";
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 

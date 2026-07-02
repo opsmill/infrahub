@@ -20,7 +20,7 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import {

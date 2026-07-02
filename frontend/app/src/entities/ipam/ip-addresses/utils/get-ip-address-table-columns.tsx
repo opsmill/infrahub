@@ -15,6 +15,7 @@ import type {
   NodeObject,
   NodeRelationship,
 } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
@@ -23,7 +24,6 @@ import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/c
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();

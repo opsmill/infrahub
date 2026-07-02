@@ -3,12 +3,12 @@ import { Row, type RowProps } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { classNames } from "@/shared/utils/common";
 
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 

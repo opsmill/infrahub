@@ -14,8 +14,8 @@ import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-names
 import type { IpamTreeNode } from "@/entities/ipam/ipam-tree/types";
 import { useGetIpamTreeNodesByParent } from "@/entities/ipam/ipam-tree/ui/queries/get-ipam-tree-nodes-by-parent.query";
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/ui/queries/get-object-ancestors.query";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

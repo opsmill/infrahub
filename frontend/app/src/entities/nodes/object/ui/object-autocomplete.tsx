@@ -6,8 +6,8 @@ import { Collection } from "react-aria-components";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { debounce } from "@/shared/utils/common";
 
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";

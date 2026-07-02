@@ -11,13 +11,13 @@ import type {
   NodeObjectWithMetadata,
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
+import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-detailed-view";
+import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-detailed-view";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/domain/rules/is-from-resource-pool-relationship";
+import { resolveRelationshipData } from "@/entities/nodes/object/domain/rules/resolve-relationship-data";
 import FieldMetadataForm from "@/entities/nodes/object/ui/metadata/field-metadata-form";
 import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
-import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
-import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
-import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import type { Permission } from "@/entities/permission/types";
 import type {
   AttributeSchema,

@@ -27,11 +27,11 @@ import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isNodeRelationshipOne } from "@/entities/nodes/object/domain/rules/is-node-relationship-one";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { Permission } from "@/entities/permission/types";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";

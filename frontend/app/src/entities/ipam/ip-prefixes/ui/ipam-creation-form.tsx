@@ -10,8 +10,8 @@ import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants
 import { useGetNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/ui/queries/get-next-ip-address-available.query";
 import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/ui/queries/get-next-ip-prefix-available.query";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useAllocateResourceMutation } from "@/entities/resource-manager/ui/queries/allocate-resource.mutation";
 import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/utils/get-allocate-mutation-name-from-schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";

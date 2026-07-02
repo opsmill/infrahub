@@ -9,7 +9,7 @@ import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";
 import { Command, CommandInput, CommandList } from "@/shared/components/ui/command";
 import { debounce } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import type { NodeSchema } from "@/entities/schema/domain/model/types";

@@ -12,7 +12,7 @@ import { Popover, PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 
 export type PoolValue = {

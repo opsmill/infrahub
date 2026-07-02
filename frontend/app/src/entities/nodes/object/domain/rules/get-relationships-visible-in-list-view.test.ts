@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { generateRelationshipSchema } from "../../../../../tests/fake/schema";
+import { generateRelationshipSchema } from "../../../../../../tests/fake/schema";
 import { getRelationshipsVisibleInListView } from "./get-relationships-visible-in-list-view";
 
 describe("getRelationshipsVisibleInListView", () => {

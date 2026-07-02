@@ -5,7 +5,7 @@ import type {
   NodeRelationshipMany,
   NodeRelationshipOne,
 } from "@/entities/nodes/object/domain/model/node";
-import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
+import { isNodeRelationshipOne } from "@/entities/nodes/object/domain/rules/is-node-relationship-one";
 
 describe("isNodeRelationshipOne", () => {
   it("should return true for a cardinality-one relationship", () => {

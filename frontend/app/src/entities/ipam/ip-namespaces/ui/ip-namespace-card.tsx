@@ -7,8 +7,8 @@ import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
 import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 export interface IpNamespaceCardProps {
   ipNamespace: IpNamespace;

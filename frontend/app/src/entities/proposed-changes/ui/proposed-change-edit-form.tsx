@@ -9,8 +9,8 @@ import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/shared/config
 
 import { branchesState } from "@/entities/branches/stores";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ProposedChangeEditFormProps = {

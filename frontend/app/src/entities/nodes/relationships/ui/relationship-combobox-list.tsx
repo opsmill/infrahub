@@ -11,7 +11,7 @@ import {
 import { debounce } from "@/shared/utils/common";
 import { isUuid } from "@/shared/utils/is-uuid";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

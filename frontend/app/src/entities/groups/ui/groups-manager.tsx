@@ -10,7 +10,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { AddGroupTriggerButton } from "@/entities/groups/ui/add-group-trigger-button";
 import { ObjectGroupsList } from "@/entities/groups/ui/object-groups-list";
 import { useGetGroups } from "@/entities/groups/ui/queries/get-groups.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface GroupsManagerProps {

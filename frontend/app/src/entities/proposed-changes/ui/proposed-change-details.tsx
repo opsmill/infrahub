@@ -12,7 +12,7 @@ import { type Property, PropertyList } from "@/shared/components/table/property-
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { GetProposedChangeDetailsResult } from "@/entities/proposed-changes/domain/use-cases/get-proposed-change-details";
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
 import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";

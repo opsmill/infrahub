@@ -9,9 +9,9 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 
 import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/model/metadata-filter-definitions";
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/domain/rules/is-from-resource-pool-relationship";
 import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
 import {
   ACCOUNT_TABLE_ATTRIBUTES,

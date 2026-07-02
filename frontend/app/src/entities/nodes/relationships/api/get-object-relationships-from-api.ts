@@ -10,8 +10,8 @@ import {
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 type GenerateObjectRelationshipsQueryParams = PaginationParams & {

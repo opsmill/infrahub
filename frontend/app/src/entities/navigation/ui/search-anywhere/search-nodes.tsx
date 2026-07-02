@@ -15,10 +15,10 @@ import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-an
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { getSchemaObjectColumns } from "@/entities/nodes/object/ui/object-table/get-schema-object-columns";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

@@ -12,7 +12,7 @@ import { BranchMetadata } from "@/entities/branches/ui/branch-list-item/branch-m
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 
 interface BranchListItemProps extends ListBoxItemProps {
   branch: BranchListItemType;

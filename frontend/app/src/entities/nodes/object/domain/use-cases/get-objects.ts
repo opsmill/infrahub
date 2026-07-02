@@ -5,8 +5,8 @@ import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { getObjectsFromApi } from "@/entities/nodes/object/api/get-objects-from-api";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import type {
   AttributeSchema,
   ModelSchema,

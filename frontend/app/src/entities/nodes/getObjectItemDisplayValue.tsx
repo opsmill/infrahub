@@ -25,7 +25,7 @@ import { Link } from "@/shared/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
   AttributeKind,

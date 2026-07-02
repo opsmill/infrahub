@@ -3,8 +3,8 @@ import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/bad
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { NODE_OBJECT } from "@/shared/config/constants";
 
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-label.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 type tId = {
   id: string;

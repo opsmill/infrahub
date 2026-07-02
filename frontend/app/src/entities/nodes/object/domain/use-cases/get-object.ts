@@ -2,8 +2,8 @@ import type { ContextParams } from "@/shared/api/types";
 
 import { getObjectFromApi } from "@/entities/nodes/object/api/get-object-from-api";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
-import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
-import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
+import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-detailed-view";
+import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-detailed-view";
 import type {
   AttributeSchema,
   ModelSchema,

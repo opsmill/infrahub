@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { hasExtraFields } from "@/entities/nodes/object/utils/has-extra-fields";
+import { hasExtraFields } from "@/entities/nodes/object/domain/rules/has-extra-fields";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 import {
   generateAttributeSchema,
   generateNodeSchema,
   generateRelationshipSchema,
-} from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/schema";
 
 describe("hasExtraFields", () => {
   it("should return true when an attribute has display 'extra'", () => {

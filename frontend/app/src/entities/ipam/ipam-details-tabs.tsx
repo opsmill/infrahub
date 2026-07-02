@@ -5,8 +5,8 @@ import { LinkTab } from "@/shared/components/ui/link";
 
 import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-tab";
 import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
-import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
 export interface IpamDetailsTabsProps {

@@ -11,9 +11,9 @@ import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
 import type { GroupData } from "@/entities/groups/domain/model/group";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/ui/queries/remove-relationships.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

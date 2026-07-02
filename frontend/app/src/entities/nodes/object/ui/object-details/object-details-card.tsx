@@ -3,8 +3,8 @@ import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
 
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { hasExtraFields } from "@/entities/nodes/object/domain/rules/has-extra-fields";
 import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
-import { hasExtraFields } from "@/entities/nodes/object/utils/has-extra-fields";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
