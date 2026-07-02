@@ -1,15 +1,21 @@
 ---
 # yamllint disable rule:truthy rule:line-length
-name: Update Docker Compose & helm chart on release tag
+name: Update Docker Compose & helm chart
 
-# This bumps the infrahub docker image in docker-compose.yml and the Helm chart
-# appVersion whenever an infrahub-v* release tag is pushed on the main line (an
-# ancestor of stable). Maintenance-branch tags are ignored.
+# Bumps the infrahub docker image pins in docker-compose.yml and the Helm chart
+# appVersion to the given release version. Run this on the release branch BEFORE
+# tagging the release: the tagged commit must already contain the up-to-date
+# docker-compose.yml (the New Release workflow validates this and refuses to
+# publish otherwise). /cut-release performs the same docker-compose.yml update
+# locally, in which case the docker-compose step here is a no-op.
 
 on:
-  push:
-    tags:
-      - 'infrahub-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Target release version (e.g. 1.11.0)"
+        required: true
+        type: string
 
 jobs:
   prepare-environment:
@@ -23,21 +29,6 @@ jobs:
         with:
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           submodules: true
-          # Full history + tags: hatch-vcs needs the tag for installed metadata, and the
-          # ancestor check below needs stable's history and the tag's ancestry.
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: "Check that the tag is on the main line (ancestor of stable)"
-        id: mainline
-        run: |
-          git fetch --no-tags origin stable
-          if git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
-            echo "is_mainline=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_mainline=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Tag ${GITHUB_REF_NAME} is not an ancestor of stable; skipping docker-compose/Helm propagation (maintenance-branch tag)."
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -50,26 +41,38 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
 
-      - name: "Check prerelease type"
-        id: release
+      - name: "Validate the target version"
+        env:
+          TARGET_VERSION: ${{ inputs.version }}
         run: |
-          VERSION=$(uv run python -c "import importlib.metadata; print(importlib.metadata.version('infrahub-server'))")
-          echo is_prerelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$VERSION').is_prerelease))") >> "$GITHUB_OUTPUT"
-          echo is_devrelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$VERSION').is_devrelease))") >> "$GITHUB_OUTPUT"
+          uv run python - <<'EOF'
+          import os
+          import sys
+
+          from packaging.version import InvalidVersion, Version
+
+          raw = os.environ["TARGET_VERSION"]
+          try:
+              version = Version(raw)
+          except InvalidVersion:
+              sys.exit(f"Invalid target version: {raw!r}")
+          if version.is_prerelease or version.is_devrelease:
+              sys.exit(
+                  f"{version} is a pre-release/dev version; "
+                  "docker-compose.yml and the Helm chart only track final releases."
+              )
+          EOF
 
       - name: "Update Docker Env variable in docker-compose.yml file"
-        if: steps.mainline.outputs.is_mainline == 'true' && steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         run: "uv run invoke release.gen-config-env -u"
       - name: "Update Infrahub Image Version in docker-compose.yml file"
-        if: steps.mainline.outputs.is_mainline == 'true' && steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        run: "uv run invoke release.update-docker-compose"
+        run: "uv run invoke release.update-docker-compose --version '${{ inputs.version }}'"
       - name: Commit docker-compose.yml
-        if: steps.mainline.outputs.is_mainline == 'true' && steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         uses: github-actions-x/commit@v2.9
         with:
           github-token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
-          push-branch: 'stable'
-          commit-message: 'chore: update docker-compose'
+          push-branch: ${{ github.ref_name }}
+          commit-message: 'chore: update docker-compose for release ${{ inputs.version }}'
           files: |
             docker-compose.yml
           name: opsmill-bot
@@ -77,7 +80,6 @@ jobs:
           rebase: true
 
       - name: Checkout infrahub-helm
-        if: steps.mainline.outputs.is_mainline == 'true' && steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         uses: actions/checkout@v7
         with:
           repository: opsmill/infrahub-helm
@@ -85,11 +87,9 @@ jobs:
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
 
       - name: "Update AppVersion in helm/chart.yaml file"
-        if: steps.mainline.outputs.is_mainline == 'true' && steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        run: "uv run invoke release.update-helm-chart"
+        run: "uv run invoke release.update-helm-chart --version '${{ inputs.version }}'"
 
       - name: Commit helm
-        if: steps.mainline.outputs.is_mainline == 'true' && steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         working-directory: helm
         run: |
           git config --global user.name "opsmill-bot"

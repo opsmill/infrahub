@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from invoke import Context, task
+from invoke import Context, Exit, task
 
 from tasks.shared import init_yaml_obj
 from tasks.utils import (
@@ -16,6 +16,10 @@ from tasks.utils import (
 
 if TYPE_CHECKING:
     from ruamel.yaml.main import YAML
+
+DOCKER_COMPOSE_INFRAHUB_SERVICES = ["infrahub-server", "task-worker", "task-manager"]
+# Matches semantic versions, including pre-release versions
+IMAGE_VERSION_PATTERN = r"\d+\.\d+\.\d+[-a-zA-Z0-9]*"
 
 
 @task
@@ -98,8 +102,8 @@ def ship(context: Context) -> None:
 
 
 @task
-def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:  # noqa: ARG001
-    """Update helm/Chart.yaml with the current version from the installed package metadata.
+def update_helm_chart(context: Context, chart_repo: str | None = "helm/", version: str | None = None) -> None:  # noqa: ARG001
+    """Update helm/Chart.yaml with the given version, or the installed package metadata when omitted.
 
     Raises:
         ValueError: When ``appVersion`` or ``version`` is missing from a Chart.yaml file.
@@ -110,8 +114,9 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
     # Import here to not require installing packaging when running invoke without installing dependencies.
     from packaging.version import Version
 
-    # Get the app version from the installed package metadata (resolved from the git tag at build time)
-    app_version = Version(get_project_version())  # Returns a string like '1.1.0a1'
+    # Explicit version (target release) wins over the installed package metadata
+    # (which is resolved from the git tag at build time)
+    app_version = Version(version or get_project_version())  # Returns a string like '1.1.0a1'
 
     for chart in ["infrahub", "infrahub-enterprise"]:
         # Initialize YAML and load the Chart.yaml file
@@ -196,15 +201,20 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
 
 
 @task
-def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:  # noqa: ARG001
-    """Update docker-compose.yml with the current version from the installed package metadata."""
+def update_docker_compose(
+    context: Context,  # noqa: ARG001
+    docker_file: str | None = "docker-compose.yml",
+    version: str | None = None,
+) -> None:
+    """Update docker-compose.yml with the given version, or the installed package metadata when omitted."""
     print(" - [release] Update docker-compose.yml")
 
     # Import here to not require installing packaging when running invoke without installing dependencies.
     from packaging.version import Version
 
-    # Get the version from the installed package metadata (resolved from the git tag at build time)
-    version = get_project_version()  # Returns a string like '1.1.0a0'
+    # Explicit version (target release) wins over the installed package metadata
+    # (which is resolved from the git tag at build time)
+    version = version or get_project_version()  # Returns a string like '1.1.0a0'
     new_version = Version(version)
 
     # Initialize YAML and load the docker-compose file
@@ -212,21 +222,17 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
     docker_path = Path(docker_file)
     docker_yaml: dict = yaml.load(docker_path)
 
-    # Define services to update
-    services_to_update = ["infrahub-server", "task-worker", "task-manager"]
     updates_made = False
 
     # Iterate over the services and update their image versions
-    for service in services_to_update:
+    for service in DOCKER_COMPOSE_INFRAHUB_SERVICES:
         service_config = docker_yaml["services"].get(service)
         if not service_config or "image" not in service_config:
             print(f"Service {service} or its image field is missing; skipping.")
             continue
 
         image = service_config["image"]
-        # Match semantic versions, including pre-release versions
-        version_pattern = r"\d+\.\d+\.\d+[-a-zA-Z0-9]*"
-        old_version_match = re.search(version_pattern, image)
+        old_version_match = re.search(IMAGE_VERSION_PATTERN, image)
         if old_version_match:
             old_version = old_version_match[0]
             # Only rewrite when strictly newer and not a pre-release, so a maintenance release never
@@ -237,7 +243,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
                 should_update = False
             if should_update:
                 # Replace old version with the new version in the image field
-                new_image = re.sub(version_pattern, version, image)
+                new_image = re.sub(IMAGE_VERSION_PATTERN, version, image)
                 service_config["image"] = new_image
                 updates_made = True
                 print(f"Updated {service} image from {old_version} to {version}")
@@ -249,6 +255,55 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
 
     # Write the updated YAML back to file
     yaml.dump(docker_yaml, docker_path)
+
+
+@task
+def validate_docker_compose(
+    context: Context,  # noqa: ARG001
+    docker_file: str | None = "docker-compose.yml",
+    version: str | None = None,
+) -> None:
+    """Fail when docker-compose.yml does not pin the expected infrahub image version on every service.
+
+    Raises:
+        Exit: When at least one infrahub service pins a different version, or no version at all.
+
+    """
+    # Import here to not require installing packaging when running invoke without installing dependencies.
+    from packaging.version import InvalidVersion, Version
+
+    expected = version or get_project_version()
+    expected_version = Version(expected)
+    print(f" - [release] Validate {docker_file} pins version {expected}")
+
+    yaml: YAML = init_yaml_obj(line_length=4096)
+    docker_yaml: dict = yaml.load(Path(docker_file))
+
+    mismatches: list[str] = []
+    for service in DOCKER_COMPOSE_INFRAHUB_SERVICES:
+        service_config = docker_yaml["services"].get(service)
+        if not service_config or "image" not in service_config:
+            mismatches.append(f"{service}: image field missing")
+            continue
+
+        image = service_config["image"]
+        pinned_match = re.search(IMAGE_VERSION_PATTERN, image)
+        if not pinned_match:
+            mismatches.append(f"{service}: no version found in image '{image}'")
+            continue
+
+        try:
+            pinned_is_expected = Version(pinned_match[0]) == expected_version
+        except InvalidVersion:
+            pinned_is_expected = False
+        if not pinned_is_expected:
+            mismatches.append(f"{service}: pins {pinned_match[0]}, expected {expected}")
+
+    if mismatches:
+        details = "\n".join(f"  - {mismatch}" for mismatch in mismatches)
+        raise Exit(f"{docker_file} is not up to date for version {expected}:\n{details}", code=1)
+
+    print(f"{docker_file} is up to date, all infrahub services pin {expected}")
 
 
 def get_enum_mappings() -> dict:
