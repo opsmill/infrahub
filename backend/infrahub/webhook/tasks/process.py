@@ -66,15 +66,16 @@ def _log_outgoing_request(
     log.debug(f"Webhook '{webhook_name}' {_attempt_phrase(attempt)} full payload: {payload_json}")
 
 
-@task(name="webhook-post", task_run_name="Send webhook {webhook_name}", cache_policy=NONE)
 async def webhook_post(
     webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int | None
 ) -> Response:
     """Resolve the webhook config, log the outgoing request, and POST the prepared payload.
 
-    An expected delivery failure is classified and raised as a delivery error whose traceback is
-    dropped from the run logs, so the task failure the engine records here is not the raw transport
-    stacktrace. An unexpected error propagates unchanged and surfaces as a genuine crash.
+    Runs inline within the send flow rather than as its own task, so a failed delivery does not add a
+    second, redundant failure record to the run logs. An expected delivery failure is classified and
+    raised as a delivery error whose traceback is dropped from the run logs, so the failure surfaces
+    as a clean classified reason rather than a raw transport stacktrace. An unexpected error
+    propagates unchanged and surfaces as a genuine crash.
 
     Raises:
         WebhookDeliveryError: When an expected delivery failure occurs, carrying the classified reason.

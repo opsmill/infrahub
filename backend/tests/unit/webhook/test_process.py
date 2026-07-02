@@ -112,7 +112,7 @@ async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(
     }
 
     with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
-        await webhook_post.fn(
+        await webhook_post(
             webhook_id="id-1", webhook_kind="CustomWebhook", webhook_name="hook", payload=payload, attempt=2
         )
 
@@ -148,7 +148,7 @@ async def test_webhook_post_truncates_large_payload_inline_and_logs_it_in_full_a
     expected_headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
-        await webhook_post.fn(
+        await webhook_post(
             webhook_id="id-1", webhook_kind="CustomWebhook", webhook_name="hook", payload=payload, attempt=1
         )
 
