@@ -10,6 +10,7 @@ The suite mirrors ``test_git_live_remote.py``: a live Gogs remote plus the in-pr
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -519,7 +520,7 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
 
     @pytest.mark.xfail(
         strict=True,
-        reason="a dropped write-back records the local commit before the push is confirmed, leaving the repo permanently diverged from the remote and unable to converge on a later sync",
+        reason="write-back drop records the commit before confirming the push, leaving the repo diverged and unable to converge on a later sync",
     )
     async def test_writeback_drop_then_sync_converges_to_remote(
         self,
@@ -619,3 +620,57 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
         develop_after = _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH)
         # Intended contract: the write-back reached the remote default branch.
         assert develop_after != develop_before
+
+    @pytest.fixture
+    def git_pull_rebase_config(self, tmp_path: Path) -> Generator[None, None, None]:
+        """Point GIT_CONFIG_GLOBAL at a config that sets pull.rebase=true (an operator lever)."""
+        cfg = tmp_path / "gitconfig"
+        cfg.write_text(
+            "[user]\n\tname = Infrahub\n\temail = infrahub@opsmill.com\n"
+            "[safe]\n\tdirectory = *\n"
+            "[pull]\n\trebase = true\n"
+        )
+        original = os.environ.get("GIT_CONFIG_GLOBAL")
+        os.environ["GIT_CONFIG_GLOBAL"] = str(cfg)
+        yield
+        if original is None:
+            os.environ.pop("GIT_CONFIG_GLOBAL", None)
+        else:
+            os.environ["GIT_CONFIG_GLOBAL"] = original
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="pull.rebase=true does not rescue the write-back-drop stuck state; the graph still diverges from the remote",
+    )
+    async def test_pull_rebase_config_does_not_rescue_writeback_drop(
+        self,
+        git_pull_rebase_config: None,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """Probe whether the GIT_CONFIG_GLOBAL pull.rebase lever mitigates the write-back-drop stuck state.
+
+        Infrahub ships no pull reconciliation config, so divergent pulls fail outright. This checks
+        whether an operator supplying pull.rebase=true (via INFRAHUB_GIT_GLOBAL_CONFIG_FILE) lets the
+        post-drop divergence reconcile to the remote tip.
+        """
+        ds = await _register_and_import(client, gogs_server, "multi-env-rebase-repo")
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        repo = await InfrahubRepository.init(
+            id=repository.id, name=ds["repo_name"], client=client, default_branch_name=DEV_BRANCH
+        )
+
+        _push_commit_to_remote(gogs_server.container, ds["repo_name"], "out_of_band.txt", branch=DEV_BRANCH)
+        await _writeback_merge(repo, "feature-rebase", "wb.txt")
+        remote_develop = _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH)
+
+        await sync_remote_repositories()
+
+        repo_after: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        # Intended contract (with the lever): the branch reconciles and converges to the remote tip.
+        assert repo_after.commit.value == remote_develop
