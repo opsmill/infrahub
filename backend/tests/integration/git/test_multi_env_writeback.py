@@ -263,7 +263,7 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
             await repo.merge(source_branch="conflict-a", dest_branch="conflict-b", push_remote=False)
 
         # The merge must have been aborted: no unmerged paths remain in the destination worktree.
-        assert repo_b.git.status("--porcelain") == ""
+        assert not repo_b.git.status("--porcelain")
 
     @pytest.fixture(scope="class")
     async def imported_nonff_dataset(
@@ -363,9 +363,7 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
         repo_name = imported_divergence_dataset["repo_name"]
         node_id = imported_divergence_dataset["node_id"]
 
-        repo = await InfrahubRepository.init(
-            id=node_id, name=repo_name, client=client, default_branch_name=DEV_BRANCH
-        )
+        repo = await InfrahubRepository.init(id=node_id, name=repo_name, client=client, default_branch_name=DEV_BRANCH)
         # Local default branch advances (a commit that never reaches the remote).
         main_worktree = repo.get_git_repo_worktree(identifier="main")
         (Path(str(main_worktree.working_dir)) / "local_only.txt").write_text("local only\n")

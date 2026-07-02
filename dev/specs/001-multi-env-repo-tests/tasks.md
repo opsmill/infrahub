@@ -114,10 +114,10 @@ deterministic prong is the CI-resident MVP.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T022 [P] For each **confirmed** defect — T006 (multi-worker write-back drop / #9568) and T011 (non-fast-forward write-back silently swallowed) — draft a GitHub issue via the `infrahub-reporting-issues` skill into `specs/001-multi-env-repo-tests/issue-drafts/<slug>.md`, one file per defect, for user review; **do not submit** (per the recorded issue-drafting workflow). T010 and T016 were **refuted** (green guards) — no issue.
-- [ ] T023 [P] Grep the two new test files for issue IDs (`#[0-9]`) and confirm none exist; verify every `xfail` reason is behaviour-named (code-doc-style gate)
-- [ ] T024 Run `uv run invoke format` and `uv run invoke lint`; fix any findings in the new test files
-- [ ] T025 Re-run the deterministic prong 3× to confirm zero flake (SC-002) and that each test stays within the repo's `pyproject.toml` `timeout = 300` per-test budget; confirm the full-stack suite is excluded from the default CI run via the mechanism chosen in T002
+- [X] T022 [P] Drafted for review in `dev/specs/001-multi-env-repo-tests/issue-drafts/`: `9568-deterministic-repro-comment.md` (#9568 already filed — a comment adding the deterministic repro) and `nonff-writeback-drop.md` (non-ff drop; same root cause — reviewer decides new issue vs fold into #9568). Not submitted, per the issue-drafting workflow. T006 & T011 were the confirmed defects (per the recorded issue-drafting workflow). T010 and T016 were **refuted** (green guards) — no issue.
+- [X] T023 [P] Grepped the test file: no issue IDs, no `sync_status`, no sleeps; every `xfail` reason is behaviour-named (code-doc-style gate passes).
+- [X] T024 `ruff check` + `ruff format` clean on `test_multi_env_writeback.py` (fixed a `== ""` comparison and reformatting).
+- [~] T025 Deterministic prong ran consistently across ~6 development runs (2 xfailed, 6 passed each), well within `timeout = 300`. A dedicated 3× flake run + full-stack CI-exclusion check remain deferred until US2 / CI wiring lands.
 - [ ] T026 [P] Run `specs/001-multi-env-repo-tests/quickstart.md` end-to-end and correct any drift
 
 ---
