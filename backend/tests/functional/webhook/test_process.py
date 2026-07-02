@@ -13,15 +13,15 @@ from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.http import MemoryHTTP
 from tests.helpers.test_app import TestInfrahubApp
 
-from .conftest import BRANCH_CREATED_PAYLOAD
+from .conftest import BRANCH_CREATED_PAYLOAD, only_new_run, read_send_runs
 
 if TYPE_CHECKING:
     from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
-    from prefect.client.orchestration import PrefectClient
 
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
+    from infrahub.task_manager.flow_run.prefect_client import FlowRunQuerying
 
 
 WEBHOOK_TARGET_URL = "https://url.mock"
@@ -104,7 +104,7 @@ class TestWebhookProcess(TestInfrahubApp):
     async def test_process_standard_webhook_success(
         self,
         db: InfrahubDatabase,
-        prefect_client: PrefectClient,
+        flow_run_querier: FlowRunQuerying,
         webhook1: Node,
         webhook2: Node,
         webhook_deployment: None,
@@ -116,6 +116,7 @@ class TestWebhookProcess(TestInfrahubApp):
             response=httpx.Response(request=httpx.Request(method="GET", url="https://url.mock"), status_code=200),
         )
         with dependency_provider.scope(build_http_service, lambda: http):
+            before = {str(run.id) for run in await read_send_runs(flow_run_querier)}
             await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",
@@ -126,10 +127,8 @@ class TestWebhookProcess(TestInfrahubApp):
                 event_payload=BRANCH_CREATED_PAYLOAD,
             )
 
-        related_node_tag = WorkflowTag.RELATED_NODE.render(identifier=webhook1.id)
-        flow_runs = await prefect_client.read_flow_runs()
-        applied_tags = {tag for flow_run in flow_runs for tag in flow_run.tags}
-        assert related_node_tag in applied_tags
+        run = only_new_run(await read_send_runs(flow_run_querier), before)
+        assert WorkflowTag.RELATED_NODE.render(identifier=webhook1.id) in run.tags
 
     async def test_process_webhook_failure_is_classified(
         self,

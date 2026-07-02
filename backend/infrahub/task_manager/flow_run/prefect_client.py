@@ -4,7 +4,7 @@ from uuid import UUID
 from prefect import State
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import ArtifactFilter, FlowFilter, FlowRunFilter, LogFilter
-from prefect.client.schemas.objects import Artifact, Flow, FlowRun, Log
+from prefect.client.schemas.objects import Artifact, Flow, FlowRun, Log, StateType
 from prefect.client.schemas.sorting import FlowRunSort
 
 
@@ -36,7 +36,9 @@ class FlowRunCounting(Protocol):
 class FlowRunMaintenance(Protocol):
     async def delete_flow_run(self, flow_run_id: UUID) -> None: ...
 
-    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> None: ...
+    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> StateType | None:
+        """Request a state transition, returning the state the run ended in after orchestration."""
+        ...
 
 
 class ReaderPrefectClient(FlowRunQuerying, FlowRunDataReading, Protocol): ...
@@ -82,5 +84,6 @@ class PrefectClientAdapter:
     async def delete_flow_run(self, flow_run_id: UUID) -> None:
         await self.client.delete_flow_run(flow_run_id=flow_run_id)
 
-    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> None:
-        await self.client.set_flow_run_state(flow_run_id=flow_run_id, state=state, force=force)
+    async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> StateType | None:
+        result = await self.client.set_flow_run_state(flow_run_id=flow_run_id, state=state, force=force)
+        return result.state.type if result.state else None

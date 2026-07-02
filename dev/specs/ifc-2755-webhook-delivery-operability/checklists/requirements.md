@@ -31,7 +31,7 @@
 
 ## Notes
 
-- Resend is gated on **any terminal state** (including succeeded), not only failed/cancelled, per explicit product direction; a confirmation step guards re-delivery of a succeeded delivery (FR-021).
-- Resend and cancel are exposed as a **generic task query/mutation interface**; genericity is confined to the interface shape. Only webhook deliveries support the actions in this feature (FR-017); other task types resolve them as unavailable.
+- Retry is gated on **any terminal state** (including succeeded), not only failed/cancelled, per explicit product direction; a confirmation step guards re-delivery of a succeeded delivery (FR-021).
+- Retry and cancel are exposed as a **generic task query/mutation interface**; genericity is confined to the interface shape. Only webhook deliveries support the actions in this feature (FR-017); other task types resolve them as unavailable.
 - The structural split (orchestrator vs. user-visible send with its own retries) is assumed already in place on the current branch; this spec covers the operability layer added on top.
 - Two design open points (one grouped capture record vs. separate request/response records; capture per-attempt vs. last-attempt) are treated as implementation details; the spec fixes only the operator-facing outcome (last attempt is shown).
