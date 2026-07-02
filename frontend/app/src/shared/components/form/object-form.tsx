@@ -37,7 +37,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import {
   NODE_TRIGGER_ATTRIBUTE_MATCH,
   NODE_TRIGGER_RELATIONSHIP_MATCH,
-} from "@/entities/triggers/constants";
+} from "@/entities/triggers/domain/model/trigger";
 import { NodeAttributeMatchForm } from "@/entities/triggers/ui/node-attribute-match-form";
 import { NodeRelationshipMatchForm } from "@/entities/triggers/ui/node-relationship-match-form";
 

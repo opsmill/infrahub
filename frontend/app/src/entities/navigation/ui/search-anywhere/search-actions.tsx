@@ -6,7 +6,7 @@ import { useId, useMemo } from "react";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 
-import type { MenuItem } from "@/entities/navigation/types";
+import type { MenuItem } from "@/entities/navigation/domain/model/menu";
 import { useMenu } from "@/entities/navigation/ui/queries/get-menu.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";

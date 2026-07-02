@@ -12,7 +12,7 @@ import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { type GitRepositoryData, GitRepositoryItem } from "@/entities/homepage/ui/git-repository";
 import { HomeCard } from "@/entities/homepage/ui/home-card";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
-import { REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME } from "@/entities/repository/constants";
+import { REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME } from "@/entities/repository/domain/model/repository";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface GitRepositoriesWidgetProps {

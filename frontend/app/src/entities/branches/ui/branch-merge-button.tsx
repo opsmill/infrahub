@@ -12,7 +12,7 @@ import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-
 import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";
 import { useMergeBranch } from "@/entities/branches/ui/queries/merge-branch.mutation";
 import { useConfig } from "@/entities/config/ui/config-provider";
-import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/domain/model/task";
 
 type BranchMergeButtonProps = {
   branch: BranchDetail;

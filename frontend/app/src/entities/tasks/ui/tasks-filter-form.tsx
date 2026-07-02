@@ -9,7 +9,7 @@ import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/compone
 import type { Filter } from "@/shared/hooks/useFilters";
 
 import { branchesState } from "@/entities/branches/stores";
-import { TASK_STATES } from "@/entities/tasks/constants";
+import { TASK_STATES } from "@/entities/tasks/domain/model/task";
 
 export interface FilterFormProps extends FormProps {
   ref?: React.Ref<FormRef>;

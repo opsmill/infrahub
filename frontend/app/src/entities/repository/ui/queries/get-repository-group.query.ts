@@ -5,11 +5,11 @@ import { REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
-import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 import {
   type GetRepositoryGroupParams,
   getRepositoryGroup,
 } from "@/entities/repository/domain/get-repository-group";
+import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/domain/model/repository";
 
 export function getRepositoryGroupQueryOption(params: GetRepositoryGroupParams) {
   return queryOptions({

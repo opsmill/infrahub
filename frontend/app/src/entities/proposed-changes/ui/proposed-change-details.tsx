@@ -19,7 +19,10 @@ import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/ui/get-proposed-changes-state-badge-type";
 import { Overview } from "@/entities/proposed-changes/ui/overview";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
-import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import {
+  PROPOSED_CHANGE_MERGE_WORKFLOW,
+  TASK_ONGOING_STATES,
+} from "@/entities/tasks/domain/model/task";
 import { useCheckTaskDetails } from "@/entities/tasks/ui/queries/check-task-details.query";
 import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 

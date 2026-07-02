@@ -15,7 +15,7 @@ import {
   BRANCH_MERGE_WORKFLOW,
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
-} from "@/entities/tasks/constants";
+} from "@/entities/tasks/domain/model/task";
 import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 interface BranchDetailsProps {

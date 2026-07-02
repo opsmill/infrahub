@@ -9,7 +9,7 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { BranchDetail } from "@/entities/branches/domain/model/branch";
 import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";
 import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
-import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/domain/model/task";
 
 type BranchRebaseButtonProps = {
   branch: BranchDetail;

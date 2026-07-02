@@ -1,19 +1,12 @@
-import { apiClient } from "@/shared/api/rest/client";
 import type { ContextParams } from "@/shared/api/types";
 
-import type { MenuData } from "@/entities/navigation/types";
+import { getMenuFromApi } from "@/entities/navigation/api/get-menu-from-api";
+import type { MenuData } from "@/entities/navigation/domain/model/menu";
 
 type GetMenu = (params: ContextParams) => Promise<MenuData>;
 
-export const getMenu: GetMenu = async ({ branchName, atDate }) => {
-  const { data, error } = await apiClient.GET("/api/menu", {
-    params: {
-      query: {
-        branch: branchName,
-        date: atDate,
-      },
-    },
-  });
+export const getMenu: GetMenu = async (params) => {
+  const { data, error } = await getMenuFromApi(params);
 
   if (error) throw error;
 
