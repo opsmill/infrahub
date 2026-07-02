@@ -4,7 +4,10 @@ import { Col } from "@/shared/components/container";
 import type { DynamicFieldProps } from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
-import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
+import type {
+  ConvertFieldMapping,
+  ConvertFormFieldValue,
+} from "@/entities/nodes/convert/domain/model/convert";
 import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-label";
 import { ConvertSourceAttributeInput } from "@/entities/nodes/convert/ui/convert-source-attribute-input";
 import { ConvertSourceRelationshipManyInput } from "@/entities/nodes/convert/ui/convert-source-relationship-many-input";

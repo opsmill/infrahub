@@ -15,7 +15,7 @@ import { classNames } from "@/shared/utils/common";
 import type {
   ConvertSourceRelationshipInputProps,
   RelationshipManySourceOption,
-} from "@/entities/nodes/convert/types";
+} from "@/entities/nodes/convert/ui/convert-source.types";
 import {
   SourceOptionItem,
   SourceOptionValue,

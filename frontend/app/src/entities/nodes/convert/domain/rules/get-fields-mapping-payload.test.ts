@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 
-import type { ConvertFormFieldValue } from "@/entities/nodes/convert/types";
+import type { ConvertFormFieldValue } from "@/entities/nodes/convert/domain/model/convert";
 
 import { getFieldsMappingPayload } from "./get-fields-mapping-payload";
 

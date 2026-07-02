@@ -4,7 +4,7 @@ import type {
   FormFieldValue,
 } from "@/shared/components/form/type";
 
-import type { ConvertFormFieldValue } from "@/entities/nodes/convert/types";
+import type { ConvertFormFieldValue } from "@/entities/nodes/convert/domain/model/convert";
 
 export type FieldMappingData =
   | { source_field: string }

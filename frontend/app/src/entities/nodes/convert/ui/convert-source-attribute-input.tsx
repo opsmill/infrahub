@@ -13,7 +13,7 @@ import {
 import type {
   AttributeSourceOption,
   ConvertSourceInputProps,
-} from "@/entities/nodes/convert/types";
+} from "@/entities/nodes/convert/ui/convert-source.types";
 import {
   SourceOptionItem,
   SourceOptionValue,

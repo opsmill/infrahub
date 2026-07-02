@@ -1,25 +1,11 @@
-import type { EmptyFieldValue, FormFieldValue } from "@/shared/components/form/type";
+import type React from "react";
 
+import type {
+  ConvertFieldMapping,
+  ConvertFormFieldValue,
+} from "@/entities/nodes/convert/domain/model/convert";
 import type { NodeCore, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
-
-export interface ConvertFieldMapping {
-  is_mandatory: boolean;
-  source_field_name: string | null;
-  relationship_cardinality: string | null;
-}
-
-export type ConvertSource = {
-  type: "source";
-  name: string;
-};
-
-export type ConvertFormFieldValue =
-  | {
-      source: ConvertSource;
-      value: FormFieldValue["value"];
-    }
-  | EmptyFieldValue;
 
 export interface ConvertSourceInputProps {
   sourceObject: NodeObject;

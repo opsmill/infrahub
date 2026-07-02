@@ -1,8 +1,11 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { DynamicFieldProps } from "@/shared/components/form/type";
 
-import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
-import { hasFieldMapping } from "@/entities/nodes/convert/utils/has-field-mapping";
+import type {
+  ConvertFieldMapping,
+  ConvertFormFieldValue,
+} from "@/entities/nodes/convert/domain/model/convert";
+import { hasFieldMapping } from "@/entities/nodes/convert/domain/rules/has-field-mapping";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import type {
   NodeAttribute,
