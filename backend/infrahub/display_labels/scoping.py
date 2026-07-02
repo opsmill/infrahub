@@ -38,7 +38,8 @@ def derive_display_label_targets(
     ``include_self`` covers the changed node's own display label, used for a
     creation. ``include_cross`` covers the display labels of other nodes that read
     this kind across a relationship, used for an update or a deletion. A same-node
-    update needs neither here: its value recomputes inline on save. ``changed_fields``
+    update needs neither here: the original live edit already refreshed the node's own
+    display label on the branch, and the merge carries that value. ``changed_fields``
     of ``None`` means every field, which is what a deletion needs because any read of
     the removed node is now stale.
     """
