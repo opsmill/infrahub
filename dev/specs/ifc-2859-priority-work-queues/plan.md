@@ -129,6 +129,8 @@ New task `setup_work_queues(client)` invoked from `setup_task_manager()` between
 - When `priority` is `None`: identical code path to today — no extra API call, run inherits the deployment's queue (medium by default, FR-005).
 - `WorkflowLocalExecution`: accepts and ignores `priority` (inline execution, no queues).
 - Race safety: if the queue vanishes between check and dispatch, the Prefect server auto-creates it and the run still executes; the next startup convergence repairs its precedence. Dispatch can never fail because of queue layout.
+- Fallback warning (critique E3): emitted via the adapter's standard structlog logger (`infrahub.log.get_logger()`), and must name the missing queue, the workflow being dispatched, and the fallback taken (deployment's own queue). This is the operator's only drift signal and the anchor for the integration test's log assertion.
+- Downgrade safety (critique P4): rolling back to a pre-priority release is naturally safe — old code re-saves all deployments without `work_queue_name` (back onto the pool's default queue), the orphaned tier queues sit empty and harmless, and workers keep polling every queue in the pool. No cleanup required.
 
 ### 5. Documentation gate
 
@@ -141,7 +143,7 @@ New task `setup_work_queues(client)` invoked from `setup_task_manager()` between
 | Unit | `backend/tests/unit/workflows/test_constants.py` (new) | Enum members/values; `queue_name` mapping; `queue_priority` precedence (high < medium < low numerically) |
 | Unit | `backend/tests/unit/workflows/test_models.py` | `default_priority` defaults to medium; `to_deployment()` payload carries the matching `work_queue_name`; explicit non-default priority carries through |
 | Unit | `backend/tests/unit/workflows/test_catalogue.py` | Parametrized: every catalogue workflow has a valid `WorkflowPriority` (guards the catalogue as classification begins later) |
-| Integration | `backend/tests/integration/services/adapters/workflow/test_workflow_priority.py` (new, on `TestWorkerInfrahubAsync`) | Three queues exist with converged precedence after setup; idempotent re-run; dispatch with each explicit priority lands in the matching queue (assert `flow_run.work_queue_name`); no-priority lands in medium; missing-queue fallback (delete queue → warning emitted + run in default lane); one cron workflow's deployment attached to its tier queue with schedule intact |
+| Integration | `backend/tests/integration/services/adapters/workflow/test_workflow_priority.py` (new, on `TestWorkerInfrahubAsync`) | Three queues exist with converged precedence after setup — assert absolute precedence (1/2/3) only for the three pinned queues and **relative** order for `default` (greater than `low`'s), since its absolute value is a Prefect bump-algorithm side effect (critique E6); idempotent re-run; dispatch with each explicit priority lands in the matching queue (assert `flow_run.work_queue_name`); no-priority lands in medium; missing-queue fallback (delete queue → warning emitted + run in default lane); one cron workflow's deployment attached to its tier queue with schedule intact |
 
 Not tested (SC-004): Prefect's native queue-priority ordering under load — upstream behavior assumed correct.
 
