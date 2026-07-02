@@ -3,7 +3,7 @@ import {
   getNumberPoolsFromApi,
 } from "@/entities/resource-manager/api/get-number-pools-from-api";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 
 export type GetNumberPoolsParams = GetNumberPoolsFromApiParams;
 

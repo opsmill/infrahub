@@ -14,7 +14,7 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import type {
   AttributeSchema,
   ModelSchema,

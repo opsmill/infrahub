@@ -17,7 +17,7 @@ import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeAttributeWithMetadata, NodeObject } from "@/entities/nodes/types";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type {

@@ -5,7 +5,7 @@ import type { SelectOption } from "@/shared/components/inputs/select-old";
 import type { FormField } from "@/shared/components/ui/form";
 
 import type { NodeCore } from "@/entities/nodes/types";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import type {
   AttributeKind,
   AttributeSchema,
