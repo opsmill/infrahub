@@ -247,7 +247,9 @@ the in-filter branches still import. Delivers a clear answer on whether the filt
   other branches from importing.
 - **FR-016**: The validation MUST assert whether a fetch-time problem on a ref excluded by the branch
   filter breaks the sync of in-filter branches; where current behaviour violates the desired
-  isolation, the check is tracked as expected-to-fail.
+  isolation, the check is tracked as expected-to-fail. If empirical investigation finds no fetch-time
+  condition on an excluded ref that breaks the sync, the negative finding MUST be recorded and no
+  failing check is added.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -276,8 +278,8 @@ the in-filter branches still import. Delivers a clear answer on whether the filt
 - **SC-002**: The multi-worker write-back defect is reproduced by a deterministic check (0% flake
   across repeated runs) that fails while the defect is present and passes once it is fixed.
 - **SC-003**: The deterministic defect check and the regression guards run on every
-  continuous-integration run within the normal integration-test time budget; the heavy multi-instance
-  reproduction is opt-in and absent from the default run.
+  continuous-integration run within the repo's per-test timeout budget (currently 300s); the heavy
+  multi-instance reproduction is opt-in and absent from the default run.
 - **SC-004**: A reviewer can determine, from test results alone and without reading the test code,
   whether each documented Approach A guarantee holds and whether the write-back defect is still
   present.
