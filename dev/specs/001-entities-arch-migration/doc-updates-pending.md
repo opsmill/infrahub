@@ -32,6 +32,23 @@ Value-object *data* (predefined constant instances of domain types, e.g. `ALL_ME
 
 Moving a `domain/*.ts` into `domain/use-cases|rules/` adds one directory level, so **relative** imports (e.g. test fixtures `../../../../tests/fake/schema`) break — the `@/` alias sed does not catch them. `betterer` (full tsc) is what surfaces these; add `+1 ../` per level moved. Bit us in schema (11) and nodes/object (1).
 
+## 6. `utils.ts` is banned — content fans out by responsibility
+
+All entity `*/utils.ts` grab-bags were eliminated. The rule for the doc: **there is no `utils.ts`**; classify each function/type into a layered home:
+- URL/path builders + tab-segment types + outlet/param hooks → `ui/routing/<noun>-urls.ts` (+ `ui/routing/` for the cluster). Updated `url-construction.md` accordingly.
+- Pure domain logic → `domain/rules/`; domain types → `domain/model/`.
+- Presentation/view-model helpers (colors, select-options) → `ui/`.
+- Browser-storage / token persistence → **`api/`** (external I/O), so domain reaches it via `domain → api` (this fixed the auth `domain → storage` leak — `authentication/api/token-storage.ts`).
+- Namespace-shared helpers with no single owner (e.g. `ipam`) → namespace-level `ui/routing/` + `domain/rules/`.
+
+Worked examples committed: branches, proposed-changes, nodes/object, ipam, permission, authentication, path-traversal.
+
+Still to do (separate from `utils.ts` files): the remaining `utils/` **directories** (`resource-manager/utils`, `ipam/*/utils`, `nodes/{object,relationships,convert}/utils`, `nodes/object/ui/object-table/utils`) — same fan-out treatment.
+
+## 7. Backend-authoritative violation to fix
+
+`path-traversal/domain/rules/visible-namespace.ts` (`HIDDEN_NAMESPACES`) is a **client-side mirror of the backend `DEFAULT_EXCLUDED_NAMESPACES`** — exactly the anti-pattern `entities-structure.md`'s "Backend is authoritative" section calls out. It's only relocated, not fixed. Proper fix: surface excluded namespaces via the API rather than hardcoding the set client-side.
+
 ## 5. Deferred follow-ups (tracked in tasks.md T053/T054/T050)
 
 - Lift storage/global-state reads out of `domain/` into `ui/` (branches `store`/`branchesState`, schema jotai `store`, auth `localStorage`/`window`).
