@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import RepositoryError
@@ -24,6 +25,8 @@ from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import create_gogs_repo
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub_sdk import InfrahubClient
     from testcontainers.core.container import DockerContainer
 
@@ -70,6 +73,17 @@ def _remote_branch_commit(container: DockerContainer, repo_name: str, branch: st
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Reading remote {branch} failed: {result.output.decode()}"
     return result.output.decode().strip()
+
+
+def _force_rewrite_remote_branch(container: DockerContainer, repo_name: str, branch: str) -> None:
+    """Rewrite ``branch``'s history on the remote and force-push it (a non-fast-forward update)."""
+    script = (
+        f"set -e && cd /tmp/{repo_name} && git checkout {branch} && "
+        f"git reset --hard main && echo rewritten > rewrite.txt && git add rewrite.txt && "
+        f"git commit -m 'rewrite history' && git push -f origin {branch}"
+    )
+    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
+    assert result.exit_code == 0, f"Force-rewrite of {branch} failed: {result.output.decode()}"
 
 
 class TestMultiEnvWriteBack(TestInfrahubApp):
@@ -371,3 +385,77 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
         )
         # Intended contract: the branch recovered and imported the remote tip.
         assert repo_after.commit.value == remote_target
+
+    @pytest.fixture(scope="class")
+    async def filter_dataset(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> AsyncGenerator[dict, None]:
+        """Repo registered while the import-sync filter already excludes feature/*.
+
+        The filter is set BEFORE registration so the initial import honours it — a branch imported
+        before the filter was applied would linger (there is no deletion path to remove it).
+        """
+        original = config.SETTINGS.git.import_sync_branch_names
+        config.SETTINGS.git.import_sync_branch_names = ["^main$", f"^{DEV_BRANCH}$"]
+        try:
+            repo_name = "multi-env-filter-repo"
+            repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+            _create_remote_branch_from_main(gogs_server.container, repo_name, DEV_BRANCH)
+            _create_remote_branch_from_main(gogs_server.container, repo_name, "feature/excluded")
+            node = await client.create(
+                kind=InfrahubKind.REPOSITORY,
+                data={"name": repo_name, "location": repo_url, "default_branch": DEV_BRANCH},
+            )
+            await node.save()
+            yield {"repo_name": repo_name, "node_id": node.id}
+        finally:
+            config.SETTINGS.git.import_sync_branch_names = original
+
+    async def test_filter_excludes_branch(
+        self,
+        filter_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A branch outside the import-sync filter is not imported as a standalone Infrahub branch."""
+        await sync_remote_repositories()
+
+        branches = await client.branch.all()
+        assert "feature/excluded" not in branches
+        # The in-filter non-primary default still maps onto the primary branch (no phantom).
+        assert DEV_BRANCH not in branches
+
+    async def test_fetch_tolerates_problematic_excluded_ref(
+        self,
+        filter_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """A force-pushed (rewritten) branch outside the filter must not break in-filter syncing.
+
+        Infrahub fetches the whole remote before applying the filter, so this probes whether a
+        problematic excluded ref aborts the sync of the in-filter branches. Empirically the fetch
+        force-updates the excluded ref without error, so the suspected fetch-before-filter blast
+        radius is not reachable via a force-push; this is a green guard for that.
+        """
+        repo_name = filter_dataset["repo_name"]
+        node_id = filter_dataset["node_id"]
+
+        await sync_remote_repositories()
+
+        # A non-fast-forward rewrite of the excluded branch, then advance an in-filter branch.
+        _force_rewrite_remote_branch(gogs_server.container, repo_name, "feature/excluded")
+        _push_commit_to_remote(gogs_server.container, repo_name, "in_filter_advance.txt", branch=DEV_BRANCH)
+        develop_target = _remote_branch_commit(gogs_server.container, repo_name, DEV_BRANCH)
+
+        await sync_remote_repositories()
+
+        repo_after: CoreRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        # The in-filter default branch still imported despite the problematic excluded ref.
+        assert repo_after.commit.value == develop_target
