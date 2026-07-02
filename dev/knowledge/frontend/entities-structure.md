@@ -50,13 +50,13 @@ Boundaries are enforced by **code review** against this document. There is no au
 
 | Layer | Allowed imports | Prohibited |
 |-------|----------------|------------|
-| **api/** | `shared/api/`, own `domain/model` (type-only, for mapper return types) | `domain/rules`, `domain/use-cases`, `ui/`, other entities |
+| **api/** | `shared/api/`, own `domain/model` (types for mapper returns; plain vocabulary constants OK — see below) | `domain/rules`, `domain/use-cases`, `ui/`, other entities |
 | **domain/model** | `shared/` types, generated types (incl. wire DTOs), other entities' `domain/model` | `api/`, `domain/rules`, `domain/use-cases`, `ui/` (pure leaf) |
 | **domain/rules** | own `domain/model`, `shared/`, generated types | `api/`, `ui/`, React, TanStack, Jotai, browser storage |
 | **domain/use-cases** | own `api/` (incl. mappers), own `domain/model` + `rules`, `shared/`, generated types | `ui/`, React, TanStack, Jotai, browser storage |
 | **ui/** | `domain/` (same entity), `shared/`, other entities' `domain/` and `ui/` | Another entity's `api/` |
 
-Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Generated types (incl. wire DTOs) may enter `domain/` (see above); `domain/` must not read browser storage or global state directly.
+Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Because `domain/model` imports nothing back, `api/` may import it not only for mapper return **types** but also for plain **vocabulary constants** (schema kinds, state strings, enums used to build queries) — the import stays acyclic. What `api/` must never import is domain **logic** (`domain/rules`, `domain/use-cases`) or `ui/`. Generated types (incl. wire DTOs) may enter `domain/` (see above); `domain/` must not read browser storage or global state directly.
 
 > **Cross-cutting exception:** `shared/` may depend on the `authentication` entity's public surface — token access (`api/token-storage`, e.g. `getAccessToken`), `domain/use-cases`, and `ui/` context/queries — because auth is cross-cutting (the REST/GraphQL clients and shared form/table components need the token). This is specific to `authentication`; `shared/` stays a leaf for every other entity, and cross-entity `ui → api` remains forbidden for everyone else.
 
@@ -121,7 +121,7 @@ import { getSchemaFromApi } from "@/entities/schema/api/get-schema-from-api"; //
 
 ## Mappers
 
-Mappers (generated wire shape ↔ domain type) live in **`api/`**, e.g. `api/{noun}.mappers.ts`. They import the generated types and return `domain/model` types (the only place `api/` imports `domain/`, and type-only). Mappers are **optional** — only needed when the domain shape differs from the wire shape; when they match, a `domain/use-cases/` function may return the generated type directly. For a trivial mapping, inline it in the `api/` fetcher rather than a separate mappers file.
+Mappers (generated wire shape ↔ domain type) live in **`api/`**, e.g. `api/{noun}.mappers.ts`. They import the generated types and return `domain/model` types (`domain/model` is the only part of `domain/` that `api/` may import — its types, and plain vocabulary constants; never `domain/rules` or `domain/use-cases`). Mappers are **optional** — only needed when the domain shape differs from the wire shape; when they match, a `domain/use-cases/` function may return the generated type directly. For a trivial mapping, inline it in the `api/` fetcher rather than a separate mappers file.
 
 ## GraphQL fetching: go through the entity layer
 

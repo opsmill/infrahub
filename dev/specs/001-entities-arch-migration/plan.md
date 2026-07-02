@@ -35,7 +35,7 @@ the knowledge doc) → fan-out → `nodes/`.
 | Principle | Status | Notes |
 |---|---|---|
 | I. Schema-Driven Integrity | ✅ PASS | Generated files (`shared/api/`) untouched and never edited. Generated types remain the backend↔frontend contract and may be consumed directly in `domain/`. |
-| III. Type Safety & Explicit Contracts | ✅ PASS | Reinforces contracts: `domain/` uses generated types directly or maps to explicit domain types via `api/` when the shapes differ. No new `any`/`as`. `api → domain/model` is type-only. |
+| III. Type Safety & Explicit Contracts | ✅ PASS | Reinforces contracts: `domain/` uses generated types directly or maps to explicit domain types via `api/` when the shapes differ. No new `any`/`as`. `api → domain/model` allows types + plain vocabulary constants (never domain rules/use-cases). |
 | IV. Test Discipline | ✅ PASS | No behavior change; existing unit/component tests move with their subjects and must pass. E2E happy paths unchanged and must remain green. No new features → no new E2E required, but no regression permitted. |
 | VII. Simplicity & Maintainability | ✅ PASS w/ note | Pragmatic split (>4 files, ≥2 per folder) honors YAGNI — no empty folders, no premature abstraction. **No new dependency** (dependency-cruiser deferred). The one new abstraction (`domain/model` as a named leaf) clarifies an existing dependency rather than inventing one. |
 | Quality Gates (format/lint/type/test) | ✅ PASS | Every PR must pass all four commands. Tier-1 Biome guard added incrementally. |
@@ -79,7 +79,7 @@ specs/001-entities-arch-migration/
 ```text
 frontend/app/src/entities/<entity>/
 ├── api/                      # FLAT. Fetchers (GraphQL/REST), clients, generated↔domain mappers.
-│                             # Returns DOMAIN types. May import domain/model (type-only) + shared.
+│                             # Returns DOMAIN types. May import domain/model (types + plain constants) + shared.
 ├── domain/
 │   ├── model/                # Pure leaf: types, IDs, filters, sorts, inputs, results. No imports from api/rules/use-cases/ui.
 │   ├── rules/                # Pure functions, no I-O.
@@ -94,7 +94,7 @@ dev/knowledge/frontend/entities-structure.md   # Updated from the branches resul
 
 **Structure Decision**: Web-application frontend. Migration operates entirely within
 `frontend/app/src/entities/`, plus the Biome config and one knowledge doc. Dependency direction
-kept as `ui → domain → api` with the single new type-only edge `api → domain/model`.
+kept as `ui → domain → api` with the single new edge `api → domain/model` (types + plain vocabulary constants; `domain/model` is a pure leaf, so this stays acyclic).
 
 ## Dependency Contract (authoritative)
 
@@ -107,7 +107,7 @@ Allowed:                                   Forbidden:
   domain/use-cases → domain/model, rules     ui → another entity's api/
   domain/rules → domain/model                (any import creating a cycle)
   domain → generated GraphQL/REST types
-  api → domain/model (TYPE-ONLY)
+  api → domain/model (types + plain constants)
   api → shared
   shared → authentication (cross-cutting)
 ```
