@@ -1,6 +1,6 @@
 ---
 description: Cut a new Infrahub release (patch by default, or specify exact version)
-allowed-tools: Bash(git:*), Bash(uv:*), Bash(date:*), Read, Edit, Write, Grep, Glob
+allowed-tools: Bash(git:*), Bash(uv:*), Bash(gh:*), Bash(date:*), Bash(sleep:*), Read, Edit, Write, Grep, Glob
 argument-hint: [version] (e.g., "1.8.0") - leave empty for patch release
 ---
 
@@ -10,7 +10,7 @@ Cut a new Infrahub release. The version is **derived from the latest git tag** a
 build by hatch-vcs. There is **no `[project].version` field** in either `pyproject.toml`, and this
 command never bumps a package version — a release is declared solely by the annotated
 `infrahub-v<version>` git tag. The only `pyproject.toml` edit this command makes is the
-`fallback-version` hygiene bump (Step 3).
+`fallback-version` hygiene bump (Step 4).
 
 **Argument**: `$ARGUMENTS`
 - If empty: increment the patch of the most recent release tag (e.g., 1.10.0 -> 1.10.1)
@@ -69,7 +69,41 @@ Before proceeding, verify:
 
 **Present findings to the user and ask for confirmation before proceeding with AskUserQuestion.**
 
-## Step 3: Bump the hatch-vcs Fallback Version
+## Step 3: Update docker-compose.yml & Helm Chart via the Propagation Workflow
+
+**Skip this step for pre-release versions** (e.g. `1.11.0b1`) — docker-compose.yml and the Helm
+chart only track final releases, and the workflow rejects pre-release/dev versions.
+
+**Hard requirement**: the tagged release commit MUST already contain docker-compose.yml pinned to
+the new version. The New Release workflow validates this and refuses to publish otherwise.
+
+Trigger the "Update Docker Compose & helm chart" workflow with the target version. It updates the
+docker-compose.yml image pins (committed to the branch by opsmill-bot) AND the Helm chart
+`appVersion` in the separate `opsmill/infrahub-helm` repository:
+
+```bash
+gh workflow run update-compose-file-and-chart.yml --ref <current_branch> -f version=<new_version>
+```
+
+Wait for the run to complete successfully, then pull the bot commit into the local branch:
+
+```bash
+sleep 5  # give GitHub a moment to register the run
+RUN_ID=$(gh run list --workflow=update-compose-file-and-chart.yml --branch <current_branch> --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID" --exit-status
+git pull --rebase origin <current_branch>
+```
+
+Verify the compose file is now pinned correctly (the same check the New Release workflow runs):
+
+```bash
+uv run invoke release.validate-docker-compose --version <new_version>
+```
+
+If the workflow run fails, or the validation fails after pulling, stop — do NOT tag with a stale
+docker-compose.yml.
+
+## Step 4: Bump the hatch-vcs Fallback Version
 
 **Skip this step for pre-release versions** (e.g. `1.11.0b1`).
 
@@ -87,21 +121,6 @@ Edit the `fallback-version` line in **both** files (the values MUST stay identic
 
 Do not edit anything else in these files. The publish guard in `release.yml` reads the fallback from
 `pyproject.toml` at run time, so no workflow edit is needed.
-
-## Step 4: Update docker-compose.yml
-
-**Skip this step for pre-release versions** — docker-compose.yml only tracks final releases.
-
-**Hard requirement**: the tagged release commit MUST already contain the docker-compose.yml pinned
-to the new version. The New Release workflow validates this and refuses to publish otherwise.
-
-```bash
-uv run invoke release.update-docker-compose --version <new_version>
-uv run invoke release.validate-docker-compose --version <new_version>
-```
-
-The update is strict-greater: it never rewrites the pinned image tags downward. The validate call is
-the same check the New Release workflow runs — it MUST pass before continuing.
 
 ## Step 5: Build Changelog
 
@@ -189,9 +208,9 @@ before the existing first entry.
 
 ## Step 8: Commit, Tag, and Push
 
-The release is one commit (changelog + docs + fallback bump + docker-compose pin) plus an annotated
-`infrahub-v<new_version>` tag. The tag is what the build resolver reads — there is no version file
-to bump.
+The release is one commit (changelog + docs + fallback bump) on top of the workflow's
+docker-compose commit (Step 3), plus an annotated `infrahub-v<new_version>` tag. The tag is what
+the build resolver reads — there is no version file to bump.
 
 1. **Review the changes**:
 
@@ -200,11 +219,12 @@ to bump.
    git diff
    ```
 
-2. **Commit** the release files:
+2. **Commit** the release files (docker-compose.yml is NOT staged here — the propagation workflow
+   already committed it in Step 3):
 
    ```bash
    git add CHANGELOG.md docs/docs/release-notes/infrahub/release-<major>_<minor>_<patch>.mdx docs/sidebars.ts \
-     pyproject.toml python_testcontainers/pyproject.toml docker-compose.yml
+     pyproject.toml python_testcontainers/pyproject.toml
    git commit -m "chore: release <new_version>"
    ```
 
@@ -230,7 +250,7 @@ Review all modified files:
 3. `docs/sidebars.ts` - new entry added at top of releases list
 4. `pyproject.toml` + `python_testcontainers/pyproject.toml` - the diff MUST contain **only** the
    `fallback-version` lines: `git diff HEAD~1 -- pyproject.toml python_testcontainers/pyproject.toml`
-5. `docker-compose.yml` - all infrahub services pin `<new_version>`
+5. `docker-compose.yml` - all infrahub services pin `<new_version>` via the workflow's bot commit
    (`uv run invoke release.validate-docker-compose --version <new_version>` passes)
 6. The annotated tag `infrahub-v<new_version>` exists and points at the release commit
 
@@ -242,30 +262,23 @@ Present a summary of changes made:
 - Number of changelog entries included
 - The tag created and pushed
 
-To publish the release artifacts:
-
-1. **Propagate the Helm chart appVersion** (lives in the separate `opsmill/infrahub-helm` repo):
-   run the "Update Docker Compose & helm chart" workflow with the new version — do this BEFORE
-   creating the GitHub release, so the published chart carries the new appVersion:
-
-   ```bash
-   gh workflow run update-compose-file-and-chart.yml --ref <release_branch> -f version=<new_version>
-   ```
-
-   (Its docker-compose step is a no-op here — Step 4 already updated the file in the release commit.)
-
-2. **Create the GitHub release** at https://github.com/opsmill/infrahub/releases/new with tag
-   `infrahub-v<version>` — this triggers the New Release workflow (PyPI, docker image, Helm publish).
-   Its publish guards validate that the resolved version matches the tag and that docker-compose.yml
-   is up to date, and abort otherwise.
+To publish the release artifacts, **create the GitHub release** at
+https://github.com/opsmill/infrahub/releases/new with tag `infrahub-v<version>` — this triggers the
+New Release workflow (PyPI, docker image, Helm publish). Its publish guards validate that the
+resolved version matches the tag and that docker-compose.yml is up to date, and abort otherwise.
+The Helm chart `appVersion` was already propagated by the workflow run in Step 3, so the published
+chart carries the new version.
 
 ## Error Handling
 
 - If `git describe` finds no `infrahub-v*` tag, stop and report (the very first tag must be created manually)
 - If towncrier fails, stop and report the error
 - If version parsing fails, show a clear error about the expected format (X.Y.Z)
-- If `release.validate-docker-compose` fails after the update, stop — do NOT tag with a stale docker-compose.yml
+- If `gh` is not authenticated or the workflow dispatch fails, stop and report (the propagation
+  workflow MUST run before tagging)
+- If the propagation workflow run concludes in failure, or `release.validate-docker-compose` fails
+  after pulling, stop — do NOT tag with a stale docker-compose.yml
 - If the release notes file already exists, ask the user before overwriting
 - If the sidebar update location cannot be found, report the error and show what manual edit is needed
 - This command never bumps a package version in `pyproject.toml` (`[project].version` does not
-  exist); the only `pyproject.toml` change it makes is the `fallback-version` bump in Step 3
+  exist); the only `pyproject.toml` change it makes is the `fallback-version` bump in Step 4

@@ -6,8 +6,8 @@ name: Update Docker Compose & helm chart
 # appVersion to the given release version. Run this on the release branch BEFORE
 # tagging the release: the tagged commit must already contain the up-to-date
 # docker-compose.yml (the New Release workflow validates this and refuses to
-# publish otherwise). /cut-release performs the same docker-compose.yml update
-# locally, in which case the docker-compose step here is a no-op.
+# publish otherwise). /cut-release triggers this workflow while cutting a
+# release and pulls the resulting bot commit before tagging.
 
 on:
   workflow_dispatch:
