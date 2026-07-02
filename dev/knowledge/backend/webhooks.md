@@ -222,6 +222,8 @@ The `available_actions` field on the task query reports each action with whether
 
 Each send attempt logs one line before the request is sent: the attempt number (`n/N`), the target URL, the request headers, and the payload. The payload is truncated inline (2048 characters) with the full body emitted only at debug level. Secret-bearing header values are masked in this log — see [Log redaction](#log-redaction) for the rule.
 
+When an attempt fails, `webhook_send` logs one error line carrying the failure class, the attempt number (`n/N`), the elapsed time, the reason, and its remediation. While the flow run has attempts left it also states when the next one fires (`Retrying in 120s (attempt n+1/N).`); on the final attempt it states `No retries remaining.`. Outside a flow run, where no retry sequence drives the send, the line reads `outside a flow run` in place of the attempt number and carries no retry note.
+
 ## Security
 
 HMAC-SHA256 signing is performed when a `shared_key` is set:

@@ -276,6 +276,8 @@ Authentication header values must include the full value including any type pref
 
 Every delivery attempt is logged with the target URL, the request headers, and the payload, so you can see what was sent from the delivery's task logs. Secret-bearing header values are masked as `***` in that log: environment-sourced values, the `webhook-signature`, and well-known credential headers (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`) — matched case-insensitively, regardless of whether the header was configured as static or environment-sourced. The payload is truncated in the log, with the full body available only at debug level.
 
+When a delivery attempt fails, the log records why it failed and, while retries remain, when the next attempt will run, so you can tell from the logs whether to wait for an automatic retry or step in.
+
 ## Custom webhook transformation
 
 The `data` object from the payloads above is passed to the `transform` method of your custom Transformation. For the full setup walkthrough, see [Webhook with custom Transformation](./custom-transformation.mdx).
