@@ -55,6 +55,7 @@ jobs:
           echo is_devrelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$VERSION').is_devrelease))") >> "$GITHUB_OUTPUT"
           echo is_local=$(uv run python -c "from packaging.version import Version; print(int(Version('$VERSION').local is not None))") >> "$GITHUB_OUTPUT"
           echo base_version=$(uv run python -c "from packaging.version import Version; print(Version('$VERSION').base_version)") >> "$GITHUB_OUTPUT"
+          echo fallback_base=$(uv run python -c "import tomllib; from packaging.version import Version; print(Version(tomllib.load(open('pyproject.toml', 'rb'))['tool']['hatch']['version']['fallback-version']).base_version)") >> "$GITHUB_OUTPUT"
           echo major_minor_version=$(uv run python -c "from packaging.version import Version; print(f\"{Version('$VERSION').major}.{Version('$VERSION').minor}\")") >> "$GITHUB_OUTPUT"
           echo latest_tag=$(curl -L \
               -H "Accept: application/vnd.github+json" \
@@ -70,10 +71,10 @@ jobs:
           exit 1
 
       - name: "Publish guard: reject unreleased fallback version"
-        # The 1.10.1 literal is the fallback base; keep it in sync with fallback-version in pyproject.toml
-        if: steps.release.outputs.base_version == '1.10.1' && (steps.release.outputs.is_devrelease == 1 || steps.release.outputs.is_local == 1)
+        # fallback_base is read from pyproject.toml at run time, so bumping fallback-version needs no edit here
+        if: steps.release.outputs.base_version == steps.release.outputs.fallback_base && (steps.release.outputs.is_devrelease == 1 || steps.release.outputs.is_local == 1)
         run: |
-          echo "Resolved version (${{ steps.release.outputs.version }}) is an unreleased fallback (base 1.10.1, dev/local build): no infrahub-v* tag is reachable. Refusing to publish."
+          echo "Resolved version (${{ steps.release.outputs.version }}) is an unreleased fallback (base ${{ steps.release.outputs.fallback_base }}, dev/local build): no infrahub-v* tag is reachable. Refusing to publish."
           exit 1
 
       - name: Check prerelease and project version
@@ -87,6 +88,12 @@ jobs:
         run: |
           echo "Cannot release a pre-release or dev-release version (${{ steps.release.outputs.version }})"
           exit 1
+
+      - name: "Validate docker-compose.yml pins the release version"
+        # Hard requirement: the tagged commit must already contain the up-to-date docker-compose.yml.
+        # Run the "Update Docker Compose & helm chart" workflow (or /cut-release) before tagging.
+        if: github.event.release.prerelease == false
+        run: "uv run invoke release.validate-docker-compose --version ${{ steps.release.outputs.version }}"
 
 
   meta_data:
