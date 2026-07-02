@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, assert_never
 
 from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.hfid.scoping import derive_hfid_targets
@@ -21,9 +21,11 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
 
-COMPUTED_ATTRIBUTE = "computed_attribute"
-DISPLAY_LABEL = "display_label"
-HFID = "hfid"
+RecomputeFamily = Literal["computed_attribute", "display_label", "hfid"]
+
+COMPUTED_ATTRIBUTE: RecomputeFamily = "computed_attribute"
+DISPLAY_LABEL: RecomputeFamily = "display_label"
+HFID: RecomputeFamily = "hfid"
 
 CREATED = "created"
 UPDATED = "updated"
@@ -78,7 +80,7 @@ class AffectedTarget:
     bounded over-approximation was used instead of an exact derivation.
     """
 
-    family: str
+    family: RecomputeFamily
     target_kind: str
     attribute_name: str | None
     reads_across_relationship: bool
@@ -105,7 +107,7 @@ class CoalescedRecompute:
 
 @dataclass
 class _ResolvedTarget:
-    family: str
+    family: RecomputeFamily
     target_kind: str
     attribute_name: str | None
     filter_key: str
@@ -115,7 +117,7 @@ class _ResolvedTarget:
 
 @dataclass
 class _TargetAccumulator:
-    family: str
+    family: RecomputeFamily
     target_kind: str
     attribute_name: str | None
     reads_across_relationship: bool = False
@@ -284,7 +286,7 @@ class CoalescedSubmission:
     not the changed-node count times the matching automations.
     """
 
-    family: str
+    family: RecomputeFamily
     source_kind: str
     target_kind: str
     attribute_name: str | None
@@ -333,17 +335,19 @@ def _submission_workflow(
         "object_ids": list(submission.node_ids),
         "context": context,
     }
-    if submission.family == COMPUTED_ATTRIBUTE:
-        parameters["computed_attribute_name"] = submission.attribute_name
-        parameters["computed_attribute_kind"] = submission.target_kind
-        return COMPUTED_ATTRIBUTE_PROCESS_JINJA2, parameters
-    if submission.family == DISPLAY_LABEL:
-        parameters["target_kind"] = submission.target_kind
-        return DISPLAY_LABELS_PROCESS_JINJA2, parameters
-    if submission.family == HFID:
-        parameters["target_kind"] = submission.target_kind
-        return HFID_PROCESS, parameters
-    raise ValueError(f"Unknown recompute family: {submission.family!r}")
+    match submission.family:
+        case "computed_attribute":
+            parameters["computed_attribute_name"] = submission.attribute_name
+            parameters["computed_attribute_kind"] = submission.target_kind
+            return COMPUTED_ATTRIBUTE_PROCESS_JINJA2, parameters
+        case "display_label":
+            parameters["target_kind"] = submission.target_kind
+            return DISPLAY_LABELS_PROCESS_JINJA2, parameters
+        case "hfid":
+            parameters["target_kind"] = submission.target_kind
+            return HFID_PROCESS, parameters
+        case _:
+            assert_never(submission.family)
 
 
 async def submit_coalesced_recompute(
