@@ -15,25 +15,32 @@ const UPDATE_GLOBAL_PREFERENCE = graphql(`
 `);
 
 export interface UpdateGlobalPreferenceFromApiParams {
-  dateFormat: string | null;
-  timezone: string | null;
+  /** The org default for `date_format`. Explicit `null` clears it. Omitting the key leaves it unchanged. */
+  dateFormat?: string | null;
+  /** As `dateFormat`, for `timezone`. */
+  timezone?: string | null;
 }
 
 /**
  * Update the organisation-wide singleton (IFC-2720). Backend-gated on
  * `manage_global_preferences`; there is no id argument (the row is a singleton
- * lazily materialised by the resolver).
+ * lazily materialised by the resolver). Passing explicit `null` for a field clears
+ * it; omitting a field leaves the stored value unchanged.
  */
-export function updateGlobalPreferenceFromApi({
-  dateFormat,
-  timezone,
-}: UpdateGlobalPreferenceFromApiParams) {
+export function updateGlobalPreferenceFromApi(params: UpdateGlobalPreferenceFromApiParams) {
+  // The date-format dropdown constrains values to the DateFormat enum keys; the domain layer
+  // carries date_format as a plain string, so narrow it to the generated variable type here at the
+  // GraphQL boundary (only these keys ever reach this function).
+  const variables: VariablesOf<typeof UPDATE_GLOBAL_PREFERENCE> = {};
+  if ("dateFormat" in params) {
+    variables.dateFormat = params.dateFormat as VariablesOf<
+      typeof UPDATE_GLOBAL_PREFERENCE
+    >["dateFormat"];
+  }
+  if ("timezone" in params) variables.timezone = params.timezone;
+
   return graphqlClient.mutate({
     mutation: UPDATE_GLOBAL_PREFERENCE,
-    variables: {
-      // date_format is one of the DateFormat enum keys (dropdown-constrained); narrow from string.
-      dateFormat: dateFormat as VariablesOf<typeof UPDATE_GLOBAL_PREFERENCE>["dateFormat"],
-      timezone,
-    },
+    variables,
   });
 }

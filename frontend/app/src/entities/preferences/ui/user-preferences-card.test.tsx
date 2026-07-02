@@ -96,34 +96,19 @@ describe("UserPreferencesCard", () => {
     expect(actionRow.querySelector("button")).not.toBeNull();
   });
 
-  test("offers an 'Automatic' (inherit) option at the top of both dropdowns", async () => {
+  test("shows the 'Automatic (inherited)' placeholder when the user has no override", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await component.getByRole("combobox", { name: /date format/i }).click();
-    await expect.element(component.getByRole("option", { name: "Automatic" })).toBeVisible();
-    // It sits at the top, before the first real preset.
-    const dateOptions = Array.from(component.container.querySelectorAll('[role="option"]')).map(
-      (option) => option.textContent?.trim()
-    );
-    expect(dateOptions[0]).toBe("Automatic");
-    // Close the popover before opening the next one.
-    await component.getByRole("combobox", { name: /date format/i }).click();
-
-    await component.getByRole("combobox", { name: /timezone/i }).click();
-    await expect.element(component.getByRole("option", { name: "Automatic" })).toBeVisible();
-  });
-
-  test("shows 'Automatic' as the selected value when the user has no override", async () => {
-    const component = await render(<UserPreferencesCard />);
-
-    // Both fields resolve to source "global" (not "user") in baseEffective, so both
-    // triggers display Automatic rather than an empty placeholder.
+    // Both fields resolve to source "global" (not "user") in baseEffective, so neither
+    // has a personal override: each trigger shows the inherit placeholder rather than a
+    // concrete value. It is placeholder text (not a selectable option), still rendered
+    // in the trigger.
     await expect
       .element(component.getByRole("combobox", { name: /date format/i }))
-      .toHaveTextContent("Automatic");
+      .toHaveTextContent("Automatic (inherited)");
     await expect
       .element(component.getByRole("combobox", { name: /timezone/i }))
-      .toHaveTextContent("Automatic");
+      .toHaveTextContent("Automatic (inherited)");
   });
 
   test("date-format options are labelled by the pattern itself", async () => {
@@ -144,8 +129,7 @@ describe("UserPreferencesCard", () => {
   test("shows a live example next to the date-format control that updates on selection", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    // Automatic (no override) is selected, so no concrete example is shown until a
-    // real format is picked.
+    // No override is set, so no concrete example is shown until a real format is picked.
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
 
     // Frozen at 2026-06-30T14:30:00; the ISO preset renders that instant.
@@ -180,13 +164,16 @@ describe("UserPreferencesCard", () => {
     expect(exampleIndex).toBeGreaterThan(controlIndex);
   });
 
-  test("hides the example again when switching back to Automatic (inherit)", async () => {
+  test("hides the example again when the override is cleared by re-selecting it", async () => {
     const component = await render(<UserPreferencesCard />);
 
+    // Selecting a concrete format shows its example.
     await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
     await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
 
-    await selectComboboxOption(component, /date format/i, "Automatic");
+    // Re-selecting the currently-selected format clears the override (maps to null),
+    // so the example disappears.
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
   });
 
@@ -199,7 +186,7 @@ describe("UserPreferencesCard", () => {
 
     const component = await render(<UserPreferencesCard />);
 
-    // The user's own override is shown, not "Automatic".
+    // The user's own override is shown, not the inherit placeholder.
     await expect
       .element(component.getByRole("combobox", { name: /timezone/i }))
       .toHaveTextContent("UTC");
@@ -322,7 +309,7 @@ describe("UserPreferencesCard", () => {
     });
   });
 
-  test("selecting 'Automatic' clears the override with an explicit-null upsert", async () => {
+  test("re-selecting the current value clears the override with an explicit-null upsert", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
       dateFormat: { value: "EU_DATETIME", source: "user" },
@@ -331,12 +318,12 @@ describe("UserPreferencesCard", () => {
 
     const component = await render(<UserPreferencesCard />);
 
-    // Pre-filled from the override; switching back to Automatic resets to inherit.
+    // Pre-filled from the override; re-selecting the currently-selected value resets to inherit.
     await expect
       .element(component.getByRole("combobox", { name: /date format/i }))
       .toHaveTextContent("dd/MM/yyyy HH:mm");
 
-    await selectComboboxOption(component, /date format/i, "Automatic");
+    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
@@ -348,7 +335,7 @@ describe("UserPreferencesCard", () => {
     });
   });
 
-  test("no longer renders a separate 'reset to global' button (Automatic replaces it)", async () => {
+  test("no longer renders a separate 'reset to global' button", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
       dateFormat: { value: "EU_DATETIME", source: "user" },

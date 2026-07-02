@@ -16,18 +16,8 @@ import {
 import type { PreferenceValues } from "@/entities/preferences/domain/types";
 import { TimezoneField } from "@/entities/preferences/ui/timezone.field";
 
-/** Label for the "inherit / no personal override" entry shared by both dropdowns. */
-export const AUTOMATIC_OPTION_LABEL = "Automatic";
-
 export interface PreferencesFormProps {
   values: PreferenceValues;
-  /**
-   * Adds the "Automatic" (= no override) entry to both dropdowns and makes a
-   * null/unset value display as Automatic. Used on the user tab, where clearing a
-   * field means "inherit"; left off for the organisation-defaults tab, whose values
-   * are the defaults themselves, not overrides.
-   */
-  includeAutomatic?: boolean;
   /** Tooltip body explaining where the date-format field's effective value comes from. */
   dateFormatSourceTooltip?: React.ReactNode;
   /** Tooltip body explaining where the timezone field's effective value comes from. */
@@ -84,8 +74,8 @@ function toFieldValue(value: string | null): FormAttributeValue {
  * changes. `now` is memoised once per mount so the example is stable across renders.
  *
  * The example truncates so the longest preset never overflows the row or forces the
- * combobox to reflow; it renders nothing when "Automatic"/no value is selected (the
- * always-present flex-1 wrapper in the row keeps the (i) icon pinned right regardless).
+ * combobox to reflow; it renders nothing when no value is selected (the always-present
+ * flex-1 wrapper in the row keeps the (i) icon pinned right regardless).
  */
 function DateFormatExample({ id, now }: { id: string; now: Date }) {
   const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
@@ -103,14 +93,12 @@ function DateFormatExample({ id, now }: { id: string; now: Date }) {
 /** Shared date-format + timezone form for the user and organisation tabs. */
 export function PreferencesForm({
   values,
-  includeAutomatic,
   dateFormatSourceTooltip,
   timezoneSourceTooltip,
   onSubmit,
   isSubmitDisabled,
   children,
 }: PreferencesFormProps) {
-  const automaticOption = includeAutomatic ? { label: AUTOMATIC_OPTION_LABEL } : undefined;
   // Memoised so the item array identity is stable across renders. The presets are
   // `{ key, label }`; the ComboboxField takes `{ value, label }`, and the stored
   // value is the preset key.
@@ -169,11 +157,10 @@ export function PreferencesForm({
                 label="Date format"
                 labelClassName="sr-only"
                 items={items}
-                placeholder="Select date format"
+                placeholder="Automatic (inherited)"
                 searchPlaceholder="Filter date formats..."
                 emptyMessage="No date format found."
                 aria-describedby={dateFormatDescribedBy}
-                automaticOption={automaticOption}
               />
             </div>
             <div className="min-w-0 flex-1 truncate">
@@ -190,7 +177,7 @@ export function PreferencesForm({
                 name="timezone"
                 label="Timezone"
                 labelClassName="sr-only"
-                automaticOption={automaticOption}
+                placeholder="Automatic (inherited)"
               />
             </div>
             {/* Spacer so the (i) icon sits at the far right, aligned with the date-format

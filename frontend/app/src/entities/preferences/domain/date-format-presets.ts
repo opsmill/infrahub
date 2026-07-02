@@ -30,6 +30,8 @@ interface DateFormatPresetDef {
 
 /** Ordered semantic key -> { label, date-fns pattern }. Mirror of the backend key set. */
 const DATE_FORMAT_PRESETS: Record<DateFormatKey, DateFormatPresetDef> = {
+  // The offset (date-fns `XXX` → `+02:00`) intentionally differs from the backend strftime `%z`
+  // (`+0200`, no colon): same key, per-client rendering.
   ISO_8601: { label: "ISO 8601", pattern: "yyyy-MM-dd'T'HH:mm:ssXXX" },
   ISO_DATETIME: { label: "yyyy-MM-dd HH:mm", pattern: "yyyy-MM-dd HH:mm" },
   ISO_DATETIME_SECONDS: { label: "yyyy-MM-dd HH:mm:ss", pattern: "yyyy-MM-dd HH:mm:ss" },

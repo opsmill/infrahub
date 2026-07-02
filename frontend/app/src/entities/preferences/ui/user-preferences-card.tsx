@@ -57,10 +57,10 @@ function sourceTooltip(resolved: ResolvedPreference, browserValue: string): stri
 
 /**
  * The user's personal date/time preferences, surfaced as a card on the Profile
- * tab below the object details. Each field offers an "Automatic" option meaning
- * "no personal override": the value then inherits the organisation default, or the
- * browser's own locale/timezone when that is also unset. The (i) tooltip beside
- * each field spells out where the current effective value comes from.
+ * tab below the object details. A field with no personal override inherits the
+ * organisation default, or the browser's own locale/timezone when that is also
+ * unset. The (i) tooltip beside each field spells out where the current effective
+ * value comes from.
  */
 export function UserPreferencesCard() {
   const effectiveQuery = useEffectivePreferences();
@@ -92,7 +92,8 @@ export function UserPreferencesCard() {
   const timezoneSourceTooltip = sourceTooltip(preferences.timezone, browserTimezone());
 
   // The form shows the caller's OWN override per field: when the value is inherited
-  // (source !== "user") the field shows "Automatic" instead.
+  // (source !== "user") there is no override, so the field is left unset and shows
+  // its "Automatic (inherited)" placeholder.
   const dateFormatOverride =
     preferences.dateFormat.source === "user" ? preferences.dateFormat.value : null;
   const timezoneOverride =
@@ -102,8 +103,9 @@ export function UserPreferencesCard() {
     <Card className="w-full">
       <CardHeader>Preferences</CardHeader>
       <p className="px-3 py-2 text-gray-600 text-sm">
-        Personal overrides of the organisation defaults. Choose "Automatic" to inherit the
-        organisation-wide value, or the browser default when none is set.
+        Personal overrides of the organisation defaults. A field with no personal override inherits
+        the organisation-wide value, or the browser default when none is set. Selecting a value
+        overrides it; re-selecting the currently-selected value clears the override.
       </p>
 
       <PreferencesForm
@@ -111,7 +113,6 @@ export function UserPreferencesCard() {
           dateFormat: dateFormatOverride,
           timezone: timezoneOverride,
         }}
-        includeAutomatic
         dateFormatSourceTooltip={dateFormatSourceTooltip}
         timezoneSourceTooltip={timezoneSourceTooltip}
         onSubmit={async (values) => {

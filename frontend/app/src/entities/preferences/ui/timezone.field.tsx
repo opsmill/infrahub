@@ -20,8 +20,8 @@ export interface TimezoneFieldProps {
   /** Forwarded to the trigger so a hint can be announced by screen readers. */
   "aria-describedby"?: string;
   defaultValue?: FormAttributeValue;
-  /** Optional "inherit / no override" entry; forwarded verbatim to {@link ComboboxField}. */
-  automaticOption?: { label: string };
+  /** Placeholder shown in the trigger when nothing is selected. */
+  placeholder?: string;
 }
 
 /** Searchable select over the IANA timezones supported by the runtime. */
@@ -31,7 +31,7 @@ export function TimezoneField({
   labelClassName,
   "aria-describedby": ariaDescribedBy,
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
-  automaticOption,
+  placeholder = "Select timezone",
 }: TimezoneFieldProps) {
   // Stable item identity across renders; the timezone list never changes at runtime.
   const items = useMemo(
@@ -44,13 +44,12 @@ export function TimezoneField({
       name={name}
       label={label}
       items={items}
-      placeholder="Select timezone"
+      placeholder={placeholder}
       searchPlaceholder="Search timezone..."
       emptyMessage="No timezone found."
       labelClassName={labelClassName}
       aria-describedby={ariaDescribedBy}
       defaultValue={defaultValue}
-      automaticOption={automaticOption}
     />
   );
 }
