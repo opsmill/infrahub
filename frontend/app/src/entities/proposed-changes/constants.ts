@@ -1,4 +1,7 @@
-import { BRANCH_DELETED_EVENT, BRANCH_MERGED_EVENT } from "@/entities/branches/constants";
+import {
+  BRANCH_DELETED_EVENT,
+  BRANCH_MERGED_EVENT,
+} from "@/entities/branches/domain/model/branch-events";
 import type { StateItem } from "@/entities/proposed-changes/ui/action-button/types";
 
 export const APPROVE_DECISION = "APPROVE";
