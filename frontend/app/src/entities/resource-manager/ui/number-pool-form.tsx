@@ -32,8 +32,8 @@ import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/upda
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
-} from "@/entities/resource-manager/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+} from "@/entities/resource-manager/domain/model/pool";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 

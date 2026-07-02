@@ -1,5 +1,5 @@
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 

@@ -13,7 +13,7 @@ import type {
   NodeRelationshipManyWithMetadata,
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/types";
 import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 

@@ -26,7 +26,7 @@ import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
   AttributeKind,
   AttributeSchema,

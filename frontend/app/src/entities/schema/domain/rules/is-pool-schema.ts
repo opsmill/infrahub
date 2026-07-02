@@ -1,4 +1,4 @@
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 

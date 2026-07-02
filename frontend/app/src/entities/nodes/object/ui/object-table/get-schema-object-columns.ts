@@ -7,7 +7,7 @@ import {
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import type { RelationshipKind } from "@/entities/nodes/object/domain/model/node";
-import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
+import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/domain/model/attribute-kind";
 import type { AttributeKind, ModelSchema } from "@/entities/schema/domain/model/types";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 

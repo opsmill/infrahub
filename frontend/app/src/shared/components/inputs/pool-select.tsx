@@ -4,7 +4,7 @@ import { PoolPopoverTrigger, type PoolValue } from "@/shared/components/form/poo
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 
 export interface PoolSelectProps {
   poolKind: string;

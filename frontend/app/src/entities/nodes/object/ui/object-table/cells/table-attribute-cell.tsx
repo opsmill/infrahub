@@ -7,7 +7,7 @@ import { ColorCell } from "@/entities/nodes/object/ui/object-table/cells/color-c
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
 import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type { AttributeKind, AttributeSchema } from "@/entities/schema/domain/model/types";
 
 export interface TableAttributeCellProps {

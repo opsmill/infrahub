@@ -22,7 +22,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";

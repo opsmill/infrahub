@@ -19,10 +19,10 @@ import type {
   NodeAttributeWithMetadata,
   NodeObject,
 } from "@/entities/nodes/object/domain/model/node";
-import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
   AttributeKind,
   AttributeSchema,

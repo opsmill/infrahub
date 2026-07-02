@@ -21,7 +21,7 @@ import {
 
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ProfileData } from "@/entities/nodes/profiles/types";
-import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
 import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
