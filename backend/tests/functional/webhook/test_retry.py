@@ -5,30 +5,82 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.graphql import Mutation
+from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.account import GlobalPermission, ObjectPermission
+from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
+from infrahub.core.initialization import create_account
 from infrahub.webhook.tasks import webhook_process
 from infrahub.workers.dependencies import build_http_service
 from tests.adapters.http import MemoryHTTP
+from tests.helpers.permissions import define_permissions
 from tests.helpers.test_app import TestInfrahubApp
 
-from .conftest import BRANCH_CREATED_PAYLOAD, only_new_run, read_send_runs
+from .conftest import BRANCH_CREATED_PAYLOAD, OPERATOR_BRANCH, only_new_run, read_send_runs
 
 if TYPE_CHECKING:
     from fast_depends import Provider
-    from infrahub_sdk import InfrahubClient
     from prefect.client.schemas.objects import FlowRun
 
     from infrahub.core.node import Node
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.task_manager.flow_run.prefect_client import FlowRunQuerying
+    from tests.helpers.test_client import InfrahubTestClient
 
 
 WEBHOOK_TARGET_URL = "https://url.mock"
 
 
 class TestWebhookRetry(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    def api_branch_operator_token(self) -> str:
+        return str(UUIDT())
+
+    @pytest.fixture(scope="class")
+    async def operator_branch(self, client: InfrahubClient, initial_dataset: None) -> None:
+        await client.branch.create(branch_name=OPERATOR_BRANCH, sync_with_git=False)
+
+    @pytest.fixture(scope="class")
+    async def branch_operator_client(
+        self,
+        db: InfrahubDatabase,
+        register_core_schema: SchemaBranch,
+        test_client: InfrahubTestClient,
+        api_branch_operator_token: str,
+    ) -> InfrahubClient:
+        """A client for an account allowed to update any object on non-default branches only.
+
+        The account also holds the global permission to run mutations on the default branch, so a
+        denial can only come from the branch-relative object permission.
+        """
+        account = await create_account(
+            db=db,
+            name="branch-operator",
+            password="branch-operator-password",
+            token_value=api_branch_operator_token,
+        )
+        await define_permissions(
+            account=account,
+            db=db,
+            object_permissions=[
+                ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_OTHER.value)
+            ],
+            global_permissions=[
+                GlobalPermission(
+                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
+                )
+            ],
+        )
+        config = Config(
+            api_token=api_branch_operator_token,
+            requester=test_client.async_request,
+            sync_requester=test_client.sync_request,
+        )
+        return InfrahubClient(config=config)
+
     async def test_retry_replays_frozen_payload_as_new_delivery(
         self,
         db: InfrahubDatabase,
@@ -113,6 +165,59 @@ class TestWebhookRetry(TestInfrahubApp):
         )
         with pytest.raises(Exception, match="You do not have the following permission"):
             await unprivileged_client.execute_graphql(query=mutation.render())
+
+    async def test_retry_of_default_branch_delivery_requires_default_branch_permission(
+        self,
+        db: InfrahubDatabase,
+        webhook1: Node,
+        webhook_deployment: None,
+        operator_branch: None,
+        branch_operator_client: InfrahubClient,
+        settled_send_run: FlowRun,
+    ) -> None:
+        """The permission follows the delivery's branch, whichever branch the request is made on."""
+        mutation = Mutation(
+            mutation="InfrahubTaskRetry",
+            input_data={"data": {"id": str(settled_send_run.id)}},
+            query={"ok": None, "task": {"id": None}},
+        )
+        with pytest.raises(
+            Exception,
+            match=r"You do not have the following permission: object:Core:StandardWebhook:update:allow_default",
+        ):
+            await branch_operator_client.execute_graphql(query=mutation.render(), branch_name=OPERATOR_BRANCH)
+
+    async def test_retry_of_branch_delivery_allowed_with_branch_scoped_permission(
+        self,
+        db: InfrahubDatabase,
+        flow_run_querier: FlowRunQuerying,
+        webhook1: Node,
+        webhook_deployment: None,
+        operator_branch: None,
+        branch_operator_client: InfrahubClient,
+        settled_branch_send_run: FlowRun,
+        dependency_provider: Provider,
+    ) -> None:
+        """A branch-scoped update permission allows retrying a delivery initiated from such a branch."""
+        http = MemoryHTTP()
+        http.add_post_response(
+            url=WEBHOOK_TARGET_URL,
+            response=httpx.Response(request=httpx.Request(method="POST", url=WEBHOOK_TARGET_URL), status_code=200),
+        )
+        before = {str(run.id) for run in await read_send_runs(flow_run_querier)}
+
+        mutation = Mutation(
+            mutation="InfrahubTaskRetry",
+            input_data={"data": {"id": str(settled_branch_send_run.id)}},
+            query={"ok": None, "task": {"id": None}},
+        )
+        with dependency_provider.scope(build_http_service, lambda: http):
+            result = await branch_operator_client.execute_graphql(query=mutation.render())
+
+        assert result["InfrahubTaskRetry"]["ok"] is True
+
+        new_run = only_new_run(await read_send_runs(flow_run_querier), before)
+        assert new_run.parameters["branch_name"] == OPERATOR_BRANCH
 
     async def test_retry_unknown_delivery_reports_no_longer_available(
         self,

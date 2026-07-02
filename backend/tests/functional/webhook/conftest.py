@@ -160,7 +160,9 @@ async def webhook1(db: InfrahubDatabase, initial_dataset: None, client: Infrahub
     return webhook
 
 
-async def _create_send_run(prefect_client: PrefectClient, webhook: Node, state: State) -> FlowRun:
+async def _create_send_run(
+    prefect_client: PrefectClient, webhook: Node, state: State, branch_name: str = "main"
+) -> FlowRun:
     return await prefect_client.create_flow_run(
         flow=process.webhook_send,
         parameters={
@@ -168,7 +170,7 @@ async def _create_send_run(prefect_client: PrefectClient, webhook: Node, state: 
             "webhook_kind": InfrahubKind.STANDARDWEBHOOK,
             "webhook_name": "Webhook1",
             "payload": BRANCH_CREATED_PAYLOAD,
-            "branch_name": "main",
+            "branch_name": branch_name,
         },
         state=state,
     )
@@ -188,6 +190,17 @@ async def scheduled_send_run(prefect_client: PrefectClient, webhook1: Node) -> F
 async def settled_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
     """A webhook-send delivery in a terminal state, eligible for retry."""
     return await _create_send_run(prefect_client, webhook1, State(type=StateType.COMPLETED))
+
+
+OPERATOR_BRANCH = "webhook-operator-branch"
+
+
+@pytest.fixture
+async def settled_branch_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A settled webhook-send delivery initiated from a non-default branch."""
+    return await _create_send_run(
+        prefect_client, webhook1, State(type=StateType.COMPLETED), branch_name=OPERATOR_BRANCH
+    )
 
 
 @pytest.fixture(scope="class")
