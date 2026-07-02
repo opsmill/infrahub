@@ -7,7 +7,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectPermissionsBySubKind } from "@/entities/permission/domain/get-object-permissions-by-sub-kind";
-import type { GetPermissionOptions } from "@/entities/permission/utils";
+import type { GetPermissionOptions } from "@/entities/permission/domain/rules/get-permission";
 
 export interface GetObjectPermissionsBySubKindParams extends ContextParams, GetPermissionOptions {
   kind: string;

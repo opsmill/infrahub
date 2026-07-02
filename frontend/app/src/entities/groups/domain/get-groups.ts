@@ -3,8 +3,8 @@ import {
   getGroupsFromApi,
 } from "@/entities/groups/api/get-groups-from-api";
 import type { GroupData } from "@/entities/groups/domain/types";
+import { getPermission } from "@/entities/permission/domain/rules/get-permission";
 import type { Permission } from "@/entities/permission/types";
-import { getPermission } from "@/entities/permission/utils";
 
 export type GetGroupsParams = GetGroupsFromApiParams;
 
