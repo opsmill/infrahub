@@ -563,9 +563,24 @@ async def generate_request_artifact_definition(
     current_members = [member.id for member in group.members.peers]
 
     artifacts_by_member = {}
+    stale_artifacts = []
     for artifact in existing_artifacts:
         if artifact.object.id in current_members:
             artifacts_by_member[artifact.object.peer.id] = artifact.id
+        else:
+            stale_artifacts.append(artifact)
+
+    # A full pass over the definition also cleans up artifacts whose target is no
+    # longer a member of the target group; a limited run only regenerates the
+    # requested artifacts and must not delete anything else.
+    if not model.limit:
+        log = get_run_logger()
+        for artifact in stale_artifacts:
+            log.info(
+                f"Deleting artifact {artifact.id} ({artifact.name.value}): "
+                f"its target {artifact.object.id} is no longer a member of the definition's targets"
+            )
+            await artifact.delete()
 
     await artifact_definition.transformation.fetch()
     transformation_repository = artifact_definition.transformation.peer.repository
