@@ -15,7 +15,7 @@ import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

@@ -4,7 +4,7 @@ import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 
 export interface ActionsCellProps {

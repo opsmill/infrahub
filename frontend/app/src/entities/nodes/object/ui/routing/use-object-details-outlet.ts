@@ -1,7 +1,7 @@
 import { useOutletContext } from "react-router";
 
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ObjectDetailsOutletContext {

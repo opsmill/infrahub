@@ -1,4 +1,14 @@
-import type { Permission } from "@/entities/permission/types";
+export type PermissionDecisionData = "ALLOW" | "ALLOW_DEFAULT" | "ALLOW_OTHER" | "DENY";
+
+export type PermissionAction = "view" | "create" | "update" | "delete";
+
+export type PermissionData = Record<PermissionAction, PermissionDecisionData> & { kind: string };
+
+export type PermissionDecision =
+  | { isAllowed: true; message?: string }
+  | { isAllowed: false; message: string };
+
+export type Permission = Record<PermissionAction, PermissionDecision>;
 
 export const PERMISSION_ALLOW_ALL: Permission = {
   create: { isAllowed: true },

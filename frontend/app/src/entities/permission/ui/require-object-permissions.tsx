@@ -2,7 +2,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 
 export interface RequireObjectPermissionsProps {

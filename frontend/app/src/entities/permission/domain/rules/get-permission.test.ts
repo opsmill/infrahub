@@ -2,8 +2,8 @@ import { describe, expect, test } from "vitest";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 
-import { PERMISSION_ALLOW_ALL } from "../../constants";
-import type { PermissionData } from "../../types";
+import type { PermissionData } from "../model/permission";
+import { PERMISSION_ALLOW_ALL } from "../model/permission";
 import { getPermission } from "./get-permission";
 
 const createPermissionNode = (overrides?: Partial<PermissionData>): { node: PermissionData } => ({

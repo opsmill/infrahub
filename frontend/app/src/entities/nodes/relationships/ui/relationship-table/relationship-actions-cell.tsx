@@ -14,7 +14,7 @@ import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-it
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {

@@ -9,7 +9,7 @@ import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectDetailsHeaderProps {

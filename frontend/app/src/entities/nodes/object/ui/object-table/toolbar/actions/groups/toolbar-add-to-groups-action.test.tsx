@@ -7,7 +7,7 @@ import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../../../../tests/components/render";

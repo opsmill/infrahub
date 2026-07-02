@@ -10,7 +10,7 @@ import { Link } from "@/shared/components/ui/link";
 import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";

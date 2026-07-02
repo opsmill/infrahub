@@ -9,7 +9,7 @@ import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

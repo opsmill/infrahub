@@ -3,7 +3,7 @@ import { gql } from "@apollo/client";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
+import { getObjectPermissionsQuery } from "@/entities/permission/api/get-object-permissions-query";
 
 export type GetPermissionsFromApiParams = ContextParams & { kind: string };
 

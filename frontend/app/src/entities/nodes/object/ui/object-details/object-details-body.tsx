@@ -8,7 +8,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ObjectDetailsTabs } from "@/entities/nodes/object/ui/object-details/object-details-tabs";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { ObjectDetailsOutletContext } from "@/entities/nodes/object/ui/routing/use-object-details-outlet";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectDetailsBodyProps {

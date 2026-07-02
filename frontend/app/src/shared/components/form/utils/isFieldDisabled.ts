@@ -3,7 +3,7 @@ import { store } from "@/shared/stores";
 
 import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import type { PermissionDecisionData } from "@/entities/permission/types";
+import type { PermissionDecisionData } from "@/entities/permission/domain/model/permission";
 
 export type IsFieldDisabledParams = {
   owner?: Pick<LineageOwner, "id"> | null;

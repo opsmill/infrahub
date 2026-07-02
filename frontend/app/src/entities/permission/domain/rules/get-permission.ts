@@ -1,13 +1,13 @@
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 
-import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 import type {
   Permission,
   PermissionAction,
   PermissionData,
   PermissionDecision,
   PermissionDecisionData,
-} from "@/entities/permission/types";
+} from "@/entities/permission/domain/model/permission";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
 
 export interface GetPermissionOptions {
   branch?: { status: BranchStatus };

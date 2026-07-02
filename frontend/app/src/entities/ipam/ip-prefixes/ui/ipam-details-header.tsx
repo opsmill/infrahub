@@ -18,7 +18,7 @@ import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-me
 import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import type {
   AttributeSchema,
   ModelSchema,

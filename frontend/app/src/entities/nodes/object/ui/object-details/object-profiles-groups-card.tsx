@@ -25,7 +25,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema, NodeSchema } from "@/entities/schema/domain/model/schema";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";

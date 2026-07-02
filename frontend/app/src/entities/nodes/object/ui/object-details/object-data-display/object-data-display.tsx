@@ -18,7 +18,7 @@ import { resolveRelationshipData } from "@/entities/nodes/object/domain/rules/re
 import FieldMetadataForm from "@/entities/nodes/object/ui/metadata/field-metadata-form";
 import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import type {
   AttributeSchema,
   ModelSchema,

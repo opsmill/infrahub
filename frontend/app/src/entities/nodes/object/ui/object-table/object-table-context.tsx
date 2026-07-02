@@ -5,7 +5,7 @@ import { QSP } from "@/shared/config/qsp";
 import { type Filter, FilterSchema } from "@/shared/hooks/useFilters";
 import { uniqueItemsArray } from "@/shared/utils/array";
 
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";

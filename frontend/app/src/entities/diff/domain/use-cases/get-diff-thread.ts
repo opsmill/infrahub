@@ -2,7 +2,7 @@ import {
   type GetDiffThreadFromApiParams,
   getDiffThreadFromApi,
 } from "@/entities/diff/api/get-diff-thread-from-api";
-import type { PermissionData } from "@/entities/permission/types";
+import type { PermissionData } from "@/entities/permission/domain/model/permission";
 
 export type GetDiffThreadParams = GetDiffThreadFromApiParams;
 

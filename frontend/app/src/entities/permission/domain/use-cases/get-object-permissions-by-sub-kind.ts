@@ -1,11 +1,11 @@
 import type { ContextParams } from "@/shared/api/types";
 
 import { getPermissionsFromApi } from "@/entities/permission/api/get-permissions-from-api";
+import type { Permission, PermissionData } from "@/entities/permission/domain/model/permission";
 import {
   type GetPermissionOptions,
   getPermission,
 } from "@/entities/permission/domain/rules/get-permission";
-import type { Permission, PermissionData } from "@/entities/permission/types";
 
 export interface GetObjectPermissionsBySubKindArgs extends ContextParams, GetPermissionOptions {
   kind: string;

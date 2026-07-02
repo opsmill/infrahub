@@ -33,7 +33,7 @@ import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";

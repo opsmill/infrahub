@@ -20,7 +20,7 @@ import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-me
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
