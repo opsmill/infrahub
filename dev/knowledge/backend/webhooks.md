@@ -103,11 +103,12 @@ Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Lit
 The base class handles:
 
 - Payload computation (`compute_payload`)
-- Header construction with custom headers and optional HMAC signing (`_build_headers`)
-- HTTP delivery of a precomputed payload via `send_payload()`
+- Header construction with custom headers and optional HMAC signing (`build_headers`)
+- Redaction of secret-bearing header values for logging (`redact_headers`)
+- HTTP delivery of a precomputed payload via `send_payload()`, which builds the headers itself unless a caller passes a set already built for logging
 - Cache serialization (`to_cache` / `from_cache`)
 
-The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_build_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time. A missing variable fails the delivery with a configuration error (the `CONFIG` failure class) rather than being skipped.
+The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `build_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time. A missing variable fails the delivery with a configuration error (the `CONFIG` failure class) rather than being skipped.
 
 ## Schema (GraphQL)
 
@@ -217,6 +218,12 @@ The `available_actions` field on the task query reports each action with whether
 
 `InfrahubTaskRetry` and `InfrahubTaskCancel` carry out the actions. Each loads the delivery through a query-only Prefect client (`DeliveryReader`), then authorizes it (`DeliveryActionAuthorizer`): the action must apply to the run's current state, and the caller must hold the `UPDATE` permission on the webhook's node kind. Loading is kept separate from authorization so the read uses the narrowest client capability it needs.
 
+### Delivery logging
+
+Each send attempt logs one line before the request is sent: the attempt number (`n/N`), the target URL, the request headers, and the payload. The payload is truncated inline (2048 characters) with the full body emitted only at debug level. Secret-bearing header values are masked in this log — see [Log redaction](#log-redaction) for the rule.
+
+When an attempt fails, `webhook_send` logs one error line carrying the failure class, the attempt number (`n/N`), the elapsed time, the reason, and its remediation. While the flow run has attempts left it also states when the next one fires (`Retrying in 120s (attempt n+1/N).`); on the final attempt it states `No retries remaining.`. Outside a flow run, where no retry sequence drives the send, the line reads `outside a flow run` in place of the attempt number and carries no retry note.
+
 ## Security
 
 HMAC-SHA256 signing is performed when a `shared_key` is set:
@@ -234,6 +241,10 @@ Three headers are added to signed requests:
 | `webhook-id` | `msg_<uuid_hex>` |
 | `webhook-timestamp` | Unix timestamp |
 | `webhook-signature` | `v1,<base64_signature>` |
+
+### Log redaction
+
+When a delivery request is logged, secret-bearing header values are masked as `***`. A header value is masked when the header is environment-sourced, is the signature header, or matches a well-known credential header name (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`). Matching is case-insensitive, since HTTP header names are, so a secret cannot slip through under a different casing. Standard and statically configured non-credential headers are logged verbatim so the record stays useful; the payload is logged in full only at debug level.
 
 ## Caching
 
