@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
-import { getKindColor } from "./utils";
+import { getKindColor } from "./get-kind-color";
 
 export type InfraNodeData = {
   label: string;

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { getKindColor, HIDDEN_NAMESPACES } from "./utils";
+import { getKindColor } from "./get-kind-color";
 
 describe("getKindColor", () => {
   test("returns a string", () => {
@@ -30,27 +30,5 @@ describe("getKindColor", () => {
     const result = getKindColor("");
     expect(typeof result).toBe("string");
     expect(result).toMatch(/^#[0-9a-f]{6}$/);
-  });
-});
-
-describe("HIDDEN_NAMESPACES", () => {
-  test("is a Set", () => {
-    expect(HIDDEN_NAMESPACES).toBeInstanceOf(Set);
-  });
-
-  test("contains expected namespaces", () => {
-    const expected = ["Core", "Internal", "Builtin", "Lineage", "Profile", "Template"];
-    for (const ns of expected) {
-      expect(HIDDEN_NAMESPACES.has(ns)).toBe(true);
-    }
-  });
-
-  test("has exactly 6 entries", () => {
-    expect(HIDDEN_NAMESPACES.size).toBe(6);
-  });
-
-  test("does not contain user namespaces", () => {
-    expect(HIDDEN_NAMESPACES.has("Infra")).toBe(false);
-    expect(HIDDEN_NAMESPACES.has("Custom")).toBe(false);
   });
 });

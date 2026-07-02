@@ -9,7 +9,7 @@ import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.quer
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { isVisibleNamespace } from "./utils";
+import { isVisibleNamespace } from "../domain/rules/visible-namespace";
 
 type ObjectPickerProps = {
   label: string;

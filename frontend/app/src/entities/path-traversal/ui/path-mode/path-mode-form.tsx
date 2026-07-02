@@ -20,7 +20,7 @@ import { Input } from "@/shared/components/ui/input";
 
 import { MAX_TRAVERSAL_DEPTH } from "../../domain/path-traversal.constants";
 import { ObjectPicker } from "../object-picker";
-import { isVisibleNamespace } from "../utils";
+import { isVisibleNamespace } from "../../domain/rules/visible-namespace";
 import type { PathModeFormValues } from "./use-path-mode-params";
 
 type PathModeFormProps = {
