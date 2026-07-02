@@ -23,7 +23,7 @@ Backend-only feature. Source under `backend/infrahub/`, tests under `backend/tes
 
 **Purpose**: Confirm a green baseline so SC-003 (zero behavior change) is verifiable at the end.
 
-- [ ] T001 Sync dependencies with `uv sync --all-groups` and record the green baseline by running `uv run pytest backend/tests/unit/workflows/ -q` (all pass before any change)
+- [X] T001 Sync dependencies with `uv sync --all-groups` and record the green baseline by running `uv run pytest backend/tests/unit/workflows/ -q` (all pass before any change)
 
 ---
 
