@@ -4,7 +4,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { constructPathForIpam } from "@/entities/ipam/utils";
+import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
 import type { NodeAttribute } from "@/entities/nodes/object/domain/model/node";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 

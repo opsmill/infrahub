@@ -8,7 +8,7 @@ import {
   HIDE_AVAILABLE_IP,
   SHOW_AVAILABLE_IP,
 } from "@/entities/ipam/constants";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/domain/rules/has-incompatible-filters-for-ip-availability";
 import { FilterSuggestionTag } from "@/entities/nodes/object/ui/filters/filter-suggestion-tag";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
 

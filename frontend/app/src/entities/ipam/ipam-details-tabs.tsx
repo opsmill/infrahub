@@ -3,7 +3,7 @@ import { IdCardIcon } from "lucide-react";
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
 
-import { constructPathForIpam } from "@/entities/ipam/utils";
+import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";

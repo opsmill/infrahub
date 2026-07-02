@@ -10,11 +10,11 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/domain/rules/has-incompatible-filters-for-ip-availability";
 import {
   type GetIpAddressListParams,
   getIpAddressList,
 } from "@/entities/ipam/ip-addresses/domain/get-ip-address-list";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 

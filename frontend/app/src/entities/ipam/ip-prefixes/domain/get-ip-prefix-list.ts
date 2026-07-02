@@ -3,10 +3,10 @@ import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/domain/rules/has-incompatible-filters-for-ip-availability";
 import { getIpPrefixListFromApi } from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 

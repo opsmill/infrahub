@@ -15,7 +15,7 @@ import {
   IP_PREFIX_RELATIONSHIP_NAME,
   IPAM_QSP,
 } from "@/entities/ipam/constants";
-import { constructPathForIpam } from "@/entities/ipam/utils";
+import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
 import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
 import type { NodeRelationshipOne } from "@/entities/nodes/object/domain/model/node";

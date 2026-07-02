@@ -3,6 +3,7 @@ import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/domain/rules/has-incompatible-filters-for-ip-availability";
 import {
   getIpAddressListWithAvailabilityFromApi,
   getIpAddressListWithoutAvailabilityFromApi,
@@ -10,7 +11,6 @@ import {
 import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ModelSchema } from "@/entities/schema/domain/model/types";
 
