@@ -61,10 +61,17 @@ export const Form = ({
           }
 
           if (onSubmit) {
-            currentForm.handleSubmit(async (data) => {
-              await onSubmit(data);
-              currentForm.reset(data);
-            })(event);
+            // reset(data) runs only after a successful onSubmit, so a handler that throws (e.g. a
+            // failed save re-throwing to keep the form dirty) leaves the form untouched. Swallow the
+            // resulting rejection here — react-hook-form's handleSubmit re-throws it and we discard
+            // the promise, which would otherwise fire an unhandled `unhandledrejection`. Surfacing
+            // the error to the user is the submit handler's own responsibility (e.g. a toast).
+            currentForm
+              .handleSubmit(async (data) => {
+                await onSubmit(data);
+                currentForm.reset(data);
+              })(event)
+              .catch(() => {});
           }
         }}
         className={classNames("space-y-4", className)}

@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Command,
@@ -104,6 +104,12 @@ export const ComboboxList = ({
   const [activeItemValue, setActiveItemValue] = useState<string | undefined>(
     activeValue ?? undefined
   );
+  // Re-seed the highlight if the selected value changes while the list is mounted (e.g. the form
+  // value is updated externally with the popover open); otherwise the controlled highlight would
+  // stay on the previously-seeded option. Navigation still updates it via onValueChange in between.
+  useEffect(() => {
+    setActiveItemValue(activeValue ?? undefined);
+  }, [activeValue]);
   return (
     <Command
       shouldFilter={shouldFilter}
