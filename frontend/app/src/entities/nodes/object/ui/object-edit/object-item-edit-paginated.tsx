@@ -8,14 +8,14 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { areObjectArraysEqualById } from "@/shared/utils/array";
 
+import type { DynamicFieldData } from "@/entities/nodes/object/ui/object-edit/form-field-types";
+import { useGetObjectForEditing } from "@/entities/nodes/object/ui/queries/get-object-for-editing.query";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { DynamicFieldData } from "@/entities/nodes/object-item-edit/form-field-types";
-import { useGetObjectForEditing } from "@/entities/nodes/object-item-edit/ui/queries/get-object-for-editing.query";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-interface Props {
-  objectname: string;
+interface ObjectEditProps {
+  objectKind: string;
   objectId: string;
   closeDrawer: () => void;
   onUpdateComplete?: () => void;
@@ -23,31 +23,31 @@ interface Props {
   extraRelationshipNames?: string[];
 }
 
-export default function ObjectItemEditComponent(props: Props) {
-  const { schema } = useSchema(props.objectname);
+export default function ObjectEdit(props: ObjectEditProps) {
+  const { schema } = useSchema(props.objectKind);
 
   if (!schema) {
-    return <NoDataFound message={`Schema ${props.objectname} not found`} />;
+    return <NoDataFound message={`Schema ${props.objectKind} not found`} />;
   }
 
-  return <ObjectItemEditForm {...props} schema={schema} />;
+  return <ObjectEditForm {...props} schema={schema} />;
 }
 
-interface ObjectItemEditFormProps extends Props {
+interface ObjectItemEditFormProps extends ObjectEditProps {
   schema: NodeSchema | ProfileSchema;
 }
 
-function ObjectItemEditForm({
+function ObjectEditForm({
   schema,
-  objectname,
+  objectKind,
   objectId,
   closeDrawer,
   onUpdateComplete,
   extraRelationshipNames,
 }: ObjectItemEditFormProps) {
-  const { isLoading, error, data } = useGetObjectForEditing({
+  const { isPending, error, data } = useGetObjectForEditing({
     schema,
-    objectKind: objectname,
+    objectKind,
     objectId,
     extraRelationshipNames,
   });
@@ -58,7 +58,7 @@ function ObjectItemEditForm({
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
-  if (isLoading) {
+  if (isPending) {
     return <LoadingIndicator className="p-4" />;
   }
 
@@ -108,7 +108,7 @@ function ObjectItemEditForm({
       onCancel={closeDrawer}
       onSubmit={onSubmit}
       onSuccess={onUpdateComplete}
-      kind={objectname}
+      kind={objectKind}
       currentObject={objectDetailsData}
       currentProfiles={objectProfiles}
       isUpdate

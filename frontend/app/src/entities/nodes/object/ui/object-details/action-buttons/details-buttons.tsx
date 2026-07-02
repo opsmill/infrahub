@@ -18,8 +18,8 @@ import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
@@ -95,14 +95,14 @@ export function DetailsButtons({
           title={`Edit ${nodeLabel}`}
           subtitle={schema.description}
         />
-        <ObjectItemEditComponent
+        <ObjectEdit
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsEditModalOpen(false);
           }}
           objectId={objectDetailsData.id!}
-          objectname={schema.kind!}
+          objectKind={schema.kind!}
         />
       </Sheet>
     </>

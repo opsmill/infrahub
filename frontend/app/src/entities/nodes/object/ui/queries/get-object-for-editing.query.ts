@@ -8,8 +8,8 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetObjectForEditingParams,
   getObjectForEditing,
-} from "@/entities/nodes/object-item-edit/domain/get-object-for-editing";
-import { objectItemEditQueryKeys } from "@/entities/nodes/object-item-edit/ui/queries/object-item-edit.query-keys";
+} from "@/entities/nodes/object/domain/use-cases/get-object-for-editing";
+import { objectItemEditQueryKeys } from "@/entities/nodes/object/ui/queries/object-item-edit.query-keys";
 
 export function getObjectForEditingQueryOptions(params: GetObjectForEditingParams) {
   const { objectKind, objectId, extraRelationshipNames, branchName, atDate } = params;

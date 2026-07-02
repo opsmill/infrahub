@@ -1,22 +1,29 @@
+import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
+import type { ContextParams } from "@/shared/api/types";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/domain/model/schema";
 import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
-export const generateObjectEditFormQuery = ({
-  schema,
-  objectId,
-  extraRelationshipNames = [],
-}: {
+export interface GetObjectForEditingFromApiParams extends ContextParams {
   schema: NodeSchema | ProfileSchema;
   objectId: string;
   extraRelationshipNames?: string[];
-}): string => {
+}
+
+export async function getObjectForEditingFromApi({
+  schema,
+  objectId,
+  extraRelationshipNames = [],
+  branchName,
+  atDate,
+}: GetObjectForEditingFromApiParams) {
   let objectSchema = schema;
   if (isTemplateSchema(schema)) {
     const { schema: nodeSchemaOfTemplate } = getSchema(schema.name);
@@ -31,7 +38,7 @@ export const generateObjectEditFormQuery = ({
       extraRelationshipNames.includes(r.name) && !formRelationships.some((fr) => fr.name === r.name)
   );
 
-  const request = {
+  const queryString = jsonToGraphQLQuery({
     query: {
       __name: "GetObjectForEditForm",
       [schema.kind as string]: {
@@ -66,7 +73,14 @@ export const generateObjectEditFormQuery = ({
         },
       },
     },
-  };
+  });
 
-  return jsonToGraphQLQuery(request);
-};
+  return graphqlClient.query({
+    query: gql(queryString),
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+    fetchPolicy: "no-cache",
+  });
+}

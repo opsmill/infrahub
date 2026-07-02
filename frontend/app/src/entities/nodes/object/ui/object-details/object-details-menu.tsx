@@ -30,9 +30,9 @@ import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { isNodeRelationshipOne } from "@/entities/nodes/object/domain/rules/is-node-relationship-one";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
@@ -214,14 +214,14 @@ export function ObjectDetailsMenu({
           title={`Edit ${nodeLabel}`}
           subtitle={objectSchema.description}
         />
-        <ObjectItemEditComponent
+        <ObjectEdit
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsEditModalOpen(false);
           }}
           objectId={objectData.id!}
-          objectname={objectSchema.kind!}
+          objectKind={objectSchema.kind!}
         />
       </Sheet>
 

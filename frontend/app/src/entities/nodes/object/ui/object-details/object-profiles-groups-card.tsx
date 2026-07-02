@@ -21,9 +21,9 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema, NodeSchema } from "@/entities/schema/domain/model/schema";
@@ -165,14 +165,14 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
           title={`Edit ${nodeLabel}`}
           subtitle={objectSchema.description}
         />
-        <ObjectItemEditComponent
+        <ObjectEdit
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsEditModalOpen(false);
           }}
           objectId={objectData.id}
-          objectname={objectSchema.kind!}
+          objectKind={objectSchema.kind!}
         />
       </Sheet>
     </>

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -64,14 +64,14 @@ const ObjectEditSlideOverTrigger = ({
           title={`Edit ${getNodeLabel(data)}`}
           subtitle={data?.description?.value}
         />
-        <ObjectItemEditComponent
+        <ObjectEdit
           closeDrawer={() => setIsEditDrawerOpen(false)}
           onUpdateComplete={() => {
             onUpdateComplete?.();
             setIsEditDrawerOpen(false);
           }}
           objectId={data.id}
-          objectname={schema.kind!}
+          objectKind={schema.kind!}
         />
       </Sheet>
     </>
