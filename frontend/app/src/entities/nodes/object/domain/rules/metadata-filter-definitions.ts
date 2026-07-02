@@ -2,7 +2,7 @@ import type {
   FilterDefinition,
   MetadataDateFilterDefinition,
   MetadataUserFilterDefinition,
-} from "@/entities/nodes/object/domain/rules/filter-definition";
+} from "@/entities/nodes/object/domain/model/filter-definition";
 
 export const METADATA_CREATED_AT: MetadataDateFilterDefinition = {
   type: "metadata-date",

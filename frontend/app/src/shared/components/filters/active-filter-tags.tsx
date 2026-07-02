@@ -13,7 +13,7 @@ import {
   HIDE_AVAILABLE_IP_FILTER,
   SHOW_AVAILABLE_IP,
 } from "@/entities/ipam/constants";
-import type { FilterDefinition } from "@/entities/nodes/object/domain/rules/filter-definition";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import { getFilterDefinitionLabel } from "@/entities/nodes/object/domain/rules/filter-definition";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";

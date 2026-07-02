@@ -1,6 +1,6 @@
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import type { FilterDefinition } from "@/entities/nodes/object/domain/rules/filter-definition";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { DateMetadataFilterForm } from "@/entities/nodes/object/ui/filters/date-metadata-filter-form";
 import { DecisionFilterForm } from "@/entities/nodes/object/ui/filters/decision-filter-form";

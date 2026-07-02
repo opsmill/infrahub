@@ -9,8 +9,8 @@ import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import {
-  type FilterDefinition,
   getFilterDefinitionLabel,
   getFilterDefinitionName,
 } from "@/entities/nodes/object/domain/rules/filter-definition";

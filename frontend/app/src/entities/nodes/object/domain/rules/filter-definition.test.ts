@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import {
-  type FilterDefinition,
   getFilterDefinitionLabel,
   getFilterDefinitionName,
 } from "@/entities/nodes/object/domain/rules/filter-definition";
