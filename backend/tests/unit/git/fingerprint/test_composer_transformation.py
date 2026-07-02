@@ -121,6 +121,18 @@ def test_python_incomplete_closure_folds_commit_id_despite_present_watch() -> No
     assert digest(commit="commit-1") != digest(commit="commit-2")
 
 
+def test_missing_query_fingerprint_folds_commit_id_despite_present_watch() -> None:
+    def digest(*, commit: str) -> str:
+        # No query is registered, so the upstream fingerprint is unresolved.
+        registry = FingerprintRegistry()
+        return build_composer(blob_shas=PY_BLOBS, commit=commit, registry=registry).compose_transformation(
+            _python_input(watch=InfrahubWatchConfig(files=[]))
+        )
+
+    # An unresolved upstream must not yield a stable fingerprint over an input it could not read.
+    assert digest(commit="commit-1") != digest(commit="commit-2")
+
+
 def test_jinja2_changes_on_template_path_and_closure() -> None:
     def digest(*, blobs: dict[str, str], **overrides: object) -> str:
         registry = FingerprintRegistry()

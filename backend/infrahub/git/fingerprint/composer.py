@@ -139,9 +139,9 @@ class FingerprintComposer:
     def compose_transformation(
         self, inputs: PythonTransformationFingerprintInput | Jinja2TransformationFingerprintInput
     ) -> str:
-        query_fingerprint = self._registry.get(kind=FingerprintKind.QUERY, name=inputs.query_name) or ""
+        query_fingerprint = self._registry.get(kind=FingerprintKind.QUERY, name=inputs.query_name)
         terms = [
-            f"query_fingerprint={query_fingerprint}",
+            f"query_fingerprint={query_fingerprint or ''}",
             f"closure={self._closure_term(inputs.dependencies)}",
         ]
         match inputs:
@@ -153,8 +153,10 @@ class FingerprintComposer:
             case _:  # pragma: no cover - exhaustiveness guard for a new transform kind
                 assert_never(inputs)
 
-        commit_term = fold_commit_id(
-            commit=self._commit, watch=inputs.watch, closure_complete=inputs.dependencies_complete
+        commit_term = self._resolve_commit_term(
+            watch=inputs.watch,
+            closure_complete=inputs.dependencies_complete,
+            upstream_resolved=query_fingerprint is not None,
         )
         if commit_term is not None:
             terms.append(f"commit_id={commit_term}")
@@ -179,17 +181,19 @@ class FingerprintComposer:
         return fingerprint
 
     def compose_generator_definition(self, inputs: GeneratorDefinitionFingerprintInput) -> str:
-        query_fingerprint = self._registry.get(kind=FingerprintKind.QUERY, name=inputs.query_name) or ""
+        query_fingerprint = self._registry.get(kind=FingerprintKind.QUERY, name=inputs.query_name)
         terms = [
-            f"query_fingerprint={query_fingerprint}",
+            f"query_fingerprint={query_fingerprint or ''}",
             f"closure={self._closure_term(inputs.dependencies)}",
             f"parameters={canonical_json(inputs.parameters)}",
             f"class_name={inputs.class_name}",
             f"convert_query_response={inputs.convert_query_response}",
             f"target_group_id={inputs.target_group_id}",
         ]
-        commit_term = fold_commit_id(
-            commit=self._commit, watch=inputs.watch, closure_complete=inputs.dependencies_complete
+        commit_term = self._resolve_commit_term(
+            watch=inputs.watch,
+            closure_complete=inputs.dependencies_complete,
+            upstream_resolved=query_fingerprint is not None,
         )
         if commit_term is not None:
             terms.append(f"commit_id={commit_term}")
@@ -197,6 +201,18 @@ class FingerprintComposer:
         fingerprint = self._hasher.hash(terms)
         self._registry.register(kind=FingerprintKind.GENERATOR_DEFINITION, name=inputs.name, fingerprint=fingerprint)
         return fingerprint
+
+    def _resolve_commit_term(
+        self, *, watch: InfrahubWatchConfig | None, closure_complete: bool, upstream_resolved: bool
+    ) -> str | None:
+        """Return the commit-id term for a transform/generator, or None to omit it.
+
+        A referenced upstream fingerprint that is absent from the same-import registry is an
+        unresolved output-affecting input, so it is treated exactly like an incomplete closure:
+        the commit id is folded in and the fingerprint can never be stable over an upstream it
+        could not read.
+        """
+        return fold_commit_id(commit=self._commit, watch=watch, closure_complete=closure_complete and upstream_resolved)
 
     def _closure_term(self, dependencies: Iterable[str]) -> str:
         hashed_paths = self._closure_selector.select(dependencies)

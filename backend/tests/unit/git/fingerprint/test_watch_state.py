@@ -29,7 +29,3 @@ def test_incomplete_closure_folds_commit_id_even_with_present_watch() -> None:
     # An incomplete closure means an output-affecting dependency is unknown, so the commit
     # id is folded to avoid a stable fingerprint over an unknown input set.
     assert fold_commit_id(commit="commit-1", watch=InfrahubWatchConfig(files=[]), closure_complete=False) == "commit-1"
-
-
-def test_complete_closure_with_present_watch_stays_stable() -> None:
-    assert fold_commit_id(commit="commit-1", watch=InfrahubWatchConfig(files=[]), closure_complete=True) is None

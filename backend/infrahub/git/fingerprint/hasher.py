@@ -15,8 +15,11 @@ def canonical_json(value: Any) -> str:
 
     Keys are sorted and all insignificant whitespace is removed so that logically
     identical values always produce the same string regardless of ordering.
+
+    A non-JSON-serializable value raises rather than being coerced, so a value whose
+    string form is run-specific can never silently destabilise the digest.
     """
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
 class FingerprintHasher:
