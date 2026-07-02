@@ -5,10 +5,8 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import {
-  PROPOSED_CHANGE_OBJECT,
-  PROPOSED_CHANGE_STATES,
-} from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { PROPOSED_CHANGE_STATES } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 
 export interface ProposedChangesCountsFromApiParams {
   filters?: Array<Filter>;

@@ -7,11 +7,11 @@ import { TableCell } from "@/shared/components/table/table-cell";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import {
   OPEN_STATE,
-  PROPOSED_CHANGE_OBJECT,
   STATE_VALUES_FILTER,
-} from "@/entities/proposed-changes/constants";
+} from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

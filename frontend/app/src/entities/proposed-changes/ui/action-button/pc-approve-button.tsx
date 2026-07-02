@@ -6,7 +6,10 @@ import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "@/entities/proposed-changes/constants";
+import {
+  APPROVE_DECISION,
+  CANCEL_APPROVE_DECISION,
+} from "@/entities/proposed-changes/domain/model/proposed-change-review";
 import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/domain/rules/has-user-approved-proposed-change";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";

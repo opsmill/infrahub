@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import type { Permission } from "@/entities/permission/types";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 
 export interface ActionsCellProps {
   permission: Permission;

@@ -4,6 +4,8 @@ import type {
   NodeRelationshipMany,
 } from "@/entities/nodes/object/domain/model/node";
 
+export const PROPOSED_CHANGE_OBJECT = "CoreProposedChange";
+
 export interface ProposedChangeDetail extends NodeCore {
   __typename: "CoreProposedChange";
   name: NodeAttribute<string>;

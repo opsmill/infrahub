@@ -1,6 +1,9 @@
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import { PROPOSED_CHANGE_STATES, STATE_VALUES_FILTER } from "@/entities/proposed-changes/constants";
+import {
+  PROPOSED_CHANGE_STATES,
+  STATE_VALUES_FILTER,
+} from "@/entities/proposed-changes/domain/model/proposed-change-state";
 
 export const computeProposedChangeFilters = ({
   filters,

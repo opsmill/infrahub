@@ -17,7 +17,7 @@ import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls"
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/model/proposed-change.types";
+import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { useGetProposedChangeDetails } from "@/entities/proposed-changes/ui/queries/get-proposed-change-details.query";
 import type { ProposedChangeOutletContext } from "@/entities/proposed-changes/ui/routing/use-proposed-change-outlet";

@@ -1,7 +1,7 @@
 import Content from "@/shared/components/layout/content";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { ProposedChangesManager } from "@/entities/proposed-changes/ui/proposed-changes-manager";
 import type { NodeSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

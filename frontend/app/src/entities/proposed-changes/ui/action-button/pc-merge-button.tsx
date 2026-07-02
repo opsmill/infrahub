@@ -9,7 +9,7 @@ import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { MERGE_STATE } from "@/entities/proposed-changes/constants";
+import { MERGE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 

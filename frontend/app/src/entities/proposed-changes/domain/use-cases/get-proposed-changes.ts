@@ -1,6 +1,8 @@
 import type { PaginatedResponse } from "@/shared/utils/pagination";
 
 import type { NodeCore, NodeMetadata } from "@/entities/nodes/object/domain/model/node";
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import {
   getProposedChangesFromApi,
   type ProposedChangesFromApiParams,
@@ -24,16 +26,27 @@ export type ProposedChangeItem = {
   metadata: NodeMetadata;
 };
 
-export type GetProposedChangesParams = ProposedChangesFromApiParams;
+// The "visible in list view" selection is a domain rule; the use-case supplies
+// it (defaulting to the standard list-view rules) so the api/ fetcher stays pure
+// transport and never imports another entity's domain/rules.
+export type GetProposedChangesParams = Omit<
+  ProposedChangesFromApiParams,
+  "getAttributesVisible" | "getRelationshipsVisible"
+> &
+  Partial<Pick<ProposedChangesFromApiParams, "getAttributesVisible" | "getRelationshipsVisible">>;
 
 export type GetProposedChangesResult = PaginatedResponse<ProposedChangeItem>;
 
-export type GetProposedChanges = (
-  params: GetProposedChangesParams
-) => Promise<GetProposedChangesResult>;
-
-export const getProposedChanges: GetProposedChanges = async (params) => {
-  const { data, errors } = await getProposedChangesFromApi(params);
+export const getProposedChanges = async ({
+  getAttributesVisible = getAttributesVisibleInListView,
+  getRelationshipsVisible = getRelationshipsVisibleInListView,
+  ...params
+}: GetProposedChangesParams): Promise<GetProposedChangesResult> => {
+  const { data, errors } = await getProposedChangesFromApi({
+    ...params,
+    getAttributesVisible,
+    getRelationshipsVisible,
+  });
 
   if (errors) {
     throw new Error(errors.map((e) => e.message).join("; "));

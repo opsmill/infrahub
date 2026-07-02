@@ -6,7 +6,7 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
 import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";

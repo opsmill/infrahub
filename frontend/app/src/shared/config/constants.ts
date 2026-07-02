@@ -1,7 +1,7 @@
 import type { CheckType } from "@/shared/api/graphql/generated/types";
 
 import type { RelationshipKind } from "@/entities/nodes/object/domain/model/node";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 
 export const DEFAULT_BRANCH_NAME = "main";
 

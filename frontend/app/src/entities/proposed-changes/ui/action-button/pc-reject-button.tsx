@@ -6,7 +6,10 @@ import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import { CANCEL_REJECT_DECISION, REJECT_DECISION } from "@/entities/proposed-changes/constants";
+import {
+  CANCEL_REJECT_DECISION,
+  REJECT_DECISION,
+} from "@/entities/proposed-changes/domain/model/proposed-change-review";
 import { hasUserRejectedProposedChange } from "@/entities/proposed-changes/domain/rules/has-user-rejected-proposed-change";
 import type { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";

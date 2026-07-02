@@ -24,7 +24,7 @@ import { DiffNode } from "@/entities/diff/ui/node-diff/node";
 import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/ui/node-diff/types";
 import { buildFilters } from "@/entities/diff/ui/node-diff/utils";
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/ui/queries/get-diff-tree.query";
-import { MERGE_STATE } from "@/entities/proposed-changes/constants";
+import { MERGE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 

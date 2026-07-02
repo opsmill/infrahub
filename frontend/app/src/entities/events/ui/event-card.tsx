@@ -16,7 +16,7 @@ import { EventAttributes } from "@/entities/events/ui/node-events/event-attribut
 import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
 import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
 import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
-import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/domain/model/proposed-change-events";
 
 const EventContent = (props: EventType) => {
   const { pathname } = useLocation();

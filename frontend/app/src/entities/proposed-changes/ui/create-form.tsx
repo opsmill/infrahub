@@ -27,7 +27,10 @@ import { QSP } from "@/shared/config/qsp";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/ui/branches-to-select-options";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { DRAFT_STATE, OPEN_STATE } from "@/entities/proposed-changes/constants";
+import {
+  DRAFT_STATE,
+  OPEN_STATE,
+} from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { useCreateProposedChange } from "@/entities/proposed-changes/ui/queries/create-proposed-change.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
