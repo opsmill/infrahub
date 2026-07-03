@@ -47,7 +47,7 @@ class FlowRunRetention:
             batch_deleted = 0
             failed_deletes = []
 
-            for flow_run in flow_runs:
+            for index, flow_run in enumerate(flow_runs, start=1):
                 try:
                     if delete:
                         await self.client.delete_flow_run(flow_run_id=flow_run.id)
@@ -63,8 +63,8 @@ class FlowRunRetention:
                     logger.warning(f"Failed to delete flow run {flow_run.id}: {e}")
                     failed_deletes.append(flow_run.id)
 
-                # Rate limiting
-                if batch_deleted % 10 == 0:
+                # Rate limiting, based on runs processed so failures throttle the same way as successes.
+                if index % 10 == 0:
                     await asyncio.sleep(0.5)
 
             logger.info(f"Delete {batch_deleted}/{len(flow_runs)} flow runs (total: {deleted_total})")
