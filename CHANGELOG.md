@@ -11,6 +11,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.2) - 2026-07-03
+
+### Fixed
+
+- Node mutation events are no longer silently dropped when the node has a large number of relationship peers. Previously, creating or updating a node with roughly 250 or more peers (for example a trunk interface tagging a large VLAN range) produced an event whose related resources exceeded the maximum accepted by the task manager, which rejected the whole event: it never appeared in the node's activity log and automation triggers never fired for it. The related resources are now capped at that maximum, keeping the node-scoped entries and as many relationship updates as fit. ([#9794](https://github.com/opsmill/infrahub/issues/9794))
+- Display labels, human-friendly IDs, and computed attributes that read across a relationship no longer error when the related peer is missing, such as after the peer has been deleted. The missing value now resolves as empty. This previously caused branch merge, rebase, and diff calculation to fail.
+
 ## [Infrahub - v1.10.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.1) - 2026-06-30
 
 ### Added
