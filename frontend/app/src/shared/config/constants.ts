@@ -1,5 +1,4 @@
 import type { RelationshipKind } from "@/entities/nodes/object/domain/model/node";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 
 export const NODE_OBJECT = "CoreNode";
 
@@ -10,38 +9,6 @@ export const TEMPLATE_GENERIC_KIND = "CoreObjectTemplate";
 export const FILE_OBJECT_KIND = "CoreFileObject";
 
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
-
-export const MENU_EXCLUDELIST = [
-  PROPOSED_CHANGE_OBJECT,
-  "CoreChangeComment",
-  "CoreChangeThread",
-  "CoreFileThread",
-  "CoreArtifactThread",
-  "CoreObjectThread",
-  "InternalRefreshToken",
-  "CoreThreadComment",
-  "CoreArtifactCheck",
-  "CoreArtifactTarget",
-  "CoreCheck",
-  "CoreComment",
-  "CoreGeneratorCheck",
-  "CoreGeneratorValidator",
-  "CoreNode",
-  "CoreStandardCheck",
-  "CoreTaskTarget",
-  "CoreThread",
-  "CoreDataCheck",
-  "CoreFileCheck",
-  "CoreSchemaCheck",
-  "CoreSchemaValidator",
-  "CoreDataValidator",
-  "CoreRepositoryValidator",
-  "CoreArtifactValidator",
-  "CoreUserValidator",
-  "CoreValidator",
-  "LineageOwner",
-  "LineageSource",
-];
 
 export const NODE_PATH_EXCLUDELIST = ["property"];
 
