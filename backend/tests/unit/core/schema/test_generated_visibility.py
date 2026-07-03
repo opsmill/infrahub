@@ -43,9 +43,18 @@ def _literal_values(annotation: typing.Any) -> tuple[typing.Any, ...] | None:
     return None
 
 
+# Core user-settable fields that must remain writable; a settable field silently defaulting to a
+# non-write visibility would drop out of the write model and break loading a hand-authored schema.
+REQUIRED_WRITE_FIELDS = {
+    "node": {"name", "namespace", "description"},
+    "attribute": {"name", "kind", "optional", "read_only"},
+    "relationship": {"name", "peer", "kind", "cardinality", "optional"},
+}
+
+
 @pytest.mark.parametrize("family", list(DEFINITION_TO_WRITE_MODEL))
 def test_write_model_exposes_no_read_or_internal_field(family: str) -> None:
-    """SC-001: the generated write model of each family exposes only write-level fields."""
+    """The generated write model of each family exposes only write-level fields."""
     definition, write_model = DEFINITION_TO_WRITE_MODEL[family]
 
     non_write_names = {field.name for field in definition.attributes if field.visibility is not Visibility.WRITE} | {
@@ -56,9 +65,22 @@ def test_write_model_exposes_no_read_or_internal_field(family: str) -> None:
     assert not leaked, f"{write_model.__name__} exposes non-write fields: {sorted(leaked)}"
 
 
+@pytest.mark.parametrize("family", list(REQUIRED_WRITE_FIELDS))
+def test_write_model_keeps_core_settable_fields(family: str) -> None:
+    """Each family's core user-settable fields stay present in its write model.
+
+    Guards against a settable field silently defaulting to a non-write visibility and being
+    dropped from the write model, which would reject a valid hand-authored schema.
+    """
+    _, write_model = DEFINITION_TO_WRITE_MODEL[family]
+
+    missing = REQUIRED_WRITE_FIELDS[family] - set(write_model.model_fields)
+    assert not missing, f"{write_model.__name__} dropped settable fields: {sorted(missing)}"
+
+
 @pytest.mark.parametrize("family", list(DEFINITION_TO_WRITE_MODEL))
 def test_write_model_publishes_allowed_values(family: str) -> None:
-    """SC-002: no write-level constrained field is bare str/int; each publishes its allowed set."""
+    """No write-level constrained field is bare str/int; each publishes its allowed set."""
     definition, write_model = DEFINITION_TO_WRITE_MODEL[family]
 
     for field in definition.attributes:

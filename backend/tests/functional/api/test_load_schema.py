@@ -677,6 +677,91 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert "kind" in body
         assert "NotARealKind" in body
 
+    async def test_schema_load_rejects_non_write_fields_in_extensions(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Reject non-write fields nested under `extensions.nodes`, naming each with its location.
+
+        An extension node's attribute carrying a read-level field (`inherited`), an unknown field,
+        and an out-of-enum `kind` must all be rejected, each located under `extensions.nodes[*]`.
+        """
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "extensions": {
+                        "nodes": [
+                            {
+                                "kind": "TestDevice",
+                                "attributes": [
+                                    {
+                                        "name": "extra",
+                                        "kind": "NotARealKind",
+                                        "inherited": True,
+                                        "not_a_real_field": "value",
+                                    }
+                                ],
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 422
+        messages = [item["msg"] for item in response.json()["detail"]]
+        joined = " ".join(messages)
+        assert "extensions.nodes[0].attributes[0].inherited" in joined, messages
+        assert "extensions.nodes[0].attributes[0].not_a_real_field" in joined, messages
+        assert "extensions.nodes[0].attributes[0].kind" in joined, messages
+        assert "NotARealKind" in joined, messages
+
+    async def test_schema_load_rejects_out_of_enum_relationship_cardinality(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Reject a relationship whose `cardinality` is outside its allowed set, naming field and value."""
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {
+                            "name": "Device",
+                            "namespace": "Test",
+                            "attributes": [{"name": "name", "kind": "Text"}],
+                            "relationships": [
+                                {"name": "peers", "peer": "TestDevice", "cardinality": "both", "optional": True}
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 422
+        messages = [item["msg"] for item in response.json()["detail"]]
+        joined = " ".join(messages)
+        assert "nodes[0].relationships[0].cardinality" in joined, messages
+        assert "both" in joined, messages
+
     async def test_stored_schema_with_read_level_field_reads_back(
         self,
         initial_dataset: str,
@@ -685,7 +770,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         api_admin_token: str,
         default_branch: Branch,
     ) -> None:
-        """A stored schema containing now-`read` fields reads back without error (FR-010).
+        """A stored schema containing now-`read` fields reads back without error.
 
         Loading a generic and a node that inherits from it produces read-level fields the user
         never submitted (`used_by` on the generic, `inherited` on the node's inherited attribute).
@@ -733,7 +818,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch: Branch,
     ) -> None:
-        """An `id` in a payload cannot rename/delete an object the caller may not modify (R1).
+        """An `id` in a payload cannot rename/delete an object the caller may not modify.
 
         A caller without schema-management permission cannot mutate an existing object by
         carrying its `id`: authorization is enforced before any id-driven mutation, so the

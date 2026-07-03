@@ -298,8 +298,8 @@ def _generate_custom_graphql_types(context: Context) -> None:
             context=context,
             command=f"uv run infrahubctl graphql generate-return-types {gql_file} --schema schema/schema.graphql",
         )
-        execute_command(context=context, command=f"uv run ruff check --fix {Path(gql_file).parent}")
-        execute_command(context=context, command=f"uv run ruff format {Path(gql_file).parent}")
+        execute_command(context=context, command=f'uv run ruff check --fix "{Path(gql_file).parent}"')
+        execute_command(context=context, command=f'uv run ruff format "{Path(gql_file).parent}"')
 
 
 @task
@@ -379,8 +379,8 @@ def _generate_schemas(context: Context) -> None:
     relationship_schema_output = f"{generated}/relationship_schema.py"
     Path(relationship_schema_output).write_text(relationship_rendered, encoding="utf-8")
 
-    execute_command(context=context, command=f"ruff format {generated}")
-    execute_command(context=context, command=f"ruff check --fix {generated}")
+    execute_command(context=context, command=f'ruff format "{generated}"')
+    execute_command(context=context, command=f'ruff check --fix "{generated}"')
 
     _generate_schemas_sdk(context=context)
 
@@ -451,8 +451,8 @@ def _generate_schemas_sdk(context: Context) -> None:
     )
     Path(f"{generated}/__init__.py").write_text(init_content, encoding="utf-8")
 
-    execute_command(context=context, command=f"ruff format {generated}")
-    execute_command(context=context, command=f"ruff check --fix {generated}")
+    execute_command(context=context, command=f'ruff format "{generated}"')
+    execute_command(context=context, command=f'ruff check --fix "{generated}"')
 
 
 def _jinja2_filter_inheritance(value: dict[str, Any], sync: bool = False) -> str:
