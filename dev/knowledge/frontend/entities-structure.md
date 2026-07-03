@@ -6,7 +6,7 @@ Location: `frontend/app/src/entities/`
 
 Each entity (context) is organized into three layers with strict import rules. Dependencies flow in one direction: ui/ -> domain/ -> api/.
 
-`domain/` is organized as `model/` (types + vocabulary), `rules/` (pure functions), and `use-cases/` (orchestration). Use-cases always live in `domain/use-cases/` — even a single one; types always in `domain/model/`. Never add **entity-root catch-all files** (`types.ts`, `constants.ts`, `stores.ts`) or an **entity-root `utils/` folder**: types/vocabulary → `domain/model`, pure helpers → `domain/rules`, view-model/table helpers and hooks → `ui/`, and generated↔domain **mappers live in `api/`**. A few entities still violate this — see [Known exceptions (migration debt)](#known-exceptions-migration-debt).
+`domain/` is **always** organized as `model/` (types + vocabulary), `rules/` (pure functions), and `use-cases/` (orchestration) — every entity, regardless of size; there is no file-count threshold below which `domain/` stays flat. Use-cases always live in `domain/use-cases/` — even a single one; types always in `domain/model/`. Never add **entity-root catch-all files** (`types.ts`, `constants.ts`, `stores.ts`) or an **entity-root `utils/` folder**: types/vocabulary → `domain/model`, pure helpers → `domain/rules`, view-model/table helpers and hooks → `ui/`, and generated↔domain **mappers live in `api/`**. A few entities still violate this — see [Known exceptions (migration debt)](#known-exceptions-migration-debt).
 
 ```text
 entities/{name}/
@@ -49,6 +49,28 @@ Within `model/`/`rules/`/`use-cases/`, split into multiple files by concept (e.g
 `proposed-change-state.ts`, `proposed-change-thread.ts`) rather than one grab-bag `types.ts`/`constants.ts`.
 Group by domain concept and relatedness, not by "types vs constants".
 
+### When to split a concept out
+
+Give a concept its own file (or cluster of files) inside the layer folders only when one of these
+is true:
+
+1. The domain core is becoming too large to navigate.
+2. A new concept appears with enough model, rules, tests, and context to deserve its own area.
+3. The new concept is different enough that keeping it inside the generic model/rules files makes
+   those files harder to understand.
+
+Never split on a file-count threshold — counts are arbitrary and make similar entities look
+different for no comprehension gain.
+
+<!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
+**Where a type lives — model vs colocated.** Move a type to `domain/model/` when it is **shared
+domain vocabulary** — an entity, value object, ID, filter, or union that multiple call-sites import
+as a concept (e.g. `FilterDefinition`, `NumberPool`, `BranchListItem`). Keep a type **colocated with
+its function** when it is that function's own contract — a `Params`/`Result`/function-signature
+alias used only to type one use-case or rule (e.g. `GetBranchesParams`/`GetBranchesResult` stay in
+the `get-branches` use-case; `SchemaResult` stays in `rules/resolve-schema.ts`). Value-object *data*
+(predefined constant instances of domain types, e.g. `ALL_METADATA_FILTERS`) is vocabulary → `model/`.
+
 A former entity-root `utils/` folder is an anti-pattern: reclassify each file — pure functions to
 `domain/rules/`, React/table/view helpers to `ui/`.
 
@@ -67,6 +89,10 @@ A hand-written domain type plus an `api/` mapper is **optional** — reach for i
 | **domain/rules** | own `domain/model`, `shared/`, generated types | `api/`, `ui/`, React, TanStack, Jotai, browser storage |
 | **domain/use-cases** | own `api/` (incl. mappers), own `domain/model` + `rules`, `shared/`, generated types | `ui/`, React, TanStack, Jotai, browser storage |
 | **ui/** | `domain/` (same entity), `shared/`, other entities' `domain/` and `ui/` | Another entity's `api/` |
+
+<!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
+These rules are **enforced by review only** — there is no lint guard (a Biome `noRestrictedImports`
+guard was trialled and dropped; dependency-cruiser is a deferred proposal).
 
 Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Because `domain/model` imports nothing back, `api/` may import it not only for mapper return **types** but also for plain **vocabulary constants** (schema kinds, state strings, enums used to build queries) — the import stays acyclic. What `api/` must never import is domain **logic** (`domain/rules`, `domain/use-cases`) or `ui/`. Generated types (incl. wire DTOs) may enter `domain/` (see above); `domain/` must not read or write browser storage or global state directly (one known violation remains — see [Known exceptions (migration debt)](#known-exceptions-migration-debt)).
 
@@ -105,10 +131,6 @@ and remove them when touching the code:
 - Entity-root state and files: `branches/stores.ts` (Jotai `branchesState`, `currentBranchAtom`),
   `schema/stores/`, `proposed-changes/stores/`, and the stray root component
   `nodes/getObjectItemDisplayValue.tsx`.
-- Flat `domain/` folders (no `model`/`rules`/`use-cases` split): `artifacts/domain/` (`artifact.ts`
-  — home of `ARTIFACT_OBJECT` — plus `generate-artifact.ts`, `get-artifact-file.ts`),
-  `user-profile/domain/` (four flat use-case files), and
-  `nodes/object-file/domain/get-object-file.ts`.
 - Global state in a use-case: `branches/domain/use-cases/get-branches.ts` imports `store` from
   `@/shared/stores` and calls `store.set(branchesState, branches)` inside `getAllBranches`.
 - Page size outside `ui/queries`: `BRANCHES_PER_PAGE` is defined in
@@ -122,6 +144,16 @@ and remove them when touching the code:
   `shared/components/display/meta-details-tooltips.tsx`, `shared/components/table/data-table.tsx`,
   `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
   reaches `nodes/object`'s `api/`).
+<!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
+- Backend-authoritative violation: `path-traversal/domain/rules/visible-namespace.ts`
+  (`HIDDEN_NAMESPACES`) is a client-side mirror of the backend `DEFAULT_EXCLUDED_NAMESPACES` —
+  exactly what [Backend is authoritative](#backend-is-authoritative) forbids. The migration only
+  relocated it; the fix is to surface excluded namespaces via the API.
+- One remaining `utils/` **directory** awaiting the fan-out treatment applied to `utils.ts` files:
+  `nodes/object/ui/object-table/utils/`.
+- `api/` calling another entity's use-case: `nodes/relationships/api/get-default-parent-from-api.ts`
+  imports `getSchema` from schema's `domain/use-cases` (forbidden: `api/` may only import `shared/`
+  and its own `domain/model`). Fix by lifting the `getSchema` call into a `relationships` use-case.
 
 ## Data Flow
 

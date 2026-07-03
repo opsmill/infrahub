@@ -2,7 +2,7 @@
 
 **Feature Branch**: `frontend-entities-arch-migration`
 **Created**: 2026-07-02
-**Status**: Draft
+**Status**: Extracted
 **Input**: Reconcile and migrate the frontend `entities/` folder toward a feature-first, DDD-inspired structure (`api/`, `ui/`, `domain/{model,rules,use-cases}`), reconciling with — not superseding — the existing documented architecture in `dev/knowledge/frontend/entities-structure.md`.
 
 ## Overview
