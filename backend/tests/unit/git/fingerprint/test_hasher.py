@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from infrahub.git.fingerprint.hasher import FingerprintHasher, canonical_json
 
 
@@ -31,3 +33,8 @@ def test_canonical_json_is_key_order_independent() -> None:
 
 def test_canonical_json_has_no_insignificant_whitespace() -> None:
     assert canonical_json({"a": 1, "b": [1, 2]}) == '{"a":1,"b":[1,2]}'
+
+
+def test_canonical_json_raises_on_non_serializable_value() -> None:
+    with pytest.raises(TypeError, match=r"^Object of type object is not JSON serializable$"):
+        canonical_json({"a": object()})

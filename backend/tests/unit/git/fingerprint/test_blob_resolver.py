@@ -21,6 +21,25 @@ def _commit_files(repo_dir: Path, files: dict[str, str]) -> str:
     return commit.hexsha
 
 
+# git blob SHAs for the file contents below - `git hash-object` of the raw bytes.
+_SHA_ALPHA = "7e74e68b2a782a3aead46d987a63ca1c91091c13"
+_SHA_BETA = "e1d65540f4fdf72431ec47e001282cc7e8ed7c0c"
+_SHA_GAMMA = "f6ce3c605d8e619e80eb03eb65fc984a940abde7"
+
+
+def test_resolve_links_each_path_to_its_own_blob_sha(tmp_path: Path) -> None:
+    commit = _commit_files(tmp_path, {"a.py": "alpha", "b.py": "beta", "sub/c.py": "gamma"})
+    resolver = GitBlobResolver(repo=Repo(tmp_path), commit=commit)
+
+    pairs = dict(resolver.resolve(["sub/c.py", "a.py", "b.py"]))
+
+    assert pairs == {
+        "a.py": _SHA_ALPHA,
+        "b.py": _SHA_BETA,
+        "sub/c.py": _SHA_GAMMA,
+    }
+
+
 def test_resolve_returns_sorted_path_blob_pairs(tmp_path: Path) -> None:
     commit = _commit_files(tmp_path, {"b.py": "b", "a.py": "a", "sub/c.py": "c"})
     resolver = GitBlobResolver(repo=Repo(tmp_path), commit=commit)
