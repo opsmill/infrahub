@@ -91,6 +91,52 @@ All `AttributeSchema` entries must include a `description` field. This is enforc
 
 `backend/tests/component/message_bus/operations/requests/test_proposed_change.py::test_get_proposed_change_schema_integrity_constraints` contains hardcoded constraint counts. These counts change whenever schemas are added or removed because `ConstraintValidatorDeterminer` iterates all schemas in the registry and generates one `SchemaUpdateConstraintInfo` per validatable property. After schema changes, run the test to get actual counts and update the assertions. See `#2592` for planned improvements.
 
+## Field Visibility and the Write / Read / Internal Models
+
+Every schema field carries a `visibility` classification in its `extra` metadata, defined by
+the `Visibility` enum in `backend/infrahub/core/constants/schema.py`. The three levels are
+ordinal and nested — `write ⊆ read ⊆ internal`:
+
+| Level | Who may see/set it | Examples |
+|-------|--------------------|----------|
+| `WRITE` | User may submit it on load | `name`, `namespace`, `attributes`, `relationships` |
+| `READ` | Returned on `GET /api/schema` but not settable | `inherited`, `used_by`, `hierarchy`, derived `kind` |
+| `INTERNAL` | Backend-only, never exposed | internal bookkeeping fields |
+
+Fields default to `INTERNAL` unless their definition sets a higher `visibility`, so a new
+field is hidden until it is deliberately classified.
+
+### Model families
+
+The `internal.py` definitions remain the single source of truth. `invoke backend.generate`
+renders two model families from them by filtering each field on its visibility level (see
+`_generate_schemas_sdk` in `tasks/backend.py`):
+
+- **write models** — include only `WRITE` fields and set `extra="forbid"`, so submitting a
+  read-only, internal, or unknown field is rejected.
+- **read models** — include `WRITE` and `READ` fields, describing the shape returned by
+  `GET /api/schema`.
+
+Because both families are generated from the same definitions, a field's classification is
+declared once and both the write contract and the read shape follow automatically.
+
+### Backend → SDK dependency
+
+The generated write/read models are rendered **into the Python SDK**, at
+`python_sdk/infrahub_sdk/schema/generated/{write,read}.py`. The output is self-contained
+(only `pydantic` + `typing`) so it imports with just the SDK installed — no backend, no
+server. This inverts the usual direction: the backend's schema definitions are the source,
+and the generator writes the artifact into the SDK submodule, where it is committed and
+shipped inside the published package.
+
+`POST /api/schema/load` enforces the write contract at the boundary by calling the SDK's
+`validate_schema()` (`python_sdk/infrahub_sdk/schema/validate.py`) from the
+`validate_write_contract` validator on `SchemaLoadAPI` (`backend/infrahub/api/schema.py`).
+The same validator runs offline in the SDK, so a client gets the identical field-level
+verdict before submitting. After changing a field's `visibility` (or adding a field), run
+`invoke backend.generate` and commit the regenerated SDK models alongside the backend
+change; CI fails if the generated artifact is stale.
+
 ## Key Locations
 
 | Component | Path |
@@ -98,6 +144,10 @@ All `AttributeSchema` entries must include a `description` field. This is enforc
 | Core schema definitions | `backend/infrahub/core/schema/definitions/core/` |
 | Internal schema definitions | `backend/infrahub/core/schema/definitions/internal/` |
 | Generated schemas (do not edit) | `backend/infrahub/core/schema/generated/` |
+| `Visibility` enum | `backend/infrahub/core/constants/schema.py` |
+| SDK write/read generator | `_generate_schemas_sdk` in `tasks/backend.py` |
+| Generated SDK write/read models (do not edit) | `python_sdk/infrahub_sdk/schema/generated/{write,read}.py` |
+| Offline write-contract validator | `python_sdk/infrahub_sdk/schema/validate.py` |
 | RelationshipSchema class | `backend/infrahub/core/schema/relationship_schema.py` |
 | AttributeSchema class | `backend/infrahub/core/schema/attribute_schema.py` |
 | GenericSchema class | `backend/infrahub/core/schema/generic_schema.py` |

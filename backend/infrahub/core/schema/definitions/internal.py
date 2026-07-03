@@ -172,7 +172,7 @@ class SchemaAttribute(BaseModel):
         return kind_map[self.kind]
 
     def _external_internal_kind(self) -> str:
-        fixed_types = {
+        fixed_types: dict[Any, str] = {
             AttributeSchema: "list[GeneratedAttributeSchema]",
             RelationshipSchema: "list[GeneratedRelationshipSchema]",
             DropdownChoice: "list[dict[str, Any]]",
@@ -185,6 +185,8 @@ class SchemaAttribute(BaseModel):
             return str(internal)
         if internal in fixed_types:
             return fixed_types[internal]
+        if internal is None:
+            return "Any"
         if self.kind == "List":
             return f"list[{internal.__name__}]"
         return internal.__name__

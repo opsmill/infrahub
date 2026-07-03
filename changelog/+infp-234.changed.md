@@ -1,0 +1,5 @@
+**Breaking:** `POST /api/schema/load` now validates every submitted node and generic against a user-facing *write* contract and rejects any field a user may not set. Payloads that were previously accepted but carried read-only or internal fields — `inherited`, `used_by`, `hierarchy`, and a derived `kind` on nodes/generics — are now rejected with a field-level error naming each offending field. Constrained fields (for example an attribute `kind` or a relationship `cardinality`) set outside their allowed values are rejected the same way.
+
+`GET /api/schema` is unchanged and still returns read-only fields such as `inherited` and `used_by`.
+
+To produce a submittable payload, strip the non-settable fields before loading. The write contract is published as a committed model in the Python SDK (`infrahub_sdk.schema.generated.write`); the SDK's `validate_schema()` reproduces the server's verdict offline so a payload can be checked before submission. See the migration guide "Stricter schema-load validation" in the release notes for the full field list and client-side steps.

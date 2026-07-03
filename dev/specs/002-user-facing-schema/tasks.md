@@ -110,11 +110,11 @@ description: "Task list for User-Facing Schema Separation (INFP-234)"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T027 [P] Add a Towncrier changelog fragment in `changelog/` describing the breaking `POST /api/schema/load` behaviour (non-settable fields now rejected) (FR-011).
-- [ ] T028 [P] Write an upgrade/migration note (in `docs/` upgrade guide) documenting the stricter load behaviour and how clients strip non-settable fields against the published write schema (FR-011).
-- [ ] T029 Run the full `specs/002-user-facing-schema/quickstart.md` validation end-to-end.
-- [ ] T030 [P] Run `uv run invoke backend.generate`, `schema.generate-jsonschema`, and `docs.generate`; run `/pre-ci` and confirm the generated-file/`docs.validate` CI checks pass on both backend and SDK.
-- [ ] T031 [P] Update backend schema architecture notes in `dev/knowledge/backend/` to describe the write/read/internal model layering and the backend→SDK model dependency.
+- [X] T027 [P] Add a Towncrier changelog fragment in `changelog/` describing the breaking `POST /api/schema/load` behaviour (non-settable fields now rejected) (FR-011).
+- [X] T028 [P] Write an upgrade/migration note (in `docs/` upgrade guide) documenting the stricter load behaviour and how clients strip non-settable fields against the published write schema (FR-011).
+- [X] T029 Run the full `specs/002-user-facing-schema/quickstart.md` validation end-to-end.
+- [X] T030 [P] Run `uv run invoke backend.generate`, `schema.generate-jsonschema`, and `docs.generate`; run `/pre-ci` and confirm the generated-file/`docs.validate` CI checks pass on both backend and SDK.
+- [X] T031 [P] Update backend schema architecture notes in `dev/knowledge/backend/` to describe the write/read/internal model layering and the backend→SDK model dependency.
 
 ---
 

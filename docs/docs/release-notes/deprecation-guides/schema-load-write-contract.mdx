@@ -1,0 +1,84 @@
+# Stricter schema-load validation
+
+Infrahub now validates every schema submitted to `POST /api/schema/load` against a
+user-facing **write** contract and rejects any field that a user is not allowed to set.
+Payloads that earlier versions silently accepted — because they echoed back fields that
+Infrahub itself derives or computes — are now rejected with a field-level error.
+
+This guide explains what changed, who is affected, and how to make an existing payload
+submittable again.
+
+:::warning
+This is a breaking change to the load endpoint. A payload that loaded successfully before
+may now be rejected. `GET /api/schema` is unchanged, so the most common way to hit this is
+to read a schema back, edit it, and load it again without stripping the read-only fields.
+:::
+
+## What changed
+
+Schema fields are now classified by who may see or set them:
+
+- **write** — fields a user may submit (for example `name`, `namespace`, `attributes`,
+  `relationships`, and each attribute's or relationship's settable properties).
+- **read** — fields Infrahub computes and returns on `GET /api/schema`, but that a user may
+  not set. These include `inherited`, `used_by`, `hierarchy`, and the derived `kind` on a
+  node or generic.
+- **internal** — fields used only inside the backend and never exposed.
+
+`POST /api/schema/load` validates each submitted node and generic against the write contract.
+It rejects, with a field-level message naming the offending field:
+
+- any **read-only** field (`inherited`, `used_by`, `hierarchy`, derived `kind`),
+- any **unknown** field, and
+- any **constrained** field set outside its allowed values — for example an attribute
+  `kind` or a relationship `cardinality` / `kind`.
+
+`GET /api/schema` is unchanged: it still returns the read-only fields (`inherited`,
+`used_by`, and so on). Only submission is stricter.
+
+## Who is affected
+
+You are affected if you submit schemas to `POST /api/schema/load` (directly, through
+`infrahubctl schema load`, or through the Python SDK) and your payload includes fields that
+Infrahub derives. The classic case is a round-trip: reading a schema with `GET /api/schema`,
+modifying it, and loading it back without removing the read-only fields it contained.
+
+You are not affected if your schema files only ever contained the fields you author by hand
+(the write fields); those payloads keep loading unchanged.
+
+## How to fix a rejected payload
+
+The write contract is published as a committed model inside the Python SDK, in
+`infrahub_sdk.schema.generated.write`. The SDK exposes an offline validator that reproduces
+the server's verdict without a running server, so you can check and correct a payload before
+submitting it.
+
+```python
+from infrahub_sdk.schema.validate import validate_schema
+
+# schema is your schema-root payload: {"version": "1.0", "nodes": [...], "generics": [...]}
+result = validate_schema(schema)
+if not result.valid:
+    for message in result.messages:
+        print(message)  # e.g. "nodes[0].inherited: Extra inputs are not permitted"
+```
+
+Each message names the field path (for example `nodes[0].inherited` or
+`nodes[0].attributes[1].kind`) so you can locate and remove the offending value.
+
+To make a payload submittable:
+
+1. **Remove the read-only fields** from every node and generic — `inherited`, `used_by`,
+   `hierarchy`, and the derived `kind`. Do not set them; Infrahub derives them.
+2. **Remove any unknown fields** the validator reports.
+3. **Correct constrained values** the validator reports as out of range (for example an
+   attribute `kind` that is not one of the allowed kinds).
+4. Re-run `validate_schema()` until it returns `valid = True`, then load.
+
+Because the write model is versioned and shipped inside the SDK package, installing the SDK
+that matches your Infrahub version gives you the exact contract that server enforces.
+
+## Related resources
+
+- [Create and load a schema](../../schema/create-and-load) — the schema loading guide
+- [Node schema reference](../../reference/schema/node) — the schema field reference
