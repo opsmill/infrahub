@@ -6,10 +6,10 @@ import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 
 import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/constants";
-import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
+import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-attributes-visible-in-list-view";
+import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-relationships-visible-in-list-view";
 import { IpAddressAvailableCreateFormTrigger } from "@/entities/ipam/ip-addresses/ui/ip-address-available-create-form-trigger";
-import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
-import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
 import type {
   NodeAttribute,
   NodeObject,

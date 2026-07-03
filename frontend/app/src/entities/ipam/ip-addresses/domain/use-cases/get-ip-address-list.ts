@@ -8,9 +8,9 @@ import {
   getIpAddressListWithAvailabilityFromApi,
   getIpAddressListWithoutAvailabilityFromApi,
 } from "@/entities/ipam/ip-addresses/api/get-ip-address-list-from-api";
-import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
-import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
-import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
+import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-attributes-visible-in-list-view";
+import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-relationships-visible-in-list-view";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
