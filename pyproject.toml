@@ -822,6 +822,8 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Rules with violations in adapters tests                                                        #
     ##################################################################################################
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0917",  # Too many positional arguments
     "PLR6301",  # Method could be a function, class method, or static method
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
 ]
