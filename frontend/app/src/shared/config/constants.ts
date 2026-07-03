@@ -35,8 +35,6 @@ export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
 export const PROPOSED_CHANGES_VALIDATOR_OBJECT = "CoreValidator";
 
-export const NUMBER_POOL_OBJECT = "CoreNumberPool";
-
 export const MENU_EXCLUDELIST = [
   PROPOSED_CHANGE_OBJECT,
   "CoreChangeComment",

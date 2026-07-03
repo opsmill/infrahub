@@ -7,7 +7,7 @@ import { GenericObjectForm } from "@/shared/components/form/generic-object-form"
 import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { FILE_OBJECT_KIND, NUMBER_POOL_OBJECT } from "@/shared/config/constants";
+import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ProfileData } from "@/entities/nodes/profiles/domain/model/profile";
@@ -19,7 +19,11 @@ import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
 } from "@/entities/repository/domain/model/repository";
-import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+import {
+  IP_ADDRESS_POOL,
+  IP_PREFIX_POOL,
+  NUMBER_POOL_KIND,
+} from "@/entities/resource-manager/domain/model/pool";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
@@ -96,7 +100,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (kind === NUMBER_POOL_OBJECT) {
+  if (kind === NUMBER_POOL_KIND) {
     return <NumberPoolForm {...props} />;
   }
 

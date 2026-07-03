@@ -25,11 +25,11 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
-import { NUMBER_POOL_OBJECT } from "@/shared/config/constants";
 
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import {
+  NUMBER_POOL_KIND,
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
 } from "@/entities/resource-manager/domain/model/pool";
@@ -71,7 +71,7 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
     if (currentObject) {
       await updateObject.mutateAsync(
         {
-          objectKind: NUMBER_POOL_OBJECT,
+          objectKind: NUMBER_POOL_KIND,
           data: {
             id: currentObject.id,
             ...newObject,
@@ -92,7 +92,7 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
     } else {
       await createObject.mutateAsync(
         {
-          objectKind: NUMBER_POOL_OBJECT,
+          objectKind: NUMBER_POOL_KIND,
           data: newObject,
         },
         {
