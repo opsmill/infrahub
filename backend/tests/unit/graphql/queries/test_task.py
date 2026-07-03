@@ -162,6 +162,11 @@ FETCH_OPTIONS_CASES = [
         expected=FlowRunFetchOptions(include_runs=True, include_logs=True),
     ),
     FetchOptionsCase(
+        name="logs_count_alone_enables_logs",
+        fields={"edges": {"node": {"logs": {"count": {}}}}},
+        expected=FlowRunFetchOptions(include_runs=True, include_logs=True),
+    ),
+    FetchOptionsCase(
         name="progress_enables_progress",
         fields={"edges": {"node": {"progress": {}}}},
         expected=FlowRunFetchOptions(include_runs=True, include_progress=True),

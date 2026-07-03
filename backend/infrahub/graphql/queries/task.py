@@ -75,7 +75,7 @@ class FlowRunConnectionSerializer:
 
 def _build_fetch_options(fields: dict[str, Any], log_limit: int | None, log_offset: int | None) -> FlowRunFetchOptions:
     node_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node"]) or {}
-    log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "logs", "edges", "node"])
+    log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "logs"])
     return FlowRunFetchOptions(
         include_count="count" in fields,
         include_runs=bool(node_fields),
