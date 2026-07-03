@@ -410,38 +410,35 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
         shared_remote: Path,
         repo_name: str,
     ) -> None:
-        """A commit landed on the shared remote's branch does not move the read-only consumer.
+        """Commits landing on the shared remote's branch do not auto-sync into the read-only consumer.
 
-        The branch advances on the shared remote (the change is durable there the moment the push
-        returns). The read-only consumer, which performs no automatic sync, must still record its
-        pre-advance commit — a later periodic cycle must not silently pull the new commit in.
+        Recording an imported commit re-enters the repository update path and dispatches another
+        import, so imports chain: any in-flight import that records a NEW commit spawns exactly one
+        follow-up, and the chain only settles once a follow-up records an unchanged commit. A single
+        observation window therefore races the chain on a loaded runner. Observe in rounds instead:
+        a round that sees movement is attributed to chain drain and retried; the chain cannot
+        survive a quiet round, so only genuine auto-syncing fails every round.
 
-        Baseline first: recording an imported commit re-enters the repository update path and
-        re-dispatches an import, so a creation-time echo import can still be queued when this test
-        starts — on a loaded runner it lands after the advance and moves the consumer to the new
-        tip. One awaited reimport converges the consumer to the current tip and, because repository
-        work is serialized per repository, drains any queued echo before the observation begins.
+        Raises:
+            AssertionError: When the consumer advanced in every observation round.
+
         """
-        repo = await consumer_client.get(kind=CoreReadOnlyRepository, name__value=repo_name)
-        current_tip = _git(shared_remote, "rev-parse", CONSUMER_BRANCH)
-        query = Mutation(
-            mutation="InfrahubReadOnlyRepositoryImportLastCommit",
-            input_data={"data": {"id": repo.id}},
-            query={"ok": None},
-        )
-        await consumer_client.execute_graphql(query=query.render(), tracker="mutation-readonly-import-baseline")
-        await _wait_for_recorded_commit_equals(
-            consumer_client, repo_name, CoreReadOnlyRepository, current_tip, deadline_seconds=300
-        )
-        consumer_before = current_tip
+        rounds = 3
+        for attempt in range(rounds):
+            before = (await consumer_client.get(kind=CoreReadOnlyRepository, name__value=repo_name)).commit.value
+            landed_sha = _advance_remote_branch(shared_remote, CONSUMER_BRANCH, f"remote_advance_{attempt}.txt")
+            assert landed_sha != before
 
-        landed_sha = _advance_remote_branch(shared_remote, CONSUMER_BRANCH, "remote_advance.txt")
-        assert landed_sha != consumer_before
+            stayed = await _stays_at_commit(
+                consumer_client, repo_name, CoreReadOnlyRepository, before, observe_seconds=90
+            )
+            if stayed:
+                return
 
-        # Observe across a window in which the every-minute periodic sync fires at least twice; the
-        # consumer must not auto-advance in that window.
-        stayed = await _stays_at_commit(consumer_client, repo_name, CoreReadOnlyRepository, consumer_before)
-        assert stayed
+        raise AssertionError(
+            f"consumer auto-advanced in every one of {rounds} observation rounds — "
+            "remote commits are being pulled into the read-only repository without operator action"
+        )
 
     async def test_nonmain_default_periodic_sync_advances(
         self,
