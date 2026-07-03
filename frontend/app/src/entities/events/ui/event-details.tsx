@@ -8,7 +8,6 @@ import type {
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Link } from "@/shared/components/ui/link";
-import { ACCOUNT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import type { EventType } from "@/entities/events/domain/model/event";
@@ -16,6 +15,7 @@ import { EventAttributes } from "@/entities/events/ui/node-events/event-attribut
 import { EventRelationships } from "@/entities/events/ui/node-events/event-relationships";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { ACCOUNT_OBJECT } from "@/entities/role-manager/domain/model/account";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 
 const AccountLoggedInEventDetails = ({ event }: { event: AccountLoggedInEventType }) => {

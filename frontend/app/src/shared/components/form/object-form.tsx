@@ -7,18 +7,14 @@ import { GenericObjectForm } from "@/shared/components/form/generic-object-form"
 import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import {
-  ACCOUNT_GROUP_OBJECT,
-  ACCOUNT_OBJECT,
-  ACCOUNT_ROLE_OBJECT,
-  FILE_OBJECT_KIND,
-  GLOBAL_PERMISSION_OBJECT,
-  NUMBER_POOL_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-} from "@/shared/config/constants";
+import { FILE_OBJECT_KIND, NUMBER_POOL_OBJECT } from "@/shared/config/constants";
 
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ProfileData } from "@/entities/nodes/profiles/domain/model/profile";
+import {
+  GLOBAL_PERMISSION_OBJECT,
+  OBJECT_PERMISSION_OBJECT,
+} from "@/entities/permission/domain/model/permission";
 import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
@@ -28,6 +24,11 @@ import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
 import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
+import {
+  ACCOUNT_GROUP_OBJECT,
+  ACCOUNT_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
+} from "@/entities/role-manager/domain/model/account";
 import { AccountForm } from "@/entities/role-manager/ui/account-form";
 import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form";
 import { AccountRoleForm } from "@/entities/role-manager/ui/account-role-form";

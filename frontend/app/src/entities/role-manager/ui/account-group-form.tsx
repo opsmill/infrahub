@@ -15,15 +15,15 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import {
-  ACCOUNT_GROUP_OBJECT,
-  ACCOUNT_OBJECT,
-  ACCOUNT_ROLE_OBJECT,
-} from "@/shared/config/constants";
 
 import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import {
+  ACCOUNT_GROUP_OBJECT,
+  ACCOUNT_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
+} from "@/entities/role-manager/domain/model/account";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface AccountGroupFormProps {

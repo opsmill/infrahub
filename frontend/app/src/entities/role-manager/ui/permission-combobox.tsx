@@ -14,12 +14,12 @@ import {
 } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
-import { ACCOUNT_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { classNames, debounce } from "@/shared/utils/common";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import { ACCOUNT_PERMISSION_OBJECT } from "@/entities/permission/domain/model/permission";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface PermissionNode extends NodeCore {

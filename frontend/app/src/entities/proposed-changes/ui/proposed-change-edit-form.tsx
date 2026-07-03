@@ -5,12 +5,13 @@ import DynamicForm from "@/shared/components/form/dynamic-form";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
+import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { branchesState } from "@/entities/branches/stores";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import { ACCOUNT_GENERIC_OBJECT } from "@/entities/role-manager/domain/model/account";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ProposedChangeEditFormProps = {

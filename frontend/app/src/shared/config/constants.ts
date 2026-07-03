@@ -9,20 +9,7 @@ export const PROFILE_KIND = "CoreProfile";
 
 export const TEMPLATE_GENERIC_KIND = "CoreObjectTemplate";
 
-export const ACCOUNT_GENERIC_OBJECT = "CoreGenericAccount";
-export const ACCOUNT_OBJECT = "CoreAccount";
-
-export const ACCOUNT_GROUP_OBJECT = "CoreAccountGroup";
-
-export const ACCOUNT_ROLE_OBJECT = "CoreAccountRole";
-
-export const ACCOUNT_PERMISSION_OBJECT = "CoreBasePermission";
-export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
-export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
-
 export const FILE_OBJECT_KIND = "CoreFileObject";
-
-export const ACCOUNT_TOKEN_OBJECT = "InfrahubAccountToken";
 
 export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
 

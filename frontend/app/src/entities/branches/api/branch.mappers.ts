@@ -3,10 +3,10 @@ import type {
   InfrahubBranchType,
   InfrahubNodeMetadata,
 } from "@/shared/api/graphql/generated/types";
-import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
 import type { BranchDetail, BranchListItem } from "@/entities/branches/domain/model/branch";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { ACCOUNT_GENERIC_OBJECT } from "@/entities/role-manager/domain/model/account";
 
 export type InfrahubBranchResponse = {
   InfrahubBranch: InfrahubBranchType;

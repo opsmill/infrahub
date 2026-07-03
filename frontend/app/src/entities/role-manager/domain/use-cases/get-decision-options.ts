@@ -1,5 +1,7 @@
-import { GLOBAL_PERMISSION_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
-
+import {
+  GLOBAL_PERMISSION_OBJECT,
+  OBJECT_PERMISSION_OBJECT,
+} from "@/entities/permission/domain/model/permission";
 import {
   globalDecisionOptions,
   objectDecisionOptions,

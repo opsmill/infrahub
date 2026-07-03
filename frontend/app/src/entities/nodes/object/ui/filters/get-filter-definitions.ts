@@ -1,10 +1,3 @@
-import {
-  ACCOUNT_GROUP_OBJECT,
-  ACCOUNT_OBJECT,
-  ACCOUNT_ROLE_OBJECT,
-  GLOBAL_PERMISSION_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-} from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
@@ -12,6 +5,15 @@ import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/model/metad
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import { isFromResourcePoolRelationship } from "@/entities/nodes/object/domain/rules/is-from-resource-pool-relationship";
+import {
+  GLOBAL_PERMISSION_OBJECT,
+  OBJECT_PERMISSION_OBJECT,
+} from "@/entities/permission/domain/model/permission";
+import {
+  ACCOUNT_GROUP_OBJECT,
+  ACCOUNT_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
+} from "@/entities/role-manager/domain/model/account";
 import { getDecisionOptions } from "@/entities/role-manager/domain/use-cases/get-decision-options";
 import {
   ACCOUNT_TABLE_ATTRIBUTES,

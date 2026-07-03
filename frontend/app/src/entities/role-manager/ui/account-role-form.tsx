@@ -15,11 +15,14 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
-import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 
 import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import {
+  ACCOUNT_GROUP_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
+} from "@/entities/role-manager/domain/model/account";
 import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
 
 interface AccountRoleFormProps {

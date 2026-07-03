@@ -1,3 +1,7 @@
+export const ACCOUNT_PERMISSION_OBJECT = "CoreBasePermission";
+export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
+export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
+
 export type PermissionDecisionData = "ALLOW" | "ALLOW_DEFAULT" | "ALLOW_OTHER" | "DENY";
 
 export type PermissionAction = "view" | "create" | "update" | "delete";

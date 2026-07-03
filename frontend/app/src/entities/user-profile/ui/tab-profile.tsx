@@ -1,12 +1,12 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
+import { ACCOUNT_GENERIC_OBJECT } from "@/entities/role-manager/domain/model/account";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
