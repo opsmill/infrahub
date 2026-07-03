@@ -10,12 +10,10 @@ def floor_to_midnight_utc(moment: datetime) -> datetime:
 
 
 def get_activity_window(now: datetime | None = None) -> tuple[datetime, datetime]:
-    """Return the ``[window_start, window_end)`` covering the previous full UTC calendar day.
+    """Return the half-open ``[window_start, window_end)`` for the previous full UTC day.
 
-    ``window_end`` is midnight UTC of the current day and ``window_start`` is 24h earlier, so
-    consecutive daily runs tile exactly regardless of when within the day they execute. The
-    window is anchored to a deterministic calendar boundary, never to the raw ``now`` instant,
-    which is what keeps a daily series free of overlaps and gaps.
+    Anchored to the midnight-UTC boundary, not the raw ``now`` instant, so consecutive daily
+    runs tile exactly — no overlaps or gaps — whatever time the (jittered) cron fires.
     """
     reference = now if now is not None else datetime.now(tz=UTC)
     window_end = floor_to_midnight_utc(reference)

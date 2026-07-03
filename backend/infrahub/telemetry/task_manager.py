@@ -72,12 +72,10 @@ async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
 
 
 def _windowed_event_filter(event_name: str, window_start: datetime, window_end: datetime) -> dict[str, Any]:
-    """Build the count-by request body: an event-name filter narrowed to ``[start, end)``.
+    """Build the count-by filter for ``[start, end)``.
 
-    Prefect's ``EventOccurredFilter`` treats both ``since`` and ``until`` as inclusive
-    (``since <= occurred <= until``). The window contract is half-open, so ``until`` is pulled
-    back by one microsecond — otherwise an event stamped exactly on the boundary would be
-    counted in two consecutive windows.
+    Prefect's ``EventOccurredFilter`` is inclusive on both ends, so ``until`` is pulled back a
+    microsecond to keep the window half-open — else a boundary event counts in two windows.
     """
     until = window_end - timedelta(microseconds=1)
     return {
@@ -106,10 +104,10 @@ async def count_windowed_event(
 async def count_windowed_unique_resources(
     client: PrefectClient, event_name: str, window_start: datetime, window_end: datetime
 ) -> int:
-    """Count distinct resources emitting one event name within ``[window_start, window_end)``.
+    """Count distinct resources emitting one event within ``[window_start, window_end)``.
 
-    Counting by resource returns one bucket per distinct ``prefect.resource.id``, so the number
-    of buckets is the distinct-resource total over the window.
+    Count-by-resource returns one bucket per distinct resource id, so the bucket count is the
+    distinct total.
     """
     payload = _windowed_event_filter(event_name=event_name, window_start=window_start, window_end=window_end)
     response = await client._client.post("/events/count-by/resource", json=payload)
@@ -124,15 +122,12 @@ async def count_windowed_unique_resources(
 async def count_webhook_runs(client: PrefectClient, window_start: datetime, window_end: datetime) -> tuple[int, int]:
     """Return ``(success, failure)`` webhook flow-run counts started within the window.
 
-    Success is the count of runs in a terminal ``COMPLETED`` state; failure is the count in a
-    terminal ``FAILED``/``CRASHED`` state. Runs still in a non-terminal state at gather time are
-    counted in neither.
+    Success = terminal ``COMPLETED``; failure = terminal ``FAILED``/``CRASHED``; non-terminal
+    runs count in neither.
     """
     flow_filter = FlowFilter(name=FlowFilterName(any_=[WEBHOOK_FLOW_NAME]))
-    # The flow-run start-time filter is typed with Prefect's own datetime; coerce the stdlib
-    # boundaries to it so the comparison stays well-typed. ``before_`` is inclusive ("at or
-    # before"), so pull it back one microsecond to keep the window half-open — a run starting
-    # exactly on the boundary must land in exactly one window.
+    # ``before_`` is inclusive, so pull the upper bound back a microsecond — a run on the
+    # boundary must land in exactly one window.
     after = DateTime.fromisoformat(window_start.isoformat())
     before = DateTime.fromisoformat((window_end - timedelta(microseconds=1)).isoformat())
 
@@ -142,9 +137,7 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
             state=FlowRunFilterState(type=FlowRunFilterStateType(any_=states)),
         )
 
-    # Count server-side rather than reading run objects: read_flow_runs caps at the server
-    # default page size (PREFECT_API_DEFAULT_LIMIT), which would silently undercount a busy
-    # deployment's daily webhook volume. count_flow_runs returns an exact, unpaginated total.
+    # Count server-side: read_flow_runs caps at the API page size and would undercount a busy day.
     success = await client.count_flow_runs(
         flow_filter=flow_filter, flow_run_filter=runs_in_states([StateType.COMPLETED])
     )

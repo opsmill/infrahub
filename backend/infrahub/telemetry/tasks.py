@@ -77,12 +77,10 @@ async def gather_feature_information() -> dict[str, int]:
 
 @task(name="telemetry-account-information", task_run_name="Gather Account Information", cache_policy=NONE)
 async def gather_account_information(db: InfrahubDatabase) -> TelemetryAccountData:
-    """Gather account adoption counts on the default branch, each degradable to ``null``.
+    """Gather account adoption counts on the default branch.
 
-    ``active`` counts managed accounts whose status is active; ``groups`` counts account
-    groups. Counts go through the branch/temporal-correct count path so they match what the
-    GraphQL resolvers report. Either field degrades to ``null`` independently if its source
-    raises, while a source that simply finds nothing returns ``0``.
+    Counted through the branch/temporal-correct path so they match the GraphQL resolvers; each
+    field degrades to ``null`` independently on failure.
     """
     default_branch = registry.get_branch_from_registry()
 
@@ -106,12 +104,10 @@ async def gather_account_information(db: InfrahubDatabase) -> TelemetryAccountDa
 
 
 async def count_active_branches() -> int:
-    """Count open non-system branches: registry branches excluding the default and global ones.
+    """Count open non-system branches.
 
-    Closed/merged/deleted branches are removed from the registry, so registry membership
-    already means "open"; the default (``main``) and global (``-global-``) branches are the
-    only system branches to exclude. Async so it composes with the per-metric degradation
-    helper alongside the awaitable count sources.
+    Registry members minus the default and global branches (closed branches are evicted from
+    the registry). Async only so it composes with the degradation helper.
     """
     return len([branch for branch in registry.branch.values() if not branch.is_default and not branch.is_global])
 
@@ -153,13 +149,10 @@ async def gather_anonymous_telemetry_data(
 ) -> TelemetryData:
     """Assemble the full telemetry payload, isolating every metric source.
 
-    Each new metric source is gathered through the degradation helper so a single failing
-    source degrades only its own field(s) to ``null`` while the rest of the payload is still
-    built, stored, and sent. A source that succeeds with nothing to count yields ``0``.
-
-    The three ``*_gatherer`` / ``*_counter`` parameters are optional injection seams with
-    production defaults; they exist so the orchestrator's per-source isolation can be exercised
-    with a real failing collaborator instead of patching. Production callers pass none of them.
+    Each source is gathered through the degradation helper, so one failing source nulls only
+    its own field(s) while the rest is still built. The ``*_gatherer`` / ``*_counter`` params
+    are injection seams (production passes none) that let the per-source isolation be tested
+    with a real failing collaborator instead of patching.
     """
     start_time = time.time()
 
@@ -241,7 +234,6 @@ async def send_telemetry_push() -> None:
         log.warning(f"Failed to store telemetry snapshot locally: {exc}")
         return
 
-    # Conditionally send remotely
     if config.SETTINGS.main.telemetry_optout:
         log.info("User opted out of remote telemetry. Marking snapshot as skipped.")
         snapshot.remote_send_status = RemoteSendStatus.SKIPPED
@@ -264,7 +256,6 @@ async def send_telemetry_push() -> None:
         snapshot.remote_send_status = RemoteSendStatus.FAILED
         log.warning(f"Failed to send telemetry data to remote endpoint: {exc}")
 
-    # Update remote send status in DB
     try:
         await repository.save(snapshot)
     except Exception as exc:

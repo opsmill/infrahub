@@ -61,6 +61,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [events.md](knowledge/backend/events.md) - Events system
 - [async-tasks.md](knowledge/backend/async-tasks.md) - Asynchronous tasks (Prefect)
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
+- [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
 
 ## Current ADRs
 

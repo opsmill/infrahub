@@ -115,3 +115,10 @@ a whole-source failure surfaces as nulled fields, never a missing object (SC-001
 ## Out of model (this phase)
 
 - No changes to `TelemetryPrefectData.events` (the existing unwindowed tally).
+- `database.system_info.processor_configured` (configured DB core count, intended for future
+  license reporting) is **deferred**. It was prototyped reading Neo4j `SHOW SETTINGS` for
+  `server.threads.worker_count`, but that setting is REST-only — it does not govern the Bolt
+  path Infrahub uses — and defaults to the host core count, so today it would only duplicate
+  `processor_available`. Revisit once the correct "licensed cores" setting is confirmed: Neo4j
+  exposes no single canonical one (`server.cypher.parallel.worker_limit` is the other
+  candidate, or the true signal may be the JVM/container CPU allocation).

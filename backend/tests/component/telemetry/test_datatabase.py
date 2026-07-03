@@ -25,13 +25,10 @@ async def test_gather_database_information(db: InfrahubDatabase) -> None:
 async def test_gather_database_information_corenode_matches_seeded(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ) -> None:
-    """``node_count["corenode"]`` equals an independently-computed managed-node count exactly.
+    """``corenode`` matches an independently-computed managed-node count exactly.
 
-    ``corenode`` goes through the branch/temporal-correct count path. The seeded
-    ``TestPerson`` nodes carry the ``CoreNode`` generic label (their namespace is neither
-    ``Schema`` nor ``Internal``), so an independent raw label count is the oracle: the count
-    the gather reports must match it to the node, and the raw vertex ``total`` must be left
-    untouched and never smaller than the managed-node subset.
+    The oracle is a raw ``CoreNode``-label count — a different code path from the gather's
+    ``NodeManager.count`` — and the raw ``total`` must stay untouched and never below the subset.
     """
     # Baseline of pre-existing managed nodes via a raw label count — a different code path
     # from NodeManager.count — so the assertion holds regardless of any nodes already present.
@@ -62,17 +59,11 @@ async def test_gather_database_information_user_counts_only_user_namespaces(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    """``node_count["user"]`` counts only nodes in user-defined namespaces, excluding Core.
+    """``user`` counts only user-defined-namespace nodes, excluding Core.
 
-    The ``Test`` namespace is user-editable, so seeded ``TestPerson`` nodes are user nodes; a
-    ``CoreAccount`` sits in the restricted ``Core`` management namespace and must not be counted
-    by ``user`` even though it is a managed ``CoreNode``. The three node metrics nest strictly —
-    ``user`` ⊆ ``corenode`` ⊆ ``total`` — and the presence of the Core account forces ``user``
-    to be strictly below ``corenode``, proving Core management is excluded from the user subset.
-
-    The Core models are registered alongside the user-defined ``Test`` schema so a real
-    ``CoreAccount`` can be created; every Core kind sits in a restricted namespace, so the
-    user count stays a clean, exact tally of the seeded ``Test`` nodes.
+    A seeded ``CoreAccount`` (restricted ``Core`` namespace) is a managed ``CoreNode`` but must
+    not be counted by ``user`` — forcing ``user < corenode`` and proving Core is excluded, while
+    ``user`` ⊆ ``corenode`` ⊆ ``total`` still holds.
     """
     # With only the user-editable Test namespace registered and no user nodes yet, the gather
     # reports zero user nodes — the independent baseline the seeded count is measured against.
@@ -94,7 +85,16 @@ async def test_gather_database_information_user_counts_only_user_namespaces(
 
     # Exactly the seeded user nodes are counted; the Core account is not.
     assert data.node_count["user"] == seeded_users
+
+    # All three counts are populated in this scenario; None is only reported on a count fallback.
+    user_count = data.node_count["user"]
+    corenode_count = data.node_count["corenode"]
+    total_count = data.node_count["total"]
+    assert user_count is not None
+    assert corenode_count is not None
+    assert total_count is not None
+
     # Strict nesting: user ⊆ corenode ⊆ total.
-    assert data.node_count["user"] <= data.node_count["corenode"] <= data.node_count["total"]
+    assert user_count <= corenode_count <= total_count
     # The Core account is a managed node excluded from user, so user is strictly below corenode.
-    assert data.node_count["user"] < data.node_count["corenode"]
+    assert user_count < corenode_count

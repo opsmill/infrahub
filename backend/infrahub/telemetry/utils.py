@@ -18,10 +18,8 @@ def determine_infrahub_type() -> InfrahubType:
 async def safe_metric[T](coro: Awaitable[T]) -> T | None:
     """Run one metric coroutine in isolation, degrading a failure to ``None``.
 
-    Returns the awaited result on success — including a falsy value such as
-    ``0`` (a source that succeeded with nothing to count). On any exception the
-    failure is logged and ``None`` is returned, so a single broken source nulls
-    only its own field instead of dropping the whole payload.
+    A falsy result like ``0`` is preserved (measured, nothing to count); only an exception
+    yields ``None`` (logged), so one broken source nulls its own field, not the whole payload.
     """
     try:
         return await coro

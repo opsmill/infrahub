@@ -93,6 +93,7 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 - `dev/knowledge/backend/events.md` - Events system
 - `dev/knowledge/backend/async-tasks.md` - Asynchronous tasks (Prefect)
 - `dev/knowledge/backend/message-bus.md` - Message bus system
+- `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation)
 
 ### Guides (How to do X)
 
