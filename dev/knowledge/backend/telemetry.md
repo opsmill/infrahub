@@ -40,6 +40,16 @@ distinction that matters operationally is each category's **temporal model** (be
 | Prefect | event tally, automation counts, work-pool state |
 | Activity (24h) | logins, checks, artifacts, branch actions, webhook deliveries |
 
+### Activity (24h) field semantics
+
+| Field | Counts |
+|-------|--------|
+| `logins` / `unique_logins` | Interactive sign-ins only — password, OIDC, OAuth2. Per-request API-key/token authentication is stateless and never emits a login event, so token-authenticated SDK/CI traffic is **not** included. |
+| `checks_started` / `_passed` / `_failed` | Validator lifecycle events (see the checks caveat under Graceful degradation). |
+| `artifacts_created` / `_updated` | Artifact lifecycle events. |
+| `branches_created` / `_merged` / `_deleted` | Branch lifecycle events. |
+| `webhooks_fired_success` / `_failure` | Terminal `webhook-process` flow-run states. |
+
 ## Temporal models (the important part)
 
 Not every number means the same thing over time. There are three kinds:

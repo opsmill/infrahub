@@ -40,8 +40,6 @@ from .utils import determine_infrahub_type, safe_metric
 
 log = logging.getLogger(__name__)
 
-__all__ = ["safe_metric"]
-
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
 async def gather_schema_information(branch: Branch) -> TelemetrySchemaData:
@@ -143,22 +141,18 @@ async def _default_activity_24h_gatherer() -> TelemetryActivity24hData:
 
 @task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
 async def gather_anonymous_telemetry_data(
-    account_gatherer: Callable[[InfrahubDatabase], Awaitable[TelemetryAccountData]] | None = None,
-    activity_gatherer: Callable[[], Awaitable[TelemetryActivity24hData]] | None = None,
-    active_branch_counter: Callable[[], Awaitable[int]] | None = None,
+    account_gatherer: Callable[[InfrahubDatabase], Awaitable[TelemetryAccountData]] = gather_account_information,
+    activity_gatherer: Callable[[], Awaitable[TelemetryActivity24hData]] = _default_activity_24h_gatherer,
+    active_branch_counter: Callable[[], Awaitable[int]] = count_active_branches,
 ) -> TelemetryData:
     """Assemble the full telemetry payload, isolating every metric source.
 
     Each source is gathered through the degradation helper, so one failing source nulls only
     its own field(s) while the rest is still built. The ``*_gatherer`` / ``*_counter`` params
-    are injection seams (production passes none) that let the per-source isolation be tested
-    with a real failing collaborator instead of patching.
+    are injection seams that let the per-source isolation be tested with a real failing
+    collaborator instead of patching.
     """
     start_time = time.time()
-
-    account_gatherer = account_gatherer or gather_account_information
-    activity_gatherer = activity_gatherer or _default_activity_24h_gatherer
-    active_branch_counter = active_branch_counter or count_active_branches
 
     default_branch = registry.get_branch_from_registry()
     database = await get_database()
