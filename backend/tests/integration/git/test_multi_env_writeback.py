@@ -15,12 +15,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from git import Repo
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import RepositoryError
-from infrahub.git.repository import InfrahubRepository
+from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.tasks import sync_remote_repositories
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import create_gogs_repo
@@ -85,6 +86,32 @@ def _force_rewrite_remote_branch(container: DockerContainer, repo_name: str, bra
     )
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Force-rewrite of {branch} failed: {result.output.decode()}"
+
+
+def _seed_local_bare_remote(base_dir: Path) -> Path:
+    """Create a local bare remote holding main + develop (equal tips) and a minimal repo config."""
+    bare_path = base_dir / "remote.git"
+    Repo.init(bare_path, bare=True, initial_branch="main")
+
+    seed_path = base_dir / "seed"
+    seed = Repo.init(seed_path, initial_branch="main")
+    with seed.config_writer() as cfg:
+        cfg.set_value("user", "name", "Infrahub Test")
+        cfg.set_value("user", "email", "infrahub@test.local")
+    (seed_path / ".infrahub.yml").write_text("---\n")
+    seed.index.add([".infrahub.yml"])
+    seed.index.commit("Initial commit")
+    seed.create_head(DEV_BRANCH)
+    seed.create_remote("origin", str(bare_path))
+    seed.remotes.origin.push(refspec=["main", DEV_BRANCH])
+    return bare_path
+
+
+def _install_reject_all_pushes_hook(bare_path: Path) -> None:
+    """Install a pre-receive hook that rejects every push — a stand-in for branch protection."""
+    hook = bare_path / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\necho 'pushes are rejected by policy' >&2\nexit 1\n")
+    hook.chmod(0o755)
 
 
 async def _register_and_import(client: InfrahubClient, gogs_server: GogsServer, repo_name: str) -> dict:
@@ -674,3 +701,82 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
         )
         # Intended contract (with the lever): the branch reconciles and converges to the remote tip.
         assert repo_after.commit.value == remote_develop
+
+    # -- Default-branch awareness of downstream flows ---------------------------------------------
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "a repository initialized from its id and name alone does not learn its configured "
+            "default branch, so branch resolution in downstream flows (artifacts, transforms, "
+            "proposed-change checks, generators) falls back to the primary branch name"
+        ),
+    )
+    async def test_initialized_repo_resolves_configured_default_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """A repository object built by the shared factory must know its configured default branch.
+
+        Downstream flows build their repository object from just the id, name, and kind. For a repo
+        whose git default branch is not the primary branch, that object must still resolve the
+        configured default branch — otherwise every branch-name lookup in those flows targets the
+        wrong branch (or a branch that does not exist locally).
+        """
+        ds = await _register_and_import(client, gogs_server, "multi-env-init-repo")
+
+        repo = await get_initialized_repo.fn(
+            client=client,
+            repository_id=ds["node_id"],
+            name=ds["repo_name"],
+            repository_kind=InfrahubKind.REPOSITORY,
+        )
+
+        assert repo.default_branch == DEV_BRANCH
+        # Intended: the default branch's local tip resolves (it backs the primary-branch worktree).
+        assert repo.get_commit_value(branch_name=repo.default_branch, remote=False)
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "a write-back push rejected by the remote (server-side hook or branch protection) is "
+            "silently swallowed; the merge reports success while the remote default branch never "
+            "receives the write-back"
+        ),
+    )
+    async def test_writeback_rejected_by_remote_not_silently_dropped(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        tmp_path: Path,
+    ) -> None:
+        """A write-back rejected by the remote must land or fail loudly — not vanish.
+
+        Real deployments protect long-lived branches (server-side hooks, required reviews). When the
+        remote rejects the write-back push, the merge must not report success while the change never
+        leaves the instance.
+        """
+        bare_path = _seed_local_bare_remote(tmp_path)
+        repo_name = "multi-env-protected-repo"
+
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": str(bare_path), "default_branch": DEV_BRANCH},
+        )
+        await node.save()
+        await sync_remote_repositories()
+
+        repo = await InfrahubRepository.init(id=node.id, name=repo_name, client=client, default_branch_name=DEV_BRANCH)
+        assert DEV_BRANCH in repo.get_branches_from_local(include_worktree=False)
+
+        # The remote turns protected AFTER the import — the realistic sequence.
+        _install_reject_all_pushes_hook(bare_path)
+        develop_before = str(Repo(bare_path).commit(DEV_BRANCH))
+
+        await _writeback_merge(repo, "feature-protected", "wb.txt")
+
+        develop_after = str(Repo(bare_path).commit(DEV_BRANCH))
+        # Intended contract: the write-back reached the remote default branch (or the merge failed).
+        assert develop_after != develop_before
