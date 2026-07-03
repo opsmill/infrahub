@@ -1,11 +1,11 @@
 import { Col } from "@/shared/components/container";
-import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import type {
   NodeFileObject,
   NodeObjectWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
+import { FILE_OBJECT_KIND } from "@/entities/nodes/object/domain/model/object-kinds";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { FilePreviewCard } from "@/entities/nodes/object/ui/object-details/file-preview-card";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";

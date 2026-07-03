@@ -7,9 +7,9 @@ import { GenericObjectForm } from "@/shared/components/form/generic-object-form"
 import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { FILE_OBJECT_KIND } from "@/shared/config/constants";
 
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { FILE_OBJECT_KIND } from "@/entities/nodes/object/domain/model/object-kinds";
 import type { ProfileData } from "@/entities/nodes/profiles/domain/model/profile";
 import {
   GLOBAL_PERMISSION_OBJECT,

@@ -1,8 +1,8 @@
 import { Clipboard } from "@/shared/components/buttons/clipboard";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/badge-circle";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { NODE_OBJECT } from "@/shared/config/constants";
 
+import { NODE_OBJECT } from "@/entities/nodes/object/domain/model/object-kinds";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-label.query";
 

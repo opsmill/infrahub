@@ -1,8 +1,8 @@
 import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { GRAPHQL_QUERY_OBJECT } from "@/shared/config/constants";
 
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { GRAPHQL_QUERY_OBJECT } from "@/entities/nodes/object/domain/model/object-kinds";
 import { GraphQLQueryDetailsPageSkeleton } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details-page-skeleton";
 import { GraphqlQueryViewerCard } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-viewer-card";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";

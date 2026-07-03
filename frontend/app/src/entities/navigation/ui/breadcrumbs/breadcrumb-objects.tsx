@@ -1,12 +1,14 @@
 import { Breadcrumbs } from "@infrahub/ui";
 import { useLocation, useParams } from "react-router";
 
-import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/shared/config/constants";
-
 import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/artifact";
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemSchema } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-schema";
+import {
+  PROFILE_KIND,
+  TEMPLATE_GENERIC_KIND,
+} from "@/entities/nodes/object/domain/model/object-kinds";
 import { isHierarchicalSchema } from "@/entities/schema/domain/rules/is-hierarchical-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
