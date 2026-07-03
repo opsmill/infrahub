@@ -1,7 +1,9 @@
 from uuid import UUID
 
+import pytest
 from prefect.client.schemas.objects import StateType
 
+from infrahub.exceptions import ValidationError
 from infrahub.task_manager.flow_run.filters import FlowRunFilterBuilder
 from infrahub.task_manager.flow_run.models import FlowRunQueryCriteria
 from infrahub.workflows.constants import TAG_NAMESPACE
@@ -60,6 +62,10 @@ class TestBuildFlowRunFilter:
 
         assert flow_run_filter.id is not None
         assert flow_run_filter.id.any_ == [UUID(id_a), UUID(id_b)]
+
+    def test_invalid_id_raises_validation_error(self) -> None:
+        with pytest.raises(ValidationError, match=r"^'not-a-uuid' is not a valid task id$"):
+            FlowRunFilterBuilder().build_flow_run_filter(criteria=FlowRunQueryCriteria(ids=["not-a-uuid"]))
 
     def test_statuses_set_state_type_any(self) -> None:
         flow_run_filter = FlowRunFilterBuilder().build_flow_run_filter(

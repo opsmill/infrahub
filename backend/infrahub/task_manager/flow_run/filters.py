@@ -11,6 +11,7 @@ from prefect.client.schemas.filters import (
     FlowRunFilterTags,
 )
 
+from infrahub.exceptions import ValidationError
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 
 from .models import FlowRunQueryCriteria
@@ -39,10 +40,17 @@ class FlowRunFilterBuilder:
         flow_run_filter = FlowRunFilter(tags=FlowRunFilterTags(all_=filter_tags))
 
         if criteria.ids:
-            flow_run_filter.id = FlowRunFilterId(any_=[UUID(id) for id in criteria.ids])
+            flow_run_filter.id = FlowRunFilterId(any_=[self._to_uuid(id) for id in criteria.ids])
         if criteria.statuses:
             flow_run_filter.state = FlowRunFilterState(type=FlowRunFilterStateType(any_=criteria.statuses))
         if criteria.q:
             flow_run_filter.name = FlowRunFilterName(like_=criteria.q)
 
         return flow_run_filter
+
+    @staticmethod
+    def _to_uuid(value: str) -> UUID:
+        try:
+            return UUID(value)
+        except ValueError as exc:
+            raise ValidationError(input_value=f"'{value}' is not a valid task id") from exc
