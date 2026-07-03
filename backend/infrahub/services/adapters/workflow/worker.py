@@ -2,16 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, overload
 
-from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
-from prefect.exceptions import ObjectNotFound
 
 from infrahub import config, lock
-from infrahub.log import get_logger
 from infrahub.workers.utils import inject_context_parameter
-from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
 from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
 from infrahub.workflows.models import WorkflowInfo
 
@@ -25,8 +21,6 @@ if TYPE_CHECKING:
     from infrahub.tls.registry import TlsContextRegistry
     from infrahub.workflows.constants import WorkflowPriority
     from infrahub.workflows.models import WorkflowDefinition
-
-log = get_logger()
 
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
@@ -45,24 +39,6 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     async def _setup_task_manager() -> None:
         async with lock.registry.get(name="global.worker.taskmgr.init"):
             await setup_task_manager()
-
-    @staticmethod
-    async def _resolve_work_queue_name(workflow: WorkflowDefinition, priority: WorkflowPriority) -> str | None:
-        """Return the queue name for the requested priority, or None when the queue is missing.
-
-        A missing queue is logged and the dispatch falls back to the deployment's own queue,
-        so queue-layout drift can never make a dispatch fail.
-        """
-        async with get_client(sync_client=False) as client:
-            try:
-                await client.read_work_queue_by_name(name=priority.queue_name, work_pool_name=INFRAHUB_WORKER_POOL.name)
-            except ObjectNotFound:
-                log.warning(
-                    f"Work queue '{priority.queue_name}' not found in work pool '{INFRAHUB_WORKER_POOL.name}', "
-                    f"dispatching workflow '{workflow.name}' to its deployment's own queue instead"
-                )
-                return None
-        return priority.queue_name
 
     @overload
     async def execute_workflow(
@@ -100,9 +76,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         parameters = dict(parameters) if parameters is not None else {}
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
-        work_queue_name: str | None = None
-        if priority is not None:
-            work_queue_name = await self._resolve_work_queue_name(workflow=workflow, priority=priority)
+        work_queue_name = priority.queue_name if priority is not None else None
 
         response: FlowRun = await run_deployment(
             name=workflow.full_name,
@@ -131,9 +105,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         parameters = dict(parameters) if parameters is not None else {}
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
-        work_queue_name: str | None = None
-        if priority is not None:
-            work_queue_name = await self._resolve_work_queue_name(workflow=workflow, priority=priority)
+        work_queue_name = priority.queue_name if priority is not None else None
 
         tls_insecure = config.SETTINGS.http.tls_insecure
         tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle

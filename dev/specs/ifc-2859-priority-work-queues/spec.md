@@ -81,7 +81,7 @@ An operator opens the task-manager UI and sees the three priority lanes on the w
 ### Edge Cases
 
 - **Upgrade of a deployed instance**: startup re-provisions the pool and re-saves all deployments, converging to the new queue layout; runs stranded in the legacy default queue still execute because workers poll all queues in the pool (User Story 2).
-- **Missing queue at dispatch** (initialization race, operator deletion in the task-manager UI): degrade gracefully per FR-006 (User Story 3).
+- **Missing queue at dispatch** (operator deletion in the task-manager UI): dispatch names the queue from the static tier mapping and proceeds; the orchestrator auto-creates a missing queue (at arbitrary precedence) and the next startup convergence restores its precedence. Dispatch never fails due to queue layout.
 - **Starvation under real high-priority traffic**: impossible in this slice — nothing dispatches non-medium. Starvation protection (per-queue concurrency limits) is explicitly deferred and must land before or with the first real high-priority traffic.
 - **Repeated startup**: queue provisioning is idempotent on every startup; re-running initialization never duplicates queues or errors.
 
@@ -94,7 +94,7 @@ An operator opens the task-manager UI and sees the three priority lanes on the w
 - **FR-003**: Deployments MUST be created attached to the queue matching the workflow's default priority — including cron workflows, whose scheduled runs inherit the deployment's queue.
 - **FR-004**: The dispatch path MUST accept an optional priority override that routes the run to the matching queue, on both execution entry points of the workflow adapter.
 - **FR-005**: When no priority is specified anywhere, runs MUST land in the medium queue.
-- **FR-006**: If the target queue is missing at dispatch, the system MUST degrade gracefully — execute in the default lane and emit a warning — never fail the dispatch.
+- **FR-006**: The dispatch path MUST derive the target queue from the static tier-to-queue mapping and MUST NOT perform a per-dispatch queue-existence check; queue existence is an initialization invariant (FR-001), and a queue recreated by the orchestrator on dispatch is converged back to its precedence at the next startup.
 - **FR-007**: Workers MUST consume all pool queues with no worker-startup configuration changes (no new flags, environment variables, or compose/helm edits).
 - **FR-008**: The priority tier vocabulary MUST be a typed enum (not free-form strings) at every boundary, and MUST be the single source of truth for the tier-to-queue mapping.
 
@@ -103,7 +103,7 @@ An operator opens the task-manager UI and sees the three priority lanes on the w
 - **Priority tier** *(new)*: `high` / `medium` / `low` — priority-semantic vocabulary, deliberately not the intent-based taxonomy (interactive/deferred) still in discovery under INFP-635. Single source of truth for tier-to-queue mapping.
 - **Workflow definition (catalogue)**: existing entity; gains a default-priority field (medium by default).
 - **Worker pool / work queues**: existing single pool gains three priority queues with priority ordering.
-- **Dispatch path (workflow adapter)**: existing entry points gain priority routing with graceful fallback.
+- **Dispatch path (workflow adapter)**: existing entry points gain priority routing via the static tier-to-queue mapping.
 
 ## Success Criteria *(mandatory)*
 
@@ -112,7 +112,7 @@ An operator opens the task-manager UI and sees the three priority lanes on the w
 - **SC-001**: After initialization, three priority lanes exist and 100% of catalogue workflows (including cron workflows) are attached to the lane matching their default priority.
 - **SC-002**: Explicit-priority dispatch lands in the matching lane 100% of the time, for all three priorities.
 - **SC-003**: Zero behavior change — everything defaults to medium; the existing test suite passes unmodified.
-- **SC-004**: Queue routing is verified for every path — catalogue default, explicit override, cron deployment, and missing-queue fallback — by asserting the queue each run/deployment is attached to. Execution ordering under load is *not* tested: it is native task-orchestrator behavior we assume correct.
+- **SC-004**: Queue routing is verified for every path — catalogue default, explicit override, and cron deployment — by asserting the queue each run/deployment is attached to. Execution ordering under load is *not* tested: it is native task-orchestrator behavior we assume correct.
 
 ## Scope Boundaries
 
@@ -121,7 +121,7 @@ An operator opens the task-manager UI and sees the three priority lanes on the w
 - Priority tier vocabulary (typed enum + tier-to-queue mapping) in the workflows constants layer.
 - Provisioning of three priority work queues at task-manager initialization, idempotent.
 - Default-priority field on workflow catalogue definitions; deployment creation carries the queue assignment (covers cron workflows).
-- Optional priority override on both dispatch entry points of the workflow adapter, with graceful missing-queue fallback and warning.
+- Optional priority override on both dispatch entry points of the workflow adapter, routed via the static tier-to-queue mapping (queues assumed provisioned at startup).
 - Update of the backend architecture knowledge doc for async tasks in the same change.
 
 ### Out of Scope

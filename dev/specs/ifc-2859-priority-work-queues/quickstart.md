@@ -25,7 +25,7 @@ uv run pytest backend/tests/unit/workflows/ -v
 - `to_deployment()` carries `work_queue_name` matching the tier,
 - every catalogue workflow carries a valid priority.
 
-## Scenario 2 — Integration: provisioning, routing, fallback, cron
+## Scenario 2 — Integration: provisioning, routing, cron
 
 ```bash
 uv run pytest backend/tests/integration/services/adapters/workflow/test_workflow_priority.py -v
@@ -35,7 +35,6 @@ uv run pytest backend/tests/integration/services/adapters/workflow/test_workflow
 
 - After `setup_task_manager`, the `infrahub-worker` pool has `high`/`medium`/`low` queues at precedence 1/2/3 (SC-001); re-running setup changes nothing (idempotent).
 - Dispatch with each explicit priority: `flow_run.work_queue_name` equals the tier queue (SC-002); dispatch without priority lands in `medium` (FR-005).
-- After deleting the `high` queue, dispatch with `priority=HIGH` succeeds, run lands in the default lane, warning names the missing queue (FR-006).
 - The cron workflow's deployment is attached to its tier queue with its schedule intact (FR-003).
 
 ## Scenario 3 — Zero behavior change (SC-003)

@@ -61,14 +61,16 @@ All findings below were verified directly against the codebase and the installed
 
 **Alternatives considered**: skip-if-exists (never repairs drift); deleting and recreating queues (would orphan queued runs).
 
-### D5 — Dispatch override + graceful fallback: check-first, then route
+### D5 — Dispatch override: static tier-to-queue mapping (revised 2026-07-03)
 
-**Decision**: `InfrahubWorkflow.execute_workflow` and `.submit_workflow` (interface + both adapters) gain `priority: WorkflowPriority | None = None` (keyword-only in practice — all call sites use kwargs). In `WorkflowWorkerExecution`, when `priority` is set: verify the queue exists via `client.read_work_queue_by_name(name=priority.queue_name, work_pool_name=INFRAHUB_WORKER_POOL.name)`; if it exists, pass `work_queue_name` to `run_deployment`; on `ObjectNotFound`, log a warning naming the missing queue and dispatch **without** the override (run lands in the deployment's own queue — the default lane per FR-006). When `priority` is `None`, nothing changes: no extra API call, run inherits the deployment's queue (medium by catalogue default — FR-005). `WorkflowLocalExecution` accepts and ignores the parameter (inline execution has no queues).
+**Decision (revised)**: `InfrahubWorkflow.execute_workflow` and `.submit_workflow` (interface + both adapters) gain `priority: WorkflowPriority | None = None` (keyword-only in practice — all call sites use kwargs). In `WorkflowWorkerExecution`, when `priority` is set: pass `work_queue_name=priority.queue_name` to `run_deployment` directly — the enum property is the static tier-to-queue mapping, and queue existence is assumed (it is a startup-provisioning invariant, D4). No per-dispatch existence check. When `priority` is `None`, nothing changes: run inherits the deployment's queue (medium by catalogue default — FR-005). `WorkflowLocalExecution` accepts and forwards the parameter internally but executes inline (no queues).
+
+*Revision note*: the original decision was check-first (verify the queue via `read_work_queue_by_name`, warn and drop the override on `ObjectNotFound`). Revised on user direction: the check added a Prefect API read per prioritized dispatch and a TLS-context asymmetry in `submit_workflow`, for a failure mode that is already safe — Prefect auto-creates a queue named at dispatch, and D4's create-or-update convergence repairs its precedence at the next startup.
 
 **Rationale**:
-- *Testability without mocks* (testing rule: adapter/protocol patterns, no `unittest.mock`): the fallback path is deterministic — an integration test deletes a queue, dispatches with that priority, and asserts the warning plus the run's actual `work_queue_name`. A try/except-around-`run_deployment` design is untestable without patching because Prefect auto-creates missing queues and the dispatch never raises.
+- *Testability without mocks* (testing rule: adapter/protocol patterns, no `unittest.mock`): routing is asserted directly on `flow_run.work_queue_name` in integration tests; there is no fallback branch left to test — Prefect auto-creates missing queues, so dispatch never raises regardless.
 - *Race safety*: if the queue disappears between check and dispatch, the server auto-creates it (`create_queue_if_not_found=True`) — the dispatch still never fails, and the next startup convergence (D4) repairs the auto-created queue's precedence. FR-006's "never fail" holds in both orderings.
-- *Cost*: the extra `read_work_queue_by_name` roundtrip is paid only on the override path, which has zero production callers in this slice and will carry interactive (latency-tolerant-of-one-read) operations later.
+- *Cost*: zero extra API calls on any dispatch path.
 
 **Alternatives considered**: try/except retry-without-override (untestable without mocks; the exception path is unreachable under normal server behavior since the server auto-creates queues); passing `work_queue_name` blindly and relying on auto-create (violates FR-006's warning requirement and silently runs at wrong precedence until next restart).
 
@@ -81,7 +83,7 @@ All findings below were verified directly against the codebase and the installed
 ## Testing Strategy (grounded in existing suites)
 
 - **Unit** — `backend/tests/unit/workflows/`: extend `test_models.py` (deployment payload carries `work_queue_name`; `default_priority` defaults to medium) and add enum/mapping assertions (values, queue names, precedence ints). Existing `test_catalogue.py` parametrized-per-workflow pattern is prior art.
-- **Integration** — `backend/tests/integration/services/adapters/workflow/` on the `TestWorkerInfrahubAsync` harness (`backend/tests/helpers/test_worker.py`), which provides `prefect_client`, `work_pool`, and deployment fixtures: queue provisioning + idempotent re-run; dispatch routing per priority and no-priority; missing-queue fallback (delete queue → warning + default lane); one cron workflow's deployment attached to its tier queue.
+- **Integration** — `backend/tests/integration/services/adapters/workflow/` on the `TestWorkerInfrahubAsync` harness (`backend/tests/helpers/test_worker.py`), which provides `prefect_client`, `work_pool`, and deployment fixtures: queue provisioning + idempotent re-run; dispatch routing per priority and no-priority; one cron workflow's deployment attached to its tier queue.
 - **Not tested**: Prefect's queue-priority ordering waterfall (upstream behavior, SC-004).
 
 ## Open Items Resolved from the PRD

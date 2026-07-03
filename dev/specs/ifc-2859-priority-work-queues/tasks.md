@@ -53,7 +53,7 @@ Backend-only feature. Source under `backend/infrahub/`, tests under `backend/tes
 - [X] T006 [P] [US1] Extend `backend/tests/unit/workflows/test_catalogue.py` with a parametrized test (existing per-workflow `pytest.param` pattern) asserting every workflow from `get_workflows()` has a `default_priority` that is a `WorkflowPriority` member.
 - [X] T007 [US1] Add `setup_work_queues` Prefect task to `backend/infrahub/workflows/initialization.py`: for each pool in `WORKER_POOLS` × each `WorkflowPriority`, call `client.create_work_queue(name=priority.queue_name, priority=priority.queue_priority, work_pool_name=pool.name)`; on `ObjectAlreadyExists`, read the queue (`client.read_work_queue_by_name`) and `client.update_work_queue(id=..., priority=priority.queue_priority)` — create-or-update convergence per research D4. Wire it into `setup_task_manager()` between `setup_worker_pools` and `setup_deployments`. Follow the existing task decorator style (`cache_policy=NONE`, task_run_name).
 - [X] T008 [US1] Extend the `InfrahubWorkflow` interface in `backend/infrahub/services/adapters/workflow/__init__.py`: add `priority: WorkflowPriority | None = None` to `execute_workflow` (abstract + both `@overload` stubs) and `submit_workflow`, exactly as specified in `contracts/workflow-adapter.md`.
-- [X] T009 [US1] Implement routing in `backend/infrahub/services/adapters/workflow/worker.py` (`WorkflowWorkerExecution.execute_workflow` and `.submit_workflow`): when `priority` is set, verify the queue exists via `client.read_work_queue_by_name(name=priority.queue_name, work_pool_name=INFRAHUB_WORKER_POOL.name)`; present → pass `work_queue_name=priority.queue_name` to `run_deployment`; missing (`prefect.exceptions.ObjectNotFound`) → log a warning via `infrahub.log.get_logger()` naming the missing queue, the workflow, and the fallback taken, then dispatch without the override (plan §4, critique E3). When `priority is None`, the code path must be byte-for-byte today's behavior (no extra API call).
+- [X] T009 [US1] Implement routing in `backend/infrahub/services/adapters/workflow/worker.py` (`WorkflowWorkerExecution.execute_workflow` and `.submit_workflow`): when `priority` is set, pass `work_queue_name=priority.queue_name` (static tier-to-queue mapping) to `run_deployment` — no per-dispatch existence check (revised per D5; queues are assumed provisioned at startup, and the orchestrator auto-creates a missing queue whose precedence the next startup convergence repairs). When `priority is None`, the code path must be byte-for-byte today's behavior.
 - [X] T010 [P] [US1] Extend `WorkflowLocalExecution` in `backend/infrahub/services/adapters/workflow/local.py`: accept `priority: WorkflowPriority | None = None` on both entry points and ignore it (`# noqa: ARG002` pattern already used in the file).
 - [X] T011 [US1] Create `backend/tests/integration/services/adapters/workflow/test_workflow_priority.py` on the `TestWorkerInfrahubAsync` harness (`backend/tests/helpers/test_worker.py`): after setup, the pool has `high`/`medium`/`low` queues with precedence 1/2/3 asserted absolutely and `default` asserted only relatively (precedence > `low`'s — critique E6); dispatch with each explicit priority lands the flow run in the matching queue (assert `flow_run.work_queue_name`); dispatch with no priority lands in `medium` (SC-001, SC-002, FR-005).
 - [X] T012 [US1] In the same integration file (sequential with T011), assert one cron workflow's deployment (e.g. `CLEAN_UP_DEADLOCKS`) is attached to its tier queue with its schedule intact (FR-003).
@@ -76,17 +76,13 @@ Backend-only feature. Source under `backend/infrahub/`, tests under `backend/tes
 
 ---
 
-## Phase 5: User Story 3 — Graceful degradation when a queue is missing (Priority: P3)
+## Phase 5: User Story 3 — Dispatch resilience to queue layout (Priority: P3)
 
-**Goal**: Dispatch never fails due to queue layout; missing queue → default lane + warning (FR-006).
+**Goal**: Dispatch never fails due to queue layout (FR-006, revised): the queue name comes from the static tier mapping; a deleted queue is auto-created by the orchestrator on dispatch and re-converged at the next startup.
 
-**Independent Test**: Delete a tier queue, dispatch with that priority, assert the run executes in the default lane and the warning names the missing queue.
+- [X] T014 [US3] Removed by decision (2026-07-03): the check-first fallback (delete queue → warning + default lane) was replaced by the static mapping; there is no runtime fallback behavior to test. Orchestrator auto-creation on dispatch is upstream behavior we assume correct (same principle as SC-004's ordering exclusion).
 
-### Implementation for User Story 3
-
-- [ ] T014 [US3] Add the missing-queue fallback test to `backend/tests/integration/services/adapters/workflow/test_workflow_priority.py`: delete the `high` queue via the Prefect client, dispatch a workflow with `priority=WorkflowPriority.HIGH`, assert the dispatch succeeds, the run's `work_queue_name` is the deployment's own queue (`medium`), and the warning (captured via `caplog` on the structlog-backed logger) names the missing queue and the workflow. No mocks — the check-first design (research D5) makes this deterministic.
-
-**Checkpoint**: FR-006 guarantee demonstrated end-to-end.
+**Checkpoint**: FR-006 (revised) holds by construction; no dedicated test.
 
 ---
 
@@ -108,7 +104,7 @@ Backend-only feature. Source under `backend/infrahub/`, tests under `backend/tes
 
 **Purpose**: Documentation gate, release hygiene, critique carry-forwards, and final verification.
 
-- [ ] T016 [P] Update `dev/knowledge/backend/async-tasks.md` with a "Priority lanes" section: the three queues and their precedence, `WorkflowPriority`, `default_priority` on `WorkflowDefinition`, the dispatch `priority` override, missing-queue fallback semantics, and the upgrade/downgrade convergence story (documentation gate from the PRD; same PR).
+- [ ] T016 [P] Update `dev/knowledge/backend/async-tasks.md` with a "Priority lanes" section: the three queues and their precedence, `WorkflowPriority`, `default_priority` on `WorkflowDefinition`, the dispatch `priority` override (static tier-to-queue mapping, queues assumed provisioned), and the upgrade/downgrade convergence story (documentation gate from the PRD; same PR).
 - [ ] T017 [P] Add changelog fragment `changelog/9785.added.md` (towncrier, keyed to GitHub issue opsmill/infrahub#9785): one sentence on the priority work-queue foundation (internal; no user-facing behavior change).
 - [ ] T018 Verify enterprise compatibility (critique E9): confirm the extended `InfrahubWorkflow` signature and inherited `default_priority` require no changes in infrahub-enterprise (defaulted param + field default). Check any enterprise adapter subclasses if the repo is locally available; otherwise record in the PR description that enterprise CI must confirm.
 - [ ] T019 Draft the PR description in `dev/specs/ifc-2859-priority-work-queues/pr-notes.md` (critique P1): restate the Constitution VII/YAGNI rationale — plumbing with no production caller is justified because the INFP-635 follow-up slices are committed work; include the zero-behavior-change guarantee (SC-003) and link IFC-2859 / #9785.
@@ -125,7 +121,7 @@ Backend-only feature. Source under `backend/infrahub/`, tests under `backend/tes
 - **Foundational (Phase 2)**: after T001. Blocks all stories (everything imports `WorkflowPriority`).
 - **US1 (Phase 3)**: after Phase 2. Within it: T004 → T005/T006; T007 independent of T004 after T002; T008 → T009/T010; T011 needs T004+T007+T009; T012 needs T011 (same file).
 - **US2 (Phase 4)**: after T011 (extends the same integration file and provisioning behavior).
-- **US3 (Phase 5)**: after T009 + T011 (fallback implementation and harness in place).
+- **US3 (Phase 5)**: resolved by design revision — no implementation or test work remains.
 - **US4 (Phase 6)**: after T007 + T011.
 - **Polish (Phase 7)**: T016/T017 any time after Phase 3; T018 after T008; T019 any time; T020/T021 last.
 
@@ -157,5 +153,5 @@ Task: "Extend backend/infrahub/services/adapters/workflow/local.py (T010)"
 ## Notes
 
 - No catalogue entry gets a non-medium priority in this slice — classification is explicitly out of scope.
-- No mocks anywhere (testing rule); the check-first fallback design exists specifically to keep T014 mock-free.
+- No mocks anywhere (testing rule).
 - Source comments must not reference IFC-2859, #9785, FR-numbers, or task IDs (code-doc-style rule) — those belong in the commit/PR/changelog.

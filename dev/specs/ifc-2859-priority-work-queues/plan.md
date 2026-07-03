@@ -6,9 +6,9 @@
 
 ## Summary
 
-Add three priority lanes (`high`, `medium`, `low`) to the existing `infrahub-worker` Prefect work pool, give every `WorkflowDefinition` in the catalogue a `default_priority` field (medium everywhere), attach deployments — including cron workflows — to the queue matching their default priority, and add an optional `priority` override to both dispatch entry points of the workflow adapter with a check-first graceful fallback. Zero behavior change in this slice: everything runs on `medium`, and the seam is ready for follow-up classification work under INFP-635.
+Add three priority lanes (`high`, `medium`, `low`) to the existing `infrahub-worker` Prefect work pool, give every `WorkflowDefinition` in the catalogue a `default_priority` field (medium everywhere), attach deployments — including cron workflows — to the queue matching their default priority, and add an optional `priority` override to both dispatch entry points of the workflow adapter, routed via the enum's static tier-to-queue mapping. Zero behavior change in this slice: everything runs on `medium`, and the seam is ready for follow-up classification work under INFP-635.
 
-Technical approach (full details in [research.md](research.md)): a `WorkflowPriority` string enum in `workflows/constants.py` is the single source of truth for tier names, queue names, and Prefect queue precedence; a new `setup_work_queues` task in task-manager initialization converges the queue layout idempotently on every startup (create-or-update); dispatch routes via `run_deployment(work_queue_name=...)` after verifying queue existence, falling back to the deployment's own queue with a warning when the queue is missing.
+Technical approach (full details in [research.md](research.md)): a `WorkflowPriority` string enum in `workflows/constants.py` is the single source of truth for tier names, queue names, and Prefect queue precedence; a new `setup_work_queues` task in task-manager initialization converges the queue layout idempotently on every startup (create-or-update); dispatch routes via `run_deployment(work_queue_name=...)` using the enum's static mapping; queue existence is a startup-provisioning invariant, not checked per dispatch.
 
 ## Technical Context
 
@@ -24,9 +24,9 @@ Technical approach (full details in [research.md](research.md)): a `WorkflowPrio
 
 **Project Type**: Backend service extension (task execution layer)
 
-**Performance Goals**: No new hot-path cost — the no-priority dispatch path is unchanged (zero extra API calls); the override path adds one Prefect API read and has no production callers in this slice
+**Performance Goals**: No new hot-path cost — neither dispatch path adds any extra API call; the override path has no production callers in this slice
 
-**Constraints**: Zero behavior change (SC-003); no worker launch-configuration changes (FR-007); dispatch must never fail due to queue layout (FR-006); idempotent startup convergence (FR-001)
+**Constraints**: Zero behavior change (SC-003); no worker launch-configuration changes (FR-007); dispatch derives the queue from the static tier mapping and never fails due to queue layout (FR-006, revised); idempotent startup convergence (FR-001)
 
 **Scale/Scope**: ~4 backend source files touched, ~90 workflow definitions in the catalogue unchanged except an inherited default, 1 knowledge doc updated
 
@@ -39,8 +39,8 @@ Technical approach (full details in [research.md](research.md)): a `WorkflowPrio
 | I. Schema-Driven Integrity | ✅ N/A — no node/attribute/relationship schema involvement; no generated files touched |
 | II. Branch-Safe by Default | ✅ N/A — queue routing is branch-agnostic infrastructure; no database queries added or modified |
 | III. Type Safety & Explicit Contracts | ✅ `WorkflowPriority` is a typed `InfrahubStringEnum` at every boundary (FR-008); adapter interface change is fully type-hinted; no untyped dicts |
-| IV. Test Discipline | ✅ Unit tests for pure logic (enum, payload); integration tests for queue wiring on the existing Prefect test harness; no mocks (check-first fallback design chosen specifically for mock-free testability — research D5); upstream orchestrator ordering deliberately not re-tested (SC-004) |
-| V. Query Performance & Efficiency | ✅ No Cypher/database queries. One extra Prefect API read only on the override path (no callers this slice) |
+| IV. Test Discipline | ✅ Unit tests for pure logic (enum, payload); integration tests for queue wiring on the existing Prefect test harness; no mocks; upstream orchestrator ordering deliberately not re-tested (SC-004) |
+| V. Query Performance & Efficiency | ✅ No Cypher/database queries. No extra Prefect API calls on any dispatch path |
 | VI. Security & Input Boundaries | ✅ No user input, no API surface, no auth changes; `priority` is internal plumbing typed as an enum |
 | VII. Simplicity & Maintainability | ⚠️ Justified violation — plumbing with no production caller is nominally YAGNI. Accepted per PRD: follow-up slices under INFP-635 are committed work; rationale restated in Complexity Tracking and to be restated in the PR |
 
@@ -72,7 +72,7 @@ backend/infrahub/
 │   └── catalogue.py         # unchanged definitions (all inherit medium); WORKER_POOLS unchanged
 ├── services/adapters/workflow/
 │   ├── __init__.py          # InfrahubWorkflow interface: + priority param on both entry points
-│   ├── worker.py            # WorkflowWorkerExecution: queue routing + check-first fallback + warning
+│   ├── worker.py            # WorkflowWorkerExecution: queue routing via static tier-to-queue mapping
 │   └── local.py             # WorkflowLocalExecution: accepts and ignores priority
 
 backend/tests/
@@ -81,7 +81,7 @@ backend/tests/
 │   ├── test_models.py       # + default_priority default; deployment payload carries work_queue_name
 │   └── test_catalogue.py    # + every catalogue workflow carries a valid default priority
 └── integration/services/adapters/workflow/
-    └── test_workflow_priority.py  # NEW — provisioning idempotency, dispatch routing, fallback, cron
+    └── test_workflow_priority.py  # NEW — provisioning idempotency, dispatch routing, cron
 
 dev/knowledge/backend/
 └── async-tasks.md           # + priority lanes section (documentation gate)
@@ -125,16 +125,15 @@ New task `setup_work_queues(client)` invoked from `setup_task_manager()` between
 ### 4. Priority-aware dispatch (`services/adapters/workflow/`) — research D5
 
 - `InfrahubWorkflow.execute_workflow` and `.submit_workflow` gain `priority: WorkflowPriority | None = None` (interface + overloads + both adapters).
-- `WorkflowWorkerExecution`: when `priority` is set, verify the queue via `read_work_queue_by_name(name, work_pool_name)`; present → dispatch with `run_deployment(..., work_queue_name=...)`; missing (`ObjectNotFound`) → log a warning naming the missing queue and dispatch without the override, landing the run in the deployment's own queue (FR-004, FR-006).
+- `WorkflowWorkerExecution`: when `priority` is set, dispatch with `run_deployment(..., work_queue_name=priority.queue_name)` — the enum's static mapping, no per-dispatch existence check (FR-004, FR-006 revised).
 - When `priority` is `None`: identical code path to today — no extra API call, run inherits the deployment's queue (medium by default, FR-005).
 - `WorkflowLocalExecution`: accepts and ignores `priority` (inline execution, no queues).
-- Race safety: if the queue vanishes between check and dispatch, the Prefect server auto-creates it and the run still executes; the next startup convergence repairs its precedence. Dispatch can never fail because of queue layout.
-- Fallback warning (critique E3): emitted via the adapter's standard structlog logger (`infrahub.log.get_logger()`), and must name the missing queue, the workflow being dispatched, and the fallback taken (deployment's own queue). This is the operator's only drift signal and the anchor for the integration test's log assertion.
+- Layout safety: if a tier queue was deleted, the Prefect server auto-creates it on dispatch and the run still executes; the next startup convergence repairs its precedence. Dispatch can never fail because of queue layout.
 - Downgrade safety (critique P4): rolling back to a pre-priority release is naturally safe — old code re-saves all deployments without `work_queue_name` (back onto the pool's default queue), the orphaned tier queues sit empty and harmless, and workers keep polling every queue in the pool. No cleanup required.
 
 ### 5. Documentation gate
 
-`dev/knowledge/backend/async-tasks.md` gains a "Priority lanes" section (queue layout, `WorkflowPriority`, `default_priority`, dispatch override, fallback semantics) in the same PR.
+`dev/knowledge/backend/async-tasks.md` gains a "Priority lanes" section (queue layout, `WorkflowPriority`, `default_priority`, dispatch override semantics) in the same PR.
 
 ## Testing Plan
 
