@@ -80,12 +80,12 @@ import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-v
 
 ### ObjectFile
 
-Location: `entities/object-file/ui/object-file.tsx`
+Location: `entities/nodes/object-file/ui/object-file.tsx`
 
 Displays file content for `CoreFileObject` nodes. Handles data fetching, loading states, and binary/text detection.
 
 ```tsx
-import { ObjectFile } from "@/entities/object-file/ui/object-file";
+import { ObjectFile } from "@/entities/nodes/object-file/ui/object-file";
 
 <ObjectFile
   nodeId="abc-123"
@@ -138,12 +138,12 @@ import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 
 ### FileInfoCard
 
-Location: `shared/components/file/ui/file-info-card.tsx`
+Location: `shared/components/file/file-info-card.tsx`
 
 Displays file metadata (name, size, type) with appropriate icon.
 
 ```tsx
-import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
+import { FileInfoCard } from "@/shared/components/file/file-info-card";
 
 <FileInfoCard
   fileName="document.pdf"
@@ -183,12 +183,12 @@ Location: `shared/utils/file.ts`
 - `shared/components/data-viewer/` - Core viewer components
 
 **Entity Wrappers:**
-- `entities/object-file/` - ObjectFile entity (api/domain/ui)
+- `entities/nodes/object-file/` - ObjectFile entity (api/domain/ui)
 - `entities/artifacts/` - Artifact entity (api/domain/ui)
 
 **Input Components:**
 - `shared/components/inputs/file-dropzone.tsx` - Upload dropzone
-- `shared/components/file/ui/file-info-card.tsx` - File metadata card
+- `shared/components/file/file-info-card.tsx` - File metadata card
 - `shared/components/form/fields/file.field.tsx` - Form field
 
 **Rendering Dependencies:**

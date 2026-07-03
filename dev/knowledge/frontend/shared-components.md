@@ -127,13 +127,12 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Need | Use | Location |
 |------|-----|----------|
 | Read route params the route guarantees | `useRequiredParams("foo", "bar")` | `shared/hooks/use-required-params.ts` |
-| URL query-param sync | `useFilters` (or `nuqs` directly for typed params) | `shared/hooks/useFilters.ts` |
+| URL query-param sync | `nuqs` directly (typed params). For filters, `useFilters` / `useSearch` from `entities/nodes/filters/ui/hooks/` | `nuqs` |
 | Debounced value | `useDebounce` | `shared/hooks/useDebounce.ts` |
 | Pagination state | `usePagination` | `shared/hooks/usePagination.ts` |
 | Local-storage state | `useLocalStorage` | `shared/hooks/useLocalStorage.ts` |
 | Copy to clipboard | `useCopyToClipboard` | `shared/hooks/useCopyToClipboard.ts` |
 | Previous value | `usePrevious` | `shared/hooks/usePrevious.ts` |
-| Search input state | `useSearch` | `shared/hooks/useSearch.ts` |
 | Page title | `useTitle` | `shared/hooks/useTitle.ts` |
 | Branch context | `useCurrentBranch` | (entity hook) |
 | Date context | `useAtomValue(datetimeAtom)` | `shared/stores/` |

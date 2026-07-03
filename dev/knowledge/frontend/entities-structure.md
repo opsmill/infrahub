@@ -4,9 +4,9 @@ Location: `frontend/app/src/entities/`
 
 ## Three-Layer Architecture
 
-Each entity is organized into three layers with strict import rules. Dependencies flow in one direction: ui/ -> domain/ -> api/.
+Each entity (context) is organized into three layers with strict import rules. Dependencies flow in one direction: ui/ -> domain/ -> api/.
 
-`api/` and `ui/` structure is unchanged from earlier revisions. What changed (2026-07): `domain/` is split into `model/` / `rules/` / `use-cases/` when it grows past 4 files, and generated↔domain **mappers now live in `api/`** (not `domain/`).
+`domain/` is organized as `model/` (types + vocabulary), `rules/` (pure functions), and `use-cases/` (orchestration). Use-cases always live in `domain/use-cases/` — even a single one; types always in `domain/model/`. There are **no entity-root catch-all files** (`types.ts`, `constants.ts`, `stores.ts`) and **no entity-root `utils/` folder**: types/vocabulary → `domain/model`, pure helpers → `domain/rules`, view-model/table helpers and hooks → `ui/`, and generated↔domain **mappers live in `api/`**.
 
 ```text
 entities/{name}/
@@ -32,13 +32,20 @@ entities/{name}/
     └── {noun}-table.tsx              # React components
 ```
 
-### When to split `domain/`
+### Classifying a file into `domain/`
 
-Split `domain/` only when one of these is true:
+Classify by role, then place it — don't leave anything at the `domain/` root:
 
-1. The domain core is becoming too large to navigate.
-2. A new concept appears with enough model, rules, tests, and context to deserve its own area.
-3. The new concept is different enough that keeping it inside the generic model/rules files makes those files harder to understand.
+- **type declaration or vocabulary** (a type, a kind constant, a state string, an enum) → `domain/model/`
+- **pure, no-I/O function** (predicate, extraction, shaping) → `domain/rules/`
+- **orchestration** that calls `api/` (a fetch/mutation flow) → `domain/use-cases/`
+
+Within `model/`/`rules/`/`use-cases/`, split into multiple files by concept (e.g. `proposed-change.ts`,
+`proposed-change-state.ts`, `proposed-change-thread.ts`) rather than one grab-bag `types.ts`/`constants.ts`.
+Group by domain concept and relatedness, not by "types vs constants".
+
+A former entity-root `utils/` folder is an anti-pattern: reclassify each file — pure functions to
+`domain/rules/`, React/table/view helpers to `ui/`.
 
 ### Generated types in `domain/`
 
@@ -58,7 +65,31 @@ A hand-written domain type plus an `api/` mapper is **optional** — reach for i
 
 Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Because `domain/model` imports nothing back, `api/` may import it not only for mapper return **types** but also for plain **vocabulary constants** (schema kinds, state strings, enums used to build queries) — the import stays acyclic. What `api/` must never import is domain **logic** (`domain/rules`, `domain/use-cases`) or `ui/`. Generated types (incl. wire DTOs) may enter `domain/` (see above); `domain/` must not read browser storage or global state directly.
 
-> **Cross-cutting exception:** `shared/` may depend on the `authentication` entity's public surface — token access (`api/token-storage`, e.g. `getAccessToken`), `domain/use-cases`, and `ui/` context/queries — because auth is cross-cutting (the REST/GraphQL clients and shared form/table components need the token). This is specific to `authentication`; `shared/` stays a leaf for every other entity, and cross-entity `ui → api` remains forbidden for everyone else.
+## `shared/` vs contexts
+
+`shared/` holds **only generic, context-free code** — UI primitives, generic utils (`array`, `date`,
+`file`), the API clients, generic display constants (`MAX_VALUE_LENGTH_DISPLAY`), and query-string
+keys (`shared/config/qsp.ts`). If a `shared/` file needs to know about a context (a schema kind, an
+entity shape, a specific component), it is **misplaced — move it into that context**. A context's
+component/hook/type may be imported from anywhere, including `shared/`.
+
+What this means in practice:
+
+- **Context vocabulary is never in `shared/`.** Schema kinds, states, event-type names, and filter
+  names live in the owning context's `domain/model` (e.g. `NODE_OBJECT` in `nodes/object`,
+  `ARTIFACT_OBJECT` in `artifacts`, the `Filter` type + `SEARCH_*` in `nodes/filters`). Only
+  genuinely generic values stay in `shared/config/constants.ts` (display limits) and
+  `shared/config/qsp.ts` (URL param keys).
+- **`shared/` stays a leaf** (imports no context) — with these sanctioned exceptions:
+  - **The form subsystem `shared/components/form/`** is a cross-context framework: it renders the
+    right form per node kind, so it legitimately imports many contexts. Treat it as framework code.
+  - **`shared/api/` transport** reaches two cross-cutting contexts: `authentication` (the REST/GraphQL
+    clients + graphiql fetcher need the access token / `redirectToLogin`) and `nodes/filters` (the
+    GraphQL query builder `addFiltersToRequest` needs the `Filter` type). These can't move without
+    breaking `api` layering, so they are accepted edges — not a general licence.
+- **Pagination page size is a UI concern:** keep the page-size constant in `ui/queries` and pass it
+  to the domain use-case as `limit`; the domain never imports a page size or defaults to one.
+- **Cross-entity `ui → api` stays forbidden** for everyone (only `authentication`'s token surface is exempt).
 
 ## Data Flow
 
@@ -110,10 +141,10 @@ Import from another entity's `domain/` (types, async functions) or `ui/` (hooks,
 
 ```ts
 // Allowed: importing another entity's domain types
-import type { SchemaNode } from "@/entities/schema/domain/schema.types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 // Allowed: importing another entity's UI hook
-import { useGetSchema } from "@/entities/schema/ui/queries/get-schema.query";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 // Prohibited: importing another entity's api/
 import { getSchemaFromApi } from "@/entities/schema/api/get-schema-from-api"; // NEVER
@@ -128,7 +159,7 @@ Mappers (generated wire shape ↔ domain type) live in **`api/`**, e.g. `api/{no
 The `ui/` layer **never** builds `gql` strings inline or calls `graphqlClient.query` directly. Either:
 
 1. Use a hook from another entity's `ui/queries/` (e.g. `useGetObject` from `entities/nodes/object`).
-2. Add a new fetcher: `api/get-{noun}-from-api.ts` → `domain/use-cases/get-{noun}.ts` (flat `domain/get-{noun}.ts` if the entity is unsplit) → `ui/queries/get-{noun}.query.ts`.
+2. Add a new fetcher: `api/get-{noun}-from-api.ts` → `domain/use-cases/get-{noun}.ts` → `ui/queries/get-{noun}.query.ts`.
 
 Inline `gql` in `ui/` bypasses caching, branch context, schema typing, and the layered architecture. It is a pattern bug, not a shortcut.
 

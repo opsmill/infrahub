@@ -1,6 +1,6 @@
 # Object File Entity — Full Code Reference
 
-Reference implementation of the [entities structure pattern](entities-structure.md). Source: `frontend/app/src/entities/object-file/`
+Reference implementation of the [entities structure pattern](entities-structure.md). Source: `frontend/app/src/entities/nodes/object-file/`
 
 ## api/get-object-file-from-api.ts
 
@@ -35,7 +35,7 @@ export function getObjectFileFromApi({
 }
 ```
 
-## domain/object-file.query-keys.ts
+## ui/queries/object-file.query-keys.ts
 
 Query key factory. Keys include branch and time context for cache isolation:
 
@@ -56,7 +56,7 @@ import type { ContextParams } from "@/shared/api/types";
 import { CONFIG } from "@/shared/config/config";
 import { arrayBufferToBase64, isBinaryContentType } from "@/shared/utils/file";
 
-import { getObjectFileFromApi } from "@/entities/object-file/api/get-object-file-from-api";
+import { getObjectFileFromApi } from "@/entities/nodes/object-file/api/get-object-file-from-api";
 
 export interface GetObjectFileParams extends ContextParams {
   nodeId: string;
@@ -98,7 +98,7 @@ export async function getObjectFile({
 }
 ```
 
-## domain/get-object-file.query.ts
+## ui/queries/get-object-file.query.ts
 
 React Query hook. `useGetObjectFile` resolves branch and time context internally so consumers only pass `nodeId` and `contentType`:
 
@@ -113,8 +113,8 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetObjectFileParams,
   getObjectFile,
-} from "@/entities/object-file/domain/get-object-file";
-import { objectFileQueryKeys } from "@/entities/object-file/domain/object-file.query-keys";
+} from "@/entities/nodes/object-file/domain/get-object-file";
+import { objectFileQueryKeys } from "@/entities/nodes/object-file/ui/queries/object-file.query-keys";
 
 export function getObjectFileQueryOptions({
   nodeId,
@@ -164,8 +164,8 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   getObjectFileDownloadUrl,
   getObjectFileRawUrl,
-} from "@/entities/object-file/domain/get-object-file";
-import { useGetObjectFile } from "@/entities/object-file/domain/get-object-file.query";
+} from "@/entities/nodes/object-file/domain/get-object-file";
+import { useGetObjectFile } from "@/entities/nodes/object-file/ui/queries/get-object-file.query";
 
 export interface ObjectFileProps {
   nodeId: string;

@@ -1,39 +1,63 @@
 ## Architecture
 
-Feature-Sliced architecture using DDD/Hexagonal principles, where each feature keeps domain logic, data access, and UI strictly separated:
+Feature-Sliced architecture using DDD/Hexagonal principles. Each **context** (entity) keeps its
+domain logic, data access, and UI strictly separated, and owns everything specific to that context.
 
-- **app/** - Application core (providers, routing, styles)
-- **pages/** - Route-based page components
-- **entities/** - Business domain modules (features)
-- **shared/** - Shared utilities, components, APIs
+- **app/** — application core (providers, routing, styles)
+- **pages/** — route-based page components (thin route wrappers)
+- **entities/** — business contexts (features)
+- **shared/** — generic, context-free building blocks only
 
-Dependency rule: `app → pages → entities → shared` (unidirectional)
+Dependency rule: `app → pages → entities → shared` (unidirectional).
 
-## File Structure
+### The mental model
+
+- **Context-specific code lives in its context** (`entities/<context>/`). A context's component,
+  hook, type, or function may be imported from anywhere — other contexts and even `shared/`.
+- **`shared/` holds only generic, context-free code** — things that belong to *no* context. If a
+  file in `shared/` needs to know about a context (a schema kind, an entity's shape, a specific
+  component), it is misplaced: move it into that context.
+- **The form subsystem (`shared/components/form/`) is the one sanctioned exception**: it lives in
+  `shared/` yet composes many contexts (it renders the right form per node kind). Treat it as a
+  cross-context framework, not ordinary shared code.
+- A few transport files under `shared/api/` legitimately reach two cross-cutting contexts —
+  `authentication` (the API clients need the access token) and `nodes/filters` (the GraphQL query
+  builder needs the `Filter` type). These are accepted cross-cutting edges, not a general licence.
+
+## Entity (context) structure
 
 ```text
-src/
-├── app/              # App setup: providers, router, styles
-├── pages/            # Route handlers (one per page/route)
-├── entities/         # Feature modules (DDD/Hexagonal inspired)
-│   └── {feature}/    # Each entity follows DDD/Hexagonal principles:
-│       ├── api/      # GraphQL/REST calls, data fetching (infrastructure layer)
-│       ├── domain/   # Business logic, models, types (no React, no fetch, no external dependencies)
-│       ├── ui/       # React components knows domain, not api (presentation layer)
-│       ├── utils/    # Feature-specific utilities
-│       └── stores.ts # Jotai state atoms
-├── shared/
-│   ├── api/          # GraphQL/REST clients
-│   ├── components/   # Reusable UI components
-│   ├── hooks/        # Shared React hooks
-│   ├── stores/       # Global state atoms
-│   └── utils/        # Utility functions
-└── assets/           # Static files
+entities/{context}/
+├── api/                # Transport + anti-corruption. FLAT (no subfolders). Owns generated wire
+│                       # types and gql/REST calls. Returns domain types.
+├── domain/             # Framework-free business core
+│   ├── model/          # Vocabulary: types, kind constants, states, inputs, results
+│   │                   #   (MAY import generated types, incl. wire DTOs)
+│   ├── rules/          # Pure, no-I/O functions (predicates, extraction, shaping)
+│   └── use-cases/      # Orchestration: composes model + rules, calls own api/
+└── ui/                 # React. Nested subfolders OK (queries/, hooks/, component groups)
 ```
+
+There is **no** entity-root `types.ts`/`constants.ts`, no entity-root `utils/` folder, and no
+entity-root `stores.ts`. Types and vocabulary go in `domain/model`; pure helpers in `domain/rules`;
+React helpers/state in `ui/`. Use-cases always live in `domain/use-cases/` (even a single one).
+
+See `entities-structure.md` for the full layer import rules, the data-flow, and worked examples.
+
+## What is generic vs context-specific
+
+- **Generic → `shared/`:** UI primitives with no context knowledge, generic utils (`array`, `date`,
+  `file`), the API clients, generic display constants (`MAX_VALUE_LENGTH_DISPLAY`), and query-string
+  keys (`shared/config/qsp.ts` — `QSP.*`).
+- **Context vocabulary → the context's `domain/model`:** schema kinds (`NODE_OBJECT`,
+  `ARTIFACT_OBJECT`, …), states, event-type names, filter names — never `shared/config/constants.ts`.
+- **Pagination page size is a UI concern:** the `ui/queries` layer owns the page-size constant and
+  passes it to the domain use-case as `limit`; the domain never defaults to a UI page size.
 
 ## Generated Files (Do Not Edit)
 
-- `src/shared/api/graphql/generated/` - GraphQL types
-- `src/shared/api/rest/types.generated.ts` - REST types
+- `src/shared/api/graphql/generated/` — GraphQL types
+- `src/shared/api/rest/types.generated.ts` — REST types
 
-Regenerate with `npm run codegen:graphql` or `npm run codegen:openapi`.
+Generated types are the backend↔frontend contract and **may be used directly in `domain/`** (see
+`entities-structure.md`). Regenerate with `pnpm codegen`.
