@@ -1,4 +1,4 @@
-import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";

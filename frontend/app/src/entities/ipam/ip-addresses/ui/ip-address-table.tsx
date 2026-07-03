@@ -2,7 +2,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
-import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/constants";
+import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { getIpAddressTableColumns } from "@/entities/ipam/ip-addresses/ui/get-ip-address-table-columns";
 import { useGetIpAddressList } from "@/entities/ipam/ip-addresses/ui/queries/get-ip-address-list.query";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";

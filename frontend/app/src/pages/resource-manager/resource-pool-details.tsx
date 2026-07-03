@@ -12,10 +12,10 @@ import { type Property, PropertyList } from "@/shared/components/table/property-
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 
-import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isRelationshipVisibleInSummary } from "@/entities/nodes/object/domain/rules/is-relationship-visible-in-summary";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
@@ -153,7 +153,7 @@ const ResourcePoolContent = ({ resourcePoolId, schema, permission }: ResourcePoo
       ),
     },
     ...(schema.relationships ?? [])
-      .filter(({ name }) => !IP_SUMMARY_RELATIONSHIPS_BLACKLIST.includes(name))
+      .filter(isRelationshipVisibleInSummary)
       .map((schemaRelationship) => {
         const relationshipData = resourcePool[schemaRelationship.name]?.node;
 

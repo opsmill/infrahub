@@ -1,4 +1,4 @@
-import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
 import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-details/object-details-tab";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 

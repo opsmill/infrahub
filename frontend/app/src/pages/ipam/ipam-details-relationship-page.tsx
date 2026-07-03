@@ -2,8 +2,9 @@ import { useParams } from "react-router";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { IpAddressManager } from "@/entities/ipam/ip-addresses/ui/ip-address-manager";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { IpPrefixManager } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-manager";
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";

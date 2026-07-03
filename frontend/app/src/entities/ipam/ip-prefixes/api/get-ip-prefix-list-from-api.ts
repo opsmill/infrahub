@@ -10,11 +10,11 @@ import {
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
 import {
-  AVAILABLE_IP_FILTER_NAME,
   IP_PREFIX_AVAILABLE_KIND,
   IP_PREFIX_GENERIC,
-} from "@/entities/ipam/constants";
+} from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 

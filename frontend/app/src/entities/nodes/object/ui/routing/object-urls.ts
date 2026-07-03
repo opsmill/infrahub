@@ -1,11 +1,9 @@
 import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
 
-import {
-  IP_ADDRESS_GENERIC,
-  IP_NAMESPACE_GENERIC,
-  IP_PREFIX_GENERIC,
-} from "@/entities/ipam/constants";
-import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";

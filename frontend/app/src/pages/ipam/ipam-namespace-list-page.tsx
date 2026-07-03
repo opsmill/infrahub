@@ -8,7 +8,7 @@ import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-
 import Content from "@/shared/components/layout/content";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
-import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
 import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-card";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";

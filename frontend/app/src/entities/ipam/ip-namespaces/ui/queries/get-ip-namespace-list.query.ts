@@ -9,7 +9,7 @@ import {
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
 import {
   type GetIpNamespaceListParams,
   getIpNamespaceList,

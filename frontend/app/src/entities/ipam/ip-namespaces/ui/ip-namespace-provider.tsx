@@ -9,10 +9,10 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { QSP } from "@/shared/config/qsp";
 
-import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/use-cases/get-ip-namespace-list";
 import { useGetIpNamespace } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace.query";
-import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";

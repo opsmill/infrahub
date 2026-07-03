@@ -10,7 +10,10 @@ import {
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
-import { IP_ADDRESS_AVAILABLE_KIND, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
+import {
+  IP_ADDRESS_AVAILABLE_KIND,
+  IP_ADDRESS_GENERIC,
+} from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 

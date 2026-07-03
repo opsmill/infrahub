@@ -5,7 +5,8 @@ import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
+import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type {
   NodeAttribute,
   NodeObject,

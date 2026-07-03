@@ -1,8 +1,8 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
-import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import { getIpNamespaceListFromApi } from "@/entities/ipam/ip-namespaces/api/get-ip-namespace-list-from-api";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 

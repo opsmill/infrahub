@@ -7,8 +7,8 @@ import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
-import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/domain/rules/get-prefix-attributes-visible-in-list-view";
 import { IpPrefixAvailableIdentifier } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-available-identifier";
 import type {

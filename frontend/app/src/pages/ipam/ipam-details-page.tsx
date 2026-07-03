@@ -4,7 +4,7 @@ import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
+import { IP_PREFIX_SUMMARY_EXCLUDED_RELATIONSHIPS } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
@@ -38,7 +38,7 @@ function IpamDetailsContent({ objectSchema, objectId, permission }: IpamDetailsC
           objectSchema={objectSchema}
           objectData={data}
           permission={permission}
-          excludeRelationships={IP_SUMMARY_RELATIONSHIPS_BLACKLIST}
+          excludeRelationships={IP_PREFIX_SUMMARY_EXCLUDED_RELATIONSHIPS}
         />
       </Col>
 

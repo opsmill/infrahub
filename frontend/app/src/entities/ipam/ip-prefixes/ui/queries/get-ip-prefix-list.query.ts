@@ -9,8 +9,8 @@ import {
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/domain/rules/has-incompatible-filters-for-ip-availability";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/has-incompatible-filters-for-ip-availability";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import {
   type GetIpPrefixListParams,
   getIpPrefixList,

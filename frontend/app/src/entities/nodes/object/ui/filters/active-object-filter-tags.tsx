@@ -1,11 +1,9 @@
 import type { TagGroupProps } from "react-aria-components";
 
-import {
-  AVAILABLE_IP_FILTER_NAME,
-  IP_ADDRESS_GENERIC,
-  IP_PREFIX_GENERIC,
-} from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { IpAddressAvailabilityFilterTag } from "@/entities/ipam/ip-addresses/ui/ip-address-availability-filter-tag";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { IpPrefixAvailabilityFilterTag } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-availability-filter-tag";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { ActiveFilterTags } from "@/entities/nodes/filters/ui/active-filter-tags";

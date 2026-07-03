@@ -8,7 +8,8 @@ import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type { ObjectResult } from "@/entities/navigation/domain/use-cases/search-anywhere";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
 import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";

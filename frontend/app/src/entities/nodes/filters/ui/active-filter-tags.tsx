@@ -11,7 +11,7 @@ import {
   HIDE_AVAILABLE_IP,
   HIDE_AVAILABLE_IP_FILTER,
   SHOW_AVAILABLE_IP,
-} from "@/entities/ipam/constants";
+} from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import { getFilterDefinitionLabel } from "@/entities/nodes/object/domain/rules/filter-definition";

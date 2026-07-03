@@ -1,4 +1,4 @@
-import { IP_PREFIX_RELATIONSHIP_NAME } from "@/entities/ipam/constants";
+import { IP_PREFIX_RELATIONSHIP_NAME } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 

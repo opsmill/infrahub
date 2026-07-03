@@ -1,4 +1,5 @@
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 

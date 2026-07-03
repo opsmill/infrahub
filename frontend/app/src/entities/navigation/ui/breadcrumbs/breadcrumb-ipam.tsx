@@ -11,12 +11,12 @@ import { useParams } from "react-router";
 
 import { QSP } from "@/shared/config/qsp";
 
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { constructPathForIpam } from "@/entities/ipam/ip-namespaces/ui/routing/ipam-urls";
 import {
-  IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
   IP_PREFIX_RELATIONSHIP_NAME,
-} from "@/entities/ipam/constants";
-import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
+} from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
 import type { NodeRelationshipOne } from "@/entities/nodes/object/domain/model/node";

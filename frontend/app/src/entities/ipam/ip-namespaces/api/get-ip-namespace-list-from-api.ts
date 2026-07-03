@@ -6,7 +6,7 @@ import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
-import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 export interface GetIpNamespaceListFromApiParams extends ContextParams, PaginationParams {

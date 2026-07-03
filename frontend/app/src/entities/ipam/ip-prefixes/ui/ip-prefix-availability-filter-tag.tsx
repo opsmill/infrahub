@@ -5,8 +5,8 @@ import {
   AVAILABLE_IP_FILTER_NAME,
   HIDE_AVAILABLE_IP,
   SHOW_AVAILABLE_IP,
-} from "@/entities/ipam/constants";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/domain/rules/has-incompatible-filters-for-ip-availability";
+} from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
+import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/has-incompatible-filters-for-ip-availability";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSuggestionTag } from "@/entities/nodes/object/ui/filters/filter-suggestion-tag";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";

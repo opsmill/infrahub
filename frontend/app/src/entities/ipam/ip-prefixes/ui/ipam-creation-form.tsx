@@ -6,8 +6,9 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { useGetNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/ui/queries/get-next-ip-address-available.query";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/ui/queries/get-next-ip-prefix-available.query";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";

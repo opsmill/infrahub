@@ -12,8 +12,7 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-detailed-view";
-import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-detailed-view";
-import { isFromResourcePoolRelationship } from "@/entities/nodes/object/domain/rules/is-from-resource-pool-relationship";
+import { isRelationshipVisibleInSummary } from "@/entities/nodes/object/domain/rules/is-relationship-visible-in-summary";
 import { resolveRelationshipData } from "@/entities/nodes/object/domain/rules/resolve-relationship-data";
 import FieldMetadataForm from "@/entities/nodes/object/ui/metadata/field-metadata-form";
 import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
@@ -172,10 +171,7 @@ function getRelationshipsVisibleInDataDisplay(
 ): RelationshipSchema[] {
   return relationships.filter(
     (rel) =>
-      isRelationshipVisibleInDetailedView(rel) &&
-      rel.name !== "member_of_groups" &&
-      !isFromResourcePoolRelationship(rel.name) &&
-      rel.kind !== "Profile" &&
+      isRelationshipVisibleInSummary(rel) &&
       (!excludeRelationships || !excludeRelationships.includes(rel.name))
   );
 }

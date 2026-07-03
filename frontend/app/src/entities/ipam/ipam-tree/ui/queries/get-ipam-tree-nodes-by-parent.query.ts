@@ -5,7 +5,7 @@ import type { ContextParams, InfiniteQueryConfig, PaginationParams } from "@/sha
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import {
   type GetIpamTreeNodesByParentParams,
   getIpamTreeNodesByParent,

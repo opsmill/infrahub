@@ -1,6 +1,6 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { GetIpamTreeNodesByParentFromApi } from "@/entities/ipam/ipam-tree/api/get-ipam-tree-nodes-by-parent-from-api";
 import type { IpamTreeNode } from "@/entities/ipam/ipam-tree/domain/model/ipam-tree-node";
 

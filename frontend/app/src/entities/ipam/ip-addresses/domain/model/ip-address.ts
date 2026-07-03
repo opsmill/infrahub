@@ -1,5 +1,7 @@
-import type { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+
+export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";
+export const IP_ADDRESS_AVAILABLE_KIND = "InternalIPRangeAvailable" as const;
 
 export interface IpAddressAvailableNode extends NodeCore {
   address: { value: string };

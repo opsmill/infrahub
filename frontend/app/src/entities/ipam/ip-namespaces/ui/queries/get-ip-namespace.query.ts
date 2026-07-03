@@ -1,4 +1,7 @@
-import { IP_NAMESPACE_GENERIC, IP_NAMESPACE_KIND } from "@/entities/ipam/constants";
+import {
+  IP_NAMESPACE_GENERIC,
+  IP_NAMESPACE_KIND,
+} from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
