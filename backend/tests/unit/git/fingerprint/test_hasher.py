@@ -36,5 +36,9 @@ def test_canonical_json_has_no_insignificant_whitespace() -> None:
 
 
 def test_canonical_json_raises_on_non_serializable_value() -> None:
-    with pytest.raises(TypeError, match=r"^Object of type object is not JSON serializable$"):
+    # Python 3.14 appends a context note to json serialization errors.
+    with pytest.raises(
+        TypeError,
+        match=r"^Object of type object is not JSON serializable(\nwhen serializing dict item 'a')?$",
+    ):
         canonical_json({"a": object()})
