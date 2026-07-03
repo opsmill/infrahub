@@ -3,6 +3,7 @@ import uuid
 from collections.abc import AsyncGenerator, Generator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
@@ -22,6 +23,9 @@ from infrahub.telemetry.task_manager import (
     gather_prefect_information,
 )
 from infrahub.telemetry.window import floor_to_midnight_utc, get_activity_window
+
+if TYPE_CHECKING:
+    from prefect.types import DateTime
 
 LOGIN_EVENT_NAME = "infrahub.account.logged_in"
 WEBHOOK_FLOW_NAME = "webhook-process"
@@ -50,7 +54,7 @@ def _login_event(account_id: str, occurred: datetime) -> Event:
     return Event(
         id=uuid.uuid4(),
         event=LOGIN_EVENT_NAME,
-        occurred=occurred,
+        occurred=cast("DateTime", occurred),
         resource=Resource({"prefect.resource.id": f"infrahub.account.{account_id}"}),
     )
 
@@ -64,7 +68,7 @@ def _named_event(event_name: str, occurred: datetime, resource_id: str) -> Event
     return Event(
         id=uuid.uuid4(),
         event=event_name,
-        occurred=occurred,
+        occurred=cast("DateTime", occurred),
         resource=Resource({"prefect.resource.id": resource_id}),
     )
 
