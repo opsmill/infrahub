@@ -25,6 +25,19 @@ All events extend `InfrahubEvent` from `backend/infrahub/events/models.py` and c
 - **related**: Additional context resources (returned by `get_related()`)
 - **payload**: Event-specific data (returned by `get_event_payload()`)
 
+### Related resources cap
+
+The Prefect API rejects any event whose `related` list exceeds
+`PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES` (500 in the Infrahub image) —
+an oversized event is dropped entirely, never recorded. Node mutation events
+build their related resources in priority order — node-scoped entries first
+(attribute updates, parent, the node's own related-node entry), then
+relationship updates (which automation triggers match on), then per-peer
+related-node entries — and truncate at that maximum with a warning log. A node
+with a very large cardinality-many relationship therefore keeps its event, but
+not every peer is represented in `related`; the full peer list remains
+available in the event payload's changelog.
+
 ## Event Types
 
 Events are organized by domain in `backend/infrahub/events/`:
