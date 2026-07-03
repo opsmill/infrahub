@@ -1,5 +1,3 @@
-import type { CheckType } from "@/shared/api/graphql/generated/types";
-
 import type { RelationshipKind } from "@/entities/nodes/object/domain/model/node";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 
@@ -11,11 +9,7 @@ export const TEMPLATE_GENERIC_KIND = "CoreObjectTemplate";
 
 export const FILE_OBJECT_KIND = "CoreFileObject";
 
-export const CHECK_OBJECT = "CoreCheck";
-
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
-
-export const PROPOSED_CHANGES_VALIDATOR_OBJECT = "CoreValidator";
 
 export const MENU_EXCLUDELIST = [
   PROPOSED_CHANGE_OBJECT,
@@ -50,37 +44,6 @@ export const MENU_EXCLUDELIST = [
 ];
 
 export const NODE_PATH_EXCLUDELIST = ["property"];
-
-export const VALIDATION_STATES = {
-  QUEUED: "queued",
-  IN_PROGRESS: "in_progress",
-  COMPLETED: "completed",
-};
-
-export const VALIDATION_CONCLUSIONS = {
-  UNKNOWN: "unknown",
-  FAILURE: "failure",
-  SUCCESS: "success",
-};
-
-export const CHECKS_LABEL = {
-  EMPTY: "Empty",
-  UNKOWN: "Unkown",
-  QUEUED: "Queued",
-  FAILURE: "Failure",
-  SUCCESS: "Success",
-  IN_PROGRESS: "In progress",
-};
-
-export const VALIDATIONS_ENUM_MAP: { [key: string]: CheckType } = {
-  CoreArtifactValidator: "ARTIFACT",
-  CoreDataValidator: "DATA",
-  CoreGeneratorValidator: "GENERATOR",
-  CoreRepositoryValidator: "REPOSITORY",
-  CoreSchemaValidator: "SCHEMA",
-  CoreUserValidator: "USER",
-  all: "ALL",
-};
 
 export const MAX_VALUE_LENGTH_DISPLAY = 40;
 export const MAX_PASSWORD_DOTS_DISPLAY = 20;

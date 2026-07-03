@@ -1,4 +1,5 @@
-import { CHECKS_LABEL, VALIDATION_CONCLUSIONS, VALIDATION_STATES } from "@/shared/config/constants";
+import { VALIDATION_CONCLUSIONS, VALIDATION_STATES } from "@/entities/diff/domain/model/check";
+import { CHECKS_LABEL } from "@/entities/diff/ui/checks/checks-labels";
 
 export const getValidatorsStats = (validators: any[]) => {
   const successValidators = validators.filter(
