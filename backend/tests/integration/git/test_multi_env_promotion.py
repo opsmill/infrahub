@@ -165,7 +165,9 @@ async def _recorded_commit(db: InfrahubDatabase, node_id: str) -> str:
     repo: CoreReadOnlyRepository = await NodeManager.get_one(
         db=db, id=node_id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
     )
-    return repo.commit.value
+    commit = repo.commit.value
+    assert commit is not None
+    return commit
 
 
 class TestMultiEnvPromotion(TestInfrahubApp):
