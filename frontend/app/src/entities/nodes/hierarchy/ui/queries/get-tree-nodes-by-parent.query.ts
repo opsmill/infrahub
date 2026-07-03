@@ -8,9 +8,11 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetTreeNodesByParentParams,
   getTreeNodesByParent,
-  TREE_NODES_PAGE_SIZE,
 } from "@/entities/nodes/hierarchy/domain/use-cases/get-tree-nodes-by-parent";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+
+// Page size for tree node queries — a UI pagination concern; passed to the domain as `limit`.
+const TREE_NODES_PAGE_SIZE = 80;
 
 export type GetTreeNodesByParentQueryOptionsParams = Omit<
   GetTreeNodesByParentParams,
@@ -25,6 +27,7 @@ export function getTreeNodesByParentInfiniteQueryOptions(
     queryFn: async ({ pageParam }) => {
       return getTreeNodesByParent({
         ...params,
+        limit: TREE_NODES_PAGE_SIZE,
         offset: pageParam,
       });
     },
