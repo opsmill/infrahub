@@ -3,8 +3,8 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
-import type { Filter } from "@/shared/hooks/useFilters";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { PROPOSED_CHANGE_STATES } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 

@@ -1,5 +1,6 @@
 import type { BranchStatus } from "@/shared/api/graphql/generated/types";
-import type { Filter } from "@/shared/hooks/useFilters";
+
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 export const getNameFilterValue = (filters?: Filter[]) => {
   const nameFilter = filters?.find((f) => f.name === "any__value");

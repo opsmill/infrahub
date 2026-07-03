@@ -9,13 +9,13 @@ import {
   dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 
 import {
   AVAILABLE_IP_FILTER_NAME,
   IP_PREFIX_AVAILABLE_KIND,
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GetIpPrefixListFromApiParams extends ContextParams, PaginationParams {

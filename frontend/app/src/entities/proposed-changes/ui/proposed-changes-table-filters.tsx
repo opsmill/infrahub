@@ -1,8 +1,8 @@
 import { useQueryState } from "nuqs";
 
 import { QSP } from "@/shared/config/qsp";
-import useFilters from "@/shared/hooks/useFilters";
 
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { CLOSE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { ProposedChangeTableFilter } from "@/entities/proposed-changes/ui/proposed-change-table-filter";
 import { ProposedChangeTableFilterLink } from "@/entities/proposed-changes/ui/proposed-change-table-filter-link";

@@ -8,8 +8,8 @@ import {
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";

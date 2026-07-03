@@ -1,5 +1,4 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
@@ -11,6 +10,7 @@ import {
 import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-relationships-visible-in-list-view";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 

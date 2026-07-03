@@ -1,6 +1,5 @@
-import type { Filter } from "@/shared/hooks/useFilters";
-
 import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 const allowedFiltersWithIpAvailability: Array<Filter["name"]> = [
   "parent__ids",

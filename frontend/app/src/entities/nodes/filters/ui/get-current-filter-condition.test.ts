@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Filter } from "@/shared/hooks/useFilters";
-
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { FILTER_CONDITION } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 
 import { getCurrentFilterCondition } from "./get-current-filter-condition";

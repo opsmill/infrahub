@@ -1,5 +1,4 @@
-import type { Filter } from "@/shared/hooks/useFilters";
-
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import {
   PROPOSED_CHANGE_STATES,
   STATE_VALUES_FILTER,

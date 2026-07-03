@@ -4,8 +4,8 @@ import { useState } from "react";
 import type { TagProps } from "react-aria-components";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import useFilters from "@/shared/hooks/useFilters";
 
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 

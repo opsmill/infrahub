@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import type { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 import {
   generateAttributeSchema,
   generateGenericSchema,
   generateRelationshipSchema,
-} from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/schema";
 import { removeFiltersNotInSchema } from "./remove-filters-not-in-schema";
 
 const mockSchema = generateGenericSchema({

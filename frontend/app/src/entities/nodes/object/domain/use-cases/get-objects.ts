@@ -1,8 +1,8 @@
 import type { AddAttributesToRequestOptions } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { getObjectsFromApi } from "@/entities/nodes/object/api/get-objects-from-api";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";

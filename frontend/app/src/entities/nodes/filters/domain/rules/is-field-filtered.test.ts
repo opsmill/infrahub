@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
+import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 
 describe("isFieldFiltered", () => {
   it("returns true for exact field name match", () => {

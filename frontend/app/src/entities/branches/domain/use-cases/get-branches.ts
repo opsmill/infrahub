@@ -1,5 +1,4 @@
 import type { PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { store } from "@/shared/stores";
 
 import {
@@ -15,6 +14,7 @@ import {
   getStatusFilterValue,
 } from "@/entities/branches/domain/rules/branch-filters";
 import { branchesState } from "@/entities/branches/stores";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 export type GetBranchesParams = PaginationParams & {
   filters?: Filter[];

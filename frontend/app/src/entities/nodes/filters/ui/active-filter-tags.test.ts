@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   formatAttributeFilterValue,
   getFilterTagDisplay,
-} from "@/shared/components/filters/active-filter-tags";
-
+} from "@/entities/nodes/filters/ui/active-filter-tags";
 import { objectDecisionOptions } from "@/entities/role-manager/domain/model/decision";
 
-import { generateAttributeSchema, generateRelationshipSchema } from "../../../../tests/fake/schema";
+import {
+  generateAttributeSchema,
+  generateRelationshipSchema,
+} from "../../../../../tests/fake/schema";
 
 describe("formatAttributeFilterValue", () => {
   it("returns string representation for boolean kind", () => {

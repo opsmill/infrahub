@@ -4,10 +4,10 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 export interface GetIpNamespaceListFromApiParams extends ContextParams, PaginationParams {
   filters?: Array<Filter>;

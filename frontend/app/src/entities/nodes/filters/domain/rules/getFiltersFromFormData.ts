@@ -1,5 +1,6 @@
 import type { FormFieldValue } from "@/shared/components/form/type";
-import type { Filter } from "@/shared/hooks/useFilters";
+
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 export const getFiltersFromFormData = (formData: Record<string, FormFieldValue>): Filter[] => {
   return Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {

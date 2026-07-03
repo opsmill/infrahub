@@ -1,8 +1,8 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
 
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
 import { canDissociateRelationship } from "@/entities/nodes/relationships/domain/rules/can-dissociate-relationship";

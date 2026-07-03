@@ -1,4 +1,4 @@
-import type { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 export const IP_NAMESPACE_GENERIC = "BuiltinIPNamespace";
 export const IP_NAMESPACE_KIND = "IpamNamespace";

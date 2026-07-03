@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Filter } from "@/shared/hooks/useFilters";
-
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 

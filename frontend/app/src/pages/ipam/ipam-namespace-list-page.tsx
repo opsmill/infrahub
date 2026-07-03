@@ -7,11 +7,11 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 import Content from "@/shared/components/layout/content";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
 
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-card";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";

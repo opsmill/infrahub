@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Filter } from "@/shared/hooks/useFilters";
-
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 import { generateAttributeSchema, generateRelationshipSchema } from "../../../../tests/fake/schema";

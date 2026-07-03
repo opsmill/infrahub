@@ -4,9 +4,9 @@ import { ListBox } from "react-aria-components";
 
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { QSP } from "@/shared/config/qsp";
-import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { computeProposedChangeFilters } from "@/entities/proposed-changes/domain/rules/compute-proposed-change-filters";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";

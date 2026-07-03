@@ -8,9 +8,9 @@ import {
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
 import type { PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import type {
   AttributeSchema,

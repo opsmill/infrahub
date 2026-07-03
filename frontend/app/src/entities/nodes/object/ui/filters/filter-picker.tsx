@@ -5,10 +5,10 @@ import type React from "react";
 import { useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 
-import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import {
   getFilterDefinitionLabel,

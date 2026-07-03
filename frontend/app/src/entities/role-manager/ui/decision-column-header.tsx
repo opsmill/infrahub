@@ -3,9 +3,9 @@ import { useState } from "react";
 
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { DecisionFilterForm } from "@/entities/nodes/object/ui/filters/decision-filter-form";
 import type { DecisionOption } from "@/entities/role-manager/domain/use-cases/get-decision-options";
 import type { AttributeSchema } from "@/entities/schema/domain/model/schema";

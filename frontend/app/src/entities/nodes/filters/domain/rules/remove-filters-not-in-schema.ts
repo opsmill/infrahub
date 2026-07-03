@@ -1,10 +1,9 @@
-import type { Filter } from "@/shared/hooks/useFilters";
-
 import {
   AVAILABLE_IP_FILTER_NAME,
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 

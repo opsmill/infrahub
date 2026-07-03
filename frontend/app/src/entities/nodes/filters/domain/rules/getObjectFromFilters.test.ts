@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
-import type { Filter } from "@/shared/hooks/useFilters";
-
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getObjectFromFilters } from "@/entities/nodes/filters/domain/rules/getObjectFromFilters";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
-import { generateRelationshipSchema } from "../../../../../tests/fake/schema";
+import { generateRelationshipSchema } from "../../../../../../tests/fake/schema";
 
 describe("getObjectFromFilters - test", () => {
   it("returns value for a attribute correctly", () => {
