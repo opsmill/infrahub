@@ -80,6 +80,9 @@ class FlowRunReader:
         if log_limit > NB_LOGS_LIMIT:
             raise ValueError(f"log_limit cannot be greater than {NB_LOGS_LIMIT}")
 
+        if not flow_ids:
+            return logs_flow
+
         all_logs = []
 
         # Fetch the logs in batches of PREFECT_MAX_LOGS_PER_CALL, as prefect does not allow to fetch more logs at once.

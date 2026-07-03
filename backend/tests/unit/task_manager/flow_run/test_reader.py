@@ -91,6 +91,14 @@ class TestReadLogs:
 
         assert [entry.message for entry in result.logs[flow_id]] == ["real work"]
 
+    async def test_no_flow_ids_returns_empty_without_remote_call(self) -> None:
+        client = FakeReaderClient(logs=[make_log(uuid4())])
+
+        result = await FlowRunReader(client=client).read_logs(flow_ids=[], log_limit=None, log_offset=None)
+
+        assert result.logs == {}
+        client.assert_log_pages_fetched([])
+
     async def test_rejects_log_limit_above_max(self) -> None:
         with pytest.raises(ValueError, match=rf"^log_limit cannot be greater than {NB_LOGS_LIMIT}$"):
             await FlowRunReader(client=FakeReaderClient()).read_logs(
