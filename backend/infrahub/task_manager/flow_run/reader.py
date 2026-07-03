@@ -109,11 +109,15 @@ class FlowRunReader:
         return logs_flow
 
     async def read_progress(self, flow_ids: list[UUID]) -> FlowProgress:
+        flow_progress = FlowProgress()
+
+        if not flow_ids:
+            return flow_progress
+
         artifacts = await self.client.read_artifacts(
             artifact_filter=ArtifactFilter(type=ArtifactFilterType(any_=["progress"])),
             flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=flow_ids)),
         )
-        flow_progress = FlowProgress()
         for artifact in artifacts:
             if artifact.flow_run_id in flow_progress.data:
                 log.warning(

@@ -21,6 +21,7 @@ class FakeReaderClient:
         self._artifacts = artifacts or []
         self._flows = flows or []
         self._log_fetches: list[tuple[int, int]] = []
+        self.read_artifacts_calls: list[FlowRunFilter] = []
         self.read_flows_calls: list[FlowFilter | None] = []
 
     async def read_flow_runs(
@@ -42,6 +43,7 @@ class FakeReaderClient:
         assert self._log_fetches == pages
 
     async def read_artifacts(self, artifact_filter: ArtifactFilter, flow_run_filter: FlowRunFilter) -> list[Artifact]:
+        self.read_artifacts_calls.append(flow_run_filter)
         return self._artifacts
 
     async def read_flows(self, flow_filter: FlowFilter | None = None) -> list[Flow]:
@@ -130,6 +132,14 @@ class TestReadProgress:
         result = await FlowRunReader(client=client).read_progress(flow_ids=[flow_id])
 
         assert result.data == {}
+
+    async def test_no_flow_ids_returns_empty_without_remote_call(self) -> None:
+        client = FakeReaderClient(artifacts=[make_artifact(uuid4(), 0.5)])
+
+        result = await FlowRunReader(client=client).read_progress(flow_ids=[])
+
+        assert result.data == {}
+        assert client.read_artifacts_calls == []
 
 
 class TestReadFlows:
