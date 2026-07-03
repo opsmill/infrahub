@@ -1,0 +1,1 @@
+Fixed unbounded memory growth in API server processes: the GraphQL type registry now evicts the previous schema of a branch when its schema changes, instead of retaining every historical GraphQL schema until restart.
