@@ -10,8 +10,8 @@ import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipbo
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { QSP } from "@/shared/config/qsp";
 
-import type { ArtifactObject } from "@/entities/artifacts/domain/artifact";
-import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/artifact";
+import type { ArtifactObject } from "@/entities/artifacts/domain/model/artifact";
+import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ArtifactDetailsMenuProps {

@@ -8,7 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetObjectFileParams,
   getObjectFile,
-} from "@/entities/nodes/object-file/domain/get-object-file";
+} from "@/entities/nodes/object-file/domain/use-cases/get-object-file";
 import { objectFileQueryKeys } from "@/entities/nodes/object-file/ui/queries/object-file.query-keys";
 
 export function getObjectFileQueryOptions(params: GetObjectFileParams) {

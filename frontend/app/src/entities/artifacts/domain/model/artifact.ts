@@ -15,18 +15,3 @@ export interface ArtifactObject extends NodeCore {
   definition: { node: NodeCore };
   object: { node: NodeCore };
 }
-
-export function assertArtifactObject(data: NodeCore | null | undefined): ArtifactObject | null {
-  const artifact = data as Partial<ArtifactObject> | null | undefined;
-
-  if (
-    !artifact?.content_type?.value ||
-    !artifact.status?.value ||
-    !artifact.definition?.node ||
-    !artifact.object?.node
-  ) {
-    return null;
-  }
-
-  return artifact as ArtifactObject;
-}

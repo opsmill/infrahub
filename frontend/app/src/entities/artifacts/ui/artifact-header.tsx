@@ -1,4 +1,4 @@
-import type { ArtifactObject } from "@/entities/artifacts/domain/artifact";
+import type { ArtifactObject } from "@/entities/artifacts/domain/model/artifact";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
 import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";

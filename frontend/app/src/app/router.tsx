@@ -5,7 +5,7 @@ import { ReactAriaRouterProvider } from "@/app/providers/react-aria-router-provi
 
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
 
-import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/artifact";
+import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
 import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";

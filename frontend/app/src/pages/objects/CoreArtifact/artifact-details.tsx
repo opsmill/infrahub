@@ -5,7 +5,7 @@ import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/artifact";
+import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
 import { ArtifactsDetails } from "@/entities/artifacts/ui/artifact-details";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

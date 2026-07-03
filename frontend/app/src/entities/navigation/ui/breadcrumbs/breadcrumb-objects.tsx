@@ -1,7 +1,7 @@
 import { Breadcrumbs } from "@infrahub/ui";
 import { useLocation, useParams } from "react-router";
 
-import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/artifact";
+import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemSchema } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-schema";

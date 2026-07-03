@@ -4,7 +4,10 @@ import type { ArtifactEvent } from "@/shared/api/graphql/generated/types";
 import { Link } from "@/shared/components/ui/link";
 import { QSP } from "@/shared/config/qsp";
 
-import { ARTIFACT_DEFINITION_KIND, ARTIFACT_OBJECT } from "@/entities/artifacts/domain/artifact";
+import {
+  ARTIFACT_DEFINITION_KIND,
+  ARTIFACT_OBJECT,
+} from "@/entities/artifacts/domain/model/artifact";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
