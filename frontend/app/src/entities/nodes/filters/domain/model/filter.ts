@@ -12,3 +12,8 @@ export const FilterSchema = z.array(
 );
 
 export type Filter = z.infer<typeof FilterSchema>[number];
+
+/** Full-text "search any field" filter name. */
+export const SEARCH_ANY_FILTER = "any__value";
+export const SEARCH_PARTIAL_MATCH = "partial_match";
+export const SEARCH_FILTERS = [SEARCH_ANY_FILTER, SEARCH_PARTIAL_MATCH];

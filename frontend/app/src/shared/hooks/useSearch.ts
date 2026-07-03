@@ -1,5 +1,4 @@
-import { SEARCH_ANY_FILTER } from "@/shared/config/constants";
-
+import { SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
 export const useSearch = (): [string, (newSearch: string) => void] => {

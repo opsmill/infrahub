@@ -10,9 +10,9 @@ import { Table, type tColumn } from "@/shared/components/table/table";
 import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
 import { Pagination } from "@/shared/components/ui/pagination";
-import { SEARCH_ANY_FILTER } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
