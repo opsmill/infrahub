@@ -3,21 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from fastapi import APIRouter, Depends, Query, Request
-from infrahub_sdk.schema.generated.write import (
-    GeneratedGenericSchema as WriteGenericSchema,
-)
-from infrahub_sdk.schema.generated.write import (
-    GeneratedNodeSchema as WriteNodeSchema,
-)
+from infrahub_sdk.schema.validate import validate_schema as validate_write_schema
 from pydantic import (
     BaseModel,
     Field,
     computed_field,
     create_model,
     model_validator,
-)
-from pydantic import (
-    ValidationError as PydanticValidationError,
 )
 from starlette.responses import JSONResponse
 
@@ -125,62 +117,20 @@ class SchemaReadAPI(BaseModel):
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
-# The user-facing "write" contract lives in the SDK; the load endpoint validates each
-# submitted node/generic against it so that fields the user may not set (read-level,
-# internal, or unknown) and out-of-range constrained values are rejected at the boundary
-# with a field-level message, before the payload is coerced into the richer internal models.
-_WRITE_MODELS_BY_COLLECTION: dict[str, type[BaseModel]] = {
-    "nodes": WriteNodeSchema,
-    "generics": WriteGenericSchema,
-}
-
-
-def _format_write_error_location(collection: str, index: int, loc: tuple[Any, ...]) -> str:
-    parts = [f"{collection}[{index}]"]
-    for element in loc:
-        if isinstance(element, int):
-            parts[-1] = f"{parts[-1]}[{element}]"
-        else:
-            parts.append(str(element))
-    return ".".join(parts)
-
-
-def _collect_write_contract_errors(data: dict[str, Any]) -> list[str]:
-    """Validate each node/generic in a load payload against the SDK write model.
-
-    Returns a field-level message for every field that is not settable (read-level,
-    internal, or unknown) and for every constrained field set outside its allowed set.
-    """
-    messages: list[str] = []
-    for collection, model in _WRITE_MODELS_BY_COLLECTION.items():
-        items = data.get(collection)
-        if not isinstance(items, list):
-            continue
-        for index, item in enumerate(items):
-            if not isinstance(item, dict):
-                continue
-            try:
-                model.model_validate(item)
-            except PydanticValidationError as exc:
-                for error in exc.errors():
-                    location = _format_write_error_location(collection, index, error["loc"])
-                    message = f"{location}: {error['msg']}"
-                    if error["type"] != "missing" and "input" in error:
-                        message += f" (received: {error['input']!r})"
-                    messages.append(message)
-    return messages
-
-
 class SchemaLoadAPI(SchemaRoot):
     version: str
 
     @model_validator(mode="before")
     @classmethod
     def validate_write_contract(cls, data: Any) -> Any:
+        # The user-facing "write" contract lives in the SDK; each submitted node/generic is
+        # validated against it so that fields the user may not set (read-level, internal, or
+        # unknown) and out-of-range constrained values are rejected at the boundary with a
+        # field-level message, before the payload is coerced into the richer internal models.
         if isinstance(data, dict):
-            errors = _collect_write_contract_errors(data)
-            if errors:
-                raise ValueError("; ".join(errors))
+            result = validate_write_schema(schema=data)
+            if not result.valid:
+                raise ValueError("; ".join(result.messages))
         return data
 
 

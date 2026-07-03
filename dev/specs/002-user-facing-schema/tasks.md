@@ -74,14 +74,14 @@ description: "Task list for User-Facing Schema Separation (INFP-234)"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T017 [P] [US2] SDK offline test in `python_sdk/tests/unit/test_schema_offline_validation.py`: with only the SDK installed, a valid payload passes and a payload with a non-settable/out-of-enum field fails naming the field.
-- [ ] T018 [P] [US2] Parity contract test in `backend/tests/functional/api/test_load_schema.py`: the same payload yields the same field/enum verdict via SDK offline validation and via `POST /api/schema/load`.
+- [X] T017 [P] [US2] SDK offline test in `python_sdk/tests/unit/test_schema_offline_validation.py`: with only the SDK installed, a valid payload passes and a payload with a non-settable/out-of-enum field fails naming the field.
+- [X] T018 [P] [US2] Parity contract test in `backend/tests/functional/api/test_load_schema.py`: the same payload yields the same field/enum verdict via SDK offline validation and via `POST /api/schema/load`.
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Expose an SDK offline-validation entry point in `python_sdk/infrahub_sdk/schema/` that validates a payload against the generated write model and returns a field-level verdict.
-- [ ] T020 [US2] Remove the SDK's hand-written schema models (from T002 audit) and repoint in-SDK consumers to the generated write/read models; keep public import paths stable where feasible.
-- [ ] T021 [US2] Add an SDK CI check (in the SDK's own test/CI config) that the generated write/read models are present and non-stale (FR-012), matching the backend drift check.
+- [X] T019 [US2] Expose an SDK offline-validation entry point in `python_sdk/infrahub_sdk/schema/` that validates a payload against the generated write model and returns a field-level verdict. NOTE: `validate_schema()` in `python_sdk/infrahub_sdk/schema/validate.py` (re-exported from `infrahub_sdk.schema`); the backend `POST /api/schema/load` boundary was repointed to call this same function, single-sourcing the write-validation logic and guaranteeing parity (T018).
+- [ ] T020 [US2] ⚠️ PARTIAL — Remove the SDK's hand-written schema models (from T002 audit) and repoint in-SDK consumers to the generated write/read models; keep public import paths stable where feasible. DONE: consolidated the WRITE-validation logic — the generated write models are now the single source for the load boundary (SDK `validate_schema` + backend, backend's duplicated validator removed). NOT DONE: the hand-written models in `main.py` (`SchemaRoot`/`NodeSchema`/`GenericSchema`/`AttributeSchema`/`RelationshipSchema` + all `*API` read models with ~15 behavior methods, enums, `BranchSchema`) remain, and the 22 in-SDK consumers are not repointed. Reason: the generated read models lack `hash` and carry a different field set/typing (`Literal` vs enum classes, `computed_attribute`/`parameters`/`deprecation`/`display`/`common_parent`/`common_relatives`, `min_count`/`max_count` as required int) than the hand-written read models; a naive rebase changes serialization shape and breaks export/protocols-generator/node consumers and the SDK suite. Deferred to keep the SDK suite green (HARD REQUIREMENT); the behavior-subclass-over-generated-data-model refactor needs its own chunk to reconcile the field/typing deltas.
+- [X] T021 [US2] Add an SDK CI check (in the SDK's own test/CI config) that the generated write/read models are present and non-stale (FR-012), matching the backend drift check. NOTE: `python_sdk/tests/unit/test_schema_generated_models.py` verifies presence + the do-not-edit header + the write(`extra=forbid`)/read-superset invariants — the strongest standalone drift guard the SDK repo can run (it cannot regenerate from the backend); full regeneration drift stays enforced by the monorepo's generated-file CI.
 
 **Checkpoint**: offline validation works from the SDK alone with server parity; no parallel hand-written models remain.
 

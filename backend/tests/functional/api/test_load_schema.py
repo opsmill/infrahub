@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
+from infrahub_sdk.schema import validate_schema
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
@@ -673,3 +674,69 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         body = response.text
         assert "kind" in body
         assert "NotARealKind" in body
+
+    async def test_write_contract_parity_sdk_offline_vs_load_endpoint(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """The same payload yields the same field/enum verdict offline (SDK) and via POST /api/schema/load.
+
+        A valid payload passes both; an invalid payload is rejected by both, and every field the
+        SDK names offline appears in the server's rejection response.
+        """
+        valid_schema_root = {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "Device",
+                    "namespace": "Test",
+                    "attributes": [{"name": "name", "kind": "Text"}],
+                }
+            ],
+        }
+        invalid_schema_root = {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "Device",
+                    "namespace": "Test",
+                    "attributes": [
+                        {
+                            "name": "name",
+                            "kind": "NotARealKind",
+                            "inherited": True,
+                            "not_a_real_field": "value",
+                        }
+                    ],
+                }
+            ],
+        }
+
+        # Valid payload: SDK offline verdict is "valid" and the server accepts it.
+        offline_valid = validate_schema(schema=valid_schema_root)
+        assert offline_valid.valid is True
+        response_valid = await test_client.post(
+            "/api/schema/load",
+            json={"schemas": [valid_schema_root]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        assert response_valid.status_code == 200
+
+        # Invalid payload: SDK offline verdict is "invalid" and the server rejects it (422),
+        # naming every field the SDK named offline.
+        offline_invalid = validate_schema(schema=invalid_schema_root)
+        assert offline_invalid.valid is False
+        response_invalid = await test_client.post(
+            "/api/schema/load",
+            json={"schemas": [invalid_schema_root]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        assert response_invalid.status_code == 422
+
+        body = response_invalid.text
+        offending_fields = {error.field.rsplit(".", 1)[-1] for error in offline_invalid.errors}
+        assert {"kind", "inherited", "not_a_real_field"} <= offending_fields
+        for field in offending_fields:
+            assert field in body
