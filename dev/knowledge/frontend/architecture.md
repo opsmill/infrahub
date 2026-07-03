@@ -24,6 +24,21 @@ Dependency rule: `app → pages → entities → shared` (unidirectional).
   `authentication` (the API clients need the access token) and `nodes/filters` (the GraphQL query
   builder needs the `Filter` type). These are accepted cross-cutting edges, not a general licence.
 
+#### Known exceptions (migration debt)
+
+`shared/` is not yet a clean leaf. Beyond the sanctioned edges above, these files still import
+contexts today. The rule stands — do not add new edges like them; migrate these into their contexts:
+
+- `shared/api/graphql/utils.ts`: also imports `ipam/ip-availability` and `schema` domain models
+- `shared/api/rest/client.ts`: imports `authentication`'s `ui/queries` refresh-token query, beyond
+  the token surface
+- Most of `shared/components/inputs/` (`peer`, `enum`, `dropdown`, `pool-select`,
+  `relationship-one`/`-many`, `node-kind-select`, `kind-multi-select`): import the `schema` and
+  `nodes` contexts
+- `shared/components/display/slide-over.tsx`, `shared/components/display/meta-details-tooltips.tsx`,
+  `shared/components/table/data-table.tsx`, `shared/components/ui/id.tsx`, and
+  `shared/libs/graphiql/use-graphiql-fetcher.ts`
+
 ## Entity (context) structure
 
 ```text
@@ -35,12 +50,17 @@ entities/{context}/
 │   │                   #   (MAY import generated types, incl. wire DTOs)
 │   ├── rules/          # Pure, no-I/O functions (predicates, extraction, shaping)
 │   └── use-cases/      # Orchestration: composes model + rules, calls own api/
-└── ui/                 # React. Nested subfolders OK (queries/, hooks/, component groups)
+└── ui/                 # React. Nested subfolders OK (queries/, hooks/, routing/, component groups)
 ```
 
-There is **no** entity-root `types.ts`/`constants.ts`, no entity-root `utils/` folder, and no
+Do **not** add an entity-root `types.ts`/`constants.ts`, an entity-root `utils/` folder, or an
 entity-root `stores.ts`. Types and vocabulary go in `domain/model`; pure helpers in `domain/rules`;
 React helpers/state in `ui/`. Use-cases always live in `domain/use-cases/` (even a single one).
+
+Known exceptions (migration debt): `branches/stores.ts`, `schema/stores/`,
+`proposed-changes/stores/`, the stray root component `nodes/getObjectItemDisplayValue.tsx`, and the
+flat `domain/` folders in `artifacts`, `user-profile`, and `nodes/object-file`. See
+`entities-structure.md` for the full list — do not copy these patterns.
 
 See `entities-structure.md` for the full layer import rules, the data-flow, and worked examples.
 
@@ -52,7 +72,9 @@ See `entities-structure.md` for the full layer import rules, the data-flow, and 
 - **Context vocabulary → the context's `domain/model`:** schema kinds (`NODE_OBJECT`,
   `ARTIFACT_OBJECT`, …), states, event-type names, filter names — never `shared/config/constants.ts`.
 - **Pagination page size is a UI concern:** the `ui/queries` layer owns the page-size constant and
-  passes it to the domain use-case as `limit`; the domain never defaults to a UI page size.
+  passes it to the domain use-case as `limit`; the domain never defaults to a UI page size. (Known
+  exception: `BRANCHES_PER_PAGE` currently lives in `entities/branches/api/get-branches-from-api.ts`
+  — migration debt, not a precedent.)
 
 ## Generated Files (Do Not Edit)
 

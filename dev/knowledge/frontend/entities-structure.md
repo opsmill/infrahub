@@ -6,7 +6,7 @@ Location: `frontend/app/src/entities/`
 
 Each entity (context) is organized into three layers with strict import rules. Dependencies flow in one direction: ui/ -> domain/ -> api/.
 
-`domain/` is organized as `model/` (types + vocabulary), `rules/` (pure functions), and `use-cases/` (orchestration). Use-cases always live in `domain/use-cases/` — even a single one; types always in `domain/model/`. There are **no entity-root catch-all files** (`types.ts`, `constants.ts`, `stores.ts`) and **no entity-root `utils/` folder**: types/vocabulary → `domain/model`, pure helpers → `domain/rules`, view-model/table helpers and hooks → `ui/`, and generated↔domain **mappers live in `api/`**.
+`domain/` is organized as `model/` (types + vocabulary), `rules/` (pure functions), and `use-cases/` (orchestration). Use-cases always live in `domain/use-cases/` — even a single one; types always in `domain/model/`. Never add **entity-root catch-all files** (`types.ts`, `constants.ts`, `stores.ts`) or an **entity-root `utils/` folder**: types/vocabulary → `domain/model`, pure helpers → `domain/rules`, view-model/table helpers and hooks → `ui/`, and generated↔domain **mappers live in `api/`**. A few entities still violate this — see [Known exceptions (migration debt)](#known-exceptions-migration-debt).
 
 ```text
 entities/{name}/
@@ -29,8 +29,13 @@ entities/{name}/
     │   └── create-{noun}.mutation.ts # useMutation hook + cache invalidation
     ├── hooks/
     │   └── use-{noun}-{thing}.ts     # Entity-specific React hooks
+    ├── routing/                      # Route helpers: {noun}-urls.ts builders, use-{noun}-outlet.ts hooks
     └── {noun}-table.tsx              # React components
 ```
+
+The `ui/routing/` sub-folder is a consistent convention across entities: URL builders
+(`object-urls.ts`, `branch-urls.ts`, `proposed-change-urls.ts`), outlet-context hooks
+(`use-*-outlet.ts`), and `authentication`'s `login-redirect.ts` all live there.
 
 ### Classifying a file into `domain/`
 
@@ -63,7 +68,7 @@ A hand-written domain type plus an `api/` mapper is **optional** — reach for i
 | **domain/use-cases** | own `api/` (incl. mappers), own `domain/model` + `rules`, `shared/`, generated types | `ui/`, React, TanStack, Jotai, browser storage |
 | **ui/** | `domain/` (same entity), `shared/`, other entities' `domain/` and `ui/` | Another entity's `api/` |
 
-Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Because `domain/model` imports nothing back, `api/` may import it not only for mapper return **types** but also for plain **vocabulary constants** (schema kinds, state strings, enums used to build queries) — the import stays acyclic. What `api/` must never import is domain **logic** (`domain/rules`, `domain/use-cases`) or `ui/`. Generated types (incl. wire DTOs) may enter `domain/` (see above); `domain/` must not read browser storage or global state directly.
+Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Because `domain/model` imports nothing back, `api/` may import it not only for mapper return **types** but also for plain **vocabulary constants** (schema kinds, state strings, enums used to build queries) — the import stays acyclic. What `api/` must never import is domain **logic** (`domain/rules`, `domain/use-cases`) or `ui/`. Generated types (incl. wire DTOs) may enter `domain/` (see above); `domain/` must not read or write browser storage or global state directly (one known violation remains — see [Known exceptions (migration debt)](#known-exceptions-migration-debt)).
 
 ## `shared/` vs contexts
 
@@ -76,11 +81,12 @@ component/hook/type may be imported from anywhere, including `shared/`.
 What this means in practice:
 
 - **Context vocabulary is never in `shared/`.** Schema kinds, states, event-type names, and filter
-  names live in the owning context's `domain/model` (e.g. `NODE_OBJECT` in `nodes/object`,
-  `ARTIFACT_OBJECT` in `artifacts`, the `Filter` type + `SEARCH_*` in `nodes/filters`). Only
+  names live in the owning context's `domain/model` (e.g. `NODE_OBJECT` in `nodes/object`, the
+  `Filter` type + `SEARCH_*` in `nodes/filters`). Only
   genuinely generic values stay in `shared/config/constants.ts` (display limits) and
   `shared/config/qsp.ts` (URL param keys).
-- **`shared/` stays a leaf** (imports no context) — with these sanctioned exceptions:
+- **`shared/` stays a leaf** (imports no context) — with these sanctioned exceptions (other
+  `shared/` → context edges still exist as [migration debt](#known-exceptions-migration-debt)):
   - **The form subsystem `shared/components/form/`** is a cross-context framework: it renders the
     right form per node kind, so it legitimately imports many contexts. Treat it as framework code.
   - **`shared/api/` transport** reaches two cross-cutting contexts: `authentication` (the REST/GraphQL
@@ -90,6 +96,32 @@ What this means in practice:
 - **Pagination page size is a UI concern:** keep the page-size constant in `ui/queries` and pass it
   to the domain use-case as `limit`; the domain never imports a page size or defaults to one.
 - **Cross-entity `ui → api` stays forbidden** for everyone (only `authentication`'s token surface is exempt).
+
+## Known exceptions (migration debt)
+
+The rules above are the target. These violations still exist in the codebase — do not copy them,
+and remove them when touching the code:
+
+- Entity-root state and files: `branches/stores.ts` (Jotai `branchesState`, `currentBranchAtom`),
+  `schema/stores/`, `proposed-changes/stores/`, and the stray root component
+  `nodes/getObjectItemDisplayValue.tsx`.
+- Flat `domain/` folders (no `model`/`rules`/`use-cases` split): `artifacts/domain/` (`artifact.ts`
+  — home of `ARTIFACT_OBJECT` — plus `generate-artifact.ts`, `get-artifact-file.ts`),
+  `user-profile/domain/` (four flat use-case files), and
+  `nodes/object-file/domain/get-object-file.ts`.
+- Global state in a use-case: `branches/domain/use-cases/get-branches.ts` imports `store` from
+  `@/shared/stores` and calls `store.set(branchesState, branches)` inside `getAllBranches`.
+- Page size outside `ui/queries`: `BRANCHES_PER_PAGE` is defined in
+  `branches/api/get-branches-from-api.ts` (which also defaults its `limit` to it) and imported by
+  `ui/queries/get-branches.query.ts`.
+- `shared/` → context edges beyond the sanctioned ones: `shared/api/graphql/utils.ts` (also imports
+  `ipam/ip-availability` and `schema` domain models), `shared/api/rest/client.ts` (imports
+  `authentication`'s `ui/queries` refresh-token query), most of `shared/components/inputs/`
+  (`peer`, `enum`, `dropdown`, `pool-select`, `relationship-one`/`-many`, `node-kind-select`,
+  `kind-multi-select`), plus `shared/components/display/slide-over.tsx`,
+  `shared/components/display/meta-details-tooltips.tsx`, `shared/components/table/data-table.tsx`,
+  `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
+  reaches `nodes/object`'s `api/`).
 
 ## Data Flow
 
@@ -109,31 +141,77 @@ queryOptions factories and useQuery/useMutation hooks live in `ui/queries/`, not
 
 Rationale: `queryOptions` configures TanStack Query, a framework concern. Caching strategy, query keys, and reactive subscriptions belong in the UI layer. A TUI or CLI would call domain async functions directly without TanStack.
 
-```ts
-// domain/use-cases/get-branches.ts — pure, no framework imports
-export async function getBranches(
-  branch: string,
-  date?: string,
-  filters?: BranchFilters
-): Promise<BranchListItem[]> {
-  const raw = await getBranchesFromApi(branch, date, filters);
-  return raw.CoreBranch.edges.map(mapToBranchListItem);
-}
+From `entities/branches/domain/use-cases/get-branches.ts` — no React/TanStack imports:
 
-// ui/queries/get-branches.query.ts — React + TanStack integration
-export function getBranchesQueryOptions(branch: string, date?: string, filters?: BranchFilters) {
-  return queryOptions({
-    queryKey: branchKeys.list(branch, date, filters),
-    queryFn: () => getBranches(branch, date, filters),
+```ts
+export type GetBranchesParams = PaginationParams & {
+  filters?: Filter[];
+};
+
+// Paginated fetch for branches list view
+export const getBranches: GetBranches = async (params = {}) => {
+  const nameValue = getNameFilterValue(params.filters);
+  const statusValue = getStatusFilterValue(params.filters);
+  const createdById = getCreatedByFilterValue(params.filters);
+  const dateFilters = getBranchDateFilters(params.filters);
+  const { data, errors } = await getBranchesFromApi({
+    limit: params.limit,
+    offset: params.offset,
+    nameValue,
+    partialMatch: nameValue ? true : undefined,
+    statusValue,
+    createdById,
+    ...dateFilters,
+  });
+
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
+  }
+
+  const response = data as InfrahubBranchResponse;
+  const branches = response?.InfrahubBranch?.edges.map((edge) => mapToBranchListItem(edge)) ?? [];
+
+  return branches;
+};
+```
+
+The same file also exports `getAllBranches`, which currently writes its result into a Jotai atom
+(`store.set(branchesState, branches)`) — a known layer violation, see
+[Known exceptions (migration debt)](#known-exceptions-migration-debt).
+
+From `entities/branches/ui/queries/get-branches.query.ts` — React + TanStack integration (the query
+key factory is `branchesQueryKeys` in `ui/queries/branch.query-keys.ts`):
+
+```ts
+// Paginated query for branches list view
+export function getBranchesInfiniteQueryOptions(
+  params: GetBranchesInfiniteQueryOptionsParams = {}
+) {
+  return infiniteQueryOptions({
+    queryKey: branchesQueryKeys.list(params),
+    queryFn: ({ pageParam }) => {
+      return getBranches({
+        ...params,
+        offset: pageParam,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _, lastPageParam) => {
+      if (lastPage.length < BRANCHES_PER_PAGE) {
+        return;
+      }
+      return lastPageParam + BRANCHES_PER_PAGE;
+    },
   });
 }
 
-export function useGetBranches(filters?: BranchFilters) {
-  const branch = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
-  return useQuery(getBranchesQueryOptions(branch, date, filters));
+export function useGetBranchesPaginated(params: GetBranchesInfiniteQueryOptionsParams = {}) {
+  return useInfiniteQuery(getBranchesInfiniteQueryOptions(params));
 }
 ```
+
+The file also exports a non-paginated `getAllBranchesQueryOptions`/`useGetBranches` pair for the
+branch selector and provider.
 
 ## Cross-Entity Imports
 
@@ -165,47 +243,70 @@ Inline `gql` in `ui/` bypasses caching, branch context, schema typing, and the l
 
 ### Single-object reads
 
-For "I have a UUID, give me the node", always use `useGetObject({ objectId, objectSchema: { kind: "CoreNode" } })` from `entities/nodes/object/ui/queries/get-object.query.ts`. Do not write a one-off `resolveUuid` function.
+For "I have a UUID, give me the node", always use `useGetObject` from `entities/nodes/object/ui/queries/get-object.query.ts`. Its `objectSchema` parameter is a full `ModelSchema`, so pass a schema obtained from `useSchema` rather than an inline literal:
+
+```ts
+const { schema } = useSchema(kind, { throwIfNotFound: true });
+const { data } = useGetObject({ objectId, objectSchema: schema });
+```
+
+Do not write a one-off `resolveUuid` function.
 
 ## Backend is authoritative
 
 If the server defaults, filters, sorts, or hides something, the client must not maintain a parallel constant. Examples:
 
 - Default namespace exclusions (Core, Internal, Builtin, Lineage, Profile, Template) are applied server-side. Do not duplicate them in a client `HIDDEN_NAMESPACES` constant.
-- Schema kinds and their hidden flags come from `useGetSchema`.
+- Schema kinds and their hidden flags come from the loaded schema — read it via `useSchema`
+  (`entities/schema/ui/hooks/useSchema.ts`); `useGetSchemaHash` detects schema changes.
 - Pagination defaults, sort order, and ACL checks live on the server.
 
 If the client genuinely needs to display a server-side default, surface it via the API response — do not mirror the constant.
 
 ## Reference Example: branches
 
-`branches` is the canonical migrated entity (11 domain files → split).
+`branches` is the canonical migrated entity, with two caveats it does **not** model correctly: the
+entity-root `stores.ts` and the `store.set` call in `getAllBranches` are migration debt, not part of
+the pattern (see [Known exceptions (migration debt)](#known-exceptions-migration-debt)).
 
 ```text
 entities/branches/
 ├── api/
-│   ├── get-branches-from-api.ts      # raw GraphQL call
+│   ├── get-branches-from-api.ts      # raw GraphQL call (also defines BRANCHES_PER_PAGE — debt)
 │   ├── create-branch-from-api.ts
+│   ├── … (delete/merge/rebase/validate/count/details/action-state fetchers)
 │   └── branch.mappers.ts             # mapToBranchListItem/Detail, InfrahubBranchResponse DTO
 ├── domain/
 │   ├── model/
-│   │   └── branch.ts                 # BranchListItem, BranchDetail (imports generated BranchStatus)
+│   │   ├── branch.ts                 # BranchListItem, BranchDetail (imports generated BranchStatus)
+│   │   └── branch-events.ts
 │   ├── rules/
-│   │   └── branch-filters.ts         # pure filter-extraction helpers
+│   │   ├── branch-filters.ts         # pure filter-extraction helpers
+│   │   └── find-selected-branch.ts
 │   └── use-cases/
 │       ├── get-branches.ts           # calls api fetcher + api mapper; extracts filters via rules
 │       ├── create-branch.ts
-│       └── … (delete/merge/rebase/validate/…)
+│       └── … (delete/merge/rebase/validate/count/details/action-state)
+├── stores.ts                         # branchesState, currentBranchAtom — migration debt, do not copy
 └── ui/
     ├── queries/
-    │   ├── branch.query-keys.ts
+    │   ├── branch.query-keys.ts      # branchesQueryKeys factory
     │   ├── get-branches.query.ts
-    │   └── create-branch.mutation.ts
-    ├── branches-table.tsx
-    └── branches-provider.tsx
+    │   └── … (create/delete/merge/rebase/validate mutations, count/details/action-state queries)
+    ├── hooks/
+    │   └── use-branch-exists.ts, use-navigate-after-branch-removal.ts
+    ├── routing/
+    │   ├── branch-urls.ts
+    │   └── use-branch-details-outlet.ts
+    ├── branches-table/               # table, toolbar, column defs, cells/
+    ├── branch-list-item/
+    ├── filters/
+    ├── branches-provider.tsx
+    └── … (selector, tabs, create form, details, action buttons)
 ```
 
-Note: `model/` and `rules/` hold a single file each here — acceptable for a fully-split reference entity so all three domain roles are visible. A use-case (`domain/use-cases/get-branches.ts`) imports its mapper from `api/branch.mappers.ts` (allowed: `use-cases → own api/`).
+A use-case (`domain/use-cases/get-branches.ts`) imports its mapper from `api/branch.mappers.ts`
+(allowed: `use-cases → own api/`).
 
 ## File Naming
 
@@ -218,7 +319,6 @@ Apollo Client is kept as the GraphQL transport (auth links, error handling, retr
 - `@apollo/client` imports are allowed **only** in `src/app/app.tsx` (for `ApolloProvider`) and `src/shared/api/graphql/graphqlClientApollo.tsx` (client construction), plus `gql` template-tag imports in `entities/*/api/` files.
 - React hooks (`useQuery`, `useMutation`, etc.) from `@apollo/client` are forbidden throughout the codebase.
 - Use `useQuery` / `useMutation` from `@tanstack/react-query` (typically via the pattern in `ui/queries/`) for all data fetching.
-
 
 ### Mutation invalidation
 

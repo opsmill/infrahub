@@ -18,7 +18,7 @@ authentication/
 │   └── token-storage.ts                  # localStorage token I/O (getAccessToken, save/remove)
 ├── domain/
 │   ├── model/
-│   │   ├── auth.ts                        # User, UserToken (generated)
+│   │   ├── user.ts                        # User, UserToken (generated)
 │   │   └── login-error.ts                 # LoginError, LoginErrorCode, LOGIN_ERRORS
 │   └── use-cases/
 │       ├── login-with-credentials.ts
@@ -34,12 +34,16 @@ authentication/
     ├── login-method-picker.tsx / require-auth.tsx
     ├── hooks/                            # use-available-auth-methods, use-last-used-method (owns LAST_USED_METHOD_KEY)
     ├── routing/login-redirect.ts
-    └── queries/                          # login/logout mutations, refresh-access-token query
+    └── queries/
+        ├── login-with-credentials.mutation.ts
+        ├── login-with-ldap.mutation.ts
+        ├── logout.mutation.ts
+        └── refresh-access-token.query.ts
 ```
 
 Import direction is the entity rule: `ui/ → domain/ → api/`. SSO has no api/domain/queries (it's a redirect link list, not a fetch). Storage keys live with their consumers: token keys in `api/token-storage.ts`, `LAST_USED_METHOD_KEY` in `ui/hooks/use-last-used-method.ts`.
 
-> `shared/` transport (`api/rest/client`, `api/graphql/graphqlClientApollo`, graphiql fetcher) imports this entity's token surface (`api/token-storage`, `domain/use-cases/redirect-to-login`) — the one sanctioned `shared → context` transport edge (auth is cross-cutting).
+> `shared/` transport (`api/rest/client`, `api/graphql/graphqlClientApollo`, graphiql fetcher) imports this entity's token surface (`api/token-storage`, `domain/use-cases/redirect-to-login`) — the one sanctioned `shared → context` transport edge (auth is cross-cutting). `api/rest/client` and `api/graphql/graphqlClientApollo` also import `ui/queries/refresh-access-token.query`, sharing one TanStack query so concurrent 401s trigger a single refresh.
 
 ## The registry
 
@@ -49,12 +53,12 @@ A single `AUTH_METHODS` object in `auth-methods.tsx` is the source of truth for 
 type AuthMethodDefinition<TMethod extends AuthMethod> = {
   toggleLabel: (method: TMethod) => ReactNode; // shown in the picker switch button
   preferDefault: boolean;                    // initial selection when nothing is stored
-  resolve: (config: ConfigAPI) => TMethod | null; // null = unavailable for this server
+  resolve: (config: Config) => TMethod | null; // null = unavailable for this server
   render: (method: TMethod) => ReactNode;    // the UI for this method
 };
 ```
 
-`AuthMethod` is a discriminated union (`{ kind: "local" } | { kind: "sso"; providers: [...] } | ...`). The registry type `AuthMethodRegistry` is keyed on `kind`, so TypeScript enforces that every variant has a definition.
+`AuthMethod` is a discriminated union (`{ kind: "local" } | { kind: "sso"; providers: [...] } | ...`). The registry type `AuthMethodRegistry` is keyed on `kind`, so TypeScript enforces that every variant has a definition. `Config` is the server config model from the `entities/config` context (`domain/model/config`), obtained via `useConfig`.
 
 ```ts
 export const AUTH_METHODS: AuthMethodRegistry = {
@@ -94,7 +98,7 @@ useConfig() ─► resolveAvailableAuthMethods(config) ─► AuthMethod[]
 | File | Responsibility |
 |---|---|
 | `ui/auth-methods.tsx` | `AuthMethod` union, `AUTH_METHODS` registry, `resolveAvailableAuthMethods`, `renderAuthMethod`. |
-| `domain/model/auth.ts` | `User`, `UserToken` (from generated REST types). |
+| `domain/model/user.ts` | `User`, `UserToken` (from generated REST types). |
 | `domain/model/login-error.ts` | `LoginError`, `LoginErrorCode`, `LOGIN_ERRORS` map. |
 | `api/token-storage.ts` | `ACCESS_TOKEN_KEY`/`REFRESH_TOKEN_KEY`, `getAccessToken`/`getRefreshToken`, `save`/`removeTokensInLocalStorage`. |
 | `ui/hooks/use-available-auth-methods.ts` | Hook wrapping `resolveAvailableAuthMethods(useConfig())`. |
@@ -123,7 +127,7 @@ useConfig() ─► resolveAvailableAuthMethods(config) ─► AuthMethod[]
 3. **`preferDefault` chooses the initial active method** when nothing is stored. Exactly one method should set it to `true` for the typical install (today: SSO). A stored `LAST_USED_METHOD_KEY` always overrides this.
 4. **`CredentialsForm` is reusable.** Any credentials-based method (local today, LDAP tomorrow) wires its own mutation through the `onSubmit` prop. The form owns validation, error mapping, and `setToken` on success.
 5. **Token persistence is centralized.** Domain functions return tokens; `useAuth.setToken` is the single writer for interactive flows. Only `refresh-access-token` may write directly, because it runs outside React.
-6. **Errors are typed and centralized.** `LOGIN_ERRORS` in `constants.ts` is the map; `toLoginError(error)` in `credentials-form.tsx` is the only classifier. Add a new `LoginErrorCode` there if a new method needs a distinct message.
+6. **Errors are typed and centralized.** `LOGIN_ERRORS` in `domain/model/login-error.ts` is the map; `toLoginError(error)` in `credentials-form.tsx` is the only classifier. Add a new `LoginErrorCode` there if a new method needs a distinct message.
 
 ## Default-method behavior
 
@@ -141,9 +145,11 @@ When 2+ methods are available and no preference is stored, `LoginMethodPicker` p
 
 | File | Covers |
 |---|---|
-| `ui/use-available-auth-methods.test.ts` | Each `resolve` branch: SSO disabled, SSO with providers, SSO enabled but empty providers. |
-| `ui/use-last-used-method.test.ts` | First-method default, stored-value restore, stale-value fallback, `setActive` write-through, empty methods. |
+| `ui/hooks/use-available-auth-methods.test.ts` | Each `resolve` branch: SSO disabled, SSO with providers, SSO enabled but empty providers. |
+| `ui/hooks/use-last-used-method.test.ts` | First-method default, stored-value restore, stale-value fallback, `setActive` write-through, empty methods. |
 | `ui/credentials-form.test.tsx` | Field rendering, `onSubmit` call shape, success → `setToken`, error → toast (401, 5xx, network, unknown), required-validation. |
 | `ui/login-method-picker.test.tsx` | Solo method (no toggle), 2-method picker, default-to-SSO, restore from storage, stale-storage fallback. |
+| `ui/auth-provider.test.tsx` | Cross-tab storage reconciliation: seed from localStorage, logout when another tab clears tokens or calls `clear()`, ignore unrelated keys. |
+| `ui/routing/login-redirect.test.ts` | `safeInternalPath` (accepts internal paths, rejects protocol-relative/schemed/normalizing payloads) and `pathToString`. |
 
 E2E coverage lives in `frontend/app/tests/e2e/login.spec.ts`. Selectors target `Log in`, `Log in with SSO`, and `Log in with your credentials` — these strings are part of the contract.

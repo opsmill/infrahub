@@ -8,7 +8,7 @@ File handling in Infrahub follows a layered architecture with `DataViewer` as th
 
 ```text
 Entity Wrappers (fetch data, handle loading/errors)
-    ObjectFile        ArtifactFile        GraphqlQueryViewer
+    ObjectFile        ArtifactFile        GraphqlQueryViewerCard
     (nodeId)          (storageId)         (query)
          \                 |                   /
           \                |                  /
@@ -30,7 +30,7 @@ Universal content viewer that renders data based on MIME type. Handles text, ima
 | `data-viewer.tsx` | Main component with content type routing |
 | `types.ts` | Type definitions and MIME type utilities |
 | `data-viewer-action-button.tsx` | Styled button/link components |
-| `data-viewer-copy-button.tsx` | Copy to clipboard action |
+| `data-viewer-copy-button.tsx` | Copy to clipboard action (entity wrappers render it only when `isCopyableContentType` returns `true`) |
 | `data-viewer-download-button.tsx` | File download action |
 | `data-viewer.styles.ts` | Shared styling |
 
@@ -38,13 +38,14 @@ Universal content viewer that renders data based on MIME type. Handles text, ima
 
 | Category | MIME Types | Rendering |
 |----------|------------|-----------|
-| Code/Text | `application/json`, `application/yaml`, `application/x-yaml`, `application/hcl`, `application/graphql`, `application/xml`, `text/plain` | Syntax-highlighted via `CodeViewer` |
+| Code/Text | `application/json`, `application/yaml`, `application/x-yaml`, `application/hcl`, `application/graphql`, `application/xml`, `application/javascript`, `application/typescript`, `application/x-sh`, `application/x-python`, `application/toml`, `application/x-toml`, `text/plain` | Syntax-highlighted via `CodeViewer` |
 | Markdown | `text/markdown` | `MarkdownViewer` with view/raw toggle |
 | CSV | `text/csv` | `CsvTable` component |
 | SVG | `image/svg+xml` | `Svg` component |
 | Images | `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/bmp`, `image/x-icon` | Native `<img>` with base64 data URL |
 | PDF | `application/pdf` | Embedded `<iframe>` with base64 |
-| Other | Unsupported types | Fallback message |
+| Other text | Any other `text/*` type | Plain text via `CodeViewer` |
+| Other | Unsupported non-`text/*` types | Fallback message |
 
 ### Usage
 
@@ -59,8 +60,8 @@ import { DataViewerDownloadButton } from "@/shared/components/data-viewer/data-v
   title="Config Preview"
   actions={
     <>
-      <DataViewerDownloadButton value={content} fileName="config.json" contentType="application/json" />
-      <DataViewerCopyButton value={content} />
+      <DataViewerDownloadButton data={content} fileName="config.json" contentType="application/json" />
+      <DataViewerCopyButton data={content} />
     </>
   }
 />
@@ -124,23 +125,19 @@ import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
 
 Location: `shared/components/inputs/file-dropzone.tsx`
 
-Drag-and-drop file upload using React Aria.
+Drag-and-drop file upload using React Aria. Props extend React Aria `DropZoneProps` with a required `onFileSelect: (file: File) => void`.
 
 ```tsx
 import { FileDropzone } from "@/shared/components/inputs/file-dropzone";
 
-<FileDropzone
-  onFileSelect={(file) => handleFile(file)}
-  accept={["image/*", ".pdf"]}
-  hasError={!!validationError}
-/>
+<FileDropzone onFileSelect={(file) => handleFile(file)} />
 ```
 
 ### FileInfoCard
 
 Location: `shared/components/file/file-info-card.tsx`
 
-Displays file metadata (name, size, type) with appropriate icon.
+Displays file metadata (name, size, type) with appropriate icon. When `onFileSelect` is provided, the card becomes a file-picker button so the user can replace the file.
 
 ```tsx
 import { FileInfoCard } from "@/shared/components/file/file-info-card";
@@ -149,7 +146,7 @@ import { FileInfoCard } from "@/shared/components/file/file-info-card";
   fileName="document.pdf"
   fileSize={1024000}
   contentType="application/pdf"
-  onReplace={() => openFilePicker()}
+  onFileSelect={(file) => handleFile(file)}
 />
 ```
 
@@ -167,15 +164,16 @@ Location: `shared/utils/file.ts`
 |----------|---------|
 | `getFileIcon(contentType)` | Returns Lucide icon based on MIME type |
 | `isBinaryContentType(contentType)` | Returns `true` for images (except SVG) and PDFs |
+| `isCopyableContentType(contentType)` | Returns `true` for non-binary types; gates rendering of the copy button |
 | `arrayBufferToBase64(buffer)` | Converts ArrayBuffer to base64 string |
 
 ## API Endpoints
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /api/storage/files/{node_id}` | CoreFileObject content |
-| `GET /api/storage/files/{node_id}?preview=true` | CoreFileObject preview |
-| `GET /api/storage/object/{storage_id}` | Artifact content |
+| `GET /api/storage/files/{node_id}?preview=true` | CoreFileObject content rendered inline (used by the viewer fetch and the raw link) |
+| `GET /api/storage/files/{node_id}` | CoreFileObject download |
+| `GET /api/storage/object/{identifier}` | Artifact content |
 
 ## Related Files
 
