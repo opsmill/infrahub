@@ -28,7 +28,7 @@ class BranchDetails:
 class GraphQLSchemaRegistry:
     _branch_details_by_hash: dict[str, BranchDetails] = field(default_factory=dict)
     _branch_name_by_hash: dict[str, set[str]] = field(default_factory=dict)
-    _branch_hash_activation_by_branch_name: dict[str, dict[str, str]] = field(default_factory=dict)
+    _branch_hash_activation_by_branch_name: dict[str, str] = field(default_factory=dict)
     _registered_interface_types: dict[str, type[graphene.Interface]] = field(default_factory=dict)
     _reference_hash_schema_map: dict[str, set[str]] = field(default_factory=dict)
     _registered_edge_types: dict[str, type[InfrahubObject]] = field(default_factory=dict)
@@ -138,8 +138,10 @@ class GraphQLSchemaRegistry:
         for schema_hash in list(self._branch_name_by_hash.keys()):
             if not self._branch_name_by_hash[schema_hash]:
                 # If no remaining branch is using the schema remove it completely
-                del self._branch_name_by_hash[schema_hash]
-                del self._branch_details_by_hash[schema_hash]
+                self.evict_schema_hash(schema_hash=schema_hash)
+
+        for branch_name in inactive_branches:
+            self._branch_hash_activation_by_branch_name.pop(branch_name, None)
 
         return inactive_branches
 
@@ -154,6 +156,41 @@ class GraphQLSchemaRegistry:
 
         return branch_details
 
+    def evict_schema_hash(self, schema_hash: str) -> None:
+        """Drop a schema hash and every registered type no remaining schema references."""
+        self._branch_details_by_hash.pop(schema_hash, None)
+        self._branch_name_by_hash.pop(schema_hash, None)
+
+        for reference_hash in list(self._reference_hash_schema_map):
+            self._reference_hash_schema_map[reference_hash].discard(schema_hash)
+            if not self._reference_hash_schema_map[reference_hash]:
+                del self._reference_hash_schema_map[reference_hash]
+                self._registered_interface_types.pop(reference_hash, None)
+                self._registered_edge_types.pop(reference_hash, None)
+                self._registered_paginated_types.pop(reference_hash, None)
+                self._registered_input_types.pop(reference_hash, None)
+                self._registered_object_types.pop(reference_hash, None)
+                self._registered_mutation_types.pop(reference_hash, None)
+
+    def _activate_branch_hash(self, branch_name: str, schema_hash: str) -> None:
+        """Record the hash a branch currently serves; retire the branch's previous hash.
+
+        A hash whose last remaining branch moved on is unreachable through this registry
+        (lookups are keyed by each branch's current hash), so keeping it would retain a
+        full GraphQL schema per historical schema version for the lifetime of the process.
+        """
+        previous_hash = self._branch_hash_activation_by_branch_name.get(branch_name)
+        self._branch_hash_activation_by_branch_name[branch_name] = schema_hash
+        if previous_hash is None or previous_hash == schema_hash:
+            return
+
+        branches_on_previous = self._branch_name_by_hash.get(previous_hash)
+        if branches_on_previous is not None:
+            branches_on_previous.discard(branch_name)
+            if branches_on_previous:
+                return
+        self.evict_schema_hash(schema_hash=previous_hash)
+
     def get_manager_for_branch(self, branch: Branch, schema_branch: SchemaBranch) -> GraphQLSchemaManager:
         if branch.schema_hash:
             schema_hash = branch.schema_hash.main
@@ -166,6 +203,7 @@ class GraphQLSchemaRegistry:
             branch_details = self.cache_branch(branch=branch, schema_branch=schema_branch, schema_hash=schema_hash)
 
         self._add_branch_hash(branch_name=branch.name, schema_hash=schema_hash)
+        self._activate_branch_hash(branch_name=branch.name, schema_hash=schema_hash)
 
         return branch_details.gql_manager
 
