@@ -11,8 +11,6 @@ export const PROFILE_KIND = "CoreProfile";
 
 export const TEMPLATE_GENERIC_KIND = "CoreObjectTemplate";
 
-export const TASK_TARGET = "CoreTaskTarget";
-
 export const ACCOUNT_GENERIC_OBJECT = "CoreGenericAccount";
 export const ACCOUNT_OBJECT = "CoreAccount";
 
@@ -53,8 +51,6 @@ export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 export const PROPOSED_CHANGES_VALIDATOR_OBJECT = "CoreValidator";
 
 export const NUMBER_POOL_OBJECT = "CoreNumberPool";
-
-export const TASK_OBJECT = "InfrahubTask";
 
 export const MENU_EXCLUDELIST = [
   PROPOSED_CHANGE_OBJECT,

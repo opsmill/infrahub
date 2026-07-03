@@ -2,7 +2,6 @@ import { ScrollArea } from "@infrahub/ui";
 
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
-import { TASK_TARGET } from "@/shared/config/constants";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-tab";
@@ -12,6 +11,7 @@ import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repo
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { TASK_TARGET } from "@/entities/tasks/domain/model/task";
 
 interface ObjectDetailsTabsProps {
   objectSchema: ModelSchema;

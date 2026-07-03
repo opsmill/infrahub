@@ -1,3 +1,6 @@
+export const TASK_OBJECT = "InfrahubTask";
+export const TASK_TARGET = "CoreTaskTarget";
+
 export const TASK_STATE_COMPLETED = "COMPLETED" as const;
 export const TASK_STATE_RUNNING = "RUNNING" as const;
 export const TASK_STATE_PENDING = "PENDING" as const;
