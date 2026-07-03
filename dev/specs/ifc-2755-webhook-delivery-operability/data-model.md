@@ -40,7 +40,9 @@ class TaskNodeInterface(Interface):
 class TaskNode(ObjectType):
     class Meta:
         interfaces = (TaskNodeInterface,)
-    # node-specific fields: only the deprecated related_node / related_node_kind accessors
+    # no fields of its own: the deprecated related_node / related_node_kind accessors sit on the
+    # interface, because existing consumers select them directly on `node` (no inline fragment)
+    # and backward compatibility requires those selections to keep resolving
 
 class WebhookDeliveryTask(ObjectType):
     class Meta:
