@@ -28,7 +28,6 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -287,8 +286,10 @@ class TestInfrahubAppBase(TestInfrahub):
             db=db, admin_accounts=[admin_account, bot_account], accounts=[unprivileged_account]
         )
 
-        # This call emits a warning related to the fact database index manager has not been initialized.
-        graphql_registry.clear_cache()
+        # The graphql registry is deliberately NOT cleared between classes: entries are keyed
+        # by schema content hash, so the pristine core-schema manager (~1s and ~40MB to build)
+        # is reused across classes, while activation-based eviction drops the hashes a branch
+        # leaves behind when its schema changes.
         await initialization(db=db)
 
     async def assert_event(self, prefect_client: PrefectClient, event_name: str, resource_id: str) -> None:
