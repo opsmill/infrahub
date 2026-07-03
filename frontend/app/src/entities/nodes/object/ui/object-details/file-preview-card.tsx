@@ -1,6 +1,6 @@
 import { Col } from "@/shared/components/container";
 import type { DataViewerContentType } from "@/shared/components/data-viewer/types";
-import { FileInfoCard } from "@/shared/components/file/ui/file-info-card";
+import { FileInfoCard } from "@/shared/components/file/file-info-card";
 
 import type { NodeFileObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectFile } from "@/entities/nodes/object-file/ui/object-file";
