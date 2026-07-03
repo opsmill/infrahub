@@ -18,7 +18,7 @@ export const getValidatorsStats = (validators: any[]) => {
       validator.conclusion.value === VALIDATION_CONCLUSIONS.FAILURE
   );
 
-  const unkownValidators = validators.filter(
+  const unknownValidators = validators.filter(
     (validator: any) =>
       validator.state.value === VALIDATION_STATES.COMPLETED &&
       validator.conclusion.value === VALIDATION_CONCLUSIONS.UNKNOWN
@@ -58,9 +58,9 @@ export const getValidatorsStats = (validators: any[]) => {
       value: queuedValidators.length,
       className: "fill-yellow-300",
     },
-    unkownValidators.length && {
-      name: CHECKS_LABEL.UNKOWN,
-      value: unkownValidators.length,
+    unknownValidators.length && {
+      name: CHECKS_LABEL.UNKNOWN,
+      value: unknownValidators.length,
       className: "fill-gray-400",
     },
   ].filter(Boolean);

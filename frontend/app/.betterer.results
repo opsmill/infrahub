@@ -216,7 +216,7 @@ exports[`fix ts error`] = {
     "src/entities/tasks/ui/logs.tsx:3377694090": [
       [49, 31, 4, "tsc: Type \'{ values: { severity: any; timestamp: Element; id: string; message: string; }; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: { severity: any; timestamp: JSX.Element; id: string; message: string; }; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'{ severity: any; timestamp: JSX.Element; id: string; message: string; }\' is not assignable to type \'Record<string, number | string | tRowValue>\'.\\n        Property \'timestamp\' is incompatible with index signature.\\n          Type \'Element\' is not assignable to type \'string | number | tRowValue\'.", "2088305148"]
     ],
-    "src/entities/tasks/ui/task-display.tsx:2213803868": [
+    "src/entities/tasks/ui/task-display.tsx:186971154": [
       [43, 16, 4, "tsc: Binding element \'task\' implicitly has an \'any\' type.", "2087951912"],
       [50, 10, 22, "tsc: Element implicitly has an \'any\' type because expression of type \'any\' can\'t be used to index type \'{ SCHEDULED: string; PENDING: string; RUNNING: string; PAUSED: string; CANCELLING: string; COMPLETED: string; CANCELLED: string; FAILED: string; CRASHED: string; }\'.", "1950518905"],
       [65, 39, 4, "tsc: Parameter \'edge\' implicitly has an \'any\' type.", "2087414470"],
