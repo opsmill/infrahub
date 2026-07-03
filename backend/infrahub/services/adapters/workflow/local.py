@@ -39,7 +39,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,  # noqa: ARG002
-        priority: WorkflowPriority | None = None,  # noqa: ARG002
+        priority: WorkflowPriority | None = None,
     ) -> WorkflowInfo:
-        await self.execute_workflow(workflow=workflow, context=context, parameters=parameters)
+        await self.execute_workflow(workflow=workflow, context=context, parameters=parameters, priority=priority)
         return WorkflowInfo(id=uuid.uuid4())
