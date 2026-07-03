@@ -1,7 +1,7 @@
 import type { ContextParams } from "@/shared/api/types";
 
 import { getProfilesFromApi } from "@/entities/nodes/profiles/api/get-profiles-from-api";
-import type { ProfileData } from "@/entities/nodes/profiles/types";
+import type { ProfileData } from "@/entities/nodes/profiles/domain/model/profile";
 import type {
   GenericSchema,
   NodeSchema,

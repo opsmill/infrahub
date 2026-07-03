@@ -20,7 +20,7 @@ import {
 } from "@/shared/config/constants";
 
 import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
-import type { ProfileData } from "@/entities/nodes/profiles/types";
+import type { ProfileData } from "@/entities/nodes/profiles/domain/model/profile";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
