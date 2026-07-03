@@ -9,14 +9,11 @@ import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import {
   type GetIpamTreeNodesByParentParams,
   getIpamTreeNodesByParent,
-} from "@/entities/ipam/ipam-tree/domain/get-ipam-tree-nodes-by-parent";
+} from "@/entities/ipam/ipam-tree/domain/use-cases/get-ipam-tree-nodes-by-parent";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const IPAM_NODES_PER_PAGE = 80;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
+// Page size is a UI pagination concern; the UI passes it to the domain as `limit`.
+const IPAM_NODES_PER_PAGE = 80;
 
 export type GetIpamTreeNodesByParentQueryOptionsParams = Omit<
   GetIpamTreeNodesByParentParams,
