@@ -8,10 +8,10 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
-import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import type { ArtifactObject } from "@/entities/artifacts/domain/artifact";
+import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/artifact";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ArtifactDetailsMenuProps {

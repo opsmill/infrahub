@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
-import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
+import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/artifact";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 

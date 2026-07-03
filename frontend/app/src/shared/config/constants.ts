@@ -11,8 +11,6 @@ export const TEMPLATE_GENERIC_KIND = "CoreObjectTemplate";
 
 export const FILE_OBJECT_KIND = "CoreFileObject";
 
-export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
-
 export const PROPOSED_CHANGES_OBJECT = "CoreProposedChange";
 
 export const PROPOSED_CHANGES_THREAD_OBJECT = "CoreThread";
@@ -24,8 +22,6 @@ export const PROPOSED_CHANGES_OBJECT_THREAD_OBJECT = "CoreObjectThread";
 export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
 
 export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
-
-export const ARTIFACT_OBJECT = "CoreArtifact";
 
 export const CHECK_OBJECT = "CoreCheck";
 
