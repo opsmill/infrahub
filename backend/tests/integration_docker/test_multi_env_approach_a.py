@@ -410,14 +410,6 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
         )
         assert advanced
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "an explicit read-only reimport does not advance the recorded commit to the ref's "
-            "latest commit on the shared remote; the recorded commit stays at the initially "
-            "imported commit"
-        ),
-    )
     async def test_reimport_advances_consumer(
         self,
         consumer_client: InfrahubClient,
