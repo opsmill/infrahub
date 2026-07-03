@@ -1,9 +1,8 @@
-import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/shared/config/constants";
-
 import {
   getProposedChangeThreadFromApi,
   type ProposedChangeThreadFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-change-thread-from-api";
+import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 
 export type GetProposedChangeThreadParams = ProposedChangeThreadFromApiParams;
 

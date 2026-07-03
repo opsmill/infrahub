@@ -4,9 +4,9 @@ import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { CLOSE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
@@ -38,7 +38,7 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
           value: CLOSE_STATE,
         },
       },
-      objectKind: PROPOSED_CHANGES_OBJECT,
+      objectKind: PROPOSED_CHANGE_OBJECT,
     });
   };
 

@@ -21,12 +21,12 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
-import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/ui/branches-to-select-options";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import {
   DRAFT_STATE,
   OPEN_STATE,
@@ -46,7 +46,7 @@ export const ProposedChangeCreateForm = () => {
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);
 
-  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
+  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT);
 
   const { mutateAsync: createProposedChange, error } = useCreateProposedChange();
 

@@ -9,7 +9,6 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
-import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
@@ -18,6 +17,7 @@ import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-labe
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { useGetProposedChangeDetails } from "@/entities/proposed-changes/ui/queries/get-proposed-change-details.query";
 import type { ProposedChangeOutletContext } from "@/entities/proposed-changes/ui/routing/use-proposed-change-outlet";
@@ -26,7 +26,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function Component() {
   const { proposedChangeId } = useRequiredParams("proposedChangeId");
-  const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { throwIfNotFound: true });
+  const { schema } = useSchema(PROPOSED_CHANGE_OBJECT, { throwIfNotFound: true });
   const [storedProposedChange, setProposedChange] = useAtom(proposedChangedState);
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
@@ -62,7 +62,7 @@ export function Component() {
           end={
             <ObjectHelpButton
               documentationUrl={schema.documentation}
-              kind={PROPOSED_CHANGES_OBJECT}
+              kind={PROPOSED_CHANGE_OBJECT}
               className="ml-auto"
             />
           }
@@ -130,7 +130,7 @@ export function Component() {
         end={
           <ObjectHelpButton
             documentationUrl={schema?.documentation}
-            kind={PROPOSED_CHANGES_OBJECT}
+            kind={PROPOSED_CHANGE_OBJECT}
             className="ml-auto"
           />
         }

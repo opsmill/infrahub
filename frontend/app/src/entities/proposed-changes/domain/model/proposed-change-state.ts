@@ -6,6 +6,9 @@ export const CLOSE_STATE = "closed";
 export const DRAFT_STATE = "draft";
 export const CANCEL_STATE = "canceled";
 
+/** States in which a proposed change can still be edited. */
+export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
+
 /** The states grouped into their coarse open/closed buckets. */
 export const PROPOSED_CHANGE_STATES = {
   opened: [OPEN_STATE, MERGING_STATE],

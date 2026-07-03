@@ -11,23 +11,9 @@ export const TEMPLATE_GENERIC_KIND = "CoreObjectTemplate";
 
 export const FILE_OBJECT_KIND = "CoreFileObject";
 
-export const PROPOSED_CHANGES_OBJECT = "CoreProposedChange";
-
-export const PROPOSED_CHANGES_THREAD_OBJECT = "CoreThread";
-
-export const PROPOSED_CHANGES_CHANGE_THREAD_OBJECT = "CoreChangeThread";
-
-export const PROPOSED_CHANGES_OBJECT_THREAD_OBJECT = "CoreObjectThread";
-
-export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
-
-export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
-
 export const CHECK_OBJECT = "CoreCheck";
 
 export const GRAPHQL_QUERY_OBJECT = "CoreGraphQLQuery";
-
-export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
 export const PROPOSED_CHANGES_VALIDATOR_OBJECT = "CoreValidator";
 
@@ -112,8 +98,6 @@ export const relationshipsForDetailsView: { one: RelationshipKind[]; many: Relat
 };
 
 export const relationshipKindForForm: Array<RelationshipKind> = ["Attribute", "Parent"];
-
-export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];
 
 export const SEARCH_ANY_FILTER = "any__value";
 

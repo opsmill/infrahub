@@ -4,11 +4,11 @@ import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { MERGE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
@@ -54,7 +54,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
           value: MERGE_STATE,
         },
       },
-      objectKind: PROPOSED_CHANGES_OBJECT,
+      objectKind: PROPOSED_CHANGE_OBJECT,
     });
   };
 

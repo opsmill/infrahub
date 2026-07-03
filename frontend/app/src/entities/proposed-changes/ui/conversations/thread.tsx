@@ -5,13 +5,13 @@ import { toast } from "react-toastify";
 import { queryClient } from "@/shared/api/rest/client";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
+import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";

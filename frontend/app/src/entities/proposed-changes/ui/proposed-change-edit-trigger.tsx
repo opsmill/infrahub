@@ -3,14 +3,12 @@ import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import {
-  PROPOSED_CHANGES_EDITABLE_STATE,
-  PROPOSED_CHANGES_OBJECT,
-} from "@/shared/config/constants";
 
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { PROPOSED_CHANGES_EDITABLE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -20,10 +18,10 @@ export const ProposedChangeEditTrigger = ({
 }: {
   proposedChangesDetails: any;
 }) => {
-  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
+  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
 
-  const { isPending, data: permission } = useGetObjectPermissions(PROPOSED_CHANGES_OBJECT);
+  const { isPending, data: permission } = useGetObjectPermissions(PROPOSED_CHANGE_OBJECT);
 
   return (
     <>
