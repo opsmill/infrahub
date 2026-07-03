@@ -2,6 +2,8 @@ import type { BranchStatus } from "@/shared/api/graphql/generated/types";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
+export const DEFAULT_BRANCH_NAME = "main";
+
 // Base fields present in both list and detail views
 interface BranchBase {
   id: string;

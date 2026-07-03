@@ -5,9 +5,9 @@ import { useEffect } from "react";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { DEFAULT_BRANCH_NAME } from "@/entities/branches/domain/model/branch";
 import { useBranchExists } from "@/entities/branches/ui/hooks/use-branch-exists";
 import type { GetDiffSummaryParams } from "@/entities/diff/domain/use-cases/get-diff-summary";
 import {
