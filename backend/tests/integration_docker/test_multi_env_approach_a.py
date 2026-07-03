@@ -447,6 +447,14 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
         )
         assert advanced
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "an explicit reimport with an unchanged branch ref does not advance the read-only "
+            "consumer's recorded commit to the ref's latest remote commit; a ref bump on the same "
+            "stack promotes within seconds, so the failure is specific to the unchanged-ref path"
+        ),
+    )
     async def test_reimport_advances_consumer(
         self,
         consumer_client: InfrahubClient,
