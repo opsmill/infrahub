@@ -70,7 +70,8 @@ def _provision_shared_remote(remote_repos_dir: Path, repo_name: str) -> Path:
     _git(repo_dir, "config", "receive.denyCurrentBranch", "updateInstead")
 
     (repo_dir / "README.md").write_text("shared multi-environment repository\n")
-    _git(repo_dir, "add", "README.md")
+    (repo_dir / ".infrahub.yml").write_text("---\n")
+    _git(repo_dir, "add", "README.md", ".infrahub.yml")
     _git(repo_dir, "commit", "-m", "initial commit on primary")
 
     _git(repo_dir, "branch", CONSUMER_BRANCH)
@@ -447,14 +448,6 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
         )
         assert advanced
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "an explicit reimport with an unchanged branch ref does not advance the read-only "
-            "consumer's recorded commit to the ref's latest remote commit; a ref bump on the same "
-            "stack promotes within seconds, so the failure is specific to the unchanged-ref path"
-        ),
-    )
     async def test_reimport_advances_consumer(
         self,
         consumer_client: InfrahubClient,
