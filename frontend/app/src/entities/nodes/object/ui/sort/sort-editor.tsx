@@ -12,7 +12,7 @@ import {
 } from "@infrahub/ui";
 import { CheckIcon, InfoIcon, RotateCcwIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
 
-import { Row } from "@/shared/components/container";
+import { Col, Row } from "@/shared/components/container";
 
 import { getSchemaDefaultSort, type Sort } from "@/entities/nodes/object/domain/sort";
 import {
@@ -60,9 +60,9 @@ export function SortEditor({ schema }: SortEditorProps) {
   );
 
   return (
-    <>
+    <Col className="items-start gap-1 p-1">
       {isDefaultOrder ? (
-        <div className="rounded-t-xl bg-stone-200/60 p-1">
+        <div className="rounded-lg border border-stone-300 bg-stone-200/50">
           <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
             <CheckIcon className="size-3.5 text-cyan-600" />
             Default order · applied now
@@ -70,7 +70,7 @@ export function SortEditor({ schema }: SortEditorProps) {
           {sortList}
         </div>
       ) : (
-        <div className="p-1 pb-0">
+        <div className="border border-transparent">
           <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
             <SlidersHorizontalIcon className="size-3.5" />
             Custom order
@@ -97,10 +97,8 @@ export function SortEditor({ schema }: SortEditorProps) {
         </div>
       )}
 
-      <div className="p-1">
-        <AddSort fields={unusedFields} onAdd={addSort} />
-      </div>
-    </>
+      <AddSort fields={unusedFields} onAdd={addSort} />
+    </Col>
   );
 }
 
