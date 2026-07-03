@@ -7,10 +7,10 @@ import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
-import { READONLY_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
+import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";

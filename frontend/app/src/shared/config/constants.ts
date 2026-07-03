@@ -26,12 +26,6 @@ export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 
 export const FILE_OBJECT_KIND = "CoreFileObject";
 
-export const GENERIC_REPOSITORY_KIND = "CoreGenericRepository";
-
-export const REPOSITORY_KIND = "CoreRepository";
-
-export const READONLY_REPOSITORY_KIND = "CoreReadOnlyRepository";
-
 export const ACCOUNT_TOKEN_OBJECT = "InfrahubAccountToken";
 
 export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
