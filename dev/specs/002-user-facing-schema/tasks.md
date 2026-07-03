@@ -51,16 +51,16 @@ description: "Task list for User-Facing Schema Separation (INFP-234)"
 
 ### Tests for User Story 1 ⚠️ (write first, ensure they fail)
 
-- [ ] T010 [P] [US1] Functional test in `backend/tests/functional/api/test_load_schema.py`: a payload carrying `inherited` (read-level) plus an unknown field is rejected, and the error names each offending field.
-- [ ] T011 [P] [US1] Functional test in `backend/tests/functional/api/test_load_schema.py`: a payload setting attribute `kind` to a non-existent value is rejected, naming the field and the invalid value.
-- [ ] T012 [P] [US1] Unit test in `backend/tests/unit/core/schema/test_generated_visibility.py`: the generated write model for each family exposes zero read/internal fields, and a scan finds no bare-`str`/`int` field where an internal enum/`Literal` is defined (SC-001/SC-002).
+- [X] T010 [P] [US1] Functional test in `backend/tests/functional/api/test_load_schema.py`: a payload carrying `inherited` (read-level) plus an unknown field is rejected, and the error names each offending field.
+- [X] T011 [P] [US1] Functional test in `backend/tests/functional/api/test_load_schema.py`: a payload setting attribute `kind` to a non-existent value is rejected, naming the field and the invalid value.
+- [X] T012 [P] [US1] Unit test in `backend/tests/unit/core/schema/test_generated_visibility.py`: the generated write model for each family exposes zero read/internal fields, and a scan finds no bare-`str`/`int` field where an internal enum/`Literal` is defined (SC-001/SC-002).
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] In `backend/infrahub/api/schema.py`, make the load path validate against the SDK write model (replace the `SchemaLoadAPI(SchemaRoot)` derivation with the generated SDK write model); retain `extra="forbid"` so non-write fields are rejected with field-level messages.
-- [ ] T014 [US1] Ensure the `kind`-from-`namespace`+`name` injection (`APISchemaMixin.set_kind`, `mode="before"`) remains compatible with the write model in `backend/infrahub/api/schema.py`.
-- [ ] T015 [US1] Ensure allowed-value validation is enforced by the write model itself (not only the internal-load `field_validator` in `backend/infrahub/core/schema/attribute_schema.py`), so out-of-enum values are rejected at the boundary.
-- [ ] T016 [US1] Regenerate and confirm the write JSON-schema (`schema/openapi.json` + the node-schema export) reflects the complete contract; commit.
+- [X] T013 [US1] In `backend/infrahub/api/schema.py`, make the load path validate against the SDK write model (replace the `SchemaLoadAPI(SchemaRoot)` derivation with the generated SDK write model); retain `extra="forbid"` so non-write fields are rejected with field-level messages.
+- [X] T014 [US1] Ensure the `kind`-from-`namespace`+`name` injection (`APISchemaMixin.set_kind`, `mode="before"`) remains compatible with the write model in `backend/infrahub/api/schema.py`.
+- [X] T015 [US1] Ensure allowed-value validation is enforced by the write model itself (not only the internal-load `field_validator` in `backend/infrahub/core/schema/attribute_schema.py`), so out-of-enum values are rejected at the boundary.
+- [X] T016 [US1] Regenerate and confirm the write JSON-schema (`schema/openapi.json` + the node-schema export) reflects the complete contract; commit.
 
 **Checkpoint**: an agent can author a valid schema from the write contract alone; invalid submissions are rejected clearly.
 

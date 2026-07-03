@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
     from tests.conftest import TestHelper
+    from tests.helpers.test_client import InfrahubTestClient
 
 
 class TestLoadSchemaAPI(TestInfrahubApp):
@@ -596,3 +597,79 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert schema.documentation is None
         assert schema.parent == "TestLocation"
         assert schema.children == "TestLocation"
+
+    async def test_schema_load_rejects_non_write_and_unknown_fields(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Reject a payload carrying a read-level field plus an unknown field, naming each.
+
+        A read-level field (`inherited`) and an unknown field must both be reported.
+        """
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {
+                            "name": "Device",
+                            "namespace": "Test",
+                            "attributes": [
+                                {
+                                    "name": "name",
+                                    "kind": "Text",
+                                    "inherited": True,
+                                    "not_a_real_field": "value",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 422
+        body = response.text
+        assert "inherited" in body
+        assert "not_a_real_field" in body
+
+    async def test_schema_load_rejects_out_of_enum_attribute_kind(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        """Reject a payload setting attribute `kind` to a non-existent value, naming field and value."""
+        payload = {
+            "schemas": [
+                {
+                    "version": "1.0",
+                    "nodes": [
+                        {
+                            "name": "Device",
+                            "namespace": "Test",
+                            "attributes": [{"name": "name", "kind": "NotARealKind"}],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        response = await test_client.post(
+            "/api/schema/load",
+            json=payload,
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert response.status_code == 422
+        body = response.text
+        assert "kind" in body
+        assert "NotARealKind" in body
