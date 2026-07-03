@@ -9,11 +9,12 @@ import { useQueryState } from "nuqs";
 import type React from "react";
 import { useParams } from "react-router";
 
+import { QSP } from "@/shared/config/qsp";
+
 import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
   IP_PREFIX_RELATIONSHIP_NAME,
-  IPAM_QSP,
 } from "@/entities/ipam/constants";
 import { constructPathForIpam } from "@/entities/ipam/ui/routing/ipam-urls";
 import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
@@ -53,7 +54,7 @@ interface BreadcrumbIpamContentProps {
 }
 
 function BreadcrumbIpamContent({ objectSchema, objectId }: BreadcrumbIpamContentProps) {
-  const [namespaceQSP] = useQueryState(IPAM_QSP.NAMESPACE);
+  const [namespaceQSP] = useQueryState(QSP.IPAM_NAMESPACE);
   const filterQuery = namespaceQSP ? { ip_namespace__ids: [namespaceQSP] } : undefined;
 
   if (isOfKind(IP_PREFIX_GENERIC, objectSchema)) {

@@ -9,10 +9,6 @@ export const IP_PREFIX_AVAILABLE_KIND = "InternalIPPrefixAvailable";
 
 export const IP_PREFIX_RELATIONSHIP_NAME = "ip_prefix";
 
-export const IPAM_QSP = {
-  NAMESPACE: "namespace",
-};
-
 export const IP_SUMMARY_RELATIONSHIPS_BLACKLIST = [
   "member_of_groups",
   "subscriber_of_groups",
