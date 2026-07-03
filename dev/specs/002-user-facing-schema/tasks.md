@@ -20,9 +20,9 @@ description: "Task list for User-Facing Schema Separation (INFP-234)"
 
 **Purpose**: Make the SDK submodule available and understand what it currently ships.
 
-- [ ] T001 Check out and sync the SDK submodule: `git submodule update --init python_sdk` then `uv sync --all-groups` (the write/read models will be generated into it).
-- [ ] T002 Audit the SDK's existing hand-written schema models under `python_sdk/infrahub_sdk/schema/` (e.g. `SchemaRootAPI`, `NodeSchemaAPI`, `GenericSchemaAPI`, `RelationshipSchemaAPI`, `AttributeSchemaAPI`): inventory their fields, `model_config`, and in-SDK consumers; record the mapping to the planned generated write/read models in `specs/002-user-facing-schema/research.md` (append an "SDK audit" section).
-- [ ] T003 [P] Confirm the Towncrier changelog setup and fragment types in `changelog/` so the breaking-change fragment (T027) uses a valid type.
+- [X] T001 Check out and sync the SDK submodule: `git submodule update --init python_sdk` then `uv sync --all-groups` (the write/read models will be generated into it).
+- [X] T002 Audit the SDK's existing hand-written schema models under `python_sdk/infrahub_sdk/schema/` (e.g. `SchemaRootAPI`, `NodeSchemaAPI`, `GenericSchemaAPI`, `RelationshipSchemaAPI`, `AttributeSchemaAPI`): inventory their fields, `model_config`, and in-SDK consumers; record the mapping to the planned generated write/read models in `specs/002-user-facing-schema/research.md` (append an "SDK audit" section).
+- [X] T003 [P] Confirm the Towncrier changelog setup and fragment types in `changelog/` so the breaking-change fragment (T027) uses a valid type.
 
 ---
 
