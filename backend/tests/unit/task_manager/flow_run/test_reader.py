@@ -152,6 +152,22 @@ class TestReadFlows:
         assert result == flows
         assert client.read_flows_calls == [None]
 
+    async def test_empty_ids_return_no_flows_without_remote_call(self) -> None:
+        client = FakeReaderClient(flows=[Flow(id=uuid4(), name="wf", labels={})])
+
+        result = await FlowRunReader(client=client).read_flows(ids=[])
+
+        assert result == []
+        assert client.read_flows_calls == []
+
+    async def test_empty_names_return_no_flows_without_remote_call(self) -> None:
+        client = FakeReaderClient(flows=[Flow(id=uuid4(), name="wf", labels={})])
+
+        result = await FlowRunReader(client=client).read_flows(names=[])
+
+        assert result == []
+        assert client.read_flows_calls == []
+
     async def test_filters_by_names(self) -> None:
         client = FakeReaderClient()
 

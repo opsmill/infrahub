@@ -130,8 +130,12 @@ class FlowRunReader:
         return flow_progress
 
     async def read_flows(self, ids: list[UUID] | None = None, names: list[str] | None = None) -> list[Flow]:
-        if not names and not ids:
+        if names is None and ids is None:
             return await self.client.read_flows()
+
+        # An empty filter list means no flows can match; an unfiltered call would return every flow instead.
+        if not names and not ids:
+            return []
 
         flow_filter = FlowFilter()
         flow_filter.name = FlowFilterName(any_=names) if names else None
