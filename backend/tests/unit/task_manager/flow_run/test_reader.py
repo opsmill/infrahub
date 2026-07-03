@@ -21,6 +21,7 @@ class FakeReaderClient:
         self._artifacts = artifacts or []
         self._flows = flows or []
         self._log_fetches: list[tuple[int, int]] = []
+        self.read_artifacts_calls: list[FlowRunFilter] = []
         self.read_flows_calls: list[FlowFilter | None] = []
 
     async def read_flow_runs(
@@ -42,6 +43,7 @@ class FakeReaderClient:
         assert self._log_fetches == pages
 
     async def read_artifacts(self, artifact_filter: ArtifactFilter, flow_run_filter: FlowRunFilter) -> list[Artifact]:
+        self.read_artifacts_calls.append(flow_run_filter)
         return self._artifacts
 
     async def read_flows(self, flow_filter: FlowFilter | None = None) -> list[Flow]:
@@ -91,6 +93,14 @@ class TestReadLogs:
 
         assert [entry.message for entry in result.logs[flow_id]] == ["real work"]
 
+    async def test_no_flow_ids_returns_empty_without_remote_call(self) -> None:
+        client = FakeReaderClient(logs=[make_log(uuid4())])
+
+        result = await FlowRunReader(client=client).read_logs(flow_ids=[], log_limit=None, log_offset=None)
+
+        assert result.logs == {}
+        client.assert_log_pages_fetched([])
+
     async def test_rejects_log_limit_above_max(self) -> None:
         with pytest.raises(ValueError, match=rf"^log_limit cannot be greater than {NB_LOGS_LIMIT}$"):
             await FlowRunReader(client=FakeReaderClient()).read_logs(
@@ -123,6 +133,14 @@ class TestReadProgress:
 
         assert result.data == {}
 
+    async def test_no_flow_ids_returns_empty_without_remote_call(self) -> None:
+        client = FakeReaderClient(artifacts=[make_artifact(uuid4(), 0.5)])
+
+        result = await FlowRunReader(client=client).read_progress(flow_ids=[])
+
+        assert result.data == {}
+        assert client.read_artifacts_calls == []
+
 
 class TestReadFlows:
     async def test_reads_all_when_no_ids_or_names(self) -> None:
@@ -133,6 +151,22 @@ class TestReadFlows:
 
         assert result == flows
         assert client.read_flows_calls == [None]
+
+    async def test_empty_ids_return_no_flows_without_remote_call(self) -> None:
+        client = FakeReaderClient(flows=[Flow(id=uuid4(), name="wf", labels={})])
+
+        result = await FlowRunReader(client=client).read_flows(ids=[])
+
+        assert result == []
+        assert client.read_flows_calls == []
+
+    async def test_empty_names_return_no_flows_without_remote_call(self) -> None:
+        client = FakeReaderClient(flows=[Flow(id=uuid4(), name="wf", labels={})])
+
+        result = await FlowRunReader(client=client).read_flows(names=[])
+
+        assert result == []
+        assert client.read_flows_calls == []
 
     async def test_filters_by_names(self) -> None:
         client = FakeReaderClient()

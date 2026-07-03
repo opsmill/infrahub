@@ -80,6 +80,9 @@ class FlowRunReader:
         if log_limit > NB_LOGS_LIMIT:
             raise ValueError(f"log_limit cannot be greater than {NB_LOGS_LIMIT}")
 
+        if not flow_ids:
+            return logs_flow
+
         all_logs = []
 
         # Fetch the logs in batches of PREFECT_MAX_LOGS_PER_CALL, as prefect does not allow to fetch more logs at once.
@@ -106,11 +109,15 @@ class FlowRunReader:
         return logs_flow
 
     async def read_progress(self, flow_ids: list[UUID]) -> FlowProgress:
+        flow_progress = FlowProgress()
+
+        if not flow_ids:
+            return flow_progress
+
         artifacts = await self.client.read_artifacts(
             artifact_filter=ArtifactFilter(type=ArtifactFilterType(any_=["progress"])),
             flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=flow_ids)),
         )
-        flow_progress = FlowProgress()
         for artifact in artifacts:
             if artifact.flow_run_id in flow_progress.data:
                 log.warning(
@@ -123,8 +130,12 @@ class FlowRunReader:
         return flow_progress
 
     async def read_flows(self, ids: list[UUID] | None = None, names: list[str] | None = None) -> list[Flow]:
-        if not names and not ids:
+        if names is None and ids is None:
             return await self.client.read_flows()
+
+        # An empty filter list means no flows can match; an unfiltered call would return every flow instead.
+        if not names and not ids:
+            return []
 
         flow_filter = FlowFilter()
         flow_filter.name = FlowFilterName(any_=names) if names else None
