@@ -5,8 +5,8 @@ import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/domain/rules/has-incompatible-filters-for-ip-availability";
 import { getIpPrefixListFromApi } from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
-import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
-import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/domain/rules/get-prefix-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 

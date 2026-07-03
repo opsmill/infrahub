@@ -14,7 +14,7 @@ import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/domain/
 import {
   type GetIpPrefixListParams,
   getIpPrefixList,
-} from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-list";
+} from "@/entities/ipam/ip-prefixes/domain/use-cases/get-ip-prefix-list";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 

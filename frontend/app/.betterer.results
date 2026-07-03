@@ -78,7 +78,7 @@ exports[`fix ts error`] = {
     "src/entities/events/ui/filters/global-kind-filter.tsx:1326078933": [
       [40, 45, 5, "tsc: Type \'ReactNode\' is not assignable to type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "173467459"]
     ],
-    "src/entities/ipam/ip-addresses/ui/ip-address-table.tsx:1804532826": [
+    "src/entities/ipam/ip-addresses/ui/ip-address-table.tsx:2557180433": [
       [45, 8, 7, "tsc: Type \'ColumnDef<NodeObject>[]\' is not assignable to type \'ColumnDef<NodeObject | IpAddressAvailableNode>[]\'.\\n  Type \'ColumnDef<NodeObject>\' is not assignable to type \'ColumnDef<NodeObject | IpAddressAvailableNode>\'.\\n    Type \'ColumnDefBase<NodeObject, unknown> & StringHeaderIdentifier\' is not assignable to type \'ColumnDef<NodeObject | IpAddressAvailableNode>\'.\\n      Type \'ColumnDefBase<NodeObject, unknown> & StringHeaderIdentifier\' is not assignable to type \'AccessorFnColumnDefBase<NodeObject | IpAddressAvailableNode, unknown> | IpAddressAvailableNode, unknown> & IdIdentifier<NodeObject\'.\\n        Property \'accessorFn\' is missing in type \'ColumnDefBase<NodeObject, unknown> & StringHeaderIdentifier\' but required in type \'AccessorFnColumnDefBase<NodeObject | IpAddressAvailableNode, unknown>\'.", "3718923584"]
     ],
     "src/entities/navigation/ui/search-anywhere/search-anywhere-dialog.tsx:599152990": [

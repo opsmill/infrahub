@@ -4,7 +4,7 @@ import { Link, type LinkProps } from "react-router";
 import { Row, type RowProps } from "@/shared/components/container";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
-import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/domain/rules/get-prefix-attributes-visible-in-list-view";
 import type {
   NodeAttribute,
   NodeCore,
