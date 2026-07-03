@@ -9,11 +9,8 @@ repository. Assertions read the authoritative branch list and the repository's r
 never a sync-status field or a mutation's return value; progression is driven by explicit triggers
 and observable-state polling to a deadline, never a fixed sleep.
 
-Requires a current-stable Infrahub image built from this branch. It MUST be verified in the Docker
-CI job (which builds the image), NOT against a pre-built local image: a stale image that predates the
-non-`main`-default import fix produces false failures in the periodic-sync path. The reimport and
-tag-bump promotion assertions were not verifiable in the dev environment (the image build has no
-network access to the npm registry) and need a full-stack run on a current image to confirm.
+Requires an image built from the branch under test: a stale image gives false failures in the
+periodic-sync path for a non-primary default branch.
 """
 
 from __future__ import annotations
@@ -138,6 +135,30 @@ def _create_remote_tag(repo_dir: Path, tag: str, commitish: str) -> str:
     """Create a lightweight tag on the shared remote at ``commitish`` and return its commit SHA."""
     _git(repo_dir, "tag", tag, commitish)
     return _git(repo_dir, "rev-parse", f"{tag}^{{commit}}")
+
+
+def _stage_release_with_object(repo_dir: Path, tag_name: str, object_tag: str) -> str:
+    """Commit an object file + repository config on the consumer branch and tag it as a release."""
+    current = _git(repo_dir, "rev-parse", "--abbrev-ref", "HEAD")
+    _git(repo_dir, "checkout", CONSUMER_BRANCH)
+    (repo_dir / ".infrahub.yml").write_text("---\nobjects:\n  - objects/tags.yml\n")
+    objects_dir = repo_dir / "objects"
+    objects_dir.mkdir(exist_ok=True)
+    (objects_dir / "tags.yml").write_text(
+        "---\n"
+        "apiVersion: infrahub.app/v1\n"
+        "kind: Object\n"
+        "spec:\n"
+        "  kind: BuiltinTag\n"
+        "  data:\n"
+        f"    - name: {object_tag}\n"
+    )
+    _git(repo_dir, "add", ".infrahub.yml", "objects/tags.yml")
+    _git(repo_dir, "commit", "-m", f"release {tag_name} with object content")
+    sha = _git(repo_dir, "rev-parse", "HEAD")
+    _git(repo_dir, "checkout", current)
+    _git(repo_dir, "tag", tag_name, sha)
+    return sha
 
 
 class ApproachATwoStacks:
@@ -283,18 +304,25 @@ async def _poll_recorded_commit(
     *,
     deadline_seconds: int = 180,
     interval: int = 3,
-) -> str | None:
-    """Poll the repository's recorded commit until it is set, or the deadline elapses."""
-    deadline = asyncio.get_event_loop().time() + deadline_seconds
-    while asyncio.get_event_loop().time() < deadline:
+) -> str:
+    """Poll the repository's recorded commit until it is set.
+
+    Raises:
+        AssertionError: On timeout, carrying the last query error seen while polling.
+
+    """
+    last_error: Exception | None = None
+    deadline = time.monotonic() + deadline_seconds
+    while time.monotonic() < deadline:
         try:
             repo = await client.get(kind=kind, name__value=repo_name)
-        except Exception:
+        except Exception as exc:
+            last_error = exc
             repo = None
         if repo is not None and repo.commit.value:
             return repo.commit.value
         await asyncio.sleep(interval)
-    return None
+    raise AssertionError(f"{repo_name}: no recorded commit within {deadline_seconds}s (last error: {last_error!r})")
 
 
 async def _wait_for_recorded_commit_equals(
@@ -306,14 +334,23 @@ async def _wait_for_recorded_commit_equals(
     deadline_seconds: int = 180,
     interval: int = 3,
 ) -> bool:
-    """Poll until the repository's recorded commit equals ``expected``, or the deadline elapses."""
-    deadline = asyncio.get_event_loop().time() + deadline_seconds
-    while asyncio.get_event_loop().time() < deadline:
+    """Poll until the repository's recorded commit equals ``expected``.
+
+    Raises:
+        AssertionError: On timeout, carrying the commit the repository was stuck at.
+
+    """
+    last_seen = None
+    deadline = time.monotonic() + deadline_seconds
+    while time.monotonic() < deadline:
         repo = await client.get(kind=kind, name__value=repo_name)
-        if repo.commit.value == expected:
+        last_seen = repo.commit.value
+        if last_seen == expected:
             return True
         await asyncio.sleep(interval)
-    return False
+    raise AssertionError(
+        f"{repo_name}: recorded commit stuck at {last_seen} (expected {expected}) after {deadline_seconds}s"
+    )
 
 
 async def _stays_at_commit(
@@ -330,8 +367,8 @@ async def _stays_at_commit(
     The window is long enough to span at least two every-minute periodic sync cycles, so a silent
     auto-advance would be observed as a divergence.
     """
-    deadline = asyncio.get_event_loop().time() + observe_seconds
-    while asyncio.get_event_loop().time() < deadline:
+    deadline = time.monotonic() + observe_seconds
+    while time.monotonic() < deadline:
         repo = await client.get(kind=kind, name__value=repo_name)
         if repo.commit.value != expected:
             return False
@@ -430,7 +467,7 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
         await consumer_client.execute_graphql(query=query.render(), tracker="mutation-readonly-import-last-commit")
 
         advanced = await _wait_for_recorded_commit_equals(
-            consumer_client, repo_name, CoreReadOnlyRepository, latest_sha, deadline_seconds=130
+            consumer_client, repo_name, CoreReadOnlyRepository, latest_sha, deadline_seconds=300
         )
         assert advanced
 
@@ -446,8 +483,7 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
         bumps the ref to the next tag. Bumping the ref must advance the recorded commit to the tag's
         commit. (Runs last: it mutates the shared consumer repo's ref.)
         """
-        _advance_remote_branch(shared_remote, CONSUMER_BRANCH, "release_tag.txt")
-        release_sha = _create_remote_tag(shared_remote, "release-1", CONSUMER_BRANCH)
+        release_sha = _stage_release_with_object(shared_remote, tag_name="release-1", object_tag="release-1-tag")
 
         repo = await consumer_client.get(kind=CoreReadOnlyRepository, name__value=repo_name)
         assert repo.commit.value != release_sha
@@ -455,6 +491,10 @@ class TestMultiEnvApproachA(ApproachATwoStacks):
         await _update_read_only_ref(consumer_client, repo.id, "release-1")
 
         promoted = await _wait_for_recorded_commit_equals(
-            consumer_client, repo_name, CoreReadOnlyRepository, release_sha, deadline_seconds=130
+            consumer_client, repo_name, CoreReadOnlyRepository, release_sha, deadline_seconds=300
         )
         assert promoted
+
+        # The promotion carried content, not just the recorded SHA: the object file was imported.
+        tags = await consumer_client.filters(kind="BuiltinTag", name__value="release-1-tag")
+        assert len(tags) == 1

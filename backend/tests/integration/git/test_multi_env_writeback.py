@@ -130,14 +130,20 @@ async def _register_and_import(client: InfrahubClient, gogs_server: GogsServer, 
     return {"repo_name": repo_name, "node_id": node.id}
 
 
-async def _writeback_merge(repo: InfrahubRepository, feature_name: str, filename: str) -> str | bool:
-    """Commit a change on a new feature branch and merge it into the primary branch (write-back)."""
+async def _writeback_merge(repo: InfrahubRepository, feature_name: str, filename: str) -> str:
+    """Commit a change on a new feature branch, merge it into the primary branch (write-back).
+
+    Returns the primary worktree's tip after the merge — the commit the write-back should have
+    delivered to the remote. Read from the worktree, not the merge return value, so the assertion
+    cannot be satisfied vacuously by a non-SHA return.
+    """
     await repo.create_branch_in_git(feature_name, push_origin=False)
     worktree = repo.get_git_repo_worktree(identifier=feature_name)
     (Path(str(worktree.working_dir)) / filename).write_text("write-back content\n")
     worktree.index.add([filename])
     worktree.index.commit(f"{feature_name}: write-back change")
-    return await repo.merge(source_branch=feature_name, dest_branch="main", push_remote=True)
+    await repo.merge(source_branch=feature_name, dest_branch="main", push_remote=True)
+    return str(repo.get_git_repo_worktree(identifier="main").head.commit)
 
 
 class TestMultiEnvWriteBack(TestInfrahubApp):
@@ -199,7 +205,7 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
 
         # Non-importer state: a local primary branch worktree with a commit to write back, and NO
         # local develop branch (only origin/develop from the fetch).
-        assert "develop" not in repo.get_branches_from_local(include_worktree=False)
+        assert DEV_BRANCH not in repo.get_branches_from_local(include_worktree=False)
 
         await repo.create_branch_in_git("feature-x", push_origin=False)
         feature_repo = repo.get_git_repo_worktree(identifier="feature-x")
@@ -298,7 +304,9 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
             kind=InfrahubKind.REPOSITORY,
             raise_on_error=True,
         )
-        repo = await InfrahubRepository.init(id=repository.id, name=repo_name, client=client)
+        repo = await InfrahubRepository.init(
+            id=repository.id, name=repo_name, client=client, default_branch_name=DEV_BRANCH
+        )
 
         await repo.create_branch_in_git("conflict-a", push_origin=False)
         await repo.create_branch_in_git("conflict-b", push_origin=False)
@@ -449,6 +457,11 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
 
         The filter is set BEFORE registration so the initial import honours it — a branch imported
         before the filter was applied would linger (there is no deletion path to remove it).
+
+        Class-scoped: the filter stays active for every later test in this class. That is benign
+        while later repos only carry main/develop remotely — a later test adding a remote feature/*
+        branch would get silently filtered syncs. Keep new remote branches within the filter, or
+        make this fixture function-scoped first.
         """
         original = config.SETTINGS.git.import_sync_branch_names
         config.SETTINGS.git.import_sync_branch_names = ["^main$", f"^{DEV_BRANCH}$"]
@@ -780,3 +793,105 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
         develop_after = str(Repo(bare_path).commit(DEV_BRANCH))
         # Intended contract: the write-back reached the remote default branch (or the merge failed).
         assert develop_after != develop_before
+
+    async def test_writeback_succeeds_on_importer_clone(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """The write-back lands when the clone holds the default branch and the remote has not moved.
+
+        The working path that the single-worker deployment recommendation depends on: the importing
+        clone (local default branch present, remote tip unchanged) merges a feature branch and the
+        remote default branch advances to exactly the merged commit. Also guards, outside any
+        expected-failure envelope, the imported-clone reconstruction the defect tests rely on.
+        """
+        ds = await _register_and_import(client, gogs_server, "multi-env-happy-repo")
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        repo = await InfrahubRepository.init(
+            id=repository.id, name=ds["repo_name"], client=client, default_branch_name=DEV_BRANCH
+        )
+        assert DEV_BRANCH in repo.get_branches_from_local(include_worktree=False)
+
+        merged_tip = await _writeback_merge(repo, "feature-happy", "wb.txt")
+
+        assert _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH) == merged_tip
+
+    @pytest.fixture
+    def no_sync_filter(self) -> Generator[None, None, None]:
+        """Force an unset import-sync filter for this test, shadowing the class-scoped filter."""
+        original = config.SETTINGS.git.import_sync_branch_names
+        config.SETTINGS.git.import_sync_branch_names = []
+        yield
+        config.SETTINGS.git.import_sync_branch_names = original
+
+    async def test_unset_filter_imports_every_branch(
+        self,
+        no_sync_filter: None,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """With no import-sync filter configured, every remote branch is imported standalone.
+
+        Documented-trap guard: an unset filter means "import every branch", not "only the default" —
+        a consumer without a filter pulls all feature branches as standalone Infrahub branches.
+        """
+        repo_name = "multi-env-unset-filter-repo"
+        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        _create_remote_branch_from_main(gogs_server.container, repo_name, DEV_BRANCH)
+        _create_remote_branch_from_main(gogs_server.container, repo_name, "feature/unfiltered")
+
+        node = await client.create(
+            kind=InfrahubKind.REPOSITORY,
+            data={"name": repo_name, "location": repo_url, "default_branch": DEV_BRANCH},
+        )
+        await node.save()
+        await sync_remote_repositories()
+
+        branches = await client.branch.all()
+        assert "feature/unfiltered" in branches
+        # The configured default still maps onto the primary branch rather than importing standalone.
+        assert DEV_BRANCH not in branches
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "a standalone branch imported while default_branch was unset lingers permanently after "
+            "default_branch is updated; no reconciliation removes the now-redundant branch"
+        ),
+    )
+    async def test_default_branch_update_reconciles_phantom(
+        self,
+        no_sync_filter: None,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """Setting default_branch after registration must not strand a duplicate standalone branch.
+
+        Registering with default_branch unset imports the future default branch standalone; updating
+        default_branch afterwards should reconcile — the standalone duplicate should map onto the
+        primary branch and disappear. It lingers instead, which is why the pattern requires setting
+        default_branch at creation time.
+        """
+        repo_name = "multi-env-late-default-repo"
+        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        _create_remote_branch_from_main(gogs_server.container, repo_name, "staging")
+
+        node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": repo_url})
+        await node.save()
+        await sync_remote_repositories()
+        assert "staging" in await client.branch.all()
+
+        repo_node = await client.get(kind=InfrahubKind.REPOSITORY, id=node.id)
+        repo_node.default_branch.value = "staging"
+        await repo_node.save()
+        await sync_remote_repositories()
+        await sync_remote_repositories()
+
+        # Intended contract: the standalone duplicate of the (new) default branch is reconciled away.
+        assert "staging" not in await client.branch.all()
