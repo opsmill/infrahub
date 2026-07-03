@@ -15,7 +15,7 @@ import {
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, debounce } from "@/shared/utils/common";
 
-import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
+import type { IpNamespace } from "@/entities/ipam/ip-namespaces/domain/use-cases/get-ip-namespace-list";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";

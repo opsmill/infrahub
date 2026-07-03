@@ -13,7 +13,7 @@ import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import {
   type GetIpNamespaceListParams,
   getIpNamespaceList,
-} from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
+} from "@/entities/ipam/ip-namespaces/domain/use-cases/get-ip-namespace-list";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
