@@ -278,6 +278,42 @@ Exceptions where positional arguments are acceptable:
 - Well-known stdlib patterns: `range(10)`, `print("message")`
 - First argument when it's unambiguous: `log.info("message")`
 
+## Exception Handling
+
+Catch only the exceptions you expect and know how to handle. Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — it swallows `KeyboardInterrupt`/`SystemExit` intent, hides bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch, and makes failures silent.
+
+```python
+# ❌ Bad - swallows everything, including programming errors
+try:
+    node = await get_node(db=db, node_id=node_id)
+except Exception:
+    node = None
+
+# ✅ Good - catch only what get_node is documented to raise
+try:
+    node = await get_node(db=db, node_id=node_id)
+except NodeNotFoundError:
+    node = None
+```
+
+Guidelines:
+
+- **Name the exceptions.** Catch the narrowest type(s) that the called code actually raises. If several are handled the same way, group them: `except (NodeNotFoundError, BranchNotFoundError):`.
+- **Keep the `try` body small.** Wrap only the statement that can raise, not a whole block, so an unexpected error elsewhere isn't caught by accident.
+- **Never silence.** A bare `except Exception: pass` hides real failures. If there is genuinely nothing to do, comment why, and at minimum `log.debug(...)`.
+- **Re-raise what you can't handle.** If you must catch broadly to add context or clean up, re-raise afterwards (`raise` to preserve the traceback, or `raise NewError(...) from exc` to chain).
+
+```python
+# ✅ Good - broad catch is acceptable only to add context, then re-raise
+try:
+    await run_migration(db=db)
+except Exception as exc:
+    log.error("Migration failed", error=str(exc))
+    raise
+```
+
+A broad `except Exception` is justified only at a top-level boundary (a task worker loop, a request handler) whose job is to prevent one failure from taking down the process — and even there, log the exception and re-raise or record it, never discard it.
+
 ## Testing
 
 - Unit tests: no external dependencies only file access
