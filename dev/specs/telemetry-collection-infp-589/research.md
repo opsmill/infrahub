@@ -137,7 +137,8 @@ rejected: heavier, and Prefect's count-by primitives do it server-side (Constitu
 runs** of the `webhook-process` flow (grounded: `@flow(name="webhook-process")` in
 `webhook/tasks/process.py`) started within the **same `[window_start, window_end)` calendar-day
 window as the event metrics** (Decision 3 anchor — not `now`), split by terminal state:
-`COMPLETED` ⇒ success; `FAILED` / `CRASHED` (and `TIMEDOUT`) ⇒ failure. Query via the Prefect
+`COMPLETED` ⇒ success; `FAILED` / `CRASHED` ⇒ failure (`TIMEDOUT` is not a Prefect `StateType`).
+Query via the Prefect
 client's flow-run read API filtered by flow name and `start_time` in `[window_start, window_end)`.
 
 **Rationale**: Webhook delivery is a flow run, not an InfrahubEvent, so flow-run state is the

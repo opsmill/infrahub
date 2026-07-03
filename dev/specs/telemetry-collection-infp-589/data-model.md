@@ -35,7 +35,7 @@ exactly (no overlap, no gap) despite the jittered cron minute and execution drif
 | `branches_merged`         | `int \| None` | `branch.merged` events in-window                        | `0`   | `null`  |
 | `branches_deleted`        | `int \| None` | `branch.deleted` events in-window                       | `0`   | `null`  |
 | `webhooks_fired_success`  | `int \| None` | `webhook-process` flow runs in-window ending `COMPLETED`| `0`   | `null`  |
-| `webhooks_fired_failure`  | `int \| None` | `webhook-process` flow runs in-window ending `FAILED`/`CRASHED`/`TIMEDOUT` | `0` | `null` |
+| `webhooks_fired_failure`  | `int \| None` | `webhook-process` flow runs in-window ending `FAILED`/`CRASHED` | `0` | `null` |
 
 The eight check/artifact/branch fields are derived from events that are **already emitted and
 counted today** (windowless) via `get_all_events()`; they reuse the windowed event-count path

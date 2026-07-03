@@ -374,6 +374,14 @@ in-window events.
   CLI/MCP/Sync adoption, and GraphQL/REST metrics. (Checks and artifacts, formerly
   considered Phase 2, are pulled into Phase 1 — see FR-012/FR-013 — because their
   events already flow and serve a stated Phase 1 goal.)
+- **Configured database-core reporting** (`server.threads.worker_count` via
+  `SHOW SETTINGS`, alongside the existing physical `processor_available`) was
+  pulled into Phase 1 scope per the Jira card's 1 Jul scope-change note, then
+  deferred back out during implementation: the candidate setting is REST-only
+  (doesn't govern the Bolt path Infrahub uses) and defaults to the host core
+  count, so today it would only duplicate `processor_available`. Revisit once
+  the correct "licensed cores" setting is confirmed (open dependency on Fatih;
+  see `data-model.md` for the investigation detail).
 - **Held in Phase 2 even though their events already flow** (a bare count would be
   permanent contract surface — FR-011 — without clear standalone Phase 1 value):
   - **PR governance** — `proposed_change.*` events exist, but the useful metric

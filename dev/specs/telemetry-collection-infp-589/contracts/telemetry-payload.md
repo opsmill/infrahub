@@ -85,7 +85,7 @@ deterministic boundary (not gather-time `now`) so daily snapshots tile exactly.
 | `activity_24h.branches_merged` | Prefect `branch.merged` events, windowed | prev. UTC day | `0` | `null` |
 | `activity_24h.branches_deleted` | Prefect `branch.deleted` events, windowed | prev. UTC day | `0` | `null` |
 | `activity_24h.webhooks_fired_success` | Prefect `webhook-process` flow runs, `COMPLETED` | prev. UTC day | `0` | `null` |
-| `activity_24h.webhooks_fired_failure` | Prefect `webhook-process` flow runs, `FAILED`/`CRASHED`/`TIMEDOUT` | prev. UTC day | `0` | `null` |
+| `activity_24h.webhooks_fired_failure` | Prefect `webhook-process` flow runs, `FAILED`/`CRASHED` | prev. UTC day | `0` | `null` |
 
 **Interpretation notes (checks vs webhooks).**
 

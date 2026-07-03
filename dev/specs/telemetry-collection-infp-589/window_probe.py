@@ -21,7 +21,7 @@ import asyncio
 import sys
 from datetime import UTC, datetime, timedelta
 
-from prefect.client.orchestration import get_client
+from prefect.client.orchestration import PrefectClient, get_client
 
 from infrahub.events.account_action import AccountLoggedInEvent
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
@@ -53,13 +53,13 @@ def windows_for(now: datetime) -> dict[str, tuple[datetime, datetime]]:
     }
 
 
-async def probe_webhooks(client: object, windows: dict[str, tuple[datetime, datetime]]) -> None:
+async def probe_webhooks(client: PrefectClient, windows: dict[str, tuple[datetime, datetime]]) -> None:
     for label, (start, end) in windows.items():
         success, failure = await count_webhook_runs.fn(client=client, window_start=start, window_end=end)
         print(f"{label}  success={success} failure={failure}")
 
 
-async def probe_event(client: object, event: str, windows: dict[str, tuple[datetime, datetime]]) -> None:
+async def probe_event(client: PrefectClient, event: str, windows: dict[str, tuple[datetime, datetime]]) -> None:
     for label, (start, end) in windows.items():
         total = await count_windowed_event.fn(client=client, event_name=event, window_start=start, window_end=end)
         unique = await count_windowed_unique_resources.fn(
