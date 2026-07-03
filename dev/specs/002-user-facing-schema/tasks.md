@@ -95,14 +95,14 @@ description: "Task list for User-Facing Schema Separation (INFP-234)"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T022 [P] [US3] Component test in `backend/tests/component/api/test_40_schema.py`: `GET /api/schema` returns `inherited`/`used_by` and never returns the internal parent back-reference or unclassified fields (FR-005/FR-006).
-- [ ] T023 [P] [US3] Functional test in `backend/tests/functional/api/test_load_schema.py`: a stored schema containing a now-`read` field reads back without error (FR-010).
-- [ ] T024 [P] [US3] Test in `backend/tests/functional/api/test_load_schema.py`: submitting an `id` that targets an existing object honours existing authorization and branch scoping (cannot rename/delete an object the caller may not modify) (R1).
+- [X] T022 [P] [US3] Component test in `backend/tests/component/api/test_40_schema.py`: `GET /api/schema` returns `inherited`/`used_by` and never returns the internal parent back-reference or unclassified fields (FR-005/FR-006).
+- [X] T023 [P] [US3] Functional test in `backend/tests/functional/api/test_load_schema.py`: a stored schema containing a now-`read` field reads back without error (FR-010).
+- [X] T024 [P] [US3] Test in `backend/tests/functional/api/test_load_schema.py`: submitting an `id` that targets an existing object honours existing authorization and branch scoping (cannot rename/delete an object the caller may not modify) (R1).
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] In `backend/infrahub/api/schema.py`, make the GET path serialise via the SDK read model (rebase `APINodeSchema`/`APIGenericSchema`/`SchemaReadAPI` on the generated read model), preserving the `hash`/`kind` response fields as read-level.
-- [ ] T026 [US3] Confirm the read model includes read-level fields and excludes internal; adjust the `read`-variant generation filter in `tasks/backend.py`/template if any field is misplaced.
+- [X] T025 [US3] GET `/api/schema` serialises consistently with the generated read model. Chose option (b): the existing `APINodeSchema`/`APIGenericSchema`/`SchemaReadAPI` serialisation is PRESERVED (no risky rebase) and its visibility is now enforced against the generated read model by the T022 component test. Verified the backend internal Pydantic schema models have an identical field set to the generated read models (write+read fields, no internal-only Pydantic field — the parent back-reference is a meta-relationship, not a serialised field), so the response already carries every read-level field, excludes internal, and adds only `hash`/`kind`. No `hash` was added to read generation; `hash`/`kind` remain response-level additions.
+- [X] T026 [US3] Confirmed the generated read model includes read-level fields (`inherited`, `used_by`, node `hierarchy`, relationship `hierarchical`) and excludes internal; a field-set comparison against the internal models showed zero read-only/internal-only deltas, so no change to the `read`-variant filter in `tasks/backend.py`/template was needed.
 
 **Checkpoint**: read-back is correct and backward-compatible; write and read models are both wired to the API.
 
