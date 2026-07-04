@@ -11,7 +11,7 @@ from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
 from infrahub.workflows.models import WorkflowInfo
 
-from . import InfrahubWorkflow, Return
+from . import InfrahubWorkflow, Return, prepare_dispatch
 
 if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
@@ -74,9 +74,8 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
-        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
-
-        work_queue_name = priority.queue_name if priority is not None else None
+        dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
+        inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
         response: FlowRun = await run_deployment(
             name=workflow.full_name,
@@ -103,9 +102,8 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     ) -> WorkflowInfo:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
-        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
-
-        work_queue_name = priority.queue_name if priority is not None else None
+        dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
+        inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
         tls_insecure = config.SETTINGS.http.tls_insecure
         tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
