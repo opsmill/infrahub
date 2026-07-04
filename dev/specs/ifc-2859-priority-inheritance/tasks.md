@@ -59,11 +59,11 @@ No setup tasks — the feature extends existing modules on a branch where the fo
 
 ### Implementation for User Story 2
 
-- [ ] T010 [P] [US2] Pass the in-scope context at `backend/infrahub/git/tasks.py:930` (`execute_workflow(workflow=GIT_REPOSITORY_USER_CHECK_RUN, ...)` inside `trigger_repository_user_checks_definitions`)
-- [ ] T011 [P] [US2] Pass the in-scope context at `backend/infrahub/git/tasks.py:1041` (`execute_workflow(workflow=GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN, ...)` inside `trigger_internal_checks`)
-- [ ] T012 [P] [US2] Pass the in-scope context at `backend/infrahub/proposed_change/tasks.py:990` (`execute_workflow(workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE, ...)` inside `validate_artifacts_generation`)
-- [ ] T013 [P] [US2] Pass the in-scope `EventContext` at `backend/infrahub/profiles/tasks.py:113` (`submit_workflow(workflow=PROFILE_REFRESH, ...)` inside `profile_refresh_process`; forwards event context — contributes no priority by design, FR-005)
-- [ ] T014 [US2] Verify SC-003: re-run the dispatch-site classification from research D5 across `backend/infrahub/` and confirm every in-flow sub-dispatch site with a context in scope now passes it; confirm the 7 exemptions (3 roots, 4 without context in scope) still hold and are accurately documented in `dev/specs/ifc-2859-priority-inheritance/research.md`
+- [x] T010 [P] [US2] Pass the in-scope context at `backend/infrahub/git/tasks.py:930` (`execute_workflow(workflow=GIT_REPOSITORY_USER_CHECK_RUN, ...)` inside `trigger_repository_user_checks_definitions`)
+- [x] T011 [P] [US2] Pass the in-scope context at `backend/infrahub/git/tasks.py:1041` (`execute_workflow(workflow=GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN, ...)` inside `trigger_internal_checks`)
+- [x] T012 [P] [US2] Pass the in-scope context at `backend/infrahub/proposed_change/tasks.py:990` (`execute_workflow(workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE, ...)` inside `validate_artifacts_generation`)
+- [x] T013 [P] [US2] Pass the in-scope `EventContext` at `backend/infrahub/profiles/tasks.py:113` (`submit_workflow(workflow=PROFILE_REFRESH, ...)` inside `profile_refresh_process`; forwards event context — contributes no priority by design, FR-005)
+- [x] T014 [US2] Verify SC-003: re-run the dispatch-site classification from research D5 across `backend/infrahub/` and confirm every in-flow sub-dispatch site with a context in scope now passes it; confirm the 7 exemptions (3 roots, 4 without context in scope) still hold and are accurately documented in `dev/specs/ifc-2859-priority-inheritance/research.md`
 
 **Checkpoint**: All reachable in-flow dispatch sites forward their context.
 
