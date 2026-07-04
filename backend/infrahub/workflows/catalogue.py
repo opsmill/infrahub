@@ -3,7 +3,7 @@ import random
 from fast_depends import Depends, inject
 from prefect.client.schemas.objects import ConcurrencyLimitStrategy
 
-from .constants import WorkflowTag, WorkflowType
+from .constants import WorkflowTag, WorkflowType, WorkflowPriority
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
@@ -29,7 +29,6 @@ ACTION_RUN_GENERATOR_GROUP_EVENT = WorkflowDefinition(
     module="infrahub.actions.tasks",
     function="run_generator_group_event",
 )
-
 
 CONFIGURE_ACTION_RULES = WorkflowDefinition(
     name="configure-action-rules",
@@ -58,6 +57,7 @@ ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
     cron=f"{random.randint(0, 59)} 2 * * *",
     module="infrahub.telemetry.tasks",
     function="send_telemetry_push",
+    default_priority=WorkflowPriority.LOW,
 )
 
 SCHEMA_APPLY_MIGRATION = WorkflowDefinition(
@@ -252,6 +252,7 @@ BRANCH_CREATE = WorkflowDefinition(
     module="infrahub.core.branch.tasks",
     function="create_branch",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.HIGH,
 )
 
 BRANCH_MERGE = WorkflowDefinition(
@@ -320,6 +321,7 @@ GRAPHQL_QUERY_GROUP_UPDATE = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.groups.tasks",
     function="update_graphql_query_group",
+    default_priority=WorkflowPriority.LOW,
 )
 
 COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
@@ -328,6 +330,7 @@ COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
     module="infrahub.computed_attribute.tasks",
     function="process_jinja2",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
@@ -336,6 +339,7 @@ COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
     module="infrahub.computed_attribute.tasks",
     function="computed_attribute_jinja2_update_value",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
@@ -344,6 +348,7 @@ DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
     module="infrahub.display_labels.tasks",
     function="process_display_label",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
@@ -352,6 +357,7 @@ DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
     module="infrahub.display_labels.tasks",
     function="display_label_jinja2_update_value",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 HFID_PROCESS = WorkflowDefinition(
@@ -360,6 +366,7 @@ HFID_PROCESS = WorkflowDefinition(
     module="infrahub.hfid.tasks",
     function="process_hfid",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 HFID_SETUP = WorkflowDefinition(
@@ -367,6 +374,7 @@ HFID_SETUP = WorkflowDefinition(
     type=WorkflowType.CORE,
     module="infrahub.hfid.tasks",
     function="hfid_setup",
+    default_priority=WorkflowPriority.LOW,
 )
 
 
@@ -376,6 +384,7 @@ HFID_UPDATE_VALUE = WorkflowDefinition(
     module="infrahub.hfid.tasks",
     function="hfid_update_value",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
@@ -428,6 +437,7 @@ COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
     module="infrahub.computed_attribute.tasks",
     function="process_transform",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 DISPLAY_LABELS_SETUP_JINJA2 = WorkflowDefinition(
@@ -659,6 +669,7 @@ CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     function="clean_up_deadlocks",
     concurrency_limit=1,
     concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+    default_priority=WorkflowPriority.HIGH,
 )
 
 
