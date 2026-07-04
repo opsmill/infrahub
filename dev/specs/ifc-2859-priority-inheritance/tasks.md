@@ -71,9 +71,9 @@ No setup tasks — the feature extends existing modules on a branch where the fo
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T015 [P] Add a "Priority inheritance" subsection to `dev/knowledge/backend/async-tasks.md`: context field, resolution chain (override → context → catalogue default), copy-and-stamp semantics, chain-stop points (EventContext-only flows, flows without context parameters, cron roots), and operator visibility of the stamped priority in task-manager flow-run parameters (documentation gate, critique P4)
-- [ ] T016 Run the full local CI gate — `uv run invoke format`, `uv run invoke lint`, `uv run invoke backend.test-unit` — and confirm the pre-existing suite passes unmodified (SC-002)
-- [ ] T017 Execute the quickstart validation guide (`dev/specs/ifc-2859-priority-inheritance/quickstart.md`): unit fast-path, integration inheritance cases, zero-behavior-change check
+- [x] T015 [P] Add a "Priority inheritance" subsection to `dev/knowledge/backend/async-tasks.md`: context field, resolution chain (override → context → catalogue default), copy-and-stamp semantics, chain-stop points (EventContext-only flows, flows without context parameters, cron roots), and operator visibility of the stamped priority in task-manager flow-run parameters (documentation gate, critique P4)
+- [x] T016 Run the full local CI gate — `uv run invoke format`, `uv run invoke lint`, `uv run invoke backend.test-unit` — and confirm the pre-existing suite passes unmodified (SC-002)
+- [x] T017 Execute the quickstart validation guide (`dev/specs/ifc-2859-priority-inheritance/quickstart.md`): unit fast-path, integration inheritance cases, zero-behavior-change check
 
 ---
 

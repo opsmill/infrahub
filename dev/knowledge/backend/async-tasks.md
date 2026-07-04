@@ -164,6 +164,44 @@ Workflows can specify concurrency limits:
 
 Example: `GIT_REPOSITORIES_SYNC` uses `concurrency_limit=1` with `CANCEL_NEW` to prevent overlapping sync operations.
 
+## Priority Lanes
+
+Every workflow runs in one of three priority lanes, each backed by a Prefect work queue on the shared worker pool:
+
+| Lane | Queue name | Queue precedence |
+|------|------------|------------------|
+| High | `high` | 1 (served first) |
+| Medium | `medium` | 2 |
+| Low | `low` | 3 (served last) |
+
+The lanes are modeled by the `WorkflowPriority` enum (`backend/infrahub/workflows/constants.py`); `setup_work_queues` in `backend/infrahub/workflows/initialization.py` provisions the three queues idempotently at task-manager setup (creating missing queues, re-asserting precedence on existing ones). Workers drain all three queues; precedence only matters under contention — a lower number is served first, and nothing preempts a run that already started.
+
+Each `WorkflowDefinition` declares a `default_priority` (defaults to `WorkflowPriority.MEDIUM`), which becomes the `work_queue_name` of its Prefect deployment. Both dispatch entry points of the workflow adapter (`execute_workflow`, `submit_workflow`) also accept an optional `priority` argument that overrides the catalogue default for a single dispatch. Routing is a static tier-to-queue mapping — no per-dispatch queue lookup or existence check.
+
+### Priority Inheritance
+
+Priority is a property of the whole task tree, not of individual workflows: a tree runs at its root's effective priority, and catalogue defaults only ever seed tree roots.
+
+**Context field.** `InfrahubContext` (`backend/infrahub/context.py`) carries an optional `priority: WorkflowPriority | None = None`. Because the context already travels from parent flow to child flow as a flow parameter, it is the vehicle that propagates the lane across dispatch hops. Context payloads serialized before the field existed deserialize with `priority=None`.
+
+**Resolution chain.** At every dispatch, the effective priority is resolved by a strict precedence chain, implemented once in `resolve_priority()` (`backend/infrahub/services/adapters/workflow/__init__.py`) and shared by both adapters:
+
+1. The explicit `priority` argument at the call site, when given.
+2. The `priority` carried by the dispatched `InfrahubContext`, when set.
+3. The workflow's catalogue `default_priority`.
+
+Inheritance is exact — the resolved value is never floored, capped, or combined with the child workflow's catalogue default. A low-priority tree dispatching a catalogue-high child runs that child low; anything else would let bulk background trees elbow into the interactive lane.
+
+**Copy-and-stamp semantics.** The companion `prepare_dispatch()` helper stamps the resolved priority into a *copy* of the context (`context.model_copy(update={"priority": effective})`) and injects the copy into the child's flow parameters — the caller's context object is never mutated, so several sub-dispatches from the same context with different explicit overrides do not interfere. Stamping happens on every dispatch that carries an `InfrahubContext`, including when the value came from the catalogue default, so descendants at depth ≥ 2 inherit correctly. An explicit override mid-tree re-roots the priority for that subtree. The worker adapter routes the run explicitly (`work_queue_name`) only when the argument or the context supplied the value; when only the catalogue default applies, the run inherits its deployment's queue — same lane, no explicit routing instruction. The local (test) adapter applies the same resolution and stamping but performs no queue routing.
+
+**Where the chain stops.** Inheritance ends at any hop that cannot carry the context forward:
+
+- Flows that declare only an `EventContext` parameter: the context is converted via `to_event_context()`, which carries no priority. Events are a deliberate boundary — event-triggered workflows are new tree roots whose priority comes from their own classification, not from the emitting task's lane.
+- Flows that declare no context parameter at all: the flow itself is routed correctly (its dispatch site resolved and routed the priority), but it has no context to forward, so its own sub-dispatches fall back to catalogue defaults.
+- Cron-scheduled runs: created by the scheduler without passing through the dispatch path; their trees start at catalogue defaults.
+
+**Operator visibility.** The stamped priority is visible in the task manager: the flow run's parameters include the injected context, whose `priority` field shows the effective lane the dispatch resolved — alongside the queue the run actually landed on.
+
 ## Dependency Injection
 
 Services are injected into flows using `fast-depends`:
