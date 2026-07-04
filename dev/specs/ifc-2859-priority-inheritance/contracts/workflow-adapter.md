@@ -39,7 +39,7 @@ When the context is an `EventContext` or `None`: no stamping; the child receives
 ## Routing guarantee (worker implementation)
 
 - `work_queue_name = effective.queue_name` when the effective priority came from rank 1 or rank 2.
-- `work_queue_name = None` (deployment default queue) when it came from rank 3 — the no-signal dispatch path is byte-identical to the foundation slice.
+- `work_queue_name = None` (deployment default queue) when it came from rank 3 — no-signal dispatches send no explicit routing instruction, exactly as in the foundation slice. (The injected context payload still gains the stamped `priority` field — required by the stamping guarantee, and the queue outcome is unchanged.)
 - No per-dispatch queue-existence check (foundation FR-006 unchanged).
 
 ## Local implementation parity

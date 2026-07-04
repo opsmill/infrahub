@@ -6,9 +6,9 @@
 
 ## Summary
 
-Give `InfrahubContext` an optional `priority` field, resolve the effective priority at both dispatch entry points of the workflow adapter as a strict chain (explicit override → context priority → catalogue default), and stamp the resolved value into the context injected into every child run so entire task trees run at the priority of their root. Includes a verified one-time audit passing the in-scope context at the 4 sub-dispatch sites that omit it. Zero behavior change: nothing dispatches non-medium until classification lands, and the no-signal dispatch path stays byte-identical.
+Give `InfrahubContext` an optional `priority` field, resolve the effective priority at both dispatch entry points of the workflow adapter as a strict chain (explicit override → context priority → catalogue default), and stamp the resolved value into the context injected into every child run so entire task trees run at the priority of their root. Includes a verified one-time audit passing the in-scope context at the 4 sub-dispatch sites that omit it. Zero behavior change in outcomes: nothing dispatches non-medium until classification lands, every run still lands in the same queue as today, and no-signal dispatches still send no explicit queue name — the only payload difference is the stamped `priority` inside the injected context.
 
-Technical approach (full details in [research.md](research.md)): `priority: WorkflowPriority | None = None` on `InfrahubContext` (D1, import-cycle verified); a pure `resolve_priority()` function shared by both adapters (D2); stamping via `context.model_copy(update=...)` — copy, never mutate (D3); explicit queue routing only when a non-default signal exists so the no-signal path is untouched (D4); audit classification verified per-site — 4 fixes, 7 documented exemptions (D5); local adapter mirrors resolve + stamp for test parity (D6).
+Technical approach (full details in [research.md](research.md)): `priority: WorkflowPriority | None = None` on `InfrahubContext` (D1, import-cycle verified); a pure `resolve_priority()` function shared by both adapters (D2); stamping via `context.model_copy(update=...)` — copy, never mutate (D3); explicit queue routing only when a non-default signal exists, so no-signal dispatches keep `work_queue_name=None` (D4); audit classification verified per-site — 4 fixes, 7 documented exemptions (D5); local adapter mirrors resolve + stamp for test parity (D6). Resolve + stamp + route lives in one shared `prepare_dispatch` helper beside `resolve_priority` so the three entry points cannot drift (critique E1).
 
 ## Technical Context
 
@@ -110,7 +110,8 @@ On both `execute_workflow` and `submit_workflow`:
 
 - `effective = resolve_priority(priority, context, workflow)`
 - If the context is an `InfrahubContext`: inject `context.model_copy(update={"priority": effective})` — unconditional stamp, copy-not-mutate (FR-003).
-- `work_queue_name = effective.queue_name` only when the explicit argument or the context supplied the priority; otherwise `None` (deployment default), keeping the no-signal path byte-identical (SC-002).
+- `work_queue_name = effective.queue_name` only when the explicit argument or the context supplied the priority; otherwise `None` (deployment default). Queue outcomes are unchanged everywhere (SC-002); the injected context payload does gain the stamped `priority` field on every dispatch that carries an `InfrahubContext` — that is the point of FR-003, not a regression.
+- Both entry points call a shared `prepare_dispatch(workflow, context, priority)` helper (returns the stamped context and `work_queue_name`) so worker and local adapters cannot drift (critique E1).
 
 ### 4. Local adapter parity (`local.py`) — research D6
 
@@ -130,7 +131,7 @@ Pass the in-scope context at the 4 verified sites (`git/tasks.py:930,1041`, `pro
 |-------|----------|----------|
 | Unit | context model tests | `priority` defaults to `None`; payload without the field deserializes cleanly (FR-001); `to_event_context()` / `to_request_context()` expose no priority (FR-005) |
 | Unit | adapter tests | `resolve_priority` full precedence matrix — explicit×context×default combinations including `EventContext` and `None` contexts (FR-002); local adapter injects a context stamped with the resolved priority, caller's context unmutated (FR-003, FR-006) |
-| Integration | `test_workflow_priority.py` (extended) | Root dispatched with explicit `high` → child dispatched context-only lands in `high`; grandchild (depth 2) lands in `high` (SC-001); low root + catalogue-high child workflow runs `low` — exact inheritance; explicit override mid-tree re-roots its subtree; no-signal dispatch still lands in `medium` with unchanged payload path (SC-002) |
+| Integration | `test_workflow_priority.py` (extended) | Root dispatched with explicit `high` → child dispatched context-only lands in `high`; grandchild (depth 2) lands in `high` (SC-001); low root + catalogue-high child workflow runs `low` — exact inheritance; explicit override mid-tree re-roots its subtree; no-signal dispatch still lands in `medium` with no explicit `work_queue_name` (SC-002) |
 
 Not tested: Prefect's native queue-priority ordering under load — upstream behavior assumed correct (unchanged from foundation slice).
 

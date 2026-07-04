@@ -12,6 +12,8 @@ All decisions below were verified against the codebase on branch `priority-work-
 
 **Import safety (verified)**: `infrahub.workflows.constants` imports only `infrahub.utils` — importing `WorkflowPriority` from `context.py` creates no import cycle.
 
+**Downgrade safety**: rolling back to pre-inheritance code while new-format payloads are in flight relies on Pydantic's default `extra="ignore"` — the unknown `priority` key is dropped on deserialization. `InfrahubContext` sets no strict model config; a unit test pins this (unknown-key payload deserializes cleanly on the old shape's equivalent).
+
 **Alternatives considered**: (a) Prefect runtime lookup of the parent flow run's `work_queue_name` at dispatch — rejected: adds a per-dispatch API call (violates the foundation's no-hot-path-cost constraint) and couples inheritance to Prefect runtime internals. (b) A separate `contextvar` — rejected: does not survive the process boundary between parent and child flow runs.
 
 ## D2 — Effective-priority resolution is one pure function shared by both adapters
@@ -27,7 +29,7 @@ def resolve_priority(
     # explicit override → context priority (InfrahubContext only) → catalogue default
 ```
 
-**Rationale**: The precedence chain (FR-002) is pure decision logic — a function of its arguments with no collaborators, so per the backend component-design rule it needs no class or injection; both adapters call it, keeping worker/local behavior identical (FR-006). `EventContext` contributes no priority (FR-005): resolution treats it the same as `None`.
+**Rationale**: The precedence chain (FR-002) is pure decision logic — a function of its arguments with no collaborators, so per the backend component-design rule it needs no class or injection; both adapters call it, keeping worker/local behavior identical (FR-006). `EventContext` contributes no priority (FR-005): resolution treats it the same as `None`. A companion `prepare_dispatch()` helper (resolve + stamp + queue name) is the single call both adapters make at each entry point, so the three dispatch paths cannot drift (critique E1).
 
 **Alternatives considered**: A `PriorityResolver` component with constructor injection — rejected as ceremony: no dependencies to inject, single pure computation.
 
@@ -43,9 +45,9 @@ def resolve_priority(
 
 **Decision**: `work_queue_name` is set to `effective.queue_name` when the explicit `priority` argument or the context's priority provided the value; when both are absent (effective == catalogue default), keep today's exact path: `work_queue_name=None`, the run inherits the deployment's queue.
 
-**Rationale**: The deployment's queue already *is* the catalogue default's queue (foundation slice FR-003), so routing explicitly in that case would be redundant while changing the dispatch payload of every existing call — the zero-behavior-change guarantee (SC-002) is cleanest when the no-signal path stays byte-identical. Stamping (D3) still happens unconditionally, so descendants inherit the default correctly.
+**Rationale**: The deployment's queue already *is* the catalogue default's queue (foundation slice FR-003), so routing explicitly in that case would be redundant — keeping `work_queue_name=None` on no-signal dispatches makes the SC-002 review trivially auditable on the routing side. Stamping (D3) still happens unconditionally, so the injected context payload of every `InfrahubContext`-carrying dispatch does gain the `priority` field; queue outcomes are unchanged everywhere.
 
-**Alternatives considered**: Always pass `effective.queue_name` — functionally equivalent (same queue) but touches every dispatch payload for no benefit; rejected to keep SC-002 trivially auditable.
+**Alternatives considered**: Always pass `effective.queue_name` — functionally equivalent (same queue) but adds an explicit routing instruction to every dispatch for no benefit; rejected.
 
 ## D5 — Audit classification of the 11 context-less dispatch sites (verified per-site)
 
