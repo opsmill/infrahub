@@ -2,4 +2,4 @@
 
 `GET /api/schema` is unchanged and still returns read-only fields such as `inherited` and `used_by`.
 
-To produce a submittable payload, strip the non-settable fields before loading. The write contract is published as a committed model in the Python SDK (`infrahub_sdk.schema.generated.write`); the SDK's `validate_schema()` reproduces the server's verdict offline so a payload can be checked before submission. See the migration guide "Stricter schema-load validation" in the release notes for the full field list and client-side steps.
+To produce a submittable payload, strip the non-settable fields before loading. The write contract is published as a committed model in the Python SDK (`infrahub_sdk.schema.generated.write`); the SDK `validate_schema()` helper reproduces the server verdict offline so a payload can be checked before submission. See the migration guide "Stricter schema-load validation" in the release notes for the full field list and client-side steps.
