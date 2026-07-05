@@ -1,3 +1,5 @@
+import typing
+
 import pytest
 from fastapi.testclient import TestClient
 from infrahub_sdk.schema.generated.read import (
@@ -78,7 +80,10 @@ async def test_schema_read_endpoint_visibility(
     response_additions = {"hash", "kind"}
     node_allowed = set(NodeSchemaRead.model_fields) | response_additions
     generic_allowed = set(GenericSchemaRead.model_fields) | response_additions
-    attribute_fields = set(AttributeSchemaRead.model_fields)
+    # AttributeSchemaRead is a discriminated union of per-kind variants; the read-back may carry any
+    # kind, so the allowed-field set is the union of every variant's fields.
+    attribute_union = typing.get_args(typing.get_args(AttributeSchemaRead)[0])
+    attribute_fields: set[str] = set().union(*(set(variant.model_fields) for variant in attribute_union))
     relationship_fields = set(RelationshipSchemaRead.model_fields)
 
     # A read-level field derived from generic inheritance is present and populated.

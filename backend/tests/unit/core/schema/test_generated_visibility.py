@@ -14,10 +14,13 @@ from infrahub.core.schema.definitions.internal import (
     node_schema,
     relationship_schema,
 )
+from infrahub.types import ATTRIBUTE_KIND_LABELS
 
-# Map each schema-definition family to the generated SDK *write* model it produces.
+# Map each schema-definition family to the generated SDK *write* model it produces. The attribute
+# family is a discriminated union on kind; its shared fields live on AttributeSchemaBaseWrite, so
+# shared-field checks introspect the base while kind coverage is asserted per variant separately.
 DEFINITION_TO_WRITE_MODEL = {
-    "attribute": (attribute_schema, sdk_write.AttributeSchemaWrite),
+    "attribute": (attribute_schema, sdk_write.AttributeSchemaBaseWrite),
     "relationship": (relationship_schema, sdk_write.RelationshipSchemaWrite),
     "base_node": (base_node_schema, sdk_write.BaseNodeSchemaWrite),
     "node": (node_schema, sdk_write.NodeSchemaWrite),
@@ -98,3 +101,24 @@ def test_write_model_publishes_allowed_values(family: str) -> None:
             f"{write_model.__name__}.{field.name} allowed values {sorted(values)} "
             f"do not match the internal set {sorted(field.enum)}"
         )
+
+
+def test_attribute_kind_variants_partition_all_kinds() -> None:
+    """The attribute union's variants together cover every attribute kind, without overlap.
+
+    ``kind`` is the union discriminator, so each kind must resolve to exactly one variant; the
+    variants' narrowed ``kind`` literals must partition the full internal set of attribute kinds.
+    """
+    union_members = typing.get_args(typing.get_args(sdk_write.AttributeSchemaWrite)[0])
+    assert union_members, "AttributeSchemaWrite must be a non-empty discriminated union"
+
+    seen: list[str] = []
+    for variant in union_members:
+        values = _literal_values(variant.model_fields["kind"].annotation)
+        assert values is not None, f"{variant.__name__}.kind must be a Literal of its supported kinds"
+        seen.extend(values)
+
+    assert sorted(seen) == sorted(ATTRIBUTE_KIND_LABELS), (
+        f"variant kinds {sorted(seen)} do not cover the internal set {sorted(ATTRIBUTE_KIND_LABELS)}"
+    )
+    assert len(seen) == len(set(seen)), f"attribute kinds overlap across variants: {sorted(seen)}"

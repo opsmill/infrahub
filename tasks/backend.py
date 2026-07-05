@@ -385,6 +385,31 @@ def _generate_schemas(context: Context) -> None:
     _generate_schemas_sdk(context=context)
 
 
+def _attribute_kinds_by_parameters(expected_parameters: set[str]) -> dict[str, list[str]]:
+    """Group attribute kinds by the parameters model the backend selects for each.
+
+    Deriving the grouping from the backend mapping keeps the generated discriminated union in
+    step with it; the caller supplies the set of parameters models its variants cover.
+
+    Raises:
+        ValueError: If the backend mapping yields a parameters model set that differs from
+            ``expected_parameters``, so the variant definitions are updated in lockstep.
+
+    """
+    from infrahub.core.schema.attribute_parameters import get_attribute_parameters_class_for_kind
+    from infrahub.types import ATTRIBUTE_KIND_LABELS
+
+    groups: dict[str, list[str]] = {}
+    for attribute_kind in ATTRIBUTE_KIND_LABELS:
+        groups.setdefault(get_attribute_parameters_class_for_kind(attribute_kind).__name__, []).append(attribute_kind)
+    if set(groups) != expected_parameters:
+        raise ValueError(
+            "Attribute parameters mapping changed; update attribute_variant_specs to match: "
+            f"{sorted(groups)} != {sorted(expected_parameters)}"
+        )
+    return groups
+
+
 def _generate_schemas_sdk(context: Context) -> None:
     """Render the user-facing write/read schema models into the Python SDK.
 
@@ -440,9 +465,10 @@ def _generate_schemas_sdk(context: Context) -> None:
 
     # The attribute sub-blocks (choices, parameters, computed_attribute) are value models of their
     # own. They are emitted as dedicated data models so the write contract is explicit rather than
-    # an opaque mapping. parameters has no in-object discriminator (the backend picks the shape from
-    # the sibling attribute kind), so it is a plain union that validates the shape and rejects
-    # unknown fields; computed_attribute discriminates on its own kind field.
+    # an opaque mapping. The attribute itself is a discriminated union on its kind: each variant
+    # narrows kind to the kinds sharing one parameters shape and carries that parameters model, so a
+    # given kind only validates against its own parameters. computed_attribute discriminates on its
+    # own kind field.
     dropdown_choice_fields = [
         _field("name", "Text", "Name of the choice, must be unique within the dropdown."),
         _field("description", "Text", "Description of the choice.", optional=True),
@@ -500,7 +526,53 @@ def _generate_schemas_sdk(context: Context) -> None:
         _field("transform", "Text", "Python transform name or ID, required when kind is TransformPython."),
     ]
 
-    def _pre_families(suffix: str) -> list[dict[str, Any]]:
+    # The attribute is modelled as a discriminated union on kind. Each variant narrows kind to the
+    # set of kinds the backend maps to one parameters shape, and carries that parameters model. The
+    # kind -> parameters split is derived from the backend mapping so the union stays in step with
+    # it; the generic variant absorbs every kind not claimed by a specific one. Order sets the union
+    # member order. Second element is the backend parameters class name (SDK class = name + suffix).
+    attribute_variant_specs: list[tuple[str, str]] = [
+        ("TextAttribute", "TextAttributeParameters"),
+        ("NumberAttribute", "NumberAttributeParameters"),
+        ("ListAttribute", "ListAttributeParameters"),
+        ("NumberPoolAttribute", "NumberPoolParameters"),
+        ("GenericAttribute", "AttributeParameters"),
+    ]
+    kinds_by_parameters = _attribute_kinds_by_parameters({parameters for _, parameters in attribute_variant_specs})
+
+    kind_description = next(attr for attr in attribute_schema.attributes if attr.name == "kind").description
+    parameters_source = next(attr for attr in attribute_schema.attributes if attr.name == "parameters")
+
+    def _visible(node: SchemaNode, minimum: Visibility) -> list[Any]:
+        return [attribute for attribute in node.attributes if attribute.visibility >= minimum]
+
+    def _parameters_field(parameters_name: str) -> dict[str, str]:
+        return {
+            "name": "parameters",
+            "external_type_annotation": f"{parameters_name}__VARIANT__ | None",
+            "external_default_definition": parameters_source.external_default_definition,
+            "description": parameters_source.description,
+            "external_pattern": parameters_source.external_pattern,
+            "min": parameters_source.min,
+            "max": parameters_source.max,
+        }
+
+    def _attribute_variant_families(minimum: Visibility, suffix: str) -> list[dict[str, Any]]:
+        base_name = f"AttributeSchemaBase{suffix}"
+        base_fields = [attribute for attribute in _visible(attribute_schema, minimum) if attribute.name != "parameters"]
+        families: list[dict[str, Any]] = [{"class_name": base_name, "parent": "BaseModel", "attributes": base_fields}]
+        for variant, parameters_name in attribute_variant_specs:
+            kind_field = _field("kind", "Text", kind_description, enum=kinds_by_parameters[parameters_name])
+            families.append(
+                {
+                    "class_name": f"{variant}{suffix}",
+                    "parent": base_name,
+                    "attributes": [kind_field, _parameters_field(parameters_name)],
+                }
+            )
+        return families
+
+    def _pre_families(minimum: Visibility, suffix: str) -> list[dict[str, Any]]:
         base = f"AttributeParameters{suffix}"
         return [
             {"class_name": base, "parent": "BaseModel", "attributes": []},
@@ -532,19 +604,12 @@ def _generate_schemas_sdk(context: Context) -> None:
                 "parent": "BaseModel",
                 "attributes": computed_transform_fields,
             },
+            *_attribute_variant_families(minimum, suffix),
         ]
 
     def _aliases(suffix: str) -> list[str]:
+        variant_members = "".join(f"        {variant}{suffix},\n" for variant, _ in attribute_variant_specs)
         return [
-            (
-                f"AttributeParametersUnion{suffix} = (\n"
-                f"    NumberPoolParameters{suffix}\n"
-                f"    | NumberAttributeParameters{suffix}\n"
-                f"    | TextAttributeParameters{suffix}\n"
-                f"    | ListAttributeParameters{suffix}\n"
-                f"    | AttributeParameters{suffix}\n"
-                ")"
-            ),
             (
                 f"ComputedAttribute{suffix} = Annotated[\n"
                 f"    Union[\n"
@@ -555,29 +620,37 @@ def _generate_schemas_sdk(context: Context) -> None:
                 f'    Field(discriminator="kind"),\n'
                 "]"
             ),
+            (
+                f"AttributeSchema{suffix} = Annotated[\n"
+                f"    Union[\n"
+                f"{variant_members}"
+                f"    ],\n"
+                f'    Field(discriminator="kind"),\n'
+                "]"
+            ),
         ]
 
     def _families(minimum: Visibility, suffix: str) -> list[dict[str, Any]]:
-        def _visible(node: SchemaNode) -> list[Any]:
-            return [attribute for attribute in node.attributes if attribute.visibility >= minimum]
-
         return [
-            {"class_name": f"AttributeSchema{suffix}", "parent": "BaseModel", "attributes": _visible(attribute_schema)},
             {
                 "class_name": f"RelationshipSchema{suffix}",
                 "parent": "BaseModel",
-                "attributes": _visible(relationship_schema),
+                "attributes": _visible(relationship_schema, minimum),
             },
-            {"class_name": f"BaseNodeSchema{suffix}", "parent": "BaseModel", "attributes": _visible(base_node_schema)},
+            {
+                "class_name": f"BaseNodeSchema{suffix}",
+                "parent": "BaseModel",
+                "attributes": _visible(base_node_schema, minimum),
+            },
             {
                 "class_name": f"NodeSchema{suffix}",
                 "parent": f"BaseNodeSchema{suffix}",
-                "attributes": _visible(node_stripped),
+                "attributes": _visible(node_stripped, minimum),
             },
             {
                 "class_name": f"GenericSchema{suffix}",
                 "parent": f"BaseNodeSchema{suffix}",
-                "attributes": _visible(generic_stripped),
+                "attributes": _visible(generic_stripped, minimum),
             },
         ]
 
@@ -596,7 +669,7 @@ def _generate_schemas_sdk(context: Context) -> None:
     }
     for variant, (minimum, model_config_args, suffix, with_version) in variants.items():
         rendered = template.render(
-            pre_families=_pre_families(suffix),
+            pre_families=_pre_families(minimum, suffix),
             aliases=_aliases(suffix),
             families=_families(minimum, suffix),
             model_config_args=model_config_args,
