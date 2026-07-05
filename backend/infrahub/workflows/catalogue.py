@@ -632,6 +632,7 @@ PROFILE_REFRESH_MULTIPLE = WorkflowDefinition(
     module="infrahub.profiles.tasks",
     function="objects_profiles_refresh_multiple",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 
@@ -641,6 +642,7 @@ PROFILE_REFRESH = WorkflowDefinition(
     module="infrahub.profiles.tasks",
     function="object_profiles_refresh",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 
@@ -658,6 +660,7 @@ PROFILE_REFRESH_PROCESS = WorkflowDefinition(
     module="infrahub.profiles.tasks",
     function="profile_refresh_process",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 

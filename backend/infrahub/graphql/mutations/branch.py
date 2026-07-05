@@ -30,6 +30,7 @@ from infrahub.workflows.catalogue import (
     BRANCH_REBASE,
     BRANCH_VALIDATE,
 )
+from infrahub.workflows.constants import WorkflowPriority
 
 from ..types import BranchType
 from ..types.task import TaskInfo
@@ -104,6 +105,7 @@ class BranchCreate(Mutation):
             workflow=BRANCH_CREATE,
             context=graphql_context.get_context(),
             parameters={"model": model},
+            priority=WorkflowPriority.HIGH,
         )
 
         # Retrieve created branch
@@ -185,12 +187,17 @@ class BranchDelete(Mutation):
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters=parameters
+                workflow=BRANCH_DELETE,
+                context=graphql_context.get_context(),
+                parameters=parameters,
+                priority=WorkflowPriority.HIGH,
             )
             return cls(ok=True)
 
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters=parameters
+            workflow=BRANCH_DELETE,
+            context=graphql_context.get_context(),
+            parameters=parameters,
         )
         return cls(ok=True, task={"id": str(workflow.id)})
 
@@ -261,6 +268,7 @@ class BranchRebase(Mutation):
                 workflow=BRANCH_REBASE,
                 context=graphql_context.get_context(),
                 parameters={"branch": obj.name},
+                priority=WorkflowPriority.HIGH,
             )
 
             # Pull the latest information about the branch from the database directly
@@ -311,6 +319,7 @@ class BranchValidate(Mutation):
                 workflow=BRANCH_VALIDATE,
                 context=graphql_context.get_context(),
                 parameters={"branch": obj.name},
+                priority=WorkflowPriority.HIGH,
             )
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
@@ -366,6 +375,7 @@ class BranchMerge(Mutation):
                 workflow=BRANCH_MERGE_MUTATION,
                 context=graphql_context.get_context(),
                 parameters={"branch": branch_name},
+                priority=WorkflowPriority.HIGH,
             )
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
