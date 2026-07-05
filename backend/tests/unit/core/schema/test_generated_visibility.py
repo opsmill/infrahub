@@ -17,11 +17,11 @@ from infrahub.core.schema.definitions.internal import (
 
 # Map each schema-definition family to the generated SDK *write* model it produces.
 DEFINITION_TO_WRITE_MODEL = {
-    "attribute": (attribute_schema, sdk_write.GeneratedAttributeSchema),
-    "relationship": (relationship_schema, sdk_write.GeneratedRelationshipSchema),
-    "base_node": (base_node_schema, sdk_write.GeneratedBaseNodeSchema),
-    "node": (node_schema, sdk_write.GeneratedNodeSchema),
-    "generic": (generic_schema, sdk_write.GeneratedGenericSchema),
+    "attribute": (attribute_schema, sdk_write.AttributeSchemaWrite),
+    "relationship": (relationship_schema, sdk_write.RelationshipSchemaWrite),
+    "base_node": (base_node_schema, sdk_write.BaseNodeSchemaWrite),
+    "node": (node_schema, sdk_write.NodeSchemaWrite),
+    "generic": (generic_schema, sdk_write.GenericSchemaWrite),
 }
 
 

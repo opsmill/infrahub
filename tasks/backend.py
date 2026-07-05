@@ -412,36 +412,50 @@ def _generate_schemas_sdk(context: Context) -> None:
     node_stripped = node_schema.without_duplicates(base_node_schema)
     generic_stripped = generic_schema.without_duplicates(base_node_schema)
 
-    def _families(minimum: Visibility) -> list[dict[str, Any]]:
+    def _families(minimum: Visibility, suffix: str) -> list[dict[str, Any]]:
         def _visible(node: SchemaNode) -> list[Any]:
             return [attribute for attribute in node.attributes if attribute.visibility >= minimum]
 
         return [
-            {"class_name": "GeneratedAttributeSchema", "parent": "BaseModel", "attributes": _visible(attribute_schema)},
+            {"class_name": f"AttributeSchema{suffix}", "parent": "BaseModel", "attributes": _visible(attribute_schema)},
             {
-                "class_name": "GeneratedRelationshipSchema",
+                "class_name": f"RelationshipSchema{suffix}",
                 "parent": "BaseModel",
                 "attributes": _visible(relationship_schema),
             },
-            {"class_name": "GeneratedBaseNodeSchema", "parent": "BaseModel", "attributes": _visible(base_node_schema)},
+            {"class_name": f"BaseNodeSchema{suffix}", "parent": "BaseModel", "attributes": _visible(base_node_schema)},
             {
-                "class_name": "GeneratedNodeSchema",
-                "parent": "GeneratedBaseNodeSchema",
+                "class_name": f"NodeSchema{suffix}",
+                "parent": f"BaseNodeSchema{suffix}",
                 "attributes": _visible(node_stripped),
             },
             {
-                "class_name": "GeneratedGenericSchema",
-                "parent": "GeneratedBaseNodeSchema",
+                "class_name": f"GenericSchema{suffix}",
+                "parent": f"BaseNodeSchema{suffix}",
                 "attributes": _visible(generic_stripped),
             },
         ]
 
+    def _root(suffix: str, with_version: bool) -> dict[str, Any]:
+        version_field = ["version: str | None = None"] if with_version else []
+        fields = [
+            *version_field,
+            f"nodes: list[NodeSchema{suffix}] = Field(default_factory=list)",
+            f"generics: list[GenericSchema{suffix}] = Field(default_factory=list)",
+        ]
+        return {"class_name": f"InfrahubSchema{suffix}", "fields": fields}
+
     variants = {
-        "write": (Visibility.WRITE, 'extra="forbid"'),
-        "read": (Visibility.READ, ""),
+        "write": (Visibility.WRITE, 'extra="forbid"', "Write", True),
+        "read": (Visibility.READ, "", "Read", False),
     }
-    for variant, (minimum, model_config_args) in variants.items():
-        rendered = template.render(families=_families(minimum), model_config_args=model_config_args)
+    for variant, (minimum, model_config_args, suffix, with_version) in variants.items():
+        rendered = template.render(
+            families=_families(minimum, suffix),
+            model_config_args=model_config_args,
+            root=_root(suffix, with_version),
+        )
+        rendered = rendered.replace("__VARIANT__", suffix)
         Path(f"{generated}/{variant}.py").write_text(rendered, encoding="utf-8")
 
     init_content = (

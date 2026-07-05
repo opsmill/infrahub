@@ -1,10 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 from infrahub_sdk.schema.generated.read import (
-    GeneratedAttributeSchema,
-    GeneratedGenericSchema,
-    GeneratedNodeSchema,
-    GeneratedRelationshipSchema,
+    AttributeSchemaRead,
+    GenericSchemaRead,
+    NodeSchemaRead,
+    RelationshipSchemaRead,
 )
 
 from infrahub import config
@@ -76,10 +76,10 @@ async def test_schema_read_endpoint_visibility(
     schema = response.json()
 
     response_additions = {"hash", "kind"}
-    node_allowed = set(GeneratedNodeSchema.model_fields) | response_additions
-    generic_allowed = set(GeneratedGenericSchema.model_fields) | response_additions
-    attribute_fields = set(GeneratedAttributeSchema.model_fields)
-    relationship_fields = set(GeneratedRelationshipSchema.model_fields)
+    node_allowed = set(NodeSchemaRead.model_fields) | response_additions
+    generic_allowed = set(GenericSchemaRead.model_fields) | response_additions
+    attribute_fields = set(AttributeSchemaRead.model_fields)
+    relationship_fields = set(RelationshipSchemaRead.model_fields)
 
     # A read-level field derived from generic inheritance is present and populated.
     generics = {item["kind"]: item for item in schema["generics"]}

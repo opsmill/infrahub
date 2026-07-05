@@ -173,8 +173,8 @@ class SchemaAttribute(BaseModel):
 
     def _external_internal_kind(self) -> str:
         fixed_types: dict[Any, str] = {
-            AttributeSchema: "list[GeneratedAttributeSchema]",
-            RelationshipSchema: "list[GeneratedRelationshipSchema]",
+            AttributeSchema: "list[AttributeSchema__VARIANT__]",
+            RelationshipSchema: "list[RelationshipSchema__VARIANT__]",
             DropdownChoice: "list[dict[str, Any]]",
             ComputedAttribute: "dict[str, Any]",
         }

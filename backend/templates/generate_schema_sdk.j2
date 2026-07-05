@@ -20,3 +20,8 @@ class {{ family.class_name }}({{ family.parent }}):
     )
 {%- endfor %}
 {% endfor %}
+
+class {{ root.class_name }}(BaseModel):
+{%- for field in root.fields %}
+    {{ field }}
+{%- endfor %}
