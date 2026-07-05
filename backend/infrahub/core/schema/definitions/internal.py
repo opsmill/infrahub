@@ -176,7 +176,7 @@ class SchemaAttribute(BaseModel):
             AttributeSchema: "list[AttributeSchema__VARIANT__]",
             RelationshipSchema: "list[RelationshipSchema__VARIANT__]",
             DropdownChoice: "list[dict[str, Any]]",
-            ComputedAttribute: "dict[str, Any]",
+            ComputedAttribute: "ComputedAttribute__VARIANT__",
         }
         internal = self.internal_kind
         if isinstance(internal, list):

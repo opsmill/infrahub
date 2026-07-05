@@ -394,8 +394,9 @@ def _generate_schemas_sdk(context: Context) -> None:
     """
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-    from infrahub.core.constants import Visibility
+    from infrahub.core.constants import ComputedAttributeKind, UpdateSupport, Visibility
     from infrahub.core.schema.definitions.internal import (
+        SchemaAttribute,
         SchemaNode,
         attribute_schema,
         base_node_schema,
@@ -412,11 +413,42 @@ def _generate_schemas_sdk(context: Context) -> None:
     node_stripped = node_schema.without_duplicates(base_node_schema)
     generic_stripped = generic_schema.without_duplicates(base_node_schema)
 
+    # The computed_attribute block is a value model of its own (kind + template/transform); render it
+    # as a dedicated data model so the write contract is explicit instead of an opaque mapping.
+    computed_attribute_fields = [
+        SchemaAttribute(
+            name="kind",
+            kind="Text",
+            description="Defines how the value of the attribute is computed.",
+            enum=ComputedAttributeKind.available_types(),
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+        SchemaAttribute(
+            name="jinja2_template",
+            kind="Text",
+            optional=True,
+            description="Jinja2 template used to compute the value, required when kind is Jinja2.",
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+        SchemaAttribute(
+            name="transform",
+            kind="Text",
+            optional=True,
+            description="Python transform name or ID, required when kind is TransformPython.",
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+        ),
+    ]
+
     def _families(minimum: Visibility, suffix: str) -> list[dict[str, Any]]:
         def _visible(node: SchemaNode) -> list[Any]:
             return [attribute for attribute in node.attributes if attribute.visibility >= minimum]
 
         return [
+            {
+                "class_name": f"ComputedAttribute{suffix}",
+                "parent": "BaseModel",
+                "attributes": computed_attribute_fields,
+            },
             {"class_name": f"AttributeSchema{suffix}", "parent": "BaseModel", "attributes": _visible(attribute_schema)},
             {
                 "class_name": f"RelationshipSchema{suffix}",
