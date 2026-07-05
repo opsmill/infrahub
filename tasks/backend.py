@@ -392,6 +392,8 @@ def _generate_schemas_sdk(context: Context) -> None:
     field on its ``visibility`` classification (write ⊆ read ⊆ internal). The output is
     self-contained (only pydantic + typing) so it imports with just the SDK installed.
     """
+    import sys
+
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
     from infrahub.core.constants import ComputedAttributeKind, UpdateSupport, Visibility
@@ -413,42 +415,153 @@ def _generate_schemas_sdk(context: Context) -> None:
     node_stripped = node_schema.without_duplicates(base_node_schema)
     generic_stripped = generic_schema.without_duplicates(base_node_schema)
 
-    # The computed_attribute block is a value model of its own (kind + template/transform); render it
-    # as a dedicated data model so the write contract is explicit instead of an opaque mapping.
-    computed_attribute_fields = [
-        SchemaAttribute(
-            name="kind",
-            kind="Text",
-            description="Defines how the value of the attribute is computed.",
-            enum=ComputedAttributeKind.available_types(),
-            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
-        ),
-        SchemaAttribute(
-            name="jinja2_template",
-            kind="Text",
+    write_extra = {"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE}
+
+    def _field(
+        name: str,
+        kind: str,
+        description: str,
+        *,
+        optional: bool = False,
+        regex: str | None = None,
+        enum: list[str] | None = None,
+        default_value: int | None = None,
+    ) -> SchemaAttribute:
+        return SchemaAttribute(
+            name=name,
+            kind=kind,
+            description=description,
+            extra=write_extra,
+            optional=optional,
+            regex=regex,
+            enum=enum,
+            default_value=default_value,
+        )
+
+    # The attribute sub-blocks (choices, parameters, computed_attribute) are value models of their
+    # own. They are emitted as dedicated data models so the write contract is explicit rather than
+    # an opaque mapping. parameters has no in-object discriminator (the backend picks the shape from
+    # the sibling attribute kind), so it is a plain union that validates the shape and rejects
+    # unknown fields; computed_attribute discriminates on its own kind field.
+    dropdown_choice_fields = [
+        _field("name", "Text", "Name of the choice, must be unique within the dropdown."),
+        _field("description", "Text", "Description of the choice.", optional=True),
+        _field(
+            "color",
+            "Text",
+            "Color of the choice, must be a valid HTML color code.",
             optional=True,
-            description="Jinja2 template used to compute the value, required when kind is Jinja2.",
-            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+            regex=r"#[0-9a-fA-F]{6}\b",
         ),
-        SchemaAttribute(
-            name="transform",
-            kind="Text",
+        _field("label", "Text", "Human friendly representation of the choice.", optional=True),
+    ]
+
+    list_parameters_fields = [
+        _field("regex", "Text", "Regular expression that each list item value must match if defined", optional=True),
+    ]
+    text_parameters_fields = [
+        _field("regex", "Text", "Regular expression that attribute value must match if defined", optional=True),
+        _field("min_length", "Number", "Set a minimum number of characters allowed.", optional=True),
+        _field("max_length", "Number", "Set a maximum number of characters allowed.", optional=True),
+    ]
+    number_parameters_fields = [
+        _field("min_value", "Number", "Set a minimum value allowed.", optional=True),
+        _field("max_value", "Number", "Set a maximum value allowed.", optional=True),
+        _field(
+            "excluded_values",
+            "Text",
+            "List of values or range of values not allowed for the attribute, format is: '100,150-200,280,300-400'",
             optional=True,
-            description="Python transform name or ID, required when kind is TransformPython.",
-            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+            regex=r"^(\d+(?:-\d+)?)(?:,\d+(?:-\d+)?)*$",
         ),
     ]
+    number_pool_parameters_fields = [
+        _field("end_range", "Number", "End range for numbers for the associated NumberPool", default_value=sys.maxsize),
+        _field("start_range", "Number", "Start range for numbers for the associated NumberPool", default_value=1),
+        _field(
+            "number_pool_id",
+            "Text",
+            "The ID of the numberpool associated with this attribute. "
+            "Only set after the number pool has been provisioned.",
+            optional=True,
+        ),
+    ]
+
+    computed_kind_description = "Defines how the value of the attribute is computed."
+    computed_user_fields = [
+        _field("kind", "Text", computed_kind_description, enum=[ComputedAttributeKind.USER.value]),
+    ]
+    computed_jinja2_fields = [
+        _field("kind", "Text", computed_kind_description, enum=[ComputedAttributeKind.JINJA2.value]),
+        _field("jinja2_template", "Text", "Jinja2 template used to compute the value, required when kind is Jinja2."),
+    ]
+    computed_transform_fields = [
+        _field("kind", "Text", computed_kind_description, enum=[ComputedAttributeKind.TRANSFORM_PYTHON.value]),
+        _field("transform", "Text", "Python transform name or ID, required when kind is TransformPython."),
+    ]
+
+    def _pre_families(suffix: str) -> list[dict[str, Any]]:
+        base = f"AttributeParameters{suffix}"
+        return [
+            {"class_name": base, "parent": "BaseModel", "attributes": []},
+            {"class_name": f"ListAttributeParameters{suffix}", "parent": base, "attributes": list_parameters_fields},
+            {"class_name": f"TextAttributeParameters{suffix}", "parent": base, "attributes": text_parameters_fields},
+            {
+                "class_name": f"NumberAttributeParameters{suffix}",
+                "parent": base,
+                "attributes": number_parameters_fields,
+            },
+            {
+                "class_name": f"NumberPoolParameters{suffix}",
+                "parent": base,
+                "attributes": number_pool_parameters_fields,
+            },
+            {"class_name": f"DropdownChoice{suffix}", "parent": "BaseModel", "attributes": dropdown_choice_fields},
+            {
+                "class_name": f"ComputedAttributeUser{suffix}",
+                "parent": "BaseModel",
+                "attributes": computed_user_fields,
+            },
+            {
+                "class_name": f"ComputedAttributeJinja2{suffix}",
+                "parent": "BaseModel",
+                "attributes": computed_jinja2_fields,
+            },
+            {
+                "class_name": f"ComputedAttributeTransformPython{suffix}",
+                "parent": "BaseModel",
+                "attributes": computed_transform_fields,
+            },
+        ]
+
+    def _aliases(suffix: str) -> list[str]:
+        return [
+            (
+                f"AttributeParametersUnion{suffix} = (\n"
+                f"    NumberPoolParameters{suffix}\n"
+                f"    | NumberAttributeParameters{suffix}\n"
+                f"    | TextAttributeParameters{suffix}\n"
+                f"    | ListAttributeParameters{suffix}\n"
+                f"    | AttributeParameters{suffix}\n"
+                ")"
+            ),
+            (
+                f"ComputedAttribute{suffix} = Annotated[\n"
+                f"    Union[\n"
+                f"        ComputedAttributeUser{suffix},\n"
+                f"        ComputedAttributeJinja2{suffix},\n"
+                f"        ComputedAttributeTransformPython{suffix},\n"
+                f"    ],\n"
+                f'    Field(discriminator="kind"),\n'
+                "]"
+            ),
+        ]
 
     def _families(minimum: Visibility, suffix: str) -> list[dict[str, Any]]:
         def _visible(node: SchemaNode) -> list[Any]:
             return [attribute for attribute in node.attributes if attribute.visibility >= minimum]
 
         return [
-            {
-                "class_name": f"ComputedAttribute{suffix}",
-                "parent": "BaseModel",
-                "attributes": computed_attribute_fields,
-            },
             {"class_name": f"AttributeSchema{suffix}", "parent": "BaseModel", "attributes": _visible(attribute_schema)},
             {
                 "class_name": f"RelationshipSchema{suffix}",
@@ -483,6 +596,8 @@ def _generate_schemas_sdk(context: Context) -> None:
     }
     for variant, (minimum, model_config_args, suffix, with_version) in variants.items():
         rendered = template.render(
+            pre_families=_pre_families(suffix),
+            aliases=_aliases(suffix),
             families=_families(minimum, suffix),
             model_config_args=model_config_args,
             root=_root(suffix, with_version),

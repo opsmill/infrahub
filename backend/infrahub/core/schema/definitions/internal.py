@@ -175,12 +175,12 @@ class SchemaAttribute(BaseModel):
         fixed_types: dict[Any, str] = {
             AttributeSchema: "list[AttributeSchema__VARIANT__]",
             RelationshipSchema: "list[RelationshipSchema__VARIANT__]",
-            DropdownChoice: "list[dict[str, Any]]",
+            DropdownChoice: "list[DropdownChoice__VARIANT__]",
             ComputedAttribute: "ComputedAttribute__VARIANT__",
         }
         internal = self.internal_kind
         if isinstance(internal, list):
-            return "dict[str, Any]"
+            return "AttributeParametersUnion__VARIANT__"
         if isinstance(internal, GenericAlias):
             return str(internal)
         if internal in fixed_types:
@@ -233,6 +233,17 @@ class SchemaAttribute(BaseModel):
     def pattern(self) -> str:
         if self.regex:
             return f"pattern='{self.regex}',"
+        return ""
+
+    @property
+    def external_pattern(self) -> str:
+        """Pattern rendering for the self-contained SDK models.
+
+        Emitted as a raw string literal so regex escapes such as ``\\b`` keep their
+        regular-expression meaning instead of being parsed as string escapes.
+        """
+        if self.regex:
+            return f'pattern=r"{self.regex}",'
         return ""
 
     @property

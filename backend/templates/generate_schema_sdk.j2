@@ -2,10 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
+{% for family in pre_families %}
+
+class {{ family.class_name }}({{ family.parent }}):
+    model_config = ConfigDict({{ model_config_args }})
+{%- for attribute in family.attributes %}
+    {{ attribute.name }}: {{ attribute.external_type_annotation }} = Field(
+        {{ attribute.external_default_definition }},
+        description="{{ attribute.description }}",
+        {{ attribute.external_pattern }}
+        {{ attribute.min }}
+        {{ attribute.max }}
+    )
+{%- endfor %}
+{% endfor %}
+{% for alias in aliases %}
+{{ alias }}
+{% endfor %}
 {% for family in families %}
 
 class {{ family.class_name }}({{ family.parent }}):
@@ -14,7 +31,7 @@ class {{ family.class_name }}({{ family.parent }}):
     {{ attribute.name }}: {{ attribute.external_type_annotation }} = Field(
         {{ attribute.external_default_definition }},
         description="{{ attribute.description }}",
-        {{ attribute.pattern }}
+        {{ attribute.external_pattern }}
         {{ attribute.min }}
         {{ attribute.max }}
     )
