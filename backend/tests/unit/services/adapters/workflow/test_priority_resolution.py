@@ -168,6 +168,20 @@ class TestPrepareDispatch:
         assert caller_context.priority is None
         assert work_queue_name is None
 
+    def test_catalogue_default_stamp_outranks_next_hop_catalogue_default(self) -> None:
+        root_context = build_context(priority=None)
+
+        stamped_context, _ = prepare_dispatch(
+            workflow=build_workflow(default_priority=WorkflowPriority.MEDIUM), context=root_context, priority=None
+        )
+        dispatched_context, work_queue_name = prepare_dispatch(
+            workflow=build_workflow(default_priority=WorkflowPriority.HIGH), context=stamped_context, priority=None
+        )
+
+        assert isinstance(dispatched_context, InfrahubContext)
+        assert dispatched_context.priority is WorkflowPriority.MEDIUM
+        assert work_queue_name == WorkflowPriority.MEDIUM.queue_name
+
     def test_event_context_passes_through_unstamped(self) -> None:
         caller_context = build_event_context()
 

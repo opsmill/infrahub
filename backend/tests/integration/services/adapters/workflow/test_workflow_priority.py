@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import suppress
 from uuid import UUID
 
 import pytest
@@ -24,6 +26,7 @@ from tests.integration.services.adapters.workflow.fixture_flows import (
     PRIORITY_GRANDCHILD,
     PRIORITY_LEAF_HIGH_DEFAULT,
     PRIORITY_PARENT,
+    PRIORITY_PARENT_BLOCKING,
     PRIORITY_PARENT_HIGH_DEFAULT_CHILD,
     PRIORITY_PARENT_OVERRIDING,
 )
@@ -60,6 +63,24 @@ class TestWorkflowPriority(TestWorkerInfrahubAsync):
         new_ids = await cls.deployment_run_ids(client=client, workflow=workflow) - seen_ids
         assert len(new_ids) == 1
         return await client.read_flow_run(flow_run_id=new_ids.pop())
+
+    @classmethod
+    async def wait_for_dispatched_run(
+        cls, client: PrefectClient, workflow: WorkflowDefinition, seen_ids: set[UUID]
+    ) -> FlowRun:
+        """Poll until the single new flow run of the deployment appears since ``seen_ids`` was captured.
+
+        Raises:
+            TimeoutError: When no new flow run appears within 30 seconds.
+
+        """
+        async with asyncio.timeout(30):
+            while True:
+                new_ids = await cls.deployment_run_ids(client=client, workflow=workflow) - seen_ids
+                if new_ids:
+                    assert len(new_ids) == 1
+                    return await client.read_flow_run(flow_run_id=new_ids.pop())
+                await asyncio.sleep(0.5)
 
     async def test_setup_creates_priority_queues_with_converged_precedence(
         self,
@@ -212,3 +233,57 @@ class TestWorkflowPriority(TestWorkerInfrahubAsync):
         await self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=parent_run)
         child_run = await self.dispatched_run(client=prefect_client, workflow=PRIORITY_CHILD, seen_ids=child_seen)
         assert child_run.work_queue_name == WorkflowPriority.MEDIUM.queue_name
+
+    async def test_default_priority_tree_keeps_high_default_leaf_in_medium(
+        self,
+        priority_deployments: None,
+        prefect_client: PrefectClient,
+        prefect_worker: InfrahubWorkerAsync,
+    ) -> None:
+        service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
+        leaf_seen = await self.deployment_run_ids(client=prefect_client, workflow=PRIORITY_LEAF_HIGH_DEFAULT)
+
+        workflow_info = await service.submit_workflow(
+            workflow=PRIORITY_PARENT_HIGH_DEFAULT_CHILD, context=build_context()
+        )
+        parent_run = await prefect_client.read_flow_run(flow_run_id=workflow_info.id)
+        assert parent_run.work_queue_name == WorkflowPriority.MEDIUM.queue_name
+
+        await self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=parent_run)
+        leaf_run = await self.dispatched_run(
+            client=prefect_client, workflow=PRIORITY_LEAF_HIGH_DEFAULT, seen_ids=leaf_seen
+        )
+        assert leaf_run.work_queue_name == WorkflowPriority.MEDIUM.queue_name
+
+    async def test_blocking_dispatch_child_inherits_root_priority(
+        self,
+        priority_deployments: None,
+        prefect_client: PrefectClient,
+        prefect_worker: InfrahubWorkerAsync,
+    ) -> None:
+        service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
+        child_seen = await self.deployment_run_ids(client=prefect_client, workflow=PRIORITY_GRANDCHILD)
+
+        workflow_info = await service.submit_workflow(
+            workflow=PRIORITY_PARENT_BLOCKING, context=build_context(), priority=WorkflowPriority.HIGH
+        )
+        parent_run = await prefect_client.read_flow_run(flow_run_id=workflow_info.id)
+        assert parent_run.work_queue_name == WorkflowPriority.HIGH.queue_name
+
+        # The parent blocks on its child's result, so it runs in a background task
+        # while the test drives the child run through the worker.
+        parent_task = asyncio.create_task(
+            self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=parent_run)
+        )
+        try:
+            child_run = await self.wait_for_dispatched_run(
+                client=prefect_client, workflow=PRIORITY_GRANDCHILD, seen_ids=child_seen
+            )
+            assert child_run.work_queue_name == WorkflowPriority.HIGH.queue_name
+            await self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=child_run)
+            await parent_task
+        finally:
+            if not parent_task.done():
+                parent_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await parent_task

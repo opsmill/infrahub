@@ -51,6 +51,12 @@ PRIORITY_PARENT_OVERRIDING = WorkflowDefinition(
     function="priority_parent_overriding",
 )
 
+PRIORITY_PARENT_BLOCKING = WorkflowDefinition(
+    name="priority_fixture_parent_blocking",
+    module=FIXTURE_MODULE,
+    function="priority_parent_blocking",
+)
+
 PRIORITY_FIXTURE_WORKFLOWS = [
     PRIORITY_GRANDCHILD,
     PRIORITY_LEAF_HIGH_DEFAULT,
@@ -58,6 +64,7 @@ PRIORITY_FIXTURE_WORKFLOWS = [
     PRIORITY_PARENT,
     PRIORITY_PARENT_HIGH_DEFAULT_CHILD,
     PRIORITY_PARENT_OVERRIDING,
+    PRIORITY_PARENT_BLOCKING,
 ]
 
 
@@ -93,3 +100,10 @@ async def priority_parent_high_default_child(context: InfrahubContext) -> None:
 async def priority_parent_overriding(context: InfrahubContext) -> None:
     service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
     await service.submit_workflow(workflow=PRIORITY_CHILD, context=context, priority=WorkflowPriority.LOW)
+
+
+@flow(name="priority-fixture-parent-blocking")
+async def priority_parent_blocking(context: InfrahubContext) -> None:
+    """Dispatch the child through the blocking entry point and wait for its result."""
+    service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
+    await service.execute_workflow(workflow=PRIORITY_GRANDCHILD, context=context)

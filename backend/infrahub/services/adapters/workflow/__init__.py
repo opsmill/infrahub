@@ -16,6 +16,24 @@ Params = ParamSpec("Params")
 FuncType = Callable[Params, Return]
 
 
+def _dispatch_signal(
+    priority: WorkflowPriority | None,
+    context: InfrahubContext | EventContext | None,
+) -> WorkflowPriority | None:
+    """Return the non-default priority signal of a dispatch, if any.
+
+    The explicit argument wins over the priority carried by a full execution
+    context. Event contexts carry no priority and contribute nothing. Returns
+    None when neither source supplies a value, leaving only the catalogue
+    default.
+    """
+    if priority is not None:
+        return priority
+    if isinstance(context, InfrahubContext):
+        return context.priority
+    return None
+
+
 def resolve_priority(
     priority: WorkflowPriority | None,
     context: InfrahubContext | EventContext | None,
@@ -28,11 +46,8 @@ def resolve_priority(
     result is exact — never floored, capped, or combined with the catalogue
     default. Event contexts carry no priority and contribute nothing.
     """
-    if priority is not None:
-        return priority
-    if isinstance(context, InfrahubContext) and context.priority is not None:
-        return context.priority
-    return workflow.default_priority
+    signal = _dispatch_signal(priority=priority, context=context)
+    return signal if signal is not None else workflow.default_priority
 
 
 def prepare_dispatch(
@@ -50,9 +65,9 @@ def prepare_dispatch(
     catalogue default applies, no explicit routing is requested and the run
     lands on its deployment's default queue.
     """
-    effective = resolve_priority(priority=priority, context=context, workflow=workflow)
-    routed = priority is not None or (isinstance(context, InfrahubContext) and context.priority is not None)
-    work_queue_name = effective.queue_name if routed else None
+    signal = _dispatch_signal(priority=priority, context=context)
+    effective = signal if signal is not None else workflow.default_priority
+    work_queue_name = signal.queue_name if signal is not None else None
     if isinstance(context, InfrahubContext):
         return context.model_copy(update={"priority": effective}), work_queue_name
     return context, work_queue_name

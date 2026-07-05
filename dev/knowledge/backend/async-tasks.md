@@ -176,7 +176,7 @@ Every workflow runs in one of three priority lanes, each backed by a Prefect wor
 
 The lanes are modeled by the `WorkflowPriority` enum (`backend/infrahub/workflows/constants.py`); `setup_work_queues` in `backend/infrahub/workflows/initialization.py` provisions the three queues idempotently at task-manager setup (creating missing queues, re-asserting precedence on existing ones). Workers drain all three queues; precedence only matters under contention — a lower number is served first, and nothing preempts a run that already started.
 
-Each `WorkflowDefinition` declares a `default_priority` (defaults to `WorkflowPriority.MEDIUM`), which becomes the `work_queue_name` of its Prefect deployment. Both dispatch entry points of the workflow adapter (`execute_workflow`, `submit_workflow`) also accept an optional `priority` argument that overrides the catalogue default for a single dispatch. Routing is a static tier-to-queue mapping — no per-dispatch queue lookup or existence check.
+Each `WorkflowDefinition` declares a `default_priority` (defaults to `WorkflowPriority.MEDIUM`), which becomes the `work_queue_name` of its Prefect deployment. Both dispatch entry points of the workflow adapter (`execute_workflow`, `submit_workflow`) also accept an optional `priority` argument that overrides the resolved priority for that dispatch — and, because the value is stamped into an `InfrahubContext` when one is passed, re-roots the priority for the dispatched flow's whole subtree. Routing is a static tier-to-queue mapping — no per-dispatch queue lookup or existence check.
 
 ### Priority Inheritance
 
@@ -200,7 +200,7 @@ Inheritance is exact — the resolved value is never floored, capped, or combine
 - Flows that declare no context parameter at all: the flow itself is routed correctly (its dispatch site resolved and routed the priority), but it has no context to forward, so its own sub-dispatches fall back to catalogue defaults.
 - Cron-scheduled runs: created by the scheduler without passing through the dispatch path; their trees start at catalogue defaults.
 
-**Operator visibility.** The stamped priority is visible in the task manager: the flow run's parameters include the injected context, whose `priority` field shows the effective lane the dispatch resolved — alongside the queue the run actually landed on.
+**Operator visibility.** The stamped priority is visible in the task manager: for flows that declare an `InfrahubContext` parameter, the flow run's parameters include the injected context, whose `priority` field shows the effective lane the dispatch resolved — alongside the queue the run actually landed on. Flows that declare only an `EventContext` parameter receive a converted, priority-less context, so only the queue reveals their lane.
 
 ## Dependency Injection
 
