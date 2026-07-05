@@ -9,15 +9,16 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from git import Repo as GitRepo
 from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.exceptions import FragmentFileNotFoundError, FragmentNotFoundError
+from infrahub_sdk.exceptions import FragmentFileNotFoundError, FragmentNotFoundError, GraphQLError
 from infrahub_sdk.schema.repository import InfrahubRepositoryFragmentConfig, InfrahubRepositoryGraphQLConfig
 from infrahub_sdk.uuidt import UUIDT
 
+from infrahub.exceptions import RepositoryConfigurationError
 from infrahub.git import InfrahubRepository
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from tests.constants import FIXTURE_REPOS_DIR
@@ -149,6 +150,44 @@ async def test_unresolved_fragment_raises(
 
     with pytest.raises(FragmentNotFoundError):
         await fragment_repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)
+
+
+async def test_create_graphql_query_sanitizes_sdk_graphql_error(
+    fragment_repo: InfrahubRepository, caplog: pytest.LogCaptureFixture
+) -> None:
+    """SDK GraphQLError messages include raw mutations; repository import should not surface them to operators."""
+    raw_query = "mutation SensitiveMutation { CoreGraphQLQueryCreate { ok } }"
+    server_message = (
+        'Query is not valid, [GraphQLError("Cannot query field \'DemoMissingNode\' on type \'Query\'.", '
+        "locations=[SourceLocation(line=2, column=3)])]"
+    )
+    sdk_error = GraphQLError(
+        errors=[{"message": server_message, "path": ["CoreGraphQLQueryCreate"]}],
+        query=raw_query,
+        variables={"secret": "should-not-leak"},
+    )
+
+    node = AsyncMock()
+    node.save.side_effect = sdk_error
+
+    fragment_repo.client.schema.get = AsyncMock(return_value=MagicMock())
+    fragment_repo.client.schema.generate_payload_create = MagicMock(return_value={"data": {}})
+    fragment_repo.client.create = AsyncMock(return_value=node)
+
+    with pytest.raises(RepositoryConfigurationError) as exc_info:
+        await fragment_repo.create_graphql_query(
+            branch_name="main", name="broken_query", query_string="query Broken { DemoMissingNode { edges { node { id } } } }"
+        )
+
+    error_message = str(exc_info.value)
+    assert "broken_query" in error_message
+    assert fragment_repo.name in error_message
+    assert "Query is not valid: Cannot query field 'DemoMissingNode' on type 'Query'." in error_message
+    assert "SourceLocation" not in error_message
+    assert raw_query not in error_message
+    assert "should-not-leak" not in error_message
+    assert raw_query not in caplog.text
+    assert "should-not-leak" not in caplog.text
 
 
 async def test_missing_fragment_file_raises_with_path(

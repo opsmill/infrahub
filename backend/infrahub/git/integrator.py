@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +12,7 @@ import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from infrahub_sdk.exceptions import Error as InfrahubSdkError
+from infrahub_sdk.exceptions import GraphQLError as InfrahubSdkGraphQLError
 from infrahub_sdk.exceptions import ValidationError
 from infrahub_sdk.graphql.query_renderer import render_query
 from infrahub_sdk.node import InfrahubNode
@@ -77,6 +79,30 @@ if TYPE_CHECKING:
 
     from infrahub.artifacts.models import CheckArtifactCreate
     from infrahub.git.models import RequestArtifactGenerate
+
+
+GRAPHQL_VALIDATION_ERROR_PATTERN = re.compile(r"GraphQLError\((?P<quote>['\"])(?P<message>.*?)(?P=quote)(?:,|\))")
+
+
+def _clean_sdk_graphql_error_message(message: str) -> str:
+    if not message.startswith("Query is not valid"):
+        return message
+
+    match = GRAPHQL_VALIDATION_ERROR_PATTERN.search(message)
+    if not match:
+        return message
+
+    return f"Query is not valid: {match.group('message')}"
+
+
+def _format_sdk_graphql_error_messages(errors: list[dict[str, Any]]) -> str:
+    messages = []
+    for error in errors:
+        message = error.get("message") if isinstance(error, dict) else str(error)
+        if message:
+            messages.append(_clean_sdk_graphql_error_message(message))
+
+    return "; ".join(messages) or "GraphQL query validation failed."
 
 
 class ArtifactGenerateResult(BaseModel):
@@ -858,7 +884,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             is_protected=True,
         )
         obj = await self.sdk.create(kind=CoreGraphQLQuery, branch=branch_name, **create_payload)
-        await obj.save()
+        try:
+            await obj.save()
+        except InfrahubSdkGraphQLError as exc:
+            reason = _format_sdk_graphql_error_messages(exc.errors)
+            message = f"Unable to import GraphQL query {name!r} from repository {self.name!r}: {reason}"
+            get_logger().error(message)
+            raise RepositoryConfigurationError(identifier=self.name, message=message) from None
+
         return obj
 
     @task(name="import-python-check-definitions", task_run_name="Import Python Check Definitions", cache_policy=NONE)
