@@ -39,7 +39,7 @@ Recommendation in one line: **P1 roots → `high`; P2 roots → `high` when disp
 
 Inheritance payoff: `BRANCH_REBASE` submits `IPAM_RECONCILIATION` and `DIFF_REFRESH_ALL` (core/branch/tasks.py:235,242); `BRANCH_DELETE` submits `BRANCH_CANCEL_PROPOSED_CHANGES` and `GIT_REPOSITORIES_DELETE_BRANCH` (core/branch/tasks.py:344,353); `BRANCH_MERGE_MUTATION` executes `BRANCH_MERGE` inside. All of these carry the context, so flagging the root re-roots the visible part of the tree.
 
-Note: `BRANCH_MERGE_POST_PROCESS` (artifact/generator regeneration after merge, core/branch/tasks.py:441-468) is event-adjacent fan-out the user does *not* block on — it should stay at its own default rather than inherit `high`; see §5.
+Note: the post-merge follow-ups are fan-out the user does *not* block on. Implemented 2026-07-05: `PostMergeDispatcher` (core/merge/post_merge.py) dispatches each follow-up from a context stamped with its own lane instead of letting it inherit the merge's `high` — `IPAM_RECONCILIATION` from a `medium` context, and `BRANCH_CANCEL_PROPOSED_CHANGES`, `BRANCH_DELETE` (auto-delete after merge), and `BRANCH_MERGE_POST_PROCESS` (artifact/generator regeneration, core/branch/tasks.py:441-468) from a `low` context; the stamped context trickles the lane down each follow-up's entire subtree.
 
 ### 2.2 Proposed changes (`graphql/mutations/proposed_change.py`)
 
@@ -103,6 +103,7 @@ Cron roots (`GIT_REPOSITORIES_SYNC` every minute, `WEBHOOK_CONFIGURE` daily, `AN
 > - `api/schema.py` — both `SCHEMA_VALIDATE_MIGRATION` dispatches pass `high`; the `SchemaUpdateCoordinator` receives a context stamped `high` so the shared component stays priority-agnostic and its other callers (merge orchestrator, CLI) are unaffected.
 > - `api/transformation.py`, `api/artifact.py` — transform renders and on-demand artifact generation pass `high`.
 > - `workflows/catalogue.py` — `PROFILE_REFRESH_PROCESS`, `PROFILE_REFRESH`, and `PROFILE_REFRESH_MULTIPLE` catalogue defaults lowered to `low` (P3 settling flows, consistent with computed attributes/HFID/display labels).
+> - `core/merge/post_merge.py` — `PostMergeDispatcher` follow-ups no longer inherit the merge's `high`: each is dispatched from a context stamped with its own lane (`medium` for `IPAM_RECONCILIATION`; `low` for `BRANCH_CANCEL_PROPOSED_CHANGES`, `BRANCH_DELETE`, and `BRANCH_MERGE_POST_PROCESS`), which trickles down each follow-up's subtree.
 
 ### Tier A — flag now (request-blocking, unambiguous)
 

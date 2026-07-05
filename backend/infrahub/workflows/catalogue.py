@@ -277,6 +277,7 @@ BRANCH_MERGE_POST_PROCESS = WorkflowDefinition(
     module="infrahub.core.branch.tasks",
     function="post_process_branch_merge",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    default_priority=WorkflowPriority.LOW,
 )
 
 BRANCH_MERGE_MUTATION = WorkflowDefinition(
