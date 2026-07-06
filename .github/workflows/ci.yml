@@ -64,7 +64,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: dorny/paths-filter@v4.0.1
+        uses: dorny/paths-filter@v4.0.2
         id: changes
         with:
           token: ${{ github.token }}
@@ -343,7 +343,7 @@ jobs:
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v23
+        uses: DavidAnson/markdownlint-cli2-action@v24
         with:
           globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
 
