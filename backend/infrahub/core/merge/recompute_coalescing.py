@@ -6,12 +6,16 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, assert_never
 
 from infrahub.display_labels.scoping import derive_display_label_targets
+from infrahub.events.limits import get_submission_chunk_size
 from infrahub.hfid.scoping import derive_hfid_targets
+from infrahub.log import get_logger
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     DISPLAY_LABELS_PROCESS_JINJA2,
     HFID_PROCESS,
 )
+
+log = get_logger()
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -279,7 +283,7 @@ def _resolve_computed_targets(
 
 @dataclass(frozen=True)
 class CoalescedSubmission:
-    """One reuse of an existing per-family process flow over the union of changed nodes.
+    """One reuse of an existing per-family process flow over a chunk of the changed nodes.
 
     The process flow resolves its reader query from ``source_kind`` and ``target_kind`` and
     runs it once over ``node_ids``, so the recompute scales with the affected derived values,
@@ -295,12 +299,21 @@ class CoalescedSubmission:
     node_ids: tuple[str, ...]
 
 
+def _chunk(ids: tuple[str, ...], size: int) -> Iterator[tuple[str, ...]]:
+    """Yield ``ids`` in contiguous slices of at most ``size``."""
+    for start in range(0, len(ids), size):
+        yield ids[start : start + size]
+
+
 def plan_coalesced_submissions(coalesced: CoalescedRecompute) -> list[CoalescedSubmission]:
     """Turn a coalesced recompute into the deduplicated, ordered set of process-flow submissions.
 
-    One submission per derived target and source kind, each carrying the union of changed node
-    ids. The order is deterministic so the same change set always submits the same work.
+    One submission per derived target and source kind, each carrying the changed node ids. A
+    target whose union exceeds the submission chunk size is split into several submissions so no
+    flow-run parameter grows past the size Prefect accepts. The order is deterministic so the same
+    change set always submits the same work.
     """
+    chunk_size = get_submission_chunk_size()
     submissions = [
         CoalescedSubmission(
             family=target.family,
@@ -309,10 +322,11 @@ def plan_coalesced_submissions(coalesced: CoalescedRecompute) -> list[CoalescedS
             attribute_name=target.attribute_name,
             filter_key=lookup.filter_key,
             branch=coalesced.branch,
-            node_ids=tuple(sorted(lookup.source_node_ids)),
+            node_ids=chunk,
         )
         for target in coalesced.targets
         for lookup in target.reader_lookups
+        for chunk in _chunk(tuple(sorted(lookup.source_node_ids)), chunk_size)
     ]
     return sorted(
         submissions,
@@ -322,6 +336,7 @@ def plan_coalesced_submissions(coalesced: CoalescedRecompute) -> list[CoalescedS
             submission.attribute_name or "",
             submission.source_kind,
             submission.filter_key,
+            submission.node_ids,
         ),
     )
 
@@ -358,11 +373,22 @@ async def submit_coalesced_recompute(
 ) -> list[CoalescedSubmission]:
     """Submit the coalesced recompute by reusing the existing per-family process flows.
 
-    Each submission runs one process flow over the union of changed nodes, so the merge and
-    rebase path no longer dispatches one flow per changed node. Returns the submissions made.
+    Each submission runs one process flow over a chunk of changed nodes, so the merge and rebase
+    path no longer dispatches one flow per changed node. A single submission failure is logged and
+    skipped rather than dropping the rest, since a missed submission leaves a stale stored value.
+    Returns the submissions that were dispatched.
     """
-    submissions = plan_coalesced_submissions(coalesced)
-    for submission in submissions:
+    submitted: list[CoalescedSubmission] = []
+    for submission in plan_coalesced_submissions(coalesced):
         workflow_definition, parameters = _submission_workflow(submission=submission, context=context)
-        await workflow.submit_workflow(workflow=workflow_definition, context=context, parameters=parameters)
-    return submissions
+        try:
+            await workflow.submit_workflow(workflow=workflow_definition, context=context, parameters=parameters)
+        except Exception:
+            log.exception(
+                "Failed to submit a coalesced recompute for family %s target %s",
+                submission.family,
+                submission.target_kind,
+            )
+            continue
+        submitted.append(submission)
+    return submitted

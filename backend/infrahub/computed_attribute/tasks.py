@@ -12,7 +12,7 @@ from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
-from infrahub.events.limits import get_prefect_max_related_resources
+from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
@@ -51,10 +51,6 @@ if TYPE_CHECKING:
 
 def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
     return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
-
-
-def _get_submission_chunk_size() -> int:
-    return max(1, get_prefect_max_related_resources() // 2)
 
 
 UPDATE_ATTRIBUTE = """
@@ -236,7 +232,7 @@ async def trigger_update_python_computed_attributes(
     if not object_ids:
         return
 
-    chunk_size = _get_submission_chunk_size()
+    chunk_size = get_submission_chunk_size()
     for chunk in _chunk_ids(object_ids, chunk_size):
         await get_workflow().submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
@@ -652,7 +648,7 @@ async def query_transform_targets(
                 key = (subscriber.kind, computed_attribute.name)
                 batches.setdefault(key, []).append(subscriber.object_id)
 
-    chunk_size = _get_submission_chunk_size()
+    chunk_size = get_submission_chunk_size()
     for (kind, attribute_name), batch_object_ids in batches.items():
         for chunk in _chunk_ids(batch_object_ids, chunk_size):
             await get_workflow().submit_workflow(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     DISPLAY_LABEL,
@@ -12,6 +14,7 @@ from infrahub.core.merge.recompute_coalescing import (
     plan_coalesced_submissions,
     submit_coalesced_recompute,
 )
+from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -19,6 +22,10 @@ from infrahub.workflows.catalogue import (
     HFID_PROCESS,
 )
 from tests.adapters.workflow import WorkflowRecorder
+
+if TYPE_CHECKING:
+    from infrahub.context import InfrahubContext
+    from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 SOURCE_KIND = "TestingPeer"
 TARGET_KIND = "TestingNode"
@@ -96,3 +103,54 @@ async def test_submit_reuses_process_flows_over_the_union() -> None:
     assert hfid[0]["parameters"]["node_kind"] == TARGET_KIND
     assert hfid[0]["parameters"]["target_kind"] == TARGET_KIND
     assert hfid[0]["parameters"]["object_ids"] == ["n1"]
+
+
+def test_plan_chunks_a_union_larger_than_the_submission_limit() -> None:
+    chunk_size = get_submission_chunk_size()
+    ids = frozenset(f"p{index:05d}" for index in range(chunk_size * 2 + 1))
+    target = AffectedTarget(
+        family=COMPUTED_ATTRIBUTE,
+        target_kind=TARGET_KIND,
+        attribute_name="summary",
+        reads_across_relationship=True,
+        reader_lookups=frozenset({ReaderLookup(source_kind=SOURCE_KIND, filter_key="peer__ids", source_node_ids=ids)}),
+    )
+
+    submissions = plan_coalesced_submissions(CoalescedRecompute(branch="main", targets=frozenset({target})))
+
+    # The oversized union splits into bounded submissions, each below the flow-run parameter limit.
+    assert [len(submission.node_ids) for submission in submissions] == [chunk_size, chunk_size, 1]
+    assert all(len(submission.node_ids) <= chunk_size for submission in submissions)
+    # Every id is submitted exactly once, in a deterministic order.
+    rebuilt = tuple(node_id for submission in submissions for node_id in submission.node_ids)
+    assert rebuilt == tuple(sorted(ids))
+
+
+class _FailFirstWorkflow(WorkflowRecorder):
+    """A recorder that raises on its first submission, to prove one failure does not drop the rest."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._attempts = 0
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        context: InfrahubContext | EventContext | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+    ) -> WorkflowInfo:
+        self._attempts += 1
+        if self._attempts == 1:
+            raise RuntimeError("submission rejected")
+        return await super().submit_workflow(workflow, context=context, parameters=parameters, tags=tags)
+
+
+async def test_submit_skips_a_failing_submission_and_keeps_the_rest() -> None:
+    recorder = _FailFirstWorkflow()
+
+    submitted = await submit_coalesced_recompute(coalesced=_coalesced(), workflow=recorder, context=_event_context())
+
+    # The first submission failed; the other two were still dispatched and returned.
+    assert len(recorder.submit_calls) == 2
+    assert len(submitted) == 2
