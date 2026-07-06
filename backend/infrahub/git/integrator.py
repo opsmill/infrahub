@@ -201,10 +201,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             self.reinitialized = True
             log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
-        # A freshly created clone already tracks the configured location, but an existing clone keeps
-        # whatever origin URL it was first cloned with. Re-point it when the location has since changed
-        # so subsequent fetches target the current remote instead of the stale one. The location is
-        # resolved from the graph first because some callers (e.g. re-import/fetch) initialize without it.
+        # An existing clone keeps whatever origin URL it was first cloned with, so re-point it when the
+        # location has since changed. Resolve the location first: some callers initialize without it.
         if self.has_origin:
             await self.ensure_location_is_defined()
             git_repo = self.get_git_repo_main()
