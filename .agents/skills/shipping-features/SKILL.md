@@ -25,7 +25,7 @@ unfinished `ship.md` means the user is asking "where am I / what's next."
 
 End-to-end **conductor** for one unit of work — feature, bug, or chore — from idea
 to merged-ready PR (and post-open CI watch). It **composes existing tools**: the
-project's own commands, sibling `opsmill-software` skills, marketplace plugins
+repo's own `.agents/skills/` and `.agents/commands/`, marketplace plugins
 (superpowers, coderabbit, commit-commands) when present, and built-in agents as the
 always-works fallback. It reimplements **nothing**.
 
@@ -54,12 +54,12 @@ Its only original contributions are four orchestration primitives:
 
 ## Recommended companion plugins (optional)
 
-Built-in fallbacks cover every phase without these. Install from the official marketplace
-with `claude plugin install <name>` (or the `/plugin` menu).
+Most capabilities ship **in this repo** under `.agents/skills/` and `.agents/commands/` — they're
+always available here. The plugins below only *add* to the built-in fallbacks. Install from the
+official marketplace with `claude plugin install <name>` (or the `/plugin` menu).
 
 | Plugin | Powers | Tier |
 |---|---|---|
-| `opsmill-software` | sibling skills: grill-idea, create-issue, bug-*, commit, pr, pr-monitor, rebase, capturing-knowledge | **Recommended** |
 | `superpowers` | planning, TDD, worktrees, parallel agents, review wrappers, verification | **Recommended** |
 | `coderabbit` | AI correctness/security code review | **Recommended** |
 | `commit-commands` | conventional commit, push, PR | Nice-to-have |
@@ -67,41 +67,37 @@ with `claude plugin install <name>` (or the `/plugin` menu).
 
 ## Preflight: check companions once (non-blocking)
 
-Before phase 1, probe for the companions above **once**. If any are missing, print a single
-consolidated note naming what's absent and the install command, then **proceed immediately**
-with built-in fallbacks. Do not prompt, wait, re-suggest, or auto-install.
-
-> **Sibling availability caveat:** `opsmill-software:pr` and `pr-monitor` resolve only after
-> this branch is rebased onto `main` (imported in opsmill-software PR #27). Until then the
-> `gh` / `commit-commands` fallbacks in the discovery table cover the PR and CI-watch rows.
-> Probe as normal — they light up automatically once present.
+Before phase 1, probe for the plugins above **once**. If any are missing, print a single
+consolidated note naming what's absent and the install command, then **proceed immediately** with
+the in-repo skills and built-in fallbacks. Do not prompt, wait, re-suggest, or auto-install.
 
 ## Discover available context (probe → reuse → fall back)
 
 For each capability, use the first available source in priority order. Probe; never invent a
-command the project lacks; surface ambiguity to the user.
+command the repo lacks; surface ambiguity to the user. Column 1 lists the in-repo skill/command
+(what actually ships here today); reconcile against `.agents/` if names drift.
 
-| Capability | 1. Host repo command | 2. opsmill sibling | 3. Marketplace plugin | 4. Built-in fallback |
-|---|---|---|---|---|
-| Ticket/issue | — | `create-issue` | — | skip |
-| Ticket→branch (Jira/JPD) | `/speckit-git-feature` | — | — | `git checkout -b` |
-| Idea hardening | — | `grill-idea` | `superpowers:brainstorming` | ask 2–3 questions inline |
-| Bug root-cause | — | `bug-analyze` | — | `Explore` agents on the failing surface |
-| Spec (divergent) | — | — | — | `Explore` agents |
-| Spec (formalize) | `/speckit-specify`, `/speckit-clarify` | — | — | keep the synthesized brief |
-| Plan (divergent) | — | — | — | `Plan` agents |
-| Plan (formalize) | `/speckit-plan`, `/speckit-tasks` | — | `superpowers:writing-plans` | inline ordered task list |
-| Implement (bug, TDD) | — | `bug-tdd` → `bug-fix` | `superpowers:test-driven-development` | `general-purpose` agent, test-first |
-| Implement (feature, TDD) | — | — | `superpowers:test-driven-development` | `general-purpose` agents, test-first |
-| Worktree isolation | — | — | `superpowers:using-git-worktrees` | `isolation: "worktree"` on Agent calls |
-| Parallel execution | — | — | `superpowers:subagent-driven-development` / `dispatching-parallel-agents` | parallel Agent calls in one message |
-| Code review | — | — | `coderabbit:code-review`, `code-simplifier`, `superpowers:requesting-code-review` | `general-purpose` reviewers + `/security-review` |
-| Knowledge capture | — | `capturing-knowledge` | — | skip |
-| Branch update / rebase | — | `rebase` | — | `git rebase`/`git merge` base |
-| CI gate / verify | `/pre-ci` | — | `superpowers:verification-before-completion` | run detected test + lint commands |
-| Commit | `/git-commit` | `commit` | `commit-commands:commit` | `git commit` (conventional message) |
-| PR | `/git-pr` | `pr` | `commit-commands:commit-push-pr`, `superpowers:finishing-a-development-branch` | `gh pr create` |
-| Post-open CI watch | — | `pr-monitor` | — | `gh run watch` / skip |
+| Capability | 1. In-repo skill/command | 2. Marketplace plugin | 3. Built-in fallback |
+|---|---|---|---|
+| Ticket/issue | `creating-issues`, `/create-jira-tickets` | — | skip |
+| Ticket→branch (Jira/JPD) | `/speckit-git-feature` | — | `git checkout -b` |
+| PRD / idea hardening | `grilling-ideas`, `creating-prd` | `superpowers:brainstorming` | ask 2–3 questions inline |
+| Bug root-cause | `/bug-analyze` | — | `Explore` agents on the failing surface |
+| Spec (divergent) | — | — | `Explore` agents |
+| Spec (formalize) | `/speckit-specify`, `/speckit-clarify` | — | keep the synthesized brief |
+| Plan (divergent) | — | — | `Plan` agents |
+| Plan (formalize) | `/speckit-plan`, `/speckit-tasks` | `superpowers:writing-plans` | inline ordered task list |
+| Implement (bug, TDD) | `/bug-tdd` → `/bug-fix` | `superpowers:test-driven-development` | `general-purpose` agent, test-first |
+| Implement (feature, TDD) | — | `superpowers:test-driven-development` | `general-purpose` agents, test-first |
+| Worktree isolation | — | `superpowers:using-git-worktrees` | `isolation: "worktree"` on Agent calls |
+| Parallel execution | — | `superpowers:subagent-driven-development` / `dispatching-parallel-agents` | parallel Agent calls in one message |
+| Code review | `speckit-review-run` (or per-lens `speckit-review-{code,tests,types,errors,comments}`), `speckit-review-simplify`, `speckit-critique-run` | `coderabbit:code-review`, `code-simplifier`, `superpowers:requesting-code-review` | `general-purpose` reviewers + `/security-review` |
+| Knowledge capture | `capturing-knowledge` | — | skip |
+| Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |
+| CI gate / verify | `/pre-ci` | `superpowers:verification-before-completion` | run detected test + lint commands |
+| Commit | `commit`, `/git-commit` | `commit-commands:commit` | `git commit` (conventional message) |
+| PR | `pr`, `/git-pr` | `commit-commands:commit-push-pr`, `superpowers:finishing-a-development-branch` | `gh pr create` |
+| Post-open CI watch | `monitoring-pull-requests` | — | `gh run watch` / skip |
 
 ## Reliability model (read before phase 1)
 
@@ -128,16 +124,16 @@ The lane and depth follow from the classification:
 
 | Phase | `bug` | `feature` | `chore` |
 |---|---|---|---|
-| Ticket/branch | `create-issue` → `/speckit-git-feature` | same | same |
-| Understand | `bug-analyze` → `analysis.md` | `grill-idea` → `/speckit-specify` → `spec.md` | short inline brief |
+| Ticket/branch | `creating-issues` → `/speckit-git-feature` | same | same |
+| Understand | `/bug-analyze` → `analysis.md` | `grilling-ideas` → `/speckit-specify` → `spec.md` | short inline brief |
 | Plan | skip on `S`, else light | `/speckit-plan` + `/speckit-tasks` → `plan.md`, `tasks.md` (`M`/`L`) | skip |
-| Implement | `bug-tdd` → `bug-fix` | TDD agents (worktrees on `L`) | direct edit |
-| Review | review tool → `review.md` + verify | same | same (lighter) |
+| Implement | `/bug-tdd` → `/bug-fix` | TDD agents (worktrees on `L`) | direct edit |
+| Review | `speckit-review-run` → `review.md` + verify | same | same (lighter) |
 | Knowledge | `capturing-knowledge` (conditional) | same | same |
 | CI gate | `/pre-ci` | same | same |
-| Commit | `commit` sibling | same | same |
-| PR | `pr` sibling → split assessment | same | same (usually single PR) |
-| CI watch | `pr-monitor` | same | same |
+| Commit | `commit` | same | same |
+| PR | `pr` → split assessment | same | same (usually single PR) |
+| CI watch | `monitoring-pull-requests` | same | same |
 
 `S` runs its lane straight through (gate + one verify, no parallelism). `M`/`L` light up the
 parallel front-end and, on a risk flag, the stacked verify.
@@ -162,13 +158,13 @@ Per [phases/classification.md](phases/classification.md). Create `ship.md` (or r
 one). **Checkpoint:** user confirms type / size / risk before any work.
 
 ### Phase 1 — Ticket & branch
-If no ticket and the project tracks issues, offer `create-issue`. Create the feature branch via
-`/speckit-git-feature` (validates Jira/JPD ref, names the branch) or `git checkout -b` fallback.
-Record ticket + branch in `ship.md`. **Gate:** on a named branch, not the base branch.
+If no ticket and the project tracks issues, offer `creating-issues` (or `/create-jira-tickets`).
+Create the feature branch via `/speckit-git-feature` (validates Jira/JPD ref, names the branch) or
+`git checkout -b` fallback. Record ticket + branch in `ship.md`. **Gate:** on a named branch, not the base branch.
 
 ### Phase 2 — Understand
-- **bug:** `bug-analyze` → `analysis.md` (root cause + repro). **Gate:** a concrete repro exists.
-- **feature:** harden with `grill-idea` if fuzzy; **diverge** (3 `Explore` framings: existing
+- **bug:** `/bug-analyze` → `analysis.md` (root cause + repro). **Gate:** a concrete repro exists.
+- **feature:** harden with `grilling-ideas` (or `creating-prd`) if fuzzy; **diverge** (3 `Explore` framings: existing
   patterns / related entities & APIs / test-coverage gaps) → **synthesize** 1 brief; formalize
   with `/speckit-specify` (+`/speckit-clarify`) → `spec.md`. **Gate:** no unresolved
   `[NEEDS CLARIFICATION]`.
@@ -182,7 +178,7 @@ On a risk flag, add a skeptic pass on the synthesis (see reliability). **Gate:**
 references files that exist; plan cites the spec. **Checkpoint:** merged plan + tradeoffs.
 
 ### Phase 4 — Implement
-- **bug:** `bug-tdd` (failing test) → `bug-fix`.
+- **bug:** `/bug-tdd` (failing test) → `/bug-fix`.
 - **feature/chore:** group `tasks.md` into independent units; run TDD agents (worktree isolation
   on `L`); independent units in parallel (one message), dependent units sequentially.
 Verify the real diff, never the self-report. **Gate + adversarial verify:** a test that was red is
@@ -190,12 +186,15 @@ now green *and* a skeptic agent fails to refute "this actually implements the sp
 **Checkpoint** only if a blocker surfaces or on `L`.
 
 ### Phase 5 — Review (pre-PR)
-**Diverge** across available review tools in parallel (`coderabbit:code-review`, `code-simplifier`,
-`/security-review`; fallback: 2–3 framed `general-purpose` reviewers) → **synthesize** a
-severity-ranked fix list (blocker / nit / suggestion) → **adversarial verify** each finding is real
-before acting. Wrap with `superpowers:requesting-code-review` / `receiving-code-review` when present.
-Write `review.md`. **Gate:** zero unaddressed blockers. **Checkpoint:** ranked list, then fix pass
-(small parallel agents per file group).
+The in-repo `speckit-review-*` suite already **is** the divergence — its lenses (`speckit-review-code`,
+`-tests`, `-types`, `-errors`, `-comments`) map onto the parallel framings. Prefer `speckit-review-run`
+(runs the suite) or the individual lenses in parallel, plus `speckit-review-simplify` and
+`speckit-critique-run`; add `coderabbit:code-review` / `code-simplifier` / `/security-review` when
+present. Fallback: 2–3 framed `general-purpose` reviewers. → **synthesize** a severity-ranked fix
+list (blocker / nit / suggestion) → **adversarial verify** each finding is real before acting. Wrap
+with `superpowers:requesting-code-review` / `receiving-code-review` when present. Write `review.md`.
+**Gate:** zero unaddressed blockers. **Checkpoint:** ranked list, then fix pass (small parallel
+agents per file group).
 
 ### Phase 6 — Knowledge capture (opportunistic)
 Delegate to `capturing-knowledge` (no args). Skip silently if nothing genuinely new was learned —
@@ -208,17 +207,17 @@ never invented). Red → loop back to the phase 5 fix pass. **Do not proceed wit
 **Checkpoint:** results.
 
 ### Phase 8 — Commit & PR
-1. **Commit** any final drift with `/git-commit` → `commit` sibling → `commit-commands:commit` →
+1. **Commit** any final drift with `commit` → `/git-commit` → `commit-commands:commit` →
    `git commit`. By now work was committed iteratively in phase 4; do not auto-commit to satisfy a
    command — surface a dirty-tree refusal instead.
 2. **Split assessment** (bias toward single PR) per [phases/pr-split.md](phases/pr-split.md).
    **Checkpoint:** user picks single / accepts split / proposes another. Never force a split.
-3. **Open** each approved PR with `/git-pr` → `pr` sibling → `commit-commands:commit-push-pr` →
+3. **Open** each approved PR with `pr` → `/git-pr` → `commit-commands:commit-push-pr` →
    `superpowers:finishing-a-development-branch` → `gh pr create`. For split PRs prepend
    `Depends on #<sibling>` and open in dependency order. Record PR URL(s) in `ship.md`.
 
 ### Phase 9 — Post-open CI watch
-Delegate to `pr-monitor` (or `gh run watch`) to watch the opened PR's CI. On red, surface the
+Delegate to `monitoring-pull-requests` (or `gh run watch`) to watch the opened PR's CI. On red, surface the
 failure and loop back to phase 5's fix pass. Record final CI status in `ship.md`. Skip cleanly if
 no watch tool resolves. **Terminal checkpoint:** green CI + PR URL(s) → done.
 

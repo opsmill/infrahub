@@ -20,7 +20,7 @@ durable record of where the work stands so anyone — or any session — can pic
 (bug / feature / chore), **size** (S / M / L), and optional **risk flags** (irreversible,
 security, cross-team, crux-algorithm). The agent proposes a classification; the user confirms it
 at a checkpoint. This picks the *lane* (a bug goes `bug-analyze → bug-tdd → bug-fix`; a feature
-goes `grill-idea → spec → plan → implement`) and the *depth* (an S fix skips specs entirely; an L
+goes `grilling-ideas → spec → plan → implement`) and the *depth* (an S fix skips specs entirely; an L
 feature gets the full treatment). One workflow, shaped to the work.
 
 **2. A durable manifest (`ship.md`).** Each unit of work gets a `ship.md` inside its speckit
@@ -64,26 +64,27 @@ specs/001-user-auth/
 ## Reuse over reimplementation
 
 The skill's core rule. Each capability resolves through a priority chain
-(**host repo command → opsmill sibling skill → marketplace plugin → built-in fallback**), so it
-works in any repo and gets better as more tools are installed. Notable siblings wired in:
-`create-issue`, `speckit-*`, `grill-idea`, `bug-analyze/tdd/fix`, `capturing-knowledge`, `rebase`,
-`commit`, `pr`, and `pr-monitor` (post-open CI watch). `pr`/`pr-monitor` land once this branch
-rebases onto `main`; until then `gh`/`commit-commands` cover the gap.
+(**in-repo skill/command → marketplace plugin → built-in fallback**), so it works in any repo and
+gets better as more tools are installed. These all ship in-repo under `.agents/`:
+`creating-issues`, `creating-prd`, `grilling-ideas`, `/bug-analyze`·`/bug-tdd`·`/bug-fix`, the
+`speckit-*` suite (including `speckit-review-{code,tests,types,errors,comments,simplify}` and
+`speckit-critique-run`), `capturing-knowledge`, `rebase`, `commit`, `pr`, and
+`monitoring-pull-requests` (post-open CI watch).
 
 ## The pipeline at a glance
 
 | # | Phase | Delegates to | Reliability layers |
 |---|---|---|---|
 | 0 | Classify | (this skill) | checkpoint |
-| 1 | Ticket & branch | `create-issue`, `/speckit-git-feature` | gate |
-| 2 | Understand | `bug-analyze` / `grill-idea`+`/speckit-specify` | gate (+ parallel on feature M/L) |
+| 1 | Ticket & branch | `creating-issues`, `/speckit-git-feature` | gate |
+| 2 | Understand | `/bug-analyze` / `grilling-ideas`+`/speckit-specify` | gate (+ parallel on feature M/L) |
 | 3 | Plan | `/speckit-plan`+`/speckit-tasks` | gate + parallel (+ skeptic on risk) |
-| 4 | Implement | `bug-tdd`+`bug-fix` / TDD agents | gate + adversarial verify |
-| 5 | Review | `coderabbit`, `code-simplifier`, `/security-review` | gate + parallel + verify |
+| 4 | Implement | `/bug-tdd`+`/bug-fix` / TDD agents | gate + adversarial verify |
+| 5 | Review | `speckit-review-run`, `coderabbit`, `/security-review` | gate + parallel + verify |
 | 6 | Knowledge | `capturing-knowledge` | conditional |
 | 7 | CI gate | `/pre-ci` | gate |
 | 8 | Commit & PR | `commit`, `pr`, split assessment | parallel (split) |
-| 9 | CI watch | `pr-monitor` | gate |
+| 9 | CI watch | `monitoring-pull-requests` | gate |
 
 Checkpoints sit between phases; the user can pause, redirect, reclassify, or jump at any of them.
 
@@ -97,6 +98,8 @@ Checkpoints sit between phases; the user can pause, redirect, reclassify, or jum
 
 ## Status
 
-Draft skill on branch `ple-test-shipping-features-skill`. **Not yet pressure-tested** — per the
-skill-authoring discipline (RED→GREEN→REFACTOR against baseline agent behavior), the next step is a
-test pass with subagents before we trust it in anger.
+Draft skill on branch `ple-test-shipping-features-skill`, rebased onto latest `develop` so all the
+in-repo skills it delegates to (`creating-issues`, `grilling-ideas`, `pr`, `monitoring-pull-requests`,
+the `speckit-review-*` suite, …) resolve today. **Not yet pressure-tested** — per the skill-authoring
+discipline (RED→GREEN→REFACTOR against baseline agent behavior), the next step is a test pass with
+subagents before we trust it in anger.

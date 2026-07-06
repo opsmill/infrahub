@@ -12,8 +12,8 @@ Three axes. Write all three to `ship.md`.
 
 | Type | Signals | Lane head |
 |---|---|---|
-| `bug` | "broken", "regression", stack trace, failing test, "used to work" | `bug-analyze` → `bug-tdd` → `bug-fix` |
-| `feature` | new capability, user story, "add", "support", "allow users to…" | `grill-idea` → `/speckit-specify` → plan → implement |
+| `bug` | "broken", "regression", stack trace, failing test, "used to work" | `/bug-analyze` → `/bug-tdd` → `/bug-fix` |
+| `feature` | new capability, user story, "add", "support", "allow users to…" | `grilling-ideas` → `/speckit-specify` → plan → implement |
 | `chore` | refactor, dependency bump, rename, config, docs-only, cleanup | inline brief → direct edit |
 
 When ambiguous (a "bug" that's really a missing feature), state the ambiguity and let the user pick.
