@@ -203,10 +203,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         # A freshly created clone already tracks the configured location, but an existing clone keeps
         # whatever origin URL it was first cloned with. Re-point it when the location has since changed
-        # so subsequent fetches target the current remote instead of the stale one.
-        if self.location and self.has_origin:
+        # so subsequent fetches target the current remote instead of the stale one. The location is
+        # resolved from the graph first because some callers (e.g. re-import/fetch) initialize without it.
+        if self.has_origin:
+            await self.ensure_location_is_defined()
             git_repo = self.get_git_repo_main()
-            if git_repo.remotes.origin.url != self.location:
+            if self.location and git_repo.remotes.origin.url != self.location:
                 async with lock.registry.get(name=self.name, namespace="repository"):
                     git_repo.remotes.origin.set_url(self.location)
                     await self.fetch()
