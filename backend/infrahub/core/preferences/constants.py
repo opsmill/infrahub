@@ -24,6 +24,19 @@ class DateFormat(InfrahubStringEnum):
     US_12H = "US_12H"  # 07/01/2026 02:30 PM
 
 
+class PreferenceSource(InfrahubStringEnum):
+    """Where an effective preference value came from.
+
+    USER    = the caller's own override.
+    GLOBAL  = the organisation-wide default.
+    DEFAULT = nothing is stored anywhere; the client applies its built-in default.
+    """
+
+    USER = "user"
+    GLOBAL = "global"
+    DEFAULT = "default"
+
+
 # The key a client applies when neither the user nor the global preference sets date_format. The
 # backend does not render dates itself (clients do), so this is exposed only as the shared default
 # key both sides agree on; it is intentionally not used to produce a server-side rendered string.

@@ -4,10 +4,14 @@ from typing import TYPE_CHECKING
 
 from graphene import Field
 
-from infrahub.core.preferences import MANAGE_GLOBAL_PREFERENCES_PERMISSION, Preference, global_owner_id
+from infrahub.core.preferences import (
+    MANAGE_GLOBAL_PREFERENCES_PERMISSION,
+    EffectivePreferences,
+    Preference,
+    global_owner_id,
+)
 from infrahub.graphql.types.preferences import (
     EffectivePreferencesType,
-    PreferenceSource,
     RawPreferencesType,
 )
 
@@ -20,9 +24,8 @@ if TYPE_CHECKING:
 async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) -> dict:  # noqa: ARG001
     """Resolve the caller's effective preferences (user override → global default → DEFAULT).
 
-    Per field: the USER override if set, else the GLOBAL default, else DEFAULT (value null → the
-    client applies its built-in default). Open to any authenticated caller; the global row is read
-    internally, never exposed as raw org values.
+    Open to any authenticated caller; the global row is read internally, never exposed as raw org
+    values. The resolution policy itself lives on the domain value object.
     """
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id
@@ -31,19 +34,11 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     # Account row + global row in ONE query; a missing row simply isn't in the map (reads never
     # create). StandardNode reads carry no branch filter, so this is branch-agnostic.
     preferences = await Preference.get_for_owners(db=graphql_context.db, owner_ids=[account_id, global_id])
-    user = preferences.get(account_id)
-    global_ = preferences.get(global_id)
-
-    def resolve(attribute_name: str) -> dict:
-        user_value = getattr(user, attribute_name) if user else None
-        if user_value is not None:
-            return {"value": user_value, "source": PreferenceSource.USER}
-        global_value = getattr(global_, attribute_name) if global_ else None
-        if global_value is not None:
-            return {"value": global_value, "source": PreferenceSource.GLOBAL}
-        return {"value": None, "source": PreferenceSource.DEFAULT}
-
-    return {"date_format": resolve("date_format"), "timezone": resolve("timezone")}
+    effective = EffectivePreferences(user=preferences.get(account_id), global_=preferences.get(global_id))
+    return {
+        "date_format": effective.resolve_date_format(),
+        "timezone": effective.resolve_timezone(),
+    }
 
 
 async def resolve_user_preferences(root: dict, info: GraphQLResolveInfo) -> dict:  # noqa: ARG001

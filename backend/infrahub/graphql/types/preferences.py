@@ -5,6 +5,7 @@ from enum import StrEnum
 from graphene import Enum, Field, ObjectType, String
 
 from infrahub.core.preferences import DateFormat as DateFormatEnum
+from infrahub.core.preferences import PreferenceSource as PreferenceSourceEnum
 
 # GraphQL enum derived from the domain `DateFormat` Python enum, so the two can never drift and an
 # invalid key is rejected at the GraphQL layer (pattern: graphql/types/enums.py). The description is
@@ -45,17 +46,17 @@ PreferenceWriteScopeType = Enum.from_enum(
 )
 
 
-class PreferenceSource(Enum):
-    """Where an effective preference value came from.
-
-    USER    = the caller's own override.
-    GLOBAL  = the organisation-wide default.
-    DEFAULT = nothing is stored anywhere; the client applies its built-in default.
-    """
-
-    USER = "user"
-    GLOBAL = "global"
-    DEFAULT = "default"
+# GraphQL enum derived from the domain `PreferenceSource` Python enum (same pattern as DateFormat
+# above, including the explicit single-line description), so the resolution logic in core and the
+# GraphQL layer can never drift.
+PreferenceSource = Enum.from_enum(
+    PreferenceSourceEnum,
+    description=(
+        "Where an effective preference value came from: USER = the caller's own override, GLOBAL = "
+        "the organisation-wide default, DEFAULT = nothing is stored anywhere and the client applies "
+        "its built-in default."
+    ),
+)
 
 
 class EffectiveDateFormat(ObjectType):
