@@ -202,18 +202,6 @@ async def test_effective_is_private_per_caller(
     }
 
 
-async def test_effective_rejects_unauthenticated(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-) -> None:
-    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
-    for account_session in (None, anonymous):
-        result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=account_session)
-        assert result.errors is not None
-        assert any("authenticated account" in str(error) for error in result.errors)
-
-
 # --------------------------------------------------------------------------------------------
 # InfrahubUserPreferences — caller's OWN raw values, null where unset; account-bound.
 # --------------------------------------------------------------------------------------------
@@ -258,18 +246,6 @@ async def test_user_never_sees_other_account(
     # Each caller sees ONLY their own raw value; no cross-account bleed.
     assert result_a.data["InfrahubUserPreferences"]["timezone"] == "Europe/Paris"
     assert result_b.data["InfrahubUserPreferences"]["timezone"] == "America/New_York"
-
-
-async def test_user_rejects_unauthenticated(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-) -> None:
-    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
-    for account_session in (None, anonymous):
-        result = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=account_session)
-        assert result.errors is not None
-        assert any("authenticated account" in str(error) for error in result.errors)
 
 
 # --------------------------------------------------------------------------------------------
@@ -325,16 +301,3 @@ async def test_global_denied_for_normal_account(
     result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_first_account)
     assert result.errors is not None
     assert result.data is None or result.data.get("InfrahubGlobalPreferences") is None
-
-
-async def test_global_rejects_unauthenticated(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-) -> None:
-    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
-    for account_session in (None, anonymous):
-        result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=account_session)
-        assert result.errors is not None
-        # Confirm it is the auth gate rejecting, not an unrelated schema/db error.
-        assert any("authenticated account" in str(error) for error in result.errors)

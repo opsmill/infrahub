@@ -17,7 +17,6 @@ from infrahub.core.preferences import (
     DateFormat as DateFormatEnum,
 )
 from infrahub.database import retry_db_transaction
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.types.preferences import DateFormat, PreferenceWriteScope, PreferenceWriteScopeType
 
 if TYPE_CHECKING:
@@ -77,10 +76,7 @@ class InfrahubSetPreferences(Mutation):
         graphql_context: GraphqlContext = info.context
 
         # Fail-closed: reject anonymous/unauthenticated sessions before any scope-specific logic.
-        if not graphql_context.account_session or not graphql_context.account_session.authenticated:
-            raise PermissionDeniedError("This operation requires an authenticated account")
-
-        account_id = graphql_context.account_session.account_id
+        account_id = graphql_context.require_authenticated_account_id()
 
         if scope == PreferenceWriteScope.GLOBAL:
             # Gate BEFORE any read-modify-write (fail-closed). Super admins bypass via the manager.

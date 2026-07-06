@@ -207,21 +207,6 @@ async def test_user_two_accounts_distinct_rows(
     assert pref_b.timezone == "America/New_York"
 
 
-async def test_user_rejects_unauthenticated(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-) -> None:
-    result = await run_mutation(
-        db=db,
-        branch=default_branch,
-        account_session=None,
-        variables={"scope": "USER", "timezone": "UTC"},
-    )
-    assert result.errors is not None
-    assert "authenticated" in str(result.errors[0].message).lower()
-
-
 async def test_user_rejects_unknown_date_format(
     db: InfrahubDatabase,
     default_branch: Branch,

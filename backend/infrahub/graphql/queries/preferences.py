@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from graphene import Field
 
 from infrahub.core.preferences import MANAGE_GLOBAL_PREFERENCES_PERMISSION, Preference, global_owner_id
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.types.preferences import (
     EffectivePreferencesType,
     PreferenceSource,
@@ -18,18 +17,6 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 
-def _require_authenticated(graphql_context: GraphqlContext) -> str:
-    """Reject anonymous/unauthenticated sessions (fail-closed) and return the caller's account id.
-
-    Raises:
-        PermissionDeniedError: if there is no authenticated account session.
-
-    """
-    if not graphql_context.account_session or not graphql_context.account_session.authenticated:
-        raise PermissionDeniedError("This operation requires an authenticated account")
-    return graphql_context.account_session.account_id
-
-
 async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) -> dict:  # noqa: ARG001
     """Resolve the caller's effective preferences (user override → global default → DEFAULT).
 
@@ -38,7 +25,7 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     internally, never exposed as raw org values.
     """
     graphql_context: GraphqlContext = info.context
-    account_id = _require_authenticated(graphql_context)
+    account_id = graphql_context.active_account_session.account_id
     global_id = global_owner_id()
 
     # Account row + global row in ONE query; a missing row simply isn't in the map (reads never
@@ -66,7 +53,7 @@ async def resolve_user_preferences(root: dict, info: GraphQLResolveInfo) -> dict
     account A's row.
     """
     graphql_context: GraphqlContext = info.context
-    account_id = _require_authenticated(graphql_context)
+    account_id = graphql_context.active_account_session.account_id
 
     user = await Preference.get_for_owner(db=graphql_context.db, owner_id=account_id)
     return {
@@ -81,7 +68,6 @@ async def resolve_global_preferences(root: dict, info: GraphQLResolveInfo) -> di
     Super admins bypass via the permission manager; the gate raises BEFORE any read (fail-closed).
     """
     graphql_context: GraphqlContext = info.context
-    _require_authenticated(graphql_context)
     graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
 
     global_ = await Preference.get_for_owner(db=graphql_context.db, owner_id=global_owner_id())

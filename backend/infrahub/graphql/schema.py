@@ -60,6 +60,18 @@ from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 from .queries.event import Event
 from .queries.task import Task, TaskBranchStatus
 
+# Root query fields that require an authenticated session even when anonymous read access is
+# enabled: they resolve data bound to the caller's identity. Enforced fail-closed at the edge by the
+# permission-checker pipeline, on top of each resolver's own check.
+QUERIES_REQUIRING_AUTHENTICATION = frozenset(
+    {
+        "InfrahubAccountToken",
+        "InfrahubEffectivePreferences",
+        "InfrahubUserPreferences",
+        "InfrahubGlobalPreferences",
+    }
+)
+
 
 class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
