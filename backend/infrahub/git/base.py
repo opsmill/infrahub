@@ -1117,7 +1117,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     ) -> NoReturn:
         if any(
             err in error.stderr
-            for err in ("Repository not found", "does not appear to be a git", "Failed to connect to")
+            for err in (
+                "Repository not found",
+                "does not appear to be a git",
+                "Failed to connect to",
+                "Could not resolve host",
+                "Couldn't connect to server",
+                "Connection timed out",
+                "Operation timed out",
+                # HTTP 5xx returned by a gateway/proxy in front of the git server (e.g. 502/503/504).
+                "The requested URL returned error: 5",
+                "RPC failed; HTTP 5",
+            )
         ):
             raise RepositoryConnectionError(identifier=name) from error
 

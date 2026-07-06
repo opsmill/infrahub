@@ -307,5 +307,9 @@ class ValidateRepositoryConnectivity(Mutation):
             response = await graphql_context.service.message_bus.rpc(
                 message=message, response_class=GitRepositoryConnectivityResponse
             )
+            # Persist the outcome so the repository's operational status reflects the connectivity
+            # check rather than remaining stuck on its last-known value.
+            repo.operational_status.value = response.data.operational_status
+            await repo.save(db=graphql_context.db)
 
         return {"ok": response.data.success, "message": response.data.message}
