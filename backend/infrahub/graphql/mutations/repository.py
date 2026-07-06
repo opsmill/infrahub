@@ -310,6 +310,8 @@ class ValidateRepositoryConnectivity(Mutation):
             # Persist the outcome so the repository's operational status reflects the connectivity
             # check rather than remaining stuck on its last-known value.
             repo.operational_status.value = response.data.operational_status
-            await repo.save(db=graphql_context.db)
+            # Scope the write to operational_status: the node was loaded before the connectivity
+            # RPC, so persisting every field could clobber concurrent edits with stale values.
+            await cast("Node", repo).save(db=graphql_context.db, fields=["operational_status"])
 
         return {"ok": response.data.success, "message": response.data.message}
