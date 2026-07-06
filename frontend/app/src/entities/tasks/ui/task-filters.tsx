@@ -2,12 +2,12 @@ import { Icon } from "@iconify-icon/react";
 import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useState } from "react";
 
-import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import type { FormFieldValue } from "@/shared/components/form/type";
-import { SEARCH_FILTERS } from "@/shared/config/constants";
-import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { SEARCH_FILTERS } from "@/entities/nodes/filters/domain/model/filter";
+import { getFiltersFromFormData } from "@/entities/nodes/filters/domain/rules/getFiltersFromFormData";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { TasksFilterForm } from "@/entities/tasks/ui/tasks-filter-form";
 
 export const TaskFilters = () => {

@@ -1,7 +1,7 @@
 import type React from "react";
 import { Navigate, useLocation } from "react-router";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {

@@ -8,7 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetNodeMetadataParams,
   getNodeMetadata,
-} from "@/entities/nodes/object/domain/get-node-metadata";
+} from "@/entities/nodes/object/domain/use-cases/get-node-metadata";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function getNodeMetadataQueryOptions(params: GetNodeMetadataParams) {

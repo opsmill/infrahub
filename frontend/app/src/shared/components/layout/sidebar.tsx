@@ -5,8 +5,6 @@ import * as React from "react";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
 
-import { SIDEBAR_STATE_KEY } from "@/entities/navigation/constants";
-
 type SidebarContextProps = {
   isCollapsed: boolean;
   toggleSidebar: () => void;
@@ -22,6 +20,8 @@ export function useSidebar() {
 
   return context;
 }
+
+const SIDEBAR_STATE_KEY = "sidebar_state";
 
 export function SidebarProvider({ children }: { children?: React.ReactNode }) {
   const [storedState, setStoredState] = useLocalStorage(SIDEBAR_STATE_KEY);

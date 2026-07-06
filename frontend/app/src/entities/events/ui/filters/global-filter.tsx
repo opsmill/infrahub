@@ -4,10 +4,10 @@ import { useState } from "react";
 import type { TagProps } from "react-aria-components";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import useFilters from "@/shared/hooks/useFilters";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 import { GlobalFilterForm } from "./global-filter-form";
 import { FilterTag } from "./global-filter-tag";

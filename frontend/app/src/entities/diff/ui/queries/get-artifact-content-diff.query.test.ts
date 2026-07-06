@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getArtifactContentDiffQueryOptions } from "./get-artifact-content-diff.query";
 
-vi.mock("@/entities/diff/domain/get-artifact-content-diff", () => ({
+vi.mock("@/entities/diff/domain/use-cases/get-artifact-content-diff", () => ({
   getArtifactContentDiff: vi.fn().mockResolvedValue({ threads: [] }),
 }));
 

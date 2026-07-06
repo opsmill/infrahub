@@ -1,12 +1,12 @@
 import { useAtomValue } from "jotai";
 
+import { resolveSchema, type SchemaResult } from "@/entities/schema/domain/rules/resolve-schema";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { resolveSchema, type SchemaResult } from "@/entities/schema/utils/resolve-schema";
 
 /**
  * Hook for retrieving schemas with optional required behavior.

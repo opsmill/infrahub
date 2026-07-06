@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getFileContentDiffQueryOptions } from "./get-file-content-diff.query";
 
-vi.mock("@/entities/diff/domain/get-file-content-diff", () => ({
+vi.mock("@/entities/diff/domain/use-cases/get-file-content-diff", () => ({
   getFileContentDiff: vi.fn().mockResolvedValue({ threads: [] }),
 }));
 

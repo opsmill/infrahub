@@ -13,7 +13,7 @@ import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { classNames } from "@/shared/utils/common";
 
-import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import type { BranchDetail } from "@/entities/branches/domain/model/branch";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 
 interface BranchAttributesProps {

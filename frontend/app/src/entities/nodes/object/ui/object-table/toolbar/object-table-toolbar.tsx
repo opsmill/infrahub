@@ -3,12 +3,12 @@ import { XIcon } from "lucide-react";
 
 import { classNames } from "@/shared/utils/common";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-add-to-groups-action";
 import { ToolbarRemoveFromGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-remove-from-groups-action";
 import { ToolbarDeleteAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-delete-action";
 import { ToolbarEditAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-edit-action";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
-import type { NodeCore } from "@/entities/nodes/types";
 
 export interface ObjectTableSelectionToolbarProps {
   selectedRows: Array<NodeCore>;

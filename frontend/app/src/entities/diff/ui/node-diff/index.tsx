@@ -5,11 +5,11 @@ import { useEffect } from "react";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
+import { DEFAULT_BRANCH_NAME } from "@/entities/branches/domain/model/branch";
 import { useBranchExists } from "@/entities/branches/ui/hooks/use-branch-exists";
-import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
+import type { GetDiffSummaryParams } from "@/entities/diff/domain/use-cases/get-diff-summary";
 import {
   DiffBranchNotFound,
   isBranchNotFoundError,
@@ -24,7 +24,7 @@ import { DiffNode } from "@/entities/diff/ui/node-diff/node";
 import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/ui/node-diff/types";
 import { buildFilters } from "@/entities/diff/ui/node-diff/utils";
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/ui/queries/get-diff-tree.query";
-import { MERGE_STATE } from "@/entities/proposed-changes/constants";
+import { MERGE_STATE } from "@/entities/proposed-changes/domain/model/proposed-change-state";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 

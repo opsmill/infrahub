@@ -8,7 +8,7 @@ import { Row } from "@/shared/components/container";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { treeQueryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { useResolveConflictMutation } from "@/entities/diff/ui/queries/resolve-conflict.mutation";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";

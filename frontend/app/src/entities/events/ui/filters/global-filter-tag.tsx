@@ -1,8 +1,9 @@
 import { Tag, type TagProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
+
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 
 type FilterTagProps = {
   label: string;

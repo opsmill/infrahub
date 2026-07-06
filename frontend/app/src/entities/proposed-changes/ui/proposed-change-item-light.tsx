@@ -6,10 +6,10 @@ import { Link } from "react-router";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
-import { CHECK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
-import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
+import { CHECK_OBJECT } from "@/entities/diff/domain/model/check";
+import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/use-cases/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

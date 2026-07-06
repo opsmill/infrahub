@@ -5,7 +5,7 @@ import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { type GetGroupsParams, getGroups } from "@/entities/groups/domain/get-groups";
+import { type GetGroupsParams, getGroups } from "@/entities/groups/domain/use-cases/get-groups";
 import { groupsQueryKeys } from "@/entities/groups/ui/queries/groups.query-keys";
 
 export function getGroupsQueryOptions(params: GetGroupsParams) {
