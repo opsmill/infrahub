@@ -68,8 +68,8 @@ The skill's core rule. Each capability resolves through a priority chain
 gets better as more tools are installed. These all ship in-repo under `.agents/`:
 `creating-issues`, `creating-prd`, `grilling-ideas`, `/bug-analyze`·`/bug-tdd`·`/bug-fix`, the
 `speckit-*` suite (including `speckit-review-{code,tests,types,errors,comments,simplify}` and
-`speckit-critique-run`), `capturing-knowledge`, `rebase`, `commit`, `pr`, and
-`monitoring-pull-requests` (post-open CI watch).
+`speckit-critique-run`), `pruning-residues` (post-implement cleanup of leftover debug/dead code),
+`capturing-knowledge`, `rebase`, `commit`, `pr`, and `monitoring-pull-requests` (post-open CI watch).
 
 ## The pipeline at a glance
 
