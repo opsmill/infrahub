@@ -18,7 +18,7 @@ from infrahub.core.preferences import (
 )
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.graphql.types.preferences import WRITE_SCOPE_GLOBAL, DateFormat, PreferenceWriteScope
+from infrahub.graphql.types.preferences import DateFormat, PreferenceWriteScope, PreferenceWriteScopeType
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -54,7 +54,7 @@ class InfrahubSetPreferences(Mutation):
     """
 
     class Arguments:
-        scope = Argument(PreferenceWriteScope, required=True)
+        scope = Argument(PreferenceWriteScopeType, required=True)
         # date_format is a DateFormat enum key: the enum type validates it at the GraphQL layer, so an
         # unknown key is rejected before any write.
         date_format = Argument(DateFormat, required=False)
@@ -82,7 +82,7 @@ class InfrahubSetPreferences(Mutation):
 
         account_id = graphql_context.account_session.account_id
 
-        if scope == WRITE_SCOPE_GLOBAL:
+        if scope == PreferenceWriteScope.GLOBAL:
             # Gate BEFORE any read-modify-write (fail-closed). Super admins bypass via the manager.
             graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
             owner_id = global_owner_id()

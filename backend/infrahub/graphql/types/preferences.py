@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 from graphene import Enum, Field, ObjectType, String
 
 from infrahub.core.preferences import DateFormat as DateFormatEnum
@@ -19,14 +21,7 @@ DateFormat = Enum.from_enum(
 )
 
 
-# Write-scope string values, kept as plain constants (not read off the graphene Enum members via
-# `.value`, which graphene's metaclass makes static checkers treat as `str`). Graphene passes these
-# values to the mutation at runtime.
-WRITE_SCOPE_USER = "user"
-WRITE_SCOPE_GLOBAL = "global"
-
-
-class PreferenceWriteScope(Enum):
+class PreferenceWriteScope(StrEnum):
     """The WRITABLE axes of the preferences store.
 
     EFFECTIVE is intentionally absent: the resolved view is read-only, so it is unrepresentable as a
@@ -34,8 +29,20 @@ class PreferenceWriteScope(Enum):
     the organisation-wide ones (gated on manage_global_preferences).
     """
 
-    USER = WRITE_SCOPE_USER
-    GLOBAL = WRITE_SCOPE_GLOBAL
+    USER = "user"
+    GLOBAL = "global"
+
+
+# GraphQL enum derived from the PreferenceWriteScope StrEnum (same pattern as DateFormat above).
+# Graphene hands the resolver the member's value; being a StrEnum, the members compare equal to it.
+PreferenceWriteScopeType = Enum.from_enum(
+    PreferenceWriteScope,
+    description=(
+        "The writable axes of the preferences store: USER writes the caller's own preferences, "
+        "GLOBAL writes the organisation-wide ones (gated on manage_global_preferences). EFFECTIVE is "
+        "intentionally absent — the resolved view is read-only."
+    ),
+)
 
 
 class PreferenceSource(Enum):
