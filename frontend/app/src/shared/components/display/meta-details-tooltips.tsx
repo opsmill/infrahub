@@ -9,9 +9,9 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface MetaDetailsTooltipProps {

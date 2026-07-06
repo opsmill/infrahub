@@ -2,9 +2,9 @@ import { Button, Popover, Tooltip } from "@infrahub/ui";
 import { PencilIcon } from "lucide-react";
 import { DialogTrigger } from "react-aria-components";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkEditObjects } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/bulk-edit-objects";
-import type { NodeCore } from "@/entities/nodes/types";
 
 export interface ToolbarEditActionProps {
   selectedRows: Array<NodeCore>;

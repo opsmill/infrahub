@@ -3,11 +3,12 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
+from infrahub.core.node.constraints.attribute_uniqueness import NodeAttributeUniquenessConstraint
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
 from infrahub.core.node.constraints.uniqueness_violation_message import UniquenessViolationMessageBuilder
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import UniquenessViolationError
 
 
 async def test_node_validate_constraint_node_uniqueness_failure(
@@ -23,10 +24,23 @@ async def test_node_validate_constraint_node_uniqueness_failure(
     new_john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await new_john.new(db=db, name="John", height=160)
 
-    with pytest.raises(ValidationError) as exc:
+    with pytest.raises(UniquenessViolationError) as exc:
         await constraint.check(new_john)
 
     assert "Violates uniqueness constraint 'name'" in exc.value.message
+
+
+async def test_node_validate_constraint_attribute_uniqueness_failure(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
+) -> None:
+    constraint = NodeAttributeUniquenessConstraint(db=db, branch=default_branch)
+    new_john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await new_john.new(db=db, name="John", height=160)
+
+    with pytest.raises(UniquenessViolationError) as exc:
+        await constraint.check(new_john)
+
+    assert "An object already exist with this value" in exc.value.message
 
 
 async def test_node_validate_constraint_node_uniqueness_success(
@@ -87,5 +101,5 @@ async def test_hierarchical_uniqueness_constraint(
 
     ld62 = await Node.init(db=db, schema="LocationRack", branch=default_branch)
     await ld62.new(db=db, name="ld6-ldn2", parent=uk)
-    with pytest.raises(ValidationError, match=r"Violates uniqueness constraint 'parent-status'"):
+    with pytest.raises(UniquenessViolationError, match=r"Violates uniqueness constraint 'parent-status'"):
         await constraint.check(ld62)

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildFromPoolPayload } from "@/shared/components/form/utils/mutations/buildFromPoolMutationValue";
 
-import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 
 describe("buildFromPoolPayload", () => {
   it("omits the prefix length when none was entered", () => {

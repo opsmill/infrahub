@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass, field
 from enum import Enum, IntFlag
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import pytest
 from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
@@ -45,8 +45,10 @@ from infrahub.core.constants import (
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge.constraints import build_merge_constraint_result, gather_conflicted_fields
 from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.timestamp import Timestamp
@@ -56,7 +58,13 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, ProposedChangeMergedEvent
-from infrahub.exceptions import MergeFailedError, SchemaNotFoundError, ValidationError
+from infrahub.exceptions import (
+    MergeConflictsUnresolvedError,
+    MergeConstraintsViolatedError,
+    MergeFailedError,
+    SchemaNotFoundError,
+    ValidationError,
+)
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
@@ -156,6 +164,70 @@ async def _proposed_change_transition_state(
 #     )
 
 
+def _build_schema_integrity_validator_recorder(db: InfrahubDatabase) -> ObjectConflictValidatorRecorder:
+    return ObjectConflictValidatorRecorder(
+        db=db,
+        validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+        validator_label="Schema Integrity",
+        check_schema_kind=InfrahubKind.SCHEMACHECK,
+    )
+
+
+async def _record_schema_integrity_failure(
+    database: InfrahubDatabase, proposed_change_id: str, schema_conflicts: list[SchemaConflict]
+) -> None:
+    """Record schema constraint violations found at merge time on the Schema Integrity validator."""
+    async with database.start_transaction() as db:
+        recorder = _build_schema_integrity_validator_recorder(db=db)
+        await recorder.record_conflicts(proposed_change_id=proposed_change_id, conflicts=schema_conflicts)
+
+
+async def _merge_branch_for_proposed_change(
+    db: InfrahubDatabase,
+    proposed_change: InternalCoreProposedChange,
+    source_branch: Branch,
+    context: InfrahubContext,
+) -> State | None:
+    """Merge the proposed change's source branch.
+
+    Returns a ``Failed`` state if the merge is rejected or fails, or ``None`` if it succeeds. On any
+    handled failure the proposed change is transitioned back to OPEN before the state is returned;
+    unexpected exceptions propagate after the same transition.
+    """
+    log = get_run_logger()
+    merge_succeeded = False
+    proposed_change_id = proposed_change.get_id()
+    try:
+        await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
+        merge_succeeded = True
+        return None
+    except MergeConstraintsViolatedError as exc:
+        # Record the violation so the Schema Integrity validator reflects the failure.
+        await _record_schema_integrity_failure(
+            database=db, proposed_change_id=proposed_change_id, schema_conflicts=exc.schema_conflicts
+        )
+        return Failed(message="Unable to merge proposed change containing failing checks")
+    except MergeConflictsUnresolvedError as exc:
+        # Cannot merge a branch with unresolved conflicts.
+        return Failed(message=exc.message)
+    except MergeFailedError as exc:
+        return Failed(message=exc.message)
+    except Exception as exc:
+        log.exception("Unexpected failure during proposed change merge")
+        return Failed(message=f"Merge failure when trying to merge {source_branch.name}: {exc}")
+    except BaseException as exc:
+        log.exception("Unexpected failure during proposed change merge")
+        raise exc
+    finally:
+        if not merge_succeeded:
+            await _proposed_change_transition_state(
+                proposed_change=proposed_change,
+                state=ProposedChangeState.OPEN,
+                database=db,
+                user_id=context.account.account_id,
+            )
+
+
 @flow(
     name="proposed-change-merge",
     flow_run_name="Merge propose change: {proposed_change_name} ",
@@ -232,26 +304,14 @@ async def merge_proposed_change(
 
         log.info("Proposed change is eligible to be merged")
 
-        merge_succeeded = False
-        try:
-            await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
-            merge_succeeded = True
-        except MergeFailedError as exc:
-            return Failed(message=exc.message)
-        except Exception as exc:
-            log.exception("Unexpected failure during proposed change merge")
-            return Failed(message=f"Merge failure when trying to merge {source_branch.name}: {exc}")
-        except BaseException as exc:
-            log.exception("Unexpected failure during proposed change merge")
-            raise exc
-        finally:
-            if not merge_succeeded:
-                await _proposed_change_transition_state(
-                    proposed_change=proposed_change,
-                    state=ProposedChangeState.OPEN,
-                    database=db,
-                    user_id=context.account.account_id,
-                )
+        merge_failure = await _merge_branch_for_proposed_change(
+            db=db,
+            proposed_change=proposed_change,
+            source_branch=source_branch,
+            context=context,
+        )
+        if merge_failure is not None:
+            return merge_failure
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
@@ -341,6 +401,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
 async def run_generators(model: RequestProposedChangeRunGenerators, context: InfrahubContext) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
+    log = get_run_logger()
     client = get_client()
 
     generators = await client.filters(
@@ -357,6 +418,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             class_name=generator.class_name.value,
             file_path=generator.file_path.value,
             query_name=generator.query.peer.name.value,
+            query_id=generator.query.peer.id,
             query_models=generator.query.peer.models.value,
             query_payload=generator.query.peer.query.value,
             repository_id=generator.repository.peer.id,
@@ -365,6 +427,8 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             convert_query_response=generator.convert_query_response.value,
             execute_in_proposed_change=generator.execute_in_proposed_change.value,
             execute_after_merge=generator.execute_after_merge.value,
+            dependencies=generator.dependencies.value,
+            dependencies_complete=generator.dependencies_complete.value,
         )
         for generator in generators
         if generator.execute_in_proposed_change.value
@@ -374,18 +438,35 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for generator_definition in generator_definitions:
-        # Request generator definitions if the source branch that is managed in combination
-        # to the Git repository containing modifications which could indicate changes to the transforms
-        # in code
-        # Alternatively if the queries used touches models that have been modified in the path
-        # impacted artifact definitions will be included for consideration
-
+        # Select a generator definition when its query node or definition node was modified, when a
+        # file inside its stored dependency closure changed, or when the diff touches a data kind the
+        # query reads. The closure-based file gate replaces the previous "any file changed in a synced
+        # repository" heuristic so an unrelated commit no longer re-runs every generator.
         select = DefinitionSelect.NONE
-        select = select.add_flag(
-            current=select,
-            flag=DefinitionSelect.FILE_CHANGES,
-            condition=model.source_branch_sync_with_git and model.branch_diff.has_file_modifications,
+        for outcome, flag in (
+            (
+                _query_changed(definition=generator_definition, diff_summary=diff_summary),
+                DefinitionSelect.QUERY_CHANGED,
+            ),
+            (
+                _definition_changed(definition=generator_definition, diff_summary=diff_summary),
+                DefinitionSelect.DEFINITION_CHANGED,
+            ),
+        ):
+            select = select.add_flag(current=select, flag=flag, condition=outcome.matched)
+            if outcome.reason is not None:
+                log.info(outcome.reason)
+
+        repo_diff_for_definition = _repo_diff_or_none(
+            branch_diff=model.branch_diff, repository_id=generator_definition.repository_id
         )
+        if repo_diff_for_definition is not None:
+            transform_outcome = _transform_changed(definition=generator_definition, repo_diff=repo_diff_for_definition)
+            select = select.add_flag(
+                current=select, flag=DefinitionSelect.FILE_CHANGES, condition=transform_outcome.matched
+            )
+            if transform_outcome.reason is not None:
+                log.info(transform_outcome.reason)
 
         for changed_model in modified_kinds:
             select = select.add_flag(
@@ -459,12 +540,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         schema_path = f"schema/{kind}"
         database = await get_database()
         async with database.start_transaction() as db:
-            object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-                db=db,
-                validator_kind=InfrahubKind.SCHEMAVALIDATOR,
-                validator_label="Schema Integrity",
-                check_schema_kind=InfrahubKind.SCHEMACHECK,
-            )
+            object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
             await object_conflict_validator_recorder.record_conflicts(
                 proposed_change_id=model.proposed_change,
                 conflicts=[
@@ -504,30 +580,21 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         )
     )
 
-    # TODO we need to report a failure if an error happened during the execution of a validator
-    conflicts: list[SchemaConflict] = []
-    for response in responses:
-        for violation in response.violations:
-            conflicts.append(
-                SchemaConflict(
-                    name=response.schema_path.get_path(),
-                    type=response.constraint_name,
-                    kind=violation.node_kind,
-                    id=violation.node_id,
-                    path=response.schema_path.get_path(),
-                    value=violation.message,
-                    branch="placeholder",
-                )
-            )
-
+    component_registry = get_component_registry()
     database = await get_database()
-    async with database.start_transaction() as db:
-        object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-            db=db,
-            validator_kind=InfrahubKind.SCHEMAVALIDATOR,
-            validator_label="Schema Integrity",
-            check_schema_kind=InfrahubKind.SCHEMACHECK,
+    async with database.start_session() as db:
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
+        conflicted_fields = await gather_conflicted_fields(
+            diff_repository=diff_repository, branch_name=model.source_branch
         )
+
+    conflicts = build_merge_constraint_result(
+        responses=responses, conflicted_fields=conflicted_fields, branch="placeholder"
+    ).schema_conflicts
+
+    # TODO we need to report a failure if an error happened during the execution of a validator
+    async with database.start_transaction() as db:
+        object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
         await object_conflict_validator_recorder.record_conflicts(
             proposed_change_id=model.proposed_change, conflicts=conflicts
         )
@@ -545,13 +612,12 @@ async def _get_proposed_change_schema_integrity_constraints(
         field_summary = node_diff_field_summary_map[node_kind]
         for element in node_diff["elements"]:
             element_name = element["name"]
+            # The SDK diff summary reports element_type using the DiffElementType member name
+            # (e.g. "RELATIONSHIP_ONE"), not its value ("RelationshipOne").
             element_type = element["element_type"]
-            if element_type.lower() in (
-                DiffElementType.RELATIONSHIP_MANY.value.lower(),
-                DiffElementType.RELATIONSHIP_ONE.value.lower(),
-            ):
+            if element_type in (DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name):
                 field_summary.relationship_names.add(element_name)
-            elif element_type.lower() == DiffElementType.ATTRIBUTE.value.lower():
+            elif element_type == DiffElementType.ATTRIBUTE.name:
                 field_summary.attribute_names.add(element_name)
 
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)
@@ -1205,13 +1271,28 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     else:
         impacted_instances = impacted.ids
 
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+    repo_diff_for_definition = _repo_diff_or_none(
+        branch_diff=model.branch_diff, repository_id=model.generator_definition.repository_id
+    )
+    managed_branch = (
+        _query_changed(definition=model.generator_definition, diff_summary=diff_summary).matched
+        or _definition_changed(definition=model.generator_definition, diff_summary=diff_summary).matched
+        or (
+            repo_diff_for_definition is not None
+            and _transform_changed(definition=model.generator_definition, repo_diff=repo_diff_for_definition).matched
+        )
+    )
+    if managed_branch:
+        log.info("Query, definition or repository file change detected, all instances will be processed")
+
     check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
         member = relationship.peer
         generator_instance = instance_by_member.get(member.id)
         if _run_generator(
             instance_id=generator_instance,
-            managed_branch=model.source_branch_sync_with_git,
+            managed_branch=managed_branch,
             impacted_instances=impacted_instances,
         ):
             requested_instances += 1
@@ -1298,8 +1379,32 @@ class PredicateOutcome:
     reason: str | None = None
 
 
+class RegenerationDefinition(Protocol):
+    """The fields and diagnostic nouns the regeneration predicates read off a definition.
+
+    Both the artifact-definition and generator-definition pipeline models satisfy this
+    structurally, so the same predicates evaluate either kind without branching on type.
+    ``source_noun`` / ``instance_noun`` carry the kind-correct wording into the reason
+    strings (``transform`` / ``artifacts`` versus ``generator source`` / ``instances``).
+    Declare only what the predicates read.
+    """
+
+    definition_id: str
+    definition_name: str
+    query_id: str
+    query_name: str
+    dependencies: list[str] | None
+    dependencies_complete: bool | None
+
+    @property
+    def source_noun(self) -> str: ...
+
+    @property
+    def instance_noun(self) -> str: ...
+
+
 def _query_changed(
-    definition: ProposedChangeArtifactDefinition,
+    definition: RegenerationDefinition,
     diff_summary: list[NodeDiff],
 ) -> PredicateOutcome:
     """Match when the definition's GraphQL query node is modified in the diff.
@@ -1325,22 +1430,22 @@ def _query_changed(
         reason=(
             f"Definition {definition.definition_name} ({definition.definition_id}): "
             f"GraphQL query {definition.query_name} ({definition.query_id}) was modified - "
-            f"all artifacts of this definition will regenerate."
+            f"all {definition.instance_noun} of this definition will regenerate."
         ),
     )
 
 
 def _definition_changed(
-    definition: ProposedChangeArtifactDefinition,
+    definition: RegenerationDefinition,
     diff_summary: list[NodeDiff],
 ) -> PredicateOutcome:
-    """Match when the ``CoreArtifactDefinition`` node itself is modified in the diff.
+    """Match when the definition node itself is modified in the diff.
 
-    Any attribute change or relationship repoint (``targets``, ``transformation``,
-    ``query``) on the definition surfaces as a modification of the definition's own
-    node id, so a single id-based check covers every shape of definition-level
-    change uniformly. The reason names the changed attributes or relationships read
-    from the matching entry's per-field detail.
+    Any attribute change or relationship repoint (e.g. ``targets``, ``query``, and for
+    artifact definitions ``transformation``) on the definition surfaces as a modification
+    of the definition's own node id, so a single id-based check covers every shape of
+    definition-level change uniformly. The reason names the changed attributes or
+    relationships read from the matching entry's per-field detail.
 
     Entries with ``action=unchanged`` are ignored because the diff system enriches
     the tree with parent context nodes that are not themselves modified, and entries
@@ -1366,16 +1471,16 @@ def _definition_changed(
         matched=True,
         reason=(
             f"Definition {definition.definition_name} ({definition.definition_id}): {detail} - "
-            f"all artifacts of this definition will regenerate."
+            f"all {definition.instance_noun} of this definition will regenerate."
         ),
     )
 
 
 def _transform_changed(
-    definition: ProposedChangeArtifactDefinition,
+    definition: RegenerationDefinition,
     repo_diff: ProposedChangeRepository,
 ) -> PredicateOutcome:
-    """Match when the transform's stored dependency closure intersects this repo's file diff.
+    """Match when the definition's stored dependency closure intersects this repo's file diff.
 
     Falls back to "any file changed in the repository" when the closure cannot
     be trusted. On the precise path, both sides are canonicalized before the
@@ -1390,9 +1495,9 @@ def _transform_changed(
     """
     if definition.dependencies is None:
         legacy_reason = (
-            f"Definition {definition.definition_name}: transform was imported before this feature deployed "
-            f"(dependencies=null) - falling back to regenerate-on-any-file-change. The next re-import of this "
-            f"transform will populate its dependency closure."
+            f"Definition {definition.definition_name}: {definition.source_noun} was imported before this feature "
+            f"deployed (dependencies=null) - falling back to regenerate-on-any-file-change. The next re-import of "
+            f"this {definition.source_noun} will populate its dependency closure."
         )
         return PredicateOutcome(
             matched=repo_diff.has_modifications,
@@ -1401,7 +1506,7 @@ def _transform_changed(
 
     if definition.dependencies_complete is not True:
         incomplete_reason = (
-            f"Definition {definition.definition_name}: transform dependency closure is incomplete "
+            f"Definition {definition.definition_name}: {definition.source_noun} dependency closure is incomplete "
             f"(dependencies_complete=False) - falling back to regenerate-on-any-file-change."
         )
         return PredicateOutcome(
@@ -1428,8 +1533,8 @@ def _transform_changed(
     return PredicateOutcome(
         matched=True,
         reason=(
-            f"Definition {definition.definition_name}: file {files} changed and is in this transform's "
-            f"dependency closure - all artifacts will regenerate."
+            f"Definition {definition.definition_name}: file {files} changed and is in this "
+            f"{definition.source_noun}'s dependency closure - all {definition.instance_noun} will regenerate."
         ),
     )
 

@@ -493,6 +493,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
+        { type: 'doc', id: 'development-resources/testcontainers', label: 'Integration testing with Testcontainers' },
         {
           type: 'category',
           label: 'APIs & interfaces',
@@ -665,6 +666,9 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 { type: 'doc', id: 'release-notes/infrahub/docs-restructure', label: 'Documentation restructure' },
+                'release-notes/infrahub/release-1_10_2',
+                'release-notes/infrahub/release-1_10_1',
+                'release-notes/infrahub/release-1_10_0',
                 'release-notes/infrahub/release-1_9_9',
                 'release-notes/infrahub/release-1_9_8',
                 'release-notes/infrahub/release-1_9_7',

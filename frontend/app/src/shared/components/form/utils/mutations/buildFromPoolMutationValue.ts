@@ -1,4 +1,4 @@
-import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 
 /**
  * Build the `from_pool` payload for a pending pool allocation, keeping only the fields

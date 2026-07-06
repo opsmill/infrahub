@@ -29,6 +29,8 @@ Buildkite
 cAdvisor
 Ceph
 changelog
+conftest
+Conftest
 check_color_tags_name
 check_definitions
 class_name
@@ -57,6 +59,7 @@ datetime
 default_branch
 default_filter
 Delinea
+Dependabot
 dev
 Diataxis
 direnv
@@ -86,6 +89,7 @@ Graphql
 GraphQL
 GraphQL's
 grpc
+Gunicorn
 HAProxy
 hardcoding
 hfid
@@ -128,6 +132,7 @@ livestream
 loopback
 Loopback
 Loopbacks
+loopless
 markdownlint
 Markdownlint
 max_concurrent_queries
@@ -168,9 +173,12 @@ overridable
 parameterized
 partial_match
 passthrough
+breakpoint
+pdb
 performant
 pluggable
 pnpm
+post-mortem
 pre
 prebuilt
 precomputed
@@ -203,6 +211,7 @@ reusability
 rollout
 Schema
 schema_mapping
+stdin
 schema's
 scrollbar
 SDK
@@ -227,6 +236,8 @@ supernet
 template_path
 templated
 Terraform
+testcontainers
+Testcontainers
 Toml
 TOML
 toolchain

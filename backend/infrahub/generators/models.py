@@ -73,6 +73,23 @@ class GeneratorDefinitionModel(BaseModel):
 
 
 class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
+    query_id: str = Field(..., description="The id of the query to use when collecting data.")
     query_models: list[str] = Field(..., description="The models to use when collecting data.")
     query_payload: str = Field(..., description="The GraphQL query string used to collect data.")
     repository_id: str = Field(..., description="The id of the repository.")
+    dependencies: list[str] | None = Field(
+        default=None,
+        description="Canonical repo-relative paths this generator reads from. None means not yet computed.",
+    )
+    dependencies_complete: bool | None = Field(
+        default=None,
+        description="True when the dependency list is fully resolved. False when partial. None when not yet computed.",
+    )
+
+    @property
+    def source_noun(self) -> str:
+        return "generator source"
+
+    @property
+    def instance_noun(self) -> str:
+        return "instances"

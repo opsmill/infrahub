@@ -2,7 +2,10 @@ import { Row } from "@/shared/components/container";
 import { focusWithinStyle, inputErrorStyle, inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { MAX_PREFIX_LENGTH, MIN_PREFIX_LENGTH } from "@/entities/resource-manager/constants";
+import {
+  MAX_PREFIX_LENGTH,
+  MIN_PREFIX_LENGTH,
+} from "@/entities/resource-manager/domain/model/pool";
 
 export interface PoolPrefixLengthInputProps {
   value: number | null | undefined;

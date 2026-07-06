@@ -5,7 +5,7 @@ import type { QueryConfig } from "@/shared/api/types";
 import {
   type GetPoolUtilizationParams,
   getPoolUtilization,
-} from "@/entities/resource-manager/domain/get-pool-utilization";
+} from "@/entities/resource-manager/domain/use-cases/get-pool-utilization";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 
 export function getPoolUtilizationQueryOptions(params: GetPoolUtilizationParams) {

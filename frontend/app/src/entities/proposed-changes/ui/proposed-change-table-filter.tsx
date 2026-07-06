@@ -4,13 +4,17 @@ import { useState } from "react";
 
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
-import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
+import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {

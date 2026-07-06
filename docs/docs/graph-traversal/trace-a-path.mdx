@@ -2,8 +2,9 @@
 title: Trace a path
 ---
 
-Use Path mode to find every path between two objects in your infrastructure graph.
-Results are ordered shortest first, with the hop count for each route.
+Use Path mode to find the paths between two objects in your infrastructure graph.
+By default it returns the shortest path through each intermediate object, ordered shortest first
+with the hop count for each route.
 
 ## Prerequisites
 
@@ -25,6 +26,8 @@ From the left navigation, open **Object Management** and select **Path Traversal
    - **Max Paths** — maximum paths to return (default: 10, max: 100).
    - **Kinds to include** — limit traversal to objects of these kinds only.
    - **Kinds to exclude** — skip objects of these kinds during traversal.
+   - **Shortest paths only** — when selected (default), returns only the shortest path through each
+     intermediate object. Clear it to return all loopless paths within the max depth.
 5. Select **Find Paths**.
 
 ## Read the results
@@ -33,6 +36,10 @@ From the left navigation, open **Object Management** and select **Path Traversal
 
 The sidebar shows the number of paths found. Each path includes its hop count and the sequence of
 objects from source to destination.
+
+If the search runs out of time before exploring the whole graph, the sidebar shows a warning with
+the depth at which it stopped. Paths shorter than that depth are complete, but longer ones may be
+missing — narrow the search with **Kinds to include** or **Kinds to exclude** to reach deeper.
 
 Select a path to highlight it in the graph. To explore from the graph:
 
@@ -58,8 +65,9 @@ opens with that object pre-selected as the source.
 **No paths found** — the two objects may not be connected within the current max depth. Try
 increasing Max Depth, or check that neither object kind is excluded.
 
-**Query timed out** — reduce Max Depth or Max Paths, or use **Kinds to exclude** to narrow the
-search space.
+**Search stopped early** — if the search runs out of time, it returns the paths found so far and
+warns about the depth at which it stopped, rather than failing. Reduce Max Depth or Max Paths, or
+use **Kinds to include**/**Kinds to exclude** to narrow the search space and reach deeper paths.
 
 **Source and destination must be different** — select two distinct objects.
 

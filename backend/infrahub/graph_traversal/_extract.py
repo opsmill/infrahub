@@ -42,3 +42,24 @@ def extract_path_from_result(result: QueryResult) -> PathData | None:
         for row in hop_rows
     ]
     return PathData(start_node=start_node, hops=hops, depth=depth)
+
+
+def extract_half_path_from_result(result: QueryResult) -> tuple[str, list[PathHopData]] | None:
+    """Build one half-path from a row of the exhaustive half-enumeration projection.
+
+    Returns ``(mid_uuid, hops)`` where ``mid_uuid`` is the half's free endpoint (left half) or
+    start (right half) and ``hops`` runs outward from the fixed anchor. Returns ``None`` when the
+    row carries no middle uuid.
+    """
+    mid_uuid = result.get_as_str(label="mid_uuid")
+    if not mid_uuid:
+        return None
+    hop_rows = result.get_as_list_of_type(label="hops", return_type=_HopRow)
+    hops = [
+        PathHopData(
+            node=PathNodeData(uuid=row["uuid"], kind=row["kind"]),
+            relationship_identifier=row["relationship_identifier"],
+        )
+        for row in hop_rows
+    ]
+    return mid_uuid, hops

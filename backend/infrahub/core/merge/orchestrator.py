@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
     from infrahub.core.diff.repository.repository import DiffRepository
+    from infrahub.core.models import SchemaDiff
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
     from infrahub.database import InfrahubDatabase
@@ -74,6 +75,8 @@ class BranchMergeOrchestrator:
         merge_at = Timestamp()
         pre_merge_schema = registry.schema.get_schema_branch(name=self.destination_branch.name).duplicate()
         pre_merge_branched_from = self.source_branch.branched_from
+        schema_diff: SchemaDiff | None = None
+        schema_updated_hash: str | None = None
 
         try:
             # Publish the shared write-protection key before any graph write so every worker rejects
@@ -104,6 +107,9 @@ class BranchMergeOrchestrator:
                 candidate_schema = await self.schema_manager.load_schema_from_db(
                     db=self.db, branch=self.destination_branch
                 )
+                # Scope for the post-merge derived-value refresh: what the merge changed on the destination.
+                schema_diff = pre_merge_schema.diff(other=candidate_schema)
+                schema_updated_hash = candidate_schema.get_hash()
                 migrations = await self.schema_analyzer.calculate_migrations(target_schema=candidate_schema)
                 await self.schema_update_coordinator.execute(
                     branch=self.destination_branch,
@@ -166,4 +172,6 @@ class BranchMergeOrchestrator:
             proposed_change_id=proposed_change_id,
             node_events=node_events,
             context=context,
+            schema_diff=schema_diff,
+            schema_hash=schema_updated_hash,
         )

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout SDK repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: opsmill/infrahub-sdk-python
           ref: stable

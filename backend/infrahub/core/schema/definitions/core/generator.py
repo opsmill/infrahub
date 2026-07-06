@@ -54,6 +54,24 @@ core_generator_definition = NodeSchema(
             optional=True,
             default_value=True,
         ),
+        Attr(
+            name="fingerprint",
+            kind="Text",
+            description="Content hash of the definition's inputs, recomputed on each import",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies",
+            kind="List",
+            description="Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate.",
+            optional=True,
+        ),
+        Attr(
+            name="dependencies_complete",
+            kind="Boolean",
+            description="True when the dependency closure can be trusted. False when auto-detection found unresolved references.",
+            optional=True,
+        ),
     ],
     relationships=[
         Rel(

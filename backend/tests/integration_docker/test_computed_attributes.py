@@ -418,17 +418,23 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         assert branch_after > branch_before
         assert main_after == main_before
 
-    async def test_merge_does_not_trigger_schema_scoped_recompute(
-        self, client: InfrahubClient, schema_computed_tshirt: dict
-    ) -> None:
-        """Merging a branch's schema change does not run this feature's schema-scoped recompute.
+    async def test_merge_triggers_scoped_recompute(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:
+        """Merging a branch's computed-attribute template change recomputes the affected attribute on main.
 
-        Merge and rebase emit branch and node events, not a schema-update event, so the
-        computed-attribute setup flow is not triggered on merge. A schema-only change applied by a
-        merge (no object-data change) therefore does not recompute on the target branch; merged
-        data changes are recomputed by the separate data-change path. This characterizes the
-        boundary and confirms a merge never broadens recompute onto the default branch.
+        The merge applies the new schema to the default branch and emits a scoped schema-update event, so
+        the computed-attribute setup refreshes the changed attribute on main-only nodes instead of leaving
+        them stale until their next mutation. The assertion pins the content of the dispatched recompute by
+        checking the refreshed value, not just that some recompute task ran.
         """
+        # A main-only TestingTShirt rendered by the computed-attribute template; it is absent from the
+        # merge data diff, so only the schema-scoped refresh can update its stored description.
+        color = await client.create(kind="TestingColor", data={"name": "Scoped", "description": "scoped"})
+        await color.save()
+        tshirt = await client.create(kind="TestingTShirt", data={"name": "ScopedMerge", "color": color})
+        await tshirt.save()
+        expected = "Merged template: ScopedMerge"
+        assert (await client.get(kind="TestingTShirt", id=tshirt.id)).description.value != expected
+
         branch = await client.branch.create(branch_name="merge-scope")
 
         # Schema-only change on the branch (a Jinja2 template edit); no object data is touched.
@@ -447,11 +453,19 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         merged = await client.branch.merge(branch_name=branch.name)
         assert merged
 
-        # Give any merge-driven work time to surface, then confirm no schema-scoped recompute ran.
-        await sleep(2)
-        await wait_for_all_tasks_to_be_completed(client)
+        # The merge-driven backfill is asynchronous; poll until the main-only node refreshes to the merged
+        # template's output, which pins both that a recompute was dispatched and the value it produced.
+        description = ""
+        deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            description = (await client.get(kind="TestingTShirt", id=tshirt.id)).description.value
+            if description == expected:
+                break
+
+        assert description == expected
         main_after = await client.task.count(
             filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
         )
-
-        assert main_after == main_before
+        assert main_after > main_before

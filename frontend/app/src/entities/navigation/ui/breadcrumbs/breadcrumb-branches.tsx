@@ -15,7 +15,7 @@ import { useParams } from "react-router";
 import { constructPath } from "@/shared/api/rest/fetch";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import { getBranchDetailsUrl } from "@/entities/branches/utils";
+import { getBranchDetailsUrl } from "@/entities/branches/ui/routing/branch-urls";
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
 
 export function BreadcrumbBranches() {

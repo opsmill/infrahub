@@ -1,6 +1,6 @@
 import { useRequiredParams } from "@/shared/hooks/use-required-params";
 
-import { useObjectDetailsOutlet } from "@/entities/nodes/object/ui/object-details/use-object-details-outlet";
+import { useObjectDetailsOutlet } from "@/entities/nodes/object/ui/routing/use-object-details-outlet";
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 
 export function Component() {

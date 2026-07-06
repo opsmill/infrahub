@@ -8,19 +8,21 @@ import {
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
 import type { PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 
 export interface ProposedChangesFromApiParams extends PaginationParams {
   schema: ModelSchema;
   filters?: Array<Filter>;
-  getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
-  getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
+  getAttributesVisible: (attributes: AttributeSchema[]) => AttributeSchema[];
+  getRelationshipsVisible: (relationships: RelationshipSchema[]) => RelationshipSchema[];
 }
 
 export const getProposedChangesFromApi = async ({
@@ -28,8 +30,8 @@ export const getProposedChangesFromApi = async ({
   limit = DEFAULT_PAGE_SIZE,
   offset,
   filters,
-  getAttributesVisible = getAttributesVisibleInListView,
-  getRelationshipsVisible = getRelationshipsVisibleInListView,
+  getAttributesVisible,
+  getRelationshipsVisible,
 }: ProposedChangesFromApiParams) => {
   const attributesVisible = getAttributesVisible(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? []);

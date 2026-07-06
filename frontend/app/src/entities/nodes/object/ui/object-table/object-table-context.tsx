@@ -2,14 +2,14 @@ import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
 import { QSP } from "@/shared/config/qsp";
-import { type Filter, FilterSchema } from "@/shared/hooks/useFilters";
 import { uniqueItemsArray } from "@/shared/utils/array";
 
-import type { Permission } from "@/entities/permission/types";
+import { type Filter, FilterSchema } from "@/entities/nodes/filters/domain/model/filter";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export type ObjectTableContextProps = {
   filters: Filter[];

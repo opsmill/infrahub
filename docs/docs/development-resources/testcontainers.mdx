@@ -1,0 +1,266 @@
+---
+title: Integration testing with Testcontainers
+---
+
+# Integration testing with Testcontainers
+
+The `infrahub-testcontainers` package starts a complete Infrahub stack in Docker during your test session. Use it to write integration tests that validate schemas, SDK usage, or GraphQL queries against a live Infrahub instance.
+
+:::info Testcontainers vs. the built-in testing framework
+
+Infrahub ships with a [built-in testing framework](../testing-framework/overview.mdx) for validating Transformations, Checks, and other resources defined in a connected Git repository.
+
+`infrahub-testcontainers` serves a different purpose: it provisions a full Infrahub instance on demand so that external code — custom integrations, schemas under development, or SDK scripts — can be tested without maintaining a persistent environment.
+
+:::
+
+## Prerequisites
+
+- Docker Engine installed and running
+- Python 3.10 or later
+- At least 4 GB of available RAM (Neo4j requires significant memory to start)
+- Sufficient disk space for the Docker images (approximately 2 GB on first pull)
+
+## Installation
+
+Install both `infrahub-testcontainers` and the Python SDK. The SDK provides the `TestInfrahubDockerClient` base class used in all examples below.
+
+```bash
+pip install infrahub-testcontainers infrahub-sdk
+```
+
+Or with `uv`:
+
+```bash
+uv add infrahub-testcontainers infrahub-sdk
+```
+
+## Quick start
+
+`TestInfrahubDockerClient` (from `infrahub_sdk.testing.docker`) extends `TestInfrahubDocker` with pre-configured `client` (async) and `client_sync` (sync) fixtures that point at the running stack.
+
+The example below covers the three steps that appear in almost every project: load a schema, populate initial data, and connect a Git repository.
+
+```python
+from pathlib import Path
+from typing import Any
+
+import pytest
+from infrahub_sdk import InfrahubClient, InfrahubClientSync
+from infrahub_sdk.protocols import CoreGenericRepository
+from infrahub_sdk.testing.docker import TestInfrahubDockerClient
+from infrahub_sdk.testing.repository import GitRepo
+from infrahub_sdk.yaml import SchemaFile
+
+
+class TestMyProject(TestInfrahubDockerClient):
+
+    def test_schema_load(
+        self,
+        client_sync: InfrahubClientSync,
+        schema_dir: Path,
+        default_branch: str,
+    ) -> None:
+        schema_files = SchemaFile.load_from_disk(paths=[schema_dir])
+        schemas = [f.content for f in schema_files if f.content]
+
+        client_sync.schema.load(schemas=schemas)
+        client_sync.schema.wait_until_converged(branch=default_branch)
+
+    async def test_data_load(self, client: InfrahubClient, default_branch: str) -> None:
+        tag = await client.create(kind="BuiltinTag", name="production")
+        await tag.save()
+
+        tags = await client.all(kind="BuiltinTag")
+        assert len(tags) == 1
+
+    async def test_load_repository(
+        self,
+        client: InfrahubClient,
+        root_dir: Path,
+        remote_repos_dir: Path,
+    ) -> None:
+        repo = GitRepo(
+            name="my-project",
+            src_directory=root_dir,
+            dst_directory=remote_repos_dir,
+        )
+        await repo.add_to_infrahub(client=client)
+        in_sync = await repo.wait_for_sync_to_complete(client=client, interval=10, retries=30)
+        assert in_sync
+
+        repos = await client.all(kind=CoreGenericRepository)
+        assert repos
+```
+
+Run the tests with:
+
+```bash
+pytest tests/
+```
+
+The `infrahub_app` fixture starts the full stack — Infrahub server, Neo4j, RabbitMQ, Redis, Prefect task manager, and task workers — before any test in the class runs. After the last test completes, the stack is stopped and containers are removed. If startup fails, the container logs are printed automatically.
+
+## Conftest setup
+
+The `root_dir`, `schema_dir`, and `data_dir` fixtures used in the examples above are not provided by the library — define them in `conftest.py` for your project:
+
+```python
+# tests/conftest.py
+from pathlib import Path
+from typing import Any
+
+import pytest
+from infrahub_sdk.yaml import SchemaFile
+
+@pytest.fixture(scope="session")
+def root_dir() -> Path:
+    return Path(__file__).parent.parent
+
+@pytest.fixture(scope="session")
+def schema_dir(root_dir: Path) -> Path:
+    return root_dir / "schemas"
+
+@pytest.fixture(scope="session")
+def data_dir(root_dir: Path) -> Path:
+    return root_dir / "data"
+```
+
+## Available fixtures
+
+`TestInfrahubDockerClient` provides all fixtures from `TestInfrahubDocker`, plus two SDK client fixtures:
+
+| Fixture | Type | Description |
+|---|---|---|
+| `client` | `InfrahubClient` | Async SDK client pointed at the running stack |
+| `client_sync` | `InfrahubClientSync` | Sync SDK client pointed at the running stack |
+| `infrahub_app` | `dict[str, int]` | Starts the stack; yields a mapping of service name to host port |
+| `infrahub_port` | `int` | Host port for the Infrahub API server |
+| `task_manager_port` | `int` | Host port for the Prefect task manager |
+| `tmp_directory` | `Path` | Temporary directory shared across the test class |
+| `remote_repos_dir` | `Path` | Subdirectory used for local Git repositories |
+| `default_branch` | `str` | Returns `"main"` — override in your class to change it |
+
+`client` and `client_sync` authenticate with username `admin` and password `infrahub`.
+
+:::tip Using TestInfrahubDocker directly
+
+`TestInfrahubDockerClient` is the recommended starting point for most projects. Use `TestInfrahubDocker` directly only when you need a different authentication mechanism or want to instantiate the SDK client yourself.
+
+:::
+
+## Configuration
+
+The following environment variables control the test stack:
+
+| Variable | Default | Description |
+|---|---|---|
+| `INFRAHUB_TESTING_IMAGE_VER` | Package version | Docker image tag to pull and run |
+| `INFRAHUB_TESTING_DOCKER_IMAGE` | `registry.opsmill.io/opsmill/infrahub` | Docker image to use |
+| `INFRAHUB_TESTING_ENTERPRISE` | — | Set to any value to switch to the enterprise image |
+| `INFRAHUB_TESTING_DOCKER_PULL` | `true` | Set to `false` to skip image pulls (useful with locally built images) |
+| `INFRAHUB_TESTING_SCHEMA_STRICT_MODE` | `true` | Reject schemas that contain unknown or invalid fields |
+| `INFRAHUB_TESTING_WEB_CONCURRENCY` | `4` | Number of Gunicorn worker processes for the API server |
+| `INFRAHUB_TESTING_API_SERVER_COUNT` | `2` | Number of API server replicas |
+| `INFRAHUB_TESTING_TASK_WORKER_COUNT` | `2` | Number of task worker replicas |
+
+The full set of variables and their defaults is defined in `infrahub_testcontainers.container.PROJECT_ENV_VARIABLES`.
+
+## Deployment types
+
+By default, the stack starts a single-node Infrahub instance. To test against a Neo4j cluster topology, pass `--deployment-type cluster` to pytest:
+
+```bash
+pytest tests/ --deployment-type cluster
+```
+
+Cluster mode requires Neo4j Enterprise edition. Set `INFRAHUB_TESTING_ENTERPRISE=1` before running.
+
+## Pausing a test to inspect the running instance
+
+When debugging a failing test, it can help to pause execution mid-run and inspect the live Infrahub instance directly — via the UI, the SDK, or `infrahubctl`.
+
+Add a `breakpoint()` call at the point in your test where you want to pause:
+
+```python
+async def test_load_repository(self, client: InfrahubClient, ...) -> None:
+    repo = GitRepo(...)
+    await repo.add_to_infrahub(client=client)
+
+    breakpoint()  # execution pauses here; containers stay up
+
+    in_sync = await repo.wait_for_sync_to_complete(client=client)
+    assert in_sync
+```
+
+Run pytest with `-s` to keep stdin attached (required for the interactive prompt):
+
+```bash
+pytest tests/ -s
+```
+
+When the breakpoint is hit, pytest drops into a Python debugger (pdb). While paused, the Infrahub containers are still running. You can find the port from the `infrahub_port` fixture value printed in the test output, or look it up in the pdb session:
+
+```python
+(Pdb) print(infrahub_port)
+52341
+```
+
+Open `http://localhost:<port>` in a browser to access the Infrahub UI, or point `infrahubctl` at it:
+
+```bash
+INFRAHUB_ADDRESS=http://localhost:52341 infrahubctl schema list
+```
+
+Type `c` (continue) in the pdb prompt to resume the test and let the containers shut down normally.
+
+:::tip Keeping containers up after a test failure
+
+If the test fails before reaching a breakpoint, the `infrahub_app` fixture still tears down the containers. To keep them running after a failure for post-mortem inspection, override the fixture in your test class:
+
+```python
+@pytest.fixture(scope="class")
+def infrahub_app(self, request, infrahub_compose):
+    infrahub_compose.start()
+    yield infrahub_compose.get_services_port()
+    # containers are NOT stopped — remember to clean up manually
+```
+
+Remove this override once you're done debugging.
+
+:::
+
+## Running in CI
+
+`TestInfrahubDockerClient` works in any CI environment that can run Docker. The example below shows a GitHub Actions job:
+
+```yaml
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install infrahub-testcontainers infrahub-sdk pytest pytest-asyncio
+      - run: pytest tests/
+        env:
+          INFRAHUB_TESTING_IMAGE_VER: "1.9.0"
+```
+
+:::tip Resource-constrained runners
+
+On runners with limited RAM (the free GitHub-hosted runners have 7 GB), set `INFRAHUB_TESTING_WEB_CONCURRENCY=2` and `INFRAHUB_TESTING_API_SERVER_COUNT=1` to reduce memory pressure.
+
+:::
+
+## Real-world examples
+
+The following public repositories show complete integration test setups:
+
+| Repository | What it demonstrates |
+|---|---|
+| [infrahub-demo-dc — test\_workflow.py](https://github.com/opsmill/infrahub-demo-dc/blob/main/tests/integration/test_workflow.py) | End-to-end DC workflow: schema load, bootstrap data, repository import, branch creation, Generator run, proposed change, and merge |
+| [infrahub-demo-service-catalog — test\_create\_service.py](https://github.com/opsmill/infrahub-demo-service-catalog/blob/main/tests/integration/test_create_service.py) | Schema and data load using `ObjectFile`, repository import, and a Streamlit portal test |
+| [devnet-live-2025 — test\_end2end.py](https://github.com/opsmill/devnet-live-2025/blob/main/tests/integration/test_end2end.py) | Schema load from YAML files, data population, and repository sync |

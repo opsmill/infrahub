@@ -22,8 +22,8 @@ import {
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/shared/config/config";
 
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
 import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";

@@ -1,17 +1,18 @@
 import { useState } from "react";
 
-import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { FormField } from "@/shared/components/ui/form";
-import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getCurrentFilterCondition } from "@/entities/nodes/filters/ui/get-current-filter-condition";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import {
   FILTER_CONDITION,
   type FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import type { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
+import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export interface RelationshipFilterFormProps {
   relationshipSchema: RelationshipSchema;

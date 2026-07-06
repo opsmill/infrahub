@@ -1,5 +1,12 @@
-from pathlib import Path
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub.core.diff.model.diff import SchemaConflict
+    from infrahub.core.validators.model import SchemaViolation
 
 
 class Error(Exception):
@@ -373,7 +380,11 @@ class DiffError(Error):
         self.message = message
 
 
-class HFIDViolatedError(ValidationError):
+class UniquenessViolationError(ValidationError):
+    """Raised when a node's uniqueness constraint is violated."""
+
+
+class HFIDViolatedError(UniquenessViolationError):
     matching_nodes_ids: set[str]
 
     def __init__(self, input_value: str | dict | list, matching_nodes_ids: set[str]) -> None:
@@ -410,6 +421,26 @@ class MergeFailedError(Error):
     def __init__(self, branch_name: str) -> None:
         self.message = f"Failed to merge branch '{branch_name}'"
         super().__init__(self.message)
+
+
+class MergeConstraintsViolatedError(ValidationError):
+    """Raised when merging a branch would violate a schema/data constraint on the destination."""
+
+    def __init__(self, violations: list[SchemaViolation], schema_conflicts: list[SchemaConflict]) -> None:
+        self.violations = violations
+        self.schema_conflicts = schema_conflicts
+        super().__init__(",\n".join(violation.message for violation in violations) or "Merge constraints violated")
+
+
+class MergeConflictsUnresolvedError(ValidationError):
+    """Raised when a branch cannot be merged because conflicts with the destination are unresolved."""
+
+    def __init__(self, conflict_paths: list[str], branch_name: str) -> None:
+        self.conflict_paths = conflict_paths
+        self.branch_name = branch_name
+        super().__init__(
+            f"Unable to merge the branch '{branch_name}', conflict resolution missing: {', '.join(conflict_paths)}"
+        )
 
 
 class BranchStatusError(Error):

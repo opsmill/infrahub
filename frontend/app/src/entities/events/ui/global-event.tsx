@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Link } from "@/shared/components/ui/link";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
-import type { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/domain/model/event";
 import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/account-logged-in-event-title";
 import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
@@ -15,7 +15,7 @@ import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-t
 import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
 import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
 import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
-import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/domain/model/proposed-change-events";
 
 const GlobalEventDisplay = (props: EventType) => {
   if ("attributes" in props) {

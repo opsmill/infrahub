@@ -1,7 +1,7 @@
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 
-import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export const BRANCH_FIELD_SCHEMAS = {
   name: {

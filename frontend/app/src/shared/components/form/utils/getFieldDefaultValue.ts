@@ -15,16 +15,16 @@ import type {
 import { makePoolSource } from "@/shared/components/form/utils/make-pool-source";
 
 import type { FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
   NodeAttributeWithMetadata,
   NodeCore,
   NodeObject,
   NodeRelationshipOneWithMetadata,
-} from "@/entities/nodes/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
-import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isPoolSchema } from "@/entities/schema/domain/rules/is-pool-schema";
+import { isTemplateSchema } from "@/entities/schema/domain/rules/is-template-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;

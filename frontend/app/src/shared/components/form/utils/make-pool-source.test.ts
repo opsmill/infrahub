@@ -6,7 +6,7 @@ import {
   IP_ADDRESS_POOL,
   IP_PREFIX_POOL,
   NUMBER_POOL_KIND,
-} from "@/entities/resource-manager/constants";
+} from "@/entities/resource-manager/domain/model/pool";
 
 describe("makePoolSource", () => {
   it("builds an IP address pool source carrying the default prefix length", () => {

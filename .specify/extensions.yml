@@ -1,6 +1,10 @@
 installed:
+- agent-context
+- critique
 - id: infrahub
   path: .specify/extensions/infrahub
+- opsmill
+- review
 settings:
   auto_execute_hooks: true
 hooks:
@@ -92,6 +96,14 @@ hooks:
     prompt: Commit specification changes?
     description: Auto-commit after specification
     condition: null
+  - extension: agent-context
+    command: speckit.agent-context.update
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Execute speckit.agent-context.update?
+    description: Refresh agent context after specification
+    condition: null
   after_clarify:
   - extension: git
     command: speckit.git.commit
@@ -108,6 +120,22 @@ hooks:
     prompt: Commit plan changes?
     description: Auto-commit after implementation planning
     condition: null
+  - extension: agent-context
+    command: speckit.agent-context.update
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Execute speckit.agent-context.update?
+    description: Refresh agent context after planning
+    condition: null
+  - extension: critique
+    command: speckit.critique.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Run spec critique before proceeding to tasks?
+    description: Challenges the spec and plan through product and engineering lenses
+    condition: null
   after_tasks:
   - extension: git
     command: speckit.git.commit
@@ -123,6 +151,14 @@ hooks:
     optional: true
     prompt: Commit implementation changes?
     description: Auto-commit after implementation
+    condition: null
+  - extension: review
+    command: speckit.review.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Run PR review on implemented changes?
+    description: Comprehensive review after implementation
     condition: null
   after_checklist:
   - extension: git
@@ -147,4 +183,13 @@ hooks:
     optional: true
     prompt: Commit after syncing issues?
     description: Auto-commit after tasks-to-issues conversion
+    condition: null
+  - extension: opsmill
+    command: speckit.opsmill.summary
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Produce a session summary in the feature directory?
+    description: Flow-level timeline next to spec.md/plan.md, capturing the handoff
+      to the issue tracker.
     condition: null

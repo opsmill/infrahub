@@ -13,8 +13,8 @@ import {
   MAX_PREFIX_LENGTH,
   MIN_PREFIX_LENGTH,
   NUMBER_POOL_KIND,
-} from "@/entities/resource-manager/constants";
-import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
+} from "@/entities/resource-manager/domain/model/pool";
+import { validateNumberAttribute } from "@/entities/schema/domain/rules/validation/validate-number-attribute";
 
 // Pool default, injected into the relationship query (module-level for a stable cache key).
 const POOL_ADDITIONAL_FIELDS = { default_prefix_length: { value: true } };

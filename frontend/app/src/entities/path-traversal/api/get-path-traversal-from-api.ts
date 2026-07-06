@@ -6,7 +6,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type {
   GetPathTraversalParams,
   PathTraversalResponse,
-} from "@/entities/path-traversal/domain/path-traversal.types";
+} from "@/entities/path-traversal/domain/model/path-traversal";
 
 const nodeFields = {
   id: true,
@@ -39,6 +39,7 @@ export async function getPathTraversalFromApi(params: GetPathTraversalParams) {
     kindFilter,
     relationshipFilter,
     excludedKinds,
+    shortestPathsOnly,
     branchName,
     atDate,
   } = params;
@@ -52,6 +53,7 @@ export async function getPathTraversalFromApi(params: GetPathTraversalParams) {
   if (kindFilter?.length) dataArgs.kind_filter = kindFilter;
   if (relationshipFilter?.length) dataArgs.relationship_filter = relationshipFilter;
   if (excludedKinds?.length) dataArgs.excluded_kinds = excludedKinds;
+  if (shortestPathsOnly !== undefined) dataArgs.shortest_paths_only = shortestPathsOnly;
 
   const queryString = jsonToGraphQLQuery({
     query: {
@@ -62,6 +64,7 @@ export async function getPathTraversalFromApi(params: GetPathTraversalParams) {
         source: nodeFields,
         destination: nodeFields,
         count: true,
+        truncated_at_depth: true,
       },
     },
   });

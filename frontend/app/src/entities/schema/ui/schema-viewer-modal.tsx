@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { classNames } from "@/shared/utils/common";
 
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { SchemaViewer } from "@/entities/schema/ui/schema-viewer";
 
