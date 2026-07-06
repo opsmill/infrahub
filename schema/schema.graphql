@@ -7468,7 +7468,7 @@ input CoreWeightedPoolResourceUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""An enumeration."""
+"Semantic date-format keys (INFP-512).\n\n    The stored `date_format` preference is one of these keys, NOT a rendering pattern: each client\n    maps the key to its own formatter (the web app via date-fns). This Python enum is the single\n    source of truth — the GraphQL `DateFormat` enum is derived from it (graphql/types/preferences.py)\n    and the `Preference` model validates `date_format` against it, so the stored value is never an\n    arbitrary string.\n\n    The set is deliberately limited to formats that render identically on every client (no locale\n    library, no relative mode); see dev/specs/2026-04-user-preferences.md. Member name == value so\n    the GraphQL enum literal, the stored string, and the frontend key all coincide.\n    "
 enum DateFormat {
   EU_DATETIME
   ISO_8601
@@ -8261,6 +8261,32 @@ type EdgedProfileIpamNamespace {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""
+An effective `date_format` value and the source it was resolved from.
+
+`value` is a DateFormat key, or null when nothing is set.
+"""
+type EffectiveDateFormat {
+  source: PreferenceSource!
+  value: DateFormat
+}
+
+"""
+The caller's resolved preferences (user → global → default) as typed, self-describing fields.
+"""
+type EffectivePreferencesType {
+  date_format: EffectiveDateFormat!
+  timezone: EffectiveTimezone!
+}
+
+"""
+An effective `timezone`: the resolved IANA name (null when nothing is set) and its source.
+"""
+type EffectiveTimezone {
+  source: PreferenceSource!
+  value: String
+}
+
 interface EventNodeInterface {
   """The account ID that triggered the event."""
   account_id: String
@@ -8805,17 +8831,17 @@ type InfrahubRelationshipMetadata {
 }
 
 """
-Write preferences on a single axis — the requested `scope` — using typed StandardNode fields.
+Write preferences for one writable scope, USER or GLOBAL.
 
-scope=USER   → the calling account's OWN UserPreference row only (bound to
-               account_session.account_id, no account argument, so there is no path to write
-               another user's preferences). Lazily created on first write, per-account lock.
-scope=GLOBAL → the org-wide GlobalPreference singleton, gated on manage_global_preferences
-               (super admins bypass via the permission manager) checked BEFORE any read.
-scope=EFFECTIVE → not writable (the resolved view is read-only); rejected fail-closed.
+scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
+               no account argument, so there is no path to write another user's preferences).
+scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
+               manage_global_preferences (super admins bypass) checked BEFORE any read.
 
-The _UNSET sentinel means an omitted argument leaves the field unchanged while an explicit
-`null` resets it.
+EFFECTIVE is not a member of PreferenceWriteScope, so writing the resolved view is unrepresentable
+(no runtime guard needed). The _UNSET sentinel leaves an omitted field unchanged while an explicit
+`null` resets it. The row is lazily created on first write under a per-owner lock — the only path
+that ever creates a Preference row.
 """
 type InfrahubSetPreferences {
   date_format: DateFormat
@@ -9744,19 +9770,19 @@ type Mutation {
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
   InfrahubRepositoryProcess(data: IdentifierInput!): ProcessRepository
   """
-  Write preferences on a single axis — the requested `scope` — using typed StandardNode fields.
+  Write preferences for one writable scope, USER or GLOBAL.
   
-  scope=USER   → the calling account's OWN UserPreference row only (bound to
-                 account_session.account_id, no account argument, so there is no path to write
-                 another user's preferences). Lazily created on first write, per-account lock.
-  scope=GLOBAL → the org-wide GlobalPreference singleton, gated on manage_global_preferences
-                 (super admins bypass via the permission manager) checked BEFORE any read.
-  scope=EFFECTIVE → not writable (the resolved view is read-only); rejected fail-closed.
+  scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
+                 no account argument, so there is no path to write another user's preferences).
+  scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
+                 manage_global_preferences (super admins bypass) checked BEFORE any read.
   
-  The _UNSET sentinel means an omitted argument leaves the field unchanged while an explicit
-  `null` resets it.
+  EFFECTIVE is not a member of PreferenceWriteScope, so writing the resolved view is unrepresentable
+  (no runtime guard needed). The _UNSET sentinel leaves an omitted field unchanged while an explicit
+  `null` resets it. The row is lazily created on first write under a per-owner lock — the only path
+  that ever creates a Preference row.
   """
-  InfrahubSetPreferences(date_format: DateFormat, scope: PreferenceScope!, timezone: String): InfrahubSetPreferences
+  InfrahubSetPreferences(date_format: DateFormat, scope: PreferenceWriteScope!, timezone: String): InfrahubSetPreferences
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
   InfrahubUpdateDisplayLabel(context: ContextInput, data: InfrahubDisplayLabelUpdateInput!): UpdateDisplayLabel
   InfrahubUpdateHFID(context: ContextInput, data: InfrahubHFIDUpdateInput!): UpdateHFID
@@ -12260,35 +12286,10 @@ type PoolUtilization {
 }
 
 """
-A single preference: its key, the value, and where it came from.
+Where an effective preference value came from.
 
-For EFFECTIVE reads `value` is null only when `source` is DEFAULT. For raw USER/GLOBAL reads
-`value` may be null (nothing stored for that key) while `source` still reports the scope.
-"""
-type PreferenceEntryType {
-  key: String!
-  source: PreferenceSource!
-  value: String
-}
-
-"""
-Which axis of the preferences store a read/write operates on.
-
-EFFECTIVE = the caller's resolved view (user-else-global-else-default), read-only.
-GLOBAL    = the org-wide GlobalPreference singleton's raw values (manage_global_preferences).
-USER      = the caller's OWN raw UserPreference values (account-bound, never another account).
-"""
-enum PreferenceScope {
-  EFFECTIVE
-  GLOBAL
-  USER
-}
-
-"""
-Where a resolved preference value came from.
-
-USER    = the caller's OWN override (or a raw USER-scope read).
-GLOBAL  = the org-wide GlobalPreference singleton (or a raw GLOBAL-scope read).
+USER    = the caller's own override.
+GLOBAL  = the organisation-wide default.
 DEFAULT = nothing is stored anywhere; the client applies its built-in default.
 """
 enum PreferenceSource {
@@ -12298,15 +12299,15 @@ enum PreferenceSource {
 }
 
 """
-Per-key preference entries for the requested scope plus the org-defaults edit gate.
+The WRITABLE axes of the preferences store.
 
-Privacy: EFFECTIVE and USER entries are account-bound (the resolver reads only
-account_session.account_id), so no account ever sees another account's user preferences.
-GLOBAL entries are org-wide and returned only after the manage_global_preferences gate.
+EFFECTIVE is intentionally absent: the resolved view is read-only, so it is unrepresentable as a
+write target (no runtime guard needed). USER writes the caller's own preferences; GLOBAL writes
+the organisation-wide ones (gated on manage_global_preferences).
 """
-type PreferencesType {
-  can_edit_global_preferences: Boolean!
-  preferences: [PreferenceEntryType!]!
+enum PreferenceWriteScope {
+  GLOBAL
+  USER
 }
 
 type ProcessRepository {
@@ -25047,6 +25048,7 @@ type Query {
     """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
     status__value: BranchStatus
   ): InfrahubBranchType!
+  InfrahubEffectivePreferences: EffectivePreferencesType!
   InfrahubEvent(
     """Filter the query to specific accounts"""
     account__ids: [String!]
@@ -25077,6 +25079,7 @@ type Query {
     """Search events until this timestamp, defaults the current time"""
     until: DateTime
   ): Events!
+  InfrahubGlobalPreferences: RawPreferencesType!
   """
   Analyze a GraphQL query string and return a report describing how Infrahub will interpret it.
   """
@@ -25090,7 +25093,6 @@ type Query {
   """Find all shortest paths between two nodes in the graph"""
   InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
-  InfrahubPreferences(scope: PreferenceScope = EFFECTIVE): PreferencesType!
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
@@ -25103,6 +25105,7 @@ type Query {
   Return the list of all pending or running tasks that can modify the data, for a given branch
   """
   InfrahubTaskBranchStatus(branch: String): Tasks!
+  InfrahubUserPreferences: RawPreferencesType!
   IpamNamespace(
     any__is_protected: Boolean
     any__owner__id: ID
@@ -25882,6 +25885,17 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedProfileIpamNamespace!
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
+}
+
+"""
+Raw stored preferences for a single scope (USER = the caller's own, GLOBAL = organisation-wide).
+
+Each field is null when nothing is stored for it. Unlike the effective view there is no `source`
+— the scope IS the source.
+"""
+type RawPreferencesType {
+  date_format: DateFormat
+  timezone: String
 }
 
 type ReachableNodeType {

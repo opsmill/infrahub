@@ -1,82 +1,59 @@
-# Preference models
+# Preference model
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Self
 
-from infrahub import lock
+from pydantic import field_validator
+
 from infrahub.core.node.standard import StandardNode
-from infrahub.core.query.preference import UserPreferenceGetByAccountQuery
+from infrahub.core.preferences.constants import DateFormat
+from infrahub.core.query.preference import PreferenceGetByOwnerQuery
 
 if TYPE_CHECKING:
-    from infrahub.core.query import Query
     from infrahub.database import InfrahubDatabase
 
-# Well-known distributed-lock coordinates for the GlobalPreference singleton. A fixed name in a
-# dedicated namespace lets every worker serialise the lazy-create through the same global lock.
-GLOBAL_PREFERENCE_LOCK_NAME = "singleton"
-GLOBAL_PREFERENCE_LOCK_NAMESPACE = "global_preference"
+# Distributed-lock namespace for Preference upserts, keyed on `owner_id`: concurrent upserts for the
+# SAME owner serialise (preventing a duplicate first row or a lost update) while different owners
+# never contend. The global row locks on the Root id, a user's on the account id. Reads are lock-free
+# (they never write).
+PREFERENCE_LOCK_NAMESPACE = "preference"
 
 
-class GlobalPreference(StandardNode):
-    # Persisted nullable fields must use `Optional[X]` rather than `X | None` until we move to
-    # Python 3.14 b/c of how StandardNode.guess_field_type works (mirrors Branch).
+class Preference(StandardNode):
+    """Preferences owned by a single principal (one class for both user and global preferences).
+
+    They share the same fields; the only difference is the owner, identified by `owner_id` — an
+    account id for a user's preferences, or the Root node id (registry.id) for the organisation-wide
+    (global) preferences. Reads NEVER create a row: a missing row means "nothing set" and the caller
+    falls back (user → global → the client's built-in default).
+
+    `owner_id` is a plain string, not a graph relationship: a StandardNode cannot declare a schema
+    relationship with `on_delete: cascade` (that is a schema-Node feature), so deleting an account
+    leaves its Preference row behind as unreachable dead data. Account ids are UUIDs and never reused,
+    so such a row is permanently unreachable and benign. Cleanup is out of scope for V1 and tracked in
+    Jira (IFC-2xxx).
+    """
+
+    owner_id: str
+    # Persisted nullable fields must use `Optional[X]` (not `X | None`) until Python 3.14, because of
+    # how StandardNode.guess_field_type works (mirrors Branch).
     date_format: Optional[str] = None
     timezone: Optional[str] = None
 
+    @field_validator("date_format")
     @classmethod
-    async def get_global(cls, db: InfrahubDatabase) -> Self:
-        """Return the singleton GlobalPreference, lazily creating an empty one if none exists.
-
-        GlobalPreference is a 0..1 singleton. New installs seed it in `first_time_initialization`,
-        so on those the fast path below returns without ever taking a lock. Pre-existing installs
-        (upgraded before the seed existed) materialise it lazily here.
-
-        This runs on every effective-preferences READ, so the lazy create uses double-checked
-        locking to avoid a singleton race: the fast path reads with no lock and returns if present;
-        only when absent do we acquire a well-known distributed lock, RE-READ inside it, and create
-        only if still absent. If duplicates somehow exist, `get_list` orders deterministically by id
-        so we keep returning the first — but the lock prevents creating them in the first place.
-        """
-        existing = await cls.get_list(db=db, limit=1)
-        if existing:
-            return existing[0]
-
-        async with lock.registry.get(
-            name=GLOBAL_PREFERENCE_LOCK_NAME, namespace=GLOBAL_PREFERENCE_LOCK_NAMESPACE, local=False
-        ):
-            # Re-read inside the lock: another worker may have created it while we waited.
-            existing = await cls.get_list(db=db, limit=1)
-            if existing:
-                return existing[0]
-
-            obj = cls()
-            await obj.create(db=db)
-            return obj
-
-
-class UserPreference(StandardNode):
-    # Orphan-on-account-deletion is accepted for V1: a StandardNode cannot declare a schema
-    # relationship with `on_delete: cascade` (that is a schema-Node feature), so deleting an
-    # account leaves its UserPreference row behind. Account ids are UUIDs (UUIDT) and are never
-    # reused, so such a row is permanently unreachable dead data — benign. Cleanup is out of scope
-    # for V1; there is no cascade mechanism for StandardNode and we deliberately do not convert this
-    # to a schema node.
-    account_id: str
-    # Persisted nullable fields must use `Optional[X]` (see GlobalPreference).
-    date_format: Optional[str] = None
-    timezone: Optional[str] = None
+    def _validate_date_format(cls, value: Optional[str]) -> Optional[str]:
+        # date_format is stored as a plain string (StandardNode has no enum field type) but must be
+        # one of the DateFormat semantic keys — reject anything else so it is never "any string".
+        if value is not None:
+            DateFormat(value)  # raises ValueError for an unknown key
+        return value
 
     @classmethod
-    async def get_for_account(cls, db: InfrahubDatabase, account_id: str) -> Self | None:
-        """Return the single UserPreference owned by `account_id`, or None if the account has none.
-
-        Uses a targeted Cypher lookup (UserPreferenceGetByAccountQuery) rather than listing every
-        row and filtering in Python, so we never scan other users' preferences.
-        """
-        query: Query = await UserPreferenceGetByAccountQuery.init(
-            db=db, account_id=account_id, node_type=cls.get_type()
-        )
+    async def get_for_owner(cls, db: InfrahubDatabase, owner_id: str) -> Self | None:
+        """Return the Preference owned by `owner_id`, or None. Never creates a row."""
+        query = await PreferenceGetByOwnerQuery.init(db=db, owner_ids=[owner_id], node_type=cls.get_type())
         await query.execute(db=db)
 
         result = query.get_result()
@@ -84,3 +61,20 @@ class UserPreference(StandardNode):
             return None
 
         return cls.from_db(result.get_node("n"))
+
+    @classmethod
+    async def get_for_owners(cls, db: InfrahubDatabase, owner_ids: list[str]) -> dict[str, Self]:
+        """Return a {owner_id: Preference} map for the owners that have a row, fetched in ONE query.
+
+        Used by the effective read to load the account row and the Root row together, then merge in
+        Python. Owners with no row are simply absent from the map.
+        """
+        query = await PreferenceGetByOwnerQuery.init(db=db, owner_ids=owner_ids, node_type=cls.get_type())
+        await query.execute(db=db)
+
+        preferences: dict[str, Self] = {}
+        for result in query.get_results():
+            node = cls.from_db(result.get_node("n"))
+            # Keep the first row per owner (deterministic by uuid) if a duplicate ever existed.
+            preferences.setdefault(node.owner_id, node)
+        return preferences

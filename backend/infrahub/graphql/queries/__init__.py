@@ -4,7 +4,11 @@ from .graphql_query_report import InfrahubGraphQLQueryReport
 from .internal import InfrahubInfo
 from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
 from .path import InfrahubPathTraversal
-from .preferences import Preferences
+from .preferences import (
+    InfrahubEffectivePreferences,
+    InfrahubGlobalPreferences,
+    InfrahubUserPreferences,
+)
 from .proposed_change import ProposedChangeAvailableActions
 from .reachable import InfrahubReachableNodes
 from .relationship import Relationship
@@ -18,6 +22,8 @@ __all__ = [
     "AccountToken",
     "BranchQueryList",
     "InfrahubBranchQueryList",
+    "InfrahubEffectivePreferences",
+    "InfrahubGlobalPreferences",
     "InfrahubGraphQLQueryReport",
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
@@ -28,7 +34,7 @@ __all__ = [
     "InfrahubResourcePoolUtilization",
     "InfrahubSearchAnywhere",
     "InfrahubStatus",
-    "Preferences",
+    "InfrahubUserPreferences",
     "ProposedChangeAvailableActions",
     "Relationship",
     "Task",

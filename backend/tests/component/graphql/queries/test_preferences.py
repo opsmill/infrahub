@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
+from infrahub.core import registry
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
-from infrahub.core.preferences import GlobalPreference, UserPreference
+from infrahub.core.preferences import Preference
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -16,40 +17,49 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
-PREFERENCES_QUERY = """
-query ($scope: PreferenceScope) {
-  InfrahubPreferences(scope: $scope) {
-    preferences {
-      key
-      value
-      source
-    }
-    can_edit_global_preferences
+EFFECTIVE_QUERY = """
+query {
+  InfrahubEffectivePreferences {
+    date_format { value source }
+    timezone { value source }
+  }
+}
+"""
+
+USER_QUERY = """
+query {
+  InfrahubUserPreferences {
+    date_format
+    timezone
+  }
+}
+"""
+
+GLOBAL_QUERY = """
+query {
+  InfrahubGlobalPreferences {
+    date_format
+    timezone
   }
 }
 """
 
 
-async def run_preferences(
+async def run_query(
     db: InfrahubDatabase,
     branch: Branch,
+    query: str,
     account_session: AccountSession | None,
-    variables: dict[str, Any] | None = None,
 ) -> ExecutionResult:
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=account_session)
     return await graphql(
         schema=gql_params.schema,
-        source=PREFERENCES_QUERY,
+        source=query,
         context_value=gql_params.context,
         root_value=None,
-        variable_values=variables or {},
+        variable_values={},
     )
-
-
-def _entries_by_key(data: dict) -> dict[str, dict]:
-    """Index the `preferences` list by its `key` for easy per-attribute assertions."""
-    return {entry["key"]: entry for entry in data["preferences"]}
 
 
 async def _grant_manage_global_preferences(db: InfrahubDatabase, account: Node) -> None:
@@ -75,25 +85,24 @@ async def _grant_manage_global_preferences(db: InfrahubDatabase, account: Node) 
 
 
 # --------------------------------------------------------------------------------------------
-# scope=EFFECTIVE (default) — open to any authenticated caller; merge matrix.
+# InfrahubEffectivePreferences — merged user -> global -> default; open to any authenticated caller.
 # --------------------------------------------------------------------------------------------
-async def test_effective_no_global_no_user(
+async def test_effective_no_user_no_global_is_default(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    # No scope argument -> defaults to EFFECTIVE.
-    result = await run_preferences(db=db, branch=default_branch, account_session=session_first_account)
+    result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
     assert result.errors is None
     assert result.data is not None
-    entries = _entries_by_key(result.data["InfrahubPreferences"])
-    # Nothing defined anywhere: every entry resolves to value null, source DEFAULT.
-    assert entries["date_format"] == {"key": "date_format", "value": None, "source": "DEFAULT"}
-    assert entries["timezone"] == {"key": "timezone", "value": None, "source": "DEFAULT"}
-    # A fresh-user read lazily materialises the global singleton but never a UserPreference row.
-    assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
+    prefs = result.data["InfrahubEffectivePreferences"]
+    # Nothing defined anywhere: value null, source DEFAULT.
+    assert prefs["date_format"] == {"value": None, "source": "DEFAULT"}
+    assert prefs["timezone"] == {"value": None, "source": "DEFAULT"}
+    # A read never fabricates a row.
+    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
 
 
 async def test_effective_global_only_source_global(
@@ -103,22 +112,17 @@ async def test_effective_global_only_source_global(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.date_format = "ISO_DATETIME"
-    global_pref.timezone = "UTC"
-    await global_pref.save(db=db)
+    await Preference(owner_id=registry.id, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
 
-    result = await run_preferences(
-        db=db, branch=default_branch, account_session=session_first_account, variables={"scope": "EFFECTIVE"}
-    )
+    result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
     assert result.errors is None
     assert result.data is not None
-    entries = _entries_by_key(result.data["InfrahubPreferences"])
-    # No user override: resolved value comes from global, source GLOBAL.
-    assert entries["date_format"] == {"key": "date_format", "value": "ISO_DATETIME", "source": "GLOBAL"}
-    assert entries["timezone"] == {"key": "timezone", "value": "UTC", "source": "GLOBAL"}
+    prefs = result.data["InfrahubEffectivePreferences"]
+    # No user override: resolved value comes from the global row, source GLOBAL.
+    assert prefs["date_format"] == {"value": "ISO_DATETIME", "source": "GLOBAL"}
+    assert prefs["timezone"] == {"value": "UTC", "source": "GLOBAL"}
     # No user row was fabricated for the fallback.
-    assert await UserPreference.get_for_account(db=db, account_id=first_account.id) is None
+    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
 
 
 async def test_effective_user_override_source_user(
@@ -128,20 +132,16 @@ async def test_effective_user_override_source_user(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.date_format = "ISO_DATETIME"
-    global_pref.timezone = "UTC"
-    await global_pref.save(db=db)
+    await Preference(owner_id=registry.id, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
+    await Preference(owner_id=first_account.id, date_format="EU_DATETIME", timezone="Europe/Paris").create(db=db)
 
-    await UserPreference(account_id=first_account.id, date_format="EU_DATETIME", timezone="Europe/Paris").create(db=db)
-
-    result = await run_preferences(db=db, branch=default_branch, account_session=session_first_account)
+    result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
     assert result.errors is None
     assert result.data is not None
-    entries = _entries_by_key(result.data["InfrahubPreferences"])
+    prefs = result.data["InfrahubEffectivePreferences"]
     # User override wins for both attributes: source USER, value is the user's.
-    assert entries["date_format"] == {"key": "date_format", "value": "EU_DATETIME", "source": "USER"}
-    assert entries["timezone"] == {"key": "timezone", "value": "Europe/Paris", "source": "USER"}
+    assert prefs["date_format"] == {"value": "EU_DATETIME", "source": "USER"}
+    assert prefs["timezone"] == {"value": "Europe/Paris", "source": "USER"}
 
 
 async def test_effective_mixed_per_attribute_sources(
@@ -151,23 +151,20 @@ async def test_effective_mixed_per_attribute_sources(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """Per-attribute resolution: one USER, one GLOBAL, one DEFAULT — all in a single read."""
-    global_pref = await GlobalPreference.get_global(db=db)
-    # Global defines timezone only; date_format is left unset on the singleton.
-    global_pref.timezone = "UTC"
-    await global_pref.save(db=db)
-
+    """Per-attribute resolution: one USER, one GLOBAL, one DEFAULT in a single read."""
+    # Global defines timezone only; date_format is left unset on the global row.
+    await Preference(owner_id=registry.id, timezone="UTC").create(db=db)
     # User overrides date_format only; timezone falls back to global.
-    await UserPreference(account_id=first_account.id, date_format="EU_DATETIME").create(db=db)
+    await Preference(owner_id=first_account.id, date_format="EU_DATETIME").create(db=db)
 
-    result = await run_preferences(db=db, branch=default_branch, account_session=session_first_account)
+    result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
     assert result.errors is None
     assert result.data is not None
-    entries = _entries_by_key(result.data["InfrahubPreferences"])
+    prefs = result.data["InfrahubEffectivePreferences"]
     # date_format: user override present -> USER.
-    assert entries["date_format"] == {"key": "date_format", "value": "EU_DATETIME", "source": "USER"}
+    assert prefs["date_format"] == {"value": "EU_DATETIME", "source": "USER"}
     # timezone: no user override, global present -> GLOBAL.
-    assert entries["timezone"] == {"key": "timezone", "value": "UTC", "source": "GLOBAL"}
+    assert prefs["timezone"] == {"value": "UTC", "source": "GLOBAL"}
 
 
 async def test_effective_is_private_per_caller(
@@ -179,102 +176,68 @@ async def test_effective_is_private_per_caller(
     session_first_account: AccountSession,
     session_second_account: AccountSession,
 ) -> None:
-    # A shared org-wide default exists.
-    global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.timezone = "UTC"
-    await global_pref.save(db=db)
-    # Account A sets a personal override.
-    await UserPreference(account_id=first_account.id, timezone="Europe/Paris").create(db=db)
-    # Account B sets a different personal override.
-    await UserPreference(account_id=second_account.id, timezone="America/New_York").create(db=db)
+    # A shared org-wide default plus a distinct personal override for each account.
+    await Preference(owner_id=registry.id, timezone="UTC").create(db=db)
+    await Preference(owner_id=first_account.id, timezone="Europe/Paris").create(db=db)
+    await Preference(owner_id=second_account.id, timezone="America/New_York").create(db=db)
 
-    result_a = await run_preferences(db=db, branch=default_branch, account_session=session_first_account)
-    result_b = await run_preferences(db=db, branch=default_branch, account_session=session_second_account)
+    result_a = await run_query(
+        db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account
+    )
+    result_b = await run_query(
+        db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_second_account
+    )
     assert result_a.errors is None
     assert result_b.errors is None
     assert result_a.data is not None
     assert result_b.data is not None
-    entries_a = _entries_by_key(result_a.data["InfrahubPreferences"])
-    entries_b = _entries_by_key(result_b.data["InfrahubPreferences"])
     # Each caller sees only their own resolved value, sourced USER; A never sees B's.
-    assert entries_a["timezone"] == {"key": "timezone", "value": "Europe/Paris", "source": "USER"}
-    assert entries_b["timezone"] == {"key": "timezone", "value": "America/New_York", "source": "USER"}
+    assert result_a.data["InfrahubEffectivePreferences"]["timezone"] == {
+        "value": "Europe/Paris",
+        "source": "USER",
+    }
+    assert result_b.data["InfrahubEffectivePreferences"]["timezone"] == {
+        "value": "America/New_York",
+        "source": "USER",
+    }
 
 
-async def test_effective_can_edit_false_for_normal_account(
+async def test_effective_rejects_unauthenticated(
     db: InfrahubDatabase,
     default_branch: Branch,
-    default_permission_backend: None,
     register_core_models_schema: None,
-    first_account: Node,
-    session_first_account: AccountSession,
 ) -> None:
-    # A non-manager CAN read EFFECTIVE; can_edit_global_preferences is simply False.
-    result = await run_preferences(db=db, branch=default_branch, account_session=session_first_account)
-    assert result.errors is None
-    assert result.data is not None
-    assert result.data["InfrahubPreferences"]["can_edit_global_preferences"] is False
-
-
-async def test_effective_can_edit_true_for_manager(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    register_core_models_schema: None,
-    first_account: Node,
-) -> None:
-    await _grant_manage_global_preferences(db=db, account=first_account)
-    session = AccountSession(authenticated=True, auth_type=AuthType.JWT, account_id=first_account.id)
-
-    result = await run_preferences(db=db, branch=default_branch, account_session=session)
-    assert result.errors is None
-    assert result.data is not None
-    assert result.data["InfrahubPreferences"]["can_edit_global_preferences"] is True
-
-
-async def test_effective_can_edit_true_for_super_admin(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    register_core_models_schema: None,
-    create_test_admin: Node,
-    session_admin: AccountSession,
-) -> None:
-    result = await run_preferences(db=db, branch=default_branch, account_session=session_admin)
-    assert result.errors is None
-    assert result.data is not None
-    assert result.data["InfrahubPreferences"]["can_edit_global_preferences"] is True
+    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
+    for account_session in (None, anonymous):
+        result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=account_session)
+        assert result.errors is not None
+        assert any("authenticated account" in str(error) for error in result.errors)
 
 
 # --------------------------------------------------------------------------------------------
-# scope=USER — caller's OWN raw values only; account B never sees account A's.
+# InfrahubUserPreferences — caller's OWN raw values, null where unset; account-bound.
 # --------------------------------------------------------------------------------------------
-async def test_user_scope_returns_own_raw_values(
+async def test_user_returns_own_raw_values_null_where_unset(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    # A global default exists but must NOT leak into a USER-scope read.
-    global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.timezone = "UTC"
-    await global_pref.save(db=db)
-    await UserPreference(account_id=first_account.id, date_format="EU_DATETIME").create(db=db)
+    # A global default exists but must NOT leak into a USER read.
+    await Preference(owner_id=registry.id, timezone="UTC").create(db=db)
+    await Preference(owner_id=first_account.id, date_format="EU_DATETIME").create(db=db)
 
-    result = await run_preferences(
-        db=db, branch=default_branch, account_session=session_first_account, variables={"scope": "USER"}
-    )
+    result = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=session_first_account)
     assert result.errors is None
     assert result.data is not None
-    entries = _entries_by_key(result.data["InfrahubPreferences"])
-    # date_format is the user's own; source USER.
-    assert entries["date_format"] == {"key": "date_format", "value": "EU_DATETIME", "source": "USER"}
-    # timezone is unset for THIS user: null, source USER (global default does not bleed in).
-    assert entries["timezone"] == {"key": "timezone", "value": None, "source": "USER"}
+    prefs = result.data["InfrahubUserPreferences"]
+    # date_format is the user's own raw value; timezone is unset for THIS user -> null (no bleed).
+    assert prefs["date_format"] == "EU_DATETIME"
+    assert prefs["timezone"] is None
 
 
-async def test_user_scope_never_sees_other_account(
+async def test_user_never_sees_other_account(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
@@ -283,82 +246,56 @@ async def test_user_scope_never_sees_other_account(
     session_first_account: AccountSession,
     session_second_account: AccountSession,
 ) -> None:
-    await UserPreference(account_id=first_account.id, timezone="Europe/Paris").create(db=db)
-    await UserPreference(account_id=second_account.id, timezone="America/New_York").create(db=db)
+    await Preference(owner_id=first_account.id, timezone="Europe/Paris").create(db=db)
+    await Preference(owner_id=second_account.id, timezone="America/New_York").create(db=db)
 
-    result_a = await run_preferences(
-        db=db, branch=default_branch, account_session=session_first_account, variables={"scope": "USER"}
-    )
-    result_b = await run_preferences(
-        db=db, branch=default_branch, account_session=session_second_account, variables={"scope": "USER"}
-    )
+    result_a = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=session_first_account)
+    result_b = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=session_second_account)
     assert result_a.errors is None
     assert result_b.errors is None
-    entries_a = _entries_by_key(result_a.data["InfrahubPreferences"])
-    entries_b = _entries_by_key(result_b.data["InfrahubPreferences"])
+    assert result_a.data is not None
+    assert result_b.data is not None
     # Each caller sees ONLY their own raw value; no cross-account bleed.
-    assert entries_a["timezone"]["value"] == "Europe/Paris"
-    assert entries_b["timezone"]["value"] == "America/New_York"
+    assert result_a.data["InfrahubUserPreferences"]["timezone"] == "Europe/Paris"
+    assert result_b.data["InfrahubUserPreferences"]["timezone"] == "America/New_York"
 
 
-async def test_user_scope_allowed_for_non_manager(
+async def test_user_rejects_unauthenticated(
     db: InfrahubDatabase,
     default_branch: Branch,
-    default_permission_backend: None,
     register_core_models_schema: None,
-    first_account: Node,
-    session_first_account: AccountSession,
 ) -> None:
-    # USER scope requires no global-manage permission.
-    result = await run_preferences(
-        db=db, branch=default_branch, account_session=session_first_account, variables={"scope": "USER"}
-    )
-    assert result.errors is None
-    assert result.data is not None
+    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
+    for account_session in (None, anonymous):
+        result = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=account_session)
+        assert result.errors is not None
+        assert any("authenticated account" in str(error) for error in result.errors)
 
 
 # --------------------------------------------------------------------------------------------
-# scope=GLOBAL — gated on manage_global_preferences; raw org values.
+# InfrahubGlobalPreferences — org-wide raw values; gated on manage_global_preferences.
 # --------------------------------------------------------------------------------------------
-async def test_global_scope_denied_for_normal_account(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    default_permission_backend: None,
-    register_core_models_schema: None,
-    first_account: Node,
-    session_first_account: AccountSession,
-) -> None:
-    result = await run_preferences(
-        db=db, branch=default_branch, account_session=session_first_account, variables={"scope": "GLOBAL"}
-    )
-    assert result.errors is not None
-
-
-async def test_global_scope_allowed_for_manager(
+async def test_global_allowed_for_manager(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
     register_core_models_schema: None,
     first_account: Node,
 ) -> None:
-    global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.date_format = "ISO_DATETIME"
-    global_pref.timezone = "UTC"
-    await global_pref.save(db=db)
-
+    await Preference(owner_id=registry.id, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
     await _grant_manage_global_preferences(db=db, account=first_account)
     session = AccountSession(authenticated=True, auth_type=AuthType.JWT, account_id=first_account.id)
 
-    result = await run_preferences(db=db, branch=default_branch, account_session=session, variables={"scope": "GLOBAL"})
+    result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session)
     assert result.errors is None
     assert result.data is not None
-    entries = _entries_by_key(result.data["InfrahubPreferences"])
-    # Raw org values, source GLOBAL.
-    assert entries["date_format"] == {"key": "date_format", "value": "ISO_DATETIME", "source": "GLOBAL"}
-    assert entries["timezone"] == {"key": "timezone", "value": "UTC", "source": "GLOBAL"}
+    prefs = result.data["InfrahubGlobalPreferences"]
+    # Raw org values (no source — the scope IS the source).
+    assert prefs["date_format"] == "ISO_DATETIME"
+    assert prefs["timezone"] == "UTC"
 
 
-async def test_global_scope_allowed_for_super_admin(
+async def test_global_allowed_for_super_admin(
     db: InfrahubDatabase,
     default_branch: Branch,
     default_permission_backend: None,
@@ -366,37 +303,36 @@ async def test_global_scope_allowed_for_super_admin(
     create_test_admin: Node,
     session_admin: AccountSession,
 ) -> None:
-    global_pref = await GlobalPreference.get_global(db=db)
-    global_pref.timezone = "Europe/London"
-    await global_pref.save(db=db)
+    await Preference(owner_id=registry.id, timezone="Europe/London").create(db=db)
 
-    result = await run_preferences(
-        db=db, branch=default_branch, account_session=session_admin, variables={"scope": "GLOBAL"}
-    )
+    result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_admin)
     assert result.errors is None
     assert result.data is not None
-    entries = _entries_by_key(result.data["InfrahubPreferences"])
-    assert entries["timezone"] == {"key": "timezone", "value": "Europe/London", "source": "GLOBAL"}
+    assert result.data["InfrahubGlobalPreferences"]["timezone"] == "Europe/London"
 
 
-# --------------------------------------------------------------------------------------------
-# Unauthenticated / anonymous — rejected for EVERY scope.
-# --------------------------------------------------------------------------------------------
-async def test_rejects_unauthenticated_every_scope(
+async def test_global_denied_for_normal_account(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    register_core_models_schema: None,
+    first_account: Node,
+    session_first_account: AccountSession,
+) -> None:
+    # A global row exists, but a normal account must be denied and see no data.
+    await Preference(owner_id=registry.id, timezone="UTC").create(db=db)
+
+    result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_first_account)
+    assert result.errors is not None
+    assert result.data is None or result.data.get("InfrahubGlobalPreferences") is None
+
+
+async def test_global_rejects_unauthenticated(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
 ) -> None:
     anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
-    for scope in ("EFFECTIVE", "USER", "GLOBAL"):
-        # No session at all.
-        result = await run_preferences(db=db, branch=default_branch, account_session=None, variables={"scope": scope})
-        assert result.errors is not None, f"scope={scope} with no session should be rejected"
-        assert any("authenticated account" in str(error) for error in result.errors)
-
-        # Explicit anonymous/unauthenticated session.
-        result = await run_preferences(
-            db=db, branch=default_branch, account_session=anonymous, variables={"scope": scope}
-        )
-        assert result.errors is not None, f"scope={scope} anonymous should be rejected"
-        assert any("authenticated account" in str(error) for error in result.errors)
+    for account_session in (None, anonymous):
+        result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=account_session)
+        assert result.errors is not None

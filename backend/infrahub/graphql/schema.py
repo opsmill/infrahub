@@ -39,6 +39,8 @@ from .queries import (
     AccountToken,
     BranchQueryList,
     InfrahubBranchQueryList,
+    InfrahubEffectivePreferences,
+    InfrahubGlobalPreferences,
     InfrahubGraphQLQueryReport,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
@@ -49,7 +51,7 @@ from .queries import (
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
     InfrahubStatus,
-    Preferences,
+    InfrahubUserPreferences,
     ProposedChangeAvailableActions,
     Relationship,
 )
@@ -70,7 +72,9 @@ class InfrahubBaseQuery(ObjectType):
     Relationship = Relationship
 
     InfrahubBranch = InfrahubBranchQueryList
-    InfrahubPreferences = Preferences
+    InfrahubEffectivePreferences = InfrahubEffectivePreferences
+    InfrahubUserPreferences = InfrahubUserPreferences
+    InfrahubGlobalPreferences = InfrahubGlobalPreferences
     InfrahubGraphQLQueryReport = InfrahubGraphQLQueryReport
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
