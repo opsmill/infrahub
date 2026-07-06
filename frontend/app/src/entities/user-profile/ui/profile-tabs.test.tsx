@@ -1,22 +1,21 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { EffectivePreferences } from "@/entities/preferences/domain/types";
-import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
+import { useCanManageGlobalPreferences } from "@/entities/permission/ui/queries/use-can-manage-global-preferences";
 
 import { render } from "../../../../tests/components/render";
 import { ProfileTabs } from "./profile-tabs";
 
-vi.mock("@/entities/preferences/ui/queries/get-effective-preferences.query", () => ({
-  useEffectivePreferences: vi.fn(),
+vi.mock("@/entities/permission/ui/queries/use-can-manage-global-preferences", () => ({
+  useCanManageGlobalPreferences: vi.fn(),
 }));
 
-function mockCanEdit(canEditGlobalPreferences: boolean) {
-  vi.mocked(useEffectivePreferences).mockReturnValue({
+function mockCanEdit(canManageGlobalPreferences: boolean) {
+  vi.mocked(useCanManageGlobalPreferences).mockReturnValue({
     isPending: false,
     error: null,
-    data: { canEditGlobalPreferences } as EffectivePreferences,
-  } as UseQueryResult<EffectivePreferences>);
+    data: canManageGlobalPreferences,
+  } as UseQueryResult<boolean>);
 }
 
 describe("ProfileTabs", () => {

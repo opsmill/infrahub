@@ -1,13 +1,12 @@
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
 
-import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
+import { useCanManageGlobalPreferences } from "@/entities/permission/ui/queries/use-can-manage-global-preferences";
 
 export function ProfileTabs() {
   // `GlobalPreference` is a StandardNode with no object permission; the
-  // effective query's `can_edit_global_preferences` flag is the gating signal.
-  const { data: preferences } = useEffectivePreferences();
-  const canManageGlobalPreferences = preferences?.canEditGlobalPreferences ?? false;
+  // `manage_global_preferences` GLOBAL permission is the gating signal.
+  const { data: canManageGlobalPreferences = false } = useCanManageGlobalPreferences();
 
   return (
     <nav aria-label="Tabs">

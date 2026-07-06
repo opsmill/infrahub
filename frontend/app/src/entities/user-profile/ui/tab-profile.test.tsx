@@ -42,7 +42,6 @@ vi.mock("@/entities/preferences/domain/upsert-my-user-preference");
 const baseEffective: EffectivePreferences = {
   dateFormat: { value: "EU_DATETIME", source: "global" },
   timezone: { value: "Europe/Paris", source: "global" },
-  canEditGlobalPreferences: false,
 };
 
 describe("TabProfile", () => {

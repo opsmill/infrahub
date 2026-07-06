@@ -16,7 +16,6 @@ const baseEffective: EffectivePreferences = {
   // date_format is a semantic key (see DateFormatKey), not a pattern.
   dateFormat: { value: "EU_DATETIME", source: "global" },
   timezone: { value: "Europe/Paris", source: "global" },
-  canEditGlobalPreferences: false,
 };
 
 describe("UserPreferencesCard", () => {

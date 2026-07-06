@@ -1,25 +1,29 @@
+import type { UseQueryResult } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { getEffectivePreferences } from "@/entities/preferences/domain/get-effective-preferences";
+import { useCanManageGlobalPreferences } from "@/entities/permission/ui/queries/use-can-manage-global-preferences";
 import { getGlobalPreferences } from "@/entities/preferences/domain/get-global-preferences";
-import type { EffectivePreferences, GlobalPreferences } from "@/entities/preferences/domain/types";
+import type { GlobalPreferences } from "@/entities/preferences/domain/types";
 import { updateGlobalPreference } from "@/entities/preferences/domain/update-global-preference";
 
 import { render } from "../../../../tests/components/render";
 import { selectComboboxOption } from "../../../../tests/components/utils";
 import TabOrganisationDefaults from "./tab-organisation-defaults";
 
-vi.mock("@/entities/preferences/domain/get-effective-preferences");
+vi.mock("@/entities/permission/ui/queries/use-can-manage-global-preferences", () => ({
+  useCanManageGlobalPreferences: vi.fn(),
+}));
 vi.mock("@/entities/preferences/domain/get-global-preferences");
 vi.mock("@/entities/preferences/domain/update-global-preference");
 
-// The effective query only supplies the `can_edit_global_preferences` gate here;
-// its resolved values are irrelevant to this tab (it edits the raw GLOBAL scope).
-const baseEffective: EffectivePreferences = {
-  dateFormat: { value: "EU_DATETIME", source: "global" },
-  timezone: { value: "Europe/Paris", source: "global" },
-  canEditGlobalPreferences: true,
-};
+// Gating now comes from the `manage_global_preferences` GLOBAL permission hook.
+function mockCanManage(canManage: boolean) {
+  vi.mocked(useCanManageGlobalPreferences).mockReturnValue({
+    isPending: false,
+    error: null,
+    data: canManage,
+  } as UseQueryResult<boolean>);
+}
 
 // The raw organisation defaults (scope GLOBAL) the form prefills from.
 const baseGlobal: GlobalPreferences = { dateFormat: null, timezone: "Europe/Paris" };
@@ -30,7 +34,7 @@ describe("TabOrganisationDefaults", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-06-30T14:30:00"));
     vi.clearAllMocks();
-    vi.mocked(getEffectivePreferences).mockResolvedValue(baseEffective);
+    mockCanManage(true);
     vi.mocked(getGlobalPreferences).mockResolvedValue(baseGlobal);
     vi.mocked(updateGlobalPreference).mockResolvedValue();
   });
@@ -40,10 +44,7 @@ describe("TabOrganisationDefaults", () => {
   });
 
   test("shows an unauthorized screen when the user cannot edit global preferences", async () => {
-    vi.mocked(getEffectivePreferences).mockResolvedValue({
-      ...baseEffective,
-      canEditGlobalPreferences: false,
-    });
+    mockCanManage(false);
 
     const component = await render(<TabOrganisationDefaults />);
 
@@ -100,14 +101,8 @@ describe("TabOrganisationDefaults", () => {
   });
 
   test("prefills from the raw GLOBAL scope, not the admin's own personal override", async () => {
-    // An admin who also set personal overrides: the effective query resolves those
-    // overrides (source "user"), but the org-defaults form must show the organisation's
-    // own values from the GLOBAL scope, never the admin's overrides.
-    vi.mocked(getEffectivePreferences).mockResolvedValue({
-      ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "user" },
-      timezone: { value: "UTC", source: "user" },
-    });
+    // An admin who also set personal overrides must still see the organisation's own
+    // values from the GLOBAL scope in this form, never their personal overrides.
     vi.mocked(getGlobalPreferences).mockResolvedValue({
       dateFormat: "ISO_DATETIME",
       timezone: "Europe/Paris",

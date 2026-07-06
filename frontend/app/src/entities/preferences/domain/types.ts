@@ -22,20 +22,19 @@ export interface ResolvedPreference {
 }
 
 /**
- * The effective-preferences view (IFC-2720). Backed by the scope-parameterised
- * `InfrahubPreferences` query at its default `EFFECTIVE` scope: each field is
- * resolved per-key (value + source) so consumers know where the value comes
- * from, plus the org-tab gating flag. The raw organisation defaults are NOT part
- * of this view any more — the org-defaults editor reads them via
- * `useGlobalPreferences()` (the `GLOBAL` scope) instead.
+ * The effective-preferences view (IFC-2720). Backed by the
+ * `InfrahubEffectivePreferences` query: each field is resolved (value + source)
+ * so consumers know where the value comes from. The raw organisation defaults are
+ * NOT part of this view — the org-defaults editor reads them via
+ * `useGlobalPreferences()` instead. Gating the org-defaults tab is likewise no
+ * longer sourced from here; it is derived from the `manage_global_preferences`
+ * global permission (see `useCanManageGlobalPreferences`).
  */
 export interface EffectivePreferences {
   /** Resolved date-format field: effective value + where it came from. */
   dateFormat: ResolvedPreference;
   /** Resolved timezone field: effective value + where it came from. */
   timezone: ResolvedPreference;
-  /** Gates the "Organisation defaults" tab. */
-  canEditGlobalPreferences: boolean;
 }
 
 /**

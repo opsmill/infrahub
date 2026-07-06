@@ -1,9 +1,5 @@
 import { getEffectivePreferencesFromApi } from "@/entities/preferences/api/get-effective-preferences-from-api";
-import type {
-  EffectivePreferences,
-  PreferenceSource,
-  ResolvedPreference,
-} from "@/entities/preferences/domain/types";
+import type { EffectivePreferences, PreferenceSource } from "@/entities/preferences/domain/types";
 
 export type GetEffectivePreferences = () => Promise<EffectivePreferences>;
 
@@ -25,25 +21,19 @@ function toSource(source: string): PreferenceSource {
   }
 }
 
-/** Resolved fallback used when a key is missing from the `preferences` list entirely. */
-const UNSET: ResolvedPreference = { value: null, source: "default" };
-
 export const getEffectivePreferences: GetEffectivePreferences = async () => {
   const { data } = await getEffectivePreferencesFromApi();
-  const effective = data.InfrahubPreferences;
+  const effective = data.InfrahubEffectivePreferences;
 
-  // Key the flat list of {key,value,source} entries so each field is looked up
-  // by name rather than positionally.
-  const byKey = new Map<string, ResolvedPreference>(
-    effective.preferences.map((entry) => [
-      entry.key,
-      { value: entry.value ?? null, source: toSource(entry.source) },
-    ])
-  );
-
+  // Each field arrives already resolved (value + source) as its own typed object.
   return {
-    dateFormat: byKey.get("date_format") ?? UNSET,
-    timezone: byKey.get("timezone") ?? UNSET,
-    canEditGlobalPreferences: effective.can_edit_global_preferences,
+    dateFormat: {
+      value: effective.date_format.value ?? null,
+      source: toSource(effective.date_format.source),
+    },
+    timezone: {
+      value: effective.timezone.value ?? null,
+      source: toSource(effective.timezone.source),
+    },
   };
 };

@@ -2,17 +2,20 @@ import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-// No `scope` argument → the server resolves the default `EFFECTIVE` scope, i.e.
-// each key's resolved value plus the source (USER | GLOBAL | DEFAULT) it came from.
+// The caller's resolved preferences (user → global → default). Each field is a
+// typed, self-describing object carrying the resolved value plus the source
+// (USER | GLOBAL | DEFAULT) it was resolved from.
 const GET_EFFECTIVE_PREFERENCES = graphql(`
-  query InfrahubPreferences {
-    InfrahubPreferences {
-      preferences {
-        key
+  query InfrahubEffectivePreferences {
+    InfrahubEffectivePreferences {
+      date_format {
         value
         source
       }
-      can_edit_global_preferences
+      timezone {
+        value
+        source
+      }
     }
   }
 `);

@@ -2,17 +2,14 @@ import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-// `scope: GLOBAL` returns the organisation's OWN raw values (every entry has
-// source=GLOBAL), never merged with the caller's personal overrides. The server
-// gates this on `manage_global_preferences`.
+// The organisation's OWN raw values, never merged with the caller's personal
+// overrides (each field is null when nothing is stored). The server gates this
+// on `manage_global_preferences`.
 const GET_GLOBAL_PREFERENCES = graphql(`
   query InfrahubGlobalPreferences {
-    InfrahubPreferences(scope: GLOBAL) {
-      preferences {
-        key
-        value
-        source
-      }
+    InfrahubGlobalPreferences {
+      date_format
+      timezone
     }
   }
 `);

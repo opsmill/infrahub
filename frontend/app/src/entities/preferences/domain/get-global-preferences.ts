@@ -11,12 +11,10 @@ export type GetGlobalPreferences = () => Promise<GlobalPreferences>;
  */
 export const getGlobalPreferences: GetGlobalPreferences = async () => {
   const { data } = await getGlobalPreferencesFromApi();
-  const byKey = new Map<string, string | null>(
-    data.InfrahubPreferences.preferences.map((entry) => [entry.key, entry.value ?? null])
-  );
+  const global = data.InfrahubGlobalPreferences;
 
   return {
-    dateFormat: byKey.get("date_format") ?? null,
-    timezone: byKey.get("timezone") ?? null,
+    dateFormat: global.date_format ?? null,
+    timezone: global.timezone ?? null,
   };
 };
