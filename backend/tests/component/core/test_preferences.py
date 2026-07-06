@@ -2,88 +2,59 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.preferences import GlobalPreference, UserPreference
+import pytest
+
+from infrahub.core.preferences import Preference
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
-async def test_global_preference_get_global_lazy_create(db: InfrahubDatabase, default_branch: Branch) -> None:
-    # No GlobalPreference exists yet.
-    assert await GlobalPreference.get_list(db=db) == []
-
-    first = await GlobalPreference.get_global(db=db)
-    assert first.id is not None
-    assert first.date_format is None
-    assert first.timezone is None
-
-    # Exactly one row was created, and a second call returns the same singleton (idempotent).
-    rows = await GlobalPreference.get_list(db=db)
-    assert len(rows) == 1
-
-    second = await GlobalPreference.get_global(db=db)
-    assert second.uuid == first.uuid
-    assert len(await GlobalPreference.get_list(db=db)) == 1
+async def test_get_for_owner_none_when_absent_and_never_creates(db: InfrahubDatabase, default_branch: Branch) -> None:
+    # A missing row means "nothing set": get_for_owner returns None and must NEVER create a row.
+    assert await Preference.get_for_owner(db=db, owner_id="owner-absent") is None
+    assert await Preference.get_list(db=db) == []
 
 
-async def test_global_preference_get_global_idempotent_under_lock(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """Repeated get_global calls return the same singleton and never create a second row.
-
-    This exercises the idempotent lazy-create: the first call materialises the singleton and
-    subsequent (sequential) calls take the lock-free fast path and return it. It verifies
-    idempotency, NOT concurrent behaviour — the actual race protection (double-checked locking)
-    lives in GlobalPreference.get_global; a true concurrency test would issue overlapping calls.
-    """
-    assert await GlobalPreference.get_list(db=db) == []
-
-    results = [await GlobalPreference.get_global(db=db) for _ in range(5)]
-
-    # Every call returns the same singleton uuid, and only one row was ever created.
-    assert len({obj.uuid for obj in results}) == 1
-    assert len(await GlobalPreference.get_list(db=db)) == 1
-
-
-async def test_global_preference_persists_values(db: InfrahubDatabase, default_branch: Branch) -> None:
-    obj = await GlobalPreference.get_global(db=db)
-    obj.date_format = "ISO_DATETIME"  # a semantic DateFormat key, not a rendering pattern
-    obj.timezone = "UTC"
-    await obj.save(db=db)
-
-    reloaded = await GlobalPreference.get_global(db=db)
-    assert reloaded.date_format == "ISO_DATETIME"
-    assert reloaded.timezone == "UTC"
-    assert len(await GlobalPreference.get_list(db=db)) == 1
-
-
-async def test_user_preference_get_for_account_none(db: InfrahubDatabase, default_branch: Branch) -> None:
-    assert await UserPreference.get_for_account(db=db, account_id="does-not-exist") is None
-
-
-async def test_user_preference_create_and_lookup(db: InfrahubDatabase, default_branch: Branch) -> None:
-    pref = UserPreference(account_id="account-a", date_format="dd/MM/yyyy")
+async def test_create_and_get_for_owner_round_trip(db: InfrahubDatabase, default_branch: Branch) -> None:
+    pref = Preference(owner_id="owner-a", date_format="EU_DATETIME", timezone="Europe/Paris")
     await pref.create(db=db)
 
-    fetched = await UserPreference.get_for_account(db=db, account_id="account-a")
+    fetched = await Preference.get_for_owner(db=db, owner_id="owner-a")
     assert fetched is not None
-    assert fetched.account_id == "account-a"
-    assert fetched.date_format == "dd/MM/yyyy"
-    assert fetched.timezone is None
-
-    # A different account has no row.
-    assert await UserPreference.get_for_account(db=db, account_id="account-b") is None
+    assert fetched.owner_id == "owner-a"
+    assert fetched.date_format == "EU_DATETIME"
+    assert fetched.timezone == "Europe/Paris"
 
 
-async def test_user_preference_lookup_is_account_scoped(db: InfrahubDatabase, default_branch: Branch) -> None:
-    pref_a = UserPreference(account_id="acc-1", timezone="Europe/Paris")
-    await pref_a.create(db=db)
-    pref_b = UserPreference(account_id="acc-2", timezone="UTC")
-    await pref_b.create(db=db)
+async def test_get_for_owner_is_owner_scoped(db: InfrahubDatabase, default_branch: Branch) -> None:
+    # Owner A's row must never be returned when looking up owner B.
+    await Preference(owner_id="owner-a", timezone="Europe/Paris").create(db=db)
 
-    fetched_a = await UserPreference.get_for_account(db=db, account_id="acc-1")
-    fetched_b = await UserPreference.get_for_account(db=db, account_id="acc-2")
+    assert await Preference.get_for_owner(db=db, owner_id="owner-b") is None
+    fetched_a = await Preference.get_for_owner(db=db, owner_id="owner-a")
     assert fetched_a is not None
-    assert fetched_b is not None
     assert fetched_a.timezone == "Europe/Paris"
-    assert fetched_b.timezone == "UTC"
-    assert fetched_a.uuid != fetched_b.uuid
+
+
+async def test_get_for_owners_returns_map_of_existing_only(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await Preference(owner_id="owner-a", timezone="Europe/Paris").create(db=db)
+    await Preference(owner_id="owner-b", date_format="ISO_DATETIME").create(db=db)
+
+    result = await Preference.get_for_owners(db=db, owner_ids=["owner-a", "owner-b", "owner-missing"])
+    # Only owners with a row appear in the map; the missing one is simply absent.
+    assert set(result) == {"owner-a", "owner-b"}
+    assert result["owner-a"].timezone == "Europe/Paris"
+    assert result["owner-b"].date_format == "ISO_DATETIME"
+
+
+async def test_date_format_validator_rejects_unknown_key() -> None:
+    # Constructing with a non-DateFormat key must raise (the field_validator calls DateFormat(value)).
+    with pytest.raises(ValueError):
+        Preference(owner_id="owner-a", date_format="NOPE")
+
+
+async def test_date_format_validator_accepts_valid_key() -> None:
+    pref = Preference(owner_id="owner-a", date_format="ISO_DATETIME")
+    assert pref.date_format == "ISO_DATETIME"
