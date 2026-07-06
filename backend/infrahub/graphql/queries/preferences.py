@@ -4,8 +4,7 @@ from typing import TYPE_CHECKING
 
 from graphene import Field
 
-from infrahub.core import registry
-from infrahub.core.preferences import MANAGE_GLOBAL_PREFERENCES_PERMISSION, Preference
+from infrahub.core.preferences import MANAGE_GLOBAL_PREFERENCES_PERMISSION, Preference, global_owner_id
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.types.preferences import (
     EffectivePreferencesType,
@@ -31,12 +30,6 @@ def _require_authenticated(graphql_context: GraphqlContext) -> str:
     return graphql_context.account_session.account_id
 
 
-def _global_owner_id() -> str:
-    # Global preferences are the Preference row owned by the Root node; registry.id is the Root uuid
-    # string — the same identifier space as an account id.
-    return registry.id
-
-
 async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) -> dict:  # noqa: ARG001
     """Resolve the caller's effective preferences (user override → global default → DEFAULT).
 
@@ -46,12 +39,13 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     """
     graphql_context: GraphqlContext = info.context
     account_id = _require_authenticated(graphql_context)
+    global_id = global_owner_id()
 
     # Account row + global row in ONE query; a missing row simply isn't in the map (reads never
     # create). StandardNode reads carry no branch filter, so this is branch-agnostic.
-    preferences = await Preference.get_for_owners(db=graphql_context.db, owner_ids=[account_id, _global_owner_id()])
+    preferences = await Preference.get_for_owners(db=graphql_context.db, owner_ids=[account_id, global_id])
     user = preferences.get(account_id)
-    global_ = preferences.get(_global_owner_id())
+    global_ = preferences.get(global_id)
 
     def resolve(attribute_name: str) -> dict:
         user_value = getattr(user, attribute_name) if user else None
@@ -90,7 +84,7 @@ async def resolve_global_preferences(root: dict, info: GraphQLResolveInfo) -> di
     _require_authenticated(graphql_context)
     graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
 
-    global_ = await Preference.get_for_owner(db=graphql_context.db, owner_id=_global_owner_id())
+    global_ = await Preference.get_for_owner(db=graphql_context.db, owner_id=global_owner_id())
     return {
         "date_format": global_.date_format if global_ else None,
         "timezone": global_.timezone if global_ else None,

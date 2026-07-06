@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional, Self
 
 from pydantic import field_validator
 
+from infrahub.core import registry
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.preferences.constants import DateFormat
 from infrahub.core.query.preference import PreferenceGetByOwnerQuery
@@ -18,6 +19,22 @@ if TYPE_CHECKING:
 # never contend. The global row locks on the Root id, a user's on the account id. Reads are lock-free
 # (they never write).
 PREFERENCE_LOCK_NAMESPACE = "preference"
+
+
+def global_owner_id() -> str:
+    """`owner_id` for the organisation-wide (global) preferences: the Root node id.
+
+    `registry.id` is the Root uuid string, always set once the registry is initialised
+    (`get_root_node`); guard the `None` case so callers get a guaranteed `str` and a resolver that
+    somehow runs before initialisation fails loudly instead of writing a bogus owner.
+
+    Raises:
+        RuntimeError: if the registry has not been initialised (`registry.id` is unset).
+
+    """
+    if registry.id is None:
+        raise RuntimeError("The registry is not initialised; registry.id (the Root id) is unset")
+    return registry.id
 
 
 class Preference(StandardNode):

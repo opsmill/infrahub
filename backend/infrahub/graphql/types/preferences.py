@@ -5,8 +5,18 @@ from graphene import Enum, Field, ObjectType, String
 from infrahub.core.preferences import DateFormat as DateFormatEnum
 
 # GraphQL enum derived from the domain `DateFormat` Python enum, so the two can never drift and an
-# invalid key is rejected at the GraphQL layer (pattern: graphql/types/enums.py).
-DateFormat = Enum.from_enum(DateFormatEnum)
+# invalid key is rejected at the GraphQL layer (pattern: graphql/types/enums.py). The description is
+# passed explicitly as a single line rather than inheriting the enum's multi-line docstring — the SDL
+# printer dedents multi-line descriptions differently across graphql-core versions, which made the
+# generated schema.graphql environment-dependent.
+DateFormat = Enum.from_enum(
+    DateFormatEnum,
+    description=(
+        "Semantic date-format keys. The stored date_format is one of these keys (not a rendering "
+        "pattern); each client maps the key to its own formatter. Single source of truth for the "
+        "value on Preference.date_format."
+    ),
+)
 
 
 # Write-scope string values, kept as plain constants (not read off the graphene Enum members via

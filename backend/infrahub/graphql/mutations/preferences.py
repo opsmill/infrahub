@@ -7,11 +7,11 @@ from graphene import Argument, Boolean, Field, Mutation, String
 from typing_extensions import Self
 
 from infrahub import lock
-from infrahub.core import registry
 from infrahub.core.preferences import (
     MANAGE_GLOBAL_PREFERENCES_PERMISSION,
     PREFERENCE_LOCK_NAMESPACE,
     Preference,
+    global_owner_id,
 )
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import PermissionDeniedError
@@ -82,7 +82,7 @@ class InfrahubSetPreferences(Mutation):
         if scope == WRITE_SCOPE_GLOBAL:
             # Gate BEFORE any read-modify-write (fail-closed). Super admins bypass via the manager.
             graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
-            owner_id = registry.id
+            owner_id = global_owner_id()
         else:
             # PreferenceWriteScope has only USER/GLOBAL, so this branch is USER: the caller's own row.
             owner_id = account_id
