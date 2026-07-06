@@ -10,12 +10,16 @@ import { getRelationshipParent } from "@/shared/components/form/utils/getRelatio
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import type { NodeFieldsWithMetadata, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { validateRelationshipMany } from "@/entities/schema/utils/validation/validate-relationship-many";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
+import type {
+  NodeFieldsWithMetadata,
+  NodeObject,
+  NodeRelationship,
+} from "@/entities/nodes/object/domain/model/node";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { validateRelationshipMany } from "@/entities/schema/domain/rules/validation/validate-relationship-many";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 interface GetFieldLabelParams {
   type?: RelationshipFieldType;

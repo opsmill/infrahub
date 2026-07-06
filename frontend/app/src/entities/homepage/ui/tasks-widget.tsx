@@ -10,7 +10,7 @@ import {
   TASK_STATE_FAILED,
   TASK_STATE_PENDING,
   TASK_STATE_RUNNING,
-} from "@/entities/tasks/constants";
+} from "@/entities/tasks/domain/model/task";
 import {
   TaskHomepageColumn,
   TaskHomepageColumnHeader,

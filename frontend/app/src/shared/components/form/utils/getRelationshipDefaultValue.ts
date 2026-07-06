@@ -14,19 +14,19 @@ import type {
   TemplateSource,
 } from "@/shared/components/form/type";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { isNodeRelationshipMany } from "@/entities/nodes/object/utils/is-node-relationship-many";
 import type {
   NodeFields,
   NodeObject,
   NodeRelationship,
   NodeRelationshipOneWithMetadata,
   NodeRelationshipWithMetadata,
-} from "@/entities/nodes/types";
-import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isNodeRelationshipMany } from "@/entities/nodes/object/domain/rules/is-node-relationship-many";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 type GetRelationshipDefaultValueParams = {
   objectData?: NodeFields | null;

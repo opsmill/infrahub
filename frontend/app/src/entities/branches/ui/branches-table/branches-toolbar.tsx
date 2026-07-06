@@ -9,7 +9,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
-import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchesMutation } from "@/entities/branches/ui/queries/delete-branches.mutation";

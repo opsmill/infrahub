@@ -7,7 +7,7 @@ import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query
 import {
   type AddRelationshipsParams,
   addRelationships,
-} from "@/entities/nodes/relationships/domain/add-relationships/add-relationships";
+} from "@/entities/nodes/relationships/domain/use-cases/add-relationships";
 
 export function useAddRelationships() {
   const { currentBranch } = useCurrentBranch();

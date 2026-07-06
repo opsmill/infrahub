@@ -2,15 +2,19 @@ import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import { TableCell } from "@/shared/components/table/table-cell";
 
+import type {
+  NodeAttribute,
+  NodeObject,
+  NodeRelationship,
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export const GROUP_TABLE_ATTRIBUTES = ["name", "description", "label", "group_type"];
 export const GROUP_TABLE_RELATIONSHIPS = ["members", "roles"];

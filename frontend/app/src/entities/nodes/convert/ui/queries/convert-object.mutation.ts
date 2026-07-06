@@ -4,7 +4,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type ConvertObjectParams,
   convertObject,
-} from "@/entities/nodes/convert/domain/convert-object";
+} from "@/entities/nodes/convert/domain/use-cases/convert-object";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function useConvertObjectMutation() {

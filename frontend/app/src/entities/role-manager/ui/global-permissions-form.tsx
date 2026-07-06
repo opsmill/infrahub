@@ -13,12 +13,13 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { ACCOUNT_ROLE_OBJECT, GLOBAL_PERMISSION_OBJECT } from "@/shared/config/constants";
 
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
-import { globalDecisionOptions } from "@/entities/role-manager/constants";
+import { GLOBAL_PERMISSION_OBJECT } from "@/entities/permission/domain/model/permission";
+import { ACCOUNT_ROLE_OBJECT } from "@/entities/role-manager/domain/model/account";
+import { globalDecisionOptions } from "@/entities/role-manager/domain/model/decision";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface GlobalPermissionFormProps {

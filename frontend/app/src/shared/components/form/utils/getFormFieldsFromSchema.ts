@@ -11,11 +11,15 @@ import { getFormFieldFromRelationship } from "@/shared/components/form/utils/get
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/types";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { NodeFieldsWithMetadata, NodeObject } from "@/entities/nodes/object/domain/model/node";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;

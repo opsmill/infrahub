@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { updateDiff } from "@/entities/diff/domain/update-diff";
+import { updateDiff } from "@/entities/diff/domain/use-cases/update-diff";
 import {
   diffSummaryKeys,
   treeQueryKeys,

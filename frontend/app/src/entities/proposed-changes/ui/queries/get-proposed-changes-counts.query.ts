@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import {
   type GetProposedChangesCountsParams,
   getProposedChangesCounts,
-} from "@/entities/proposed-changes/domain/get-proposed-changes-counts";
+} from "@/entities/proposed-changes/domain/use-cases/get-proposed-changes-counts";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";
 
 type GetProposedChangesCountsQueryOptionsParams = GetProposedChangesCountsParams;

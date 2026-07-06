@@ -10,7 +10,7 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 
 const RepositoryForm = ({

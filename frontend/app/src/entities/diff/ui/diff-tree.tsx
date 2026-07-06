@@ -3,9 +3,9 @@ import { Tree, TreeItem, TreeItemContent } from "@infrahub/ui";
 import { type TreeProps as AriaTreeProps, Collection } from "react-aria-components";
 import { useLocation } from "react-router";
 
+import { buildDiffTreeItems, type DiffTreeItem } from "@/entities/diff/ui/build-diff-tree-items";
 import type { DiffNode } from "@/entities/diff/ui/node-diff/types";
 import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
-import { buildDiffTreeItems, type DiffTreeItem } from "@/entities/diff/utils/build-diff-tree-items";
 
 interface DiffTreeProps extends Omit<AriaTreeProps<DiffTreeItem>, "items" | "children"> {
   nodes: Array<DiffNode>;

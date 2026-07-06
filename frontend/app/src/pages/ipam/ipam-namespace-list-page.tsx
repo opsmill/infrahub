@@ -7,17 +7,17 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 import Content from "@/shared/components/layout/content";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
 
-import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
 import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-card";
 import { useGetIpNamespaceList } from "@/entities/ipam/ip-namespaces/ui/queries/get-ip-namespace-list.query";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface IpNamespaceListPageProps {

@@ -13,23 +13,23 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
 import type {
   NodeCore,
   NodeObjectWithMetadata,
   NodeRelationshipManyWithMetadata,
   NodeRelationshipMetadata,
   NodeRelationshipOneWithMetadata,
-} from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { Permission } from "@/entities/permission/types";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import type { ModelSchema, NodeSchema } from "@/entities/schema/types";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema, NodeSchema } from "@/entities/schema/domain/model/schema";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 const VISIBLE_ITEMS_LIMIT = 5;
 
@@ -165,14 +165,14 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
           title={`Edit ${nodeLabel}`}
           subtitle={objectSchema.description}
         />
-        <ObjectItemEditComponent
+        <ObjectEdit
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsEditModalOpen(false);
           }}
           objectId={objectData.id}
-          objectname={objectSchema.kind!}
+          objectKind={objectSchema.kind!}
         />
       </Sheet>
     </>

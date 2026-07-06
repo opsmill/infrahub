@@ -9,7 +9,7 @@ import { classNames } from "@/shared/utils/common";
 import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 import { DiffRow } from "@/entities/diff/ui/node-diff/utils";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
-import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 type Change = {

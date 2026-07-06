@@ -4,10 +4,10 @@ import { useState } from "react";
 
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
-import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface ObjectCreateFormTriggerProps extends ButtonProps {
   schema: ModelSchema;

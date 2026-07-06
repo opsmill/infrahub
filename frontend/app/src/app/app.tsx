@@ -15,7 +15,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { ErrorBoundaryApp } from "@/shared/components/errors/error-boundary-app";
 import { store } from "@/shared/stores";
 
-import { AuthProvider } from "@/entities/authentication/ui/useAuth";
+import { AuthProvider } from "@/entities/authentication/ui/auth-provider";
 import { ConfigProvider } from "@/entities/config/ui/config-provider";
 
 import "@/app/styles/index.css";

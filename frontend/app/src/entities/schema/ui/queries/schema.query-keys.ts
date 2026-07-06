@@ -1,5 +1,5 @@
-import type { GetSchemaHashParams } from "@/entities/schema/domain/get-schema-hash";
-import type { LoadSchemaParams } from "@/entities/schema/domain/load-schema";
+import type { GetSchemaHashParams } from "@/entities/schema/domain/use-cases/get-schema-hash";
+import type { LoadSchemaParams } from "@/entities/schema/domain/use-cases/load-schema";
 
 export interface LoadSchemaQueryKeyParams extends LoadSchemaParams {
   schemaHash: string | undefined;

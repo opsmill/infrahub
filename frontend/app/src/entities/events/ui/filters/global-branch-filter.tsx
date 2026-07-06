@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import type { TagProps } from "react-aria-components";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import useFilters from "@/shared/hooks/useFilters";
 
 import { branchesState } from "@/entities/branches/stores";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { GlobalFilterForm } from "@/entities/events/ui/filters/global-filter-form";
 import { FilterTag } from "@/entities/events/ui/filters/global-filter-tag";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
 interface FilterTagProps extends TagProps {}
 

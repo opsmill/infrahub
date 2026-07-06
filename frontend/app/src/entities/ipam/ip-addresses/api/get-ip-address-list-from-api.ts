@@ -9,10 +9,13 @@ import {
   dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 
-import { IP_ADDRESS_AVAILABLE_KIND, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import {
+  IP_ADDRESS_AVAILABLE_KIND,
+  IP_ADDRESS_GENERIC,
+} from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GetIpAddressListGraphQLQueryParams extends PaginationParams {
   filters?: Array<Filter>;
