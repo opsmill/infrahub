@@ -1,5 +1,5 @@
 from datetime import UTC
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -69,7 +69,7 @@ class TestQueryLogSelection:
     async def test_logs_count_alone_fetches_logs(self) -> None:
         """A `logs { count }` selection without edges still triggers the log fetch."""
         client = FakePrefectClient(flow_runs=[FlowRun(id=uuid4(), flow_id=uuid4(), name="r1")])
-        fields = {"edges": {"node": {"logs": {"count": {}}}}}
+        fields: dict[str, Any] = {"edges": {"node": {"logs": {"count": {}}}}}
 
         with patch("infrahub.task_manager.task.get_client") as mock_get_client:
             mock_get_client.return_value.__aenter__.return_value = client
