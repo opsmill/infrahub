@@ -336,3 +336,6 @@ async def test_global_rejects_unauthenticated(
     for account_session in (None, anonymous):
         result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=account_session)
         assert result.errors is not None
+        # Confirm it is the auth gate rejecting, not an unrelated schema/db error (matches the
+        # effective/user unauth tests).
+        assert any("authenticated account" in str(error) for error in result.errors)
