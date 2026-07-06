@@ -10,9 +10,9 @@ import {
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
-import type { Filter } from "@/shared/hooks/useFilters";
 
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 interface GetObjectsQueryParams {
   schemaKind: string;

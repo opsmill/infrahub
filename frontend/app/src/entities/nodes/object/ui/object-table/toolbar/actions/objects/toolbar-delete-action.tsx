@@ -2,8 +2,8 @@ import { Button, Tooltip } from "@infrahub/ui";
 import { Trash2Icon } from "lucide-react";
 import React from "react";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import type { NodeCore } from "@/entities/nodes/types";
 
 import { DeleteObjectsModal } from "./delete-objects-modal";
 

@@ -2,7 +2,7 @@ import { Popover, PopoverTrigger, ScrollArea } from "@infrahub/ui";
 import { InfoIcon } from "lucide-react";
 import { Button } from "react-aria-components";
 
-import type { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/domain/model/event";
 
 import { EventDetails } from "./event-details";
 

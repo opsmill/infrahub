@@ -5,8 +5,8 @@ import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getReachableNodes } from "@/entities/path-traversal/domain/get-reachable-nodes";
-import type { GetReachableNodesParams } from "@/entities/path-traversal/domain/path-traversal.types";
+import type { GetReachableNodesParams } from "@/entities/path-traversal/domain/model/path-traversal";
+import { getReachableNodes } from "@/entities/path-traversal/domain/use-cases/get-reachable-nodes";
 import { pathTraversalQueryKeys } from "@/entities/path-traversal/ui/queries/path-traversal.query-keys";
 
 export function getReachableNodesQueryOptions(params: GetReachableNodesParams) {

@@ -1,1 +1,0 @@
-Display labels, human-friendly IDs, and computed attributes that read across a relationship no longer error when the related peer is missing, such as after the peer has been deleted. The missing value now resolves as empty. This previously caused branch merge, rebase, and diff calculation to fail.

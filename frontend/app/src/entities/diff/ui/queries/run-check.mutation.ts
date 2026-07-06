@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { runCheck } from "@/entities/diff/domain/run-check";
+import { runCheck } from "@/entities/diff/domain/use-cases/run-check";
 
 // invalidation-at-callsite: callers pass an explicit `onSuccess` (see
 // checks-summary.tsx) that invalidates `proposedChangeValidatorsKeys` for the

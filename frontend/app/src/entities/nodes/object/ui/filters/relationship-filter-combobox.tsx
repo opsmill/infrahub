@@ -3,7 +3,7 @@ import { Button } from "@infrahub/ui";
 import { Col } from "@/shared/components/container";
 import { Badge } from "@/shared/components/ui/badge";
 
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 
 interface RelationshipFilterComboboxProps {

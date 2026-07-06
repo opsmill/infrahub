@@ -12,7 +12,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetObjectRelationshipsParams,
   getObjectRelationships,
-} from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships";
+} from "@/entities/nodes/relationships/domain/use-cases/get-object-relationships";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
 

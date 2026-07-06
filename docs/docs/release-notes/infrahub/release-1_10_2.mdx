@@ -1,0 +1,24 @@
+---
+title: Release 1.10.2
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.10.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>July 3rd, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.10.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.10.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Node mutation events are no longer silently dropped when the node has a large number of relationship peers. Previously, creating or updating a node with roughly 250 or more peers (for example a trunk interface tagging a large VLAN range) produced an event whose related resources exceeded the maximum accepted by the task manager, which rejected the whole event: it never appeared in the node's activity log and automation triggers never fired for it. The related resources are now capped at that maximum, keeping the node-scoped entries and as many relationship updates as fit. ([#9794](https://github.com/opsmill/infrahub/issues/9794))
+- Display labels, human-friendly IDs, and computed attributes that read across a relationship no longer error when the related peer is missing, such as after the peer has been deleted. The missing value now resolves as empty. This previously caused branch merge, rebase, and diff calculation to fail.

@@ -62,6 +62,17 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [async-tasks.md](knowledge/backend/async-tasks.md) - Asynchronous tasks (Prefect)
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
 
+## Current ADRs
+
+Architecture Decision Records in [adr/](adr/):
+
+- [0001-context-nuggets-pattern.md](adr/0001-context-nuggets-pattern.md) - Context nuggets pattern
+- [0002-events-system.md](adr/0002-events-system.md) - Events system
+- [0003-asynchronous-tasks.md](adr/0003-asynchronous-tasks.md) - Asynchronous tasks
+- [0004-message-bus.md](adr/0004-message-bus.md) - Message bus
+- [0005-account-group-origin-attribute.md](adr/0005-account-group-origin-attribute.md) - `origin` attribute for `CoreAccountGroup` provenance
+- [0006-frontend-entity-layers.md](adr/0006-frontend-entity-layers.md) - Frontend entity layers: `ui → domain → api` with api-owned mappers
+
 ## Current Guides
 
 Backend guides in [guides/backend/](guides/backend/):

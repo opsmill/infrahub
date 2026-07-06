@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { getAppInfo } from "@/entities/config/domain/get-app-info";
+import { getAppInfo } from "@/entities/config/domain/use-cases/get-app-info";
 
 export const APP_INFO_QUERY_KEY = ["app-info"] as const;
 

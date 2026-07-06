@@ -1,18 +1,20 @@
+import { sortByOrderWeight } from "@/shared/utils/common";
+
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/model/metadata-filter-definitions";
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/domain/rules/is-from-resource-pool-relationship";
+import {
+  GLOBAL_PERMISSION_OBJECT,
+  OBJECT_PERMISSION_OBJECT,
+} from "@/entities/permission/domain/model/permission";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
   ACCOUNT_ROLE_OBJECT,
-  GLOBAL_PERMISSION_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-} from "@/shared/config/constants";
-import { sortByOrderWeight } from "@/shared/utils/common";
-
-import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
-import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
-import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
+} from "@/entities/role-manager/domain/model/account";
+import { getDecisionOptions } from "@/entities/role-manager/domain/use-cases/get-decision-options";
 import {
   ACCOUNT_TABLE_ATTRIBUTES,
   ACCOUNT_TABLE_RELATIONSHIPS,
@@ -33,8 +35,12 @@ import {
   ROLE_TABLE_ATTRIBUTES,
   ROLE_TABLE_RELATIONSHIPS,
 } from "@/entities/role-manager/ui/get-role-table-columns";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 function mapFieldToDefinition(
   schemaKind: ModelSchema["kind"],

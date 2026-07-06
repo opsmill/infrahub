@@ -1,8 +1,7 @@
-import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/shared/config/constants";
-import type { Filter } from "@/shared/hooks/useFilters";
-
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 
 export interface ProposedChangesListKeysParams {
   filters?: Filter[];

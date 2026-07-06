@@ -6,10 +6,10 @@ import { Heading } from "react-aria-components";
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Col, Row } from "@/shared/components/container";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
-import { REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 
 export const DELETE_BRANCH_SCOPE = {
   LOCAL: "local",

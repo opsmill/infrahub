@@ -122,3 +122,22 @@ Resolve each remaining hit (or explicitly note it as out-of-scope in the PR desc
 
 - Module-level: `SCREAMING_SNAKE_CASE`
 - Object/array constants: `PascalCase` with `as const`
+
+## The TypeScript gate is `betterer`, not `tsc`
+
+<!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
+
+The repo does not have a green `pnpm tsc` — it carries ~200 tracked pre-existing errors, ratcheted
+by [betterer](https://phenomnomnominal.github.io/betterer/) (`pnpm betterer`, results in
+`frontend/app/.betterer.results`). Do not chase the pre-existing errors; the rule is only that the
+count never grows.
+
+Practical consequences when moving or renaming files:
+
+- `.betterer.results` keys entries by file path (and content hash), so moving a file with tracked
+  errors requires refreshing `.betterer.results` and committing it with the move.
+- **Relative imports break silently under the `@/` alias habit**: moving a file one directory
+  deeper (e.g. `domain/x.ts` → `domain/use-cases/x.ts`) adds a level to every *relative* import it
+  contains — typically test-fixture paths like `../../../../tests/fake/schema`. An alias-based
+  search-and-replace won't catch these; the full `tsc` run behind betterer is what surfaces them.
+  Add one `../` per directory level moved.

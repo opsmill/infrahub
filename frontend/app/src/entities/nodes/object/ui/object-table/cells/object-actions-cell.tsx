@@ -7,11 +7,11 @@ import { queryClient } from "@/shared/api/rest/client";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { Permission } from "@/entities/permission/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {
@@ -89,14 +89,14 @@ export function ObjectActionsCell({
           currentObjectLabel={objectLabel}
           title={`Edit ${objectLabel}`}
         />
-        <ObjectItemEditComponent
+        <ObjectEdit
           closeDrawer={() => setShowEditForm(false)}
           onUpdateComplete={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setShowEditForm(false);
           }}
           objectId={objectId}
-          objectname={objectKind}
+          objectKind={objectKind}
           extraRelationshipNames={extraRelationshipNames}
         />
       </Sheet>

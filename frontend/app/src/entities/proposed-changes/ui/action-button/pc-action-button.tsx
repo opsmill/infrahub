@@ -6,7 +6,7 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { ActionComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-action-combobox-list";
 import { CloseButton } from "@/entities/proposed-changes/ui/action-button/pc-close-button";
 import { DraftButton } from "@/entities/proposed-changes/ui/action-button/pc-draft-button";

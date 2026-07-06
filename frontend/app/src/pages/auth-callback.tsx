@@ -5,7 +5,7 @@ import { FetchError, fetchUrl, type RestErrorItem } from "@/shared/api/rest/fetc
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 function AuthCallback() {

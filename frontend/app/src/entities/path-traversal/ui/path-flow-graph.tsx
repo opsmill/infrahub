@@ -17,7 +17,7 @@ import type { LayoutDirection } from "@infrahub/graph";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
-import type { PathResult } from "../domain/path-traversal.types";
+import type { PathResult } from "../domain/model/path-traversal";
 import { BottomToolbar } from "./bottom-toolbar";
 import { InfraNode, type InfraNodeData } from "./infra-node";
 import { type EdgeStyle, PathEdge } from "./path-edge";

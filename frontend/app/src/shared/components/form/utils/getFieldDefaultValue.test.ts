@@ -4,7 +4,7 @@ import type { ProfileData } from "@/shared/components/form/object-form";
 import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { store } from "@/shared/stores";
 
-import type { NodeObject, NodeObjectWithMetadata } from "@/entities/nodes/types";
+import type { NodeObject, NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,

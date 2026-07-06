@@ -8,6 +8,7 @@ export const QSP = {
   PROPOSED_CHANGES_STATE: "pr_state",
   QUERY: "query",
   SEARCH: "search",
+  IPAM_NAMESPACE: "namespace",
   STATUS: "status",
   HIGHLIGHT: "highlight",
 } as const;

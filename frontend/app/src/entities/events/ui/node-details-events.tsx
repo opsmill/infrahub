@@ -8,8 +8,8 @@ import { Link } from "@/shared/components/ui/link";
 import { QSP } from "@/shared/config/qsp";
 
 import { useGetEvents } from "@/entities/events/ui/queries/get-events.query";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-label.query";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 import { EventCard } from "./event-card";
 

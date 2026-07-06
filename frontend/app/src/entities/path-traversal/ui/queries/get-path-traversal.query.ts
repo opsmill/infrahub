@@ -5,8 +5,8 @@ import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getPathTraversal } from "@/entities/path-traversal/domain/get-path-traversal";
-import type { GetPathTraversalParams } from "@/entities/path-traversal/domain/path-traversal.types";
+import type { GetPathTraversalParams } from "@/entities/path-traversal/domain/model/path-traversal";
+import { getPathTraversal } from "@/entities/path-traversal/domain/use-cases/get-path-traversal";
 import { pathTraversalQueryKeys } from "@/entities/path-traversal/ui/queries/path-traversal.query-keys";
 
 export function getPathTraversalQueryOptions(params: GetPathTraversalParams) {

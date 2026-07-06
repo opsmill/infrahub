@@ -4,7 +4,7 @@ import DynamicForm from "@/shared/components/form/dynamic-form";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
+import { validateTextAttribute } from "@/entities/schema/domain/rules/validation/validate-text-attribute";
 import { useCreateAccountTokenMutation } from "@/entities/user-profile/ui/queries/create-account-token.mutation";
 
 export interface AccountTokenCreateFormProps {

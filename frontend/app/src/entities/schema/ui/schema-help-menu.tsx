@@ -2,10 +2,10 @@ import { Icon } from "@iconify-icon/react";
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
-import { MENU_EXCLUDELIST } from "@/shared/config/constants";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { ModelSchema } from "@/entities/schema/types";
+import { MENU_EXCLUDELIST } from "@/entities/navigation/domain/model/menu";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 type SchemaHelpMenuProps = {
   schema: ModelSchema;
