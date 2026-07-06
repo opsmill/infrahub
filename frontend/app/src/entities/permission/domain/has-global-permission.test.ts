@@ -24,26 +24,29 @@ describe("hasGlobalPermission", () => {
     vi.clearAllMocks();
   });
 
-  test("returns true when the action is present with an ALLOW decision", async () => {
-    mockEdges([{ action: "manage_global_preferences", decision: "ALLOW" }]);
+  // decision is the stringified PermissionDecision int: DENY=1, ALLOW_DEFAULT=2, ALLOW_OTHER=4, ALLOW_ALL=6.
+  test("returns true when the action is present with ALLOW_ALL (6)", async () => {
+    mockEdges([{ action: "manage_global_preferences", decision: "6" }]);
 
     await expect(hasGlobalPermission("manage_global_preferences")).resolves.toBe(true);
   });
 
-  test("treats branch-relative ALLOW_* decisions as granted", async () => {
-    mockEdges([{ action: "manage_global_preferences", decision: "ALLOW_DEFAULT" }]);
+  test("treats ALLOW_DEFAULT (2) / ALLOW_OTHER (4) as granted", async () => {
+    mockEdges([{ action: "manage_global_preferences", decision: "2" }]);
+    await expect(hasGlobalPermission("manage_global_preferences")).resolves.toBe(true);
 
+    mockEdges([{ action: "manage_global_preferences", decision: "4" }]);
     await expect(hasGlobalPermission("manage_global_preferences")).resolves.toBe(true);
   });
 
-  test("returns false when the action is present but denied", async () => {
-    mockEdges([{ action: "manage_global_preferences", decision: "DENY" }]);
+  test("returns false when the action is present but denied (1)", async () => {
+    mockEdges([{ action: "manage_global_preferences", decision: "1" }]);
 
     await expect(hasGlobalPermission("manage_global_preferences")).resolves.toBe(false);
   });
 
   test("returns false when the action is absent", async () => {
-    mockEdges([{ action: "some_other_permission", decision: "ALLOW" }]);
+    mockEdges([{ action: "some_other_permission", decision: "6" }]);
 
     await expect(hasGlobalPermission("manage_global_preferences")).resolves.toBe(false);
   });
@@ -55,7 +58,7 @@ describe("hasGlobalPermission", () => {
   });
 
   test("a super_admin grant satisfies any action (mirrors the backend bypass)", async () => {
-    mockEdges([{ action: "super_admin", decision: "ALLOW" }]);
+    mockEdges([{ action: "super_admin", decision: "6" }]);
 
     await expect(hasGlobalPermission("manage_global_preferences")).resolves.toBe(true);
   });
