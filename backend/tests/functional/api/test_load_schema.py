@@ -685,8 +685,10 @@ class TestLoadSchemaAPI(TestInfrahubApp):
     ) -> None:
         """Reject non-write fields nested under `extensions.nodes`, naming each with its location.
 
-        An extension node's attribute carrying a read-level field (`inherited`), an unknown field,
-        and an out-of-enum `kind` must all be rejected, each located under `extensions.nodes[*]`.
+        An extension node's attribute carrying a read-level field (`inherited`) and an unknown
+        field must both be rejected, each located under `extensions.nodes[*]`. (An out-of-enum
+        `kind` is covered separately: it fails the attribute discriminator, which short-circuits
+        the per-variant field checks, so it cannot be reported alongside co-located fields.)
         """
         payload = {
             "schemas": [
@@ -699,7 +701,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                                 "attributes": [
                                     {
                                         "name": "extra",
-                                        "kind": "NotARealKind",
+                                        "kind": "Text",
                                         "inherited": True,
                                         "not_a_real_field": "value",
                                     }
@@ -720,10 +722,11 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert response.status_code == 422
         messages = [item["msg"] for item in response.json()["detail"]]
         joined = " ".join(messages)
-        assert "extensions.nodes[0].attributes[0].inherited" in joined, messages
-        assert "extensions.nodes[0].attributes[0].not_a_real_field" in joined, messages
-        assert "extensions.nodes[0].attributes[0].kind" in joined, messages
-        assert "NotARealKind" in joined, messages
+        # Both non-write fields are reported, located under the extension attribute (the matched
+        # variant tag, e.g. `.Text.`, is part of the discriminated-union error path).
+        assert "extensions.nodes[0].attributes[0]" in joined, messages
+        assert "inherited" in joined, messages
+        assert "not_a_real_field" in joined, messages
 
     async def test_schema_load_rejects_out_of_enum_relationship_cardinality(
         self,
@@ -892,7 +895,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                     "attributes": [
                         {
                             "name": "name",
-                            "kind": "NotARealKind",
+                            "kind": "Text",
                             "inherited": True,
                             "not_a_real_field": "value",
                         }
@@ -924,6 +927,6 @@ class TestLoadSchemaAPI(TestInfrahubApp):
 
         body = response_invalid.text
         offending_fields = {error.field.rsplit(".", 1)[-1] for error in offline_invalid.errors}
-        assert {"kind", "inherited", "not_a_real_field"} <= offending_fields
+        assert {"inherited", "not_a_real_field"} <= offending_fields
         for field in offending_fields:
             assert field in body
