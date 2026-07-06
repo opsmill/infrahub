@@ -62,7 +62,7 @@ export function SortEditor({ schema }: SortEditorProps) {
   return (
     <Col className="items-start gap-1 p-1">
       {isDefaultOrder ? (
-        <div className="rounded-lg border border-stone-300 bg-stone-200/50">
+        <div className="inset-shadow-[0_1px_2px_rgb(255,255,255),0_1px_4px_rgba(0,0,0,0.1)] rounded-lg border border-stone-200 bg-stone-200/50 shadow-[0_1px_1px_rgba(0,0,0,0.02)]">
           <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
             <CheckIcon className="size-3.5 text-cyan-600" />
             Default order · applied now
