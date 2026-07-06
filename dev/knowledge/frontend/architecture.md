@@ -1,48 +1,49 @@
 ## Architecture
 
-Feature-Sliced architecture using DDD/Hexagonal principles. Each **context** (entity) keeps its
-domain logic, data access, and UI strictly separated, and owns everything specific to that context.
+Feature-Sliced architecture using DDD/Hexagonal principles. Each **entity** keeps its
+domain logic, data access, and UI strictly separated, and owns everything specific to that entity.
 
 - **app/** — application core (providers, routing, styles)
 - **pages/** — route-based page components (thin route wrappers)
-- **entities/** — business contexts (features)
-- **shared/** — generic, context-free building blocks only
+- **entities/** — business entities (features)
+- **shared/** — generic, entity-agnostic building blocks only
 
 Dependency rule: `app → pages → entities → shared` (unidirectional).
 
 ### The mental model
 
-- **Context-specific code lives in its context** (`entities/<context>/`). A context's component,
-  hook, type, or function may be imported from anywhere — other contexts and even `shared/`.
-- **`shared/` holds only generic, context-free code** — things that belong to *no* context. If a
-  file in `shared/` needs to know about a context (a schema kind, an entity's shape, a specific
-  component), it is misplaced: move it into that context.
+- **Entity-specific code lives in its entity** (`entities/<name>/`). An entity's component,
+  hook, type, or function may be imported by other entities and by higher layers (`pages/`, `app/`)
+  — never by `shared/`, apart from the form-subsystem exception below.
+- **`shared/` holds only generic, entity-agnostic code** — things that belong to *no* entity. If a
+  file in `shared/` needs to know about an entity (a schema kind, an entity's shape, a specific
+  component), it is misplaced: move it into that entity.
 - **The form subsystem (`shared/components/form/`) is the one sanctioned exception**: it lives in
-  `shared/` yet composes many contexts (it renders the right form per node kind). Treat it as a
-  cross-context framework, not ordinary shared code.
-- A few transport files under `shared/api/` legitimately reach two cross-cutting contexts —
+  `shared/` yet composes many entities (it renders the right form per node kind). Treat it as a
+  cross-entity framework, not ordinary shared code.
+- A few transport files under `shared/api/` legitimately reach two cross-cutting entities —
   `authentication` (the API clients need the access token) and `nodes/filters` (the GraphQL query
   builder needs the `Filter` type). These are accepted cross-cutting edges, not a general licence.
 
 #### Known exceptions (migration debt)
 
 `shared/` is not yet a clean leaf. Beyond the sanctioned edges above, these files still import
-contexts today. The rule stands — do not add new edges like them; migrate these into their contexts:
+entities today. The rule stands — do not add new edges like them; migrate these into their entities:
 
 - `shared/api/graphql/utils.ts`: also imports `ipam/ip-availability` and `schema` domain models
 - `shared/api/rest/client.ts`: imports `authentication`'s `ui/queries` refresh-token query, beyond
   the token surface
 - Most of `shared/components/inputs/` (`peer`, `enum`, `dropdown`, `pool-select`,
   `relationship-one`/`-many`, `node-kind-select`, `kind-multi-select`): import the `schema` and
-  `nodes` contexts
+  `nodes` entities
 - `shared/components/display/slide-over.tsx`, `shared/components/display/meta-details-tooltips.tsx`,
   `shared/components/table/data-table.tsx`, `shared/components/ui/id.tsx`, and
   `shared/libs/graphiql/use-graphiql-fetcher.ts`
 
-## Entity (context) structure
+## Entity structure
 
 ```text
-entities/{context}/
+entities/{name}/
 ├── api/                # Transport + anti-corruption. FLAT (no subfolders). Owns generated wire
 │                       # types and gql/REST calls. Returns domain types.
 ├── domain/             # Framework-free business core
@@ -64,12 +65,12 @@ flat `domain/` folders in `artifacts`, `user-profile`, and `nodes/object-file`. 
 
 See `entities-structure.md` for the full layer import rules, the data-flow, and worked examples.
 
-## What is generic vs context-specific
+## What is generic vs entity-specific
 
-- **Generic → `shared/`:** UI primitives with no context knowledge, generic utils (`array`, `date`,
+- **Generic → `shared/`:** UI primitives with no entity knowledge, generic utils (`array`, `date`,
   `file`), the API clients, generic display constants (`MAX_VALUE_LENGTH_DISPLAY`), and query-string
   keys (`shared/config/qsp.ts` — `QSP.*`).
-- **Context vocabulary → the context's `domain/model`:** schema kinds (`NODE_OBJECT`,
+- **Entity vocabulary → the entity's `domain/model`:** schema kinds (`NODE_OBJECT`,
   `ARTIFACT_OBJECT`, …), states, event-type names, filter names — never `shared/config/constants.ts`.
 - **Pagination page size is a UI concern:** the `ui/queries` layer owns the page-size constant and
   passes it to the domain use-case as `limit`; the domain never defaults to a UI page size. (Known

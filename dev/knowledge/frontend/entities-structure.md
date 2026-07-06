@@ -4,7 +4,7 @@ Location: `frontend/app/src/entities/`
 
 ## Three-Layer Architecture
 
-Each entity (context) is organized into three layers with strict import rules. Dependencies flow in one direction: ui/ -> domain/ -> api/.
+Each entity is organized into three layers with strict import rules. Dependencies flow in one direction: ui/ -> domain/ -> api/.
 
 `domain/` is **always** organized as `model/` (types + vocabulary), `rules/` (pure functions), and `use-cases/` (orchestration) — every entity, regardless of size; there is no file-count threshold below which `domain/` stays flat. Use-cases always live in `domain/use-cases/` — even a single one; types always in `domain/model/`. Never add **entity-root catch-all files** (`types.ts`, `constants.ts`, `stores.ts`) or an **entity-root `utils/` folder**: types/vocabulary → `domain/model`, pure helpers → `domain/rules`, view-model/table helpers and hooks → `ui/`, and generated↔domain **mappers live in `api/`**. A few entities still violate this — see [Known exceptions (migration debt)](#known-exceptions-migration-debt).
 
@@ -96,26 +96,27 @@ guard was trialled and dropped; dependency-cruiser is a deferred proposal).
 
 Key constraints: no circular dependencies (the graph must be a DAG); `domain/model` is a pure leaf so `api → domain/model` + `domain → api` stays acyclic. Because `domain/model` imports nothing back, `api/` may import it not only for mapper return **types** but also for plain **vocabulary constants** (schema kinds, state strings, enums used to build queries) — the import stays acyclic. What `api/` must never import is domain **logic** (`domain/rules`, `domain/use-cases`) or `ui/`. Generated types (incl. wire DTOs) may enter `domain/` (see above); `domain/` must not read or write browser storage or global state directly (one known violation remains — see [Known exceptions (migration debt)](#known-exceptions-migration-debt)).
 
-## `shared/` vs contexts
+## `shared/` vs entities
 
-`shared/` holds **only generic, context-free code** — UI primitives, generic utils (`array`, `date`,
+`shared/` holds **only generic, entity-agnostic code** — UI primitives, generic utils (`array`, `date`,
 `file`), the API clients, generic display constants (`MAX_VALUE_LENGTH_DISPLAY`), and query-string
-keys (`shared/config/qsp.ts`). If a `shared/` file needs to know about a context (a schema kind, an
-entity shape, a specific component), it is **misplaced — move it into that context**. A context's
-component/hook/type may be imported from anywhere, including `shared/`.
+keys (`shared/config/qsp.ts`). If a `shared/` file needs to know about an entity (a schema kind, an
+entity shape, a specific component), it is **misplaced — move it into that entity**. An entity's
+component/hook/type may be imported by other entities and by higher layers — never by `shared/`,
+apart from the sanctioned exceptions below.
 
 What this means in practice:
 
-- **Context vocabulary is never in `shared/`.** Schema kinds, states, event-type names, and filter
-  names live in the owning context's `domain/model` (e.g. `NODE_OBJECT` in `nodes/object`, the
+- **Entity vocabulary is never in `shared/`.** Schema kinds, states, event-type names, and filter
+  names live in the owning entity's `domain/model` (e.g. `NODE_OBJECT` in `nodes/object`, the
   `Filter` type + `SEARCH_*` in `nodes/filters`). Only
   genuinely generic values stay in `shared/config/constants.ts` (display limits) and
   `shared/config/qsp.ts` (URL param keys).
-- **`shared/` stays a leaf** (imports no context) — with these sanctioned exceptions (other
-  `shared/` → context edges still exist as [migration debt](#known-exceptions-migration-debt)):
-  - **The form subsystem `shared/components/form/`** is a cross-context framework: it renders the
-    right form per node kind, so it legitimately imports many contexts. Treat it as framework code.
-  - **`shared/api/` transport** reaches two cross-cutting contexts: `authentication` (the REST/GraphQL
+- **`shared/` stays a leaf** (imports no entity) — with these sanctioned exceptions (other
+  `shared/` → entity edges still exist as [migration debt](#known-exceptions-migration-debt)):
+  - **The form subsystem `shared/components/form/`** is a cross-entity framework: it renders the
+    right form per node kind, so it legitimately imports many entities. Treat it as framework code.
+  - **`shared/api/` transport** reaches two cross-cutting entities: `authentication` (the REST/GraphQL
     clients + graphiql fetcher need the access token / `redirectToLogin`) and `nodes/filters` (the
     GraphQL query builder `addFiltersToRequest` needs the `Filter` type). These can't move without
     breaking `api` layering, so they are accepted edges — not a general licence.
@@ -136,7 +137,7 @@ and remove them when touching the code:
 - Page size outside `ui/queries`: `BRANCHES_PER_PAGE` is defined in
   `branches/api/get-branches-from-api.ts` (which also defaults its `limit` to it) and imported by
   `ui/queries/get-branches.query.ts`.
-- `shared/` → context edges beyond the sanctioned ones: `shared/api/graphql/utils.ts` (also imports
+- `shared/` → entity edges beyond the sanctioned ones: `shared/api/graphql/utils.ts` (also imports
   `ipam/ip-availability` and `schema` domain models), `shared/api/rest/client.ts` (imports
   `authentication`'s `ui/queries` refresh-token query), most of `shared/components/inputs/`
   (`peer`, `enum`, `dropdown`, `pool-select`, `relationship-one`/`-many`, `node-kind-select`,

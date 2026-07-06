@@ -43,7 +43,7 @@ authentication/
 
 Import direction is the entity rule: `ui/ → domain/ → api/`. SSO has no api/domain/queries (it's a redirect link list, not a fetch). Storage keys live with their consumers: token keys in `api/token-storage.ts`, `LAST_USED_METHOD_KEY` in `ui/hooks/use-last-used-method.ts`.
 
-> `shared/` transport (`api/rest/client`, `api/graphql/graphqlClientApollo`, graphiql fetcher) imports this entity's token surface (`api/token-storage`, `domain/use-cases/redirect-to-login`) — the one sanctioned `shared → context` transport edge (auth is cross-cutting). `api/rest/client` and `api/graphql/graphqlClientApollo` also import `ui/queries/refresh-access-token.query`, sharing one TanStack query so concurrent 401s trigger a single refresh.
+> `shared/` transport (`api/rest/client`, `api/graphql/graphqlClientApollo`, graphiql fetcher) imports this entity's token surface (`api/token-storage`, `domain/use-cases/redirect-to-login`) — the one sanctioned `shared → entity` transport edge (auth is cross-cutting). `api/rest/client` and `api/graphql/graphqlClientApollo` also import `ui/queries/refresh-access-token.query`, sharing one TanStack query so concurrent 401s trigger a single refresh.
 
 ## The registry
 
@@ -58,7 +58,7 @@ type AuthMethodDefinition<TMethod extends AuthMethod> = {
 };
 ```
 
-`AuthMethod` is a discriminated union (`{ kind: "local" } | { kind: "sso"; providers: [...] } | ...`). The registry type `AuthMethodRegistry` is keyed on `kind`, so TypeScript enforces that every variant has a definition. `Config` is the server config model from the `entities/config` context (`domain/model/config`), obtained via `useConfig`.
+`AuthMethod` is a discriminated union (`{ kind: "local" } | { kind: "sso"; providers: [...] } | ...`). The registry type `AuthMethodRegistry` is keyed on `kind`, so TypeScript enforces that every variant has a definition. `Config` is the server config model from the `entities/config` entity (`domain/model/config`), obtained via `useConfig`.
 
 ```ts
 export const AUTH_METHODS: AuthMethodRegistry = {
