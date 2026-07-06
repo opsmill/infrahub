@@ -65,6 +65,10 @@ class SchemaAttribute(BaseModel):
     min_length: int | None = None
     max_length: int | None = None
     enum: list[str] | None = None
+    enum_class: str | None = Field(
+        default=None,
+        description="Name of the generated SDK enum class that carries this field's constrained values.",
+    )
     default_value: Any | None = None
     default_factory: str | None = None
     default_to_none: bool = False
@@ -78,7 +82,14 @@ class SchemaAttribute(BaseModel):
     def to_dict(self) -> dict[str, Any]:
         model = self.model_dump(
             exclude_none=True,
-            exclude={"default_factory", "default_to_none", "extra", "internal_kind", "override_default_value"},
+            exclude={
+                "default_factory",
+                "default_to_none",
+                "extra",
+                "internal_kind",
+                "override_default_value",
+                "enum_class",
+            },
         )
         if self.default_value is not None and isinstance(self.default_value, Enum):
             model["default_value"] = self.default_value.value
@@ -149,12 +160,14 @@ class SchemaAttribute(BaseModel):
     def external_object_kind(self) -> str:
         """Self-contained type annotation for the user-facing (SDK) write/read models.
 
-        Constrained fields render as ``Literal[...]`` so the allowed-value set is carried in
-        the emitted JSON-schema without depending on any backend enum class. Backend-only
-        complex kinds collapse to plain JSON-compatible containers so the models import with
-        only the SDK installed.
+        Constrained fields are typed with a dedicated ``(str, Enum)`` class emitted alongside
+        the models, so the allowed-value set is carried by a self-contained enum rather than an
+        inline ``Literal``. Backend-only complex kinds collapse to plain JSON-compatible
+        containers so the models import with only the SDK installed.
         """
         if self.enum:
+            if self.enum_class is not None:
+                return self.enum_class
             values = ", ".join(repr(value) for value in self.enum)
             return f"Literal[{values}]"
         if self.internal_kind is not None:
@@ -388,6 +401,7 @@ base_node_schema = SchemaNode(
             internal_kind=BranchSupportType,
             description="Type of branch support for the model.",
             enum=BranchSupportType.available_types(),
+            enum_class="BranchSupportType",
             default_value=BranchSupportType.AWARE,
             optional=True,
             extra={
@@ -486,6 +500,7 @@ base_node_schema = SchemaNode(
             description="Expected state of the node/generic after loading the schema",
             default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
+            enum_class="SchemaState",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
@@ -624,6 +639,7 @@ attribute_schema = SchemaNode(
             kind="Text",
             description="Defines the type of the attribute.",
             enum=ATTRIBUTE_KIND_LABELS,
+            enum_class="AttributeKind",
             extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
@@ -720,6 +736,7 @@ attribute_schema = SchemaNode(
             internal_kind=BranchSupportType,
             description="Type of branch support for the attribute, if not defined it will be inherited from the node.",
             enum=BranchSupportType.available_types(),
+            enum_class="BranchSupportType",
             optional=True,
             extra={
                 "update": UpdateSupport.NOT_SUPPORTED,
@@ -764,6 +781,7 @@ attribute_schema = SchemaNode(
             description="Expected state of the attribute after loading the schema",
             default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
+            enum_class="SchemaState",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
@@ -773,6 +791,7 @@ attribute_schema = SchemaNode(
             internal_kind=AllowOverrideType,
             description="Type of allowed override for the attribute.",
             enum=AllowOverrideType.available_types(),
+            enum_class="AllowOverrideType",
             default_value=AllowOverrideType.ANY,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
@@ -809,6 +828,7 @@ attribute_schema = SchemaNode(
                 "'extra' shows in an expanded/secondary section."
             ),
             enum=SchemaAttributeDisplay.available_types(),
+            enum_class="SchemaAttributeDisplay",
             default_value=SchemaAttributeDisplay.DEFAULT,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
@@ -866,6 +886,7 @@ relationship_schema = SchemaNode(
             internal_kind=RelationshipKind,
             description="Defines the type of the relationship.",
             enum=RelationshipKind.available_types(),
+            enum_class="RelationshipKind",
             default_value=RelationshipKind.GENERIC,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
@@ -901,6 +922,7 @@ relationship_schema = SchemaNode(
             internal_kind=RelationshipCardinality,
             description="Defines how many objects are expected on the other side of the relationship.",
             enum=RelationshipCardinality.available_types(),
+            enum_class="RelationshipCardinality",
             default_value=RelationshipCardinality.MANY,
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
@@ -958,6 +980,7 @@ relationship_schema = SchemaNode(
             internal_kind=BranchSupportType,
             description="Type of branch support for the relationship. If not defined, it will be determined based on both peers.",
             enum=BranchSupportType.available_types(),
+            enum_class="BranchSupportType",
             optional=True,
             extra={
                 "update": UpdateSupport.NOT_SUPPORTED,
@@ -979,6 +1002,7 @@ relationship_schema = SchemaNode(
             description="Defines the direction of the relationship, "
             " Unidirectional relationship are required when the same model is on both side.",
             enum=RelationshipDirection.available_types(),
+            enum_class="RelationshipDirection",
             default_value=RelationshipDirection.BIDIR,
             optional=True,
             extra={
@@ -1003,6 +1027,7 @@ relationship_schema = SchemaNode(
             description="Expected state of the relationship after loading the schema",
             default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
+            enum_class="SchemaState",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE, "visibility": Visibility.WRITE},
         ),
@@ -1012,6 +1037,7 @@ relationship_schema = SchemaNode(
             internal_kind=RelationshipDeleteBehavior,
             description="Default is no-action. If cascade, related node(s) are deleted when this node is deleted.",
             enum=RelationshipDeleteBehavior.available_types(),
+            enum_class="RelationshipDeleteBehavior",
             default_value=None,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
@@ -1022,6 +1048,7 @@ relationship_schema = SchemaNode(
             internal_kind=AllowOverrideType,
             description="Type of allowed override for the relationship.",
             enum=AllowOverrideType.available_types(),
+            enum_class="AllowOverrideType",
             default_value=AllowOverrideType.ANY,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
@@ -1051,6 +1078,7 @@ relationship_schema = SchemaNode(
                 "'extra' shows in an expanded/secondary section."
             ),
             enum=SchemaAttributeDisplay.available_types(),
+            enum_class="SchemaAttributeDisplay",
             default_value=SchemaAttributeDisplay.DEFAULT,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},

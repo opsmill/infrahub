@@ -6,6 +6,12 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .enums import (
+{%- for name in enum_names %}
+    {{ name }},
+{%- endfor %}
+)
+
 {% for family in pre_families %}
 
 class {{ family.class_name }}({{ family.parent }}):
