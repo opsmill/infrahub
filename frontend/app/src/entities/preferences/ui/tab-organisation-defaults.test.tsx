@@ -100,9 +100,10 @@ describe("TabOrganisationDefaults", () => {
     });
   });
 
-  test("prefills from the raw GLOBAL scope, not the admin's own personal override", async () => {
-    // An admin who also set personal overrides must still see the organisation's own
-    // values from the GLOBAL scope in this form, never their personal overrides.
+  test("prefills the form from the raw GLOBAL scope values", async () => {
+    // This tab reads ONLY the GLOBAL scope (useGlobalPreferences) — it never reads the caller's
+    // effective/personal preferences — so an admin's own overrides structurally cannot leak into
+    // the org-defaults form; it always shows the organisation's own values.
     vi.mocked(getGlobalPreferences).mockResolvedValue({
       dateFormat: "ISO_DATETIME",
       timezone: "Europe/Paris",
@@ -110,7 +111,7 @@ describe("TabOrganisationDefaults", () => {
 
     const component = await render(<TabOrganisationDefaults />);
 
-    // The form prefills from the GLOBAL scope (the org default), not the user override.
+    // The form prefills from the GLOBAL scope: the ISO_DATETIME key surfaces as its label.
     await expect
       .element(component.getByRole("combobox", { name: /date format/i }))
       .toHaveTextContent("yyyy-MM-dd HH:mm");
