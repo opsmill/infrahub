@@ -1,0 +1,36 @@
+---
+title: Release 1.10.1
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.10.1</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>June 30th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.10.1](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.10.1)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Added
+
+- Add "shortest paths only" toggle to a path traversal request so that user can select the faster, shortest paths only query or the exhaustive version. Add "truncated at depth" to the path traversal response to indicate at which depth a request timed out. Update the frontend to support the new toggle and display a warning message if the response is truncated.
+
+### Fixed
+
+- Periodic Git synchronization now imports new commits on a repository's configured default branch when that branch is not `main`. Previously the sync loaded repositories without their `default_branch` attribute, fell back to the schema default of `main`, and failed to locate the worktree, leaving such repositories pinned to a stale commit while still reporting `in-sync`. ([#9600](https://github.com/opsmill/infrahub/issues/9600))
+- Fixed branches with a slash in their name (e.g. feature/my-branch) not being clickable on the Branches page. ([#9716](https://github.com/opsmill/infrahub/issues/9716))
+- Restored webhook delivery: configured webhooks now fire for every triggering event, including events not associated with a branch such as account activity, instead of silently sending no request. ([#9742](https://github.com/opsmill/infrahub/issues/9742))
+- Fixed webhook automation configuration running a database read on the shared worker database without opening its own session. This left a Neo4j session cached on the shared connection and could trigger `RuntimeError: read() called while another coroutine is already waiting for incoming data` in concurrently running flows. Webhook configuration now opens a dedicated read-only session.
+- Merging a branch that changes a computed attribute, display label, or human-friendly ID template now refreshes those derived values on nodes that exist only on the target branch. Previously the merge applied the new schema without emitting a schema-update event, so the backfill never ran and the affected nodes kept stale values.
+- Merging two branches that each introduced the same unique value could leave duplicate values on the destination branch. A proposed change validated its schema and data integrity earlier in its pipeline but the merge relied on those point-in-time results, so a violation introduced by another branch merged in the meantime was missed. Constraint validation now runs as part of the merge itself, so both proposed-change merges and direct branch merges are checked against the current state of the destination branch. The schema-integrity check also now validates relationship constraints, which were previously skipped. ([#9704](https://github.com/opsmill/infrahub/issues/9704))
+
+### Housekeeping
+
+- Action parameters for all event-driven automations — computed attributes, profiles, human-friendly IDs, display labels, action rules, and schema and branch triggers — are now rendered through a shared helper as explicit string templates, hardening them against the same parameter-serialization failure addressed for webhooks. ([#9742](https://github.com/opsmill/infrahub/issues/9742))

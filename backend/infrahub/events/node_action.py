@@ -8,9 +8,13 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityOneChangelog,
 )
 from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction
+from infrahub.log import get_logger
 
 from .constants import EVENT_NAMESPACE
+from .limits import get_prefect_max_related_resources
 from .models import InfrahubEvent
+
+log = get_logger()
 
 
 class NodeMutatedEvent(InfrahubEvent):
@@ -45,6 +49,30 @@ class NodeMutatedEvent(InfrahubEvent):
                 }
             )
 
+        if self.changelog.parent:
+            related.append(
+                {
+                    "prefect.resource.id": self.changelog.parent.node_id,
+                    "prefect.resource.role": "infrahub.node.parent",
+                    "infrahub.parent.kind": self.changelog.parent.node_kind,
+                    "infrahub.parent.id": self.changelog.parent.node_id,
+                }
+            )
+
+        related.append(
+            {
+                "prefect.resource.id": self.node_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": self.kind,
+            }
+        )
+
+        # The remaining entries grow with the number of relationship peers, so they
+        # come last and the list is capped: the Prefect API rejects any event whose
+        # related resources exceed the configured maximum, and an oversized event
+        # would never be recorded at all. Relationship updates are appended before
+        # the per-peer related-node entries because automation triggers match on
+        # them, while related-node entries only feed event queries.
         for relationship in self.changelog.relationships.values():
             if isinstance(relationship, RelationshipCardinalityOneChangelog) and not relationship.is_empty:
                 if relationship.peer_id and relationship.peer_kind:
@@ -79,24 +107,6 @@ class NodeMutatedEvent(InfrahubEvent):
                             )
                         )
 
-        if self.changelog.parent:
-            related.append(
-                {
-                    "prefect.resource.id": self.changelog.parent.node_id,
-                    "prefect.resource.role": "infrahub.node.parent",
-                    "infrahub.parent.kind": self.changelog.parent.node_kind,
-                    "infrahub.parent.id": self.changelog.parent.node_id,
-                }
-            )
-
-        related.append(
-            {
-                "prefect.resource.id": self.node_id,
-                "prefect.resource.role": "infrahub.related.node",
-                "infrahub.node.kind": self.kind,
-            }
-        )
-
         for related_node in self.changelog.get_related_nodes():
             related.append(
                 {
@@ -105,6 +115,18 @@ class NodeMutatedEvent(InfrahubEvent):
                     "infrahub.node.kind": related_node.node_kind,
                 }
             )
+
+        max_related = get_prefect_max_related_resources()
+        if len(related) > max_related:
+            log.warning(
+                "Truncating the related resources of a node mutation event to the Prefect maximum",
+                event_name=self.event_name,
+                kind=self.kind,
+                node_id=self.node_id,
+                related_resources=len(related),
+                maximum=max_related,
+            )
+            related = related[:max_related]
 
         return related
 

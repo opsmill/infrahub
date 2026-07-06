@@ -55,6 +55,12 @@ core_generator_definition = NodeSchema(
             default_value=True,
         ),
         Attr(
+            name="fingerprint",
+            kind="Text",
+            description="Content hash of the definition's inputs, recomputed on each import",
+            optional=True,
+        ),
+        Attr(
             name="dependencies",
             kind="List",
             description="Canonical repo-relative paths feeding this generator's output. Null falls back to legacy file gate.",
