@@ -445,6 +445,22 @@ class CacheSettings(BaseSettings):
         return self.port or default_ports
 
 
+class WorkflowConcurrencyLimits(BaseSettings):
+    """Per-workflow concurrency limits applied to Prefect deployments.
+
+    Each field is the source of truth for its workflow's concurrency cap; the
+    workflow catalogue does not duplicate these values. Set a field to 0 to
+    remove the cap (no Prefect throttling).
+    """
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_CONCURRENCY_LIMIT_")
+    artifact_generate: int = Field(
+        default=10,
+        ge=0,
+        description=("Maximum number of concurrent runs of the artifact-generate workflow. Set to 0 for unlimited."),
+    )
+
+
 class WorkflowSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
     address: str = "localhost"
@@ -466,6 +482,7 @@ class WorkflowSettings(BaseSettings):
         ge=0,
         description="Threshold for caching flow run counts (0 to always cache, higher values to disable)",
     )
+    concurrency_limits: WorkflowConcurrencyLimits = Field(default_factory=WorkflowConcurrencyLimits)
 
     @property
     def api_endpoint(self) -> str:

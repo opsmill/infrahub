@@ -1,3 +1,4 @@
+from typing import assert_never
 from urllib.parse import quote, urlencode
 
 from prefect import flow, task
@@ -18,7 +19,7 @@ from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
 
 from .catalogue import WORKER_POOLS, get_workflows
-from .models import TASK_RESULT_STORAGE_NAME
+from .models import TASK_RESULT_STORAGE_NAME, ConcurrencyLimitConfig, WorkflowDefinition
 
 
 def build_cache_connection_string(cache: CacheSettings) -> str:
@@ -74,6 +75,21 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             log.warning(f"Work pool {worker.name} already present ")
 
 
+def resolve_configured_concurrency_limit(workflow: WorkflowDefinition) -> None:
+    """Resolve `concurrency_limit` from config when the workflow declares a config link.
+
+    A configured value of 0 means "no Prefect concurrency limit on the deployment".
+    """
+    match workflow.concurrency_limit_config:
+        case ConcurrencyLimitConfig.NONE:
+            return
+        case ConcurrencyLimitConfig.ARTIFACT_GENERATE:
+            value = config.SETTINGS.workflow.concurrency_limits.artifact_generate
+        case _:
+            assert_never(workflow.concurrency_limit_config)
+    workflow.concurrency_limit = None if value == 0 else value
+
+
 @task(name="task-manager-setup-deployments", task_run_name="Setup Deployments", cache_policy=NONE)
 async def setup_deployments(client: PrefectClient) -> None:
     log = get_run_logger()
@@ -81,6 +97,7 @@ async def setup_deployments(client: PrefectClient) -> None:
         # For now the workpool is hardcoded but
         # later we need to make it dynamic to have a different worker based on the type of the workflow
         work_pool = WORKER_POOLS[0]
+        resolve_configured_concurrency_limit(workflow)
         await workflow.save(client=client, work_pool=work_pool)
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
