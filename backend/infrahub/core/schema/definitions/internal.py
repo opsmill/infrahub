@@ -234,6 +234,10 @@ class SchemaAttribute(BaseModel):
 
     def _external_formatted_default(self) -> str:
         default = self.default_value
+        if self.enum_class is not None and isinstance(default, Enum):
+            # The field is typed with the generated enum, so its default must be the enum member
+            # (not the raw value) to type-check; ``use_enum_values`` coerces it to the value at runtime.
+            return f"default={self.enum_class}.{default.name}"
         if isinstance(default, Enum):
             return f"default={default.value!r}"
         if isinstance(default, str):
