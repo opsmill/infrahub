@@ -193,6 +193,7 @@ async def test_init_repoints_origin_after_location_change(
     commit_b = repo_b.index.commit("commit 2").hexsha
 
     # Re-open the existing clone with the new location, as the periodic sync does after a location change.
+    # init must re-point origin and fetch on its own -- no explicit fetch here.
     relocated = await InfrahubRepository.init(
         id=repo_id,
         name="relocating-repo",
@@ -200,8 +201,8 @@ async def test_init_repoints_origin_after_location_change(
         default_branch_name="main",
         client=client,
     )
-    await relocated.fetch()
 
+    assert relocated.get_git_repo_main().remotes.origin.url == str(source_b)
     assert relocated.get_branches_from_remote()["main"].commit == commit_b
 
 
