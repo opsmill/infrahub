@@ -32,7 +32,7 @@ class Preference(StandardNode):
     relationship with `on_delete: cascade` (that is a schema-Node feature), so deleting an account
     leaves its Preference row behind as unreachable dead data. Account ids are UUIDs and never reused,
     so such a row is permanently unreachable and benign. Cleanup is out of scope for V1 and tracked in
-    Jira (IFC-2xxx).
+    Jira (IFC-2867).
     """
 
     owner_id: str

@@ -1236,6 +1236,8 @@ type CoreArtifactDefinition implements CoreNode & CoreTaskTarget {
   """None"""
   description: TextAttribute
   display_label: String
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttribute
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -1264,6 +1266,8 @@ input CoreArtifactDefinitionCreateInput {
   """MIME type of the generated artifacts"""
   content_type: TextAttributeCreate
   description: TextAttributeCreate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeCreate
   id: String
   member_of_groups: [RelatedNodeInput]
   name: TextAttributeCreate
@@ -1295,6 +1299,8 @@ input CoreArtifactDefinitionUpdateInput {
   """MIME type of the generated artifacts"""
   content_type: TextAttributeUpdate
   description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -1320,6 +1326,8 @@ input CoreArtifactDefinitionUpsertInput {
   """MIME type of the generated artifacts"""
   content_type: TextAttributeUpdate
   description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -3064,6 +3072,8 @@ type CoreGeneratorDefinition implements CoreNode & CoreTaskTarget {
   execute_in_proposed_change: CheckboxAttribute
   """Path to the Python file containing the generator class (required)"""
   file_path: TextAttribute
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttribute
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -3107,6 +3117,8 @@ input CoreGeneratorDefinitionCreateInput {
   execute_in_proposed_change: CheckboxAttributeCreate
   """Path to the Python file containing the generator class"""
   file_path: TextAttributeCreate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeCreate
   id: String
   member_of_groups: [RelatedNodeInput]
   name: TextAttributeCreate
@@ -3153,6 +3165,8 @@ input CoreGeneratorDefinitionUpdateInput {
   execute_in_proposed_change: CheckboxAttributeUpdate
   """Path to the Python file containing the generator class"""
   file_path: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -3193,6 +3207,8 @@ input CoreGeneratorDefinitionUpsertInput {
   execute_in_proposed_change: CheckboxAttributeUpdate
   """Path to the Python file containing the generator class"""
   file_path: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -3512,7 +3528,7 @@ interface CoreGenericRepository {
   """Description of the repository"""
   description: TextAttribute
   display_label: String
-  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
+  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
   groups_objects(content__is_protected: Boolean, content__owner__id: ID, content__source__id: ID, content__value: String, content__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreRepositoryGroup!
   """Human friendly identifier"""
   hfid: [String!]
@@ -3527,12 +3543,12 @@ interface CoreGenericRepository {
   name: TextAttribute
   """Connectivity status of the repository"""
   operational_status: Dropdown
-  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
+  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """A Git Repository integrated with Infrahub"""
@@ -3654,6 +3670,8 @@ type CoreGraphQLQuery implements CoreNode {
   """None"""
   description: TextAttribute
   display_label: String
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttribute
   """total number of fields requested in the query"""
   height: NumberAttribute
   """Human friendly identifier"""
@@ -3686,6 +3704,8 @@ type CoreGraphQLQueryCreate {
 
 input CoreGraphQLQueryCreateInput {
   description: TextAttributeCreate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeCreate
   id: String
   member_of_groups: [RelatedNodeInput]
   name: TextAttributeCreate
@@ -3805,6 +3825,8 @@ type CoreGraphQLQueryUpdate {
 
 input CoreGraphQLQueryUpdateInput {
   description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -3824,6 +3846,8 @@ type CoreGraphQLQueryUpsert {
 
 input CoreGraphQLQueryUpsertInput {
   description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -5564,7 +5588,7 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   """Description of the repository"""
   description: TextAttribute
   display_label: String
-  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
+  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
   groups_objects(content__is_protected: Boolean, content__owner__id: ID, content__source__id: ID, content__value: String, content__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreRepositoryGroup!
   """Human friendly identifier"""
   hfid: [String!]
@@ -5579,14 +5603,14 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   name: TextAttribute
   """Connectivity status of the repository"""
   operational_status: Dropdown
-  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
+  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   """Git reference (branch or tag) to track"""
   ref: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """
@@ -5720,7 +5744,7 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   """Description of the repository"""
   description: TextAttribute
   display_label: String
-  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
+  generators(class_name__is_protected: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], execute_after_merge__is_protected: Boolean, execute_after_merge__owner__id: ID, execute_after_merge__source__id: ID, execute_after_merge__value: Boolean, execute_after_merge__values: [Boolean], execute_in_proposed_change__is_protected: Boolean, execute_in_proposed_change__owner__id: ID, execute_in_proposed_change__source__id: ID, execute_in_proposed_change__value: Boolean, execute_in_proposed_change__values: [Boolean], file_path__is_protected: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreGeneratorDefinition!
   groups_objects(content__is_protected: Boolean, content__owner__id: ID, content__source__id: ID, content__value: String, content__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreRepositoryGroup!
   """Human friendly identifier"""
   hfid: [String!]
@@ -5735,12 +5759,12 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   name: TextAttribute
   """Connectivity status of the repository"""
   operational_status: Dropdown
-  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
+  queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """A Git Repository integrated with Infrahub"""
@@ -6858,6 +6882,8 @@ type CoreTransformJinja2 implements CoreNode & CoreTransformation {
   dependencies_complete: CheckboxAttribute
   description: TextAttribute
   display_label: String
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttribute
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -6891,6 +6917,8 @@ input CoreTransformJinja2CreateInput {
   """
   dependencies_complete: CheckboxAttributeCreate
   description: TextAttributeCreate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeCreate
   id: String
   label: TextAttributeCreate
   member_of_groups: [RelatedNodeInput]
@@ -6926,6 +6954,8 @@ input CoreTransformJinja2UpdateInput {
   """
   dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -6957,6 +6987,8 @@ input CoreTransformJinja2UpsertInput {
   """
   dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -6990,6 +7022,8 @@ type CoreTransformPython implements CoreNode & CoreTransformation {
   display_label: String
   """Path to the Python file in the repository (required)"""
   file_path: TextAttribute
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttribute
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -7027,6 +7061,8 @@ input CoreTransformPythonCreateInput {
   description: TextAttributeCreate
   """Path to the Python file in the repository"""
   file_path: TextAttributeCreate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeCreate
   id: String
   label: TextAttributeCreate
   member_of_groups: [RelatedNodeInput]
@@ -7066,6 +7102,8 @@ input CoreTransformPythonUpdateInput {
   description: TextAttributeUpdate
   """Path to the Python file in the repository"""
   file_path: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -7101,6 +7139,8 @@ input CoreTransformPythonUpsertInput {
   description: TextAttributeUpdate
   """Path to the Python file in the repository"""
   file_path: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -7126,6 +7166,8 @@ interface CoreTransformation {
   dependencies_complete: CheckboxAttribute
   description: TextAttribute
   display_label: String
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttribute
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -7157,6 +7199,8 @@ input CoreTransformationUpdateInput {
   """
   dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -14101,6 +14145,11 @@ type Query {
     definition__display_label__isnull: Boolean
     definition__display_label__value: String
     definition__display_label__values: [String]
+    definition__fingerprint__is_protected: Boolean
+    definition__fingerprint__owner__id: ID
+    definition__fingerprint__source__id: ID
+    definition__fingerprint__value: String
+    definition__fingerprint__values: [String]
     definition__ids: [ID]
     definition__isnull: Boolean
     definition__name__is_protected: Boolean
@@ -14390,6 +14439,12 @@ type Query {
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
+    fingerprint__is_protected: Boolean
+    fingerprint__isnull: Boolean
+    fingerprint__owner__id: ID
+    fingerprint__source__id: ID
+    fingerprint__value: String
+    fingerprint__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
@@ -14497,6 +14552,11 @@ type Query {
     transformation__display_label__isnull: Boolean
     transformation__display_label__value: String
     transformation__display_label__values: [String]
+    transformation__fingerprint__is_protected: Boolean
+    transformation__fingerprint__owner__id: ID
+    transformation__fingerprint__source__id: ID
+    transformation__fingerprint__value: String
+    transformation__fingerprint__values: [String]
     transformation__ids: [ID]
     transformation__isnull: Boolean
     transformation__label__is_protected: Boolean
@@ -14827,6 +14887,11 @@ type Query {
     definition__display_label__isnull: Boolean
     definition__display_label__value: String
     definition__display_label__values: [String]
+    definition__fingerprint__is_protected: Boolean
+    definition__fingerprint__owner__id: ID
+    definition__fingerprint__source__id: ID
+    definition__fingerprint__value: String
+    definition__fingerprint__values: [String]
     definition__ids: [ID]
     definition__isnull: Boolean
     definition__name__is_protected: Boolean
@@ -15489,6 +15554,11 @@ type Query {
     query__display_label__isnull: Boolean
     query__display_label__value: String
     query__display_label__values: [String]
+    query__fingerprint__is_protected: Boolean
+    query__fingerprint__owner__id: ID
+    query__fingerprint__source__id: ID
+    query__fingerprint__value: String
+    query__fingerprint__values: [String]
     query__height__is_protected: Boolean
     query__height__owner__id: ID
     query__height__source__id: ID
@@ -15924,6 +15994,11 @@ type Query {
     transformation__file_path__source__id: ID
     transformation__file_path__value: String
     transformation__file_path__values: [String]
+    transformation__fingerprint__is_protected: Boolean
+    transformation__fingerprint__owner__id: ID
+    transformation__fingerprint__source__id: ID
+    transformation__fingerprint__value: String
+    transformation__fingerprint__values: [String]
     transformation__ids: [ID]
     transformation__isnull: Boolean
     transformation__label__is_protected: Boolean
@@ -16853,6 +16928,11 @@ type Query {
     generator__file_path__source__id: ID
     generator__file_path__value: String
     generator__file_path__values: [String]
+    generator__fingerprint__is_protected: Boolean
+    generator__fingerprint__owner__id: ID
+    generator__fingerprint__source__id: ID
+    generator__fingerprint__value: String
+    generator__fingerprint__values: [String]
     generator__ids: [ID]
     generator__isnull: Boolean
     generator__name__is_protected: Boolean
@@ -17265,6 +17345,12 @@ type Query {
     file_path__source__id: ID
     file_path__value: String
     file_path__values: [String]
+    fingerprint__is_protected: Boolean
+    fingerprint__isnull: Boolean
+    fingerprint__owner__id: ID
+    fingerprint__source__id: ID
+    fingerprint__value: String
+    fingerprint__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
@@ -17329,6 +17415,11 @@ type Query {
     query__display_label__isnull: Boolean
     query__display_label__value: String
     query__display_label__values: [String]
+    query__fingerprint__is_protected: Boolean
+    query__fingerprint__owner__id: ID
+    query__fingerprint__source__id: ID
+    query__fingerprint__value: String
+    query__fingerprint__values: [String]
     query__height__is_protected: Boolean
     query__height__owner__id: ID
     query__height__source__id: ID
@@ -17598,6 +17689,11 @@ type Query {
     definition__file_path__source__id: ID
     definition__file_path__value: String
     definition__file_path__values: [String]
+    definition__fingerprint__is_protected: Boolean
+    definition__fingerprint__owner__id: ID
+    definition__fingerprint__source__id: ID
+    definition__fingerprint__value: String
+    definition__fingerprint__values: [String]
     definition__ids: [ID]
     definition__isnull: Boolean
     definition__name__is_protected: Boolean
@@ -17785,6 +17881,11 @@ type Query {
     definition__file_path__source__id: ID
     definition__file_path__value: String
     definition__file_path__values: [String]
+    definition__fingerprint__is_protected: Boolean
+    definition__fingerprint__owner__id: ID
+    definition__fingerprint__source__id: ID
+    definition__fingerprint__value: String
+    definition__fingerprint__values: [String]
     definition__ids: [ID]
     definition__isnull: Boolean
     definition__name__is_protected: Boolean
@@ -18121,6 +18222,11 @@ type Query {
     generators__file_path__source__id: ID
     generators__file_path__value: String
     generators__file_path__values: [String]
+    generators__fingerprint__is_protected: Boolean
+    generators__fingerprint__owner__id: ID
+    generators__fingerprint__source__id: ID
+    generators__fingerprint__value: String
+    generators__fingerprint__values: [String]
     generators__ids: [ID]
     generators__isnull: Boolean
     generators__name__is_protected: Boolean
@@ -18239,6 +18345,11 @@ type Query {
     queries__display_label__isnull: Boolean
     queries__display_label__value: String
     queries__display_label__values: [String]
+    queries__fingerprint__is_protected: Boolean
+    queries__fingerprint__owner__id: ID
+    queries__fingerprint__source__id: ID
+    queries__fingerprint__value: String
+    queries__fingerprint__values: [String]
     queries__height__is_protected: Boolean
     queries__height__owner__id: ID
     queries__height__source__id: ID
@@ -18323,6 +18434,11 @@ type Query {
     transformations__display_label__isnull: Boolean
     transformations__display_label__value: String
     transformations__display_label__values: [String]
+    transformations__fingerprint__is_protected: Boolean
+    transformations__fingerprint__owner__id: ID
+    transformations__fingerprint__source__id: ID
+    transformations__fingerprint__value: String
+    transformations__fingerprint__values: [String]
     transformations__ids: [ID]
     transformations__isnull: Boolean
     transformations__label__is_protected: Boolean
@@ -18458,6 +18574,12 @@ type Query {
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
+    fingerprint__is_protected: Boolean
+    fingerprint__isnull: Boolean
+    fingerprint__owner__id: ID
+    fingerprint__source__id: ID
+    fingerprint__value: String
+    fingerprint__values: [String]
     height__is_protected: Boolean
     height__isnull: Boolean
     height__owner__id: ID
@@ -18727,6 +18849,11 @@ type Query {
     query__display_label__isnull: Boolean
     query__display_label__value: String
     query__display_label__values: [String]
+    query__fingerprint__is_protected: Boolean
+    query__fingerprint__owner__id: ID
+    query__fingerprint__source__id: ID
+    query__fingerprint__value: String
+    query__fingerprint__values: [String]
     query__height__is_protected: Boolean
     query__height__owner__id: ID
     query__height__source__id: ID
@@ -21617,6 +21744,11 @@ type Query {
     generators__file_path__source__id: ID
     generators__file_path__value: String
     generators__file_path__values: [String]
+    generators__fingerprint__is_protected: Boolean
+    generators__fingerprint__owner__id: ID
+    generators__fingerprint__source__id: ID
+    generators__fingerprint__value: String
+    generators__fingerprint__values: [String]
     generators__ids: [ID]
     generators__isnull: Boolean
     generators__name__is_protected: Boolean
@@ -21735,6 +21867,11 @@ type Query {
     queries__display_label__isnull: Boolean
     queries__display_label__value: String
     queries__display_label__values: [String]
+    queries__fingerprint__is_protected: Boolean
+    queries__fingerprint__owner__id: ID
+    queries__fingerprint__source__id: ID
+    queries__fingerprint__value: String
+    queries__fingerprint__values: [String]
     queries__height__is_protected: Boolean
     queries__height__owner__id: ID
     queries__height__source__id: ID
@@ -21825,6 +21962,11 @@ type Query {
     transformations__display_label__isnull: Boolean
     transformations__display_label__value: String
     transformations__display_label__values: [String]
+    transformations__fingerprint__is_protected: Boolean
+    transformations__fingerprint__owner__id: ID
+    transformations__fingerprint__source__id: ID
+    transformations__fingerprint__value: String
+    transformations__fingerprint__values: [String]
     transformations__ids: [ID]
     transformations__isnull: Boolean
     transformations__label__is_protected: Boolean
@@ -21968,6 +22110,11 @@ type Query {
     generators__file_path__source__id: ID
     generators__file_path__value: String
     generators__file_path__values: [String]
+    generators__fingerprint__is_protected: Boolean
+    generators__fingerprint__owner__id: ID
+    generators__fingerprint__source__id: ID
+    generators__fingerprint__value: String
+    generators__fingerprint__values: [String]
     generators__ids: [ID]
     generators__isnull: Boolean
     generators__name__is_protected: Boolean
@@ -22086,6 +22233,11 @@ type Query {
     queries__display_label__isnull: Boolean
     queries__display_label__value: String
     queries__display_label__values: [String]
+    queries__fingerprint__is_protected: Boolean
+    queries__fingerprint__owner__id: ID
+    queries__fingerprint__source__id: ID
+    queries__fingerprint__value: String
+    queries__fingerprint__values: [String]
     queries__height__is_protected: Boolean
     queries__height__owner__id: ID
     queries__height__source__id: ID
@@ -22170,6 +22322,11 @@ type Query {
     transformations__display_label__isnull: Boolean
     transformations__display_label__value: String
     transformations__display_label__values: [String]
+    transformations__fingerprint__is_protected: Boolean
+    transformations__fingerprint__owner__id: ID
+    transformations__fingerprint__source__id: ID
+    transformations__fingerprint__value: String
+    transformations__fingerprint__values: [String]
     transformations__ids: [ID]
     transformations__isnull: Boolean
     transformations__label__is_protected: Boolean
@@ -23719,6 +23876,12 @@ type Query {
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
+    fingerprint__is_protected: Boolean
+    fingerprint__isnull: Boolean
+    fingerprint__owner__id: ID
+    fingerprint__source__id: ID
+    fingerprint__value: String
+    fingerprint__values: [String]
     hfid: [String]
     ids: [ID]
     label__is_protected: Boolean
@@ -23783,6 +23946,11 @@ type Query {
     query__display_label__isnull: Boolean
     query__display_label__value: String
     query__display_label__values: [String]
+    query__fingerprint__is_protected: Boolean
+    query__fingerprint__owner__id: ID
+    query__fingerprint__source__id: ID
+    query__fingerprint__value: String
+    query__fingerprint__values: [String]
     query__height__is_protected: Boolean
     query__height__owner__id: ID
     query__height__source__id: ID
@@ -23936,6 +24104,12 @@ type Query {
     file_path__source__id: ID
     file_path__value: String
     file_path__values: [String]
+    fingerprint__is_protected: Boolean
+    fingerprint__isnull: Boolean
+    fingerprint__owner__id: ID
+    fingerprint__source__id: ID
+    fingerprint__value: String
+    fingerprint__values: [String]
     hfid: [String]
     ids: [ID]
     label__is_protected: Boolean
@@ -24000,6 +24174,11 @@ type Query {
     query__display_label__isnull: Boolean
     query__display_label__value: String
     query__display_label__values: [String]
+    query__fingerprint__is_protected: Boolean
+    query__fingerprint__owner__id: ID
+    query__fingerprint__source__id: ID
+    query__fingerprint__value: String
+    query__fingerprint__values: [String]
     query__height__is_protected: Boolean
     query__height__owner__id: ID
     query__height__source__id: ID
@@ -24129,6 +24308,12 @@ type Query {
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
+    fingerprint__is_protected: Boolean
+    fingerprint__isnull: Boolean
+    fingerprint__owner__id: ID
+    fingerprint__source__id: ID
+    fingerprint__value: String
+    fingerprint__values: [String]
     hfid: [String]
     ids: [ID]
     label__is_protected: Boolean
@@ -24193,6 +24378,11 @@ type Query {
     query__display_label__isnull: Boolean
     query__display_label__value: String
     query__display_label__values: [String]
+    query__fingerprint__is_protected: Boolean
+    query__fingerprint__owner__id: ID
+    query__fingerprint__source__id: ID
+    query__fingerprint__value: String
+    query__fingerprint__values: [String]
     query__height__is_protected: Boolean
     query__height__owner__id: ID
     query__height__source__id: ID
