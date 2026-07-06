@@ -502,6 +502,7 @@ class ProposedChangeMerge(Mutation):
                     "proposed_change_id": proposed_change.id,
                     "proposed_change_name": proposed_change.name.value,
                 },
+                priority=WorkflowPriority.HIGH,
             )
             task = {"id": workflow.id}
 
