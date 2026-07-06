@@ -1,11 +1,15 @@
+import logging
 from dataclasses import dataclass
+from types import SimpleNamespace
+from typing import Self
 from uuid import uuid4
 
 import pytest
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.registry import registry
-from infrahub.git import InfrahubRepository
+from infrahub.git import InfrahubRepository, tasks
 from infrahub.git.tasks import format_check_log_entry, resolve_initial_import_branch
 
 
@@ -107,3 +111,75 @@ def test_format_check_log_entry_produces_single_line_per_entry() -> None:
 
     assert "\n" not in rendered
     assert rendered.count("[ERROR]") == 1
+
+
+class _FakeSession:
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *args: object) -> bool:
+        return False
+
+
+class _FakeDatabase:
+    def start_session(self) -> _FakeSession:
+        return _FakeSession()
+
+
+class _FakeBranchManager:
+    async def all(self) -> dict[str, SimpleNamespace]:
+        return {"main": SimpleNamespace(id="main-branch-id")}
+
+
+def _make_repository_data(name: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        repository=SimpleNamespace(name=SimpleNamespace(value=name)),
+        branch_info={"main": SimpleNamespace(internal_status=RepositoryInternalStatus.ACTIVE.value)},
+        get_staging_branch=lambda: None,
+    )
+
+
+async def test_sync_remote_repositories_isolates_single_repo_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One repository failing to sync must not stop the rest of the batch from syncing.
+
+    The recurring sync iterates every repository. When syncing one repository raises an error
+    outside the RepositoryError family (here a GraphQLError from a graph update, which the sync
+    path is documented to raise), the remaining repositories must still be synced rather than
+    the whole run aborting at the failing repository.
+    """
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    # sync_remote_repositories may log the contained failure via the Prefect run logger; outside a
+    # flow run context that helper is unavailable, so route it to a stdlib logger.
+    monkeypatch.setattr(tasks, "get_run_logger", lambda: logging.getLogger("test-sync-remote-repositories"))
+
+    async def fake_get_database() -> _FakeDatabase:
+        return _FakeDatabase()
+
+    monkeypatch.setattr(tasks, "get_database", fake_get_database)
+    monkeypatch.setattr(tasks, "get_client", lambda: SimpleNamespace(branch=_FakeBranchManager()))
+
+    repositories = {"repo-a": _make_repository_data("repo-a"), "repo-b": _make_repository_data("repo-b")}
+
+    async def fake_get_repositories(**kwargs: object) -> dict[str, SimpleNamespace]:
+        return repositories
+
+    monkeypatch.setattr(tasks, "get_repositories_commit_per_branch", fake_get_repositories)
+
+    async def fake_bootstrap(**kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(default_branch="main")
+
+    monkeypatch.setattr(tasks, "bootstrap_local_repository", fake_bootstrap)
+
+    processed: list[str] = []
+
+    async def fake_sync(*, repository: SimpleNamespace, **kwargs: object) -> None:
+        processed.append(repository.name.value)
+        if repository.name.value == "repo-a":
+            raise GraphQLError(errors=[{"message": "simulated graph update failure"}])
+
+    monkeypatch.setattr(tasks, "sync_repository_from_origin", fake_sync)
+
+    # Must complete without propagating the first repository's failure.
+    await tasks.sync_remote_repositories.fn()
+
+    assert processed == ["repo-a", "repo-b"]
