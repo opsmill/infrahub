@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -81,28 +80,12 @@ if TYPE_CHECKING:
     from infrahub.git.models import RequestArtifactGenerate
 
 
-GRAPHQL_VALIDATION_ERROR_PATTERN = re.compile(r"GraphQLError\((?P<quote>['\"])(?P<message>.*?)(?P=quote)(?:,|\))")
-
-
-def _clean_sdk_graphql_error_message(message: str) -> str:
-    if not message.startswith("Query is not valid"):
-        return message
-
-    match = GRAPHQL_VALIDATION_ERROR_PATTERN.search(message)
-    if not match:
-        return message
-
-    return f"Query is not valid: {match.group('message')}"
-
-
-def _format_sdk_graphql_error_messages(errors: list[dict[str, Any]]) -> str:
-    messages = []
-    for error in errors:
-        message = error.get("message") if isinstance(error, dict) else str(error)
-        if message:
-            messages.append(_clean_sdk_graphql_error_message(message))
-
-    return "; ".join(messages) or "GraphQL query validation failed."
+def _graphql_error_messages(exc: InfrahubSdkGraphQLError) -> str:
+    """Join the server-provided error messages, which are concise and safe to surface to operators."""
+    return (
+        "; ".join(error["message"] for error in exc.errors if isinstance(error, dict) and error.get("message"))
+        or "unknown error"
+    )
 
 
 class ArtifactGenerateResult(BaseModel):
@@ -838,6 +821,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         Mutates graph nodes whose names are globally unique, so it must run serialized against any
         concurrent import of the same repository.
+
+        Raises:
+            RepositoryConfigurationError: A created or updated query was rejected by the server as invalid.
+
         """
         log = get_run_logger()
 
@@ -866,7 +853,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             if local_query != graph_query.query.value:
                 log.info(f"New version of the Graphql Query {query_name!r} found, updating")
                 graph_query.query.value = local_query
-                await graph_query.save()
+                try:
+                    await graph_query.save()
+                except InfrahubSdkGraphQLError as exc:
+                    message = (
+                        f"Unable to import GraphQL query {query_name!r} from repository {self.name!r}: "
+                        f"{_graphql_error_messages(exc)}"
+                    )
+                    log.error(message)
+                    # The SDK exception text embeds the full rendered mutation; suppress the chained
+                    # context so it cannot surface in tracebacks or operator-facing logs.
+                    raise RepositoryConfigurationError(identifier=self.name, message=message) from None
 
         for query_name in only_graph:
             graph_query = queries_in_graph[query_name]
@@ -887,9 +884,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             await obj.save()
         except InfrahubSdkGraphQLError as exc:
-            reason = _format_sdk_graphql_error_messages(exc.errors)
-            message = f"Unable to import GraphQL query {name!r} from repository {self.name!r}: {reason}"
+            message = (
+                f"Unable to import GraphQL query {name!r} from repository {self.name!r}: {_graphql_error_messages(exc)}"
+            )
             get_logger().error(message)
+            # The SDK exception text embeds the full rendered mutation; suppress the chained
+            # context so it cannot surface in tracebacks or operator-facing logs.
             raise RepositoryConfigurationError(identifier=self.name, message=message) from None
 
         return obj

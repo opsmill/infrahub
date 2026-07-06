@@ -10,6 +10,7 @@ from infrahub.errors.exceptions import (
     AttributeConstraintViolationError,
     AttributeInvalidTypeError,
     AttributeRequiredError,
+    GraphQLQueryInvalidError,
 )
 from infrahub.errors.validation import MultiFieldValidationError
 from infrahub.exceptions import (
@@ -121,6 +122,13 @@ CASES = [
         expected_code="SCHEMA_NOT_FOUND",
         expected_http_status=422,
         expected_data={"kind": "MissingKind"},
+    ),
+    CodeCase(
+        name="graphql_query_invalid",
+        exc=GraphQLQueryInvalidError(messages=["Cannot query field 'DemoMissingNode' on type 'Query'."]),
+        expected_code="GRAPHQL_QUERY_INVALID",
+        expected_http_status=422,
+        expected_data={},
     ),
 ]
 

@@ -47,3 +47,10 @@ class AttributeConstraintViolationError(ValidationError):
             reason = f"{constraint}" if detail is None else f"{constraint}: {detail}"
             input_value = {field_name: reason}
         super().__init__(input_value)
+
+
+class GraphQLQueryInvalidError(ValidationError):
+    def __init__(self, messages: list[str]) -> None:
+        detail = "; ".join(messages)
+        message = f"Query is not valid: {detail}" if detail else "Query is not valid"
+        super().__init__(message)

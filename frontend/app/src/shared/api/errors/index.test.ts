@@ -228,6 +228,7 @@ describe("ErrorCode exhaustiveness", () => {
         case ERROR_CODES.ATTRIBUTE_INVALID_TYPE:
         case ERROR_CODES.ATTRIBUTE_CONSTRAINT_VIOLATION:
         case ERROR_CODES.BRANCH_NOT_FOUND:
+        case ERROR_CODES.GRAPHQL_QUERY_INVALID:
         case ERROR_CODES.SCHEMA_NOT_FOUND:
         case ERROR_CODES.UNDEFINED_ERROR:
           return code;

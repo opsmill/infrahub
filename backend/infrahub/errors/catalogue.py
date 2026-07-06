@@ -15,6 +15,7 @@ from .exceptions import (
     AttributeConstraintViolationError,
     AttributeInvalidTypeError,
     AttributeRequiredError,
+    GraphQLQueryInvalidError,
 )
 from .payloads import (
     AttributeConstraintViolationData,
@@ -22,6 +23,7 @@ from .payloads import (
     AttributeRequiredData,
     AuthenticationRequiredData,
     BranchNotFoundData,
+    GraphQLQueryInvalidData,
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
@@ -130,6 +132,16 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
                 http_status=422,
                 payload_model=SchemaNotFoundData,
                 exception_class=SchemaNotFoundError,
+            ),
+        ),
+        (
+            "GRAPHQL_QUERY_INVALID",
+            CatalogueEntry(
+                description="The submitted GraphQL query failed validation against the GraphQL schema.",
+                stability="evolving",
+                http_status=422,
+                payload_model=GraphQLQueryInvalidData,
+                exception_class=GraphQLQueryInvalidError,
             ),
         ),
         (

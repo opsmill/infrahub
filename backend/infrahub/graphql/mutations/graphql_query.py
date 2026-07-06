@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.errors.exceptions import GraphQLQueryInvalidError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
@@ -49,7 +50,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
 
         valid, errors = analyzer.is_valid
         if not valid:
-            raise ValueError(f"Query is not valid, {str(errors)}")
+            raise GraphQLQueryInvalidError(messages=[error.message for error in errors or []])
 
         query_info["models"] = {"value": analyzer.query_report.impacted_models}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}

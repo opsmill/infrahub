@@ -4,6 +4,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.errors.exceptions import GraphQLQueryInvalidError
+from infrahub.graphql.error_formatter import build_catalogue_extensions
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -300,3 +302,104 @@ async def test_update_query_no_update(
     assert obj2.operations.value == ["query"]
     assert obj2.variables.value == []
     assert obj2.models.value == [InfrahubKind.REPOSITORY]
+
+
+async def test_create_query_invalid_query_returns_catalogued_error(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    query_value = "query MyQuery { ThisModelDoesNotExist { edges { node { id } } } }"
+
+    query = """
+    mutation {
+        CoreGraphQLQueryCreate(
+            data: {
+                name: { value: "invalid_query"},
+                query: { value: "%s" }}) {
+            ok
+        }
+    }
+    """ % query_value.replace('"', '\\"')
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    error = result.errors[0]
+    assert isinstance(error.original_error, GraphQLQueryInvalidError)
+    assert error.message == "Query is not valid: Cannot query field 'ThisModelDoesNotExist' on type 'Query'."
+    assert build_catalogue_extensions(error.original_error) == {
+        "code": "GRAPHQL_QUERY_INVALID",
+        "http_status": 422,
+        "data": {},
+    }
+
+
+async def test_update_query_invalid_query_returns_catalogued_error(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    query_create = """
+    query MyQuery {
+        CoreRepository {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    obj = await Node.init(db=db, branch=default_branch, schema=InfrahubKind.GRAPHQLQUERY)
+    await obj.new(
+        db=db,
+        name="query1",
+        query=query_create,
+        depth=6,
+        height=7,
+        operations=["query"],
+        variables=[],
+        models=[InfrahubKind.REPOSITORY],
+    )
+    await obj.save(db=db)
+
+    query_value = "query MyQuery { ThisModelDoesNotExist { edges { node { id } } } }"
+
+    query = """
+    mutation {
+        CoreGraphQLQueryUpdate(
+            data: {
+                id: "%s"
+                query: { value: "%s" }}) {
+            ok
+        }
+    }
+    """ % (obj.id, query_value.replace('"', '\\"'))
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is not None
+    assert len(result.errors) == 1
+    error = result.errors[0]
+    assert isinstance(error.original_error, GraphQLQueryInvalidError)
+    assert error.message == "Query is not valid: Cannot query field 'ThisModelDoesNotExist' on type 'Query'."
+    assert build_catalogue_extensions(error.original_error) == {
+        "code": "GRAPHQL_QUERY_INVALID",
+        "http_status": 422,
+        "data": {},
+    }

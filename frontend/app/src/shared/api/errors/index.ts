@@ -24,6 +24,7 @@ export {
   ERROR_CODES,
   ERROR_HTTP_STATUS,
   type ErrorCode,
+  type GraphQLQueryInvalidData,
   type NodeNotFoundData,
   type PermissionDeniedData,
   type SchemaNotFoundData,

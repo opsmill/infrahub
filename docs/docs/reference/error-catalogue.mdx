@@ -4,7 +4,7 @@ title: Error Catalogue
 
 # Error Catalogue
 
-**Catalogue version**: 1 — 10 codes
+**Catalogue version**: 1 — 11 codes
 
 Every GraphQL error response carries an `extensions` block with a stable string `code`, the logical `http_status`, and a typed `data` payload. Switch on `code` rather than parsing the human-readable `message`, which is not part of the stable contract.
 
@@ -177,6 +177,33 @@ The requested branch does not exist.
         "data": {
           "branch_name": "example"
         }
+      }
+    }
+  ]
+}
+```
+
+### GRAPHQL_QUERY_INVALID
+
+The submitted GraphQL query failed validation against the GraphQL schema.
+
+- **Stability**: `evolving`
+- **HTTP status**: `422`
+
+This code carries no `data` payload; `data` is always `{}`.
+
+**Example response**
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "The submitted GraphQL query failed validation against the GraphQL schema.",
+      "extensions": {
+        "code": "GRAPHQL_QUERY_INVALID",
+        "http_status": 422,
+        "data": {}
       }
     }
   ]

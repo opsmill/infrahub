@@ -54,5 +54,9 @@ class SchemaNotFoundData(PayloadBase):
     kind: str
 
 
+class GraphQLQueryInvalidData(PayloadBase):
+    pass
+
+
 class UndefinedErrorData(PayloadBase):
     pass

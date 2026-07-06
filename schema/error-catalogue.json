@@ -238,6 +238,18 @@
         "type": "object"
       }
     },
+    "GRAPHQL_QUERY_INVALID": {
+      "description": "The submitted GraphQL query failed validation against the GraphQL schema.",
+      "stability": "evolving",
+      "http_status": 422,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "GraphQLQueryInvalidData",
+        "type": "object",
+        "required": []
+      }
+    },
     "UNDEFINED_ERROR": {
       "description": "An error not yet covered by the catalogue. Its occurrence indicates a catalogue gap and should be triaged.",
       "stability": "stable",

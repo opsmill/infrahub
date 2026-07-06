@@ -16,6 +16,7 @@ from infrahub.errors.payloads import (
     AttributeRequiredData,
     AuthenticationRequiredData,
     BranchNotFoundData,
+    GraphQLQueryInvalidData,
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
@@ -78,6 +79,8 @@ def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
             payload = BranchNotFoundData(branch_name=exc.identifier)
         case "SCHEMA_NOT_FOUND" if isinstance(exc, SchemaNotFoundError):
             payload = SchemaNotFoundData(kind=exc.identifier)
+        case "GRAPHQL_QUERY_INVALID":
+            payload = GraphQLQueryInvalidData()
     return payload.model_dump(mode="json")
 
 

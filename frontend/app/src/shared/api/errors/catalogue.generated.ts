@@ -28,6 +28,8 @@ export interface BranchNotFoundData {
   branch_name: string;
 }
 
+export type GraphQLQueryInvalidData = Record<string, never>;
+
 export interface NodeNotFoundData {
   node_kind: string;
   identifier: string;
@@ -54,6 +56,7 @@ export const ERROR_CODES = {
   ATTRIBUTE_REQUIRED: "ATTRIBUTE_REQUIRED",
   AUTHENTICATION_REQUIRED: "AUTHENTICATION_REQUIRED",
   BRANCH_NOT_FOUND: "BRANCH_NOT_FOUND",
+  GRAPHQL_QUERY_INVALID: "GRAPHQL_QUERY_INVALID",
   NODE_NOT_FOUND: "NODE_NOT_FOUND",
   PERMISSION_DENIED: "PERMISSION_DENIED",
   SCHEMA_NOT_FOUND: "SCHEMA_NOT_FOUND",
@@ -72,6 +75,7 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   ATTRIBUTE_REQUIRED: 422,
   AUTHENTICATION_REQUIRED: 401,
   BRANCH_NOT_FOUND: 400,
+  GRAPHQL_QUERY_INVALID: 422,
   NODE_NOT_FOUND: 404,
   PERMISSION_DENIED: 403,
   SCHEMA_NOT_FOUND: 422,
@@ -87,6 +91,7 @@ export type CatalogueError =
   | { code: typeof ERROR_CODES.ATTRIBUTE_REQUIRED; http_status: number; data: AttributeRequiredData }
   | { code: typeof ERROR_CODES.AUTHENTICATION_REQUIRED; http_status: number; data: AuthenticationRequiredData }
   | { code: typeof ERROR_CODES.BRANCH_NOT_FOUND; http_status: number; data: BranchNotFoundData }
+  | { code: typeof ERROR_CODES.GRAPHQL_QUERY_INVALID; http_status: number; data: GraphQLQueryInvalidData }
   | { code: typeof ERROR_CODES.NODE_NOT_FOUND; http_status: number; data: NodeNotFoundData }
   | { code: typeof ERROR_CODES.PERMISSION_DENIED; http_status: number; data: PermissionDeniedData }
   | { code: typeof ERROR_CODES.SCHEMA_NOT_FOUND; http_status: number; data: SchemaNotFoundData }
