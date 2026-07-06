@@ -1,10 +1,11 @@
 import importlib.metadata
-import logging
 from collections.abc import Awaitable
+
+from infrahub.log import get_run_logger
 
 from .constants import InfrahubType
 
-log = logging.getLogger(__name__)
+log = get_run_logger()
 
 
 def determine_infrahub_type() -> InfrahubType:

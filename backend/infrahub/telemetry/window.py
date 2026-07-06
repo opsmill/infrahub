@@ -19,3 +19,13 @@ def get_activity_window(now: datetime | None = None) -> tuple[datetime, datetime
     window_end = floor_to_midnight_utc(reference)
     window_start = window_end - WINDOW_LENGTH
     return window_start, window_end
+
+
+def inclusive_end(window_end: datetime) -> datetime:
+    """The last instant inside the half-open ``[window_start, window_end)`` window.
+
+    ``window_end`` itself is excluded; at microsecond resolution the last included instant is one
+    microsecond earlier. Query APIs whose upper bound is inclusive ("at or before") need this so
+    a record on the boundary lands in exactly one day's window, never two.
+    """
+    return window_end - timedelta(microseconds=1)

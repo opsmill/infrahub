@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from prefect import task
@@ -23,13 +23,22 @@ from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPass
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import gather_all_automations
+from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 from .models import TelemetryActivity24hData, TelemetryPrefectData, TelemetryWorkPoolData
 from .utils import safe_metric
-from .window import get_activity_window
+from .window import get_activity_window, inclusive_end
 
-WEBHOOK_FLOW_NAME = "webhook-process"
+WEBHOOK_FLOW_NAME = WEBHOOK_PROCESS.name
 WEBHOOK_FAILURE_STATES = [StateType.FAILED, StateType.CRASHED]
+
+
+async def _post_count_by(client: PrefectClient, path: str, payload: dict[str, Any]) -> list[Any]:
+    """POST a Prefect count-by query and return its buckets (empty when the response has none)."""
+    response = await client._client.post(path, json=payload)
+    response.raise_for_status()
+    data = response.json()
+    return data if isinstance(data, list) else []
 
 
 @task(name="telemetry-gather-work-pools", task_run_name="Gather Work Pools", cache_policy=NONE)
@@ -56,32 +65,20 @@ async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
     infrahub_events = get_all_events()
     events: dict[str, int] = {}
 
-    async def count_events(event_name: str) -> int:
-        payload = {"filter": {"event": {"name": [event_name]}}}
-        response = await client._client.post("/events/count-by/event", json=payload)
-        response.raise_for_status()
-        data = response.json()
-        if not isinstance(data, list) or len(data) == 0:
-            return 0
-        return data[0]["count"]
-
     for event in infrahub_events:
-        events[event.event_name] = await count_events(event_name=event.event_name)
+        payload = {"filter": {"event": {"name": [event.event_name]}}}
+        buckets = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
+        events[event.event_name] = buckets[0]["count"] if buckets else 0
 
     return events
 
 
 def _windowed_event_filter(event_name: str, window_start: datetime, window_end: datetime) -> dict[str, Any]:
-    """Build the count-by filter for ``[start, end)``.
-
-    Prefect's ``EventOccurredFilter`` is inclusive on both ends, so ``until`` is pulled back a
-    microsecond to keep the window half-open — else a boundary event counts in two windows.
-    """
-    until = window_end - timedelta(microseconds=1)
+    """Build the count-by filter for the half-open window ``[window_start, window_end)``."""
     return {
         "filter": {
             "event": {"name": [event_name]},
-            "occurred": {"since": window_start.isoformat(), "until": until.isoformat()},
+            "occurred": {"since": window_start.isoformat(), "until": inclusive_end(window_end).isoformat()},
         }
     }
 
@@ -92,12 +89,8 @@ async def count_windowed_event(
 ) -> int:
     """Count events of one name that occurred within ``[window_start, window_end)``."""
     payload = _windowed_event_filter(event_name=event_name, window_start=window_start, window_end=window_end)
-    response = await client._client.post("/events/count-by/event", json=payload)
-    response.raise_for_status()
-    data = response.json()
-    if not isinstance(data, list):
-        return 0
-    return sum(bucket["count"] for bucket in data)
+    buckets = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
+    return sum(bucket["count"] for bucket in buckets)
 
 
 @task(name="telemetry-gather-windowed-unique", task_run_name="Gather Windowed Unique Count", cache_policy=NONE)
@@ -110,12 +103,8 @@ async def count_windowed_unique_resources(
     distinct total.
     """
     payload = _windowed_event_filter(event_name=event_name, window_start=window_start, window_end=window_end)
-    response = await client._client.post("/events/count-by/resource", json=payload)
-    response.raise_for_status()
-    data = response.json()
-    if not isinstance(data, list):
-        return 0
-    return len(data)
+    buckets = await _post_count_by(client=client, path="/events/count-by/resource", payload=payload)
+    return len(buckets)
 
 
 @task(name="telemetry-gather-webhook-runs", task_run_name="Gather Webhook Runs", cache_policy=NONE)
@@ -126,10 +115,8 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
     runs count in neither.
     """
     flow_filter = FlowFilter(name=FlowFilterName(any_=[WEBHOOK_FLOW_NAME]))
-    # ``before_`` is inclusive, so pull the upper bound back a microsecond — a run on the
-    # boundary must land in exactly one window.
     after = DateTime.fromisoformat(window_start.isoformat())
-    before = DateTime.fromisoformat((window_end - timedelta(microseconds=1)).isoformat())
+    before = DateTime.fromisoformat(inclusive_end(window_end).isoformat())
 
     def runs_in_states(states: list[StateType]) -> FlowRunFilter:
         return FlowRunFilter(
