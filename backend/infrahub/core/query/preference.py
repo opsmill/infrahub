@@ -1,5 +1,3 @@
-# StandardNode Cypher query for preferences
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -14,10 +12,7 @@ if TYPE_CHECKING:
 class PreferenceGetByOwnerQuery(StandardNodeQuery):
     """Fetch the Preference rows for the given owner ids (account ids and/or the Root id).
 
-    A targeted lookup instead of `get_list()`-ing every row and filtering in Python (which would scan
-    every principal's preferences). Serves both a single owner (a user's row or the global row) and
-    the effective read, which fetches the account row and the Root row together in ONE query. There
-    is at most one row per owner (guaranteed by the per-owner upsert lock).
+    There is at most one row per owner (guaranteed by the per-owner upsert lock).
     """
 
     name = "preference_get_by_owner"
@@ -31,9 +26,8 @@ class PreferenceGetByOwnerQuery(StandardNodeQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["owner_ids"] = self.owner_ids
 
-        # `node_type` is a trusted internal constant — always Preference.get_type() passed by the
-        # caller (models.py), never user input — so interpolating it as the node label (Cypher labels
-        # can't be parameterised) is safe. `owner_ids` IS a bound $param.
+        # `node_type` is a trusted internal constant, never user input, so interpolating it as the
+        # node label (Cypher labels can't be parameterised) is safe. `owner_ids` IS a bound $param.
         query = """
         MATCH (n:%s)
         WHERE n.owner_id IN $owner_ids
@@ -42,5 +36,5 @@ class PreferenceGetByOwnerQuery(StandardNodeQuery):
         self.add_to_query(query=query)
         self.return_labels = ["n"]
         # Deterministic order so a single-owner read returns a stable row even in the (lock-prevented)
-        # event of a duplicate — mirrors the previous get_global guarantee.
+        # event of a duplicate.
         self.order_by = ["n.uuid"]

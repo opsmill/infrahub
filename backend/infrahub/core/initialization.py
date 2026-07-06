@@ -555,10 +555,6 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     default_branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
 
-    # No global-preference row is seeded: preferences reads never create, and a missing row means
-    # "nothing set" (the client falls back to its default). The row is created lazily on the first
-    # global write. See backend/infrahub/core/preferences/models.py.
-
     # --------------------------------------------------
     # Load the internal and core schema in the database
     # --------------------------------------------------

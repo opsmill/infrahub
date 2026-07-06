@@ -20,7 +20,7 @@ async def test_first_time_initialization_does_not_seed_preferences(
     """A fresh install seeds NO preference row.
 
     Preferences reads never create, and there is no init seed — a Preference row exists only after
-    the first write. See backend/infrahub/core/preferences/models.py.
+    the first write.
     """
     # Start from a truly empty graph so first_time_initialization runs against a single Root,
     # mirroring a fresh install (the default_branch fixture pre-creates a Root we must clear).
