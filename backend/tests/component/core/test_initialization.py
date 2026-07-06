@@ -4,7 +4,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import first_time_initialization, get_root_node, reset_deployment_id
-from infrahub.core.preferences import GlobalPreference
+from infrahub.core.preferences import Preference
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 
@@ -14,24 +14,20 @@ async def test_first_time_initialization(db: InfrahubDatabase, default_branch: B
     assert True
 
 
-async def test_first_time_initialization_seeds_global_preference(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """A fresh install seeds exactly one GlobalPreference singleton.
+async def test_first_time_initialization_does_not_seed_preferences(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """A fresh install seeds NO preference row.
 
-    This keeps the effective-preferences read path lock-free on new installs (the lazy
-    create-with-lock in get_global only ever fires on pre-existing installs).
+    Preferences reads never create, and there is no init seed — a Preference row exists only after
+    the first write. See backend/infrahub/core/preferences/models.py.
     """
     # Start from a truly empty graph so first_time_initialization runs against a single Root,
     # mirroring a fresh install (the default_branch fixture pre-creates a Root we must clear).
     await delete_all_nodes(db=db)
     await first_time_initialization(db=db)
 
-    rows = await GlobalPreference.get_list(db=db)
-    assert len(rows) == 1
-
-    # get_global returns the seeded row without materialising a second one.
-    seeded = await GlobalPreference.get_global(db=db)
-    assert seeded.uuid == rows[0].uuid
-    assert len(await GlobalPreference.get_list(db=db)) == 1
+    assert await Preference.get_list(db=db) == []
 
 
 async def test_reset_deployment_id_generates_new_uuid(db: InfrahubDatabase, default_branch: Branch) -> None:
