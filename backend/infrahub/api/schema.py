@@ -3,10 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from fastapi import APIRouter, Depends, Query, Request
+from infrahub_sdk.schema.generated.read import (
+    GenericSchemaRead,
+    NodeSchemaRead,
+    ProfileSchemaRead,
+    TemplateSchemaRead,
+)
+from infrahub_sdk.schema.generated.write import InfrahubSchemaWrite
 from infrahub_sdk.schema.validate import validate_schema as validate_write_schema
 from pydantic import (
     BaseModel,
     Field,
+    PrivateAttr,
     computed_field,
     create_model,
     model_validator,
@@ -88,22 +96,22 @@ class APISchemaMixin:
         return values
 
 
-class APINodeSchema(NodeSchema, APISchemaMixin):
+class APINodeSchema(NodeSchemaRead, APISchemaMixin):
     api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
 
-class APIGenericSchema(GenericSchema, APISchemaMixin):
+class APIGenericSchema(GenericSchemaRead, APISchemaMixin):
     api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
 
-class APIProfileSchema(ProfileSchema, APISchemaMixin):
+class APIProfileSchema(ProfileSchemaRead, APISchemaMixin):
     api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
 
-class APITemplateSchema(TemplateSchema, APISchemaMixin):
+class APITemplateSchema(TemplateSchemaRead, APISchemaMixin):
     api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
@@ -117,8 +125,9 @@ class SchemaReadAPI(BaseModel):
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
-class SchemaLoadAPI(SchemaRoot):
+class SchemaLoadAPI(InfrahubSchemaWrite):
     version: str
+    _internal_schema: SchemaRoot = PrivateAttr()
 
     @model_validator(mode="before")
     @classmethod
@@ -132,6 +141,19 @@ class SchemaLoadAPI(SchemaRoot):
             if not result.valid:
                 raise ValueError("; ".join(result.messages))
         return data
+
+    @model_validator(mode="after")
+    def build_internal_schema(self) -> Self:
+        # The published request contract only exposes user-settable fields; the processing
+        # engine operates on the richer internal SchemaRoot. Building it here surfaces
+        # internal-only invariants (e.g. reserved keywords) as request-validation errors,
+        # and lets the endpoints feed the pipeline without re-deriving the conversion.
+        self._internal_schema = SchemaRoot.model_validate(self.model_dump(exclude_none=True))
+        return self
+
+    @property
+    def internal_schema(self) -> SchemaRoot:
+        return self._internal_schema
 
 
 class SchemasLoadAPI(BaseModel):
@@ -185,11 +207,11 @@ def _merge_candidate_schemas(schemas: Sequence[SchemaRoot]) -> SchemaRoot:
 
 
 def evaluate_candidate_schemas(
-    branch_schema: SchemaBranch, schemas_to_evaluate: SchemasLoadAPI
+    branch_schema: SchemaBranch, schemas_to_evaluate: Sequence[SchemaRoot]
 ) -> tuple[SchemaBranch, SchemaUpdateValidationResult]:
     candidate_schema = branch_schema.duplicate()
     try:
-        schema = _merge_candidate_schemas(schemas=schemas_to_evaluate.schemas)
+        schema = _merge_candidate_schemas(schemas=schemas_to_evaluate)
 
         candidate_schema.load_schema(schema=schema)
         candidate_schema.process()
@@ -372,10 +394,13 @@ async def load_schema(
 
     errors: list[str] = []
     warnings: list[SchemaWarning] = []
+    candidate_schemas: list[SchemaRoot] = []
     for schema in schemas.schemas:
-        errors += schema.validate_namespaces()
-        errors += schema.validate_reserved_suffixes()
-        warnings += schema.gather_warnings()
+        internal_schema = schema.internal_schema
+        candidate_schemas.append(internal_schema)
+        errors += internal_schema.validate_namespaces()
+        errors += internal_schema.validate_reserved_suffixes()
+        warnings += internal_schema.gather_warnings()
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
@@ -384,7 +409,9 @@ async def load_schema(
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
         original_hash = branch_schema.get_hash()
 
-        candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
+        candidate_schema, result = evaluate_candidate_schemas(
+            branch_schema=branch_schema, schemas_to_evaluate=candidate_schemas
+        )
 
         if not result.diff.all:
             return SchemaUpdate(hash=original_hash, previous_hash=original_hash, diff=result.diff)
@@ -461,17 +488,22 @@ async def check_schema(
 
     errors: list[str] = []
     warnings: list[SchemaWarning] = []
+    candidate_schemas: list[SchemaRoot] = []
     for schema in schemas.schemas:
-        errors += schema.validate_namespaces()
-        errors += schema.validate_reserved_suffixes()
-        warnings += schema.gather_warnings()
+        internal_schema = schema.internal_schema
+        candidate_schemas.append(internal_schema)
+        errors += internal_schema.validate_namespaces()
+        errors += internal_schema.validate_reserved_suffixes()
+        warnings += internal_schema.gather_warnings()
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
 
     branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
-    candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
+    candidate_schema, result = evaluate_candidate_schemas(
+        branch_schema=branch_schema, schemas_to_evaluate=candidate_schemas
+    )
 
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
