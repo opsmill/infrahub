@@ -410,6 +410,104 @@ def _attribute_kinds_by_parameters(expected_parameters: set[str]) -> dict[str, l
     return groups
 
 
+def _sdk_extension_field(name: str, annotation: str, default_definition: str, description: str) -> dict[str, str]:
+    return {
+        "name": name,
+        "external_type_annotation": annotation,
+        "external_default_definition": default_definition,
+        "description": description,
+        "external_pattern": "",
+        "min": "",
+        "max": "",
+    }
+
+
+def _sdk_extension_families(suffix: str) -> list[dict[str, Any]]:
+    """Write-only models describing an extension of an existing node.
+
+    Extension nodes are addressed by kind and carry the attributes and relationships to add,
+    so they reuse the discriminated attribute union and the relationship model of the variant.
+    """
+    node_extension_fields = [
+        _sdk_extension_field("kind", "str", "...", "Kind of the existing node to extend."),
+        _sdk_extension_field(
+            "attributes",
+            f"list[AttributeSchema{suffix}]",
+            "default_factory=list",
+            "Attributes to add to the existing node.",
+        ),
+        _sdk_extension_field(
+            "relationships",
+            f"list[RelationshipSchema{suffix}]",
+            "default_factory=list",
+            "Relationships to add to the existing node.",
+        ),
+    ]
+    return [
+        {"class_name": f"NodeExtension{suffix}", "parent": "BaseModel", "attributes": node_extension_fields},
+        {
+            "class_name": f"SchemaExtension{suffix}",
+            "parent": "BaseModel",
+            "attributes": [
+                _sdk_extension_field(
+                    "nodes",
+                    f"list[NodeExtension{suffix}]",
+                    "default_factory=list",
+                    "Nodes to extend with additional attributes and relationships.",
+                ),
+            ],
+        },
+    ]
+
+
+def _sdk_root(suffix: str, with_version: bool, model_config_args: str, with_extensions: bool) -> dict[str, Any]:
+    config_field = [f"model_config = ConfigDict({model_config_args})"] if model_config_args else []
+    version_field = ["version: str | None = None"] if with_version else []
+    extensions_field = [f"extensions: SchemaExtension{suffix} | None = None"] if with_extensions else []
+    fields = [
+        *config_field,
+        *version_field,
+        f"nodes: list[NodeSchema{suffix}] = Field(default_factory=list)",
+        f"generics: list[GenericSchema{suffix}] = Field(default_factory=list)",
+        *extensions_field,
+    ]
+    return {"class_name": f"InfrahubSchema{suffix}", "fields": fields}
+
+
+def _sdk_profile_template_families(suffix: str) -> list[dict[str, Any]]:
+    """Read-only node families for profiles and templates (no write variant exists).
+
+    Both are a base node plus the list of generics they inherit from, mirroring their internal
+    counterparts; only the extra field is declared, the rest comes from the parent.
+    """
+    from infrahub.core.constants import UpdateSupport, Visibility
+    from infrahub.core.schema.definitions.internal import SchemaAttribute
+
+    def inherit_from(subject: str) -> SchemaAttribute:
+        return SchemaAttribute(
+            name="inherit_from",
+            kind="List",
+            internal_kind=str,
+            default_factory="list",
+            description=f"List of Generic Kind that this {subject} is inheriting from",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.READ},
+        )
+
+    return [
+        {
+            "class_name": f"ProfileSchema{suffix}",
+            "parent": f"BaseNodeSchema{suffix}",
+            "attributes": [inherit_from("profile")],
+        },
+        {
+            "class_name": f"TemplateSchema{suffix}",
+            "parent": f"BaseNodeSchema{suffix}",
+            "attributes": [inherit_from("template")],
+        },
+    ]
+
+
 def _generate_schemas_sdk(context: Context) -> None:
     """Render the user-facing write/read schema models into the Python SDK.
 
@@ -654,26 +752,19 @@ def _generate_schemas_sdk(context: Context) -> None:
             },
         ]
 
-    def _root(suffix: str, with_version: bool) -> dict[str, Any]:
-        version_field = ["version: str | None = None"] if with_version else []
-        fields = [
-            *version_field,
-            f"nodes: list[NodeSchema{suffix}] = Field(default_factory=list)",
-            f"generics: list[GenericSchema{suffix}] = Field(default_factory=list)",
-        ]
-        return {"class_name": f"InfrahubSchema{suffix}", "fields": fields}
-
+    # Each variant carries an extra-families builder for the models unique to it: the write
+    # variant adds the extension models, the read variant adds the profile/template projections.
     variants = {
-        "write": (Visibility.WRITE, 'extra="forbid"', "Write", True),
-        "read": (Visibility.READ, "", "Read", False),
+        "write": (Visibility.WRITE, 'extra="forbid"', "Write", True, _sdk_extension_families),
+        "read": (Visibility.READ, "", "Read", False, _sdk_profile_template_families),
     }
-    for variant, (minimum, model_config_args, suffix, with_version) in variants.items():
+    for variant, (minimum, model_config_args, suffix, with_version, extra_families) in variants.items():
         rendered = template.render(
             pre_families=_pre_families(minimum, suffix),
             aliases=_aliases(suffix),
-            families=_families(minimum, suffix),
+            families=_families(minimum, suffix) + extra_families(suffix),
             model_config_args=model_config_args,
-            root=_root(suffix, with_version),
+            root=_sdk_root(suffix, with_version, model_config_args, with_extensions=variant == "write"),
         )
         rendered = rendered.replace("__VARIANT__", suffix)
         Path(f"{generated}/{variant}.py").write_text(rendered, encoding="utf-8")
