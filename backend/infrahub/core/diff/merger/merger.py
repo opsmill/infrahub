@@ -56,6 +56,7 @@ class DiffMerger:
         self.diff_repository = diff_repository
         self.exclusion_plan_builder = exclusion_plan_builder
         self._affected_node_uuids: list[str] = []
+        self._merge_started = False
 
     async def merge_graph(self, at: Timestamp) -> None:
         tracking_id = BranchTrackingId(name=self.source_branch.name)
@@ -86,6 +87,16 @@ class DiffMerger:
             carry_over_diff_rel_props=len(plan.carry_over_diff_relationship_properties),
         )
 
+        log.info("Discovering affected node UUIDs")
+        affected_node_uuids = await self.diff_repository.get_affected_node_uuids(
+            source_branch=self.source_branch,
+            target_branch=self.destination_branch,
+            at=at,
+            tracking_id=tracking_id,
+        )
+        self._affected_node_uuids = affected_node_uuids
+        self._merge_started = True
+
         log.info("Running bulk node existence merge")
         await self._bulk_merge_node_existence(at=at, plan=plan)
 
@@ -100,15 +111,6 @@ class DiffMerger:
 
         log.info("Running bulk relationship property edge merge")
         await self._bulk_merge_relationship_property_edges(at=at, plan=plan)
-
-        log.info("Discovering affected node UUIDs for metadata update")
-        affected_node_uuids = await self.diff_repository.get_affected_node_uuids(
-            source_branch=self.source_branch,
-            target_branch=self.destination_branch,
-            at=at,
-            tracking_id=tracking_id,
-        )
-        self._affected_node_uuids = affected_node_uuids
 
         if affected_node_uuids:
             for i in range(0, len(affected_node_uuids), self.metadata_batch_size):
@@ -199,7 +201,7 @@ class DiffMerger:
         await query.execute(db=self.db)
 
     async def rollback(self, at: Timestamp) -> None:
-        if not self._affected_node_uuids:
+        if not self._merge_started:
             return
         rollback_query = await RollbackQuery.init(
             db=self.db,
