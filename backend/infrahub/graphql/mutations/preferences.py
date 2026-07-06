@@ -13,6 +13,9 @@ from infrahub.core.preferences import (
     Preference,
     global_owner_id,
 )
+from infrahub.core.preferences import (
+    DateFormat as DateFormatEnum,
+)
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.types.preferences import WRITE_SCOPE_GLOBAL, DateFormat, PreferenceWriteScope
@@ -112,7 +115,9 @@ class InfrahubSetPreferences(Mutation):
                     obj = Preference(owner_id=owner_id)
 
                 if date_format is not _UNSET:
-                    obj.date_format = date_format
+                    # Graphene hands over the enum member's value (a plain string); coerce it to the
+                    # domain enum here because pydantic does not validate plain attribute assignment.
+                    obj.date_format = None if date_format is None else DateFormatEnum(date_format)
                 if timezone is not _UNSET:
                     obj.timezone = timezone
 

@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Self
 
-from pydantic import field_validator
-
 from infrahub.core import registry
 from infrahub.core.node.standard import StandardNode
-from infrahub.core.preferences.constants import DateFormat
+from infrahub.core.preferences.constants import DateFormat  # noqa: TC001  pydantic resolves the annotation at runtime
 from infrahub.core.query.preference import PreferenceGetByOwnerQuery
 
 if TYPE_CHECKING:
@@ -55,17 +53,10 @@ class Preference(StandardNode):
     owner_id: str
     # Persisted nullable fields must use `Optional[X]` (not `X | None`) until Python 3.14, because of
     # how StandardNode.guess_field_type works (mirrors Branch).
-    date_format: Optional[str] = None
+    # date_format is enum-typed so an unknown key is rejected at construction (including loads from
+    # the db); it round-trips as a plain string because the enum subclasses str.
+    date_format: Optional[DateFormat] = None
     timezone: Optional[str] = None
-
-    @field_validator("date_format")
-    @classmethod
-    def _validate_date_format(cls, value: Optional[str]) -> Optional[str]:
-        # date_format is stored as a plain string (StandardNode has no enum field type) but must be
-        # one of the DateFormat semantic keys — reject anything else so it is never "any string".
-        if value is not None:
-            DateFormat(value)  # raises ValueError for an unknown key
-        return value
 
     @classmethod
     async def get_for_owner(cls, db: InfrahubDatabase, owner_id: str) -> Self | None:
