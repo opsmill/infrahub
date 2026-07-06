@@ -46,16 +46,13 @@ class InfrahubSetPreferences(Mutation):
     scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
                    manage_global_preferences (super admins bypass) checked BEFORE any read.
 
-    EFFECTIVE is not a member of PreferenceWriteScope, so writing the resolved view is unrepresentable
-    (no runtime guard needed). The _UNSET sentinel leaves an omitted field unchanged while an explicit
-    `null` resets it. The row is lazily created on first write under a per-owner lock — the only path
-    that ever creates a Preference row.
+    The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
+    is lazily created on first write under a per-owner lock — the only path that ever creates a
+    Preference row.
     """
 
     class Arguments:
         scope = Argument(PreferenceWriteScopeType, required=True)
-        # date_format is a DateFormat enum key: the enum type validates it at the GraphQL layer, so an
-        # unknown key is rejected before any write.
         date_format = Argument(DateFormat, required=False)
         timezone = String(required=False)
 
@@ -75,15 +72,13 @@ class InfrahubSetPreferences(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
-        # Fail-closed: reject anonymous/unauthenticated sessions before any scope-specific logic.
         account_id = graphql_context.require_authenticated_account_id()
 
         if scope == PreferenceWriteScope.GLOBAL:
-            # Gate BEFORE any read-modify-write (fail-closed). Super admins bypass via the manager.
+            # Super admins bypass via the permission manager.
             graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
             owner_id = global_owner_id()
         else:
-            # PreferenceWriteScope has only USER/GLOBAL, so this branch is USER: the caller's own row.
             owner_id = account_id
 
         return await cls._set(
@@ -102,8 +97,7 @@ class InfrahubSetPreferences(Mutation):
         # Per-owner distributed lock: the read-create-or-update-save block below is not atomic on its
         # own, so concurrent first-upserts for the same owner could otherwise each see "no row" and
         # create a duplicate (and concurrent updates could lose writes). Keyed on owner_id so distinct
-        # owners never contend; the global row locks on the Root id, a user's on the account id. Reads
-        # stay lock-free.
+        # owners never contend. Reads stay lock-free.
         async with lock.registry.get(name=owner_id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
             async with graphql_context.db.start_transaction() as db:
                 obj = await Preference.get_for_owner(db=db, owner_id=owner_id)
@@ -112,7 +106,7 @@ class InfrahubSetPreferences(Mutation):
 
                 if date_format is not _UNSET:
                     # Graphene hands over the enum member's value (a plain string); coerce it to the
-                    # domain enum here because pydantic does not validate plain attribute assignment.
+                    # domain enum here
                     obj.date_format = None if date_format is None else DateFormatEnum(date_format)
                 if timezone is not _UNSET:
                     obj.timezone = timezone

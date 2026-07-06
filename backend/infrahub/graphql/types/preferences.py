@@ -7,11 +7,8 @@ from graphene import Enum, Field, ObjectType, String
 from infrahub.core.preferences import DateFormat as DateFormatEnum
 from infrahub.core.preferences import PreferenceSource as PreferenceSourceEnum
 
-# GraphQL enum derived from the domain `DateFormat` Python enum, so the two can never drift and an
-# invalid key is rejected at the GraphQL layer (pattern: graphql/types/enums.py). The description is
-# passed explicitly as a single line rather than inheriting the enum's multi-line docstring — the SDL
-# printer dedents multi-line descriptions differently across graphql-core versions, which made the
-# generated schema.graphql environment-dependent.
+# Keep the description a single line: graphql-core's SDL printer dedents multi-line descriptions
+# differently across versions, which makes the generated schema.graphql environment-dependent.
 DateFormat = Enum.from_enum(
     DateFormatEnum,
     description=(
@@ -26,16 +23,15 @@ class PreferenceWriteScope(StrEnum):
     """The WRITABLE axes of the preferences store.
 
     EFFECTIVE is intentionally absent: the resolved view is read-only, so it is unrepresentable as a
-    write target (no runtime guard needed). USER writes the caller's own preferences; GLOBAL writes
-    the organisation-wide ones (gated on manage_global_preferences).
+    write target. USER writes the caller's own preferences; GLOBAL writes the organisation-wide ones
+    (gated on manage_global_preferences).
     """
 
     USER = "user"
     GLOBAL = "global"
 
 
-# GraphQL enum derived from the PreferenceWriteScope StrEnum (same pattern as DateFormat above).
-# Graphene hands the resolver the member's value; being a StrEnum, the members compare equal to it.
+# StrEnum so the value Graphene hands the resolver compares equal to the member.
 PreferenceWriteScopeType = Enum.from_enum(
     PreferenceWriteScope,
     description=(
@@ -46,9 +42,6 @@ PreferenceWriteScopeType = Enum.from_enum(
 )
 
 
-# GraphQL enum derived from the domain `PreferenceSource` Python enum (same pattern as DateFormat
-# above, including the explicit single-line description), so the resolution logic in core and the
-# GraphQL layer can never drift.
 PreferenceSource = Enum.from_enum(
     PreferenceSourceEnum,
     description=(

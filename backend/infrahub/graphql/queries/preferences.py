@@ -25,14 +25,13 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     """Resolve the caller's effective preferences (user override → global default → DEFAULT).
 
     Open to any authenticated caller; the global row is read internally, never exposed as raw org
-    values. The resolution policy itself lives on the domain value object.
+    values.
     """
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id
     global_id = global_owner_id()
 
-    # Account row + global row in ONE query; a missing row simply isn't in the map (reads never
-    # create). StandardNode reads carry no branch filter, so this is branch-agnostic.
+    # StandardNode reads carry no branch filter, so this is branch-agnostic.
     preferences = await Preference.get_for_owners(db=graphql_context.db, owner_ids=[account_id, global_id])
     effective = EffectivePreferences(user=preferences.get(account_id), global_=preferences.get(global_id))
     return {
@@ -72,8 +71,6 @@ async def resolve_global_preferences(root: dict, info: GraphQLResolveInfo) -> di
     }
 
 
-# Three distinct root fields (registered in graphql/schema.py): each scope has its own typed shape and
-# permission, rather than one query whose meaning varies by a `scope` argument.
 InfrahubEffectivePreferences = Field(EffectivePreferencesType, resolver=resolve_effective_preferences, required=True)
 InfrahubUserPreferences = Field(RawPreferencesType, resolver=resolve_user_preferences, required=True)
 InfrahubGlobalPreferences = Field(RawPreferencesType, resolver=resolve_global_preferences, required=True)

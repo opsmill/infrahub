@@ -1,5 +1,3 @@
-# Preference model
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,10 +20,6 @@ PREFERENCE_LOCK_NAMESPACE = "preference"
 
 def global_owner_id() -> str:
     """`owner_id` for the organisation-wide (global) preferences: the Root node id.
-
-    `registry.id` is the Root uuid string, always set once the registry is initialised
-    (`get_root_node`); guard the `None` case so callers get a guaranteed `str` and a resolver that
-    somehow runs before initialisation fails loudly instead of writing a bogus owner.
 
     Raises:
         RuntimeError: if the registry has not been initialised (`registry.id` is unset).
@@ -53,7 +47,7 @@ class Preference(StandardNode):
 
     owner_id: str
     # Persisted nullable fields must use `Optional[X]` (not `X | None`) until Python 3.14, because of
-    # how StandardNode.guess_field_type works (mirrors Branch).
+    # how StandardNode.guess_field_type works.
     # date_format is enum-typed so an unknown key is rejected at construction (including loads from
     # the db); it round-trips as a plain string because the enum subclasses str.
     date_format: Optional[DateFormat] = None
@@ -75,8 +69,7 @@ class Preference(StandardNode):
     async def get_for_owners(cls, db: InfrahubDatabase, owner_ids: list[str]) -> dict[str, Self]:
         """Return a {owner_id: Preference} map for the owners that have a row, fetched in ONE query.
 
-        Used by the effective read to load the account row and the Root row together, then merge in
-        Python. Owners with no row are simply absent from the map.
+        Owners with no row are simply absent from the map.
         """
         query = await PreferenceGetByOwnerQuery.init(db=db, owner_ids=owner_ids, node_type=cls.get_type())
         await query.execute(db=db)
