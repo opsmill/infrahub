@@ -3,11 +3,13 @@ import type { RelationshipKind } from "@/entities/nodes/types";
 import type { RelationshipSchema } from "@/entities/schema/types";
 
 const RELATIONSHIP_KIND_VISIBLE_IN_TAB: Array<RelationshipKind> = [
-  "Generic",
   "Component",
+  "Generic",
   "Hierarchy",
   "Template",
 ];
+
+const PROFILE_RELATIONSHIP_NAMES_VISIBLE_IN_TAB = ["related_nodes", "related_templates"];
 
 export function isRelationshipVisibleInTab(relationshipSchema: RelationshipSchema): boolean {
   if (
@@ -15,6 +17,10 @@ export function isRelationshipVisibleInTab(relationshipSchema: RelationshipSchem
     isFromResourcePoolRelationship(relationshipSchema.name)
   ) {
     return false;
+  }
+
+  if (relationshipSchema.kind === "Profile") {
+    return PROFILE_RELATIONSHIP_NAMES_VISIBLE_IN_TAB.includes(relationshipSchema.name);
   }
 
   return RELATIONSHIP_KIND_VISIBLE_IN_TAB.includes(relationshipSchema.kind);

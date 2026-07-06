@@ -39,6 +39,49 @@ describe("getRelationshipsVisibleInTab", () => {
     expect(result).toEqual(relationships);
   });
 
+  it("should return Profile relationships named related_nodes", () => {
+    // GIVEN
+    const relationships = [
+      generateRelationshipSchema({ kind: "Profile", cardinality: "many", name: "related_nodes" }),
+    ];
+
+    // WHEN
+    const result = getRelationshipsVisibleInTab(relationships);
+
+    // THEN
+    expect(result).toEqual(relationships);
+  });
+
+  it("should return Profile relationships named related_templates", () => {
+    // GIVEN
+    const relationships = [
+      generateRelationshipSchema({
+        kind: "Profile",
+        cardinality: "many",
+        name: "related_templates",
+      }),
+    ];
+
+    // WHEN
+    const result = getRelationshipsVisibleInTab(relationships);
+
+    // THEN
+    expect(result).toEqual(relationships);
+  });
+
+  it("should not return Profile relationships with other names", () => {
+    // GIVEN
+    const relationships = [
+      generateRelationshipSchema({ kind: "Profile", cardinality: "many", name: "profiles" }),
+    ];
+
+    // WHEN
+    const result = getRelationshipsVisibleInTab(relationships);
+
+    // THEN
+    expect(result).toEqual([]);
+  });
+
   it("should return relationships with kind Template and cardinality many", () => {
     // GIVEN
     const relationships = [generateRelationshipSchema({ kind: "Template", cardinality: "many" })];
@@ -76,7 +119,6 @@ describe("getRelationshipsVisibleInTab", () => {
       generateRelationshipSchema({ kind: "Attribute", cardinality: "many" }),
       generateRelationshipSchema({ kind: "Parent", cardinality: "many" }),
       generateRelationshipSchema({ kind: "Group", cardinality: "many" }),
-      generateRelationshipSchema({ kind: "Profile", cardinality: "many" }),
     ];
 
     // WHEN
