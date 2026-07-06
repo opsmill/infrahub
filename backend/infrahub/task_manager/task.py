@@ -258,7 +258,7 @@ class PrefectTask:
     def _to_uuid(value: str) -> UUID:
         try:
             return UUID(value)
-        except ValueError as exc:
+        except (TypeError, ValueError) as exc:
             raise ValidationError(input_value=f"'{value}' is not a valid task id") from exc
 
     @classmethod

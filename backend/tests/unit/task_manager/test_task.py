@@ -93,6 +93,11 @@ class TestGenerateFlowRunFilter:
         with pytest.raises(ValidationError, match=r"^'not-a-uuid' is not a valid task id$"):
             PrefectTask._generate_flow_run_filter(ids=["not-a-uuid"])
 
+    def test_null_id_raises_validation_error(self) -> None:
+        # ids=List(String) in GraphQL permits null elements, which reach UUID() as None.
+        with pytest.raises(ValidationError, match=r"^'None' is not a valid task id$"):
+            PrefectTask._generate_flow_run_filter(ids=cast("list[str]", [None]))
+
 
 class TestGetLogs:
     async def test_no_flow_ids_returns_empty_without_remote_call(self) -> None:
