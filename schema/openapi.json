@@ -2484,13 +2484,7 @@
                         "description": "Human friendly representation of the name/kind"
                     },
                     "branch": {
-                        "type": "string",
-                        "enum": [
-                            "aware",
-                            "agnostic",
-                            "local"
-                        ],
-                        "title": "Branch",
+                        "$ref": "#/components/schemas/BranchSupportType",
                         "description": "Type of branch support for the model.",
                         "default": "aware"
                     },
@@ -2631,12 +2625,7 @@
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
                         "default": "present"
                     },
@@ -2815,13 +2804,7 @@
                         "description": "Human friendly representation of the name/kind"
                     },
                     "branch": {
-                        "type": "string",
-                        "enum": [
-                            "aware",
-                            "agnostic",
-                            "local"
-                        ],
-                        "title": "Branch",
+                        "$ref": "#/components/schemas/BranchSupportType",
                         "description": "Type of branch support for the model.",
                         "default": "aware"
                     },
@@ -2962,12 +2945,7 @@
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
                         "default": "present"
                     },
@@ -3167,13 +3145,7 @@
                         "description": "Human friendly representation of the name/kind"
                     },
                     "branch": {
-                        "type": "string",
-                        "enum": [
-                            "aware",
-                            "agnostic",
-                            "local"
-                        ],
-                        "title": "Branch",
+                        "$ref": "#/components/schemas/BranchSupportType",
                         "description": "Type of branch support for the model.",
                         "default": "aware"
                     },
@@ -3314,12 +3286,7 @@
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
                         "default": "present"
                     },
@@ -3471,13 +3438,7 @@
                         "description": "Human friendly representation of the name/kind"
                     },
                     "branch": {
-                        "type": "string",
-                        "enum": [
-                            "aware",
-                            "agnostic",
-                            "local"
-                        ],
-                        "title": "Branch",
+                        "$ref": "#/components/schemas/BranchSupportType",
                         "description": "Type of branch support for the model.",
                         "default": "aware"
                     },
@@ -3618,12 +3579,7 @@
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
                         "default": "present"
                     },
@@ -3731,6 +3687,14 @@
                     "access_token"
                 ],
                 "title": "AccessTokenResponse"
+            },
+            "AllowOverrideType": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "any"
+                ],
+                "title": "AllowOverrideType"
             },
             "AnalyticsSettings": {
                 "properties": {
@@ -3981,6 +3945,15 @@
                     "commit_to"
                 ],
                 "title": "BranchDiffRepository"
+            },
+            "BranchSupportType": {
+                "type": "string",
+                "enum": [
+                    "aware",
+                    "agnostic",
+                    "local"
+                ],
+                "title": "BranchSupportType"
             },
             "ComputedAttributeJinja2Read": {
                 "properties": {
@@ -4487,18 +4460,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -4530,22 +4497,12 @@
                         "default": false
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -4563,12 +4520,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -4778,18 +4730,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -4815,22 +4761,12 @@
                         "description": "Default value of the attribute."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -4848,12 +4784,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -4934,13 +4865,7 @@
                         "description": "Human friendly representation of the name/kind"
                     },
                     "branch": {
-                        "type": "string",
-                        "enum": [
-                            "aware",
-                            "agnostic",
-                            "local"
-                        ],
-                        "title": "Branch",
+                        "$ref": "#/components/schemas/BranchSupportType",
                         "description": "Type of branch support for the model.",
                         "default": "aware"
                     },
@@ -5081,12 +5006,7 @@
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
                         "default": "present"
                     },
@@ -5683,18 +5603,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -5726,22 +5640,12 @@
                         "default": false
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -5759,12 +5663,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -5956,18 +5855,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -5993,22 +5886,12 @@
                         "description": "Default value of the attribute."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -6026,12 +5909,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -6416,13 +6294,7 @@
                         "description": "Human friendly representation of the name/kind"
                     },
                     "branch": {
-                        "type": "string",
-                        "enum": [
-                            "aware",
-                            "agnostic",
-                            "local"
-                        ],
-                        "title": "Branch",
+                        "$ref": "#/components/schemas/BranchSupportType",
                         "description": "Type of branch support for the model.",
                         "default": "aware"
                     },
@@ -6563,12 +6435,7 @@
                         "description": "Link to a documentation associated with this object, can be internal or external."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the node/generic after loading the schema",
                         "default": "present"
                     },
@@ -6940,18 +6807,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -6983,22 +6844,12 @@
                         "default": false
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -7016,12 +6867,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -7213,18 +7059,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -7250,22 +7090,12 @@
                         "description": "Default value of the attribute."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -7283,12 +7113,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -7481,18 +7306,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -7524,22 +7343,12 @@
                         "default": false
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -7557,12 +7366,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -7754,18 +7558,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -7791,22 +7589,12 @@
                         "description": "Default value of the attribute."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -7824,12 +7612,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -7965,6 +7748,45 @@
                 "type": "object",
                 "title": "QueryPayload"
             },
+            "RelationshipCardinality": {
+                "type": "string",
+                "enum": [
+                    "one",
+                    "many"
+                ],
+                "title": "RelationshipCardinality"
+            },
+            "RelationshipDeleteBehavior": {
+                "type": "string",
+                "enum": [
+                    "no-action",
+                    "cascade"
+                ],
+                "title": "RelationshipDeleteBehavior"
+            },
+            "RelationshipDirection": {
+                "type": "string",
+                "enum": [
+                    "bidirectional",
+                    "outbound",
+                    "inbound"
+                ],
+                "title": "RelationshipDirection"
+            },
+            "RelationshipKind": {
+                "type": "string",
+                "enum": [
+                    "Generic",
+                    "Attribute",
+                    "Component",
+                    "Parent",
+                    "Group",
+                    "Hierarchy",
+                    "Profile",
+                    "Template"
+                ],
+                "title": "RelationshipKind"
+            },
             "RelationshipSchemaRead": {
                 "properties": {
                     "id": {
@@ -7994,18 +7816,7 @@
                         "description": "Type (kind) of objects supported on the other end of the relationship."
                     },
                     "kind": {
-                        "type": "string",
-                        "enum": [
-                            "Generic",
-                            "Attribute",
-                            "Component",
-                            "Parent",
-                            "Group",
-                            "Hierarchy",
-                            "Profile",
-                            "Template"
-                        ],
-                        "title": "Kind",
+                        "$ref": "#/components/schemas/RelationshipKind",
                         "description": "Defines the type of the relationship.",
                         "default": "Generic"
                     },
@@ -8050,12 +7861,7 @@
                         "description": "Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction."
                     },
                     "cardinality": {
-                        "type": "string",
-                        "enum": [
-                            "one",
-                            "many"
-                        ],
-                        "title": "Cardinality",
+                        "$ref": "#/components/schemas/RelationshipCardinality",
                         "description": "Defines how many objects are expected on the other side of the relationship.",
                         "default": "many"
                     },
@@ -8119,18 +7925,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the relationship. If not defined, it will be determined based on both peers."
                     },
                     "inherited": {
@@ -8140,13 +7940,7 @@
                         "default": false
                     },
                     "direction": {
-                        "type": "string",
-                        "enum": [
-                            "bidirectional",
-                            "outbound",
-                            "inbound"
-                        ],
-                        "title": "Direction",
+                        "$ref": "#/components/schemas/RelationshipDirection",
                         "description": "Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.",
                         "default": "bidirectional"
                     },
@@ -8163,38 +7957,23 @@
                         "description": "Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind"
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the relationship after loading the schema",
                         "default": "present"
                     },
                     "on_delete": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "no-action",
-                                    "cascade"
-                                ]
+                                "$ref": "#/components/schemas/RelationshipDeleteBehavior"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "On Delete",
                         "description": "Default is no-action. If cascade, related node(s) are deleted when this node is deleted."
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the relationship.",
                         "default": "any"
                     },
@@ -8218,12 +7997,7 @@
                         "description": "Mark relationship as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     }
@@ -8264,18 +8038,7 @@
                         "description": "Type (kind) of objects supported on the other end of the relationship."
                     },
                     "kind": {
-                        "type": "string",
-                        "enum": [
-                            "Generic",
-                            "Attribute",
-                            "Component",
-                            "Parent",
-                            "Group",
-                            "Hierarchy",
-                            "Profile",
-                            "Template"
-                        ],
-                        "title": "Kind",
+                        "$ref": "#/components/schemas/RelationshipKind",
                         "description": "Defines the type of the relationship.",
                         "default": "Generic"
                     },
@@ -8320,12 +8083,7 @@
                         "description": "Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction."
                     },
                     "cardinality": {
-                        "type": "string",
-                        "enum": [
-                            "one",
-                            "many"
-                        ],
-                        "title": "Cardinality",
+                        "$ref": "#/components/schemas/RelationshipCardinality",
                         "description": "Defines how many objects are expected on the other side of the relationship.",
                         "default": "many"
                     },
@@ -8389,64 +8147,37 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the relationship. If not defined, it will be determined based on both peers."
                     },
                     "direction": {
-                        "type": "string",
-                        "enum": [
-                            "bidirectional",
-                            "outbound",
-                            "inbound"
-                        ],
-                        "title": "Direction",
+                        "$ref": "#/components/schemas/RelationshipDirection",
                         "description": "Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.",
                         "default": "bidirectional"
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the relationship after loading the schema",
                         "default": "present"
                     },
                     "on_delete": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "no-action",
-                                    "cascade"
-                                ]
+                                "$ref": "#/components/schemas/RelationshipDeleteBehavior"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "On Delete",
                         "description": "Default is no-action. If cascade, related node(s) are deleted when this node is deleted."
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the relationship.",
                         "default": "any"
                     },
@@ -8470,12 +8201,7 @@
                         "description": "Mark relationship as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     }
@@ -8610,6 +8336,14 @@
                     "token_path"
                 ],
                 "title": "SSOProviderInfo"
+            },
+            "SchemaAttributeDisplay": {
+                "type": "string",
+                "enum": [
+                    "default",
+                    "extra"
+                ],
+                "title": "SchemaAttributeDisplay"
             },
             "SchemaBranchHash": {
                 "properties": {
@@ -8785,6 +8519,14 @@
                     "main"
                 ],
                 "title": "SchemaReadAPI"
+            },
+            "SchemaState": {
+                "type": "string",
+                "enum": [
+                    "present",
+                    "absent"
+                ],
+                "title": "SchemaState"
             },
             "SchemaUpdate": {
                 "properties": {
@@ -9233,18 +8975,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -9276,22 +9012,12 @@
                         "default": false
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -9309,12 +9035,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
@@ -9509,18 +9230,12 @@
                     "branch": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "aware",
-                                    "agnostic",
-                                    "local"
-                                ]
+                                "$ref": "#/components/schemas/BranchSupportType"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Branch",
                         "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
                     },
                     "order_weight": {
@@ -9546,22 +9261,12 @@
                         "description": "Default value of the attribute."
                     },
                     "state": {
-                        "type": "string",
-                        "enum": [
-                            "present",
-                            "absent"
-                        ],
-                        "title": "State",
+                        "$ref": "#/components/schemas/SchemaState",
                         "description": "Expected state of the attribute after loading the schema",
                         "default": "present"
                     },
                     "allow_override": {
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "any"
-                        ],
-                        "title": "Allow Override",
+                        "$ref": "#/components/schemas/AllowOverrideType",
                         "description": "Type of allowed override for the attribute.",
                         "default": "any"
                     },
@@ -9579,12 +9284,7 @@
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display"
                     },
                     "display": {
-                        "type": "string",
-                        "enum": [
-                            "default",
-                            "extra"
-                        ],
-                        "title": "Display",
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
                         "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
                         "default": "default"
                     },
