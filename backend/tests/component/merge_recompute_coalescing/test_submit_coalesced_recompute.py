@@ -24,8 +24,7 @@ from infrahub.workflows.catalogue import (
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
-    from infrahub.context import InfrahubContext
-    from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
+    from infrahub.workflows.models import WorkflowInfo
 
 SOURCE_KIND = "TestingPeer"
 TARGET_KIND = "TestingNode"
@@ -133,17 +132,11 @@ class _FailFirstWorkflow(WorkflowRecorder):
         super().__init__()
         self._attempts = 0
 
-    async def submit_workflow(
-        self,
-        workflow: WorkflowDefinition,
-        context: InfrahubContext | EventContext | None = None,
-        parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
-    ) -> WorkflowInfo:
+    async def submit_workflow(self, *args: Any, **kwargs: Any) -> WorkflowInfo:
         self._attempts += 1
         if self._attempts == 1:
             raise RuntimeError("submission rejected")
-        return await super().submit_workflow(workflow, context=context, parameters=parameters, tags=tags)
+        return await super().submit_workflow(*args, **kwargs)
 
 
 async def test_submit_skips_a_failing_submission_and_keeps_the_rest() -> None:
