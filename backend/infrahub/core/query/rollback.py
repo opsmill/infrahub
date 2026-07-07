@@ -52,10 +52,13 @@ class RollbackQuery(Query):
         query = """
 // ---------------------------
 // Restore previous_updated_at/by on affected Node vertices
+// only vertices written at $at are restored: previous_* snapshots left in place
+// by an earlier successful write at another timestamp must not be consumed
 // ---------------------------
 OPTIONAL MATCH (n:Node)
 WHERE n.uuid IN $node_uuids
 AND n.previous_updated_at IS NOT NULL
+AND n.updated_at = $at
 CALL (n) {
     SET n.updated_at = n.previous_updated_at, n.updated_by = n.previous_updated_by
     SET n.previous_updated_at = NULL, n.previous_updated_by = NULL
@@ -65,6 +68,7 @@ CALL (n) {
 // ---------------------------
 OPTIONAL MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED {branch: $target_branch}]-(attr_rel:Attribute|Relationship)
 WHERE attr_rel.previous_updated_at IS NOT NULL
+AND attr_rel.updated_at = $at
 WITH DISTINCT attr_rel
 CALL (attr_rel) {
     SET attr_rel.updated_at = attr_rel.previous_updated_at, attr_rel.updated_by = attr_rel.previous_updated_by

@@ -44,6 +44,7 @@ class DiffMerger:
         self.diff_repository = diff_repository
         self.serializer = serializer
         self._affected_node_uuids: list[str] = []
+        self._merge_started = False
 
     async def merge_graph(self, at: Timestamp) -> EnrichedDiffRoot:
         tracking_id = BranchTrackingId(name=self.source_branch.name)
@@ -63,6 +64,7 @@ class DiffMerger:
             diff_branch_name=self.source_branch.name, diff_id=latest_diff.uuid
         )
         log.info(f"Diff {latest_diff.uuid} retrieved")
+        self._affected_node_uuids = [n.uuid for n in enriched_diff.nodes]
         batch_num = 0
         migrated_kinds_id_map = {}
         for n in enriched_diff.nodes:
@@ -75,13 +77,17 @@ class DiffMerger:
                 # it will not if a node was migrated and then deleted
                 migrated_kinds_id_map[n.uuid] = n.identifier.db_id
 
+        # only arm the rollback once graph writes begin: rolling back without any writes at this
+        # timestamp can still rewind updated_at/by metadata left in place by a previous merge
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
             if node_diff_dicts:
+                self._merge_started = True
                 log.info(f"Merging batch of nodes #{batch_num}")
                 await self._merge_nodes(
                     at=at, node_diff_dicts=node_diff_dicts, migrated_kinds_id_map=migrated_kinds_id_map
                 )
             if property_diff_dicts:
+                self._merge_started = True
                 log.info(f"Merging batch of properties #{batch_num}")
                 await self._merge_properties(
                     at=at, property_diff_dicts=property_diff_dicts, migrated_kinds_id_map=migrated_kinds_id_map
@@ -90,6 +96,7 @@ class DiffMerger:
             batch_num += 1
         migrated_kind_uuids = {n.identifier.uuid for n in enriched_diff.nodes if n.is_node_kind_migration}
         if migrated_kind_uuids:
+            self._merge_started = True
             migrated_merge_query = await DiffMergeMigratedKindsQuery.init(
                 db=self.db,
                 branch=self.source_branch,
@@ -99,9 +106,9 @@ class DiffMerger:
             )
             await migrated_merge_query.execute(db=self.db)
 
-        affected_node_uuids = [n.uuid for n in enriched_diff.nodes]
-        self._affected_node_uuids = affected_node_uuids
+        affected_node_uuids = self._affected_node_uuids
         if affected_node_uuids:
+            self._merge_started = True
             for i in range(0, len(affected_node_uuids), self.metadata_batch_size):
                 batch_uuids = affected_node_uuids[i : i + self.metadata_batch_size]
                 log.info(f"Updating metadata for batch {i // self.metadata_batch_size + 1} ({len(batch_uuids)} nodes)")
@@ -152,7 +159,7 @@ class DiffMerger:
         await merge_properties_query.execute(db=self.db)
 
     async def rollback(self, at: Timestamp) -> None:
-        if not self._affected_node_uuids:
+        if not self._merge_started:
             return
         rollback_query = await RollbackQuery.init(
             db=self.db,
