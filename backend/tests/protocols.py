@@ -456,6 +456,7 @@ class CoreGraphQLQuery(CoreNode):
     height: IntegerOptional
     repository: RelationshipManager[CoreGenericRepository]
     tags: RelationshipManager[BuiltinTag]
+    query_groups: RelationshipManager[CoreGraphQLQueryGroup]
 
 
 class CoreGraphQLQueryGroup(CoreGroup):

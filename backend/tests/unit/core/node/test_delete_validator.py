@@ -57,6 +57,7 @@ def test_repository_cascade_reaches_all_managed_leaves(case: RepositoryCase) -> 
         InfrahubKind.ARTIFACTVALIDATOR,
         InfrahubKind.GENERATORINSTANCE,
         InfrahubKind.GENERATORVALIDATOR,
+        InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.USERVALIDATOR,
     }
     assert expected_leaves <= reachable
