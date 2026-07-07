@@ -1,9 +1,11 @@
 """Multi-environment single-repo validation: read-only promotion semantics.
 
 A read-only repository pinned to a ref is the consumer side of the multi-environment pattern:
-promotion happens by re-importing the ref or by bumping the ref to a new tag / commit. These tests
-pin the promotion contract — tag bumps, moved tags, commit-SHA refs — and what content a promotion
-carries (object removals propagate; schema removals do not).
+promotion happens by re-importing the ref or by bumping the ref to a new tag / commit. The canonical
+workflow never acts on the primary branch directly: create an Infrahub branch, bump the ref there,
+let the import load into the branch, review, and merge — normally through a proposed change. These
+tests pin the promotion contract — tag bumps, moved tags, commit-SHA refs, the branch-staged
+workflow — and what content a promotion carries (object and schema removals stay, by design).
 
 Uses local bare remotes (no external git server needed) plus the in-process app.
 """
@@ -19,6 +21,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.git.models import GitReadOnlyRepositoryImportCommit
 from infrahub.git.tasks import import_read_only_repository_last_commit
+from infrahub.proposed_change.constants import ProposedChangeState
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -28,6 +31,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.protocols import CoreReadOnlyRepository
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.message_bus import BusSimulator
 
 SOURCE_BRANCH = "develop"
 
@@ -418,6 +422,72 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         # Promotion after the merge: the primary branch carries the new commit and the content.
         assert await _recorded_commit(db, node_id) == v2_sha
         tags = await client.filters(kind="BuiltinTag", name__value="branch-promoted-tag")
+        assert len(tags) == 1
+
+    async def test_promotion_via_branch_and_proposed_change(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        tmp_path: Path,
+        prefect_test_fixture: None,
+        bus_simulator: BusSimulator,
+    ) -> None:
+        """The canonical promotion: ref bump staged in a branch, reviewed and merged via a proposed change.
+
+        Nothing acts on the primary branch directly. The ref bump imports into an Infrahub branch,
+        the branch is put up as a proposed change (running the validation pipeline), and merging the
+        proposed change carries the recorded ref/commit and the imported content onto the primary
+        branch.
+        """
+        remote = _SeededRemote(tmp_path)
+        v1_sha = remote.branch_tip()
+        remote.tag("v1", v1_sha)
+
+        repo_name = "promo-pc-repo"
+        node_id = await _register_readonly(client, repo_name, str(remote.bare_path), "v1")
+        await _import_ref(node_id, repo_name, "v1")
+        assert await _recorded_commit(db, node_id) == v1_sha
+
+        v2_sha = remote.commit_files(
+            {".infrahub.yml": CONFIG_WITH_OBJECTS, "objects/tags.yml": _object_file("pc-promoted-tag")},
+            "Release v2 with objects",
+        )
+        remote.tag("v2", v2_sha)
+
+        branch = await client.branch.create(branch_name="promo-via-pc")
+
+        repo_in_branch = await client.get(kind=InfrahubKind.READONLYREPOSITORY, id=node_id, branch=branch.name)
+        repo_in_branch.ref.value = "v2"
+        await repo_in_branch.save()
+        await import_read_only_repository_last_commit(
+            model=GitReadOnlyRepositoryImportCommit(
+                repository_id=node_id,
+                repository_name=repo_name,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+                infrahub_branch_name=branch.name,
+                ref="v2",
+            )
+        )
+
+        # Isolation while under review: the branch advanced, the primary branch did not.
+        repo_branch: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.READONLYREPOSITORY, branch=branch.name, raise_on_error=True
+        )
+        assert repo_branch.commit.value == v2_sha
+        assert await _recorded_commit(db, node_id) == v1_sha
+
+        proposed_change = await client.create(
+            kind=InfrahubKind.PROPOSEDCHANGE,
+            data={"source_branch": branch.name, "destination_branch": "main", "name": "promote v2"},
+        )
+        await proposed_change.save()
+
+        proposed_change.state.value = ProposedChangeState.MERGED.value
+        await proposed_change.save()
+
+        # Promotion after the merge: the primary branch carries the new commit and the content.
+        assert await _recorded_commit(db, node_id) == v2_sha
+        tags = await client.filters(kind="BuiltinTag", name__value="pc-promoted-tag")
         assert len(tags) == 1
 
     async def test_reimport_follows_force_pushed_branch_ref(
