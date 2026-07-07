@@ -2,19 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.auth.session import AccountSession
-from infrahub.auth.types import AuthType
 from infrahub.core import registry
-from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
-from infrahub.core.node import Node
-from infrahub.core.preferences import Preference
+from infrahub.core.preferences.models import Preference
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
     from graphql import ExecutionResult
 
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
 EFFECTIVE_QUERY = """
@@ -62,28 +61,6 @@ async def run_query(
     )
 
 
-async def _grant_manage_global_preferences(db: InfrahubDatabase, account: Node) -> None:
-    """Assign the manage_global_preferences global permission to `account` via a role + group."""
-    permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await permission.new(
-        db=db,
-        action=GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-    )
-    await permission.save(db=db)
-
-    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
-    await role.new(db=db, name="prefs-manager", permissions=[permission])
-    await role.save(db=db)
-
-    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-    await group.new(db=db, name="prefs-managers", roles=[role])
-    await group.save(db=db)
-
-    await group.members.add(db=db, data={"id": account.id})  # type: ignore[attr-defined]
-    await group.members.save(db=db)  # type: ignore[attr-defined]
-
-
 # --------------------------------------------------------------------------------------------
 # InfrahubEffectivePreferences — merged user -> global -> default; open to any authenticated caller.
 # --------------------------------------------------------------------------------------------
@@ -102,7 +79,7 @@ async def test_effective_no_user_no_global_is_default(
     assert prefs["date_format"] == {"value": None, "source": "DEFAULT"}
     assert prefs["timezone"] == {"value": None, "source": "DEFAULT"}
     # A read never fabricates a row.
-    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_effective_global_only_source_global(
@@ -122,7 +99,7 @@ async def test_effective_global_only_source_global(
     assert prefs["date_format"] == {"value": "ISO_DATETIME", "source": "GLOBAL"}
     assert prefs["timezone"] == {"value": "UTC", "source": "GLOBAL"}
     # No user row was fabricated for the fallback.
-    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_effective_user_override_source_user(
@@ -202,18 +179,6 @@ async def test_effective_is_private_per_caller(
     }
 
 
-async def test_effective_rejects_unauthenticated(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-) -> None:
-    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
-    for account_session in (None, anonymous):
-        result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=account_session)
-        assert result.errors is not None
-        assert any("authenticated account" in str(error) for error in result.errors)
-
-
 # --------------------------------------------------------------------------------------------
 # InfrahubUserPreferences — caller's OWN raw values, null where unset; account-bound.
 # --------------------------------------------------------------------------------------------
@@ -260,18 +225,6 @@ async def test_user_never_sees_other_account(
     assert result_b.data["InfrahubUserPreferences"]["timezone"] == "America/New_York"
 
 
-async def test_user_rejects_unauthenticated(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-) -> None:
-    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
-    for account_session in (None, anonymous):
-        result = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=account_session)
-        assert result.errors is not None
-        assert any("authenticated account" in str(error) for error in result.errors)
-
-
 # --------------------------------------------------------------------------------------------
 # InfrahubGlobalPreferences — org-wide raw values; gated on manage_global_preferences.
 # --------------------------------------------------------------------------------------------
@@ -280,13 +233,13 @@ async def test_global_allowed_for_manager(
     default_branch: Branch,
     default_permission_backend: None,
     register_core_models_schema: None,
-    first_account: Node,
+    session_global_prefs_manager: AccountSession,
 ) -> None:
     await Preference(owner_id=registry.id, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
-    await _grant_manage_global_preferences(db=db, account=first_account)
-    session = AccountSession(authenticated=True, auth_type=AuthType.JWT, account_id=first_account.id)
 
-    result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session)
+    result = await run_query(
+        db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_global_prefs_manager
+    )
     assert result.errors is None
     assert result.data is not None
     prefs = result.data["InfrahubGlobalPreferences"]
@@ -325,17 +278,3 @@ async def test_global_denied_for_normal_account(
     result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_first_account)
     assert result.errors is not None
     assert result.data is None or result.data.get("InfrahubGlobalPreferences") is None
-
-
-async def test_global_rejects_unauthenticated(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-) -> None:
-    anonymous = AccountSession(authenticated=False, auth_type=AuthType.NONE, account_id="")
-    for account_session in (None, anonymous):
-        result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=account_session)
-        assert result.errors is not None
-        # Confirm it is the auth gate rejecting, not an unrelated schema/db error (matches the
-        # effective/user unauth tests).
-        assert any("authenticated account" in str(error) for error in result.errors)

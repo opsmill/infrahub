@@ -1,44 +1,55 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 from graphene import Enum, Field, ObjectType, String
 
-from infrahub.core.preferences import DateFormat as DateFormatEnum
+from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
+from infrahub.core.preferences.constants import PreferenceSource as PreferenceSourceEnum
 
-# GraphQL enum derived from the domain `DateFormat` Python enum, so the two can never drift and an
-# invalid key is rejected at the GraphQL layer (pattern: graphql/types/enums.py).
-DateFormat = Enum.from_enum(DateFormatEnum)
+# Keep the description a single line: graphql-core's SDL printer dedents multi-line descriptions
+# differently across versions, which makes the generated schema.graphql environment-dependent.
+DateFormat = Enum.from_enum(
+    DateFormatEnum,
+    description=(
+        "Semantic date-format keys. The stored date_format is one of these keys (not a rendering "
+        "pattern); each client maps the key to its own formatter. Single source of truth for the "
+        "value on Preference.date_format."
+    ),
+)
 
 
-# Write-scope string values, kept as plain constants (not read off the graphene Enum members via
-# `.value`, which graphene's metaclass makes static checkers treat as `str`). Graphene passes these
-# values to the mutation at runtime.
-WRITE_SCOPE_USER = "user"
-WRITE_SCOPE_GLOBAL = "global"
-
-
-class PreferenceWriteScope(Enum):
+class PreferenceWriteScope(StrEnum):
     """The WRITABLE axes of the preferences store.
 
     EFFECTIVE is intentionally absent: the resolved view is read-only, so it is unrepresentable as a
-    write target (no runtime guard needed). USER writes the caller's own preferences; GLOBAL writes
-    the organisation-wide ones (gated on manage_global_preferences).
-    """
-
-    USER = WRITE_SCOPE_USER
-    GLOBAL = WRITE_SCOPE_GLOBAL
-
-
-class PreferenceSource(Enum):
-    """Where an effective preference value came from.
-
-    USER    = the caller's own override.
-    GLOBAL  = the organisation-wide default.
-    DEFAULT = nothing is stored anywhere; the client applies its built-in default.
+    write target. USER writes the caller's own preferences; GLOBAL writes the organisation-wide ones
+    (gated on manage_global_preferences).
     """
 
     USER = "user"
     GLOBAL = "global"
-    DEFAULT = "default"
+
+
+# StrEnum so the value Graphene hands the resolver compares equal to the member.
+PreferenceWriteScopeType = Enum.from_enum(
+    PreferenceWriteScope,
+    description=(
+        "The writable axes of the preferences store: USER writes the caller's own preferences, "
+        "GLOBAL writes the organisation-wide ones (gated on manage_global_preferences). EFFECTIVE is "
+        "intentionally absent — the resolved view is read-only."
+    ),
+)
+
+
+PreferenceSource = Enum.from_enum(
+    PreferenceSourceEnum,
+    description=(
+        "Where an effective preference value came from: USER = the caller's own override, GLOBAL = "
+        "the organisation-wide default, DEFAULT = nothing is stored anywhere and the client applies "
+        "its built-in default."
+    ),
+)
 
 
 class EffectiveDateFormat(ObjectType):

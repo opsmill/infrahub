@@ -5,7 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
+from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.dependencies.registry import build_component_registry
 
@@ -369,6 +371,31 @@ def query_introspection() -> str:
             }
         }
     """
+
+
+@pytest.fixture
+async def session_global_prefs_manager(db: InfrahubDatabase, first_account: Node) -> AccountSession:
+    """A session for an account granted the manage_global_preferences global permission via a role + group."""
+    permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await permission.new(
+        db=db,
+        action=GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+    )
+    await permission.save(db=db)
+
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(db=db, name="prefs-manager", permissions=[permission])
+    await role.save(db=db)
+
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="prefs-managers", roles=[role])
+    await group.save(db=db)
+
+    await group.members.add(db=db, data={"id": first_account.id})  # type: ignore[attr-defined]
+    await group.members.save(db=db)  # type: ignore[attr-defined]
+
+    return AccountSession(authenticated=True, auth_type=AuthType.JWT, account_id=first_account.id)
 
 
 @pytest.fixture

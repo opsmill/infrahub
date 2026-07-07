@@ -7512,7 +7512,9 @@ input CoreWeightedPoolResourceUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"Semantic date-format keys (INFP-512).\n\n    The stored `date_format` preference is one of these keys, NOT a rendering pattern: each client\n    maps the key to its own formatter (the web app via date-fns). This Python enum is the single\n    source of truth — the GraphQL `DateFormat` enum is derived from it (graphql/types/preferences.py)\n    and the `Preference` model validates `date_format` against it, so the stored value is never an\n    arbitrary string.\n\n    The set is deliberately limited to formats that render identically on every client (no locale\n    library, no relative mode); see dev/specs/2026-04-user-preferences.md. Member name == value so\n    the GraphQL enum literal, the stored string, and the frontend key all coincide.\n    "
+"""
+Semantic date-format keys. The stored date_format is one of these keys (not a rendering pattern); each client maps the key to its own formatter. Single source of truth for the value on Preference.date_format.
+"""
 enum DateFormat {
   EU_DATETIME
   ISO_8601
@@ -8882,10 +8884,9 @@ scope=USER   → the calling account's OWN Preference row (owner_id = account_se
 scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
                manage_global_preferences (super admins bypass) checked BEFORE any read.
 
-EFFECTIVE is not a member of PreferenceWriteScope, so writing the resolved view is unrepresentable
-(no runtime guard needed). The _UNSET sentinel leaves an omitted field unchanged while an explicit
-`null` resets it. The row is lazily created on first write under a per-owner lock — the only path
-that ever creates a Preference row.
+The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
+is lazily created on first write under a per-owner lock — the only path that ever creates a
+Preference row.
 """
 type InfrahubSetPreferences {
   date_format: DateFormat
@@ -9821,10 +9822,9 @@ type Mutation {
   scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
                  manage_global_preferences (super admins bypass) checked BEFORE any read.
   
-  EFFECTIVE is not a member of PreferenceWriteScope, so writing the resolved view is unrepresentable
-  (no runtime guard needed). The _UNSET sentinel leaves an omitted field unchanged while an explicit
-  `null` resets it. The row is lazily created on first write under a per-owner lock — the only path
-  that ever creates a Preference row.
+  The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
+  is lazily created on first write under a per-owner lock — the only path that ever creates a
+  Preference row.
   """
   InfrahubSetPreferences(date_format: DateFormat, scope: PreferenceWriteScope!, timezone: String): InfrahubSetPreferences
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
@@ -12330,11 +12330,7 @@ type PoolUtilization {
 }
 
 """
-Where an effective preference value came from.
-
-USER    = the caller's own override.
-GLOBAL  = the organisation-wide default.
-DEFAULT = nothing is stored anywhere; the client applies its built-in default.
+Where an effective preference value came from: USER = the caller's own override, GLOBAL = the organisation-wide default, DEFAULT = nothing is stored anywhere and the client applies its built-in default.
 """
 enum PreferenceSource {
   DEFAULT
@@ -12343,11 +12339,7 @@ enum PreferenceSource {
 }
 
 """
-The WRITABLE axes of the preferences store.
-
-EFFECTIVE is intentionally absent: the resolved view is read-only, so it is unrepresentable as a
-write target (no runtime guard needed). USER writes the caller's own preferences; GLOBAL writes
-the organisation-wide ones (gated on manage_global_preferences).
+The writable axes of the preferences store: USER writes the caller's own preferences, GLOBAL writes the organisation-wide ones (gated on manage_global_preferences). EFFECTIVE is intentionally absent — the resolved view is read-only.
 """
 enum PreferenceWriteScope {
   GLOBAL
