@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from infrahub.core.preferences import DEFAULT_DATE_FORMAT, DateFormat
+from infrahub.core.preferences.constants import DEFAULT_DATE_FORMAT, DateFormat
 
 # The exact set of semantic DateFormat keys the backend supports (member name == value). This is the
 # single source of truth the GraphQL enum is derived from, so it must not drift silently.

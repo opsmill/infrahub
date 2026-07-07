@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.preferences import Preference
+from infrahub.core.preferences.models import Preference
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

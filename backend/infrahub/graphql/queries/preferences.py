@@ -4,12 +4,8 @@ from typing import TYPE_CHECKING
 
 from graphene import Field
 
-from infrahub.core.preferences import (
-    MANAGE_GLOBAL_PREFERENCES_PERMISSION,
-    EffectivePreferences,
-    Preference,
-    global_owner_id,
-)
+from infrahub.core.preferences.models import EffectivePreferences, Preference, global_owner_id
+from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
 from infrahub.graphql.types.preferences import (
     EffectivePreferencesType,
     RawPreferencesType,

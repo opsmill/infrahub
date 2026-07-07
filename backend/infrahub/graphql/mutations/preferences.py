@@ -7,15 +7,9 @@ from graphene import Argument, Boolean, Field, Mutation, String
 from typing_extensions import Self
 
 from infrahub import lock
-from infrahub.core.preferences import (
-    MANAGE_GLOBAL_PREFERENCES_PERMISSION,
-    PREFERENCE_LOCK_NAMESPACE,
-    Preference,
-    global_owner_id,
-)
-from infrahub.core.preferences import (
-    DateFormat as DateFormatEnum,
-)
+from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
+from infrahub.core.preferences.models import PREFERENCE_LOCK_NAMESPACE, Preference, global_owner_id
+from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
 from infrahub.database import retry_db_transaction
 from infrahub.graphql.types.preferences import DateFormat, PreferenceWriteScope, PreferenceWriteScopeType
 

@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.preferences import DateFormat, EffectivePreferences, Preference, PreferenceSource, ResolvedPreference
+from infrahub.core.preferences.constants import DateFormat, PreferenceSource
+from infrahub.core.preferences.models import EffectivePreferences, Preference, ResolvedPreference
 
 
 @dataclass

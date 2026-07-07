@@ -4,7 +4,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import first_time_initialization, get_root_node, reset_deployment_id
-from infrahub.core.preferences import Preference
+from infrahub.core.preferences.models import Preference
 from infrahub.database import InfrahubDatabase
 
 

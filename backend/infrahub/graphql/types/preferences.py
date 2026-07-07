@@ -4,8 +4,8 @@ from enum import StrEnum
 
 from graphene import Enum, Field, ObjectType, String
 
-from infrahub.core.preferences import DateFormat as DateFormatEnum
-from infrahub.core.preferences import PreferenceSource as PreferenceSourceEnum
+from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
+from infrahub.core.preferences.constants import PreferenceSource as PreferenceSourceEnum
 
 # Keep the description a single line: graphql-core's SDL printer dedents multi-line descriptions
 # differently across versions, which makes the generated schema.graphql environment-dependent.
