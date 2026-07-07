@@ -10,6 +10,7 @@ from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
+    from infrahub.workflows.constants import WorkflowPriority
 
 
 class WorkflowRecorder(InfrahubWorkflow):
@@ -26,6 +27,7 @@ class WorkflowRecorder(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> Any:
         self.execute_calls.append({"workflow": workflow, "parameters": parameters or {}})
         if expected_return is ValidatorConclusion:
@@ -38,6 +40,7 @@ class WorkflowRecorder(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> WorkflowInfo:
         self.submit_calls.append({"workflow": workflow, "parameters": parameters or {}})
         return WorkflowInfo(id=uuid.uuid4())

@@ -6,6 +6,7 @@ from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.events.models import EventBranchContext, EventContext
+from infrahub.workflows.constants import WorkflowPriority
 
 
 class BranchContext(BaseModel):
@@ -20,6 +21,7 @@ class BranchContext(BaseModel):
 class InfrahubContext(BaseModel):
     branch: BranchContext
     account: AccountSession
+    priority: WorkflowPriority | None = None
 
     @classmethod
     def init(cls, branch: Branch, account: AccountSession) -> Self:

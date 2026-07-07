@@ -989,6 +989,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             checks.append(
                 get_workflow().execute_workflow(
                     workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
+                    context=context,
                     parameters={"model": check_model},
                     expected_return=ValidatorConclusion,
                 )
