@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import types
 import typing
 
@@ -28,19 +29,25 @@ DEFINITION_TO_WRITE_MODEL = {
 }
 
 
-def _literal_values(annotation: typing.Any) -> tuple[typing.Any, ...] | None:
-    """Return the values of a ``Literal[...]`` annotation, unwrapping an optional union.
+def _allowed_values(annotation: typing.Any) -> tuple[typing.Any, ...] | None:
+    """Return the bounded set of values a field publishes, unwrapping an optional union.
 
-    Returns None when the annotation is not (optionally) a ``Literal``.
+    A generated field publishes its allowed set either as a ``Literal[...]`` or as a
+    dedicated ``Enum`` subclass; both are recognised here. Returns None when the
+    annotation is neither (optionally), i.e. the field is unbounded (bare ``str``/``int``).
     """
     origin = typing.get_origin(annotation)
     if origin is typing.Literal:
         return typing.get_args(annotation)
 
-    # Unwrap ``X | None`` / ``Optional[X]`` and look for a Literal member.
+    # A dedicated Enum subclass publishes its allowed set as its members.
+    if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+        return tuple(annotation)
+
+    # Unwrap ``X | None`` / ``Optional[X]`` and look for a bounded member.
     if origin in {typing.Union, types.UnionType}:
         for arg in typing.get_args(annotation):
-            values = _literal_values(arg)
+            values = _allowed_values(arg)
             if values is not None:
                 return values
     return None
@@ -93,9 +100,9 @@ def test_write_model_publishes_allowed_values(family: str) -> None:
         model_field = write_model.model_fields.get(field.name)
         assert model_field is not None, f"{write_model.__name__} is missing constrained field {field.name!r}"
 
-        values = _literal_values(model_field.annotation)
+        values = _allowed_values(model_field.annotation)
         assert values is not None, (
-            f"{write_model.__name__}.{field.name} is not a Literal; a bounded set is defined internally"
+            f"{write_model.__name__}.{field.name} does not publish its allowed set; a bounded set is defined internally"
         )
         assert set(values) == set(field.enum), (
             f"{write_model.__name__}.{field.name} allowed values {sorted(values)} "
@@ -114,7 +121,7 @@ def test_attribute_kind_variants_partition_all_kinds() -> None:
 
     seen: list[str] = []
     for variant in union_members:
-        values = _literal_values(variant.model_fields["kind"].annotation)
+        values = _allowed_values(variant.model_fields["kind"].annotation)
         assert values is not None, f"{variant.__name__}.kind must be a Literal of its supported kinds"
         seen.extend(values)
 
