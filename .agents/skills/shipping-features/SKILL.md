@@ -92,7 +92,7 @@ command the repo lacks; surface ambiguity to the user. Column 1 lists the in-rep
 | Worktree isolation | — | `superpowers:using-git-worktrees` | `isolation: "worktree"` on Agent calls |
 | Parallel execution | — | `superpowers:subagent-driven-development` / `dispatching-parallel-agents` | parallel Agent calls in one message |
 | Code review | `speckit-review-run` (or per-lens `speckit-review-{code,tests,types,errors,comments}`), `speckit-review-simplify`, `speckit-critique-run` | `coderabbit:code-review`, `code-simplifier`, `superpowers:requesting-code-review` | `general-purpose` reviewers + `/security-review` |
-| Residue cleanup (post-implement) | `pruning-residues` | `code-simplifier` | agent prunes leftover debug logs, dead code, orphaned files/imports; else skip |
+| Residue cleanup (post-implement) | `pruning-residues` | `code-simplifier` | agent prunes leftover debug logs, dead code, orphaned files/imports, and redundant comments; else skip |
 | Knowledge capture | `capturing-knowledge` | — | skip |
 | Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |
 | CI gate / verify | `/pre-ci` | `superpowers:verification-before-completion` | run detected test + lint commands |
@@ -183,9 +183,9 @@ references files that exist; plan cites the spec. **Checkpoint:** merged plan + 
 - **feature/chore:** group `tasks.md` into independent units; run TDD agents (worktree isolation
   on `L`); independent units in parallel (one message), dependent units sequentially.
 - **Prune residues** before the gate: run `pruning-residues` (fallback `code-simplifier`, or an
-  agent instructed to strip leftover debug logs, dead code, commented-out blocks, and orphaned
-  files/imports the implementation introduced). This tightens the diff *before* review sees it —
-  re-run the gate test after pruning so cleanup can't silently break anything.
+  agent instructed to strip leftover debug logs, dead code, commented-out blocks, orphaned
+  files/imports, and redundant/obvious comments the implementation introduced). This tightens the
+  diff *before* review sees it — re-run the gate test after pruning so cleanup can't silently break anything.
 Verify the real diff, never the self-report. **Gate + adversarial verify:** a test that was red is
 now green (on the pruned diff) *and* a skeptic agent fails to refute "this actually implements the
 spec/fixes the bug." **Checkpoint** only if a blocker surfaces or on `L`.
