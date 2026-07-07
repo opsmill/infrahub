@@ -29,8 +29,8 @@ class NodeDeleteIndex:
         self._dependency_graph: dict[str, dict[DeleteRelationshipType, dict[str, set[str]]]] = {}
 
     def index(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
-        self._index_cascading_deletes(start_schemas=start_schemas)
-        self._index_dependent_schema(start_schemas=start_schemas)
+        cascade_kinds = self._index_cascading_deletes(start_schemas=start_schemas)
+        self._index_dependent_schema(cascade_kinds=cascade_kinds)
 
     def _get_schema_kinds(self, schema_kind: str) -> set[str]:
         schema = self._all_schemas_map[schema_kind]
@@ -50,13 +50,17 @@ class NodeDeleteIndex:
             self._dependency_graph[kind][relationship_type] = defaultdict(set)
         self._dependency_graph[kind][relationship_type][relationship_identifier].update(peer_kinds)
 
-    def _index_cascading_deletes(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
+    def _index_cascading_deletes(
+        self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]
+    ) -> set[str]:
+        visited: set[str] = set()
         kinds_to_check: set[str] = {schema.kind for schema in start_schemas}
         while True:
             try:
                 kind_to_check = kinds_to_check.pop()
             except KeyError:
                 break
+            visited.add(kind_to_check)
             node_schema = self._all_schemas_map[kind_to_check]
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.on_delete != RelationshipDeleteBehavior.CASCADE:
@@ -69,15 +73,17 @@ class NodeDeleteIndex:
                     peer_kinds=peer_kinds,
                 )
                 for peer_kind in peer_kinds:
-                    if peer_kind not in self._dependency_graph:
+                    if peer_kind not in visited:
                         kinds_to_check.add(peer_kind)
+        return visited
 
-    def _index_dependent_schema(self, start_schemas: Iterable[NodeSchema | ProfileSchema | TemplateSchema]) -> None:
+    def _index_dependent_schema(self, cascade_kinds: set[str]) -> None:
         start_schema_kinds: set[str] = set()
-        for start_schema in start_schemas:
-            start_schema_kinds.add(start_schema.kind)
-            if start_schema.inherit_from:
-                start_schema_kinds.update(set(start_schema.inherit_from))
+        for kind in cascade_kinds:
+            start_schema_kinds.add(kind)
+            inherit_from = getattr(self._all_schemas_map[kind], "inherit_from", None)
+            if inherit_from:
+                start_schema_kinds.update(set(inherit_from))
         for node_schema in self._all_schemas_map.values():
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.optional is True or relationship_schema.peer not in start_schema_kinds:
