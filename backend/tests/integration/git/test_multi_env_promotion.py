@@ -265,6 +265,69 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         await _bump_ref(client, node_id, "promo-sha-repo", sha2)
         assert await _recorded_commit(db, node_id) == sha2
 
+    async def test_rollback_reverts_objects_but_not_schema(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        tmp_path: Path,
+    ) -> None:
+        """Rolling back to an older tag reverts file-defined objects but never the schema.
+
+        Import is an apply, not a declarative convergence: rolling the ref back re-runs the import
+        with the older files. Objects reconcile (the newer release's additions are garbage-collected,
+        modified values revert to the older file's), but schema loads are additive-only — a node type
+        introduced by the newer release stays loaded after the rollback. Rollback restores the pin
+        and the file-defined content, not the full instance state — and restored objects come back
+        as new nodes (identity churn), so references to the originals dangle.
+        """
+        remote = _SeededRemote(tmp_path)
+        v1_sha = remote.commit_files(
+            {".infrahub.yml": CONFIG_WITH_OBJECTS, "objects/tags.yml": _object_file("rollback-v1-tag")},
+            "Release v1 content",
+        )
+        remote.tag("v1", v1_sha)
+
+        repo_name = "promo-rollback-repo"
+        node_id = await _register_readonly(client, repo_name, str(remote.bare_path), "v1")
+        await _import_ref(node_id, repo_name, "v1")
+        v1_tags = await client.filters(kind="BuiltinTag", name__value="rollback-v1-tag")
+        assert len(v1_tags) == 1
+        v1_tag_id_before = v1_tags[0].id
+
+        # v2 adds a schema node type, adds an object, and replaces the v1 object.
+        v2_sha = remote.commit_files(
+            {
+                ".infrahub.yml": "---\nobjects:\n  - objects/tags.yml\nschemas:\n  - schemas/widget.yml\n",
+                "objects/tags.yml": _object_file("rollback-v2-tag"),
+                "schemas/widget.yml": SCHEMA_FILE,
+            },
+            "Release v2 content",
+        )
+        remote.tag("v2", v2_sha)
+        await _bump_ref(client, node_id, repo_name, "v2")
+        assert await _recorded_commit(db, node_id) == v2_sha
+        assert len(await client.filters(kind="BuiltinTag", name__value="rollback-v2-tag")) == 1
+        widget = await client.schema.get(kind="TestingWidget", refresh=True)
+        assert widget.kind == "TestingWidget"
+
+        # Roll back to v1.
+        await _bump_ref(client, node_id, repo_name, "v1")
+        assert await _recorded_commit(db, node_id) == v1_sha
+
+        # File-defined objects reconcile back to the v1 set.
+        v1_tags_after = await client.filters(kind="BuiltinTag", name__value="rollback-v1-tag")
+        assert len(v1_tags_after) == 1
+        assert len(await client.filters(kind="BuiltinTag", name__value="rollback-v2-tag")) == 0
+
+        # Identity churn: the restored object is a NEW node, not the original — it was deleted by the
+        # newer release's reconciliation and recreated by the rollback import. Anything that
+        # referenced the original id (user relationships, external systems) is now dangling.
+        assert v1_tags_after[0].id != v1_tag_id_before
+
+        # The schema introduced by v2 persists — rollback does not unload schema.
+        widget_after = await client.schema.get(kind="TestingWidget", refresh=True)
+        assert widget_after.kind == "TestingWidget"
+
     async def test_object_replacement_garbage_collects_on_ref_bump(
         self,
         db: InfrahubDatabase,
