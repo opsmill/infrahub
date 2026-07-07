@@ -11,6 +11,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.9.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.10) - 2026-07-07
+
+### Fixed
+
+- Fixed the branch merge rollback so that a database error (such as an out-of-memory error) raised
+  partway through the merge queries no longer leaves partially merged data on the destination
+  branch. The rollback now removes every change stamped with the merge timestamp even when the
+  failure occurred before the merge finished writing all of its batches.
+
 ## [Infrahub - v1.9.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.9) - 2026-06-23
 
 ### Security
