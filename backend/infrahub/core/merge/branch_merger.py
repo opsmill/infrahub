@@ -51,7 +51,7 @@ class BranchMerger:
         self.diff_repository = diff_repository
         self.diff_locker = diff_locker
         self.migrations: list[SchemaUpdateMigrationInfo] = []
-        self._merge_at = Timestamp()
+        self._merge_at: Timestamp | None = None
 
         self._source_schema: SchemaBranch | None = None
         self._destination_schema: SchemaBranch | None = None
@@ -199,6 +199,8 @@ class BranchMerger:
         return branch_diff
 
     async def rollback(self) -> None:
+        if self._merge_at is None:
+            return
         await self.diff_merger.rollback(at=self._merge_at)
 
     async def merge_repositories(self) -> None:
