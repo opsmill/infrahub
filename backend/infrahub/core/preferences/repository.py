@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import SYSTEM_USER_ID
-from infrahub.core.preferences.models import Preference
 from infrahub.core.query.preference import PreferenceGetByOwnerQuery
 
 if TYPE_CHECKING:
+    from infrahub.core.preferences.models import Preference
     from infrahub.database import InfrahubDatabase
 
 # Distributed-lock namespace for Preference upserts, keyed on `owner_id`: concurrent upserts for the
@@ -32,11 +32,7 @@ class PreferenceRepository:
         query = await PreferenceGetByOwnerQuery.init(db=self.db, owner_ids={owner_id})
         await query.execute(db=self.db)
 
-        result = query.get_result()
-        if not result:
-            return None
-
-        return Preference.from_db(result.get_node("n"))
+        return next(iter(query.get_owners()), None)
 
     async def get_for_owners(self, owner_ids: set[str]) -> dict[str, Preference]:
         """Return a {owner_id: Preference} map for the owners that have a row, fetched in ONE query.
@@ -47,10 +43,9 @@ class PreferenceRepository:
         await query.execute(db=self.db)
 
         preferences: dict[str, Preference] = {}
-        for result in query.get_results():
-            node = Preference.from_db(result.get_node("n"))
+        for preference in query.get_owners():
             # Keep the first row per owner (deterministic by uuid) if a duplicate ever existed.
-            preferences.setdefault(node.owner_id, node)
+            preferences.setdefault(preference.owner_id, preference)
         return preferences
 
     async def save(self, preference: Preference, actor_id: str = SYSTEM_USER_ID) -> None:

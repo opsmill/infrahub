@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
-from infrahub.core.query import QueryType
+from infrahub.core.constants import NULL_VALUE
+from infrahub.core.preferences.constants import DateFormat
+from infrahub.core.preferences.models import Preference
+from infrahub.core.query import QueryResult, QueryType
 from infrahub.core.query.standard_node import StandardNodeQuery
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+
+
+def _nullable_str(result: QueryResult, label: str) -> str | None:
+    """Read an optional property column, mapping the stored NULL sentinel to None."""
+    value = result.get_as_str(label)
+    return None if value is None or value == NULL_VALUE else value
 
 
 class PreferenceGetByOwnerQuery(StandardNodeQuery):
@@ -33,7 +43,40 @@ class PreferenceGetByOwnerQuery(StandardNodeQuery):
         """
 
         self.add_to_query(query=query)
-        self.return_labels = ["n"]
+        # Exactly the fields required to build a Preference: `id`/`uuid` and the audit fields must
+        # round-trip so a later save() updates the row in place instead of creating a duplicate or
+        # resetting its metadata.
+        self.return_labels = [
+            "elementId(n) AS id",
+            "n.uuid AS uuid",
+            "n.owner_id AS owner_id",
+            "n.date_format AS date_format",
+            "n.timezone AS timezone",
+            "n.created_at AS created_at",
+            "n.created_by AS created_by",
+            "n.updated_at AS updated_at",
+            "n.updated_by AS updated_by",
+        ]
         # Deterministic order so a single-owner read returns a stable row even in the (lock-prevented)
         # event of a duplicate.
-        self.order_by = ["n.uuid"]
+        self.order_by = ["uuid"]
+
+    def get_owners(self) -> list[Preference]:
+        """Deserialize the result rows into Preference instances, in query order."""
+        preferences: list[Preference] = []
+        for result in self.get_results():
+            date_format = _nullable_str(result, "date_format")
+            preferences.append(
+                Preference(
+                    id=result.get_as_type("id", str),
+                    uuid=UUID(result.get_as_type("uuid", str)),
+                    owner_id=result.get_as_type("owner_id", str),
+                    date_format=DateFormat(date_format) if date_format is not None else None,
+                    timezone=_nullable_str(result, "timezone"),
+                    created_at=_nullable_str(result, "created_at"),
+                    created_by=result.get_as_type("created_by", str),
+                    updated_at=_nullable_str(result, "updated_at"),
+                    updated_by=_nullable_str(result, "updated_by"),
+                )
+            )
+        return preferences
