@@ -2,7 +2,7 @@
 
 **Date**: 2026-06-26 · **Spec**: [spec.md](./spec.md) · **Plan**: [plan.md](./plan.md)
 
-Validate correctness first (no stale values, on the correct branch), then performance (recompute bounded by affected derived values). The profiling harness from the first task is the before/after yardstick. Rebase the branch onto current develop before implementing (research R9).
+Validate correctness first (no stale values, on the correct branch), then performance (recompute bounded by affected derived values). Performance is measured against production-like datasets in the dedicated opsmill/infrahub-private-tests repo. Rebase the branch onto current develop before implementing (research R9).
 
 ## Run
 
@@ -15,9 +15,9 @@ uv run pytest backend/tests/component/merge_recompute_coalescing -q
 # End-to-end correctness on the full stack (real worker)
 uv run pytest backend/tests/integration_docker/test_merge_recompute_coalescing.py -q
 
-# Performance, before vs after, using the first task's harness (gated, on demand)
-INFRAHUB_PROFILE_TIMING=1 INFRAHUB_TESTING_IMAGE_VER=local-dev INFRAHUB_PROFILE_SCALE=1000 \
-  uv run pytest backend/tests/integration_docker/test_merge_recompute_timing.py -q -s
+# Performance, before vs after: the profiling and benchmark tests live in the
+# dedicated dataset repo, run against production-like datasets rather than here.
+# See opsmill/infrahub-private-tests (tests/performance/test_merge_recompute.py).
 ```
 
 ## Validation scenarios
