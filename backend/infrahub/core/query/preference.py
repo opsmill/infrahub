@@ -18,13 +18,14 @@ class PreferenceGetByOwnerQuery(StandardNodeQuery):
     name = "preference_get_by_owner"
     type = QueryType.READ
 
-    def __init__(self, owner_ids: list[str], node_type: str, **kwargs: Any) -> None:
+    def __init__(self, owner_ids: set[str], node_type: str, **kwargs: Any) -> None:
         self.owner_ids = owner_ids
         self.node_type = node_type
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["owner_ids"] = self.owner_ids
+        # Cypher parameters cannot bind a set, so pass the ids as a list.
+        self.params["owner_ids"] = list(self.owner_ids)
 
         # `node_type` is a trusted internal constant, never user input, so interpolating it as the
         # node label (Cypher labels can't be parameterised) is safe. `owner_ids` IS a bound $param.

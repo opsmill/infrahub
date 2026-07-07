@@ -42,7 +42,7 @@ async def test_get_for_owners_returns_map_of_existing_only(db: InfrahubDatabase,
     await Preference(owner_id="owner-a", timezone="Europe/Paris").create(db=db)
     await Preference(owner_id="owner-b", date_format="ISO_DATETIME").create(db=db)
 
-    result = await Preference.get_for_owners(db=db, owner_ids=["owner-a", "owner-b", "owner-missing"])
+    result = await Preference.get_for_owners(db=db, owner_ids={"owner-a", "owner-b", "owner-missing"})
     # Only owners with a row appear in the map; the missing one is simply absent.
     assert set(result) == {"owner-a", "owner-b"}
     assert result["owner-a"].timezone == "Europe/Paris"

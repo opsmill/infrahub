@@ -32,7 +32,7 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     global_id = global_owner_id()
 
     # StandardNode reads carry no branch filter, so this is branch-agnostic.
-    preferences = await Preference.get_for_owners(db=graphql_context.db, owner_ids=[account_id, global_id])
+    preferences = await Preference.get_for_owners(db=graphql_context.db, owner_ids={account_id, global_id})
     effective = EffectivePreferences(user=preferences.get(account_id), global_=preferences.get(global_id))
     return {
         "date_format": effective.resolve_date_format(),

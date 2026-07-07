@@ -56,7 +56,7 @@ class Preference(StandardNode):
     @classmethod
     async def get_for_owner(cls, db: InfrahubDatabase, owner_id: str) -> Self | None:
         """Return the Preference owned by `owner_id`, or None. Never creates a row."""
-        query = await PreferenceGetByOwnerQuery.init(db=db, owner_ids=[owner_id], node_type=cls.get_type())
+        query = await PreferenceGetByOwnerQuery.init(db=db, owner_ids={owner_id}, node_type=cls.get_type())
         await query.execute(db=db)
 
         result = query.get_result()
@@ -66,7 +66,7 @@ class Preference(StandardNode):
         return cls.from_db(result.get_node("n"))
 
     @classmethod
-    async def get_for_owners(cls, db: InfrahubDatabase, owner_ids: list[str]) -> dict[str, Self]:
+    async def get_for_owners(cls, db: InfrahubDatabase, owner_ids: set[str]) -> dict[str, Self]:
         """Return a {owner_id: Preference} map for the owners that have a row, fetched in ONE query.
 
         Owners with no row are simply absent from the map.
