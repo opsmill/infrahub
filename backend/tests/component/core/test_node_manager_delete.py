@@ -596,9 +596,7 @@ async def test_delete_cascade_artifacts(
 async def test_cascade_delete_blocked_by_external_mandatory_dependent(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_camry_main: Node,
     car_accord_main: Node,
-    car_prius_main: Node,
     person_john_main: Node,
     person_jane_main: Node,
 ) -> None:
@@ -685,9 +683,88 @@ async def test_delete_repository_cascades_managed_objects(
     )
     await artifact.save(db=db)
 
+    check_def = await Node.init(db=db, schema=InfrahubKind.CHECKDEFINITION)
+    await check_def.new(
+        db=db,
+        name="repo-cascade-check",
+        repository=str(r1.id),
+        class_name="MyCheck",
+        file_path="check.py",
+    )
+    await check_def.save(db=db)
+
+    generator_def = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
+    await generator_def.new(
+        db=db,
+        name="repo-cascade-generator",
+        repository=str(r1.id),
+        query=str(q1.id),
+        targets=group,
+        file_path="generator.py",
+        class_name="MyGenerator",
+        parameters={"value": {"name": "name__value"}},
+    )
+    await generator_def.save(db=db)
+
+    generator_instance = await Node.init(db=db, schema=InfrahubKind.GENERATORINSTANCE)
+    await generator_instance.new(
+        db=db,
+        name="repo-cascade-gen-instance",
+        definition=generator_def,
+        object=c1,
+        status="Ready",
+    )
+    await generator_instance.save(db=db)
+
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
 
     deleted_ids = {d.id for d in deleted}
-    assert {r1.id, transform.id, definition.id, artifact.id} <= deleted_ids
-    node_map = await NodeManager.get_many(db=db, ids=[r1.id, transform.id, definition.id, artifact.id])
+    assert {
+        r1.id,
+        transform.id,
+        definition.id,
+        artifact.id,
+        check_def.id,
+        generator_def.id,
+        generator_instance.id,
+    } <= deleted_ids
+    node_map = await NodeManager.get_many(
+        db=db,
+        ids=[r1.id, transform.id, definition.id, artifact.id, check_def.id, generator_def.id, generator_instance.id],
+    )
+    assert node_map == {}
+
+
+async def test_delete_repository_query_group_cascade(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting a repository cascades to its queries, which in turn cascade to their query groups."""
+    r1 = car_person_data_generic["r1"]
+
+    repo_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await repo_query.new(
+        db=db,
+        name="repo-owned-query",
+        query="{ TestPerson { edges { node { id } } } }",
+        repository=str(r1.id),
+    )
+    await repo_query.save(db=db)
+
+    query_group = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
+    await query_group.new(
+        db=db,
+        name="repo-cascade-query-group",
+        query=str(repo_query.id),
+    )
+    await query_group.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
+
+    deleted_ids = {d.id for d in deleted}
+    assert r1.id in deleted_ids
+    assert repo_query.id in deleted_ids
+    assert query_group.id in deleted_ids
+    node_map = await NodeManager.get_many(db=db, ids=[r1.id, repo_query.id, query_group.id])
     assert node_map == {}

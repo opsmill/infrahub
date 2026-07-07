@@ -7837,6 +7837,7 @@ export type CoreGraphQlQuery = CoreNode & {
   operations: Maybe<ListAttribute>;
   /** The GraphQL query string (required) */
   query: Maybe<TextAttribute>;
+  query_groups: NestedPaginatedCoreGraphQlQueryGroup;
   repository: NestedEdgedCoreGenericRepository;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   tags: NestedPaginatedBuiltinTag;
@@ -7875,6 +7876,44 @@ export type CoreGraphQlQueryMember_Of_GroupsArgs = {
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
+};
+
+
+/** A pre-defined GraphQL Query */
+export type CoreGraphQlQueryQuery_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
 };
 
 
@@ -7949,6 +7988,7 @@ export type CoreGraphQlQueryCreateInput = {
   name?: InputMaybe<TextAttributeCreate>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeCreate>;
+  query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8199,6 +8239,7 @@ export type CoreGraphQlQueryUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeUpdate>;
+  query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8221,6 +8262,7 @@ export type CoreGraphQlQueryUpsertInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeUpdate>;
+  query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -15343,6 +15385,11 @@ export type CoreTransformJinja2Artifact_DefinitionsArgs = {
   display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -15601,6 +15648,11 @@ export type CoreTransformPythonArtifact_DefinitionsArgs = {
   display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -15864,6 +15916,11 @@ export type CoreTransformationArtifact_DefinitionsArgs = {
   display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -30988,6 +31045,36 @@ export type QueryCoreGraphQlQueryArgs = {
   query__source__id?: InputMaybe<Scalars['ID']['input']>;
   query__value?: InputMaybe<Scalars['String']['input']>;
   query__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  query_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  query_groups__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35922,6 +36009,11 @@ export type QueryCoreTransformJinja2Args = {
   artifact_definitions__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   artifact_definitions__display_label__value?: InputMaybe<Scalars['String']['input']>;
   artifact_definitions__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   artifact_definitions__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   artifact_definitions__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   artifact_definitions__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36154,6 +36246,11 @@ export type QueryCoreTransformPythonArgs = {
   artifact_definitions__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   artifact_definitions__display_label__value?: InputMaybe<Scalars['String']['input']>;
   artifact_definitions__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   artifact_definitions__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   artifact_definitions__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   artifact_definitions__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36398,6 +36495,11 @@ export type QueryCoreTransformationArgs = {
   artifact_definitions__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   artifact_definitions__display_label__value?: InputMaybe<Scalars['String']['input']>;
   artifact_definitions__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   artifact_definitions__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   artifact_definitions__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   artifact_definitions__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
