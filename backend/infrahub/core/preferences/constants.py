@@ -4,13 +4,7 @@ from infrahub.utils import InfrahubStringEnum
 
 
 class DateFormat(InfrahubStringEnum):
-    """Semantic date-format keys.
-
-    Each value is a key that clients map to their own formatter, NOT a rendering pattern. The set is
-    deliberately limited to formats that render identically on every client (no locale library, no
-    relative mode). Member name == value so the API enum literal, the stored string, and the client
-    key all coincide.
-    """
+    """Semantic date-format keys clients map to their own formatter."""
 
     ISO_8601 = "ISO_8601"  # 2026-07-01T14:30:00+02:00
     ISO_DATETIME = "ISO_DATETIME"  # 2026-07-01 14:30
@@ -20,19 +14,12 @@ class DateFormat(InfrahubStringEnum):
 
 
 class PreferenceSource(InfrahubStringEnum):
-    """Where an effective preference value came from.
-
-    USER    = the caller's own override.
-    GLOBAL  = the organisation-wide default.
-    DEFAULT = nothing is stored anywhere; the client applies its built-in default.
-    """
+    """Which layer an effective preference value was resolved from."""
 
     USER = "user"
     GLOBAL = "global"
     DEFAULT = "default"
 
 
-# The key a client applies when neither the user nor the global preference sets date_format. The
-# backend does not render dates itself (clients do), so this is exposed only as the shared default
-# key both sides agree on; it is intentionally not used to produce a server-side rendered string.
+# Default date-format key applied when neither the user nor the global layer sets one.
 DEFAULT_DATE_FORMAT = DateFormat.ISO_DATETIME
