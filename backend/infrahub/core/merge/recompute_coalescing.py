@@ -287,7 +287,9 @@ class CoalescedSubmission:
 
     The process flow resolves its reader query from ``source_kind`` and ``target_kind`` and
     runs it once over ``node_ids``, so the recompute scales with the affected derived values,
-    not the changed-node count times the matching automations.
+    not the changed-node count times the matching automations. ``filter_key`` groups the node
+    ids for deduplication and orders the submissions deterministically; the flow re-derives its
+    own query filter and does not read it.
     """
 
     family: RecomputeFamily

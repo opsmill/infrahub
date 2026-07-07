@@ -254,21 +254,14 @@ async def seed_branch(
 ) -> SeededDataset:
     """Create the baseline on default, fork ``branch_name``, mutate ``changed_nodes`` nodes.
 
-    The branch is created here (not passed in) because the baseline nodes must
-    exist on the default branch before the fork point, or they are invisible to
-    the branch.
+    The branch is created here (not passed in) so the baseline nodes exist on default before the
+    fork, otherwise the branch cannot see them.
 
-    ``mutate_target`` selects the operation under profile:
-    - ``"branch"`` mutates on the branch, so the change enters the *merge* diff
-      (branch into default).
-    - ``"default"`` mutates on default *after* the fork, so the change enters the
-      *rebase* diff (default's intervening changes replayed into the branch).
-
-    ``mutate_kind`` selects what changes:
-    - ``"main"`` edits the mains' own ``name``. Their derived values recompute
-      inline on save, so this produces node events but no asynchronous fan-out.
-    - ``"peer"`` edits the peers' ``name``. The mains read the peer, so each main
-      recomputes asynchronously: this is the cross-node fan-out the merge path pays.
+    ``mutate_target`` picks which diff the change lands in: ``"branch"`` mutates on the branch (the
+    merge diff), ``"default"`` mutates on default after the fork (the rebase diff). ``mutate_kind``
+    picks what changes: ``"main"`` edits a node's own name (recomputed inline on save, no async
+    fan-out), ``"peer"`` edits a read peer (each reader recomputes across the relationship, the
+    cross-node fan-out).
     """
     peer_ids: list[str] = []
     main_ids: list[str] = []
