@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field{% if with_computed_field %}, computed_field{% endif %}
 
 from .enums import (
 {%- for name in enum_names %}
@@ -41,6 +41,13 @@ class {{ family.class_name }}({{ family.parent }}):
         {{ attribute.min }}
         {{ attribute.max }}
     )
+{%- endfor %}
+{%- for computed in family.get("computed_fields", []) %}
+
+    @computed_field
+    @property
+    def {{ computed.name }}(self) -> {{ computed.return_type }}:
+        return {{ computed.expression }}
 {%- endfor %}
 {% endfor %}
 

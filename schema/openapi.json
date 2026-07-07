@@ -2688,6 +2688,18 @@
                         "title": "Relationships",
                         "description": "Node Relationships"
                     },
+                    "hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Hash",
+                        "description": "Hash of the node computed by the server."
+                    },
                     "hierarchical": {
                         "type": "boolean",
                         "title": "Hierarchical",
@@ -2724,26 +2736,16 @@
                         "description": "Nodes inheriting from this Generic schema must belong to one of the listed namespaces"
                     },
                     "kind": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Kind"
-                    },
-                    "hash": {
                         "type": "string",
-                        "title": "Hash"
+                        "title": "Kind",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "namespace",
-                    "hash"
+                    "kind"
                 ],
                 "title": "APIGenericSchema"
             },
@@ -3008,6 +3010,18 @@
                         "title": "Relationships",
                         "description": "Node Relationships"
                     },
+                    "hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Hash",
+                        "description": "Hash of the node computed by the server."
+                    },
                     "inherit_from": {
                         "items": {
                             "type": "string"
@@ -3065,26 +3079,16 @@
                         "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined."
                     },
                     "kind": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Kind"
-                    },
-                    "hash": {
                         "type": "string",
-                        "title": "Hash"
+                        "title": "Kind",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "namespace",
-                    "hash"
+                    "kind"
                 ],
                 "title": "APINodeSchema"
             },
@@ -3349,6 +3353,18 @@
                         "title": "Relationships",
                         "description": "Node Relationships"
                     },
+                    "hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Hash",
+                        "description": "Hash of the node computed by the server."
+                    },
                     "inherit_from": {
                         "items": {
                             "type": "string"
@@ -3358,26 +3374,16 @@
                         "description": "List of Generic Kind that this profile is inheriting from"
                     },
                     "kind": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Kind"
-                    },
-                    "hash": {
                         "type": "string",
-                        "title": "Hash"
+                        "title": "Kind",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "namespace",
-                    "hash"
+                    "kind"
                 ],
                 "title": "APIProfileSchema"
             },
@@ -3642,6 +3648,18 @@
                         "title": "Relationships",
                         "description": "Node Relationships"
                     },
+                    "hash": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Hash",
+                        "description": "Hash of the node computed by the server."
+                    },
                     "inherit_from": {
                         "items": {
                             "type": "string"
@@ -3651,26 +3669,16 @@
                         "description": "List of Generic Kind that this template is inheriting from"
                     },
                     "kind": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Kind"
-                    },
-                    "hash": {
                         "type": "string",
-                        "title": "Hash"
+                        "title": "Kind",
+                        "readOnly": true
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
                     "namespace",
-                    "hash"
+                    "kind"
                 ],
                 "title": "APITemplateSchema"
             },

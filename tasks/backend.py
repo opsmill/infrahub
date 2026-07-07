@@ -7,6 +7,9 @@ from invoke.runners import Result
 if TYPE_CHECKING:
     from jinja2 import Template
 
+    from infrahub.core.constants import Visibility
+    from infrahub.core.schema.definitions.internal import SchemaNode
+
 from .shared import (
     INFRAHUB_DATABASE,
     NBR_WORKERS,
@@ -477,6 +480,38 @@ def _sdk_root(suffix: str, with_version: bool, model_config_args: str, with_exte
     return {"class_name": f"InfrahubSchema{suffix}", "fields": fields}
 
 
+def _sdk_base_node_family(base_node_schema: "SchemaNode", minimum: "Visibility", suffix: str) -> dict[str, Any]:
+    """Base node family shared by node/generic/profile/template.
+
+    The read variant additionally carries the server-computed ``hash`` field and the derived
+    ``kind`` computed field; both are read-only and propagate to every read node model via this
+    base. The write variant exposes neither.
+    """
+    from infrahub.core.constants import UpdateSupport, Visibility
+    from infrahub.core.schema.definitions.internal import SchemaAttribute
+
+    attributes = [attribute for attribute in base_node_schema.attributes if attribute.visibility >= minimum]
+    family: dict[str, Any] = {
+        "class_name": f"BaseNodeSchema{suffix}",
+        "parent": "BaseModel",
+        "attributes": attributes,
+    }
+    if minimum == Visibility.READ:
+        hash_field = SchemaAttribute(
+            name="hash",
+            kind="Text",
+            internal_kind=str,
+            description="Hash of the node computed by the server.",
+            optional=True,
+            extra={"update": UpdateSupport.NOT_SUPPORTED, "visibility": Visibility.READ},
+        )
+        family["attributes"] = [*attributes, hash_field]
+        family["computed_fields"] = [
+            {"name": "kind", "return_type": "str", "expression": 'f"{self.namespace}{self.name}"'}
+        ]
+    return family
+
+
 def _sdk_profile_template_families(suffix: str) -> list[dict[str, Any]]:
     """Read-only node families for profiles and templates (no write variant exists).
 
@@ -862,11 +897,7 @@ def _generate_schemas_sdk(context: Context) -> None:
                 "parent": "BaseModel",
                 "attributes": _visible(relationship_schema, minimum),
             },
-            {
-                "class_name": f"BaseNodeSchema{suffix}",
-                "parent": "BaseModel",
-                "attributes": _visible(base_node_schema, minimum),
-            },
+            _sdk_base_node_family(base_node_schema, minimum, suffix),
             {
                 "class_name": f"NodeSchema{suffix}",
                 "parent": f"BaseNodeSchema{suffix}",
@@ -885,11 +916,26 @@ def _generate_schemas_sdk(context: Context) -> None:
 
     # Each variant carries an extra-families builder for the models unique to it: the write
     # variant adds the extension models, the read variant adds the profile/template projections.
+    # Only the read variant emits computed fields (``kind``), so it imports ``computed_field``.
     variants = {
-        "write": (Visibility.WRITE, 'extra="forbid", use_enum_values=True', "Write", True, _sdk_extension_families),
-        "read": (Visibility.READ, "use_enum_values=True", "Read", False, _sdk_profile_template_families),
+        "write": (
+            Visibility.WRITE,
+            'extra="forbid", use_enum_values=True',
+            "Write",
+            True,
+            _sdk_extension_families,
+            False,
+        ),
+        "read": (Visibility.READ, "use_enum_values=True", "Read", False, _sdk_profile_template_families, True),
     }
-    for variant, (minimum, model_config_args, suffix, with_version, extra_families) in variants.items():
+    for variant, (
+        minimum,
+        model_config_args,
+        suffix,
+        with_version,
+        extra_families,
+        with_computed_field,
+    ) in variants.items():
         rendered = template.render(
             pre_families=_pre_families(minimum, suffix),
             aliases=_aliases(suffix),
@@ -897,6 +943,7 @@ def _generate_schemas_sdk(context: Context) -> None:
             model_config_args=model_config_args,
             root=_sdk_root(suffix, with_version, model_config_args, with_extensions=variant == "write"),
             enum_names=enum_names,
+            with_computed_field=with_computed_field,
         )
         rendered = rendered.replace("__VARIANT__", suffix)
         Path(f"{generated}/{variant}.py").write_text(rendered, encoding="utf-8")

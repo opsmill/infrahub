@@ -702,6 +702,11 @@ export interface components {
              */
             relationships?: components["schemas"]["RelationshipSchemaRead"][];
             /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
              * Hierarchical
              * @description Defines if the Generic support the hierarchical mode.
              * @default false
@@ -724,9 +729,7 @@ export interface components {
              */
             restricted_namespaces?: string[] | null;
             /** Kind */
-            kind?: string | null;
-            /** Hash */
-            hash: string;
+            readonly kind: string;
         };
         /** APINodeSchema */
         APINodeSchema: {
@@ -826,6 +829,11 @@ export interface components {
              */
             relationships?: components["schemas"]["RelationshipSchemaRead"][];
             /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
              * Inherit From
              * @description List of Generic Kind that this node is inheriting from
              */
@@ -858,9 +866,7 @@ export interface components {
              */
             children?: string | null;
             /** Kind */
-            kind?: string | null;
-            /** Hash */
-            hash: string;
+            readonly kind: string;
         };
         /** APIProfileSchema */
         APIProfileSchema: {
@@ -960,14 +966,17 @@ export interface components {
              */
             relationships?: components["schemas"]["RelationshipSchemaRead"][];
             /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
              * Inherit From
              * @description List of Generic Kind that this profile is inheriting from
              */
             inherit_from?: string[];
             /** Kind */
-            kind?: string | null;
-            /** Hash */
-            hash: string;
+            readonly kind: string;
         };
         /** APITemplateSchema */
         APITemplateSchema: {
@@ -1067,14 +1076,17 @@ export interface components {
              */
             relationships?: components["schemas"]["RelationshipSchemaRead"][];
             /**
+             * Hash
+             * @description Hash of the node computed by the server.
+             */
+            hash?: string | null;
+            /**
              * Inherit From
              * @description List of Generic Kind that this template is inheriting from
              */
             inherit_from?: string[];
             /** Kind */
-            kind?: string | null;
-            /** Hash */
-            hash: string;
+            readonly kind: string;
         };
         /** AccessTokenResponse */
         AccessTokenResponse: {

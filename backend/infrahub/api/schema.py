@@ -85,35 +85,26 @@ class APISchemaMixin:
         data["relationships"] = [
             relationship.model_dump() for relationship in schema.relationships if not relationship.internal_peer
         ]
+        # ``kind`` is a computed field on the generated read model (derived from namespace+name);
+        # only ``hash`` needs to be supplied here since it is computed by the server.
         data["hash"] = schema.get_hash()
         return cls(**data)
 
-    @model_validator(mode="before")
-    @classmethod
-    def set_kind(cls, values: Any) -> Any:
-        if isinstance(values, dict):
-            values["kind"] = f"{values['namespace']}{values['name']}"
-        return values
-
 
 class APINodeSchema(NodeSchemaRead, APISchemaMixin):
-    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
-    hash: str
+    pass
 
 
 class APIGenericSchema(GenericSchemaRead, APISchemaMixin):
-    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
-    hash: str
+    pass
 
 
 class APIProfileSchema(ProfileSchemaRead, APISchemaMixin):
-    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
-    hash: str
+    pass
 
 
 class APITemplateSchema(TemplateSchemaRead, APISchemaMixin):
-    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
-    hash: str
+    pass
 
 
 class SchemaReadAPI(BaseModel):
