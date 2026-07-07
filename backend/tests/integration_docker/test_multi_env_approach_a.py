@@ -132,12 +132,6 @@ def _advance_remote_branch(repo_dir: Path, branch: str, filename: str) -> str:
     return sha
 
 
-def _create_remote_tag(repo_dir: Path, tag: str, commitish: str) -> str:
-    """Create a lightweight tag on the shared remote at ``commitish`` and return its commit SHA."""
-    _git(repo_dir, "tag", tag, commitish)
-    return _git(repo_dir, "rev-parse", f"{tag}^{{commit}}")
-
-
 def _stage_release_with_object(repo_dir: Path, tag_name: str, object_tag: str) -> str:
     """Commit an object file + repository config on the consumer branch and tag it as a release."""
     current = _git(repo_dir, "rev-parse", "--abbrev-ref", "HEAD")

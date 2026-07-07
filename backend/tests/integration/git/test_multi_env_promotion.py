@@ -19,8 +19,8 @@ from git import Repo
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.git.models import GitReadOnlyRepositoryImportCommit
-from infrahub.git.tasks import import_read_only_repository_last_commit
+from infrahub.git.models import GitReadOnlyRepositoryImportCommit, GitRepositoryMerge
+from infrahub.git.tasks import import_read_only_repository_last_commit, merge_git_repository
 from infrahub.proposed_change.constants import ProposedChangeState
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -500,13 +500,15 @@ class TestMultiEnvPromotion(TestInfrahubApp):
     ) -> None:
         """Merging an unrelated proposed change must not move the repository's pin.
 
-        The proposed change is opened while the consumer is pinned at the previous release, its
-        pipeline runs against that state, and the consumer is promoted on the primary branch while
-        the proposed change is still under review. Merging the proposed change afterwards must leave
-        the promotion in place: the branch made no repository change, and its unmodified repository
-        node reads through to the primary branch's current values, so the repository merge dispatched
-        by the branch merge is a no-op. (A plain branch merge takes the same merge flow and is
-        covered by the same guard.)
+        The proposed change is opened while the consumer is pinned at the previous release, and the
+        consumer is promoted on the primary branch while it is under review. Before the merge the
+        branch reads a stale snapshot of the repository (asserted below). Every branch merge
+        dispatches a repository merge for every read-only repository, but the dispatch runs after
+        the graph merge, where the branch's unmodified repository node resolves to the primary
+        branch's current values — so the ref/commit copy compares equal and the promotion survives.
+        The dispatched flow is executed explicitly here, standing in for the task worker that runs
+        it in a real deployment; running that flow against an UNMERGED stale branch would roll the
+        promotion back, which is why this guard pins the full merge-then-dispatch sequence.
         """
         remote = _SeededRemote(tmp_path)
         v1_sha = remote.branch_tip()
@@ -533,12 +535,30 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         await _bump_ref(client, node_id, repo_name, "v2")
         assert await _recorded_commit(db, node_id) == v2_sha
 
+        # The branch's snapshot of the repository is stale: it predates the promotion.
+        repo_on_branch = await client.get(kind=InfrahubKind.READONLYREPOSITORY, id=node_id, branch=stale_branch.name)
+        assert repo_on_branch.ref.value == "v1"
+
         proposed_change.state.value = ProposedChangeState.MERGED.value
         await proposed_change.save()
 
-        # Control: the merge genuinely happened — the unrelated change arrived on the primary branch.
+        # Control: the merge genuinely happened - the unrelated change arrived on the primary branch.
         merged_tags = await client.filters(kind="BuiltinTag", name__value="unrelated-change")
         assert len(merged_tags) == 1
+
+        # Execute the repository merge the branch merge dispatches for this read-only repository,
+        # as the task worker would in a real deployment.
+        await merge_git_repository(
+            model=GitRepositoryMerge(
+                repository_id=node_id,
+                repository_name=repo_name,
+                internal_status="active",
+                source_branch=stale_branch.name,
+                destination_branch="main",
+                destination_branch_id=str(stale_branch.id),
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+            )
+        )
 
         # Intended contract: the unrelated merge leaves the promotion untouched.
         repo_after: CoreReadOnlyRepository = await NodeManager.get_one(
