@@ -1124,8 +1124,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         only present as text in stderr. The matched substrings are messages emitted by
         ``git`` itself and by its libcurl-backed HTTP remote helper:
           - connection: "Failed to connect to", "Could not resolve host",
-            "Connection timed out" (libcurl); "The requested URL returned error: 5xx" and
-            "RPC failed; HTTP 5xx" for gateway/proxy 5xx responses in front of the server.
+            "Couldn't connect to server", "Operation timed out" (libcurl); and for a
+            gateway/proxy in front of the server returning a 5xx,
+            "The requested URL returned error: 5xx" (git http.c) plus
+            "RPC failed; HTTP 5xx" (git remote-curl.c).
           - not-a-repo / missing: "Repository not found", "does not appear to be a git".
           - TLS: "SSL certificate problem", "server certificate verification failed".
           - credentials: "Authentication failed for", "could not read Username".
@@ -1148,7 +1150,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 "Failed to connect to",
                 "Could not resolve host",
                 "Couldn't connect to server",
-                "Connection timed out",
                 "Operation timed out",
                 "The requested URL returned error: 5",
                 "RPC failed; HTTP 5",

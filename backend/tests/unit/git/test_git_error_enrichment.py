@@ -41,8 +41,14 @@ ENRICHMENT_CASES = [
         expected=RepositoryConnectionError,
     ),
     EnrichmentCase(
-        name="connection_timed_out",
-        stderr="fatal: unable to access 'https://gitlab.example.com/repo.git/': Connection timed out after 30001 ms",
+        name="operation_timed_out",
+        stderr="fatal: unable to access 'https://gitlab.example.com/repo.git/': Operation timed out after 30001 milliseconds with 0 bytes received",
+        expected=RepositoryConnectionError,
+    ),
+    EnrichmentCase(
+        name="couldnt_connect_to_server",
+        stderr="fatal: unable to access 'https://gitlab.example.com/repo.git/': "
+        "Failed to connect to gitlab.example.com port 443 after 5 ms: Couldn't connect to server",
         expected=RepositoryConnectionError,
     ),
     EnrichmentCase(
