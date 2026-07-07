@@ -632,12 +632,10 @@ export interface components {
              */
             label?: string | null;
             /**
-             * Branch
              * @description Type of branch support for the model.
              * @default aware
-             * @enum {string}
              */
-            branch: "aware" | "agnostic" | "local";
+            branch: components["schemas"]["BranchSupportType"];
             /**
              * Default Filter
              * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -689,12 +687,10 @@ export interface components {
              */
             documentation?: string | null;
             /**
-             * State
              * @description Expected state of the node/generic after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
              * Attributes
              * @description Node attributes
@@ -760,12 +756,10 @@ export interface components {
              */
             label?: string | null;
             /**
-             * Branch
              * @description Type of branch support for the model.
              * @default aware
-             * @enum {string}
              */
-            branch: "aware" | "agnostic" | "local";
+            branch: components["schemas"]["BranchSupportType"];
             /**
              * Default Filter
              * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -817,12 +811,10 @@ export interface components {
              */
             documentation?: string | null;
             /**
-             * State
              * @description Expected state of the node/generic after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
              * Attributes
              * @description Node attributes
@@ -898,12 +890,10 @@ export interface components {
              */
             label?: string | null;
             /**
-             * Branch
              * @description Type of branch support for the model.
              * @default aware
-             * @enum {string}
              */
-            branch: "aware" | "agnostic" | "local";
+            branch: components["schemas"]["BranchSupportType"];
             /**
              * Default Filter
              * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -955,12 +945,10 @@ export interface components {
              */
             documentation?: string | null;
             /**
-             * State
              * @description Expected state of the node/generic after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
              * Attributes
              * @description Node attributes
@@ -1009,12 +997,10 @@ export interface components {
              */
             label?: string | null;
             /**
-             * Branch
              * @description Type of branch support for the model.
              * @default aware
-             * @enum {string}
              */
-            branch: "aware" | "agnostic" | "local";
+            branch: components["schemas"]["BranchSupportType"];
             /**
              * Default Filter
              * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -1066,12 +1052,10 @@ export interface components {
              */
             documentation?: string | null;
             /**
-             * State
              * @description Expected state of the node/generic after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
              * Attributes
              * @description Node attributes
@@ -1100,6 +1084,11 @@ export interface components {
              */
             access_token: string;
         };
+        /**
+         * AllowOverrideType
+         * @enum {string}
+         */
+        AllowOverrideType: "none" | "any";
         /** AnalyticsSettings */
         AnalyticsSettings: {
             /**
@@ -1178,6 +1167,11 @@ export interface components {
             /** Files */
             files?: components["schemas"]["BranchDiffFile"][];
         };
+        /**
+         * BranchSupportType
+         * @enum {string}
+         */
+        BranchSupportType: "aware" | "agnostic" | "local";
         /** ComputedAttributeJinja2Read */
         ComputedAttributeJinja2Read: {
             /**
@@ -1410,11 +1404,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -1432,31 +1423,25 @@ export interface components {
              */
             inherited: boolean;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["AttributeParametersRead"] | null;
         };
@@ -1535,11 +1520,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -1551,31 +1533,25 @@ export interface components {
              */
             default_value?: unknown | null;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["AttributeParametersWrite"] | null;
         };
@@ -1607,12 +1583,10 @@ export interface components {
              */
             label?: string | null;
             /**
-             * Branch
              * @description Type of branch support for the model.
              * @default aware
-             * @enum {string}
              */
-            branch: "aware" | "agnostic" | "local";
+            branch: components["schemas"]["BranchSupportType"];
             /**
              * Default Filter
              * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -1664,12 +1638,10 @@ export interface components {
              */
             documentation?: string | null;
             /**
-             * State
              * @description Expected state of the node/generic after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
              * Attributes
              * @description Node attributes
@@ -1914,11 +1886,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -1936,31 +1905,25 @@ export interface components {
              */
             inherited: boolean;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["ListAttributeParametersRead"] | null;
         };
@@ -2039,11 +2002,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -2055,31 +2015,25 @@ export interface components {
              */
             default_value?: unknown | null;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["ListAttributeParametersWrite"] | null;
         };
@@ -2288,12 +2242,10 @@ export interface components {
              */
             label?: string | null;
             /**
-             * Branch
              * @description Type of branch support for the model.
              * @default aware
-             * @enum {string}
              */
-            branch: "aware" | "agnostic" | "local";
+            branch: components["schemas"]["BranchSupportType"];
             /**
              * Default Filter
              * @description Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)
@@ -2345,12 +2297,10 @@ export interface components {
              */
             documentation?: string | null;
             /**
-             * State
              * @description Expected state of the node/generic after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
              * Attributes
              * @description Node attributes
@@ -2500,11 +2450,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -2522,31 +2469,25 @@ export interface components {
              */
             inherited: boolean;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["NumberAttributeParametersRead"] | null;
         };
@@ -2625,11 +2566,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -2641,31 +2579,25 @@ export interface components {
              */
             default_value?: unknown | null;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["NumberAttributeParametersWrite"] | null;
         };
@@ -2744,11 +2676,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -2766,31 +2695,25 @@ export interface components {
              */
             inherited: boolean;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["NumberPoolParametersRead"] | null;
         };
@@ -2869,11 +2792,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -2885,31 +2805,25 @@ export interface components {
              */
             default_value?: unknown | null;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["NumberPoolParametersWrite"] | null;
         };
@@ -2988,6 +2902,26 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * RelationshipCardinality
+         * @enum {string}
+         */
+        RelationshipCardinality: "one" | "many";
+        /**
+         * RelationshipDeleteBehavior
+         * @enum {string}
+         */
+        RelationshipDeleteBehavior: "no-action" | "cascade";
+        /**
+         * RelationshipDirection
+         * @enum {string}
+         */
+        RelationshipDirection: "bidirectional" | "outbound" | "inbound";
+        /**
+         * RelationshipKind
+         * @enum {string}
+         */
+        RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent" | "Group" | "Hierarchy" | "Profile" | "Template";
         /** RelationshipSchemaRead */
         RelationshipSchemaRead: {
             /**
@@ -3006,12 +2940,10 @@ export interface components {
              */
             peer: string;
             /**
-             * Kind
              * @description Defines the type of the relationship.
              * @default Generic
-             * @enum {string}
              */
-            kind: "Generic" | "Attribute" | "Component" | "Parent" | "Group" | "Hierarchy" | "Profile" | "Template";
+            kind: components["schemas"]["RelationshipKind"];
             /**
              * Label
              * @description Human friendly representation of the name. Will be autogenerated if not provided
@@ -3028,12 +2960,10 @@ export interface components {
              */
             identifier?: string | null;
             /**
-             * Cardinality
              * @description Defines how many objects are expected on the other side of the relationship.
              * @default many
-             * @enum {string}
              */
-            cardinality: "one" | "many";
+            cardinality: components["schemas"]["RelationshipCardinality"];
             /**
              * Min Count
              * @description Defines the minimum objects allowed on the other side of the relationship.
@@ -3067,11 +2997,8 @@ export interface components {
              * @default true
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the relationship. If not defined, it will be determined based on both peers.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the relationship. If not defined, it will be determined based on both peers. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Inherited
              * @description Internal value to indicate if the relationship was inherited from a Generic node.
@@ -3079,36 +3006,27 @@ export interface components {
              */
             inherited: boolean;
             /**
-             * Direction
              * @description Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.
              * @default bidirectional
-             * @enum {string}
              */
-            direction: "bidirectional" | "outbound" | "inbound";
+            direction: components["schemas"]["RelationshipDirection"];
             /**
              * Hierarchical
              * @description Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind
              */
             hierarchical?: string | null;
             /**
-             * State
              * @description Expected state of the relationship after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
+            /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
+            on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
             /**
-             * On Delete
-             * @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted.
-             */
-            on_delete?: ("no-action" | "cascade") | null;
-            /**
-             * Allow Override
              * @description Type of allowed override for the relationship.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Read Only
              * @description Set the relationship as read-only, users won't be able to change its value.
@@ -3121,12 +3039,10 @@ export interface components {
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** RelationshipSchemaWrite */
         RelationshipSchemaWrite: {
@@ -3146,12 +3062,10 @@ export interface components {
              */
             peer: string;
             /**
-             * Kind
              * @description Defines the type of the relationship.
              * @default Generic
-             * @enum {string}
              */
-            kind: "Generic" | "Attribute" | "Component" | "Parent" | "Group" | "Hierarchy" | "Profile" | "Template";
+            kind: components["schemas"]["RelationshipKind"];
             /**
              * Label
              * @description Human friendly representation of the name. Will be autogenerated if not provided
@@ -3168,12 +3082,10 @@ export interface components {
              */
             identifier?: string | null;
             /**
-             * Cardinality
              * @description Defines how many objects are expected on the other side of the relationship.
              * @default many
-             * @enum {string}
              */
-            cardinality: "one" | "many";
+            cardinality: components["schemas"]["RelationshipCardinality"];
             /**
              * Min Count
              * @description Defines the minimum objects allowed on the other side of the relationship.
@@ -3207,37 +3119,25 @@ export interface components {
              * @default true
              */
             optional: boolean;
+            /** @description Type of branch support for the relationship. If not defined, it will be determined based on both peers. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
-             * Branch
-             * @description Type of branch support for the relationship. If not defined, it will be determined based on both peers.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
-            /**
-             * Direction
              * @description Defines the direction of the relationship,  Unidirectional relationship are required when the same model is on both side.
              * @default bidirectional
-             * @enum {string}
              */
-            direction: "bidirectional" | "outbound" | "inbound";
+            direction: components["schemas"]["RelationshipDirection"];
             /**
-             * State
              * @description Expected state of the relationship after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
+            /** @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted. */
+            on_delete?: components["schemas"]["RelationshipDeleteBehavior"] | null;
             /**
-             * On Delete
-             * @description Default is no-action. If cascade, related node(s) are deleted when this node is deleted.
-             */
-            on_delete?: ("no-action" | "cascade") | null;
-            /**
-             * Allow Override
              * @description Type of allowed override for the relationship.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Read Only
              * @description Set the relationship as read-only, users won't be able to change its value.
@@ -3250,12 +3150,10 @@ export interface components {
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** RemoteLoggingSettings */
         RemoteLoggingSettings: {
@@ -3302,6 +3200,11 @@ export interface components {
             /** Token Path */
             readonly token_path: string;
         };
+        /**
+         * SchemaAttributeDisplay
+         * @enum {string}
+         */
+        SchemaAttributeDisplay: "default" | "extra";
         /** SchemaBranchHash */
         SchemaBranchHash: {
             /** Main */
@@ -3373,6 +3276,11 @@ export interface components {
             /** Namespaces */
             namespaces?: components["schemas"]["SchemaNamespace"][];
         };
+        /**
+         * SchemaState
+         * @enum {string}
+         */
+        SchemaState: "present" | "absent";
         /** SchemaUpdate */
         SchemaUpdate: {
             /**
@@ -3576,11 +3484,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -3598,31 +3503,25 @@ export interface components {
              */
             inherited: boolean;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["TextAttributeParametersRead"] | null;
         };
@@ -3701,11 +3600,8 @@ export interface components {
              * @default false
              */
             optional: boolean;
-            /**
-             * Branch
-             * @description Type of branch support for the attribute, if not defined it will be inherited from the node.
-             */
-            branch?: ("aware" | "agnostic" | "local") | null;
+            /** @description Type of branch support for the attribute, if not defined it will be inherited from the node. */
+            branch?: components["schemas"]["BranchSupportType"] | null;
             /**
              * Order Weight
              * @description Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.
@@ -3717,31 +3613,25 @@ export interface components {
              */
             default_value?: unknown | null;
             /**
-             * State
              * @description Expected state of the attribute after loading the schema
              * @default present
-             * @enum {string}
              */
-            state: "present" | "absent";
+            state: components["schemas"]["SchemaState"];
             /**
-             * Allow Override
              * @description Type of allowed override for the attribute.
              * @default any
-             * @enum {string}
              */
-            allow_override: "none" | "any";
+            allow_override: components["schemas"]["AllowOverrideType"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
             /**
-             * Display
              * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
              * @default default
-             * @enum {string}
              */
-            display: "default" | "extra";
+            display: components["schemas"]["SchemaAttributeDisplay"];
             /** @description Extra parameters specific to this kind of attribute */
             parameters?: components["schemas"]["TextAttributeParametersWrite"] | null;
         };
