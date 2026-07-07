@@ -72,7 +72,7 @@ class InfrahubSetPreferences(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
-        account_id = graphql_context.require_authenticated_account_id()
+        account_id = graphql_context.active_account_session.account_id
 
         if scope == PreferenceWriteScope.GLOBAL:
             # Super admins bypass via the permission manager.
