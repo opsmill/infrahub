@@ -23,6 +23,7 @@ Carries every field currently on the task type, plus `available_actions`. All ta
 | related_nodes | [RelatedNode] | Existing |
 | logs | TaskLogEdge | Existing; per-attempt progress visible here |
 | available_actions | [TaskAction!]! | NEW — server-computed recovery actions (empty for non-actionable runs) |
+| error | TaskError | NEW — classified failure reason + remediation hint; null unless the task failed with one. Deliveries populate it first; hidden by the UI when null |
 
 ### TaskNode (unchanged name, standard implementation)
 
@@ -40,14 +41,15 @@ class TaskNodeInterface(Interface):
 class TaskNode(ObjectType):
     class Meta:
         interfaces = (TaskNodeInterface,)
-    # node-specific fields: only the deprecated related_node / related_node_kind accessors
+    # no fields of its own: the deprecated related_node / related_node_kind accessors sit on the
+    # interface, because existing consumers select them directly on `node` (no inline fragment)
+    # and backward compatibility requires those selections to keep resolving
 
 class WebhookDeliveryTask(ObjectType):
     class Meta:
         interfaces = (TaskNodeInterface,)
     http_request = Field(HttpRequest)
     http_response = Field(HttpResponse)
-    error = Field(DeliveryError)
 
 TASK_TYPES: dict[str, type[ObjectType]] = {WEBHOOK_SEND.name: WebhookDeliveryTask}
 ```
@@ -62,7 +64,8 @@ The `parameters: GenericScalar` field stays on the interface; the frozen payload
 |---|---|---|
 | http_request | HttpRequest | URL + redacted headers as sent (last attempt) |
 | http_response | HttpResponse | Status, body, latency (last attempt) |
-| error | DeliveryError | Classified reason + remediation hint; null unless failed |
+
+The classified `error` is NOT delivery-specific: it lives on the interface as a capability common to all tasks (same philosophy as `available_actions`), null unless the task failed with a classified reason. Webhook deliveries are the first type to populate it; the UI shows the error section only when it is non-null.
 
 The delivered **payload** is not a field here — it is read from `parameters` (frozen).
 
@@ -71,7 +74,7 @@ The delivered **payload** is not a field here — it is read from `parameters` (
 ```
 type HttpRequest      { url: String!, headers: GenericScalar! }            # headers already redacted
 type HttpResponse      { status_code: Int, body: String, latency_ms: Float }
-type DeliveryError     { status_class: String!, message: String!, remediation: String! }
+type TaskError         { status_class: String!, message: String!, remediation: String! }
 type TaskAction        { action: TaskActionName!, available: Boolean!, unavailability_reason: String }
 enum TaskActionName    { RETRY, CANCEL }
 ```

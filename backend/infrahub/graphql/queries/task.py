@@ -82,8 +82,10 @@ def _build_fetch_options(fields: dict[str, Any], log_limit: int | None, log_offs
         include_logs=bool(log_fields),
         include_progress="progress" in node_fields,
         include_related_nodes=any(key in node_fields for key in ("related_nodes", "related_node", "related_node_kind")),
-        # available_actions is derived from the run's workflow name, so selecting it forces workflow resolution.
-        include_workflow="workflow" in node_fields or "available_actions" in node_fields,
+        # The workflow name is the concrete-type discriminant, and the type of every returned node is
+        # resolved regardless of which fields are selected (an inline fragment can request only common
+        # fields), so the name must be fetched whenever runs are.
+        include_workflow=bool(node_fields),
         log_limit=log_limit,
         log_offset=log_offset,
     )

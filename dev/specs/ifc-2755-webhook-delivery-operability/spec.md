@@ -13,6 +13,10 @@ This feature makes a delivery a first-class, inspectable, and recoverable object
 
 ## Clarifications
 
+### Session 2026-07-02
+
+- Q: Is the classified error delivery-specific or common to all tasks? → A: Common — every task carries an `error` field (classified reason + remediation, null when absent), mirroring how the recovery actions are generic with deliveries as the first populating type. The UI shows the error section only when it is non-null.
+
 ### Session 2026-06-24
 
 - Q: Retry policy — backoff strategy and attempt count? → A: Fixed delay (~2 min), transient-only, bounded to 3 attempts. Exponential backoff is rejected because a long back-off would leave many flow runs parked, waiting on a delayed retry attempt to resolve.
@@ -40,19 +44,20 @@ An operator opens a webhook delivery in the Tasks tab and sees the delivered pay
 
 ### User Story 2 - Understand why a delivery failed (Priority: P2)
 
-When a delivery fails, the operator sees a short, classified reason (for example: a connection problem, a TLS problem, a timeout, a client-side 4xx, a server-side 5xx, a configuration error) accompanied by a remediation hint, instead of a raw stacktrace. Deliveries are retried automatically only for failures that can plausibly succeed on retry (timeouts, connection failures, server 5xx); a 4xx or a configuration error fails immediately without wasting retry attempts.
+When a delivery fails, the operator sees a short, classified reason (for example: a connection problem, a TLS problem, a timeout, a client-side 4xx, a server-side 5xx, a configuration error) accompanied by a remediation hint, instead of a raw stacktrace. Every failing delivery goes through the same bounded, fixed-delay auto-retry cycle; the classified reason is what tells the operator whether waiting on that cycle can help (a timeout or 5xx may clear on its own; a 4xx or configuration error needs a fix first).
 
-**Why this priority**: A classified reason turns an opaque failure into an actionable one and tells the operator whether to fix the target, fix the configuration, or simply retry. Smart retry stops the system from burning retry attempts on failures that can never succeed (a bad URL, a 404) while still covering transient outages.
+**Why this priority**: A classified reason turns an opaque failure into an actionable one and tells the operator whether to fix the target, fix the configuration, or simply retry. Because the auto-retry cycle is uniform and bounded, the classification — not a retry gate — is what steers the operator's response.
 
-**Independent Test**: Point a webhook at (a) an unreachable host, (b) an endpoint returning 404, (c) an endpoint returning 500, and (d) an endpoint with an invalid certificate; trigger each and confirm the displayed reason is correctly classified, a remediation hint is shown, and only the transient cases (unreachable, 500) are retried.
+**Independent Test**: Point a webhook at (a) an unreachable host, (b) an endpoint returning 404, (c) an endpoint returning 500, and (d) an endpoint with an invalid certificate; trigger each and confirm the displayed reason is correctly classified, a remediation hint matching the class is shown, and no stacktrace appears in the delivery's logs.
 
 **Acceptance Scenarios**:
 
 1. **Given** a delivery to an unreachable target, **When** it fails, **Then** the operator sees a connection-class reason with a hint pointing at target reachability, and no stacktrace.
-2. **Given** a delivery that receives a 4xx response, **When** it fails, **Then** it is not retried and the reason points the operator at the URL or authentication.
+2. **Given** a delivery that receives a 4xx response, **When** it fails, **Then** the reason points the operator at the URL or authentication, making clear a retry cannot succeed until the target or configuration is fixed.
 3. **Given** a delivery that receives a 5xx response or times out, **When** it fails an attempt, **Then** it is retried before settling as failed.
-4. **Given** a delivery whose configuration cannot be resolved, **When** it fails, **Then** it is classified as a configuration error and not retried.
+4. **Given** a delivery whose configuration cannot be resolved, **When** it fails, **Then** it is classified as a configuration error with a hint pointing at the webhook's configured headers.
 5. **Given** any failed delivery, **When** the operator inspects it, **Then** per-attempt progress is visible in the logs.
+6. **Given** a delivery that fails with a classified reason, **When** the operator reads the delivery's logs, **Then** the failure appears as the clean classified message with no traceback, while an unexpected (unclassified) crash retains its full traceback.
 
 ---
 
@@ -108,7 +113,7 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 
 - **FR-001**: The system MUST represent each webhook delivery as a distinct, inspectable object surfaced in the Tasks tab, decoupled from the internal orchestration that triggered it.
 - **FR-002**: The system MUST classify a delivery as a webhook delivery automatically from intrinsic run information, so that historical deliveries are recognized without any backfill.
-- **FR-003**: A webhook delivery MUST expose, in addition to the fields common to all tasks, its request, its response, and its error.
+- **FR-003**: A webhook delivery MUST expose, in addition to the fields common to all tasks, its request and its response. The classified error is NOT delivery-specific: like the recovery actions (FR-016), it is a capability carried by every task — null unless the task failed with a classified reason — and webhook deliveries are the first task type to populate it. The operator-facing view MUST show the error only when one is present.
 - **FR-004**: Tasks that are not webhook deliveries MUST continue to behave exactly as before, with no change to their existing fields or queries.
 
 #### Capture and display
@@ -123,11 +128,14 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 
 - **FR-010**: When a delivery fails, the system MUST present a short classified reason drawn from a small fixed set of failure classes, instead of a raw stacktrace.
 - **FR-011**: Each classified failure reason MUST be accompanied by a remediation hint appropriate to its class.
-- **FR-012**: The system MUST automatically retry a failing delivery only for failure classes that can plausibly succeed on retry (timeout, connection, server-side 5xx) and MUST fail immediately for classes that cannot (client-side 4xx, configuration errors).
+- **FR-012**: The system MUST automatically retry a failing delivery within the bounded fixed-delay cycle, regardless of failure class. Transient-only gating (retrying only timeout/connection/5xx and failing 4xx/configuration immediately) was evaluated and rejected: it requires conditional retry machinery at the attempt level whose complexity outweighs the cost of the bounded extra attempts. The classified reason and its remediation hint (FR-010, FR-011) are what tell the operator whether waiting on the retry cycle is useful.
 - **FR-012a**: Auto-retry MUST use a fixed delay between attempts (approximately 2 minutes) and MUST be bounded to 3 attempts. A growing (exponential) back-off is explicitly rejected, because a long back-off would leave many deliveries parked in an awaiting-retry state, holding execution slots while waiting on a delayed attempt.
 - **FR-013**: The final classified reason MUST reflect the failure that settles the delivery after auto-retries are exhausted, not an intermediate attempt.
 - **FR-014**: An unexpected (non-delivery) error MUST remain distinguishable from an expected delivery failure, retaining its diagnostic detail rather than being flattened into a clean message.
 - **FR-015**: Per-attempt progress MUST remain visible in the delivery's logs.
+- **FR-015a**: Each delivery attempt MUST log the outgoing request — target URL, headers, and payload — together with the attempt number and the attempt bound (attempt N of M), so the delivery's logs show what was sent on every attempt. The payload MAY be truncated at the default log level, with the full payload available at debug level.
+- **FR-015b**: Header values that are secret by design — environment-sourced values, the request signature, and well-known credential headers (matched case-insensitively) — MUST be masked in the logged request; static custom headers and standard headers are logged verbatim. This extends the capture-time redaction guarantee (FR-007) to the log channel.
+- **FR-015c**: An expected, classified delivery failure MUST NOT emit a stacktrace into the delivery's logs; it MUST appear as the clean classified message. Unexpected (unclassified) errors MUST retain their full traceback (consistent with FR-014).
 
 #### Generic task actions: retry and cancel
 
@@ -160,14 +168,14 @@ An operator cancels a delivery that is still in progress or awaiting an auto-ret
 - **SC-001**: For any delivery within the retention window, an operator can determine what was sent and what came back without leaving the delivery view and without consulting raw logs — in 100% of cases the payload, request, response, and latency are present.
 - **SC-002**: No raw secret value (environment-sourced header or signing material) is ever exposed in the delivery view or the persisted delivery record.
 - **SC-003**: 100% of delivery failures presented to the operator are a classified reason with a remediation hint; 0% present a raw stacktrace.
-- **SC-004**: Deliveries that cannot succeed on retry (4xx, configuration errors) consume no auto-retry attempts, while transient failures (timeout, connection, 5xx) are retried.
+- **SC-004**: 100% of delivery failures carry a remediation hint matching their class — 4xx and configuration failures direct the operator at the target or configuration, while timeout, connection, and 5xx failures indicate the bounded auto-retry cycle may resolve them; the cycle stays bounded to 3 fixed-delay attempts for every class.
 - **SC-005**: An operator can recover a failed delivery against a now-healthy target in under one minute, using only the delivery view, without re-creating the original business event.
 - **SC-006**: An operator can stop a uselessly retrying delivery from the delivery view, after which no further attempts are made.
 - **SC-007**: The change introduces no data migration and no new persisted domain schema; existing task queries continue to work unchanged.
 
 ## Assumptions
 
-- The structural foundation — splitting the orchestrator that freezes the payload from the user-visible `webhook_send`, which carries its own fixed-delay bounded auto-retries — is already in place on the current branch (see the Implementation Sync revision below); this feature adds the operability layer (capture, classification, typing, retry, cancel) on top. The landed retry policy currently retries on every failure; FR-012 narrows it to transient-only.
+- The structural foundation — splitting the orchestrator that freezes the payload from the user-visible `webhook_send`, which carries its own fixed-delay bounded auto-retries — is already in place on the current branch (see the Implementation Sync revisions below); this feature adds the operability layer (capture, classification, typing, retry, cancel) on top. The landed retry policy retries on every failure, and FR-012 records the decision to keep it that way (transient-only gating was evaluated and rejected).
 - Delivery data lives in the background execution system and is subject to its retention window (default 30 days); deliveries older than the window are not inspectable or retryable. This is an accepted trade for requiring no new domain schema or migration.
 - Retry replays the frozen payload against the *current* configuration with a fresh signature; it deliberately does not replay a byte-for-byte frozen request, so that fixing a misconfiguration and retrying succeeds.
 - The payload is frozen once at delivery creation; headers, signature, and configuration are recomputed per attempt and per retry.
@@ -189,3 +197,15 @@ Landed prerequisites (structural; out of this spec's scope but the layer it buil
 | Webhook flow runs tagged with the webhook node id | Underpins the per-delivery, object-level authorization in FR-027 and node-scoped lookup. |
 
 Outstanding (this feature's scope): capture and redaction (FR-005–FR-009), failure classification with remediation hints (FR-010–FR-014), polymorphic task typing (FR-001–FR-004), and the generic retry/cancel actions (FR-016–FR-027).
+
+## Revision: Implementation Sync — 2026-07-02
+
+Reason: Reconcile the specification with the operability work landed since the previous sync (IFC-2711 epic: classification IFC-2754, retry/cancel IFC-2119/IFC-2753, log visibility IFC-2832/IFC-2833, traceback suppression IFC-2846). Documentation-only sync; no constitution, `dev/guidelines/`, or `dev/adr/` conflict.
+
+| Change | Bearing on this spec |
+|---|---|
+| Failure classification with clean, user-facing reasons (#9718) | FR-010, FR-011, FR-013, FR-014 implemented; remediation hints are owned per failure class. |
+| Transient-only retry gating rejected (decision) | FR-012 rewritten: the bounded fixed-delay cycle applies uniformly; the classification steers the operator instead of a retry gate. SC-004 and US2 scenarios amended accordingly. |
+| Outgoing request logged per attempt with redacted headers, truncated payload, and attempt number | New FR-015a/FR-015b. Log-channel visibility landed ahead of the persisted `http` artifact; FR-005–FR-009 (capture + GraphQL/UI display) remain outstanding. |
+| Traceback suppression for classified delivery failures | New FR-015c and US2 acceptance scenario 6: classified failures appear in the run logs as the clean message only; unexpected crashes keep their traceback. |
+| Generic retry/cancel actions and Tasks-tab surfacing | FR-016–FR-027 substantially implemented (see tasks.md for what remains, e.g. E2E coverage). |
