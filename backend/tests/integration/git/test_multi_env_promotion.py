@@ -490,7 +490,7 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         tags = await client.filters(kind="BuiltinTag", name__value="pc-promoted-tag")
         assert len(tags) == 1
 
-    async def test_unrelated_branch_merge_preserves_promoted_ref(
+    async def test_unrelated_proposed_change_merge_preserves_promoted_ref(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
@@ -498,14 +498,15 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         prefect_test_fixture: None,
         bus_simulator: BusSimulator,
     ) -> None:
-        """Merging a branch that never touched the repository must not move the repository's pin.
+        """Merging an unrelated proposed change must not move the repository's pin.
 
-        A branch snapshots the repository node at creation time. When the consumer is promoted on the
-        primary branch afterwards, merging the older branch (carrying only unrelated data changes)
-        must leave the promotion in place — the branch made no repository change, so there is nothing
-        to propagate. Guard for the suspected rollback: although the repository merge is dispatched
-        for every branch merge, the branch's unmodified repository node reads through to the primary
-        branch's current values, so the copy is a no-op and the promotion survives.
+        The proposed change is opened while the consumer is pinned at the previous release, its
+        pipeline runs against that state, and the consumer is promoted on the primary branch while
+        the proposed change is still under review. Merging the proposed change afterwards must leave
+        the promotion in place: the branch made no repository change, and its unmodified repository
+        node reads through to the primary branch's current values, so the repository merge dispatched
+        by the branch merge is a no-op. (A plain branch merge takes the same merge flow and is
+        covered by the same guard.)
         """
         remote = _SeededRemote(tmp_path)
         v1_sha = remote.branch_tip()
@@ -516,18 +517,28 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         await _import_ref(node_id, repo_name, "v1")
         assert await _recorded_commit(db, node_id) == v1_sha
 
-        # The unrelated branch snapshots the repository at v1.
+        # The unrelated branch and its proposed change both predate the promotion.
         stale_branch = await client.branch.create(branch_name="unrelated-work")
         unrelated = await client.create(kind="BuiltinTag", data={"name": "unrelated-change"}, branch=stale_branch.name)
         await unrelated.save()
+        proposed_change = await client.create(
+            kind=InfrahubKind.PROPOSEDCHANGE,
+            data={"source_branch": stale_branch.name, "destination_branch": "main", "name": "unrelated work"},
+        )
+        await proposed_change.save()
 
-        # The consumer is promoted to v2 on the primary branch afterwards.
+        # The consumer is promoted to v2 on the primary branch while the PC is under review.
         v2_sha = remote.commit_files({"release.txt": "v2 content\n"}, "Release v2")
         remote.tag("v2", v2_sha)
         await _bump_ref(client, node_id, repo_name, "v2")
         assert await _recorded_commit(db, node_id) == v2_sha
 
-        await client.branch.merge(branch_name=stale_branch.name)
+        proposed_change.state.value = ProposedChangeState.MERGED.value
+        await proposed_change.save()
+
+        # Control: the merge genuinely happened — the unrelated change arrived on the primary branch.
+        merged_tags = await client.filters(kind="BuiltinTag", name__value="unrelated-change")
+        assert len(merged_tags) == 1
 
         # Intended contract: the unrelated merge leaves the promotion untouched.
         repo_after: CoreReadOnlyRepository = await NodeManager.get_one(
