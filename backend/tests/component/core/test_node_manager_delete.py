@@ -768,3 +768,24 @@ async def test_delete_repository_query_group_cascade(
     assert query_group.id in deleted_ids
     node_map = await NodeManager.get_many(db=db, ids=[r1.id, repo_query.id, query_group.id])
     assert node_map == {}
+
+
+async def test_delete_repository_repository_group_cascade(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting a repository cascades to its import-tracking repository groups."""
+    r1 = car_person_data_generic["r1"]
+
+    repo_group = await Node.init(db=db, schema=InfrahubKind.REPOSITORYGROUP)
+    await repo_group.new(db=db, name="repo-cascade-import-group", repository=str(r1.id), content="object")
+    await repo_group.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
+
+    deleted_ids = {d.id for d in deleted}
+    assert r1.id in deleted_ids
+    assert repo_group.id in deleted_ids
+    node_map = await NodeManager.get_many(db=db, ids=[r1.id, repo_group.id])
+    assert node_map == {}

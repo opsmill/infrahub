@@ -303,6 +303,7 @@ core_generic_repository = GenericSchema(
             peer=InfrahubKind.REPOSITORYGROUP,
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=13000,
         ),
     ],
