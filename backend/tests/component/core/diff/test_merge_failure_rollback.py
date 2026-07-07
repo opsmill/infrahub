@@ -131,7 +131,7 @@ class TestMergeFailureRollback:
     def _build_branch_merger(
         self,
         db: InfrahubDatabase,
-        staged: StagedMerge,
+        source_branch: Branch,
         destination_branch: Branch,
         diff_merger: DiffMerger,
         diff_coordinator: DiffCoordinator,
@@ -139,7 +139,7 @@ class TestMergeFailureRollback:
     ) -> BranchMerger:
         return BranchMerger(
             db=db,
-            source_branch=staged.branch,
+            source_branch=source_branch,
             destination_branch=destination_branch,
             diff_coordinator=diff_coordinator,
             diff_merger=diff_merger,
@@ -164,7 +164,7 @@ class TestMergeFailureRollback:
         )
         merger = self._build_branch_merger(
             db=db,
-            staged=staged,
+            source_branch=staged.branch,
             destination_branch=default_branch_scope_class,
             diff_merger=failing_diff_merger,
             diff_coordinator=diff_coordinator,
@@ -218,7 +218,7 @@ class TestMergeFailureRollback:
         )
         merger = self._build_branch_merger(
             db=db,
-            staged=staged,
+            source_branch=staged.branch,
             destination_branch=default_branch_scope_class,
             diff_merger=diff_merger,
             diff_coordinator=diff_coordinator,
@@ -231,3 +231,100 @@ class TestMergeFailureRollback:
         bystander_after = await NodeManager.get_one(db=db, id=bystander.id, branch=default_branch_scope_class)
         assert bystander_after is not None, "Rollback before any merge must not delete data at the given timestamp"
         assert bystander_after.get_attribute("name").value == "Bystander"
+
+    async def test_failed_merge_rollback_preserves_metadata_of_earlier_merge(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        staged: StagedMerge,
+        diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
+    ) -> None:
+        """A failed merge must not rewind updated_at/by metadata written by an earlier successful merge.
+
+        previous_updated_at/by snapshots survive successful merges, so the rollback of a later failed
+        merge over the same nodes must only restore metadata stamped with its own merge timestamp.
+        """
+        # the overlap merge changes an attribute the staged branch does not touch, so the staged
+        # branch's later merge fails on the induced error rather than on an unresolved conflict
+        overlap_branch = await create_branch(branch_name="overlap-merged-first", db=db)
+        car_overlap = await NodeManager.get_one(db=db, id=staged.car_id, branch=overlap_branch, raise_on_error=True)
+        car_overlap.get_attribute("transmission").value = "manual"
+        await car_overlap.save(db=db)
+        merger = self._build_branch_merger(
+            db=db,
+            source_branch=overlap_branch,
+            destination_branch=default_branch_scope_class,
+            diff_merger=await self._build_diff_merger(db=db, branch=overlap_branch),
+            diff_coordinator=await self._build_diff_coordinator(db=db, branch=overlap_branch),
+            diff_repository=await self._build_diff_repository(db=db, branch=overlap_branch),
+        )
+        await merger.merge(at=Timestamp())
+
+        metadata_before = await self._get_node_metadata(db=db, node_uuid=staged.car_id)
+        assert metadata_before["previous_updated_at"] is not None, (
+            "The successful merge must leave a previous_updated_at snapshot in place"
+        )
+
+        failing_diff_merger = FailingPropertiesMergeDiffMerger(
+            db=db,
+            source_branch=staged.branch,
+            destination_branch=default_branch_scope_class,
+            diff_repository=diff_repository,
+            serializer=DiffMergeSerializer(db=db, max_batch_size=100),
+        )
+        merger = self._build_branch_merger(
+            db=db,
+            source_branch=staged.branch,
+            destination_branch=default_branch_scope_class,
+            diff_merger=failing_diff_merger,
+            diff_coordinator=diff_coordinator,
+            diff_repository=diff_repository,
+        )
+        with pytest.raises(MergeFailedError) as exc_info:
+            await merger.merge(at=Timestamp())
+        assert isinstance(exc_info.value.__cause__, InducedMergeError), (
+            "The merge must fail on the induced mid-merge error, not an earlier validation step"
+        )
+        assert failing_diff_merger.edge_count_at_failure is not None, (
+            "The merge must reach the graph write phase before failing"
+        )
+
+        metadata_after = await self._get_node_metadata(db=db, node_uuid=staged.car_id)
+        assert metadata_after["updated_at"] == metadata_before["updated_at"], (
+            "The failed merge's rollback must not rewind updated_at written by the earlier successful merge"
+        )
+        assert metadata_after["previous_updated_at"] == metadata_before["previous_updated_at"], (
+            "The failed merge's rollback must not consume the earlier merge's previous_updated_at snapshot"
+        )
+
+    @staticmethod
+    async def _build_diff_merger(db: InfrahubDatabase, branch: Branch) -> DiffMerger:
+        component_registry = get_component_registry()
+        return await component_registry.get_component(DiffMerger, db=db, branch=branch)
+
+    @staticmethod
+    async def _build_diff_coordinator(db: InfrahubDatabase, branch: Branch) -> DiffCoordinator:
+        component_registry = get_component_registry()
+        coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
+        return coordinator
+
+    @staticmethod
+    async def _build_diff_repository(db: InfrahubDatabase, branch: Branch) -> DiffRepository:
+        component_registry = get_component_registry()
+        return await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+    @staticmethod
+    async def _get_node_metadata(db: InfrahubDatabase, node_uuid: str) -> dict[str, str | None]:
+        result = await db.execute_query(
+            query=(
+                "MATCH (n:Node {uuid: $uuid}) "
+                "RETURN n.updated_at AS updated_at, n.previous_updated_at AS previous_updated_at"
+            ),
+            params={"uuid": node_uuid},
+        )
+        return {
+            "updated_at": result[0].get("updated_at"),
+            "previous_updated_at": result[0].get("previous_updated_at"),
+        }
