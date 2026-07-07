@@ -29,7 +29,7 @@ Gate workflow actions and operational scope. Defined in `GlobalPermissions` enum
 | `MANAGE_ACCOUNTS` | Allows mutations on Account, AccountGroup, AccountRole |
 | `MANAGE_PERMISSIONS` | Allows mutations on permission objects and reading role-permission relationships |
 | `MANAGE_REPOSITORIES` | Allows mutations on Repository and ReadOnlyRepository |
-| `MANAGE_GLOBAL_PREFERENCES` | Allows reading and writing the organisation-wide preference defaults |
+| `MANAGE_GLOBAL_PREFERENCES` | Allows reading and writing the organisation-wide preference defaults; enforced imperatively via `raise_for_permission()` in the preference query/mutation resolvers, not through the kind-based checker pipeline |
 | `OVERRIDE_CONTEXT` | Allows overriding the execution context |
 | `READ_TELEMETRY` | Allows reading telemetry data |
 | `UPDATE_OBJECT_HFID_DISPLAY_LABEL` | Allows ad-hoc updates to HFIDs and display labels |
