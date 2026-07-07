@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.preferences.models import Preference
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -78,7 +79,7 @@ async def test_effective_no_user_no_global_is_default(
     assert prefs["date_format"] == {"value": None, "source": "DEFAULT"}
     assert prefs["timezone"] == {"value": None, "source": "DEFAULT"}
     # A read never fabricates a row.
-    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_effective_global_only_source_global(
@@ -98,7 +99,7 @@ async def test_effective_global_only_source_global(
     assert prefs["date_format"] == {"value": "ISO_DATETIME", "source": "GLOBAL"}
     assert prefs["timezone"] == {"value": "UTC", "source": "GLOBAL"}
     # No user row was fabricated for the fallback.
-    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_effective_user_override_source_user(

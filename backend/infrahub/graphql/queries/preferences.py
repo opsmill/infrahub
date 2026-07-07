@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 from graphene import Field
 
-from infrahub.core.preferences.models import EffectivePreferences, Preference, global_owner_id
+from infrahub.core.preferences.models import EffectivePreferences, global_owner_id
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.types.preferences import (
     EffectivePreferencesType,
     RawPreferencesType,
@@ -28,7 +29,8 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     global_id = global_owner_id()
 
     # StandardNode reads carry no branch filter, so this is branch-agnostic.
-    preferences = await Preference.get_for_owners(db=graphql_context.db, owner_ids={account_id, global_id})
+    repository = PreferenceRepository(db=graphql_context.db)
+    preferences = await repository.get_for_owners(owner_ids={account_id, global_id})
     effective = EffectivePreferences(user=preferences.get(account_id), global_=preferences.get(global_id))
     return {
         "date_format": effective.resolve_date_format(),
@@ -45,7 +47,7 @@ async def resolve_user_preferences(root: dict, info: GraphQLResolveInfo) -> dict
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id
 
-    user = await Preference.get_for_owner(db=graphql_context.db, owner_id=account_id)
+    user = await PreferenceRepository(db=graphql_context.db).get_for_owner(owner_id=account_id)
     return {
         "date_format": user.date_format if user else None,
         "timezone": user.timezone if user else None,
@@ -60,7 +62,7 @@ async def resolve_global_preferences(root: dict, info: GraphQLResolveInfo) -> di
     graphql_context: GraphqlContext = info.context
     graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
 
-    global_ = await Preference.get_for_owner(db=graphql_context.db, owner_id=global_owner_id())
+    global_ = await PreferenceRepository(db=graphql_context.db).get_for_owner(owner_id=global_owner_id())
     return {
         "date_format": global_.date_format if global_ else None,
         "timezone": global_.timezone if global_ else None,

@@ -1,21 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Self
+from typing import Optional
 
 from infrahub.core import registry
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.preferences.constants import DateFormat, PreferenceSource
-from infrahub.core.query.preference import PreferenceGetByOwnerQuery
-
-if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
-
-# Distributed-lock namespace for Preference upserts, keyed on `owner_id`: concurrent upserts for the
-# SAME owner serialise (preventing a duplicate first row or a lost update) while different owners
-# never contend. The global row locks on the Root id, a user's on the account id. Reads are lock-free
-# (they never write).
-PREFERENCE_LOCK_NAMESPACE = "preference"
 
 
 def global_owner_id() -> str:
@@ -52,34 +42,6 @@ class Preference(StandardNode):
     # the db); it round-trips as a plain string because the enum subclasses str.
     date_format: Optional[DateFormat] = None
     timezone: Optional[str] = None
-
-    @classmethod
-    async def get_for_owner(cls, db: InfrahubDatabase, owner_id: str) -> Self | None:
-        """Return the Preference owned by `owner_id`, or None. Never creates a row."""
-        query = await PreferenceGetByOwnerQuery.init(db=db, owner_ids={owner_id}, node_type=cls.get_type())
-        await query.execute(db=db)
-
-        result = query.get_result()
-        if not result:
-            return None
-
-        return cls.from_db(result.get_node("n"))
-
-    @classmethod
-    async def get_for_owners(cls, db: InfrahubDatabase, owner_ids: set[str]) -> dict[str, Self]:
-        """Return a {owner_id: Preference} map for the owners that have a row, fetched in ONE query.
-
-        Owners with no row are simply absent from the map.
-        """
-        query = await PreferenceGetByOwnerQuery.init(db=db, owner_ids=owner_ids, node_type=cls.get_type())
-        await query.execute(db=db)
-
-        preferences: dict[str, Self] = {}
-        for result in query.get_results():
-            node = cls.from_db(result.get_node("n"))
-            # Keep the first row per owner (deterministic by uuid) if a duplicate ever existed.
-            preferences.setdefault(node.owner_id, node)
-        return preferences
 
 
 @dataclass(frozen=True)

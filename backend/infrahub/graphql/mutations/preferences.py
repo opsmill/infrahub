@@ -8,8 +8,9 @@ from typing_extensions import Self
 
 from infrahub import lock
 from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
-from infrahub.core.preferences.models import PREFERENCE_LOCK_NAMESPACE, Preference, global_owner_id
+from infrahub.core.preferences.models import Preference, global_owner_id
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
+from infrahub.core.preferences.repository import PREFERENCE_LOCK_NAMESPACE, PreferenceRepository
 from infrahub.database import retry_db_transaction
 from infrahub.graphql.types.preferences import DateFormat, PreferenceWriteScope, PreferenceWriteScopeType
 
@@ -94,7 +95,8 @@ class InfrahubSetPreferences(Mutation):
         # owners never contend. Reads stay lock-free.
         async with lock.registry.get(name=owner_id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
             async with graphql_context.db.start_transaction() as db:
-                obj = await Preference.get_for_owner(db=db, owner_id=owner_id)
+                repository = PreferenceRepository(db=db)
+                obj = await repository.get_for_owner(owner_id=owner_id)
                 if obj is None:
                     obj = Preference(owner_id=owner_id)
 
@@ -105,6 +107,6 @@ class InfrahubSetPreferences(Mutation):
                 if timezone is not _UNSET:
                     obj.timezone = timezone
 
-                await obj.save(db=db, user_id=actor_id)
+                await repository.save(obj, actor_id=actor_id)
 
         return cls(ok=True, date_format=obj.date_format, timezone=obj.timezone)  # type: ignore[call-arg]

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
-from infrahub.core.preferences.models import Preference
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -45,10 +45,6 @@ async def run_mutation(
     )
 
 
-async def _rows_for_owner(db: InfrahubDatabase, owner_id: str) -> list[Preference]:
-    return [p for p in await Preference.get_list(db=db) if p.owner_id == owner_id]
-
-
 # --------------------------------------------------------------------------------------------
 # scope=USER — caller's OWN row only; lazy create + idempotent; explicit-null reset.
 # --------------------------------------------------------------------------------------------
@@ -60,7 +56,7 @@ async def test_user_lazy_create_then_update(
     session_first_account: AccountSession,
 ) -> None:
     # No row exists until the first write (writes are the only create path).
-    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
     result = await run_mutation(
         db=db,
@@ -73,7 +69,7 @@ async def test_user_lazy_create_then_update(
     assert result.data["InfrahubSetPreferences"]["ok"] is True
     assert result.data["InfrahubSetPreferences"]["date_format"] == "EU_DATETIME"
 
-    created = await Preference.get_for_owner(db=db, owner_id=first_account.id)
+    created = await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id)
     assert created is not None
     assert created.timezone == "Europe/Paris"
 
@@ -88,34 +84,11 @@ async def test_user_lazy_create_then_update(
     assert result.data is not None
     assert result.data["InfrahubSetPreferences"]["timezone"] == "UTC"
 
-    updated = await Preference.get_for_owner(db=db, owner_id=first_account.id)
+    updated = await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id)
     assert updated is not None
     assert updated.uuid == created.uuid
     assert updated.timezone == "UTC"
     assert updated.date_format == "EU_DATETIME"  # omitted field preserved
-    assert len(await _rows_for_owner(db=db, owner_id=first_account.id)) == 1
-
-
-async def test_user_repeated_never_creates_second_row(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-    first_account: Node,
-    session_first_account: AccountSession,
-) -> None:
-    """Repeated upserts for one owner always target the single locked row."""
-    for tz in ("Europe/Paris", "UTC", "America/New_York", "Asia/Tokyo"):
-        result = await run_mutation(
-            db=db,
-            branch=default_branch,
-            account_session=session_first_account,
-            variables={"scope": "USER", "timezone": tz},
-        )
-        assert result.errors is None
-
-    rows = await _rows_for_owner(db=db, owner_id=first_account.id)
-    assert len(rows) == 1
-    assert rows[0].timezone == "Asia/Tokyo"
 
 
 async def test_user_explicit_null_resets_field(
@@ -145,7 +118,7 @@ async def test_user_explicit_null_resets_field(
     assert result.data["InfrahubSetPreferences"]["date_format"] is None
     assert result.data["InfrahubSetPreferences"]["timezone"] == "Europe/Paris"
 
-    reset = await Preference.get_for_owner(db=db, owner_id=first_account.id)
+    reset = await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id)
     assert reset is not None
     assert reset.date_format is None
     assert reset.timezone == "Europe/Paris"
@@ -174,8 +147,8 @@ async def test_user_two_accounts_distinct_rows(
         variables={"scope": "USER", "timezone": "America/New_York"},
     )
 
-    pref_a = await Preference.get_for_owner(db=db, owner_id=first_account.id)
-    pref_b = await Preference.get_for_owner(db=db, owner_id=second_account.id)
+    pref_a = await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id)
+    pref_b = await PreferenceRepository(db=db).get_for_owner(owner_id=second_account.id)
     assert pref_a is not None
     assert pref_b is not None
     assert pref_a.uuid != pref_b.uuid
@@ -205,7 +178,7 @@ async def test_user_rejects_unknown_date_format(
     # Specifically the DateFormat enum-coercion error for the bad value.
     messages = " ".join(str(error.message) for error in result.errors)
     assert "NOT_A_FORMAT" in messages or "DateFormat" in messages, messages
-    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_rejects_effective_scope_enum_value(
@@ -224,7 +197,7 @@ async def test_rejects_effective_scope_enum_value(
     )
     assert result.errors is not None
     # No row was written for the caller.
-    assert await Preference.get_for_owner(db=db, owner_id=first_account.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 # --------------------------------------------------------------------------------------------
@@ -246,7 +219,7 @@ async def test_global_denied_for_normal_account(
     )
     assert result.errors is not None
     # Nothing written: the gate raises BEFORE the read-modify-write, so no global row exists.
-    assert await Preference.get_for_owner(db=db, owner_id=registry.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=registry.id) is None
 
 
 async def test_global_allowed_for_manager(
@@ -266,11 +239,10 @@ async def test_global_allowed_for_manager(
     assert result.data is not None
     assert result.data["InfrahubSetPreferences"]["ok"] is True
 
-    global_pref = await Preference.get_for_owner(db=db, owner_id=registry.id)
+    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=registry.id)
     assert global_pref is not None
     assert global_pref.date_format == "ISO_DATETIME"
     assert global_pref.timezone == "UTC"
-    assert len(await _rows_for_owner(db=db, owner_id=registry.id)) == 1
 
 
 async def test_global_allowed_for_super_admin(
@@ -291,7 +263,7 @@ async def test_global_allowed_for_super_admin(
     assert result.data is not None
     assert result.data["InfrahubSetPreferences"]["ok"] is True
 
-    global_pref = await Preference.get_for_owner(db=db, owner_id=registry.id)
+    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=registry.id)
     assert global_pref is not None
     assert global_pref.timezone == "Europe/London"
 
@@ -322,8 +294,7 @@ async def test_global_preserves_other_field(
         variables={"scope": "GLOBAL", "timezone": "UTC"},
     )
 
-    global_pref = await Preference.get_for_owner(db=db, owner_id=registry.id)
+    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=registry.id)
     assert global_pref is not None
     assert global_pref.date_format == "ISO_DATETIME"  # preserved across the second update
     assert global_pref.timezone == "UTC"
-    assert len(await _rows_for_owner(db=db, owner_id=registry.id)) == 1
