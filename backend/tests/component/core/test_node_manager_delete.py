@@ -591,3 +591,61 @@ async def test_delete_cascade_artifacts(
     assert artifact.id in {d.id for d in deleted}
     node_map = await NodeManager.get_many(db=db, ids=[c1.id, artifact.id])
     assert node_map == {}
+
+
+async def test_delete_repository_cascades_managed_objects(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting a repository must cascade-delete its transforms and everything they own."""
+    c1 = car_person_data_generic["c1"]
+    q1 = car_person_data_generic["q1"]
+    r1 = car_person_data_generic["r1"]
+
+    group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await group.new(db=db, name="repo-cascade-group", members=[c1])
+    await group.save(db=db)
+
+    transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
+    await transform.new(
+        db=db,
+        name="repo-cascade-transform",
+        query=str(q1.id),
+        repository=str(r1.id),
+        file_path="transform.py",
+        class_name="Transform",
+    )
+    await transform.save(db=db)
+
+    definition = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+    await definition.new(
+        db=db,
+        name="repo-cascade-def",
+        targets=group,
+        transformation=transform,
+        content_type="application/json",
+        artifact_name="repo-cascade-artifact",
+        parameters={"value": {"name": "name__value"}},
+    )
+    await definition.save(db=db)
+
+    artifact = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+    await artifact.new(
+        db=db,
+        name="repo-cascade-artifact",
+        definition=definition,
+        status="Ready",
+        object=c1,
+        storage_id="00000000-0000-0000-0000-000000000002",
+        checksum="def456",
+        content_type="application/json",
+    )
+    await artifact.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
+
+    deleted_ids = {d.id for d in deleted}
+    assert {r1.id, transform.id, definition.id, artifact.id} <= deleted_ids
+    node_map = await NodeManager.get_many(db=db, ids=[r1.id, transform.id, definition.id, artifact.id])
+    assert node_map == {}
