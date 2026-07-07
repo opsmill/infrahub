@@ -2,11 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.auth.session import AccountSession
-from infrahub.auth.types import AuthType
 from infrahub.core import registry
-from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
-from infrahub.core.node import Node
 from infrahub.core.preferences import Preference
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
@@ -14,7 +10,9 @@ from tests.helpers.graphql import graphql
 if TYPE_CHECKING:
     from graphql import ExecutionResult
 
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
 EFFECTIVE_QUERY = """
@@ -60,28 +58,6 @@ async def run_query(
         root_value=None,
         variable_values={},
     )
-
-
-async def _grant_manage_global_preferences(db: InfrahubDatabase, account: Node) -> None:
-    """Assign the manage_global_preferences global permission to `account` via a role + group."""
-    permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-    await permission.new(
-        db=db,
-        action=GlobalPermissions.MANAGE_GLOBAL_PREFERENCES.value,
-        decision=PermissionDecision.ALLOW_ALL.value,
-    )
-    await permission.save(db=db)
-
-    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
-    await role.new(db=db, name="prefs-manager", permissions=[permission])
-    await role.save(db=db)
-
-    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-    await group.new(db=db, name="prefs-managers", roles=[role])
-    await group.save(db=db)
-
-    await group.members.add(db=db, data={"id": account.id})  # type: ignore[attr-defined]
-    await group.members.save(db=db)  # type: ignore[attr-defined]
 
 
 # --------------------------------------------------------------------------------------------
@@ -256,13 +232,13 @@ async def test_global_allowed_for_manager(
     default_branch: Branch,
     default_permission_backend: None,
     register_core_models_schema: None,
-    first_account: Node,
+    session_global_prefs_manager: AccountSession,
 ) -> None:
     await Preference(owner_id=registry.id, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
-    await _grant_manage_global_preferences(db=db, account=first_account)
-    session = AccountSession(authenticated=True, auth_type=AuthType.JWT, account_id=first_account.id)
 
-    result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session)
+    result = await run_query(
+        db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_global_prefs_manager
+    )
     assert result.errors is None
     assert result.data is not None
     prefs = result.data["InfrahubGlobalPreferences"]

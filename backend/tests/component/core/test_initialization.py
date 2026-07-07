@@ -5,7 +5,6 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import first_time_initialization, get_root_node, reset_deployment_id
 from infrahub.core.preferences import Preference
-from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 
 
@@ -15,16 +14,15 @@ async def test_first_time_initialization(db: InfrahubDatabase, default_branch: B
 
 
 async def test_first_time_initialization_does_not_seed_preferences(
-    db: InfrahubDatabase, default_branch: Branch
+    db: InfrahubDatabase, delete_all_nodes_in_db: None
 ) -> None:
     """A fresh install seeds NO preference row.
 
     Preferences reads never create, and there is no init seed — a Preference row exists only after
     the first write.
     """
-    # Start from a truly empty graph so first_time_initialization runs against a single Root,
-    # mirroring a fresh install (the default_branch fixture pre-creates a Root we must clear).
-    await delete_all_nodes(db=db)
+    # delete_all_nodes_in_db leaves a truly empty graph, so first_time_initialization runs against
+    # a fresh install and builds its own Root.
     await first_time_initialization(db=db)
 
     assert await Preference.get_list(db=db) == []
