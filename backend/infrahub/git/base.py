@@ -1115,6 +1115,31 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def _raise_enriched_error_static(
         error: GitCommandError, name: str, location: str, branch_name: str | None = None
     ) -> NoReturn:
+        """Translate a raw ``git`` CLI failure into a typed repository error.
+
+        Classification matches on ``error.stderr`` text rather than a status code because
+        these operations run through the ``git`` command line: ``git`` exits 128 for
+        virtually every fatal error, so ``GitCommandError.status`` carries no useful
+        signal, and when the failure originates in the HTTP transport the HTTP status is
+        only present as text in stderr. The matched substrings are messages emitted by
+        ``git`` itself and by its libcurl-backed HTTP remote helper:
+          - connection: "Failed to connect to", "Could not resolve host",
+            "Connection timed out" (libcurl); "The requested URL returned error: 5xx" and
+            "RPC failed; HTTP 5xx" for gateway/proxy 5xx responses in front of the server.
+          - not-a-repo / missing: "Repository not found", "does not appear to be a git".
+          - TLS: "SSL certificate problem", "server certificate verification failed".
+          - credentials: "Authentication failed for", "could not read Username".
+        These are stable user-facing git/curl strings, but keyed on text — revisit them if
+        git or libcurl change their wording.
+
+        Raises:
+            RepositoryConnectionError: When the remote is unreachable or a gateway/proxy in
+                front of it returns a 5xx.
+            RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
+            RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
+            RepositoryError: For any other git failure, including the generic fallthrough.
+
+        """
         if any(
             err in error.stderr
             for err in (
@@ -1125,7 +1150,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 "Couldn't connect to server",
                 "Connection timed out",
                 "Operation timed out",
-                # HTTP 5xx returned by a gateway/proxy in front of the git server (e.g. 502/503/504).
                 "The requested URL returned error: 5",
                 "RPC failed; HTTP 5",
             )
