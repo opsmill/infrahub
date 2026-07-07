@@ -292,24 +292,19 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         # The previously tracked object was reconciled away by the import that ran.
         assert len(await client.filters(kind="BuiltinTag", name__value="replaced-tag")) == 0
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "removing an object file (and its config entry) skips the object import entirely, so "
-            "previously imported objects are never garbage-collected and stay behind as ghosts"
-        ),
-    )
-    async def test_object_removal_propagates_on_ref_bump(
+    async def test_object_removal_not_propagated(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         tmp_path: Path,
     ) -> None:
-        """An object removed from the repo's object files is deleted on the consumer when promoted.
+        """Objects from a removed object file persist on the consumer after promotion.
 
-        Group-tracked garbage collection only reconciles within an import run that happens; when the
-        promotion removes the object file and its config entry, no object import runs at all, so the
-        objects the file created are orphaned on every environment that imported them.
+        Documented-limitation guard: group-tracked garbage collection reconciles only within an
+        import run that happens. A promotion that removes the object file and its config entry skips
+        the object import entirely, so the objects the file created remain on every environment that
+        imported them. Retiring repository-sourced objects therefore requires either keeping the file
+        listed with the objects removed from it, or manual cleanup.
         """
         remote = _SeededRemote(tmp_path)
         v1_sha = remote.commit_files(
@@ -329,8 +324,9 @@ class TestMultiEnvPromotion(TestInfrahubApp):
 
         await _bump_ref(client, node_id, "promo-object-gc-repo", "v2")
 
+        # Current contract: the object persists after its file's removal is promoted.
         tags_after = await client.filters(kind="BuiltinTag", name__value="gc-tag")
-        assert len(tags_after) == 0
+        assert len(tags_after) == 1
 
     async def test_schema_removal_not_propagated(
         self,

@@ -88,6 +88,25 @@ def _force_rewrite_remote_branch(container: DockerContainer, repo_name: str, bra
     assert result.exit_code == 0, f"Force-rewrite of {branch} failed: {result.output.decode()}"
 
 
+def _push_conflicting_branch(container: DockerContainer, repo_name: str, branch: str, against: str) -> None:
+    """Create ``branch`` from main whose content genuinely conflicts with ``against``.
+
+    Both branches add the same file with different content, so a merge between them cannot be
+    resolved automatically.
+    """
+    script = (
+        f"set -e && cd /tmp/{repo_name} && "
+        f"git checkout {against} && git pull origin {against} && "
+        f"echo 'content from {against}' > clash.txt && git add clash.txt && "
+        f"git commit -m 'clash on {against}' && git push origin {against} && "
+        f"git checkout main && git checkout -b {branch} && "
+        f"echo 'content from {branch}' > clash.txt && git add clash.txt && "
+        f"git commit -m 'clash on {branch}' && git push origin {branch}"
+    )
+    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
+    assert result.exit_code == 0, f"Creating conflicting branch {branch} failed: {result.output.decode()}"
+
+
 def _seed_local_bare_remote(base_dir: Path) -> Path:
     """Create a local bare remote holding main + develop (equal tips) and a minimal repo config."""
     bare_path = base_dir / "remote.git"
@@ -895,3 +914,37 @@ class TestMultiEnvWriteBack(TestInfrahubApp):
 
         # Intended contract: the standalone duplicate of the (new) default branch is reconciled away.
         assert "staging" not in await client.branch.all()
+
+    async def test_conflicting_remote_branch_imports_without_blocking_others(
+        self,
+        no_sync_filter: None,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> None:
+        """A remote branch whose content conflicts with the default branch still imports, warn-only.
+
+        The sync runs a merge-tree conflict pre-check for every new remote branch against the default
+        branch, but the result must only warn: branches never merge into each other during sync, so a
+        conflicting branch is importable and the conflict materialises only when a merge is attempted.
+        The conflicting branch must not prevent other branches from importing, and the repository's
+        default-branch import must keep advancing.
+        """
+        ds = await _register_and_import(client, gogs_server, "multi-env-conflict-branch-repo")
+        _push_conflicting_branch(gogs_server.container, ds["repo_name"], branch="feature/clashing", against=DEV_BRANCH)
+        _create_remote_branch_from_main(gogs_server.container, ds["repo_name"], "feature/calm")
+
+        await sync_remote_repositories()
+
+        branches = await client.branch.all()
+        # Warn-only contract: the conflicting branch is imported alongside the healthy one.
+        assert "feature/clashing" in branches
+        assert "feature/calm" in branches
+
+        # The default-branch import is unaffected: a later commit still advances the recorded commit.
+        _push_commit_to_remote(gogs_server.container, ds["repo_name"], "after_conflict.txt", branch=DEV_BRANCH)
+        await sync_remote_repositories()
+        repo_after: CoreRepository = await NodeManager.get_one(
+            db=db, id=ds["node_id"], kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert repo_after.commit.value == _remote_branch_commit(gogs_server.container, ds["repo_name"], DEV_BRANCH)
