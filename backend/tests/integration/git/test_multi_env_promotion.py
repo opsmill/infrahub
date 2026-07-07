@@ -490,6 +490,52 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         tags = await client.filters(kind="BuiltinTag", name__value="pc-promoted-tag")
         assert len(tags) == 1
 
+    async def test_unrelated_branch_merge_preserves_promoted_ref(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        tmp_path: Path,
+        prefect_test_fixture: None,
+        bus_simulator: BusSimulator,
+    ) -> None:
+        """Merging a branch that never touched the repository must not move the repository's pin.
+
+        A branch snapshots the repository node at creation time. When the consumer is promoted on the
+        primary branch afterwards, merging the older branch (carrying only unrelated data changes)
+        must leave the promotion in place — the branch made no repository change, so there is nothing
+        to propagate. Guard for the suspected rollback: although the repository merge is dispatched
+        for every branch merge, the branch's unmodified repository node reads through to the primary
+        branch's current values, so the copy is a no-op and the promotion survives.
+        """
+        remote = _SeededRemote(tmp_path)
+        v1_sha = remote.branch_tip()
+        remote.tag("v1", v1_sha)
+
+        repo_name = "promo-stale-branch-repo"
+        node_id = await _register_readonly(client, repo_name, str(remote.bare_path), "v1")
+        await _import_ref(node_id, repo_name, "v1")
+        assert await _recorded_commit(db, node_id) == v1_sha
+
+        # The unrelated branch snapshots the repository at v1.
+        stale_branch = await client.branch.create(branch_name="unrelated-work")
+        unrelated = await client.create(kind="BuiltinTag", data={"name": "unrelated-change"}, branch=stale_branch.name)
+        await unrelated.save()
+
+        # The consumer is promoted to v2 on the primary branch afterwards.
+        v2_sha = remote.commit_files({"release.txt": "v2 content\n"}, "Release v2")
+        remote.tag("v2", v2_sha)
+        await _bump_ref(client, node_id, repo_name, "v2")
+        assert await _recorded_commit(db, node_id) == v2_sha
+
+        await client.branch.merge(branch_name=stale_branch.name)
+
+        # Intended contract: the unrelated merge leaves the promotion untouched.
+        repo_after: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
+        )
+        assert repo_after.ref.value == "v2"
+        assert repo_after.commit.value == v2_sha
+
     async def test_reimport_follows_force_pushed_branch_ref(
         self,
         db: InfrahubDatabase,
