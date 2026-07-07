@@ -547,6 +547,69 @@ class TestMultiEnvPromotion(TestInfrahubApp):
         assert repo_after.ref.value == "v2"
         assert repo_after.commit.value == v2_sha
 
+    async def test_branch_ref_reimport_staged_in_branch_promotes_via_proposed_change(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        tmp_path: Path,
+        prefect_test_fixture: None,
+        bus_simulator: BusSimulator,
+    ) -> None:
+        """The branch-pinned promotion flow: reimport staged in a branch, merged via a proposed change.
+
+        The common environment-chain variant: the consumer's ref is its environment's git branch and
+        never changes. When the git branch advances (a promotion lands on the git host), the operator
+        creates an Infrahub branch, triggers the last-commit reimport on it — the import loads the
+        branch tip there while the primary branch provably keeps the previous state — and the change
+        lands through a proposed change, whose merge carries the recorded commit and the imported
+        content onto the primary branch.
+        """
+        remote = _SeededRemote(tmp_path)
+        tip1 = remote.branch_tip()
+
+        repo_name = "promo-branch-flow-repo"
+        node_id = await _register_readonly(client, repo_name, str(remote.bare_path), SOURCE_BRANCH)
+        await _import_ref(node_id, repo_name, SOURCE_BRANCH)
+        assert await _recorded_commit(db, node_id) == tip1
+
+        # A promotion lands on the environment's git branch (e.g. a pull request was merged).
+        tip2 = remote.commit_files(
+            {".infrahub.yml": CONFIG_WITH_OBJECTS, "objects/tags.yml": _object_file("branch-flow-tag")},
+            "Promotion landed on the environment branch",
+        )
+
+        # Stage the reimport in an Infrahub branch — the ref itself never changes.
+        staging = await client.branch.create(branch_name="promote-next")
+        await import_read_only_repository_last_commit(
+            model=GitReadOnlyRepositoryImportCommit(
+                repository_id=node_id,
+                repository_name=repo_name,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+                infrahub_branch_name=staging.name,
+                ref=SOURCE_BRANCH,
+            )
+        )
+
+        # Isolation while under review: the branch advanced to the tip, the primary branch did not.
+        repo_branch: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.READONLYREPOSITORY, branch=staging.name, raise_on_error=True
+        )
+        assert repo_branch.commit.value == tip2
+        assert await _recorded_commit(db, node_id) == tip1
+
+        proposed_change = await client.create(
+            kind=InfrahubKind.PROPOSEDCHANGE,
+            data={"source_branch": staging.name, "destination_branch": "main", "name": "promote next release"},
+        )
+        await proposed_change.save()
+        proposed_change.state.value = ProposedChangeState.MERGED.value
+        await proposed_change.save()
+
+        # Promotion after the merge: the primary branch carries the reviewed tip and its content.
+        assert await _recorded_commit(db, node_id) == tip2
+        tags = await client.filters(kind="BuiltinTag", name__value="branch-flow-tag")
+        assert len(tags) == 1
+
     async def test_reimport_follows_force_pushed_branch_ref(
         self,
         db: InfrahubDatabase,
