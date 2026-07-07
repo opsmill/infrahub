@@ -77,16 +77,17 @@ class DiffMerger:
                 # it will not if a node was migrated and then deleted
                 migrated_kinds_id_map[n.uuid] = n.identifier.db_id
 
+        # only arm the rollback once graph writes begin: rolling back without any writes at this
+        # timestamp can still rewind updated_at/by metadata left in place by a previous merge
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
-            # only arm the rollback once graph writes begin: rolling back without any writes at this
-            # timestamp can still rewind updated_at/by metadata left in place by a previous merge
-            self._merge_started = True
             if node_diff_dicts:
+                self._merge_started = True
                 log.info(f"Merging batch of nodes #{batch_num}")
                 await self._merge_nodes(
                     at=at, node_diff_dicts=node_diff_dicts, migrated_kinds_id_map=migrated_kinds_id_map
                 )
             if property_diff_dicts:
+                self._merge_started = True
                 log.info(f"Merging batch of properties #{batch_num}")
                 await self._merge_properties(
                     at=at, property_diff_dicts=property_diff_dicts, migrated_kinds_id_map=migrated_kinds_id_map
