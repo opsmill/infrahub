@@ -96,17 +96,17 @@ class InfrahubSetPreferences(Mutation):
         async with lock.registry.get(name=owner_id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
             async with graphql_context.db.start_transaction() as db:
                 repository = PreferenceRepository(db=db)
-                obj = await repository.get_for_owner(owner_id=owner_id)
-                if obj is None:
-                    obj = Preference(owner_id=owner_id)
+                preference = await repository.get_for_owner(owner_id=owner_id)
+                if preference is None:
+                    preference = Preference(owner_id=owner_id)
 
                 if date_format is not _UNSET:
                     # Graphene hands over the enum member's value (a plain string); coerce it to the
                     # domain enum here
-                    obj.date_format = None if date_format is None else DateFormatEnum(date_format)
+                    preference.date_format = None if date_format is None else DateFormatEnum(date_format)
                 if timezone is not _UNSET:
-                    obj.timezone = timezone
+                    preference.timezone = timezone
 
-                await repository.save(obj, actor_id=actor_id)
+                await repository.save(preference, actor_id=actor_id)
 
-        return cls(ok=True, date_format=obj.date_format, timezone=obj.timezone)  # type: ignore[call-arg]
+        return cls(ok=True, date_format=preference.date_format, timezone=preference.timezone)  # type: ignore[call-arg]
