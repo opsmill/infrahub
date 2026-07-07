@@ -11,7 +11,8 @@ from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
 from infrahub.workflows.models import WorkflowInfo
 
-from . import InfrahubWorkflow, Return, prepare_dispatch
+from . import InfrahubWorkflow, Return
+from .priority import prepare_dispatch
 
 if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun

@@ -184,7 +184,7 @@ Priority is a property of the whole task tree, not of individual workflows: a tr
 
 **Context field.** `InfrahubContext` (`backend/infrahub/context.py`) carries an optional `priority: WorkflowPriority | None = None`. Because the context already travels from parent flow to child flow as a flow parameter, it is the vehicle that propagates the lane across dispatch hops. Context payloads serialized before the field existed deserialize with `priority=None`.
 
-**Resolution chain.** At every dispatch, the effective priority is resolved by a strict precedence chain, implemented once in `resolve_priority()` (`backend/infrahub/services/adapters/workflow/__init__.py`) and shared by both adapters:
+**Resolution chain.** At every dispatch, the effective priority is resolved by a strict precedence chain, implemented once in `resolve_priority()` (`backend/infrahub/services/adapters/workflow/priority.py`) and shared by both adapters:
 
 1. The explicit `priority` argument at the call site, when given.
 2. The `priority` carried by the dispatched `InfrahubContext`, when set.

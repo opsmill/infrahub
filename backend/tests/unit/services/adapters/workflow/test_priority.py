@@ -6,7 +6,7 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.events.models import EventBranchContext, EventContext
-from infrahub.services.adapters.workflow import prepare_dispatch, resolve_priority
+from infrahub.services.adapters.workflow.priority import prepare_dispatch, resolve_priority
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.models import WorkflowDefinition
 

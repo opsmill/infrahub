@@ -8,7 +8,8 @@ from typing_extensions import TYPE_CHECKING
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
-from . import InfrahubWorkflow, Return, prepare_dispatch
+from . import InfrahubWorkflow, Return
+from .priority import prepare_dispatch
 
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
