@@ -65,7 +65,6 @@ class DiffMerger:
         )
         log.info(f"Diff {latest_diff.uuid} retrieved")
         self._affected_node_uuids = [n.uuid for n in enriched_diff.nodes]
-        self._merge_started = True
         batch_num = 0
         migrated_kinds_id_map = {}
         for n in enriched_diff.nodes:
@@ -79,6 +78,9 @@ class DiffMerger:
                 migrated_kinds_id_map[n.uuid] = n.identifier.db_id
 
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
+            # only arm the rollback once graph writes begin: rolling back without any writes at this
+            # timestamp can still rewind updated_at/by metadata left in place by a previous merge
+            self._merge_started = True
             if node_diff_dicts:
                 log.info(f"Merging batch of nodes #{batch_num}")
                 await self._merge_nodes(
@@ -93,6 +95,7 @@ class DiffMerger:
             batch_num += 1
         migrated_kind_uuids = {n.identifier.uuid for n in enriched_diff.nodes if n.is_node_kind_migration}
         if migrated_kind_uuids:
+            self._merge_started = True
             migrated_merge_query = await DiffMergeMigratedKindsQuery.init(
                 db=self.db,
                 branch=self.source_branch,
@@ -104,6 +107,7 @@ class DiffMerger:
 
         affected_node_uuids = self._affected_node_uuids
         if affected_node_uuids:
+            self._merge_started = True
             for i in range(0, len(affected_node_uuids), self.metadata_batch_size):
                 batch_uuids = affected_node_uuids[i : i + self.metadata_batch_size]
                 log.info(f"Updating metadata for batch {i // self.metadata_batch_size + 1} ({len(batch_uuids)} nodes)")
