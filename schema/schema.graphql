@@ -8544,6 +8544,18 @@ type GroupEvent implements EventNodeInterface {
   related_nodes: [RelatedNode!]!
 }
 
+type HttpRequest {
+  """Request headers as sent, with secret values masked"""
+  headers: GenericScalar!
+  url: String!
+}
+
+type HttpResponse {
+  body: String
+  latency_ms: Float
+  status_code: Int
+}
+
 type IPAddressGetNextAvailable {
   address: String!
 }
@@ -26287,6 +26299,12 @@ enum TaskActionType {
   RETRY
 }
 
+type TaskError {
+  message: String!
+  remediation: String!
+  status_class: String!
+}
+
 type TaskInfo {
   id: String
 }
@@ -26308,11 +26326,42 @@ type TaskLogNodes {
   node: TaskLog
 }
 
-type TaskNode {
+type TaskNode implements TaskNodeInterface {
   available_actions: [TaskAction!]!
   branch: String
   conclusion: String!
   created_at: String!
+  """
+  Classified failure reason with a remediation hint; null unless the task failed with one
+  """
+  error: TaskError
+  id: String!
+  logs: TaskLogEdge
+  parameters: GenericScalar
+  progress: Float
+  related_node: String @deprecated(reason: "This field is deprecated and it will be removed in a future release, use related_nodes instead")
+  related_node_kind: String @deprecated(reason: "This field is deprecated and it will be removed in a future release, use related_nodes instead")
+  related_nodes: [TaskRelatedNode]
+  start_time: String
+  state: StateType
+  tags: [String]
+  title: String!
+  updated_at: String!
+  workflow: String
+}
+
+"""
+Fields shared by every task run; concrete types are discriminated by the run's workflow name.
+"""
+interface TaskNodeInterface {
+  available_actions: [TaskAction!]!
+  branch: String
+  conclusion: String!
+  created_at: String!
+  """
+  Classified failure reason with a remediation hint; null unless the task failed with one
+  """
+  error: TaskError
   id: String!
   logs: TaskLogEdge
   parameters: GenericScalar
@@ -26329,7 +26378,7 @@ type TaskNode {
 }
 
 type TaskNodes {
-  node: TaskNode
+  node: TaskNodeInterface
 }
 
 type TaskRelatedNode {
@@ -26393,6 +26442,32 @@ type ValidateRepositoryConnectivity {
 
 type ValueType {
   value: String!
+}
+
+type WebhookDeliveryTask implements TaskNodeInterface {
+  available_actions: [TaskAction!]!
+  branch: String
+  conclusion: String!
+  created_at: String!
+  """
+  Classified failure reason with a remediation hint; null unless the task failed with one
+  """
+  error: TaskError
+  http_request: HttpRequest
+  http_response: HttpResponse
+  id: String!
+  logs: TaskLogEdge
+  parameters: GenericScalar
+  progress: Float
+  related_node: String @deprecated(reason: "This field is deprecated and it will be removed in a future release, use related_nodes instead")
+  related_node_kind: String @deprecated(reason: "This field is deprecated and it will be removed in a future release, use related_nodes instead")
+  related_nodes: [TaskRelatedNode]
+  start_time: String
+  state: StateType
+  tags: [String]
+  title: String!
+  updated_at: String!
+  workflow: String
 }
 
 """Expands a field to include Node defaults"""

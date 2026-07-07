@@ -27,7 +27,7 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 
 **Purpose**: Lightweight — dependencies and stack already exist on the branch.
 
-- [ ] T001 [P] Add towncrier changelog fragment `changelog/+ifc-2755-webhook-delivery-operability.added.md` describing the delivery operability feature (user-facing). This single fragment covers the whole feature, including the landed failure classification; the classification slice does not ship its own fragment.
+- [ ] T001 [P] Add towncrier changelog fragment `changelog/+ifc-2755-webhook-delivery-operability.added.md` describing the delivery operability feature (user-facing). This single fragment covers the whole feature, including the landed failure classification, per-attempt request logging with header redaction, traceback-suppressed classified failures, and retry/cancel; no slice ships its own fragment.
 - [ ] T002 [P] Add a controllable HTTP-target test fixture (endpoint that can return success / 4xx / 5xx / timeout / TLS error / be unreachable) under `backend/tests/functional/webhook/conftest.py`, reusing existing webhook fixtures.
 
 ---
@@ -39,12 +39,12 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 - [X] T003 Register `WEBHOOK_SEND` `WorkflowDefinition` (`type=CORE`) and add it to `WORKFLOWS` in `backend/infrahub/workflows/catalogue.py`.
 - [X] T004 Make `webhook_send` the user-facing, retryable delivery: it self-tags with the webhook node and branch, and `webhook_process` (internal orchestrator) stops tagging itself and passes `branch_name` to the inline call, in `backend/infrahub/webhook/tasks/process.py` (depends on T003). Supersedes the original `submit_workflow` detachment — `webhook_process` keeps its inline call and classified-failure settling; only the node tag moves to the delivery so the run that carries the frozen payload is the one surfaced and retried.
 - [X] T005 [P] Add the `TaskAction` type and `TaskActionType` enum (RETRY, CANCEL) in `backend/infrahub/graphql/types/task.py`. The `HttpRequest`/`HttpResponse`/`DeliveryError` types are deferred to US1, where the captured request/response is displayed.
-- [ ] T006 _(Deferred to US1, depends on T005)_ Polymorphic task typing: `TaskNodeInterface`, `WebhookDeliveryTask` (`http_request`/`http_response`/`error`), `TASK_TYPES` + `resolve_type`, and `TaskNodes.node` → interface, in `backend/infrahub/graphql/types/task.py`. Not required by `available_actions`; needed when the delivery-specific display fields land in US1.
-- [ ] T007 _(Deferred to US1, depends on T006)_ Register the concrete task types so they are reachable via `resolve_type` (mirror `_load_event_types`) in `backend/infrahub/graphql/manager.py`.
+- [X] T006 (depends on T005) Polymorphic task typing: `TaskNodeInterface`, `WebhookDeliveryTask` (`http_request`/`http_response`), `TASK_TYPES` + `resolve_type`, and `TaskNodes.node` → interface, in `backend/infrahub/graphql/types/task.py`. The classified `error` sits on the interface (common to all tasks, per the 2026-07-02 clarification), not on the delivery type. Landed with one deviation from data-model.md (synced there): the deprecated `related_node`/`related_node_kind` accessors live on the interface, not on `TaskNode`, because existing consumers select them without inline fragments and FR-004 requires those selections to keep resolving.
+- [X] T007 (depends on T006) Register the concrete task types so they are reachable via `resolve_type` (mirror `_load_event_types`) in `backend/infrahub/graphql/manager.py`.
 - [X] T008 [P] Implement the `available_actions` computation as a dedicated pure function/module from `(workflow_name, prefect_state)` — RETRY iff terminal (incl. COMPLETED), CANCEL iff non-terminal, empty for non-webhook runs, each with `unavailability_reason` — unit-testable in isolation, in `backend/infrahub/graphql/queries/task_actions.py` (depends on T003).
 - [X] T009 Wire `available_actions` into the task serializer (`_serialize_node`) so every task node carries it, in `backend/infrahub/graphql/queries/task.py` (depends on T008).
 - [X] T010 [P] Unit test the `available_actions` gating matrix (terminal/non-terminal, webhook vs other) in `backend/tests/unit/graphql/queries/test_task_actions.py` (depends on T008).
-- [ ] T011 _(Deferred to US1, depends on T007)_ Component test that `resolve_type` returns `WebhookDeliveryTask` for `webhook_send` runs and `TaskNode` otherwise, and that existing common-field selections still resolve, in `backend/tests/component/graphql/queries/test_task.py`.
+- [X] T011 (depends on T007) Component test that `resolve_type` returns `WebhookDeliveryTask` for `webhook_send` runs and `TaskNode` otherwise, and that existing common-field selections still resolve, in `backend/tests/component/graphql/queries/test_task.py`. The pre-existing tests in that module double as the common-field backward-compat check; the delivery-specific fields resolve to null until the capture artifact lands (T014–T017).
 
 **Checkpoint**: `webhook_send` is registered and resubmittable; the delivery run carries the node/branch tags; `available_actions` is populated on every task (empty for non-deliveries). The GraphQL schema is regenerated and committed at each increment so the generated-file CI gate stays green. Polymorphic typing and the delivery-specific display fields land in US1.
 
@@ -58,19 +58,20 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 
 ### Implementation for User Story 1
 
-- [X] T012 [P] [US1] Implement the `CapturedHeaders` redaction domain object (mask ENVIRONMENT-sourced headers + `webhook-signature`; keep standard, `webhook-id`, `webhook-timestamp`, and STATIC headers verbatim) in `backend/infrahub/webhook/capture.py`.
-- [ ] T013 [US1] Expose per-header provenance (`HeaderKind`) from header assembly so capture can redact by kind rather than re-guessing the flat dict, in `backend/infrahub/webhook/models.py` (depends on T012).
-- [ ] T014 [P] [US1] Implement captured request/response models and the `CapturedHttp` artifact builder (one grouped `http` payload: request, response, error) in `backend/infrahub/webhook/capture.py`.
+- [X] T012 [P] [US1] Implement the header-redaction domain logic (mask ENVIRONMENT-sourced headers, `webhook-signature`, and well-known credential header names case-insensitively; keep standard and STATIC headers verbatim) in `backend/infrahub/webhook/models.py`. Landed as `Webhook.redact_headers` with sensitive header names normalized at definition — no separate `CapturedHeaders` object and no `capture.py` module; the capture tasks below reuse this redaction.
+- [X] T013 [US1] Expose per-header provenance (`HeaderKind`) from header assembly so redaction reads the kind rather than re-guessing the flat dict, in `backend/infrahub/webhook/models.py` (depends on T012). Landed: `WebhookHeader` carries its kind at definition.
+- [ ] T014 [P] [US1] Implement captured request/response models and the `CapturedHttp` artifact builder (one grouped `http` payload: request, response, error) in `backend/infrahub/webhook/capture.py` (new module; reuses the T012 redaction from `models.py`).
 - [ ] T015 [US1] Write the redacted `http` artifact (key `infrahub-webhook-http`, last attempt) on both success and failure inside the `webhook_send` body, in `backend/infrahub/webhook/tasks/process.py` (depends on T014, T013).
 - [ ] T016 [US1] Read the `http` artifact back (mirror `read_progress`: `read_artifacts(ArtifactFilter(key), FlowRunFilter(id))`) in `backend/infrahub/task_manager/flow_run/reader.py`.
 - [ ] T017 [US1] Project the captured artifact onto `http_request`/`http_response`/`error` in the serializer, gated on the GraphQL selection; payload continues to come from `parameters`, in `backend/infrahub/graphql/queries/task.py` (depends on T016, T006).
-- [X] T018 [P] [US1] Unit test `CapturedHeaders` redaction (env + signature masked; standard/static + payload verbatim; no raw secret) in `backend/tests/unit/webhook/test_captured_headers.py`.
+- [X] T018 [P] [US1] Unit test the header redaction (env + signature + well-known credential headers masked; standard/static + payload verbatim; no raw secret) in `backend/tests/unit/webhook/test_models.py`. Landed alongside the `models.py` redaction rather than in a dedicated capture test module.
 - [ ] T019 [P] [US1] Functional test that capture is present on success and failure, reflects the last attempt, and persists no raw secret, in `backend/tests/functional/webhook/test_capture.py` (depends on T015, T016).
 - [ ] T020 [P] [US1] Extend the task-list and task-details queries with `available_actions` and `... on WebhookDeliveryTask { http_request http_response error }` in `frontend/app/src/entities/tasks/api/get-task-list-from-api.ts` and `get-task-details-from-api.ts`.
 - [ ] T021 [US1] Regenerate frontend GraphQL types (`cd frontend/app && pnpm codegen`) (depends on T020 and backend schema types T006).
 - [ ] T022 [US1] Render the webhook delivery section (payload from `parameters`, request incl. target URL, response, latency, HTTP status, last-attempt timestamp) polymorphically by `__typename` in `frontend/app/src/entities/tasks/ui/task-item-details.tsx` (depends on T021).
 - [ ] T023 [P] [US1] Frontend unit test for the delivery detail rendering (request/response/redacted headers shown) in `frontend/app/src/entities/tasks/ui/task-item-details.test.tsx` (depends on T022).
 - [ ] T050 [US1] Playwright E2E (constitution Principle IV): open a webhook delivery, assert payload/request/response/latency are shown and env-sourced headers + signature are masked, in `frontend/app/tests/e2e/webhook-delivery-inspect.spec.ts` (depends on T022). _(added post-analysis; executes within US1)_
+- [X] T052 [US1] [Sync: Gap Report] Log the outgoing request on each delivery attempt — target URL, redacted headers, truncated payload at info (full payload at debug), and the attempt number N of M — via a logging helper in `backend/infrahub/webhook/tasks/process.py`, redaction from `backend/infrahub/webhook/models.py` (T012/T013). Interim log-channel visibility (spec FR-015a/FR-015b) delivered ahead of the persisted `http` artifact (T014–T017); landed (IFC-2832, IFC-2833).
 
 **Checkpoint**: A delivery's request/response/payload are fully inspectable in the UI with secrets masked — MVP deliverable.
 
@@ -78,20 +79,22 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 
 ## Phase 4: User Story 2 - Understand why a delivery failed (Priority: P2)
 
-**Goal**: Failed deliveries show a classified reason + remediation hint (no stacktrace); only transient classes are auto-retried.
+**Goal**: Failed deliveries show a classified reason + remediation hint (no stacktrace in the view or the run logs); the bounded fixed-delay auto-retry applies uniformly (transient-only gating rejected — see T026).
 
-**Independent Test**: Drive CONNECTION / 4xx / 5xx / TLS / TIMEOUT / CONFIG failures; confirm correct classification, remediation hint, no stacktrace, and that only TIMEOUT/CONNECTION/5xx are retried.
+**Independent Test**: Drive CONNECTION / 4xx / 5xx / TLS / TIMEOUT / CONFIG failures; confirm correct classification, a remediation hint matching the class, and no stacktrace in the delivery's logs.
 
 ### Implementation for User Story 2
 
 - [X] T024 [P] [US2] Implement the pure `WebhookFailureClassifier.classify(exc, response) -> ClassifiedFailure` (CONFIG/CONNECTION/TLS/TIMEOUT/HTTP_CLIENT_ERROR/HTTP_SERVER_ERROR/UNKNOWN, each with remediation + `transient` flag) in `backend/infrahub/webhook/classifier.py`.
 - [X] T025 [US2] Use the classifier in the `webhook_send` body: catch expected delivery failures and surface a clean classified reason without a stacktrace (the `webhook_process` flow settles them into a failed state); let unexpected errors propagate as a genuine crash, in `backend/infrahub/webhook/tasks/process.py` (depends on T024).
-- [X] ~~T026 [US2] Add a `retry_condition_fn` (transient-only) reusing the classifier on the `webhook_send` flow, keeping the fixed 120s delay / 3 attempts, in `backend/infrahub/webhook/tasks/process.py` (depends on T024).~~ Descoped: retries stay flow-level and unconditional — a transient-only condition requires task-level `retry_condition_fn`, which we chose not to introduce. The `transient` flag remains on `ClassifiedFailure` for future use.
-- [ ] T027 [US2] Include the classified error (`status_class`, `message`, `remediation`) in the `http` artifact and map it onto `DeliveryError` in the serializer, in `backend/infrahub/webhook/capture.py` and `backend/infrahub/graphql/queries/task.py` (depends on T024, T017).
+- [X] ~~T026 [US2] Add a `retry_condition_fn` (transient-only) reusing the classifier on the `webhook_send` flow, keeping the fixed 120s delay / 3 attempts, in `backend/infrahub/webhook/tasks/process.py` (depends on T024).~~ Descoped: retries stay flow-level and unconditional — a transient-only condition requires task-level `retry_condition_fn`, which we chose not to introduce. The `transient` flag was subsequently removed from `ClassifiedFailure`; each status class now owns its remediation hint directly. Spec FR-012 and SC-004 were rewritten to record this decision (Implementation Sync 2026-07-02).
+- [ ] T027 [US2] Include the classified error (`status_class`, `message`, `remediation`) in the `http` artifact and map it onto the interface-level `error` field (`TaskError`) in the serializer, in `backend/infrahub/webhook/capture.py` and `backend/infrahub/graphql/queries/task.py` (depends on T024, T017).
 - [X] T028 [P] [US2] Unit test the classifier across every class and the transient predicate (using the typed HTTP adapter exceptions + status codes) in `backend/tests/unit/webhook/test_classifier.py`.
-- [ ] T029 [P] [US2] Functional test that each failure class surfaces a clean reason, only transient classes retry, the final reason reflects the settling attempt, and per-attempt progress remains visible in the run logs across retries, in `backend/tests/functional/webhook/test_classification.py` (depends on T025, T026).
-- [ ] T030 [US2] Frontend: render the classified reason + remediation hint (badge + hint) for failed deliveries in `frontend/app/src/entities/tasks/ui/task-item-details.tsx` (depends on T021).
+- [ ] T029 [P] [US2] Functional test that each failure class surfaces a clean reason, the final reason reflects the settling attempt, and per-attempt progress remains visible in the run logs across retries, in `backend/tests/functional/webhook/test_classification.py` (depends on T025).
+- [ ] T030 [US2] Frontend: render the classified reason + remediation hint (badge + hint) from the common `error` field — for any task, not via the delivery fragment — showing the section only when `error` is non-null, in `frontend/app/src/entities/tasks/ui/task-item-details.tsx` (depends on T021).
 - [ ] T051 [US2] Playwright E2E (constitution Principle IV): open a failed delivery, assert the classified reason + remediation hint are shown and no stacktrace appears, in `frontend/app/tests/e2e/webhook-delivery-failure.spec.ts` (depends on T030). _(added post-analysis; executes within US2)_
+- [X] T053 [US2] [Sync: Gap Report] Suppress the traceback for classified delivery failures in the run logs (spec FR-015c): a delivery error type carrying the classified failure, registered by type as suppressible, while unexpected errors keep their full traceback, in `backend/infrahub/webhook/classifier.py` (depends on T024, T025). Landed (IFC-2846).
+- [X] T054 [US2] [Sync: Gap Report] Cover traceback suppression end-to-end in `backend/tests/component/webhook/test_traceback_suppression.py`, and transport-error precedence + per-status-class remediation in `backend/tests/unit/webhook/test_classifier.py` (depends on T053). Landed.
 
 **Checkpoint**: Failures are actionable — classified reason + remediation, smart retry — independently testable.
 
@@ -140,7 +143,7 @@ Web application: backend under `backend/`, frontend under `frontend/app/`.
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 - [ ] T045 [P] Regenerate backend generated files and the GraphQL schema (`uv run invoke backend.generate`; `uv run invoke schema.generate-graphqlschema`) and commit the diffs.
-- [ ] T046 [P] User documentation for webhook delivery operability (inspection, classified failures, retry, cancel) under `docs/`, and a backend knowledge note under `dev/knowledge/backend/`.
+- [ ] T046 [P] User documentation for webhook delivery operability (inspection, classified failures, retry, cancel) under `docs/`, and a backend knowledge note under `dev/knowledge/backend/`. Partially landed: retry/cancel, delivery logging + redaction, and traceback suppression are documented in `docs/docs/webhooks/overview.mdx`, `dev/knowledge/backend/webhooks.md`, and `dev/knowledge/backend/async-tasks.md`; the inspection (captured request/response display) documentation remains for US1.
 - [ ] T047 [P] Reference-doc regeneration if events/message-bus reference is affected (`uv run invoke docs.generate`).
 - [ ] T048 Run `/pre-ci` (format, lint, `ty` type check, generated-file + `docs.validate` checks) and fix any drift.
 - [ ] T049 Run `quickstart.md` validation end-to-end across all four user stories.

@@ -17513,6 +17513,20 @@ export type GroupEvent = EventNodeInterface & {
   related_nodes: Array<RelatedNode>;
 };
 
+export type HttpRequest = {
+  __typename: 'HttpRequest';
+  /** Request headers as sent, with secret values masked */
+  headers: Scalars['GenericScalar']['output'];
+  url: Scalars['String']['output'];
+};
+
+export type HttpResponse = {
+  __typename: 'HttpResponse';
+  body: Maybe<Scalars['String']['output']>;
+  latency_ms: Maybe<Scalars['Float']['output']>;
+  status_code: Maybe<Scalars['Int']['output']>;
+};
+
 export type IpAddressGetNextAvailable = {
   __typename: 'IPAddressGetNextAvailable';
   address: Scalars['String']['output'];
@@ -37932,6 +37946,13 @@ export const TaskActionType = {
 } as const;
 
 export type TaskActionType = typeof TaskActionType[keyof typeof TaskActionType];
+export type TaskError = {
+  __typename: 'TaskError';
+  message: Scalars['String']['output'];
+  remediation: Scalars['String']['output'];
+  status_class: Scalars['String']['output'];
+};
+
 export type TaskInfo = {
   __typename: 'TaskInfo';
   id: Maybe<Scalars['String']['output']>;
@@ -37957,12 +37978,39 @@ export type TaskLogNodes = {
   node: Maybe<TaskLog>;
 };
 
-export type TaskNode = {
+export type TaskNode = TaskNodeInterface & {
   __typename: 'TaskNode';
   available_actions: Array<TaskAction>;
   branch: Maybe<Scalars['String']['output']>;
   conclusion: Scalars['String']['output'];
   created_at: Scalars['String']['output'];
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
+  id: Scalars['String']['output'];
+  logs: Maybe<TaskLogEdge>;
+  parameters: Maybe<Scalars['GenericScalar']['output']>;
+  progress: Maybe<Scalars['Float']['output']>;
+  /** @deprecated This field is deprecated and it will be removed in a future release, use related_nodes instead */
+  related_node: Maybe<Scalars['String']['output']>;
+  /** @deprecated This field is deprecated and it will be removed in a future release, use related_nodes instead */
+  related_node_kind: Maybe<Scalars['String']['output']>;
+  related_nodes: Maybe<Array<Maybe<TaskRelatedNode>>>;
+  start_time: Maybe<Scalars['String']['output']>;
+  state: Maybe<StateType>;
+  tags: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  title: Scalars['String']['output'];
+  updated_at: Scalars['String']['output'];
+  workflow: Maybe<Scalars['String']['output']>;
+};
+
+/** Fields shared by every task run; concrete types are discriminated by the run's workflow name. */
+export type TaskNodeInterface = {
+  available_actions: Array<TaskAction>;
+  branch: Maybe<Scalars['String']['output']>;
+  conclusion: Scalars['String']['output'];
+  created_at: Scalars['String']['output'];
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
   id: Scalars['String']['output'];
   logs: Maybe<TaskLogEdge>;
   parameters: Maybe<Scalars['GenericScalar']['output']>;
@@ -37982,7 +38030,7 @@ export type TaskNode = {
 
 export type TaskNodes = {
   __typename: 'TaskNodes';
-  node: Maybe<TaskNode>;
+  node: Maybe<TaskNodeInterface>;
 };
 
 export type TaskRelatedNode = {
@@ -38052,4 +38100,31 @@ export type ValidateRepositoryConnectivity = {
 export type ValueType = {
   __typename: 'ValueType';
   value: Scalars['String']['output'];
+};
+
+export type WebhookDeliveryTask = TaskNodeInterface & {
+  __typename: 'WebhookDeliveryTask';
+  available_actions: Array<TaskAction>;
+  branch: Maybe<Scalars['String']['output']>;
+  conclusion: Scalars['String']['output'];
+  created_at: Scalars['String']['output'];
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
+  http_request: Maybe<HttpRequest>;
+  http_response: Maybe<HttpResponse>;
+  id: Scalars['String']['output'];
+  logs: Maybe<TaskLogEdge>;
+  parameters: Maybe<Scalars['GenericScalar']['output']>;
+  progress: Maybe<Scalars['Float']['output']>;
+  /** @deprecated This field is deprecated and it will be removed in a future release, use related_nodes instead */
+  related_node: Maybe<Scalars['String']['output']>;
+  /** @deprecated This field is deprecated and it will be removed in a future release, use related_nodes instead */
+  related_node_kind: Maybe<Scalars['String']['output']>;
+  related_nodes: Maybe<Array<Maybe<TaskRelatedNode>>>;
+  start_time: Maybe<Scalars['String']['output']>;
+  state: Maybe<StateType>;
+  tags: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  title: Scalars['String']['output'];
+  updated_at: Scalars['String']['output'];
+  workflow: Maybe<Scalars['String']['output']>;
 };

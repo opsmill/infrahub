@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Enum, Field, Float, List, NonNull, ObjectType, String
+from graphene import Boolean, Enum, Field, Float, Int, Interface, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
 from prefect.client.schemas.objects import StateType
 
+from infrahub.workflows.catalogue import WEBHOOK_SEND
+
 from .task_log import TaskLogEdge
+
+if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
 
 TaskState = Enum.from_enum(StateType)
 
@@ -31,7 +37,31 @@ class TaskInfo(ObjectType):
     id = Field(String)
 
 
-class Task(ObjectType):
+class HttpRequest(ObjectType):
+    url = String(required=True)
+    headers = GenericScalar(required=True, description="Request headers as sent, with secret values masked")
+
+
+class HttpResponse(ObjectType):
+    status_code = Int(required=False)
+    body = String(required=False)
+    latency_ms = Float(required=False)
+
+
+class TaskError(ObjectType):
+    status_class = String(required=True)
+    message = String(required=True)
+    remediation = String(required=True)
+
+
+class TaskRelatedNode(ObjectType):
+    id = String(required=True)
+    kind = String(required=True)
+
+
+class TaskNodeInterface(Interface):
+    """Fields shared by every task run; concrete types are discriminated by the run's workflow name."""
+
     id = String(required=True)
     title = String(required=True)
     conclusion = String(required=True)
@@ -44,14 +74,6 @@ class Task(ObjectType):
     parameters = GenericScalar(required=False)
     tags = List(String, required=False)
     start_time = String(required=False)
-
-
-class TaskRelatedNode(ObjectType):
-    id = String(required=True)
-    kind = String(required=True)
-
-
-class TaskNode(Task):
     related_node = String(
         required=False,
         deprecation_reason="This field is deprecated and it will be removed in a future release, use related_nodes instead",
@@ -63,7 +85,37 @@ class TaskNode(Task):
     related_nodes = List(TaskRelatedNode)
     logs = Field(TaskLogEdge)
     available_actions = List(NonNull(TaskAction), required=True)
+    error = Field(
+        TaskError, description="Classified failure reason with a remediation hint; null unless the task failed with one"
+    )
+
+    @classmethod
+    def resolve_type(
+        cls,
+        instance: dict[str, Any],
+        info: GraphQLResolveInfo,  # noqa: ARG003
+    ) -> type[ObjectType]:
+        return TASK_TYPES.get(instance.get("workflow", ""), TaskNode)
+
+
+class TaskNode(ObjectType):
+    class Meta:
+        interfaces = (TaskNodeInterface,)
+
+
+class WebhookDeliveryTask(ObjectType):
+    class Meta:
+        interfaces = (TaskNodeInterface,)
+
+    http_request = Field(HttpRequest, required=False)
+    http_response = Field(HttpResponse, required=False)
+
+
+TASK_TYPES: dict[str, type[ObjectType]] = {
+    WEBHOOK_SEND.name: WebhookDeliveryTask,
+    "undefined": TaskNode,
+}
 
 
 class TaskNodes(ObjectType):
-    node = Field(TaskNode)
+    node = Field(TaskNodeInterface)

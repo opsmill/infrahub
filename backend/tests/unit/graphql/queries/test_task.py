@@ -151,45 +151,42 @@ FETCH_OPTIONS_CASES = [
         fields={"count": {}},
         expected=FlowRunFetchOptions(include_count=True),
     ),
+    # Any node selection fetches the workflow name alongside the runs: it is the concrete-type
+    # discriminant, and the type of every returned node is resolved regardless of the fields selected.
     FetchOptionsCase(
-        name="node_fields_enable_runs",
+        name="node_fields_enable_runs_and_workflow",
         fields={"edges": {"node": {"title": {}}}},
-        expected=FlowRunFetchOptions(include_runs=True),
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True),
     ),
     FetchOptionsCase(
         name="logs_enable_logs_and_runs",
         fields={"edges": {"node": {"logs": {"edges": {"node": {"message": {}}}}}}},
-        expected=FlowRunFetchOptions(include_runs=True, include_logs=True),
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_logs=True),
     ),
     FetchOptionsCase(
         name="logs_count_alone_enables_logs",
         fields={"edges": {"node": {"logs": {"count": {}}}}},
-        expected=FlowRunFetchOptions(include_runs=True, include_logs=True),
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_logs=True),
     ),
     FetchOptionsCase(
         name="progress_enables_progress",
         fields={"edges": {"node": {"progress": {}}}},
-        expected=FlowRunFetchOptions(include_runs=True, include_progress=True),
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_progress=True),
     ),
     FetchOptionsCase(
         name="related_node_enables_related_nodes",
         fields={"edges": {"node": {"related_node": {}}}},
-        expected=FlowRunFetchOptions(include_runs=True, include_related_nodes=True),
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_related_nodes=True),
     ),
     FetchOptionsCase(
         name="related_node_kind_enables_related_nodes",
         fields={"edges": {"node": {"related_node_kind": {}}}},
-        expected=FlowRunFetchOptions(include_runs=True, include_related_nodes=True),
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_related_nodes=True),
     ),
     FetchOptionsCase(
         name="related_nodes_enables_related_nodes",
         fields={"edges": {"node": {"related_nodes": {}}}},
-        expected=FlowRunFetchOptions(include_runs=True, include_related_nodes=True),
-    ),
-    FetchOptionsCase(
-        name="workflow_enables_workflow",
-        fields={"edges": {"node": {"workflow": {}}}},
-        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True),
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_related_nodes=True),
     ),
     FetchOptionsCase(
         name="empty_selection_enables_nothing",
