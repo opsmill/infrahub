@@ -29,7 +29,7 @@ class PreferenceRepository:
 
     async def get_for_owner(self, owner_id: str) -> Preference | None:
         """Return the Preference owned by `owner_id`, or None when there is no row."""
-        query = await PreferenceGetByOwnerQuery.init(db=self.db, owner_ids={owner_id}, node_type=Preference.get_type())
+        query = await PreferenceGetByOwnerQuery.init(db=self.db, owner_ids={owner_id})
         await query.execute(db=self.db)
 
         result = query.get_result()
@@ -43,7 +43,7 @@ class PreferenceRepository:
 
         Owners with no row are simply absent from the map.
         """
-        query = await PreferenceGetByOwnerQuery.init(db=self.db, owner_ids=owner_ids, node_type=Preference.get_type())
+        query = await PreferenceGetByOwnerQuery.init(db=self.db, owner_ids=owner_ids)
         await query.execute(db=self.db)
 
         preferences: dict[str, Preference] = {}
