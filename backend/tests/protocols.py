@@ -217,6 +217,7 @@ class CoreTransformation(CoreNode):
     query: RelationshipManager[CoreGraphQLQuery]
     repository: RelationshipManager[CoreGenericRepository]
     tags: RelationshipManager[BuiltinTag]
+    artifact_definitions: RelationshipManager[CoreArtifactDefinition]
 
 
 class CoreTriggerRule(CoreNode):
@@ -325,6 +326,8 @@ class CoreArtifactDefinition(CoreTaskTarget):
     fingerprint: StringOptional
     targets: RelationshipManager[CoreGroup]
     transformation: RelationshipManager[CoreTransformation]
+    artifacts: RelationshipManager[CoreArtifact]
+    validators: RelationshipManager[CoreArtifactValidator]
 
 
 class CoreArtifactThread(CoreThread):
@@ -356,6 +359,7 @@ class CoreCheckDefinition(CoreTaskTarget):
     query: RelationshipManager[CoreGraphQLQuery]
     targets: RelationshipManager[CoreGroup]
     tags: RelationshipManager[BuiltinTag]
+    validators: RelationshipManager[CoreUserValidator]
 
 
 class CoreCustomWebhook(CoreWebhook, CoreTaskTarget):
@@ -416,6 +420,8 @@ class CoreGeneratorDefinition(CoreTaskTarget):
     query: RelationshipManager[CoreGraphQLQuery]
     repository: RelationshipManager[CoreGenericRepository]
     targets: RelationshipManager[CoreGroup]
+    instances: RelationshipManager[CoreGeneratorInstance]
+    validators: RelationshipManager[CoreGeneratorValidator]
 
 
 class CoreGeneratorGroup(CoreGroup):
