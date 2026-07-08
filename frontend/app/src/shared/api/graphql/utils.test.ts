@@ -1,10 +1,18 @@
+import { EnumType, jsonToGraphQLQuery } from "json-to-graphql-query";
 import { describe, expect, it } from "vitest";
 
+import {
+  addAttributesToRequest,
+  addFiltersToRequest,
+  addOrderByToRequest,
+  addRelationshipsToRequest,
+} from "@/shared/api/graphql/utils";
+
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 import { generateAttributeSchema, generateRelationshipSchema } from "../../../../tests/fake/schema";
-import { addAttributesToRequest, addFiltersToRequest, addRelationshipsToRequest } from "./utils";
 
 describe("addAttributesToRequest", () => {
   it("should return base fragment for simple attribute", () => {
@@ -386,5 +394,42 @@ describe("addFiltersToRequest", () => {
 
     // THEN
     expect(result).toEqual({});
+  });
+});
+
+describe("addOrderByToRequest", () => {
+  it("serializes direction as an unquoted enum the server accepts, not a quoted string", () => {
+    // GIVEN
+    const sort: Sort[] = [
+      { field: "name__value", direction: "ASC" },
+      { field: "owner__name__value", direction: "DESC" },
+    ];
+
+    // WHEN
+    const query = jsonToGraphQLQuery({ q: { __args: addOrderByToRequest(sort) } });
+
+    // THEN
+    expect(query).toContain("direction: ASC");
+    expect(query).toContain("direction: DESC");
+    expect(query).not.toContain('direction: "ASC"');
+    expect(query).not.toContain('direction: "DESC"');
+  });
+
+  it("passes relationship and node-metadata field keys through verbatim, wrapping only direction", () => {
+    // GIVEN
+    const sort: Sort[] = [
+      { field: "owner__name__value", direction: "ASC" },
+      { field: "node_metadata__updated_at", direction: "DESC" },
+    ];
+
+    // WHEN
+    const { order } = addOrderByToRequest(sort);
+
+    // THEN
+    expect(order.by.map((entry) => entry.field)).toEqual([
+      "owner__name__value",
+      "node_metadata__updated_at",
+    ]);
+    expect(order.by.every((entry) => entry.direction instanceof EnumType)).toBe(true);
   });
 });

@@ -23,36 +23,36 @@ const buttonVariants = tv({
     "data-disabled:pointer-events-none data-disabled:cursor-default data-disabled:opacity-60 data-disabled:shadow-none",
     "data-pending:cursor-default data-pending:select-none",
     "data-pressed:scale-97 data-pressed:shadow-none data-pressed:duration-75",
-    "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
   ],
   variants: {
     variant: {
       primary: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-cyan-800 bg-gradient-to-b from-cyan-800 to-cyan-700 text-white",
+        "border-cyan-800 bg-gradient-to-b from-cyan-800 to-cyan-700 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "primary-outline": [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-cyan-700 bg-gradient-to-b from-stone-100 to-white text-cyan-700",
+        "border-cyan-700 bg-gradient-to-b from-stone-100 to-white text-cyan-700 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
         "data-hovered:from-neutral-100",
       ],
       danger: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-rose-700 bg-gradient-to-b from-rose-700 to-rose-600 text-white",
+        "border-rose-700 bg-gradient-to-b from-rose-700 to-rose-600 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "danger-outline": [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-rose-200 bg-gradient-to-b from-stone-100 to-white text-rose-600",
+        "border-rose-200 bg-gradient-to-b from-stone-100 to-white text-rose-600 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
         "data-hovered:from-rose-50",
       ],
       warning: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-amber-600 bg-gradient-to-b from-amber-600 to-amber-500 text-white",
+        "border-amber-600 bg-gradient-to-b from-amber-600 to-amber-500 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       active: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-700 text-white",
+        "border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-700 text-white inset-shadow-[0_1px_0_rgba(255,255,255,0.15)]",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       outline: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-neutral-200 bg-gradient-to-b from-stone-100 to-white text-stone-800",
+        "border-neutral-200 bg-gradient-to-b from-stone-100 to-white text-stone-800 inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
         "data-hovered:from-neutral-100",
       ],
       ghost: [

@@ -11,16 +11,16 @@ import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
 const checkboxVariants = tv({
   base: [
-    "group/checkbox flex cursor-pointer select-none items-center gap-1.5 text-sm",
+    "group/checkbox flex cursor-pointer items-center gap-1.5 text-sm select-none",
     "data-disabled:cursor-not-allowed data-disabled:opacity-70",
   ],
 });
 
 const checkboxIndicatorVariants = tv({
   base: [
-    "flex size-4.5 shrink-0 items-center justify-center rounded-md border border-neutral-300 text-white bg-white transition-all duration-200",
+    "flex size-4.5 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-white transition-all duration-200",
     "group-data-pressed/checkbox:scale-90",
-    "group-data-focus-visible/checkbox:border-cyan-700 group-data-focus-visible/checkbox:outline-hidden group-data-focus-visible/checkbox:ring-2 group-data-focus-visible/checkbox:ring-cyan-700/25",
+    "group-data-focus-visible/checkbox:border-cyan-700 group-data-focus-visible/checkbox:ring-2 group-data-focus-visible/checkbox:ring-cyan-700/25 group-data-focus-visible/checkbox:outline-hidden",
   ],
   variants: {
     isActive: {

@@ -371,10 +371,11 @@ RETURN start_node_uuid, start_node_kind, hops, depth
 # Exhaustive-mode half-enumeration. Unlike the pinned canonical join, these enumerate ALL
 # length-``n`` simple paths from one fixed anchor (the active source, or the active target) to
 # any node — the endpoint becomes a candidate middle. The caller joins a left half to a right
-# half on a shared middle and drops pairs that share any other node, so completeness does not
-# depend on a node being reached by its shortest sub-path. Each half is itself kept simple by
-# the distinct-node predicate. ``mid_uuid`` is the half's free endpoint (the join key); ``hops``
-# runs outward from the fixed anchor (source→mid for the left, mid→target for the right).
+# half on a shared middle (by ``mid_uuid``) and drops pairs that share any other node, so
+# completeness does not depend on a node being reached by its shortest sub-path. Each half is
+# itself kept simple by the distinct-node predicate. ``mid_uuid`` is the half's free endpoint
+# (the join key); ``hops`` runs outward from the fixed anchor (source→mid for the left,
+# mid→target for the right).
 _HALF_FROM_SOURCE = """
 %(source_match)s
 MATCH lpath = (source) %(unit)s{%(length)d} (mid:Node)
@@ -391,8 +392,18 @@ LIMIT $half_limit
 
 _HALF_TO_TARGET = """
 %(target_match)s
-MATCH rpath = (m:Node) %(unit)s{%(length)d} (target)
-WHERE m.uuid IN $middles
+// Resolve each candidate middle UUID to its single active Node vertex (latest IS_PART_OF wins).
+UNWIND $middles AS middle_uuid
+CALL (middle_uuid) {
+    MATCH (m:Node {uuid: middle_uuid})-[r:IS_PART_OF]->(:Root)
+    WHERE %(visible_r)s
+    RETURN m, r AS part_of
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH m, target
+WHERE part_of.status = "active"
+MATCH rpath = (m) %(unit)s{%(length)d} (target)
 WITH m, [i IN range(0, %(last)d) | {
         relationship_identifier: nodes(rpath)[i * 2 + 1].name,
         uuid: nodes(rpath)[i * 2 + 2].uuid,
@@ -720,6 +731,7 @@ class GraphTraversalCypherRenderer:
             "unit": unit,
             "length": length,
             "last": length - 1,
+            "visible_r": _BRANCH_VISIBLE.format(rv="r"),
         }
         params: dict[str, Any] = {
             **self._base_params(source_id=source_id, at=at),

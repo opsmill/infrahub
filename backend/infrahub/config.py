@@ -442,6 +442,15 @@ class CacheSettings(BaseSettings):
         ge=1,
         description="Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task.",
     )
+    init_lock_ttl_mins: int = Field(
+        default=20,
+        ge=1,
+        description=(
+            "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
+            "the lock auto-expires after this period so Infrahub can recover on its own. "
+            "Only enforced with the Redis cache driver."
+        ),
+    )
 
     @property
     def service_port(self) -> int:

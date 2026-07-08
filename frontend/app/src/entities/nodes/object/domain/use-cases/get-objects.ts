@@ -7,6 +7,7 @@ import { getObjectsFromApi } from "@/entities/nodes/object/api/get-objects-from-
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -17,6 +18,7 @@ export type GetObjectsParams = ContextParams &
   PaginationParams & {
     schema: ModelSchema;
     filters?: Array<Filter>;
+    sort?: Array<Sort> | null;
     getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
     getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
     attributesOptions?: AddAttributesToRequestOptions;
@@ -32,6 +34,7 @@ export const getObjects: GetObjects = async ({
   branchName,
   atDate,
   filters,
+  sort,
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
   attributesOptions,
@@ -51,6 +54,7 @@ export const getObjects: GetObjects = async ({
     branchName,
     atDate,
     filters,
+    sort,
     attributesOptions,
     relationshipsOptions,
   });
