@@ -56,19 +56,19 @@ class EffectivePreferences:
     user: Preference | None
     global_: Preference | None
 
-    def resolve_date_format(self) -> ResolvedPreference[DateFormat]:
-        return self._resolve(
+    def resolved_date_format(self) -> ResolvedPreference[DateFormat]:
+        return self._resolve_field(
             self.user.date_format if self.user else None,
             self.global_.date_format if self.global_ else None,
         )
 
-    def resolve_timezone(self) -> ResolvedPreference[str]:
-        return self._resolve(
+    def resolved_timezone(self) -> ResolvedPreference[str]:
+        return self._resolve_field(
             self.user.timezone if self.user else None,
             self.global_.timezone if self.global_ else None,
         )
 
-    def _resolve[T](self, user_value: T | None, global_value: T | None) -> ResolvedPreference[T]:
+    def _resolve_field[T](self, user_value: T | None, global_value: T | None) -> ResolvedPreference[T]:
         if user_value is not None:
             return ResolvedPreference(value=user_value, source=PreferenceSource.USER)
         if global_value is not None:

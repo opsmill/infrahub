@@ -34,8 +34,8 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     preferences = await repository.get_for_owners(owner_ids={account_id, global_id})
     effective = EffectivePreferences(user=preferences.get(account_id), global_=preferences.get(global_id))
     return {
-        "date_format": effective.resolve_date_format(),
-        "timezone": effective.resolve_timezone(),
+        "date_format": effective.resolved_date_format(),
+        "timezone": effective.resolved_timezone(),
     }
 
 
