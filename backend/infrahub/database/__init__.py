@@ -469,7 +469,9 @@ class InfrahubDatabase:
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:
     default_db = driver.session()
-    await default_db.run(f"CREATE DATABASE {database_name} WAIT")
+    # Backtick-quote so dashes and dots in the name are not parsed as Cypher operators.
+    escaped_name = database_name.replace("`", "``")
+    await default_db.run(f"CREATE DATABASE `{escaped_name}` WAIT")
 
 
 async def validate_database(
