@@ -6,9 +6,9 @@ from infrahub.core.preferences.models import Preference
 
 
 def test_date_format_rejects_unknown_key() -> None:
-    # date_format is enum-typed, so constructing with a non-DateFormat key must raise. The match
-    # is anchored and stops before pydantic's trailing documentation URL, which carries the
-    # installed pydantic version.
+    # date_format is enum-typed, so validating a raw payload with a non-DateFormat key must raise.
+    # The match is anchored and stops before pydantic's trailing documentation URL, which carries
+    # the installed pydantic version.
     with pytest.raises(
         ValueError,
         match=(
@@ -18,9 +18,9 @@ def test_date_format_rejects_unknown_key() -> None:
             r"\[type=enum, input_value='NOPE', input_type=str\]"
         ),
     ):
-        Preference(owner_id="owner-a", date_format="NOPE")
+        Preference.model_validate({"owner_id": "owner-a", "date_format": "NOPE"})
 
 
 def test_date_format_accepts_valid_key() -> None:
-    pref = Preference(owner_id="owner-a", date_format="ISO_DATETIME")
+    pref = Preference.model_validate({"owner_id": "owner-a", "date_format": "ISO_DATETIME"})
     assert pref.date_format == "ISO_DATETIME"

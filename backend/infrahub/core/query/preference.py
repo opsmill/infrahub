@@ -19,49 +19,34 @@ def _nullable_str(result: QueryResult, label: str) -> str | None:
     return None if value is None or value == NULL_VALUE else value
 
 
-class PreferenceGetByOwnerQuery(StandardNodeQuery):
-    """Fetch the Preference rows for the given owner ids (account ids and/or the Root id).
+# The Preference columns to return: `elementId`/`uuid` and the audit fields must round-trip so a
+# later save() updates the row in place instead of creating a duplicate or resetting its metadata.
+_RETURN_LABELS = [
+    "elementId(n) AS id",
+    "n.uuid AS uuid",
+    "n.owner_id AS owner_id",
+    "n.date_format AS date_format",
+    "n.timezone AS timezone",
+    "n.created_at AS created_at",
+    "n.created_by AS created_by",
+    "n.updated_at AS updated_at",
+    "n.updated_by AS updated_by",
+]
 
-    There is at most one row per owner (guaranteed by the per-owner upsert lock).
-    """
 
-    name = "preference_get_by_owner"
+class PreferenceReadQuery(StandardNodeQuery):
+    """Shared read plumbing for Preference rows: the return columns and the row → Preference mapping."""
+
     type = QueryType.READ
 
-    def __init__(self, owner_ids: set[str], **kwargs: Any) -> None:
-        self.owner_ids = owner_ids
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        # Cypher parameters cannot bind a set, so pass the ids as a list.
-        self.params["owner_ids"] = list(self.owner_ids)
-
-        # The label is the Preference StandardNode type name (Cypher labels can't be parameterised).
-        query = """
-        MATCH (n:Preference)
-        WHERE n.owner_id IN $owner_ids
-        """
-
-        self.add_to_query(query=query)
-        # Exactly the fields required to build a Preference: `id`/`uuid` and the audit fields must
-        # round-trip so a later save() updates the row in place instead of creating a duplicate or
-        # resetting its metadata.
-        self.return_labels = [
-            "elementId(n) AS id",
-            "n.uuid AS uuid",
-            "n.owner_id AS owner_id",
-            "n.date_format AS date_format",
-            "n.timezone AS timezone",
-            "n.created_at AS created_at",
-            "n.created_by AS created_by",
-            "n.updated_at AS updated_at",
-            "n.updated_by AS updated_by",
-        ]
-        # Deterministic order so a single-owner read returns a stable row even in the (lock-prevented)
-        # event of a duplicate.
+    def _set_return_shape(self) -> None:
+        # Copy the shared list: the base query appends to return_labels, which would otherwise
+        # mutate the module-level constant across instances.
+        self.return_labels = list(_RETURN_LABELS)
+        # Deterministic order so reads are stable even in the (lock-prevented) event of a duplicate.
         self.order_by = ["uuid"]
 
-    def get_owners(self) -> list[Preference]:
+    def get_preferences(self) -> list[Preference]:
         """Deserialize the result rows into Preference instances, in query order."""
         preferences: list[Preference] = []
         for result in self.get_results():
@@ -80,3 +65,42 @@ class PreferenceGetByOwnerQuery(StandardNodeQuery):
                 )
             )
         return preferences
+
+
+class PreferenceGetByOwnerQuery(PreferenceReadQuery):
+    """Fetch the Preference rows for the given owner ids (account ids and/or the global sentinel).
+
+    There is at most one row per owner (guaranteed by the per-owner upsert lock).
+    """
+
+    name = "preference_get_by_owner"
+
+    def __init__(self, owner_ids: set[str], **kwargs: Any) -> None:
+        self.owner_ids = owner_ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        # Cypher parameters cannot bind a set, so pass the ids as a list.
+        self.params["owner_ids"] = list(self.owner_ids)
+
+        # The label is the Preference StandardNode type name (Cypher labels can't be parameterised).
+        query = """
+        MATCH (n:Preference)
+        WHERE n.owner_id IN $owner_ids
+        """
+        self.add_to_query(query=query)
+        self._set_return_shape()
+
+
+class PreferenceGetAllQuery(PreferenceReadQuery):
+    """Fetch every Preference row, across all owners."""
+
+    name = "preference_get_all"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        # The label is the Preference StandardNode type name (Cypher labels can't be parameterised).
+        query = """
+        MATCH (n:Preference)
+        """
+        self.add_to_query(query=query)
+        self._set_return_shape()

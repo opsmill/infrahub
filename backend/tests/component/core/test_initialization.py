@@ -4,7 +4,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import first_time_initialization, get_root_node, reset_deployment_id
-from infrahub.core.preferences.models import Preference
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import InfrahubDatabase
 
 
@@ -25,7 +25,7 @@ async def test_first_time_initialization_does_not_seed_preferences(
     # a fresh install and builds its own Root.
     await first_time_initialization(db=db)
 
-    assert await Preference.get_list(db=db) == []
+    assert await PreferenceRepository(db=db).get_all() == []
 
 
 async def test_reset_deployment_id_generates_new_uuid(db: InfrahubDatabase, default_branch: Branch) -> None:

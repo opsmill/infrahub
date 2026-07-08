@@ -7,10 +7,11 @@ from graphene import Argument, Boolean, Field, Mutation, String
 from typing_extensions import Self
 
 from infrahub import lock
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID, PREFERENCE_LOCK_NAMESPACE
 from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
-from infrahub.core.preferences.models import Preference, global_owner_id
+from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
-from infrahub.core.preferences.repository import PREFERENCE_LOCK_NAMESPACE, PreferenceRepository
+from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.database import retry_db_transaction
 from infrahub.graphql.types.preferences import DateFormat, PreferenceWriteScope, PreferenceWriteScopeType
 
@@ -38,7 +39,7 @@ class InfrahubSetPreferences(Mutation):
 
     scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
                    no account argument, so there is no path to write another user's preferences).
-    scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
+    scope=GLOBAL → the organisation-wide row (owner_id = a fixed sentinel), gated on
                    manage_global_preferences (super admins bypass) checked BEFORE any read.
 
     The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
@@ -72,7 +73,7 @@ class InfrahubSetPreferences(Mutation):
         if scope == PreferenceWriteScope.GLOBAL:
             # Super admins bypass via the permission manager.
             graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
-            owner_id = global_owner_id()
+            owner_id = GLOBAL_OWNER_ID
         else:
             owner_id = account_id
 
@@ -89,10 +90,11 @@ class InfrahubSetPreferences(Mutation):
         date_format: str | _Unset | None,
         timezone: str | _Unset | None,
     ) -> Self:
-        # Per-owner distributed lock: the read-create-or-update-save block below is not atomic on its
-        # own, so concurrent first-upserts for the same owner could otherwise each see "no row" and
-        # create a duplicate (and concurrent updates could lose writes). Keyed on owner_id so distinct
-        # owners never contend. Reads stay lock-free.
+        # Per-owner distributed lock: the read-modify-write block below is not atomic on its own, so
+        # concurrent first-upserts for the same owner could otherwise each see "no row" and create a
+        # duplicate (and concurrent updates could lose writes). The read runs inside the lock so it
+        # observes any in-flight write for the same owner. Keyed on owner_id so distinct owners never
+        # contend.
         async with lock.registry.get(name=owner_id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
             async with graphql_context.db.start_transaction() as db:
                 repository = PreferenceRepository(db=db)
