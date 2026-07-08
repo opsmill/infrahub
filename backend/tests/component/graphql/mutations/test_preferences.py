@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
+from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
@@ -89,6 +90,13 @@ async def test_user_lazy_create_then_update(
     assert updated.uuid == created.uuid
     assert updated.timezone == "UTC"
     assert updated.date_format == "EU_DATETIME"  # omitted field preserved
+
+    # The second write updated in place: exactly one row exists for this owner, not two.
+    # (get_for_owner returns a single row regardless of count, so assert on the raw row list.)
+    owner_rows = [
+        preference for preference in await Preference.get_list(db=db) if preference.owner_id == first_account.id
+    ]
+    assert len(owner_rows) == 1
 
 
 async def test_user_explicit_null_resets_field(
