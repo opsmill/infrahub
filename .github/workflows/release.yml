@@ -71,7 +71,7 @@ jobs:
           exit 1
 
       - name: "Publish guard: reject unreleased fallback version"
-        # fallback_base is read from pyproject.toml at run time, so bumping fallback-version needs no edit here
+        # fallback_base is read from pyproject.toml at run time; the fallback is a static sentinel (0.0.0.dev0)
         if: steps.release.outputs.base_version == steps.release.outputs.fallback_base && (steps.release.outputs.is_devrelease == 1 || steps.release.outputs.is_local == 1)
         run: |
           echo "Resolved version (${{ steps.release.outputs.version }}) is an unreleased fallback (base ${{ steps.release.outputs.fallback_base }}, dev/local build): no infrahub-v* tag is reachable. Refusing to publish."

@@ -8,9 +8,9 @@ argument-hint: [version] (e.g., "1.8.0") - leave empty for patch release
 
 Cut a new Infrahub release. The version is **derived from the latest git tag** and stamped into the
 build by hatch-vcs. There is **no `[project].version` field** in either `pyproject.toml`, and this
-command never bumps a package version — a release is declared solely by the annotated
-`infrahub-v<version>` git tag. The only `pyproject.toml` edit this command makes is the
-`fallback-version` hygiene bump (Step 4).
+command **never edits `pyproject.toml`** — a release is declared solely by the annotated
+`infrahub-v<version>` git tag. (The hatch-vcs `fallback-version` is a static sentinel, identical on
+every branch, and is never bumped — a moving value would conflict on every stable/develop merge.)
 
 **Argument**: `$ARGUMENTS`
 - If empty: increment the patch of the most recent release tag (e.g., 1.10.0 -> 1.10.1)
@@ -103,26 +103,7 @@ uv run invoke release.validate-docker-compose --version <new_version>
 If the workflow run fails, or the validation fails after pulling, stop — do NOT tag with a stale
 docker-compose.yml.
 
-## Step 4: Bump the hatch-vcs Fallback Version
-
-**Skip this step for pre-release versions** (e.g. `1.11.0b1`).
-
-The `fallback-version` in `[tool.hatch.version]` is what a build resolves when no `infrahub-v*` tag
-is reachable. It MUST always sort strictly above the latest release, so each release bumps it to the
-**next patch** of the version being released, with a `.dev0` suffix:
-
-- Releasing `1.10.2` -> `fallback-version = "1.10.3.dev0"`
-- Releasing `1.11.0` -> `fallback-version = "1.11.1.dev0"`
-
-Edit the `fallback-version` line in **both** files (the values MUST stay identical):
-
-1. `pyproject.toml` (`[tool.hatch.version]` section)
-2. `python_testcontainers/pyproject.toml` (`[tool.hatch.version]` section)
-
-Do not edit anything else in these files. The publish guard in `release.yml` reads the fallback from
-`pyproject.toml` at run time, so no workflow edit is needed.
-
-## Step 5: Build Changelog
+## Step 4: Build Changelog
 
 Run towncrier to:
 
@@ -134,7 +115,7 @@ Run towncrier to:
 uv run towncrier build --version <new_version> --yes
 ```
 
-## Step 6: Create Release Notes Page
+## Step 5: Create Release Notes Page
 
 ### Determine the release date
 
@@ -190,7 +171,7 @@ title: Release <version>
 
 Where `<changelog_sections>` contains the ### Added, ### Fixed, etc. sections extracted from the changelog.
 
-## Step 7: Update Sidebar
+## Step 6: Update Sidebar
 
 Edit `docs/sidebars.ts`:
 
@@ -206,11 +187,11 @@ For example, if releasing 1.7.2, insert:
 
 before the existing first entry.
 
-## Step 8: Commit, Tag, and Push
+## Step 7: Commit, Tag, and Push
 
-The release is one commit (changelog + docs + fallback bump) on top of the workflow's
-docker-compose commit (Step 3), plus an annotated `infrahub-v<new_version>` tag. The tag is what
-the build resolver reads — there is no version file to bump.
+The release is one commit (changelog + docs) on top of the workflow's docker-compose commit
+(Step 3), plus an annotated `infrahub-v<new_version>` tag. The tag is what the build resolver
+reads — there is no version file to bump.
 
 1. **Review the changes**:
 
@@ -223,8 +204,7 @@ the build resolver reads — there is no version file to bump.
    already committed it in Step 3):
 
    ```bash
-   git add CHANGELOG.md docs/docs/release-notes/infrahub/release-<major>_<minor>_<patch>.mdx docs/sidebars.ts \
-     pyproject.toml python_testcontainers/pyproject.toml
+   git add CHANGELOG.md docs/docs/release-notes/infrahub/release-<major>_<minor>_<patch>.mdx docs/sidebars.ts
    git commit -m "chore: release <new_version>"
    ```
 
@@ -241,20 +221,20 @@ the build resolver reads — there is no version file to bump.
    git push origin infrahub-v<new_version>
    ```
 
-## Step 9: Verify Changes
+## Step 8: Verify Changes
 
 Review all modified files:
 
 1. `CHANGELOG.md` - new release section added, fragments removed
 2. `docs/docs/release-notes/infrahub/release-<version>.mdx` - new file created
 3. `docs/sidebars.ts` - new entry added at top of releases list
-4. `pyproject.toml` + `python_testcontainers/pyproject.toml` - the diff MUST contain **only** the
-   `fallback-version` lines: `git diff HEAD~1 -- pyproject.toml python_testcontainers/pyproject.toml`
+4. **No `pyproject.toml` changes**: `git diff HEAD~1 -- pyproject.toml python_testcontainers/pyproject.toml`
+   MUST be empty
 5. `docker-compose.yml` - all infrahub services pin `<new_version>` via the workflow's bot commit
    (`uv run invoke release.validate-docker-compose --version <new_version>` passes)
 6. The annotated tag `infrahub-v<new_version>` exists and points at the release commit
 
-## Step 10: Summary and Next Steps
+## Step 9: Summary and Next Steps
 
 Present a summary of changes made:
 - Old version -> New version
@@ -280,5 +260,5 @@ chart carries the new version.
   after pulling, stop — do NOT tag with a stale docker-compose.yml
 - If the release notes file already exists, ask the user before overwriting
 - If the sidebar update location cannot be found, report the error and show what manual edit is needed
-- This command never bumps a package version in `pyproject.toml` (`[project].version` does not
-  exist); the only `pyproject.toml` change it makes is the `fallback-version` bump in Step 4
+- This command NEVER edits `pyproject.toml` at any step (`[project].version` does not exist, and
+  the `fallback-version` sentinel is static); if any guidance suggests otherwise, it is stale
