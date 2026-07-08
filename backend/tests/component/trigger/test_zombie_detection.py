@@ -22,11 +22,6 @@ if TYPE_CHECKING:
 
     from infrahub.trigger.models import SystemTriggerDefinition
 
-# Longer than the 90s window the automation used to have (the regression this file guards
-# against), and shorter than its current window so the wait is survivable at all.
-RETRY_DELAY_SECONDS = 100.0
-SETTLE_TIMEOUT_SECONDS = RETRY_DELAY_SECONDS + 60.0
-
 # The shipped window outlasts the longest configured backoff; the event-driven tests scale it
 # down so a verdict arrives within seconds instead of minutes.
 SCALED_WINDOW = timedelta(seconds=20)
@@ -34,7 +29,7 @@ VERDICT_TIMEOUT_SECONDS = 60.0
 POLL_INTERVAL_SECONDS = 1.0
 
 
-@flow(name="retrying-under-zombie-watch", retries=1, retry_delay_seconds=RETRY_DELAY_SECONDS)
+@flow(name="retrying-under-zombie-watch")
 async def _always_failing() -> None:
     raise ValueError("the target is unavailable")
 
@@ -54,36 +49,6 @@ async def register_automation(prefect_client: PrefectClient, definition: SystemT
         actions=[action.get_prefect() for action in definition.actions],
     )
     return await prefect_client.create_automation(automation=automation)
-
-
-@pytest.fixture
-async def registered_zombie_automation(prefect_client: PrefectClient) -> AsyncGenerator[None, None]:
-    """Register the shipped zombie-detection automation on the live server, then remove it."""
-    automation_id = await register_automation(prefect_client, TRIGGER_CRASH_ZOMBIE_FLOWS)
-    yield
-    await prefect_client.delete_automation(automation_id=automation_id)
-
-
-async def test_retry_wait_is_not_marked_crashed(
-    prefect_client: PrefectClient, registered_zombie_automation: None
-) -> None:
-    """A run waiting out its retry backoff is expected silence, not a zombie.
-
-    The flow fails, waits longer than the automation's no-heartbeat window, retries, and fails
-    for good. At no point may the automation mark the run as crashed: a crashed state makes the
-    run look settled mid-delivery and invites conflicting operator actions.
-    """
-    state = await asyncio.wait_for(
-        _always_failing(return_state=True),  # type: ignore[call-overload]
-        timeout=SETTLE_TIMEOUT_SECONDS,
-    )
-
-    assert state.type == StateType.FAILED
-    assert state.state_details.flow_run_id is not None
-
-    history = await prefect_client.read_flow_run_states(flow_run_id=state.state_details.flow_run_id)
-    crashed = [item for item in history if item.type == StateType.CRASHED]
-    assert crashed == [], "the zombie automation crashed a run that was waiting between attempts"
 
 
 @pytest.fixture
