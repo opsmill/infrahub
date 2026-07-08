@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 DEAD_WORKER = "dead-worker"
-# Shorter than the 600s head start given to merging_branch, longer than the zero-age branch in the
+# Shorter than the 600s head start given to merging_branch_for_10m, longer than the zero-age branch in the
 # within-grace test.
 GRACE_PERIOD_SECONDS = 180
 
@@ -57,7 +57,7 @@ class TestFailureDetection:
         )
 
     @pytest.fixture
-    async def merging_branch(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
+    async def merging_branch_for_10m(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
         branch = Branch(
             name="failure-detection-merging",
             status=BranchStatus.MERGING,
@@ -68,28 +68,28 @@ class TestFailureDetection:
         return branch
 
     async def test_dead_holder_past_grace_is_flagged(
-        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch: Branch
+        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch_for_10m: Branch
     ) -> None:
         await cache.set(MERGE_LOCK_KEY, _lock_token(DEAD_WORKER))
         recovery = self._identifier(db, cache, component)
 
         flagged = await recovery.scan()
 
-        assert flagged == merging_branch.name
-        reloaded = await Branch.get_by_name(db=db, name=merging_branch.name)
+        assert flagged == merging_branch_for_10m.name
+        reloaded = await Branch.get_by_name(db=db, name=merging_branch_for_10m.name)
         assert reloaded.status == BranchStatus.MERGE_FAILED
         assert await MergeWriteBlocker(cache=cache).get() == MergeProtection(
-            branch=merging_branch.name, state=MergeProtectionState.MERGE_FAILED
+            branch=merging_branch_for_10m.name, state=MergeProtectionState.MERGE_FAILED
         )
 
     async def test_active_holder_is_not_flagged(
-        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch: Branch
+        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch_for_10m: Branch
     ) -> None:
         await cache.set(MERGE_LOCK_KEY, _lock_token(WORKER_IDENTITY))
         recovery = self._identifier(db, cache, component)
 
         assert await recovery.scan() is None
-        reloaded = await Branch.get_by_name(db=db, name=merging_branch.name)
+        reloaded = await Branch.get_by_name(db=db, name=merging_branch_for_10m.name)
         assert reloaded.status == BranchStatus.MERGING
 
     async def test_within_grace_is_not_flagged(
@@ -110,13 +110,13 @@ class TestFailureDetection:
         assert reloaded.status == BranchStatus.MERGING
 
     async def test_scan_is_idempotent(
-        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch: Branch
+        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch_for_10m: Branch
     ) -> None:
         await cache.set(MERGE_LOCK_KEY, _lock_token(DEAD_WORKER))
         recovery = self._identifier(db, cache, component)
 
-        assert await recovery.scan() == merging_branch.name
+        assert await recovery.scan() == merging_branch_for_10m.name
         # A second pass finds no MERGING branch (it is now MERGE_FAILED), so it is a no-op.
         assert await recovery.scan() is None
-        reloaded = await Branch.get_by_name(db=db, name=merging_branch.name)
+        reloaded = await Branch.get_by_name(db=db, name=merging_branch_for_10m.name)
         assert reloaded.status == BranchStatus.MERGE_FAILED
