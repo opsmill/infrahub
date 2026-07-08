@@ -10,9 +10,8 @@ from infrahub.core.merge.recompute_coalescing import (
     HFID,
     AffectedTarget,
     CoalescedRecompute,
+    CoalescedRecomputeSubmitter,
     ReaderLookup,
-    plan_coalesced_submissions,
-    submit_coalesced_recompute,
 )
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventBranchContext, EventContext
@@ -65,7 +64,7 @@ def _event_context() -> EventContext:
 
 
 def test_plan_makes_one_submission_per_target_with_union_ids() -> None:
-    submissions = plan_coalesced_submissions(_coalesced())
+    submissions = CoalescedRecomputeSubmitter.plan(_coalesced())
 
     assert [
         (s.family, s.target_kind, s.attribute_name, s.source_kind, s.filter_key, s.node_ids) for s in submissions
@@ -79,7 +78,9 @@ def test_plan_makes_one_submission_per_target_with_union_ids() -> None:
 async def test_submit_reuses_process_flows_over_the_union() -> None:
     recorder = WorkflowRecorder()
 
-    submissions = await submit_coalesced_recompute(coalesced=_coalesced(), workflow=recorder, context=_event_context())
+    submissions = await CoalescedRecomputeSubmitter(workflow=recorder).submit(
+        coalesced=_coalesced(), context=_event_context()
+    )
 
     assert len(submissions) == 3
     assert len(recorder.submit_calls) == 3
@@ -115,7 +116,7 @@ def test_plan_chunks_a_union_larger_than_the_submission_limit() -> None:
         reader_lookups=frozenset({ReaderLookup(source_kind=SOURCE_KIND, filter_key="peer__ids", source_node_ids=ids)}),
     )
 
-    submissions = plan_coalesced_submissions(CoalescedRecompute(branch="main", targets=frozenset({target})))
+    submissions = CoalescedRecomputeSubmitter.plan(CoalescedRecompute(branch="main", targets=frozenset({target})))
 
     # The oversized union splits into bounded submissions, each below the flow-run parameter limit.
     assert [len(submission.node_ids) for submission in submissions] == [chunk_size, chunk_size, 1]
@@ -142,7 +143,9 @@ class _FailFirstWorkflow(WorkflowRecorder):
 async def test_submit_skips_a_failing_submission_and_keeps_the_rest() -> None:
     recorder = _FailFirstWorkflow()
 
-    submitted = await submit_coalesced_recompute(coalesced=_coalesced(), workflow=recorder, context=_event_context())
+    submitted = await CoalescedRecomputeSubmitter(workflow=recorder).submit(
+        coalesced=_coalesced(), context=_event_context()
+    )
 
     # The first submission failed; the other two were still dispatched and returned.
     assert len(recorder.submit_calls) == 2

@@ -10,6 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta
+from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
@@ -105,8 +106,6 @@ class UpdateHFID(Mutation):
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            # A recompute write must stay live-origin: a merge/rebase origin here would be suppressed by
-            # the coalesced-recompute triggers, leaving dependent recomputes stale.
             event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
@@ -118,6 +117,9 @@ class UpdateHFID(Mutation):
                     request_id=request_id,
                     account_id=graphql_context.active_account_session.account_id,
                     branch=graphql_context.branch,
+                    # Emit as a live edit so the per-node recompute automations act on it; a merge or
+                    # rebase origin would be skipped as a replay, leaving dependent values stale.
+                    origin=NodeMutationOrigin.LIVE,
                 ),
             )
             await graphql_context.active_service.event.send(event=event)

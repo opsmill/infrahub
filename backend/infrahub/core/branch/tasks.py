@@ -25,8 +25,7 @@ from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
-    build_coalesced_recompute,
-    submit_coalesced_recompute,
+    MergeRecomputeCoordinator,
 )
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
@@ -306,8 +305,8 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
         )
         schema_branch = registry.schema.get_schema_branch(name=schema_name)
-        coalesced = build_coalesced_recompute(changes=changes, schema_branch=schema_branch, branch=user_branch.name)
-        await submit_coalesced_recompute(coalesced=coalesced, workflow=get_workflow(), context=event_context)
+        coordinator = MergeRecomputeCoordinator.new(schema_branch=schema_branch, workflow=get_workflow())
+        await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
     except Exception:
         log.exception("Failed to submit the coalesced post-rebase recompute")
 

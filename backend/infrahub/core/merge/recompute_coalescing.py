@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, assert_never
+from typing import TYPE_CHECKING, Any, Literal, Self, assert_never
 
 from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.events.limits import get_submission_chunk_size
@@ -149,138 +149,6 @@ class _TargetAccumulator:
         )
 
 
-def build_coalesced_recompute(
-    *,
-    changes: Iterable[MergeChange],
-    schema_branch: SchemaBranch,
-    branch: str,
-) -> CoalescedRecompute:
-    """Build the deduplicated recompute for a merge or rebase change set.
-
-    Groups the changes by signature so derivation runs once per distinct change
-    shape, runs the three family derivers, and merges the results so each derived
-    target is recomputed once with its reader lookups unioned.
-
-    Targets come only from the changes in the set. A branch-originated merge carries every level the
-    branch already cascaded, so a transitive chain is covered in one pass; a level absent from the set
-    (a destination-only reader, or a rebase whose source branch had no readers) is reached instead by
-    the live recompute its predecessor's write triggers.
-    """
-    ids_by_signature: dict[ChangeSignature, set[str]] = {}
-    for change in changes:
-        signature = ChangeSignature(kind=change.kind, action=change.action, changed_fields=change.changed_fields)
-        ids_by_signature.setdefault(signature, set()).add(change.node_id)
-
-    accumulators: dict[tuple[str, str, str | None], _TargetAccumulator] = {}
-    for signature, node_ids in ids_by_signature.items():
-        source_node_ids = frozenset(node_ids)
-        for resolved in _resolve_targets(signature=signature, schema_branch=schema_branch):
-            key = (resolved.family, resolved.target_kind, resolved.attribute_name)
-            accumulator = accumulators.get(key)
-            if accumulator is None:
-                accumulator = _TargetAccumulator(
-                    family=resolved.family,
-                    target_kind=resolved.target_kind,
-                    attribute_name=resolved.attribute_name,
-                )
-                accumulators[key] = accumulator
-            accumulator.add(resolved=resolved, source_kind=signature.kind, source_node_ids=source_node_ids)
-
-    return CoalescedRecompute(
-        branch=branch,
-        targets=frozenset(accumulator.freeze() for accumulator in accumulators.values()),
-    )
-
-
-def _resolve_targets(*, signature: ChangeSignature, schema_branch: SchemaBranch) -> Iterator[_ResolvedTarget]:
-    if signature.action == CREATED:
-        include_self, include_cross = True, False
-        fields: frozenset[str] | None = None
-        precise = True
-    elif signature.action == UPDATED:
-        include_self, include_cross = False, True
-        # An update with no recorded fields cannot be scoped, so fall back to every
-        # field rather than risk missing a reader (over-recompute is safe).
-        fields = signature.changed_fields or None
-        precise = bool(signature.changed_fields)
-    elif signature.action == DELETED:
-        include_self, include_cross = False, True
-        fields = None
-        precise = True
-    else:
-        raise ValueError(f"Unknown change action: {signature.action!r}")
-
-    yield from _resolve_computed_targets(
-        schema_branch=schema_branch,
-        kind=signature.kind,
-        fields=fields,
-        include_self=include_self,
-        include_cross=include_cross,
-        precise=precise,
-    )
-
-    for display_target in derive_display_label_targets(
-        display_labels=schema_branch.display_labels,
-        kind=signature.kind,
-        changed_fields=fields,
-        include_self=include_self,
-        include_cross=include_cross,
-    ):
-        yield _ResolvedTarget(
-            family=DISPLAY_LABEL,
-            target_kind=display_target.target_kind,
-            attribute_name=None,
-            filter_key=display_target.filter_key,
-            reads_across_relationship=display_target.reads_across_relationship,
-            precise=precise,
-        )
-
-    for hfid_target in derive_hfid_targets(
-        hfids=schema_branch.hfids,
-        kind=signature.kind,
-        changed_fields=fields,
-        include_self=include_self,
-        include_cross=include_cross,
-    ):
-        yield _ResolvedTarget(
-            family=HFID,
-            target_kind=hfid_target.target_kind,
-            attribute_name=None,
-            filter_key=hfid_target.filter_key,
-            reads_across_relationship=hfid_target.reads_across_relationship,
-            precise=precise,
-        )
-
-
-def _resolve_computed_targets(
-    *,
-    schema_branch: SchemaBranch,
-    kind: str,
-    fields: frozenset[str] | None,
-    include_self: bool,
-    include_cross: bool,
-    precise: bool,
-) -> Iterator[_ResolvedTarget]:
-    updates = sorted(fields) if fields is not None else None
-    for resolved in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind, updates):
-        target_kind = resolved.target.kind
-        attribute_name = resolved.target.attribute.name
-        for filter_key in resolved.node_filters:
-            is_self = filter_key == _SELF_FILTER
-            if is_self and not (include_self and target_kind == kind):
-                continue
-            if not is_self and not include_cross:
-                continue
-            yield _ResolvedTarget(
-                family=COMPUTED_ATTRIBUTE,
-                target_kind=target_kind,
-                attribute_name=attribute_name,
-                filter_key=filter_key,
-                reads_across_relationship=not is_self,
-                precise=precise,
-            )
-
-
 @dataclass(frozen=True)
 class CoalescedSubmission:
     """One reuse of an existing per-family process flow over a chunk of the changed nodes.
@@ -307,90 +175,256 @@ def _chunk(ids: tuple[str, ...], size: int) -> Iterator[tuple[str, ...]]:
         yield ids[start : start + size]
 
 
-def plan_coalesced_submissions(coalesced: CoalescedRecompute) -> list[CoalescedSubmission]:
-    """Turn a coalesced recompute into the deduplicated, ordered set of process-flow submissions.
+class CoalescedRecomputeBuilder:
+    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch.
 
-    One submission per derived target and source kind, each carrying the changed node ids. A
-    target whose union exceeds the submission chunk size is split into several submissions so no
-    flow-run parameter grows past the size Prefect accepts. The order is deterministic so the same
-    change set always submits the same work.
+    The schema branch is the dependency the derivation reads, so it is held on the instance rather
+    than threaded through every call.
     """
-    chunk_size = get_submission_chunk_size()
-    submissions = [
-        CoalescedSubmission(
-            family=target.family,
-            source_kind=lookup.source_kind,
-            target_kind=target.target_kind,
-            attribute_name=target.attribute_name,
-            filter_key=lookup.filter_key,
-            branch=coalesced.branch,
-            node_ids=chunk,
+
+    def __init__(self, schema_branch: SchemaBranch) -> None:
+        self.schema_branch = schema_branch
+
+    def build(self, *, changes: Iterable[MergeChange], branch: str) -> CoalescedRecompute:
+        """Derive the deduplicated set of derived values to recompute for a merge or rebase.
+
+        Changes are grouped by their (kind, action, changed fields) signature so the derivation runs
+        once per distinct shape, then the three family derivers (computed attribute, display label,
+        human-friendly id) produce the affected targets. Targets are deduplicated across the whole
+        change set, and each target's reader lookups are unioned so its readers are found by one
+        query rather than one per changed node.
+
+        Only the nodes in this change set drive the derivation. A derived value that reads a changed
+        node but is not itself in the change set (for example a reader that exists only on the
+        destination branch) is not recomputed here; it is reached by the ordinary live recompute
+        that fires when this pass writes the value that reader depends on.
+        """
+        ids_by_signature: dict[ChangeSignature, set[str]] = {}
+        for change in changes:
+            signature = ChangeSignature(kind=change.kind, action=change.action, changed_fields=change.changed_fields)
+            ids_by_signature.setdefault(signature, set()).add(change.node_id)
+
+        accumulators: dict[tuple[str, str, str | None], _TargetAccumulator] = {}
+        for signature, node_ids in ids_by_signature.items():
+            source_node_ids = frozenset(node_ids)
+            for resolved in self._resolve_targets(signature=signature):
+                key = (resolved.family, resolved.target_kind, resolved.attribute_name)
+                accumulator = accumulators.get(key)
+                if accumulator is None:
+                    accumulator = _TargetAccumulator(
+                        family=resolved.family,
+                        target_kind=resolved.target_kind,
+                        attribute_name=resolved.attribute_name,
+                    )
+                    accumulators[key] = accumulator
+                accumulator.add(resolved=resolved, source_kind=signature.kind, source_node_ids=source_node_ids)
+
+        return CoalescedRecompute(
+            branch=branch,
+            targets=frozenset(accumulator.freeze() for accumulator in accumulators.values()),
         )
-        for target in coalesced.targets
-        for lookup in target.reader_lookups
-        for chunk in _chunk(tuple(sorted(lookup.source_node_ids)), chunk_size)
-    ]
-    return sorted(
-        submissions,
-        key=lambda submission: (
-            submission.family,
-            submission.target_kind,
-            submission.attribute_name or "",
-            submission.source_kind,
-            submission.filter_key,
-            submission.node_ids,
-        ),
-    )
+
+    def _resolve_targets(self, *, signature: ChangeSignature) -> Iterator[_ResolvedTarget]:
+        if signature.action == CREATED:
+            include_self, include_cross = True, False
+            fields: frozenset[str] | None = None
+            precise = True
+        elif signature.action == UPDATED:
+            include_self, include_cross = False, True
+            # An update with no recorded fields cannot be scoped, so fall back to every
+            # field rather than risk missing a reader (over-recompute is safe).
+            fields = signature.changed_fields or None
+            precise = bool(signature.changed_fields)
+        elif signature.action == DELETED:
+            include_self, include_cross = False, True
+            fields = None
+            precise = True
+        else:
+            raise ValueError(f"Unknown change action: {signature.action!r}")
+
+        yield from self._resolve_computed_targets(
+            kind=signature.kind,
+            fields=fields,
+            include_self=include_self,
+            include_cross=include_cross,
+            precise=precise,
+        )
+
+        for display_target in derive_display_label_targets(
+            display_labels=self.schema_branch.display_labels,
+            kind=signature.kind,
+            changed_fields=fields,
+            include_self=include_self,
+            include_cross=include_cross,
+        ):
+            yield _ResolvedTarget(
+                family=DISPLAY_LABEL,
+                target_kind=display_target.target_kind,
+                attribute_name=None,
+                filter_key=display_target.filter_key,
+                reads_across_relationship=display_target.reads_across_relationship,
+                precise=precise,
+            )
+
+        for hfid_target in derive_hfid_targets(
+            hfids=self.schema_branch.hfids,
+            kind=signature.kind,
+            changed_fields=fields,
+            include_self=include_self,
+            include_cross=include_cross,
+        ):
+            yield _ResolvedTarget(
+                family=HFID,
+                target_kind=hfid_target.target_kind,
+                attribute_name=None,
+                filter_key=hfid_target.filter_key,
+                reads_across_relationship=hfid_target.reads_across_relationship,
+                precise=precise,
+            )
+
+    def _resolve_computed_targets(
+        self,
+        *,
+        kind: str,
+        fields: frozenset[str] | None,
+        include_self: bool,
+        include_cross: bool,
+        precise: bool,
+    ) -> Iterator[_ResolvedTarget]:
+        updates = sorted(fields) if fields is not None else None
+        for resolved in self.schema_branch.computed_attributes.get_impacted_jinja2_targets(kind, updates):
+            target_kind = resolved.target.kind
+            attribute_name = resolved.target.attribute.name
+            for filter_key in resolved.node_filters:
+                is_self = filter_key == _SELF_FILTER
+                if is_self and not (include_self and target_kind == kind):
+                    continue
+                if not is_self and not include_cross:
+                    continue
+                yield _ResolvedTarget(
+                    family=COMPUTED_ATTRIBUTE,
+                    target_kind=target_kind,
+                    attribute_name=attribute_name,
+                    filter_key=filter_key,
+                    reads_across_relationship=not is_self,
+                    precise=precise,
+                )
 
 
-def _submission_workflow(
-    *, submission: CoalescedSubmission, context: EventContext
-) -> tuple[WorkflowDefinition, dict[str, Any]]:
-    parameters: dict[str, Any] = {
-        "branch_name": submission.branch,
-        "node_kind": submission.source_kind,
-        "object_ids": list(submission.node_ids),
-        "context": context,
-    }
-    match submission.family:
-        case "computed_attribute":
-            parameters["computed_attribute_name"] = submission.attribute_name
-            parameters["computed_attribute_kind"] = submission.target_kind
-            return COMPUTED_ATTRIBUTE_PROCESS_JINJA2, parameters
-        case "display_label":
-            parameters["target_kind"] = submission.target_kind
-            return DISPLAY_LABELS_PROCESS_JINJA2, parameters
-        case "hfid":
-            parameters["target_kind"] = submission.target_kind
-            return HFID_PROCESS, parameters
-        case _:
-            assert_never(submission.family)
+class CoalescedRecomputeSubmitter:
+    """Submit a coalesced recompute by reusing the existing per-family process flows.
 
-
-async def submit_coalesced_recompute(
-    *,
-    coalesced: CoalescedRecompute,
-    workflow: InfrahubWorkflow,
-    context: EventContext,
-) -> list[CoalescedSubmission]:
-    """Submit the coalesced recompute by reusing the existing per-family process flows.
-
-    Each submission runs one process flow over a chunk of changed nodes, so the merge and rebase
-    path no longer dispatches one flow per changed node. A single submission failure is logged and
-    skipped rather than dropping the rest, since a missed submission leaves a stale stored value.
-    Returns the submissions that were dispatched.
+    The workflow adapter is the dependency the submission needs, so it is held on the instance.
     """
-    submitted: list[CoalescedSubmission] = []
-    for submission in plan_coalesced_submissions(coalesced):
-        workflow_definition, parameters = _submission_workflow(submission=submission, context=context)
-        try:
-            await workflow.submit_workflow(workflow=workflow_definition, context=context, parameters=parameters)
-        except Exception:
-            log.exception(
-                "Failed to submit a coalesced recompute for family %s target %s",
+
+    def __init__(self, workflow: InfrahubWorkflow) -> None:
+        self.workflow = workflow
+
+    @staticmethod
+    def plan(coalesced: CoalescedRecompute) -> list[CoalescedSubmission]:
+        """Turn a coalesced recompute into the deduplicated, ordered set of process-flow submissions.
+
+        One submission per derived target and source kind, each carrying the changed node ids. A
+        target whose union exceeds the submission chunk size is split into several submissions so no
+        flow-run parameter grows past the size Prefect accepts. The order is deterministic so the
+        same change set always submits the same work.
+        """
+        chunk_size = get_submission_chunk_size()
+        submissions = [
+            CoalescedSubmission(
+                family=target.family,
+                source_kind=lookup.source_kind,
+                target_kind=target.target_kind,
+                attribute_name=target.attribute_name,
+                filter_key=lookup.filter_key,
+                branch=coalesced.branch,
+                node_ids=chunk,
+            )
+            for target in coalesced.targets
+            for lookup in target.reader_lookups
+            for chunk in _chunk(tuple(sorted(lookup.source_node_ids)), chunk_size)
+        ]
+        return sorted(
+            submissions,
+            key=lambda submission: (
                 submission.family,
                 submission.target_kind,
-            )
-            continue
-        submitted.append(submission)
-    return submitted
+                submission.attribute_name or "",
+                submission.source_kind,
+                submission.filter_key,
+                submission.node_ids,
+            ),
+        )
+
+    @staticmethod
+    def _submission_workflow(
+        *, submission: CoalescedSubmission, context: EventContext
+    ) -> tuple[WorkflowDefinition, dict[str, Any]]:
+        parameters: dict[str, Any] = {
+            "branch_name": submission.branch,
+            "node_kind": submission.source_kind,
+            "object_ids": list(submission.node_ids),
+            "context": context,
+        }
+        match submission.family:
+            case "computed_attribute":
+                parameters["computed_attribute_name"] = submission.attribute_name
+                parameters["computed_attribute_kind"] = submission.target_kind
+                return COMPUTED_ATTRIBUTE_PROCESS_JINJA2, parameters
+            case "display_label":
+                parameters["target_kind"] = submission.target_kind
+                return DISPLAY_LABELS_PROCESS_JINJA2, parameters
+            case "hfid":
+                parameters["target_kind"] = submission.target_kind
+                return HFID_PROCESS, parameters
+            case _:
+                assert_never(submission.family)
+
+    async def submit(self, *, coalesced: CoalescedRecompute, context: EventContext) -> list[CoalescedSubmission]:
+        """Submit the coalesced recompute, one process flow per chunk of changed nodes.
+
+        The merge and rebase path no longer dispatches one flow per changed node. A single
+        submission failure is logged and skipped rather than dropping the rest, since a missed
+        submission leaves a stale stored value. Returns the submissions that were dispatched.
+        """
+        submitted: list[CoalescedSubmission] = []
+        for submission in self.plan(coalesced):
+            workflow_definition, parameters = self._submission_workflow(submission=submission, context=context)
+            try:
+                await self.workflow.submit_workflow(
+                    workflow=workflow_definition, context=context, parameters=parameters
+                )
+            except Exception:
+                log.exception(
+                    "Failed to submit a coalesced recompute for family %s target %s",
+                    submission.family,
+                    submission.target_kind,
+                )
+                continue
+            submitted.append(submission)
+        return submitted
+
+
+class MergeRecomputeCoordinator:
+    """Build the coalesced recompute for a merge or rebase change set and submit it.
+
+    Build and submit are always run together, so this holds one of each and hands the builder's
+    output to the submitter.
+    """
+
+    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+        self.builder = builder
+        self.submitter = submitter
+
+    @classmethod
+    def new(cls, *, schema_branch: SchemaBranch, workflow: InfrahubWorkflow) -> Self:
+        return cls(
+            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+            submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+        )
+
+    async def run(
+        self, *, changes: Iterable[MergeChange], branch: str, context: EventContext
+    ) -> list[CoalescedSubmission]:
+        coalesced = self.builder.build(changes=changes, branch=branch)
+        return await self.submitter.submit(coalesced=coalesced, context=context)
