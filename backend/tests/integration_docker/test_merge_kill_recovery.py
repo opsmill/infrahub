@@ -81,6 +81,15 @@ class TestMergeKillDetection(TestInfrahubDockerClient):
             assert status == "MERGE_FAILED", f"branch {branch_name} was not flagged MERGE_FAILED (status={status})"
         finally:
             merge_task.cancel()
+            try:
+                await merge_task
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                # The mutation legitimately errors once its worker is SIGKILLed mid-flight; retrieve
+                # the exception so an unrelated early failure (validation, connectivity) surfaces in
+                # the captured test output instead of being lost as an unretrieved-task warning.
+                print(f"merge mutation task raised: {exc!r}")
 
     @pytest.mark.skip(reason="Recovery half is not implemented yet.")
     async def test_recover_after_kill_remerges(self, client: InfrahubClient) -> None:  # pragma: no cover
