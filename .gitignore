@@ -54,3 +54,4 @@ schema/node_modules/*
 .claude/worktrees/
 .bug-analysis-*.md
 .specify/**/.cache/
+.specify/feature.json

@@ -134,8 +134,8 @@ Tracks whether Infrahub is actively using the repository:
 Monitors the connection between Infrahub and the Git server:
 
 - **Online**: Successfully connected and authenticated
-- **Error (credential)**: Authentication failure
-- **Error (connection)**: Network or connectivity issue
+- **Credential Error**: Authentication failure
+- **Connectivity Error**: Network or connectivity issue
 - **Error**: Other initialization or configuration problems
 - **Unknown**: Status cannot be determined
 
@@ -152,7 +152,7 @@ Indicates the state of data synchronization:
 
 Beyond basic synchronization, repositories support administrative actions for troubleshooting and maintenance:
 
-- **Check connectivity**: Validates network access and authentication without modifying data
+- **Check connectivity**: Validates network access and authentication without modifying repository content. The result is recorded in the repository's operational status: a successful check sets it to **Online**, while a failure sets it to the matching error state (**Credential Error**, **Connectivity Error**, or **Error**)
 - **Reimport current commit**: Forces re-processing of the current commit without fetching new changes, useful for recovering from import errors
 - **Import latest commit** (read-only repositories only): Fetches the latest commit from the remote for the tracked ref and imports its resources. This is useful when the remote repository has new changes and you want to pull them without manually updating the `ref` property. Unlike changing the `ref`, this operation keeps the same ref but updates to whatever commit that ref currently points to on the remote
 
