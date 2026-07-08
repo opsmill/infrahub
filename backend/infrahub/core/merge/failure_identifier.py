@@ -55,11 +55,13 @@ class MergeFailureIdentifier:
         cache: InfrahubCache,
         component: InfrahubComponent,
         merge_write_blocker: MergeWriteBlocker,
+        grace_period_seconds: int,
     ) -> None:
         self.db = db
         self.cache = cache
         self.component = component
         self.merge_write_blocker = merge_write_blocker
+        self.grace_period_seconds = grace_period_seconds
 
     def is_failed_merge(
         self,
@@ -69,7 +71,6 @@ class MergeFailureIdentifier:
         active_worker_ids: set[str],
         merge_started_at: Timestamp | None,
         now: Timestamp,
-        grace_period_seconds: int,
     ) -> bool:
         """Decide whether a branch represents a dead merge that must be flagged ``MERGE_FAILED``.
 
@@ -90,7 +91,7 @@ class MergeFailureIdentifier:
             return False
         if merge_started_at is None:
             return False
-        return merge_started_at.add(seconds=grace_period_seconds) < now
+        return merge_started_at.add(seconds=self.grace_period_seconds) < now
 
     async def scan(self) -> str | None:
         """Detect a dead merge and reconcile the protection key.
@@ -114,7 +115,6 @@ class MergeFailureIdentifier:
         lock_holder_worker_id = await get_merge_lock_holder_worker_id(cache=self.cache)
         active_worker_ids = await self._active_worker_ids()
         now = Timestamp()
-        grace_period_seconds = config.SETTINGS.main.merge_failure_grace_period_seconds
 
         for branch in merging:
             merge_started_at = Timestamp(branch.merge_started_at) if branch.merge_started_at else None
@@ -124,7 +124,6 @@ class MergeFailureIdentifier:
                 active_worker_ids=active_worker_ids,
                 merge_started_at=merge_started_at,
                 now=now,
-                grace_period_seconds=grace_period_seconds,
             ):
                 continue
 
@@ -187,5 +186,6 @@ async def scan_for_failed_merges(db: InfrahubDatabase, service: InfrahubServices
         cache=service.cache,
         component=service.component,
         merge_write_blocker=MergeWriteBlocker(cache=service.cache),
+        grace_period_seconds=config.SETTINGS.main.merge_failure_grace_period_seconds,
     )
     return await recovery.scan()

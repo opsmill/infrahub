@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from prefect import flow
 
-from infrahub.core.merge.failure_recovery import scan_for_failed_merges
+from infrahub.core.merge.failure_identifier import scan_for_failed_merges
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 
 

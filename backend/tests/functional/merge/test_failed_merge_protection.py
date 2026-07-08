@@ -8,7 +8,7 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub.branch.status_checker import MERGE_RECOVERY_REQUIRED_MESSAGE
 from infrahub.core import registry
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.merge.failure_recovery import scan_for_failed_merges
+from infrahub.core.merge.failure_identifier import scan_for_failed_merges
 from infrahub.core.merge.write_blocker import MergeProtection, MergeProtectionState, MergeWriteBlocker
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 import pytest
 
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.merge.failure_recovery import MergeFailureIdentifier
+from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.timestamp import Timestamp
 from tests.adapters.cache import MemoryCache
@@ -18,14 +18,15 @@ if TYPE_CHECKING:
 GRACE_SECONDS = 180
 
 
-def _identifier() -> MergeFailureIdentifier:
-    # is_failed_merge is pure (it ignores every collaborator and decides from its arguments alone),
-    # so the unused db/component are not needed to exercise it.
+def _identifier(grace_period_seconds: int) -> MergeFailureIdentifier:
+    # is_failed_merge decides from its arguments and the configured grace period alone, so the
+    # unused db/component are not needed to exercise it.
     return MergeFailureIdentifier(
         db=cast("InfrahubDatabase", None),
         cache=MemoryCache(),
         component=cast("InfrahubComponent", None),
         merge_write_blocker=MergeWriteBlocker(cache=MemoryCache()),
+        grace_period_seconds=grace_period_seconds,
     )
 
 
@@ -111,13 +112,12 @@ def test_is_failed_merge(case: PredicateCase) -> None:
         else None
     )
 
-    result = _identifier().is_failed_merge(
+    result = _identifier(grace_period_seconds=case.grace_seconds).is_failed_merge(
         status=case.status,
         lock_holder_worker_id=case.lock_holder_worker_id,
         active_worker_ids=case.active_worker_ids,
         merge_started_at=merge_started_at,
         now=now,
-        grace_period_seconds=case.grace_seconds,
     )
 
     assert result is case.expected

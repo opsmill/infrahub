@@ -24,7 +24,7 @@ from infrahub.api.exception_handlers import generic_api_exception_handler, log_f
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
-from infrahub.core.merge.failure_recovery import scan_for_failed_merges
+from infrahub.core.merge.failure_identifier import scan_for_failed_merges
 from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ForwardableError, ValidationError

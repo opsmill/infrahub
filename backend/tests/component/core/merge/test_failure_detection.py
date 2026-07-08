@@ -7,7 +7,7 @@ import pytest
 from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.merge.failure_recovery import MergeFailureIdentifier
+from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
 from infrahub.core.merge.merge_locker import MERGE_LOCK_KEY
 from infrahub.core.merge.write_blocker import MergeProtection, MergeProtectionState, MergeWriteBlocker
 from infrahub.core.timestamp import Timestamp
@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 DEAD_WORKER = "dead-worker"
+# Shorter than the 600s head start given to merging_branch, longer than the zero-age branch in the
+# within-grace test.
+GRACE_PERIOD_SECONDS = 180
 
 
 def _lock_token(worker_id: str) -> str:
@@ -45,12 +48,15 @@ class TestFailureDetection:
         await component.refresh_heartbeat()
         return component
 
-    def _recovery(self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent) -> MergeFailureIdentifier:
+    def _recovery(
+        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent
+    ) -> MergeFailureIdentifier:
         return MergeFailureIdentifier(
             db=db,
             cache=cache,
             component=component,
             merge_write_blocker=MergeWriteBlocker(cache=cache),
+            grace_period_seconds=GRACE_PERIOD_SECONDS,
         )
 
     @pytest.fixture
