@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 GRACE_SECONDS = 180
 
 
-def _recovery() -> MergeFailureIdentifier:
+def _identifier() -> MergeFailureIdentifier:
     # is_failed_merge is pure (it ignores every collaborator and decides from its arguments alone),
     # so the unused db/component are not needed to exercise it.
     return MergeFailureIdentifier(
@@ -111,7 +111,7 @@ def test_is_failed_merge(case: PredicateCase) -> None:
         else None
     )
 
-    result = _recovery().is_failed_merge(
+    result = _identifier().is_failed_merge(
         status=case.status,
         lock_holder_worker_id=case.lock_holder_worker_id,
         active_worker_ids=case.active_worker_ids,

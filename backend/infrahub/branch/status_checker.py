@@ -53,10 +53,8 @@ class BranchStatusChecker:
     async def check_merging_status(self, branch: Branch) -> None:
         """Check if writes are blocked by an in-progress or failed merge.
 
-        The block is driven by the shared merge protection (read via ``MergeWriteBlocker``) so every
-        worker sees the same state with a single lookup. Two branches are blocked: the merge *source*
-        (it is heading to MERGED) and the *default* branch (the merge target). Its state decides the
-        rejection:
+        Two branches are blocked: the merge *source* (it is heading to MERGED) and the *default*
+        branch (the merge target). Its state decides the rejection:
           - MERGING: transient — the default branch becomes writable again once the merge completes,
             so the target gate raises the retryable MergeInProgressError, and
           - MERGE_FAILED: durable — a previous merge died, so the gate raises MergeRecoveryRequiredError
