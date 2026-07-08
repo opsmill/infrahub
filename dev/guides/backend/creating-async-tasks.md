@@ -88,6 +88,15 @@ The `flow_run_name` is visible to users in the Infrahub UI. Keep it clear and sh
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} on {branch_id}")
 ```
 
+### Logging inside flows, tasks, and their helpers
+
+- Inside a `@flow` or `@task` body, use Prefect's `get_run_logger()`.
+- In a plain helper called from within a flow (no run context, also called from tests), use
+  `infrahub.log.get_run_logger()` — the `infrahub.tasks` logger.
+
+A bare `logging.getLogger(__name__)` will not surface in Prefect. See the Logging section of
+`dev/knowledge/backend/async-tasks.md` for why.
+
 ### Step 3: Register the WorkflowDefinition
 
 Add your workflow to `backend/infrahub/workflows/catalogue.py`:
@@ -264,7 +273,8 @@ Before submitting your workflow:
 - [ ] Workflow added to `WORKFLOWS` list
 - [ ] Correct `WorkflowType` selected (CORE/USER/INTERNAL)
 - [ ] `DATABASE_CHANGE` tag added if workflow modifies database
-- [ ] Uses `get_run_logger()` for logging
+- [ ] Logs use a Prefect-visible logger (`get_run_logger()` in flows/tasks; `infrahub.log.get_run_logger()` in helpers), never a bare module logger
+- [ ] Workflow names referenced from other code come from `WorkflowDefinition.name`, not string literals
 - [ ] Uses dependency injection for services
 - [ ] Tests cover workflow execution (using local execution mode)
 - [ ] Code passes `uv run invoke lint`

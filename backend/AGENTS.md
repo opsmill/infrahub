@@ -84,7 +84,7 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 - `dev/guidelines/backend/python.md` - Python coding standards
 - `dev/guidelines/changelog.md` - Changelog fragment creation
 
-### Knowledge (How the system works)
+### Knowledge (How the system works, load the knowledge base when working on relevant tasks)
 
 - `dev/knowledge/backend/architecture.md` - Backend architecture overview
 - `dev/knowledge/backend/testing.md` - Testing infrastructure and patterns

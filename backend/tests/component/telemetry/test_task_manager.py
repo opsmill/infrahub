@@ -23,12 +23,13 @@ from infrahub.telemetry.task_manager import (
     gather_prefect_information,
 )
 from infrahub.telemetry.window import floor_to_midnight_utc, get_activity_window
+from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 if TYPE_CHECKING:
     from prefect.types import DateTime
 
 LOGIN_EVENT_NAME = "infrahub.account.logged_in"
-WEBHOOK_FLOW_NAME = "webhook-process"
+WEBHOOK_FLOW_NAME = WEBHOOK_PROCESS.name
 
 
 async def _post_events(client: PrefectClient, events: list[Event]) -> None:
