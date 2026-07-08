@@ -26,7 +26,7 @@ from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.hfid.models import HFIDTriggerDefinition
 
 
-def _node_event(origin: NodeMutationOrigin | None) -> NodeUpdatedEvent:
+def _node_event(origin: NodeMutationOrigin | None = None) -> NodeUpdatedEvent:
     branch = Branch(name="test-node-origin", uuid=uuid.uuid4())
     meta = EventMeta(
         branch=branch,
@@ -35,7 +35,8 @@ def _node_event(origin: NodeMutationOrigin | None) -> NodeUpdatedEvent:
             account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
         ).to_event_context(),
     )
-    meta.origin = origin
+    if origin is not None:
+        meta.origin = origin
     return NodeUpdatedEvent(
         kind="TestingNode",
         node_id="node-1",
@@ -46,7 +47,7 @@ def _node_event(origin: NodeMutationOrigin | None) -> NodeUpdatedEvent:
 
 
 def test_live_node_event_carries_the_default_origin() -> None:
-    assert _node_event(origin=None).get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE
+    assert _node_event().get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE
 
 
 def test_merge_node_event_carries_the_merge_origin() -> None:

@@ -103,6 +103,9 @@ async def test_merge_conflicts_when_a_self_attribute_input_changes_on_each_side(
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
+    event_recorder = MemoryInfrahubEvent()
+    workflow_recorder = WorkflowRecorder()
+    cache = MemoryCache()
     context = InfrahubContext.init(
         branch=default_branch,
         account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
@@ -111,9 +114,9 @@ async def test_merge_conflicts_when_a_self_attribute_input_changes_on_each_side(
     # rather than committing a value that reflects only one of the two edits.
     with (
         dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_event_service, lambda: MemoryInfrahubEvent()),
-        dependency_provider.scope(build_workflow, lambda: WorkflowRecorder()),
-        dependency_provider.scope(build_cache, lambda: MemoryCache()),
+        dependency_provider.scope(build_event_service, lambda: event_recorder),
+        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+        dependency_provider.scope(build_cache, lambda: cache),
         pytest.raises(MergeConflictsUnresolvedError, match=r"conflict resolution missing:.*summary/value"),
     ):
         await merge_branch(branch=branch.name, context=context)
