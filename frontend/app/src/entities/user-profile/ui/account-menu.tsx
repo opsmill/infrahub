@@ -101,7 +101,7 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
       <LinkButton
         variant="ghost"
         size="sm"
-        className="h-10 w-full justify-stretch gap-2 pr-9 data-pressed:scale-100 group-data-[state=collapsed]:pr-2"
+        className="h-10 w-full justify-stretch gap-2 data-pressed:scale-100"
         href="/login"
         routerOptions={{ state: { from: location } }}
       >
