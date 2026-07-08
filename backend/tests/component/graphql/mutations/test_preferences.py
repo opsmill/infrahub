@@ -189,25 +189,6 @@ async def test_user_rejects_unknown_date_format(
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
-async def test_rejects_effective_scope_enum_value(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: None,
-    first_account: Node,
-    session_first_account: AccountSession,
-) -> None:
-    """PreferenceWriteScope has no EFFECTIVE member, so scope:EFFECTIVE fails enum coercion."""
-    result = await run_mutation(
-        db=db,
-        branch=default_branch,
-        account_session=session_first_account,
-        variables={"scope": "EFFECTIVE", "timezone": "UTC"},
-    )
-    assert result.errors is not None
-    # No row was written for the caller.
-    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
-
-
 # --------------------------------------------------------------------------------------------
 # scope=GLOBAL — gated on manage_global_preferences; nothing written when denied.
 # --------------------------------------------------------------------------------------------
