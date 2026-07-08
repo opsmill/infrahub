@@ -1,6 +1,6 @@
 # Permissions and Authorization
 
-> Part of: `dev/knowledge/backend/` | Related: [Backend Architecture](architecture.md)
+> Part of: `dev/knowledge/backend/` | Related: [Backend Architecture](architecture.md), [preferences.md](preferences.md)
 
 How the Infrahub permission system works — data model, resolution logic, and enforcement.
 
