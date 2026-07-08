@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.preferences.models import Preference
 from infrahub.core.query.preference import PreferenceGetByOwnerQuery
 
 if TYPE_CHECKING:
-    from infrahub.core.preferences.models import Preference
     from infrahub.database import InfrahubDatabase
 
 
@@ -41,6 +41,10 @@ class PreferenceRepository:
             # Keep the first row per owner (deterministic by uuid) if a duplicate ever existed.
             preferences.setdefault(preference.owner_id, preference)
         return preferences
+
+    async def get_all(self) -> list[Preference]:
+        """Return every stored Preference row, across all owners."""
+        return await Preference.get_list(db=self.db)
 
     async def save(self, preference: Preference, actor_id: str = SYSTEM_USER_ID) -> None:
         """Persist the preference, creating the row on first write or updating it in place."""

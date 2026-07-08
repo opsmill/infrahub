@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
-from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
@@ -93,9 +92,8 @@ async def test_user_lazy_create_then_update(
 
     # The second write updated in place: exactly one row exists for this owner, not two.
     # (get_for_owner returns a single row regardless of count, so assert on the raw row list.)
-    owner_rows = [
-        preference for preference in await Preference.get_list(db=db) if preference.owner_id == first_account.id
-    ]
+    all_rows = await PreferenceRepository(db=db).get_all()
+    owner_rows = [preference for preference in all_rows if preference.owner_id == first_account.id]
     assert len(owner_rows) == 1
 
 

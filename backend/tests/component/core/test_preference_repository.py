@@ -15,7 +15,7 @@ async def test_get_for_owner_none_when_absent_and_never_creates(db: InfrahubData
     repository = PreferenceRepository(db=db)
 
     assert await repository.get_for_owner(owner_id="owner-absent") is None
-    assert await Preference.get_list(db=db) == []
+    assert await repository.get_all() == []
 
 
 async def test_save_then_get_for_owner_round_trip(db: InfrahubDatabase, default_branch: Branch) -> None:
@@ -45,7 +45,7 @@ async def test_save_updates_in_place_without_creating_a_second_row(
     assert updated is not None
     assert updated.uuid == created.uuid
     assert updated.timezone == "UTC"
-    assert len([p for p in await Preference.get_list(db=db) if p.owner_id == "owner-a"]) == 1
+    assert len([p for p in await repository.get_all() if p.owner_id == "owner-a"]) == 1
 
 
 async def test_get_for_owner_is_owner_scoped(db: InfrahubDatabase, default_branch: Branch) -> None:
