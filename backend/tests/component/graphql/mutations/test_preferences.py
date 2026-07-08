@@ -210,6 +210,8 @@ async def test_global_denied_for_normal_account(
         variables={"scope": "GLOBAL", "date_format": "ISO_DATETIME"},
     )
     assert result.errors is not None
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "You are not allowed to manage global preferences"
     # Nothing written: the gate raises BEFORE the read-modify-write, so no global row exists.
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
 
