@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
-
-import { objectQueryKeys } from "./object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 
 describe("objectQueryKeys", () => {
   it("returns base query key for all", () => {
@@ -42,31 +42,35 @@ describe("objectQueryKeys", () => {
     expect(result).toEqual(["objects", "branchName", params.atDate, "RandomKind"]);
   });
 
-  it("returns query key for list", () => {
+  it("returns query key for list including filters and sort", () => {
     // GIVEN
     const filters: Filter[] = [{ name: "include_available", value: "true" }];
+    const sort: Sort[] = [{ field: "name__value", direction: "ASC" }];
     const params = {
       branchName: "branchName",
       atDate: new Date("2024-01-01"),
       objectKind: "RandomKind",
       filters,
+      sort,
     };
 
     // WHEN
     const result = objectQueryKeys.list(params);
 
     // THEN
-    expect(result).toEqual(["objects", "branchName", params.atDate, "RandomKind", filters]);
+    expect(result).toEqual(["objects", "branchName", params.atDate, "RandomKind", filters, sort]);
   });
 
-  it("returns query key for count", () => {
+  it("returns query key for count without sort, since sort never changes the row count", () => {
     // GIVEN
     const filters: Filter[] = [{ name: "include_available", value: "true" }];
+    const sort: Sort[] = [{ field: "name__value", direction: "ASC" }];
     const params = {
       branchName: "branchName",
       atDate: new Date("2024-01-01"),
       objectKind: "RandomKind",
       filters,
+      sort,
     };
 
     // WHEN
