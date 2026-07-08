@@ -90,10 +90,11 @@ class InfrahubSetPreferences(Mutation):
         date_format: str | _Unset | None,
         timezone: str | _Unset | None,
     ) -> Self:
-        # Per-owner distributed lock: the read-create-or-update-save block below is not atomic on its
-        # own, so concurrent first-upserts for the same owner could otherwise each see "no row" and
-        # create a duplicate (and concurrent updates could lose writes). Keyed on owner_id so distinct
-        # owners never contend. Reads stay lock-free.
+        # Per-owner distributed lock: the read-modify-write block below is not atomic on its own, so
+        # concurrent first-upserts for the same owner could otherwise each see "no row" and create a
+        # duplicate (and concurrent updates could lose writes). The read runs inside the lock so it
+        # observes any in-flight write for the same owner. Keyed on owner_id so distinct owners never
+        # contend.
         async with lock.registry.get(name=owner_id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
             async with graphql_context.db.start_transaction() as db:
                 repository = PreferenceRepository(db=db)
