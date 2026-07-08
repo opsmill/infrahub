@@ -27,7 +27,7 @@ Fields:
 |-------|------|-------|
 | `owner_id` | `str` | plain string, not a graph relationship |
 | `date_format` | `DateFormat` enum, nullable | a semantic key (e.g. `ISO_DATETIME`), not a render pattern; each client maps the key to its own formatter |
-| `timezone` | `str` (IANA name), nullable | |
+| `timezone` | `str` (IANA name), nullable | currently accepts any string; no backend validation |
 
 `date_format` is enum-typed, so an unknown key is rejected at construction, including when a row is
 loaded from the database. It round-trips as a plain string because the enum subclasses `str`.

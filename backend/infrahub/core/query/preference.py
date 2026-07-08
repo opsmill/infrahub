@@ -40,7 +40,9 @@ class PreferenceReadQuery(StandardNodeQuery):
     type = QueryType.READ
 
     def _set_return_shape(self) -> None:
-        self.return_labels = _RETURN_LABELS
+        # Copy the shared list: the base query appends to return_labels, which would otherwise
+        # mutate the module-level constant across instances.
+        self.return_labels = list(_RETURN_LABELS)
         # Deterministic order so reads are stable even in the (lock-prevented) event of a duplicate.
         self.order_by = ["uuid"]
 
