@@ -63,7 +63,7 @@ class MergeFailureIdentifier:
         self.merge_write_blocker = merge_write_blocker
         self.grace_period_seconds = grace_period_seconds
 
-    def is_failed_merge(
+    def should_mark_as_failed_merge(
         self,
         *,
         status: BranchStatus,
@@ -118,7 +118,7 @@ class MergeFailureIdentifier:
 
         for branch in merging:
             merge_started_at = Timestamp(branch.merge_started_at) if branch.merge_started_at else None
-            if not self.is_failed_merge(
+            if not self.should_mark_as_failed_merge(
                 status=branch.status,
                 lock_holder_worker_id=lock_holder_worker_id,
                 active_worker_ids=active_worker_ids,

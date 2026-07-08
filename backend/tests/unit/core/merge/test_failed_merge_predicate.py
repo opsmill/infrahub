@@ -19,7 +19,7 @@ GRACE_SECONDS = 180
 
 
 def _identifier(grace_period_seconds: int) -> MergeFailureIdentifier:
-    # is_failed_merge decides from its arguments and the configured grace period alone, so the
+    # should_mark_as_failed_merge decides from its arguments and the configured grace period alone, so the
     # unused db/component are not needed to exercise it.
     return MergeFailureIdentifier(
         db=cast("InfrahubDatabase", None),
@@ -102,7 +102,7 @@ CASES = [
 
 
 @pytest.mark.parametrize("case", CASES, ids=[c.name for c in CASES])
-def test_is_failed_merge(case: PredicateCase) -> None:
+def test_should_mark_as_failed_merge(case: PredicateCase) -> None:
     now = Timestamp()
     # Timestamp.add() is typed as the SDK base class; re-wrap so the value is the core Timestamp the
     # predicate expects (mirrors how production builds it from the stored string).
@@ -112,7 +112,7 @@ def test_is_failed_merge(case: PredicateCase) -> None:
         else None
     )
 
-    result = _identifier(grace_period_seconds=case.grace_seconds).is_failed_merge(
+    result = _identifier(grace_period_seconds=case.grace_seconds).should_mark_as_failed_merge(
         status=case.status,
         lock_holder_worker_id=case.lock_holder_worker_id,
         active_worker_ids=case.active_worker_ids,
