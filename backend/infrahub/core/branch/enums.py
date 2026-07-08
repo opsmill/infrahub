@@ -7,6 +7,7 @@ class BranchStatus(InfrahubStringEnum):
     NEED_UPGRADE_REBASE = "NEED_UPGRADE_REBASE"
     DELETING = "DELETING"
     MERGING = "MERGING"
+    MERGE_FAILED = "MERGE_FAILED"
     MERGED = "MERGED"
 
 

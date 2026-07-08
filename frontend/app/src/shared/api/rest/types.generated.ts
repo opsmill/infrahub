@@ -1833,6 +1833,12 @@ export interface components {
              * @default false
              */
             delete_branch_after_merge: boolean;
+            /**
+             * Merge Failure Grace Period Seconds
+             * @description How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED.
+             * @default 180
+             */
+            merge_failure_grace_period_seconds: number;
         };
         /** Menu */
         Menu: {

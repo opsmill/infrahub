@@ -460,6 +460,7 @@ export type BranchRelativePermissionDecision = typeof BranchRelativePermissionDe
 export const BranchStatus = {
   DELETING: 'DELETING',
   MERGED: 'MERGED',
+  MERGE_FAILED: 'MERGE_FAILED',
   MERGING: 'MERGING',
   NEED_REBASE: 'NEED_REBASE',
   NEED_UPGRADE_REBASE: 'NEED_UPGRADE_REBASE',

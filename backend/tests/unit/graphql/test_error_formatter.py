@@ -19,6 +19,7 @@ from infrahub.exceptions import (
     BranchNotFoundError,
     Error,
     MergeInProgressError,
+    MergeRecoveryRequiredError,
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
@@ -147,6 +148,17 @@ CASES = [
             merging_branch="feature-branch",
         ),
         expected_code="MERGE_IN_PROGRESS",
+        expected_http_status=423,
+        expected_data={"branch_name": "main", "merging_branch": "feature-branch"},
+    ),
+    CodeCase(
+        name="merge_recovery_required",
+        exc=MergeRecoveryRequiredError(
+            identifier="main",
+            message="A previous merge failed and left the default branch protected.",
+            merging_branch="feature-branch",
+        ),
+        expected_code="MERGE_RECOVERY_REQUIRED",
         expected_http_status=423,
         expected_data={"branch_name": "main", "merging_branch": "feature-branch"},
     ),
@@ -282,3 +294,18 @@ def test_resolve_catalogue_code_walks_mro_for_subclasses() -> None:
 
     code = resolve_catalogue_code(BuiltinTagNotFoundError(node_type="BuiltinTag", identifier="x"))
     assert code == "NODE_NOT_FOUND"
+
+
+def test_merge_recovery_required_resolves_to_distinct_code() -> None:
+    """The recovery signal must not collapse into the transient MERGE_IN_PROGRESS code.
+
+    MergeRecoveryRequiredError is deliberately a sibling of MergeInProgressError, not a subclass, so
+    the MRO walk in the resolver cannot route it to the retryable code.
+    """
+    assert not issubclass(MergeRecoveryRequiredError, MergeInProgressError)
+
+    recovery = MergeRecoveryRequiredError(identifier="main", message="recover", merging_branch="feature-branch")
+    in_progress = MergeInProgressError(identifier="main", message="retry", merging_branch="feature-branch")
+
+    assert resolve_catalogue_code(recovery) == "MERGE_RECOVERY_REQUIRED"
+    assert resolve_catalogue_code(in_progress) == "MERGE_IN_PROGRESS"

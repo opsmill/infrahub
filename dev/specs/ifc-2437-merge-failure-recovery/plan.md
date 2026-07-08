@@ -146,7 +146,7 @@ backend/infrahub/
 │   └── recurring.py / merge_watcher # NEW recurring scan flow (module for the INTERNAL workflow)
 ├── workflows/
 │   └── catalogue.py                 # ADD MERGE_WATCHER WorkflowDefinition to WORKFLOWS
-├── core/initialization.py           # ADD startup detection call (API + git-agent both run initialization())
+├── server.py                        # ADD startup detection call after initialization() (API server entry point only)
 ├── config.py                        # ADD merge-failure grace-period setting (default ~2-3 min)
 ├── cli/
 │   ├── __init__.py                  # register `recover` command/typer
