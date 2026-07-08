@@ -22,8 +22,8 @@ export function ModalOverlay({ className, ...props }: ModalOverlayProps) {
       isDismissable
       className={cn(
         "absolute inset-0 z-50 overflow-hidden bg-gray-600/25",
-        "data-entering:fade-in-0 data-entering:animate-in data-entering:duration-200",
-        "data-exiting:fade-out-0 data-exiting:animate-out data-exiting:duration-150",
+        "data-entering:animate-in data-entering:duration-200 data-entering:fade-in-0",
+        "data-exiting:animate-out data-exiting:duration-150 data-exiting:fade-out-0",
         className,
       )}
       {...props}
@@ -53,8 +53,8 @@ export function Modal({
                 "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-200",
                 "no-scrollbar box-border flex max-h-[calc(var(--visual-viewport-height)*0.95)] max-w-[90vw] flex-col overflow-hidden rounded-2xl p-1 shadow-lg",
                 "border border-neutral-100 bg-white/25 backdrop-blur",
-                "data-entering:zoom-in-80 data-entering:animate-in data-entering:duration-200 data-entering:ease-out",
-                "data-exiting:zoom-out-80 data-exiting:animate-out data-exiting:duration-150 data-exiting:ease-in",
+                "data-entering:animate-in data-entering:duration-200 data-entering:ease-out data-entering:zoom-in-80",
+                "data-exiting:animate-out data-exiting:duration-150 data-exiting:ease-in data-exiting:zoom-out-80",
               )}
               style={{
                 top: `${CENTER_PERCENT - depth * TOP_OFFSET_PER_LAYER}%`,

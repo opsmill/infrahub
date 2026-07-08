@@ -18,7 +18,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="font-medium text-[10px] text-neutral-400 uppercase tracking-wider">
+  <div className="text-[10px] font-medium tracking-wider text-neutral-400 uppercase">
     {children}
   </div>
 );
@@ -32,7 +32,7 @@ const MenuSurface = ({ children }: { children: React.ReactNode }) => (
 
 export const Default: Story = {
   render: () => (
-    <div className="grid grid-cols-[8rem_auto]  items-start gap-x-6 gap-y-6">
+    <div className="grid grid-cols-[8rem_auto] items-start gap-x-6 gap-y-6">
       <ColumnLabel>Simple</ColumnLabel>
       <MenuSurface>
         <Menu aria-label="Simple menu">

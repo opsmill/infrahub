@@ -67,8 +67,8 @@ export const MenuItem = ({
       className={composeAriaClassName(className, (resolvedClassName) =>
         cn(
           "data-disabled:pointer-events-none data-disabled:opacity-50",
-          "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
-          "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+          "flex min-w-40 cursor-pointer items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors select-none",
+          "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
           "data-focused:border-sky-200 data-focused:bg-sky-50 data-focused:text-sky-700",
           resolvedClassName,
         ),
@@ -91,7 +91,7 @@ export const MenuSection = <T extends object>({
 }: MenuSectionProps<T>) => {
   return (
     <AriaMenuSection className={cn("flex flex-col gap-0.5", className)} {...props}>
-      {title && <AriaHeader className="px-1 text-stone-500 text-xs">{title}</AriaHeader>}
+      {title && <AriaHeader className="px-1 text-xs text-stone-500">{title}</AriaHeader>}
       <Collection items={props.items}>{children}</Collection>
     </AriaMenuSection>
   );
