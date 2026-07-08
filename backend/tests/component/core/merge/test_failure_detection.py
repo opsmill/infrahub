@@ -38,17 +38,14 @@ class TestFailureDetection:
 
     @pytest.fixture
     async def component(self, db: InfrahubDatabase, cache: MemoryCache, default_branch: Branch) -> InfrahubComponent:
-        # refresh_heartbeat marks THIS worker active, so a lock held by WORKER_IDENTITY looks alive
-        # while a lock held by DEAD_WORKER looks dead. default_branch initializes
-        # registry.default_branch (which list_workers reads) and gives each test a clean database so
-        # detection only ever sees that test's own MERGING branch.
+        # refresh_heartbeat marks THIS worker active
         component = InfrahubComponent(
             cache=cache, db=db, message_bus=BusRecorder(), component_type=ComponentType.API_SERVER
         )
         await component.refresh_heartbeat()
         return component
 
-    def _recovery(
+    def _identifier(
         self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent
     ) -> MergeFailureIdentifier:
         return MergeFailureIdentifier(
@@ -74,7 +71,7 @@ class TestFailureDetection:
         self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch: Branch
     ) -> None:
         await cache.set(MERGE_LOCK_KEY, _lock_token(DEAD_WORKER))
-        recovery = self._recovery(db, cache, component)
+        recovery = self._identifier(db, cache, component)
 
         flagged = await recovery.scan()
 
@@ -89,7 +86,7 @@ class TestFailureDetection:
         self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch: Branch
     ) -> None:
         await cache.set(MERGE_LOCK_KEY, _lock_token(WORKER_IDENTITY))
-        recovery = self._recovery(db, cache, component)
+        recovery = self._identifier(db, cache, component)
 
         assert await recovery.scan() is None
         reloaded = await Branch.get_by_name(db=db, name=merging_branch.name)
@@ -106,7 +103,7 @@ class TestFailureDetection:
         )
         await branch.save(db=db)
         await cache.set(MERGE_LOCK_KEY, _lock_token(DEAD_WORKER))
-        recovery = self._recovery(db, cache, component)
+        recovery = self._identifier(db, cache, component)
 
         assert await recovery.scan() is None
         reloaded = await Branch.get_by_name(db=db, name=branch.name)
@@ -116,7 +113,7 @@ class TestFailureDetection:
         self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, merging_branch: Branch
     ) -> None:
         await cache.set(MERGE_LOCK_KEY, _lock_token(DEAD_WORKER))
-        recovery = self._recovery(db, cache, component)
+        recovery = self._identifier(db, cache, component)
 
         assert await recovery.scan() == merging_branch.name
         # A second pass finds no MERGING branch (it is now MERGE_FAILED), so it is a no-op.

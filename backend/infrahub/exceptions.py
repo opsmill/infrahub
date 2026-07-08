@@ -471,14 +471,12 @@ class MergeInProgressError(BranchStatusError):
 class MergeRecoveryRequiredError(BranchStatusError):
     """Write rejected because a failed merge needs operator recovery.
 
-    `merging_branch` is the source branch that was being merged (the one whose merge died), matching
-    `MergeInProgressError`; `identifier` is the branch the rejected write targeted (the source branch
-    itself or the default branch).
+    `merging_branch` is the source branch that was being merged (the one whose merge died);
+    `identifier` is the branch the rejected write targeted (the source branch itself or the
+    default branch).
 
-    Deliberately a sibling of MergeInProgressError, not a subclass: the error-catalogue resolver
-    walks the MRO to map an exception to a code, so subclassing would make this resolve to the
-    transient MERGE_IN_PROGRESS code and be indistinguishable from a retryable in-progress merge.
-    This is the durable, non-retryable signal that an administrator must run `infrahub recover`.
+    Deliberately a sibling of MergeInProgressError, not a subclass: an in-progress merge is
+    transient and retryable, while this indicates recovery is required.
     """
 
     HTTP_CODE: int = 423
