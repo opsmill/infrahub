@@ -107,29 +107,6 @@ async def count_active_branches() -> int:
     return len([branch for branch in registry.branch.values() if not branch.is_default and not branch.is_global])
 
 
-def _empty_account_data() -> TelemetryAccountData:
-    """Null-filled accounts object used when the whole accounts source fails."""
-    return TelemetryAccountData(active=None, groups=None)
-
-
-def _empty_activity_24h_data() -> TelemetryActivity24hData:
-    """Null-filled activity_24h object used when the whole activity source fails."""
-    return TelemetryActivity24hData(
-        logins=None,
-        unique_logins=None,
-        checks_started=None,
-        checks_passed=None,
-        checks_failed=None,
-        artifacts_created=None,
-        artifacts_updated=None,
-        branches_created=None,
-        branches_merged=None,
-        branches_deleted=None,
-        webhooks_fired_success=None,
-        webhooks_fired_failure=None,
-    )
-
-
 async def _default_activity_24h_gatherer() -> TelemetryActivity24hData:
     """Open a Prefect client and assemble the windowed 24h activity metrics."""
     async with get_prefect_client(sync_client=False) as prefect_client:
@@ -174,8 +151,8 @@ async def gather_anonymous_telemetry_data(
             total=len(registry.branch),
             active=await safe_metric(active_branch_counter()),
         ),
-        accounts=accounts if accounts is not None else _empty_account_data(),
-        activity_24h=activity_24h if activity_24h is not None else _empty_activity_24h_data(),
+        accounts=accounts if accounts is not None else TelemetryAccountData(),
+        activity_24h=activity_24h if activity_24h is not None else TelemetryActivity24hData(),
         features=await gather_feature_information(),
         schema_info=await gather_schema_information(branch=default_branch),
         database=await gather_database_information(db=database),

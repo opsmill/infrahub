@@ -14,23 +14,23 @@ class TelemetryBranchData(BaseModel):
 
 
 class TelemetryAccountData(BaseModel):
-    active: int | None
-    groups: int | None
+    active: int | None = None
+    groups: int | None = None
 
 
 class TelemetryActivity24hData(BaseModel):
-    logins: int | None
-    unique_logins: int | None
-    checks_started: int | None
-    checks_passed: int | None
-    checks_failed: int | None
-    artifacts_created: int | None
-    artifacts_updated: int | None
-    branches_created: int | None
-    branches_merged: int | None
-    branches_deleted: int | None
-    webhooks_fired_success: int | None
-    webhooks_fired_failure: int | None
+    logins: int | None = None
+    unique_logins: int | None = None
+    checks_started: int | None = None
+    checks_passed: int | None = None
+    checks_failed: int | None = None
+    artifacts_created: int | None = None
+    artifacts_updated: int | None = None
+    branches_created: int | None = None
+    branches_merged: int | None = None
+    branches_deleted: int | None = None
+    webhooks_fired_success: int | None = None
+    webhooks_fired_failure: int | None = None
 
 
 class TelemetrySchemaData(BaseModel):
