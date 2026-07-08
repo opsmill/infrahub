@@ -17,7 +17,7 @@ export function buildDateFormatPresets(): Array<DateFormatPreset> {
   return DATE_FORMAT_KEYS.map((key) => ({ key, label: DATE_FORMAT_PRESETS[key].label }));
 }
 
-function patternForKey(key: string): string {
+export function patternForKey(key: string): string {
   return (
     (DATE_FORMAT_PRESETS as Record<string, DateFormatPresetDef>)[key]?.pattern ??
     DATE_FORMAT_PRESETS[DEFAULT_DATE_FORMAT].pattern
