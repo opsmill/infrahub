@@ -7,7 +7,7 @@ import type { AnyAttribute } from "@/shared/api/graphql/generated/types";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
-import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
@@ -30,6 +30,7 @@ export default function MetaDetailsTooltip({
   isProtected,
 }: MetaDetailsTooltipProps) {
   const { isProfile, isTemplate } = useSchema(source?.__typename);
+  const { formatDate } = useFormatDate();
 
   const items = [
     {
@@ -54,11 +55,11 @@ export default function MetaDetailsTooltip({
     },
     {
       name: "Updated at",
-      value: updatedAt ? formatFullDate(updatedAt) : "-",
+      value: updatedAt ? formatDate(updatedAt, "datetime") : "-",
     },
     {
       name: "Update time",
-      value: updatedAt ? formatRelativeTimeFromNow(updatedAt) : "-",
+      value: updatedAt ? formatDate(updatedAt, "relative") : "-",
     },
     {
       name: "Owner",
