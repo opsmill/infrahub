@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass
 
 import pytest
@@ -10,19 +11,26 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 def _cascade_closure(index: NodeDeleteIndex, root_kind: str) -> set[str]:
-    """All kinds reachable from root_kind by following CASCADE_DELETE edges."""
+    """All kinds reachable from root_kind by following CASCADE_DELETE edges.
+
+    Built from the public interface only (the same methods the delete path uses to
+    resolve cascades), rather than reaching into the index's internal graph.
+    """
+    cascade_edges: dict[str, set[str]] = defaultdict(set)
+    for full_identifier in index.get_relationship_identifiers():
+        relationship_types = index.get_relationship_types(
+            src_kind=full_identifier.source_kind, relationship_identifier=full_identifier.identifier
+        )
+        if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
+            cascade_edges[full_identifier.source_kind].add(full_identifier.destination_kind)
+
     reachable: set[str] = set()
     stack = [root_kind]
     while stack:
-        kind = stack.pop()
-        # _dependency_graph is accessed directly on purpose: there is no public
-        # traversal API, and the closure is exactly what this test needs to prove.
-        edges = index._dependency_graph.get(kind, {}).get(DeleteRelationshipType.CASCADE_DELETE, {})
-        for peer_kinds in edges.values():
-            for peer in peer_kinds:
-                if peer not in reachable:
-                    reachable.add(peer)
-                    stack.append(peer)
+        for peer in cascade_edges[stack.pop()]:
+            if peer not in reachable:
+                reachable.add(peer)
+                stack.append(peer)
     return reachable
 
 

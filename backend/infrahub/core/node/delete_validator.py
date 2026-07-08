@@ -81,9 +81,9 @@ class NodeDeleteIndex:
         start_schema_kinds: set[str] = set()
         for kind in cascade_kinds:
             start_schema_kinds.add(kind)
-            inherit_from = getattr(self._all_schemas_map[kind], "inherit_from", None)
-            if inherit_from:
-                start_schema_kinds.update(set(inherit_from))
+            schema = self._all_schemas_map[kind]
+            if isinstance(schema, NodeSchema):
+                start_schema_kinds.update(schema.inherit_from)
         for node_schema in self._all_schemas_map.values():
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.optional is True or relationship_schema.peer not in start_schema_kinds:
