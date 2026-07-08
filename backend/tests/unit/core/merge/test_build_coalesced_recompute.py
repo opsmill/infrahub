@@ -149,18 +149,32 @@ def test_changes_to_same_target_are_deduplicated() -> None:
     assert _lookups(computed) == {(PROFILE_PEER_KIND, "peer__ids", frozenset({"peer-0", "peer-1"}))}
 
 
-def test_update_without_fields_is_a_bounded_fallback() -> None:
-    """An update with no recorded fields recomputes every cross-node reader and is marked imprecise."""
+def test_unscoped_update_is_a_bounded_fallback() -> None:
+    """An unscoped update imprecisely recomputes cross-node readers and the node's own derived values."""
     builder = CoalescedRecomputeBuilder(schema_branch=_profile_schema_branch())
-    changes = [MergeChange(node_id="peer-0", kind=PROFILE_PEER_KIND, action="updated", changed_fields=frozenset())]
 
-    result = builder.build(changes=changes, branch="main")
-
-    # A peer's readers are the node computed summary and display label that read it across the
-    # relationship; no human-friendly id reads the peer, so even the unscoped fallback omits it.
-    assert set(_by_identity(result)) == {
+    # A peer: its cross-node readers (node summary and display) plus its own derived values.
+    peer_result = builder.build(
+        changes=[MergeChange(node_id="peer-0", kind=PROFILE_PEER_KIND, action="updated", changed_fields=frozenset())],
+        branch="main",
+    )
+    assert set(_by_identity(peer_result)) == {
         (COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"),
         (DISPLAY_LABEL, PROFILE_NODE_KIND, None),
+        (DISPLAY_LABEL, PROFILE_PEER_KIND, None),
+        (HFID, PROFILE_PEER_KIND, None),
     }
-    assert result.fallback_used is True
-    assert all(target.precise is False for target in result.targets)
+    assert peer_result.fallback_used is True
+    assert all(target.precise is False for target in peer_result.targets)
+
+    # A node: its own derived values, keyed by its own id.
+    node_result = builder.build(
+        changes=[MergeChange(node_id="node-0", kind=PROFILE_NODE_KIND, action="updated", changed_fields=frozenset())],
+        branch="main",
+    )
+    by_identity = _by_identity(node_result)
+    own = {(PROFILE_NODE_KIND, "ids", frozenset({"node-0"}))}
+    assert _lookups(by_identity[COMPUTED_ATTRIBUTE, PROFILE_NODE_KIND, "summary"]) == own
+    assert _lookups(by_identity[DISPLAY_LABEL, PROFILE_NODE_KIND, None]) == own
+    assert _lookups(by_identity[HFID, PROFILE_NODE_KIND, None]) == own
+    assert node_result.fallback_used is True

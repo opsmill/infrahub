@@ -221,24 +221,64 @@ class CoalescedRecomputeBuilder:
 
     def _resolve_targets(self, *, signature: ChangeSignature) -> Iterator[_ResolvedTarget]:
         if signature.action == CREATED:
-            include_self, include_cross = True, False
-            fields: frozenset[str] | None = None
-            precise = True
-        elif signature.action == UPDATED:
-            include_self, include_cross = False, True
-            # An update with no recorded fields cannot be scoped, so fall back to every
-            # field rather than risk missing a reader (over-recompute is safe).
-            fields = signature.changed_fields or None
-            precise = bool(signature.changed_fields)
-        elif signature.action == DELETED:
-            include_self, include_cross = False, True
-            fields = None
-            precise = True
-        else:
-            raise ValueError(f"Unknown change action: {signature.action!r}")
+            yield from self._derive_family_targets(
+                kind=signature.kind, fields=None, include_self=True, include_cross=False, precise=True
+            )
+            return
+        if signature.action == DELETED:
+            yield from self._derive_family_targets(
+                kind=signature.kind, fields=None, include_self=False, include_cross=True, precise=True
+            )
+            return
+        if signature.action == UPDATED:
+            if not signature.changed_fields:
+                # No fields to scope on: recompute self and cross, since the unknown change may be a
+                # relationship the node reads and under-recompute is not acceptable.
+                yield from self._derive_family_targets(
+                    kind=signature.kind, fields=None, include_self=True, include_cross=True, precise=False
+                )
+                return
+            # Cross-node readers only; the node refreshed its own values inline on the save.
+            yield from self._derive_family_targets(
+                kind=signature.kind,
+                fields=signature.changed_fields,
+                include_self=False,
+                include_cross=True,
+                precise=True,
+            )
+            # A deleted peer closes the edge without saving the reader, so nothing recomputed it inline;
+            # recompute the reader's own values across the relationship, by its own id.
+            relationship_fields = self._changed_relationship_fields(
+                kind=signature.kind, changed_fields=signature.changed_fields
+            )
+            if relationship_fields:
+                yield from self._derive_family_targets(
+                    kind=signature.kind,
+                    fields=relationship_fields,
+                    include_self=True,
+                    include_cross=False,
+                    precise=True,
+                )
+            return
+        raise ValueError(f"Unknown change action: {signature.action!r}")
 
+    def _changed_relationship_fields(self, *, kind: str, changed_fields: frozenset[str]) -> frozenset[str] | None:
+        """Return the changed fields that name a relationship on ``kind`` (None if none)."""
+        node_schema = self.schema_branch.get_node(name=kind, duplicate=False)
+        matched = changed_fields & {relationship.name for relationship in node_schema.relationships}
+        return frozenset(matched) or None
+
+    def _derive_family_targets(
+        self,
+        *,
+        kind: str,
+        fields: frozenset[str] | None,
+        include_self: bool,
+        include_cross: bool,
+        precise: bool,
+    ) -> Iterator[_ResolvedTarget]:
         yield from self._resolve_computed_targets(
-            kind=signature.kind,
+            kind=kind,
             fields=fields,
             include_self=include_self,
             include_cross=include_cross,
@@ -247,7 +287,7 @@ class CoalescedRecomputeBuilder:
 
         for display_target in derive_display_label_targets(
             display_labels=self.schema_branch.display_labels,
-            kind=signature.kind,
+            kind=kind,
             changed_fields=fields,
             include_self=include_self,
             include_cross=include_cross,
@@ -263,7 +303,7 @@ class CoalescedRecomputeBuilder:
 
         for hfid_target in derive_hfid_targets(
             hfids=self.schema_branch.hfids,
-            kind=signature.kind,
+            kind=kind,
             changed_fields=fields,
             include_self=include_self,
             include_cross=include_cross,

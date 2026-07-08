@@ -303,32 +303,23 @@ class TestMergeRecompute(TestInfrahubDockerClient):
         ).id == interface.id
         assert not await _resolves(["reth1", "rdevice-a"])
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "the recompute locates readers with a reverse relationship query that returns nothing "
-            "once the deleted peer's edges are closed, so the reader keeps a value that still names "
-            "the deleted peer"
-        ),
-    )
     async def test_deleting_read_peer_refreshes_reader_after_merge(self, client: InfrahubClient) -> None:
-        """After a read peer is deleted and merged, the reader's derived values should stop naming it."""
+        """After a read peer is deleted and merged, the reader's computed attribute stops naming it."""
         schema = build_profile_schema_dict()
         node_schema = schema["nodes"][1]
         node_schema["relationships"][0]["optional"] = True
-        # Self-only display label so the scenario exercises the stale computed value, not the separate
-        # missing-peer diff crash that is fixed on its own path.
+        # Self-only display label: refreshing a cross-relationship display label is handled separately.
         node_schema["display_label"] = "{{ name__value }}"
         await client.schema.load(schemas=[schema], wait_until_converged=True)
 
         peer = await client.create(kind=PROFILE_PEER_KIND, data={"name": "beta"})
         await peer.save()
-        node = await client.create(kind=PROFILE_NODE_KIND, data={"name": "node2", "peer": peer})
+        node = await client.create(kind=PROFILE_NODE_KIND, data={"name": "dnode", "peer": peer})
         await node.save()
 
         async def _reader_initial() -> bool:
             refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id)
-            return refreshed.summary.value == "node2 on beta"
+            return refreshed.summary.value == "dnode on beta"
 
         await _wait_until(_reader_initial)
 
@@ -340,11 +331,16 @@ class TestMergeRecompute(TestInfrahubDockerClient):
         assert merged
         await _wait_until_merged(client=client, branch_name=branch.name)
 
-        async def _reader_no_longer_names_peer() -> bool:
+        async def _reader_refreshed() -> bool:
             refreshed = await client.get(kind=PROFILE_NODE_KIND, id=node.id)
-            return refreshed.summary.value != "node2 on beta"
+            return refreshed.summary.value == "dnode on None"
 
-        assert await _became_true(_reader_no_longer_names_peer, seconds=60)
+        await _wait_until(_reader_refreshed)
+
+        final = await client.get(kind=PROFILE_NODE_KIND, id=node.id)
+        assert final.summary.value == "dnode on None"
+        # HFID reads only the local name, so the delete leaves it unchanged.
+        assert final.hfid == ["dnode"]
 
     # Multi-level chain: level i reads level i-1 across the source relationship.
 
