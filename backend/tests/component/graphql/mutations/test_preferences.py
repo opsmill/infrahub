@@ -183,9 +183,12 @@ async def test_user_rejects_unknown_date_format(
         variables={"scope": "USER", "date_format": "NOT_A_FORMAT"},
     )
     assert result.errors is not None
-    # Specifically the DateFormat enum-coercion error for the bad value.
-    messages = " ".join(str(error.message) for error in result.errors)
-    assert "NOT_A_FORMAT" in messages or "DateFormat" in messages, messages
+    # The DateFormat enum rejects the unknown key during variable coercion, before any resolver runs.
+    assert len(result.errors) == 1
+    assert result.errors[0].message == (
+        "Variable '$date_format' got invalid value 'NOT_A_FORMAT'; "
+        "Value 'NOT_A_FORMAT' does not exist in 'DateFormat' enum."
+    )
     assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
