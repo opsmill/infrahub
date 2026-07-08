@@ -1,6 +1,5 @@
 import hashlib
 import json
-import logging
 import platform
 import time
 from collections.abc import Awaitable, Callable
@@ -37,8 +36,6 @@ from .repository import TelemetrySnapshotRepository
 from .snapshot import TelemetrySnapshot
 from .task_manager import gather_activity_24h, gather_prefect_information
 from .utils import determine_infrahub_type, safe_metric
-
-log = logging.getLogger(__name__)
 
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)

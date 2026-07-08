@@ -28,7 +28,7 @@ from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdate
 from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent
 from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
 from infrahub.telemetry.task_manager import count_webhook_runs, count_windowed_event, count_windowed_unique_resources
-from infrahub.telemetry.window import get_activity_window
+from infrahub.telemetry.utils import get_activity_window
 
 EVENTS = {
     "logins": AccountLoggedInEvent.event_name,

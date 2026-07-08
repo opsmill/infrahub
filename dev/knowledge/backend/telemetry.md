@@ -112,8 +112,8 @@ both gated on the `READ_TELEMETRY` global permission.
 | Path | Purpose |
 |------|---------|
 | `backend/infrahub/telemetry/tasks.py` | Daily flow, payload assembly, remote send |
-| `backend/infrahub/telemetry/window.py` | The 24h window function |
 | `backend/infrahub/telemetry/task_manager.py` | Windowed event / webhook-run counters |
+| `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
 | `backend/infrahub/telemetry/models.py` | Payload schema |
 | `backend/infrahub/workflows/catalogue.py` | Registers the `anonymous_telemetry_send` deployment |

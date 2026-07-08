@@ -22,7 +22,7 @@ from infrahub.telemetry.task_manager import (
     gather_prefect_events,
     gather_prefect_information,
 )
-from infrahub.telemetry.window import floor_to_midnight_utc, get_activity_window
+from infrahub.telemetry.utils import floor_to_midnight_utc, get_activity_window
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 if TYPE_CHECKING:

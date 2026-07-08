@@ -26,8 +26,7 @@ from infrahub.trigger.setup import gather_all_automations
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 from .models import TelemetryActivity24hData, TelemetryPrefectData, TelemetryWorkPoolData
-from .utils import safe_metric
-from .window import get_activity_window, inclusive_end
+from .utils import get_activity_window, inclusive_end, safe_metric
 
 WEBHOOK_FLOW_NAME = WEBHOOK_PROCESS.name
 WEBHOOK_FAILURE_STATES = [StateType.FAILED, StateType.CRASHED]
