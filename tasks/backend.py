@@ -483,9 +483,12 @@ def _sdk_root(suffix: str, with_version: bool, model_config_args: str, with_exte
 def _sdk_base_node_family(base_node_schema: "SchemaNode", minimum: "Visibility", suffix: str) -> dict[str, Any]:
     """Base node family shared by node/generic/profile/template.
 
-    The read variant additionally carries the server-computed ``hash`` field and the derived
-    ``kind`` computed field; both are read-only and propagate to every read node model via this
-    base. The write variant exposes neither.
+    Every node model exposes the derived ``kind`` (from namespace+name) on both write and read so
+    attribute access works when reading a locally-authored schema. It only *serializes* on read:
+    on write it is a plain property (not part of the payload), so ``kind`` never round-trips into
+    the write contract where ``extra="forbid"`` would reject it. The read variant additionally
+    carries the server-computed ``hash`` field. All propagate to node/generic/profile/template via
+    this base.
     """
     from infrahub.core.constants import UpdateSupport, Visibility
     from infrahub.core.schema.definitions.internal import SchemaAttribute
@@ -495,8 +498,17 @@ def _sdk_base_node_family(base_node_schema: "SchemaNode", minimum: "Visibility",
         "class_name": f"BaseNodeSchema{suffix}",
         "parent": "BaseModel",
         "attributes": attributes,
+        "computed_fields": [
+            {
+                "name": "kind",
+                "return_type": "str",
+                "expression": 'f"{self.namespace}{self.name}"',
+                "serialize": minimum == Visibility.READ,
+            }
+        ],
     }
     if minimum == Visibility.READ:
+        # `hash` is computed by the server and only exposed on read.
         hash_field = SchemaAttribute(
             name="hash",
             kind="Text",
@@ -506,9 +518,6 @@ def _sdk_base_node_family(base_node_schema: "SchemaNode", minimum: "Visibility",
             extra={"update": UpdateSupport.NOT_SUPPORTED, "visibility": Visibility.READ},
         )
         family["attributes"] = [*attributes, hash_field]
-        family["computed_fields"] = [
-            {"name": "kind", "return_type": "str", "expression": 'f"{self.namespace}{self.name}"'}
-        ]
     return family
 
 
@@ -916,7 +925,8 @@ def _generate_schemas_sdk(context: Context) -> None:
 
     # Each variant carries an extra-families builder for the models unique to it: the write
     # variant adds the extension models, the read variant adds the profile/template projections.
-    # Only the read variant emits computed fields (``kind``), so it imports ``computed_field``.
+    # Both variants expose ``kind`` as a property, but only the read variant serializes it (via
+    # ``@computed_field``), so only the read variant imports ``computed_field``.
     variants = {
         "write": (
             Visibility.WRITE,

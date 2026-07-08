@@ -44,8 +44,8 @@ class {{ family.class_name }}({{ family.parent }}):
 {%- endfor %}
 {%- for computed in family.get("computed_fields", []) %}
 
-    @computed_field
-    @property
+{% if computed.serialize %}    @computed_field
+{% endif %}    @property
     def {{ computed.name }}(self) -> {{ computed.return_type }}:
         return {{ computed.expression }}
 {%- endfor %}
