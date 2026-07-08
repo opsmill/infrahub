@@ -20,12 +20,7 @@ DateFormat = Enum.from_enum(
 
 
 class PreferenceWriteScope(StrEnum):
-    """The WRITABLE axes of the preferences store.
-
-    EFFECTIVE is intentionally absent: the resolved view is read-only, so it is unrepresentable as a
-    write target. USER writes the caller's own preferences; GLOBAL writes the organisation-wide ones
-    (gated on manage_global_preferences).
-    """
+    """The writable scopes of the preferences store: USER (the caller's own) and GLOBAL (organisation-wide)."""
 
     USER = "user"
     GLOBAL = "global"
