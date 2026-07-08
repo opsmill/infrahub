@@ -4,7 +4,7 @@ import { translate } from '@docusaurus/Translate';
 export default function EnterpriseBadge() {
   return (
     <span style={{
-      backgroundColor: "#0a95ba",
+      backgroundColor: "#426DB1",
       color: "white",
       padding: "4px 8px",
       borderRadius: "12px",

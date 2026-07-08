@@ -9,16 +9,16 @@
 /* You can override the default Infima variables here. */
 :root {
   --ifm-font-family-base: "Inter", system-ui, -apple-system, sans-serif;
-  --ifm-color-primary: #08738f;
-  --ifm-color-primary-dark: #076781;
-  --ifm-color-primary-darker: #07627a;
-  --ifm-color-primary-darkest: #065064;
-  --ifm-color-primary-light: #097e9d;
-  --ifm-color-primary-lighter: #0984a4;
-  --ifm-color-primary-lightest: #0a95ba;
+  --ifm-color-primary: #426DB1;
+  --ifm-color-primary-dark: #3E66A6;
+  --ifm-color-primary-darker: #3C63A1;
+  --ifm-color-primary-darkest: #365990;
+  --ifm-color-primary-light: #4774BB;
+  --ifm-color-primary-lighter: #4D78BC;
+  --ifm-color-primary-lightest: #5D85C3;
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgb(24 65 100 / 0.85);
-  --ifm-hover-overlay: rgb(242, 252, 255);
+  --docusaurus-highlighted-code-line-bg: rgb(24 53 100 / 0.85);
+  --ifm-hover-overlay: rgb(242, 247, 255);
   --main-bg-color: #f9f9f9;
   --layout-bg-color: #fff;
   --border-color: #e5e7eb;
@@ -30,13 +30,13 @@
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #0a95ba;
-  --ifm-color-primary-dark: #0986a7;
-  --ifm-color-primary-darker: #087f9e;
-  --ifm-color-primary-darkest: #076882;
-  --ifm-color-primary-light: #0ba4cd;
-  --ifm-color-primary-lighter: #0babd6;
-  --ifm-color-primary-lightest: #0dc2f2;
+  --ifm-color-primary: #5D85C3;
+  --ifm-color-primary-dark: #4F7ABD;
+  --ifm-color-primary-darker: #4774BB;
+  --ifm-color-primary-darkest: #3E67A7;
+  --ifm-color-primary-light: #6C90C8;
+  --ifm-color-primary-lighter: #7295CB;
+  --ifm-color-primary-lightest: #88A5D3;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
   --main-bg-color: #1e2327;
   --layout-bg-color: #151a1c;
