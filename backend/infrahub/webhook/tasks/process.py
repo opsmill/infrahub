@@ -21,7 +21,12 @@ from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
 from ..classifier import EXPECTED_DELIVERY_ERRORS, WebhookDeliveryError, WebhookFailureClassifier
-from ..constants import CACHE_KEY_PREFIX
+from ..constants import (
+    CACHE_KEY_PREFIX,
+    WEBHOOK_SEND_ATTEMPTS,
+    WEBHOOK_SEND_RETRIES,
+    WEBHOOK_SEND_RETRY_DELAY_SECONDS,
+)
 from ..models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, TransformWebhook, Webhook, WebhookHeader
 
 if TYPE_CHECKING:
@@ -36,9 +41,6 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 }
 
 
-WEBHOOK_SEND_RETRIES: int = 3
-WEBHOOK_SEND_RETRY_DELAY_SECONDS: float = 120  # fixed 2m delay between attempts
-WEBHOOK_SEND_ATTEMPTS: int = WEBHOOK_SEND_RETRIES + 1  # the initial try plus its retries
 PAYLOAD_LOG_LIMIT: int = 2048  # characters shown inline; the full payload is logged at debug level
 
 
