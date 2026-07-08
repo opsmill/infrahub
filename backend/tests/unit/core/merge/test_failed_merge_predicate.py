@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 import pytest
 
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.merge.failure_recovery import MergeFailureRecovery
+from infrahub.core.merge.failure_recovery import MergeFailureIdentifier
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.timestamp import Timestamp
 from tests.adapters.cache import MemoryCache
@@ -18,10 +18,10 @@ if TYPE_CHECKING:
 GRACE_SECONDS = 180
 
 
-def _recovery() -> MergeFailureRecovery:
+def _recovery() -> MergeFailureIdentifier:
     # is_failed_merge is pure (it ignores every collaborator and decides from its arguments alone),
     # so the unused db/component are not needed to exercise it.
-    return MergeFailureRecovery(
+    return MergeFailureIdentifier(
         db=cast("InfrahubDatabase", None),
         cache=MemoryCache(),
         component=cast("InfrahubComponent", None),

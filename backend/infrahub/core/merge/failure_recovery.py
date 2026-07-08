@@ -40,7 +40,7 @@ class RecoveryReport:
     merge_started_at: str | None
 
 
-class MergeFailureRecovery:
+class MergeFailureIdentifier:
     """Act on a merge whose worker died mid-flight.
 
     ``detect_and_mark`` is a read-side liveness check: a branch stuck in ``MERGING`` whose merge-lock
@@ -182,7 +182,7 @@ class MergeFailureRecovery:
 
 async def scan_for_failed_merges(db: InfrahubDatabase, service: InfrahubServices) -> str | None:
     """Build a ``MergeFailureRecovery`` from the running service and run one detection scan."""
-    recovery = MergeFailureRecovery(
+    recovery = MergeFailureIdentifier(
         db=db,
         cache=service.cache,
         component=service.component,

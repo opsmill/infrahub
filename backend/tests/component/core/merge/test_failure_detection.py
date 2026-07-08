@@ -7,7 +7,7 @@ import pytest
 from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.merge.failure_recovery import MergeFailureRecovery
+from infrahub.core.merge.failure_recovery import MergeFailureIdentifier
 from infrahub.core.merge.merge_locker import MERGE_LOCK_KEY
 from infrahub.core.merge.write_blocker import MergeProtection, MergeProtectionState, MergeWriteBlocker
 from infrahub.core.timestamp import Timestamp
@@ -45,8 +45,8 @@ class TestFailureDetection:
         await component.refresh_heartbeat()
         return component
 
-    def _recovery(self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent) -> MergeFailureRecovery:
-        return MergeFailureRecovery(
+    def _recovery(self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent) -> MergeFailureIdentifier:
+        return MergeFailureIdentifier(
             db=db,
             cache=cache,
             component=component,
