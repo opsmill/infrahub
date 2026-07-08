@@ -120,6 +120,7 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
           variant="ghost"
           shape="square"
           size="xs"
+          aria-label="Open account menu"
           data-testid="unauthenticated-menu-trigger"
           className="absolute top-1/2 right-1 -translate-y-1/2 group-data-[state=collapsed]:hidden"
         >

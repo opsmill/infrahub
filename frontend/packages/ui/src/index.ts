@@ -45,6 +45,7 @@ export {
   MenuSeparator,
   type MenuSeparatorProps,
   MenuTrigger,
+  SubmenuTrigger,
 } from "./components/menu/menu";
 export { Meter, type MeterProps } from "./components/meter/meter";
 export {
