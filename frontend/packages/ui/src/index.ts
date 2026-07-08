@@ -42,6 +42,8 @@ export {
   type MenuProps,
   MenuSection,
   type MenuSectionProps,
+  MenuSeparator,
+  type MenuSeparatorProps,
   MenuTrigger,
 } from "./components/menu/menu";
 export { Meter, type MeterProps } from "./components/meter/meter";

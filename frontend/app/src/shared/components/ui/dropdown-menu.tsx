@@ -55,17 +55,6 @@ export const DropdownMenuItem = ({ className, ref, ...props }: DropdownMenuItemP
   />
 );
 
-interface DropdownMenuDividerProps
-  extends React.ComponentProps<typeof DropdownMenuPrimitive.Separator> {}
-
-export const DropdownMenuDivider = ({ className, ref, ...props }: DropdownMenuDividerProps) => (
-  <DropdownMenuPrimitive.Separator
-    ref={ref}
-    className={classNames("-mx-1 my-1 h-px bg-gray-200", className)}
-    {...props}
-  />
-);
-
 export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
 interface DropdownMenuSubTriggerProps

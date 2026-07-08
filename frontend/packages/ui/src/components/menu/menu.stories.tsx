@@ -1,9 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type React from "react";
 
 import { CopyIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
+import React, { useState } from "react";
+import { Popover as AriaPopover } from "react-aria-components";
 
-import { Menu, MenuItem, MenuSection } from "./menu";
+import { Autocomplete } from "../autocomplete/autocomplete";
+import { Button } from "../button/button";
+import { Menu, MenuItem, MenuSection, MenuTrigger, SubmenuTrigger } from "./menu";
 
 const meta: Meta<typeof Menu> = {
   title: "Components/Menu",
@@ -30,70 +33,157 @@ const MenuSurface = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-export const Default: Story = {
+// Item sets shared across both variants, so each scenario renders identically as action and picker.
+const simpleItems = () => [
+  <MenuItem key="edit">
+    <PencilLineIcon />
+    <span>Edit</span>
+  </MenuItem>,
+  <MenuItem key="duplicate">
+    <CopyIcon />
+    <span>Duplicate</span>
+  </MenuItem>,
+  <MenuItem key="delete" className="text-red-500">
+    <Trash2Icon />
+    <span>Delete</span>
+  </MenuItem>,
+];
+
+const sectionItems = () => [
+  <MenuSection key="actions" title="Actions">
+    <MenuItem>Copy ID</MenuItem>
+    <MenuItem>Copy HFID</MenuItem>
+  </MenuSection>,
+  <MenuSection key="manage" title="Manage">
+    <MenuItem>
+      <PencilLineIcon />
+      <span>Edit</span>
+    </MenuItem>
+    <MenuItem>
+      <GroupIcon />
+      <span>Groups</span>
+    </MenuItem>
+  </MenuSection>,
+];
+
+const disabledItems = () => [
+  <MenuItem key="edit">
+    <PencilLineIcon />
+    <span>Edit</span>
+  </MenuItem>,
+  <MenuItem
+    key="delete"
+    isDisabled
+    tooltip="You don't have permission to delete this object"
+    className="text-red-500"
+  >
+    <Trash2Icon />
+    <span>Delete</span>
+  </MenuItem>,
+];
+
+export const AllVariants: Story = {
   render: () => (
-    <div className="grid grid-cols-[8rem_auto] items-start gap-x-6 gap-y-6">
+    <div className="grid grid-cols-[8rem_max-content_max-content] items-start gap-x-6 gap-y-6">
+      <div />
+      <ColumnLabel>action (default)</ColumnLabel>
+      <ColumnLabel>picker</ColumnLabel>
+
       <ColumnLabel>Simple</ColumnLabel>
       <MenuSurface>
-        <Menu aria-label="Simple menu">
-          <MenuItem>
-            <PencilLineIcon />
-            <span>Edit</span>
-          </MenuItem>
-          <MenuItem>
-            <CopyIcon />
-            <span>Duplicate</span>
-          </MenuItem>
-          <MenuItem className="text-red-500">
-            <Trash2Icon />
-            <span>Delete</span>
-          </MenuItem>
+        <Menu aria-label="Simple action menu" variant="action">
+          {simpleItems()}
+        </Menu>
+      </MenuSurface>
+      <MenuSurface>
+        <Menu aria-label="Simple picker menu" variant="picker">
+          {simpleItems()}
         </Menu>
       </MenuSurface>
 
       <ColumnLabel>With sections</ColumnLabel>
       <MenuSurface>
-        <Menu aria-label="Menu with sections">
-          <MenuSection title="Actions">
-            <MenuItem>Copy ID</MenuItem>
-            <MenuItem>Copy HFID</MenuItem>
-          </MenuSection>
-          <MenuSection title="Manage">
-            <MenuItem>
-              <PencilLineIcon />
-              <span>Edit</span>
-            </MenuItem>
-            <MenuItem>
-              <GroupIcon />
-              <span>Groups</span>
-            </MenuItem>
-          </MenuSection>
+        <Menu aria-label="Action menu with sections" variant="action">
+          {sectionItems()}
+        </Menu>
+      </MenuSurface>
+      <MenuSurface>
+        <Menu aria-label="Picker menu with sections" variant="picker">
+          {sectionItems()}
         </Menu>
       </MenuSurface>
 
       <ColumnLabel>Disabled + tooltip</ColumnLabel>
       <div className="space-y-1">
         <MenuSurface>
-          <Menu aria-label="Menu with a disabled item">
-            <MenuItem>
-              <PencilLineIcon />
-              <span>Edit</span>
-            </MenuItem>
-            <MenuItem
-              isDisabled
-              tooltip="You don't have permission to delete this object"
-              className="text-red-500"
-            >
-              <Trash2Icon />
-              <span>Delete</span>
-            </MenuItem>
+          <Menu aria-label="Action menu with a disabled item" variant="action">
+            {disabledItems()}
           </Menu>
         </MenuSurface>
         <p className="text-[10px] text-neutral-400">Hover the disabled item to see the tooltip.</p>
       </div>
+      <MenuSurface>
+        <Menu aria-label="Picker menu with a disabled item" variant="picker">
+          {disabledItems()}
+        </Menu>
+      </MenuSurface>
     </div>
   ),
   parameters: {
     layout: "padded",
   },
+};
+
+/*
+ * The picker pattern that drives AddSort: a filtered field list whose items each open an
+ * asc/desc submenu. The submenu inherits variant="picker" from its parent — no prop needed.
+ */
+const SORT_FIELDS = ["Name", "Description", "Created at", "Site › Name", "Device › Role"];
+const DIRECTIONS = [
+  { id: "asc", label: "Ascending" },
+  { id: "desc", label: "Descending" },
+];
+
+function PickerWithSubmenuRender() {
+  const [picked, setPicked] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <MenuTrigger>
+        <Button variant="outline" size="sm">
+          Add sort
+        </Button>
+        <AriaPopover
+          placement="bottom start"
+          className="w-56 rounded-lg border border-neutral-300 bg-white shadow-md"
+        >
+          <Autocomplete>
+            <Menu variant="picker" aria-label="Sort field" className="max-h-72">
+              {SORT_FIELDS.map((field) => (
+                <SubmenuTrigger key={field}>
+                  <MenuItem textValue={field}>{field}</MenuItem>
+                  <AriaPopover className="rounded-lg border border-neutral-300 bg-white shadow-md">
+                    <Menu
+                      aria-label={`Direction for ${field}`}
+                      onAction={(key) => setPicked(`${field} · ${key}`)}
+                    >
+                      {DIRECTIONS.map((d) => (
+                        <MenuItem key={d.id} id={d.id} textValue={d.label}>
+                          {d.label}
+                        </MenuItem>
+                      ))}
+                    </Menu>
+                  </AriaPopover>
+                </SubmenuTrigger>
+              ))}
+            </Menu>
+          </Autocomplete>
+        </AriaPopover>
+      </MenuTrigger>
+      <p className="text-xs text-neutral-500">Picked: {picked ?? "—"}</p>
+    </div>
+  );
+}
+
+export const PickerWithSubmenu: Story = {
+  render: () => <PickerWithSubmenuRender />,
 };

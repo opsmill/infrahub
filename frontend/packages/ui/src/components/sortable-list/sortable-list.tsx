@@ -1,32 +1,31 @@
-import type React from "react";
-
 import { GripVerticalIcon } from "lucide-react";
+import React from "react";
 import {
-  DropIndicator,
   GridList as AriaGridList,
-  type DropTarget,
-  type DroppableCollectionReorderEvent,
   GridListItem as AriaGridListItem,
   type GridListItemProps as AriaGridListItemProps,
   type GridListProps as AriaGridListProps,
+  DropIndicator,
+  type DroppableCollectionReorderEvent,
+  type DropTarget,
   type Key,
   useDragAndDrop,
 } from "react-aria-components";
-import { cn, tv } from "tailwind-variants";
+import { tv } from "tailwind-variants";
 
-import { focusVisibleStyle } from "../../styles/focus-visible";
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 import { Button } from "../button/button";
 
-function reorderItems<T extends { id: Key }>(
+function reorderItems<T>(
   items: T[],
   event: DroppableCollectionReorderEvent,
+  getId: (item: T) => Key,
 ): T[] {
   const { keys, target } = event;
-  const moved = items.filter((item) => keys.has(item.id));
-  const rest = items.filter((item) => !keys.has(item.id));
+  const moved = items.filter((item) => keys.has(getId(item)));
+  const rest = items.filter((item) => !keys.has(getId(item)));
 
-  const targetItem = rest.find((item) => item.id === target.key);
+  const targetItem = rest.find((item) => getId(item) === target.key);
   if (!targetItem) {
     return items;
   }
@@ -36,7 +35,7 @@ function reorderItems<T extends { id: Key }>(
   return [...rest.slice(0, insertIndex), ...moved, ...rest.slice(insertIndex)];
 }
 
-export interface SortableListProps<T extends { id: Key }> extends Omit<
+export interface SortableListProps<T extends object> extends Omit<
   AriaGridListProps<T>,
   "items" | "children" | "dragAndDropHooks"
 > {
@@ -47,24 +46,30 @@ export interface SortableListProps<T extends { id: Key }> extends Omit<
 
 function SortableDropIndicator({ target }: { target: DropTarget }) {
   return (
-    // -mt-px offsets the line's own height so this in-flow row adds no space, keeping siblings put.
+    // -mt-px offsets the line's own height so this in-flow row never shifts siblings.
     <DropIndicator
       target={target}
-      className="mx-2 -mt-px h-px rounded-full bg-cyan-600 shadow-[0_0_6px_1px_rgba(6,182,212,0.55)] outline-hidden"
+      className="-mt-px h-px rounded-full bg-cyan-700 opacity-0 shadow-[0_0_2px_1px_rgba(6,182,212,0.25)] outline-hidden transition-opacity data-drop-target:opacity-100"
     />
   );
 }
 
-export function SortableList<T extends { id: Key }>({
+export function SortableList<T extends object>({
   items,
   onReorder,
   children,
   ...props
 }: SortableListProps<T>) {
+  const getItemId = (item: T): Key => {
+    const element = children(item);
+    const id = React.isValidElement<{ id?: Key }>(element) ? element.props.id : undefined;
+    return id ?? (item as { id: Key }).id;
+  };
+
   const { dragAndDropHooks } = useDragAndDrop({
     getItems: (keys) => [...keys].map((key) => ({ "text/plain": String(key) })),
     onReorder: (event) => {
-      onReorder(reorderItems(items, event));
+      onReorder(reorderItems(items, event, getItemId));
     },
     renderDropIndicator: (target) => <SortableDropIndicator target={target} />,
   });
@@ -78,8 +83,8 @@ export function SortableList<T extends { id: Key }>({
 
 const sortableItemStyles = tv({
   base: [
-    "flex cursor-grab items-center gap-2 rounded-lg border border-transparent p-1 text-sm text-stone-600 outline-hidden select-none",
-    "data-hovered:bg-stone-700/10 data-hovered:text-stone-800",
+    "flex cursor-grab items-center gap-1.5 rounded-lg border border-transparent p-0.5 text-sm text-stone-600 outline-hidden select-none",
+    "data-focus-visible:bg-stone-700/10 data-focus-visible:text-stone-800",
     "data-selected:bg-stone-700/10 data-selected:text-stone-800",
     "data-dragging:cursor-grabbing",
     "data-disabled:pointer-events-none data-disabled:opacity-50",
@@ -98,7 +103,7 @@ export function SortableItem({ children, className, ref, ...props }: SortableIte
     <AriaGridListItem
       ref={ref}
       className={composeAriaClassName(className, ({ isDragging }) =>
-        cn(focusVisibleStyle, sortableItemStyles({ isDragging })),
+        sortableItemStyles({ isDragging }),
       )}
       {...props}
     >
