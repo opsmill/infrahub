@@ -20,6 +20,7 @@ log = get_logger()
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
+    from infrahub.core.recompute.bulk_write import WrittenNode
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.workflow import InfrahubWorkflow
@@ -36,6 +37,11 @@ UPDATED = "updated"
 DELETED = "deleted"
 
 _SELF_FILTER = "ids"
+
+# A recompute write can feed a value that reads it, so each coalesced pass can dispatch another. The
+# per-level value-change filter settles an acyclic dependency graph on its own; this bound is the
+# backstop that stops a cyclic or self-referential schema from chaining without end.
+MAX_RECOMPUTE_CHAIN_DEPTH = 10
 
 
 @dataclass(frozen=True)
@@ -351,13 +357,14 @@ class CoalescedRecomputeSubmitter:
 
     @staticmethod
     def _submission_workflow(
-        *, submission: CoalescedSubmission, context: EventContext
+        *, submission: CoalescedSubmission, context: EventContext, recompute_depth: int = 0
     ) -> tuple[WorkflowDefinition, dict[str, Any]]:
         parameters: dict[str, Any] = {
             "branch_name": submission.branch,
             "node_kind": submission.source_kind,
             "object_ids": list(submission.node_ids),
             "context": context,
+            "recompute_depth": recompute_depth,
         }
         match submission.family:
             case "computed_attribute":
@@ -373,16 +380,21 @@ class CoalescedRecomputeSubmitter:
             case _:
                 assert_never(submission.family)
 
-    async def submit(self, *, coalesced: CoalescedRecompute, context: EventContext) -> list[CoalescedSubmission]:
+    async def submit(
+        self, *, coalesced: CoalescedRecompute, context: EventContext, recompute_depth: int = 0
+    ) -> list[CoalescedSubmission]:
         """Submit the coalesced recompute, one process flow per chunk of changed nodes.
 
         The merge and rebase path no longer dispatches one flow per changed node. A single
         submission failure is logged and skipped rather than dropping the rest, since a missed
-        submission leaves a stale stored value. Returns the submissions that were dispatched.
+        submission leaves a stale stored value. ``recompute_depth`` is carried to each process flow
+        so a chained next level knows how deep it is. Returns the submissions that were dispatched.
         """
         submitted: list[CoalescedSubmission] = []
         for submission in self.plan(coalesced):
-            workflow_definition, parameters = self._submission_workflow(submission=submission, context=context)
+            workflow_definition, parameters = self._submission_workflow(
+                submission=submission, context=context, recompute_depth=recompute_depth
+            )
             try:
                 await self.workflow.submit_workflow(
                     workflow=workflow_definition, context=context, parameters=parameters
@@ -414,3 +426,40 @@ class MergeRecomputeCoordinator:
     ) -> list[CoalescedSubmission]:
         coalesced = self.builder.build(changes=changes, branch=branch)
         return await self.submitter.submit(coalesced=coalesced, context=context)
+
+
+async def submit_recompute_chain(
+    *,
+    written: list[WrittenNode],
+    schema_branch: SchemaBranch,
+    branch: str,
+    workflow: InfrahubWorkflow,
+    context: EventContext,
+    depth: int,
+    max_depth: int = MAX_RECOMPUTE_CHAIN_DEPTH,
+) -> list[CoalescedSubmission]:
+    """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass.
+
+    The writes are treated as a change set and coalesced the same way a merge or rebase change set
+    is, so values that read them recompute without one per-node event triggering one flow per node.
+    An empty set of writes dispatches nothing, which is what stops the chain at its fixpoint;
+    ``max_depth`` is the backstop that stops a cyclic schema from chaining without end.
+    """
+    if not written:
+        return []
+    next_depth = depth + 1
+    if next_depth > max_depth:
+        log.warning(
+            "Recompute chain reached its depth bound (%s) on branch %s; not dispatching a further level",
+            max_depth,
+            branch,
+        )
+        return []
+    changes = [
+        MergeChange(node_id=node.node_id, kind=node.kind, action=UPDATED, changed_fields=frozenset(node.fields))
+        for node in written
+    ]
+    coalesced = CoalescedRecomputeBuilder(schema_branch=schema_branch).build(changes=changes, branch=branch)
+    return await CoalescedRecomputeSubmitter(workflow=workflow).submit(
+        coalesced=coalesced, context=context, recompute_depth=next_depth
+    )

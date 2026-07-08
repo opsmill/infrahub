@@ -4,12 +4,16 @@ from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.logging import get_run_logger
 
+from infrahub import config
+from infrahub.core.merge.recompute_coalescing import submit_recompute_chain
+from infrahub.core.recompute.bulk_write import HFID_FIELD, AttributeValueWrite, BulkRecomputeWriter
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
-from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
+from infrahub.workers.dependencies import get_client, get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import HFID_PROCESS, TRIGGER_UPDATE_HFID
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
@@ -88,6 +92,7 @@ async def process_hfid(
     context: EventContext,
     object_id: str | None = None,
     object_ids: list[str] | None = None,
+    recompute_depth: int = 0,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -118,6 +123,36 @@ async def process_hfid(
 
     if not update_candidates:
         log.debug("No nodes found that requires updates")
+        return
+
+    if config.SETTINGS.experimental_features.recompute_bulk_write:
+        writes: list[AttributeValueWrite] = []
+        for node in update_candidates:
+            rendered_hfid = [
+                node.variables[component] for component in hfid_definition.hfid if component in node.variables
+            ]
+            if rendered_hfid != node.hfid_value:
+                writes.append(AttributeValueWrite(node_id=node.node_id, field=HFID_FIELD, value=rendered_hfid))
+        if writes:
+            coalesced = object_ids is not None
+            db = await get_database()
+            branch = await registry.get_branch(db=db, branch=branch_name)
+            writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
+            written = await writer.write(
+                branch=branch,
+                writes=writes,
+                context=context,
+                origin=NodeMutationOrigin.RECOMPUTE if coalesced else NodeMutationOrigin.LIVE,
+            )
+            if coalesced:
+                await submit_recompute_chain(
+                    written=written,
+                    schema_branch=schema_branch,
+                    branch=branch_name,
+                    workflow=get_workflow(),
+                    context=context,
+                    depth=recompute_depth,
+                )
         return
 
     batch = await client.create_batch()
