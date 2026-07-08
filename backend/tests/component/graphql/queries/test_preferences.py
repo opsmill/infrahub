@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
-from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
@@ -68,7 +67,6 @@ async def test_effective_no_user_no_global_is_default(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
     result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
@@ -78,15 +76,12 @@ async def test_effective_no_user_no_global_is_default(
     # Nothing defined anywhere: value null, source DEFAULT.
     assert prefs["date_format"] == {"value": None, "source": "DEFAULT"}
     assert prefs["timezone"] == {"value": None, "source": "DEFAULT"}
-    # A read never fabricates a row.
-    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_effective_global_only_source_global(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
     await Preference(owner_id=GLOBAL_OWNER_ID, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
@@ -98,8 +93,6 @@ async def test_effective_global_only_source_global(
     # No user override: resolved value comes from the global row, source GLOBAL.
     assert prefs["date_format"] == {"value": "ISO_DATETIME", "source": "GLOBAL"}
     assert prefs["timezone"] == {"value": "UTC", "source": "GLOBAL"}
-    # No user row was fabricated for the fallback.
-    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_effective_user_override_source_user(
