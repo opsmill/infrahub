@@ -94,6 +94,7 @@ command the repo lacks; surface ambiguity to the user. Column 1 lists the in-rep
 | Code review | `speckit-review-run` (or per-lens `speckit-review-{code,tests,types,errors,comments}`), `speckit-review-simplify`, `speckit-critique-run` | `coderabbit:code-review`, `code-simplifier`, `superpowers:requesting-code-review` | `general-purpose` reviewers + `/security-review` |
 | Residue cleanup (post-implement) | `pruning-residues` | `code-simplifier` | agent prunes leftover debug logs, dead code, orphaned files/imports, and redundant comments; else skip |
 | Knowledge capture | `capturing-knowledge` | — | skip |
+| Docs audit / consistency | `/audit-docs` → `/add-docs` | — | grep doc layers for drift; else skip |
 | Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |
 | CI gate / verify | `/pre-ci` | `superpowers:verification-before-completion` | run detected test + lint commands |
 | Commit | `commit`, `/git-commit` | `commit-commands:commit` | `git commit` (conventional message) |
@@ -130,7 +131,7 @@ The lane and depth follow from the classification:
 | Plan | skip on `S`, else light | `/speckit-plan` + `/speckit-tasks` → `plan.md`, `tasks.md` (`M`/`L`) | skip |
 | Implement | `/bug-tdd` → `/bug-fix` | TDD agents (worktrees on `L`) | direct edit |
 | Review | `speckit-review-run` → `review.md` + verify | same | same (lighter) |
-| Knowledge | `capturing-knowledge` (conditional) | same | same |
+| Knowledge & docs | `capturing-knowledge` + `/audit-docs` (conditional) | same | same |
 | CI gate | `/pre-ci` | same | same |
 | Commit | `commit` | same | same |
 | PR | `pr` → split assessment | same | same (usually single PR) |
@@ -201,10 +202,14 @@ with `superpowers:requesting-code-review` / `receiving-code-review` when present
 **Gate:** zero unaddressed blockers. **Checkpoint:** ranked list, then fix pass (small parallel
 agents per file group).
 
-### Phase 6 — Knowledge capture (opportunistic)
-Delegate to `capturing-knowledge` (no args). Skip silently if nothing genuinely new was learned —
-empty captures are a feature. If docs change, they join this PR. **Checkpoint** only if it proposes
-doc changes.
+### Phase 6 — Knowledge & docs consistency (opportunistic)
+1. **Capture** — delegate to `capturing-knowledge` (no args). Skip silently if nothing genuinely new
+   was learned — empty captures are a feature.
+2. **Audit** — run `/audit-docs` against this branch's changes (it cross-references the 5 doc layers
+   and reports gaps/drift, so the docs stay consistent with what was actually built). For each real
+   gap, update or create the doc with `/add-docs` (fallback: edit the doc directly).
+Any doc changes join **this** PR (no separate docs PR unless the user asks). **Checkpoint** only if
+capture or the audit proposes doc changes — otherwise skip silently.
 
 ### Phase 7 — CI gate (must-pass before PR)
 Run `/pre-ci` (or `superpowers:verification-before-completion`, or detected test+lint commands —
