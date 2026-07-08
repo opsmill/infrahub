@@ -198,7 +198,9 @@ async def test_create_graphql_query_surfaces_server_validation_error(
 
     # The upstream SDK GraphQLError embeds the full rendered mutation in its message; the
     # chained context must stay suppressed and only the concise server message may be logged.
+    # The positive check guards the negative ones: if log capture broke, they would pass vacuously.
     assert exc_info.value.__suppress_context__ is True
+    assert "Unable to import GraphQL query 'broken_query' from repository 'fragment_repo'" in caplog.text
     assert "An error occurred while executing the GraphQL Query" not in caplog.text
     assert "SourceLocation" not in caplog.text
 
