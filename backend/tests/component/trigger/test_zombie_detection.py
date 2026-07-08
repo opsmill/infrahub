@@ -22,8 +22,10 @@ if TYPE_CHECKING:
     from infrahub.trigger.models import SystemTriggerDefinition
 
 # The shipped window outlasts the longest configured backoff; the event-driven tests scale it
-# down so a verdict arrives within seconds instead of minutes.
-SCALED_WINDOW = timedelta(seconds=20)
+# down to Prefect's minimum proactive window so a verdict arrives within seconds instead of
+# minutes. The server's proactive evaluation cadence is tightened to match (see the component
+# conftest) so a scaled run is judged within this window rather than lagging behind it.
+SCALED_WINDOW = timedelta(seconds=10)
 VERDICT_TIMEOUT_SECONDS = 60.0
 POLL_INTERVAL_SECONDS = 1.0
 
@@ -113,7 +115,7 @@ async def test_wait_transition_restarts_the_countdown(
 
     # Check between the heartbeat's expiry and the transition's: crashed here means the
     # transition did not restart the countdown.
-    await asyncio.sleep(SCALED_WINDOW.total_seconds() * 0.65)
+    await asyncio.sleep(SCALED_WINDOW.total_seconds() * 0.7)
     run = await prefect_client.read_flow_run(flow_run_id)
     assert run.state is not None
     assert run.state.type == StateType.SCHEDULED

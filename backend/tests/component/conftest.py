@@ -73,6 +73,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
+    PREFECT_EVENTS_PROACTIVE_GRANULARITY,
     PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
 )
@@ -139,6 +140,7 @@ def prefect_test_fixture() -> Generator[None, None, None]:
         )
 
     os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
+    os.environ["PREFECT_SERVER_EVENTS_PROACTIVE_GRANULARITY"] = PREFECT_EVENTS_PROACTIVE_GRANULARITY
     os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
     with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):

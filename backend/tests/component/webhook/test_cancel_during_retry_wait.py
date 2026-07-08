@@ -29,7 +29,10 @@ if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
 
 TARGET_URL = "https://cancel.example.test/hook"
-RETRY_DELAY_SECONDS = 10.0
+# The delivery only returns once this backoff elapses, so it sets the test's duration. It is
+# kept short while leaving ample slack for the cancellation to land during the wait: the first
+# attempt fails near-instantly and the run is discovered within a poll interval.
+RETRY_DELAY_SECONDS = 5.0
 POLL_INTERVAL_SECONDS = 0.2
 DISCOVERY_TIMEOUT_SECONDS = 30.0
 
