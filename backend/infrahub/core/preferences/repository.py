@@ -9,19 +9,13 @@ if TYPE_CHECKING:
     from infrahub.core.preferences.models import Preference
     from infrahub.database import InfrahubDatabase
 
-# Distributed-lock namespace for Preference upserts, keyed on `owner_id`: concurrent upserts for the
-# SAME owner serialise (preventing a duplicate first row or a lost update) while different owners
-# never contend. The global row locks on the Root id, a user's on the account id. Reads are lock-free
-# (they never write).
-PREFERENCE_LOCK_NAMESPACE = "preference"
-
 
 class PreferenceRepository:
     """All database access for Preference rows.
 
     Reads never create a row: a missing row means "nothing set" and the caller falls back
     (user → global → the client's built-in default). The single write path is a lazy upsert; the
-    caller serialises concurrent writes per owner with a distributed lock on PREFERENCE_LOCK_NAMESPACE.
+    caller serialises concurrent writes per owner with a distributed lock.
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
