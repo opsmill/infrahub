@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Self
+
+from pydantic import BaseModel, Field
 
 from .constants import InfrahubType
 
@@ -14,23 +16,31 @@ class TelemetryBranchData(BaseModel):
 
 
 class TelemetryAccountData(BaseModel):
-    active: int | None = None
-    groups: int | None = None
+    active: int | None = Field(default=None)
+    groups: int | None = Field(default=None)
+
+    @classmethod
+    def default(cls) -> Self:
+        return cls()
 
 
 class TelemetryActivity24hData(BaseModel):
-    logins: int | None = None
-    unique_logins: int | None = None
-    checks_started: int | None = None
-    checks_passed: int | None = None
-    checks_failed: int | None = None
-    artifacts_created: int | None = None
-    artifacts_updated: int | None = None
-    branches_created: int | None = None
-    branches_merged: int | None = None
-    branches_deleted: int | None = None
-    webhooks_fired_success: int | None = None
-    webhooks_fired_failure: int | None = None
+    logins: int | None = Field(default=None)
+    unique_logins: int | None = Field(default=None)
+    checks_started: int | None = Field(default=None)
+    checks_passed: int | None = Field(default=None)
+    checks_failed: int | None = Field(default=None)
+    artifacts_created: int | None = Field(default=None)
+    artifacts_updated: int | None = Field(default=None)
+    branches_created: int | None = Field(default=None)
+    branches_merged: int | None = Field(default=None)
+    branches_deleted: int | None = Field(default=None)
+    webhooks_fired_success: int | None = Field(default=None)
+    webhooks_fired_failure: int | None = Field(default=None)
+
+    @classmethod
+    def default(cls) -> Self:
+        return cls()
 
 
 class TelemetrySchemaData(BaseModel):
@@ -80,8 +90,8 @@ class TelemetryData(BaseModel):
     platform: str
     workers: TelemetryWorkerData
     branches: TelemetryBranchData
-    accounts: TelemetryAccountData
-    activity_24h: TelemetryActivity24hData
+    accounts: TelemetryAccountData = Field(default_factory=TelemetryAccountData.default)
+    activity_24h: TelemetryActivity24hData = Field(default_factory=TelemetryActivity24hData.default)
     features: dict[str, int]
     schema_info: TelemetrySchemaData
     database: TelemetryDatabaseData
