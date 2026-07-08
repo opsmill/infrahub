@@ -1988,7 +1988,7 @@ include = [
 
 [tool.hatch.version]
 source = "vcs"
-fallback-version = "1.10.4.dev0"  # must sort above the latest release; bumped on each release by /cut-release
+fallback-version = "0.0.0.dev0"  # static sentinel for tag-less checkouts; identical on every branch so releases never touch it (no stable/develop merge conflicts); publish-guarded in release.yml
 
 [tool.hatch.version.raw-options]
 git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "infrahub-v*"]
