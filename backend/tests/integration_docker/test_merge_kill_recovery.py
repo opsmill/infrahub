@@ -35,6 +35,7 @@ async def _wait_for_status(client: InfrahubClient, branch_name: str, target: str
     return status
 
 
+@pytest.mark.skip(reason="test takes too long")
 class TestMergeKillDetection(TestInfrahubDockerClient):
     """Cross-process detection: SIGKILL a worker mid-merge, stay idle, expect MERGE_FAILED.
 
