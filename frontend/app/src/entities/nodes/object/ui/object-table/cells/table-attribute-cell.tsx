@@ -28,9 +28,10 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
       return <DropdownCell dropdown={attributeData as Dropdown} />;
     }
     case ATTRIBUTE_KIND.DATETIME: {
+      // A datetime *data* attribute: show the user's full preferred format+timezone inline.
       return (
         <span className="truncate">
-          <DateDisplay date={attributeData.value as string | null} />
+          <DateDisplay date={attributeData.value as string | null} variant="datetime" />
         </span>
       );
     }
