@@ -17,10 +17,16 @@ function getSortableFieldsOfRelationship(
 ): SortableField[] {
   const sortablePeerAttributes = (peerSchema.attributes ?? []).filter(isSortableAttribute);
   const orderedPeerAttributes = sortByOrderWeight(sortablePeerAttributes);
-  return orderedPeerAttributes.map((attribute) => ({
-    field: `${relationship.name}__${attribute.name}__value`,
-    label: `${relationship.label}${PEER_LABEL_SEPARATOR}${attribute.label}`,
-  }));
+
+  const relationshipLabel = relationship.label ?? relationship.name;
+
+  return orderedPeerAttributes.map((attribute) => {
+    const attributeLabel = attribute.label ?? attribute.name;
+    return {
+      field: `${relationship.name}__${attribute.name}__value`,
+      label: `${relationshipLabel}${PEER_LABEL_SEPARATOR}${attributeLabel}`,
+    };
+  });
 }
 
 const NODE_METADATA_SORTABLE_FIELDS: SortableField[] = [
