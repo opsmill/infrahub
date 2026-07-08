@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { Command, useCommandState } from "cmdk";
-import { format } from "date-fns";
 import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
@@ -155,6 +155,8 @@ type NodeAttributeProps = {
 };
 
 const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
+  const { formatDate } = useFormatDate();
+
   const formatValue = (): string | number | boolean | ReactElement | null => {
     if ("node" in value && value.node) {
       return value.node ? getNodeLabel(value.node) : null;
@@ -177,7 +179,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           );
         case ATTRIBUTE_KIND.DATETIME: {
           const date = typeof value.value === "string" ? new Date(value.value) : new Date();
-          return format(date, "yyyy/MM/dd HH:mm");
+          return formatDate(date, "datetime");
         }
         case ATTRIBUTE_KIND.DROPDOWN: {
           if (!("color" in value)) return value.value;

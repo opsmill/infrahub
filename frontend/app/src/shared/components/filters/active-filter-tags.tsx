@@ -3,9 +3,9 @@ import { useRef, useState } from "react";
 import { type Selection, TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
+import { DateDisplay } from "@/shared/components/display/date-display";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDate } from "@/shared/utils/date";
 
 import {
   AVAILABLE_IP_FILTER_NAME,
@@ -37,7 +37,7 @@ export function formatAttributeFilterValue({
     case ATTRIBUTE_KIND.BOOLEAN:
       return String(value);
     case ATTRIBUTE_KIND.DATETIME:
-      return formatFullDate(value as string | number | Date);
+      return <DateDisplay date={value as string | number | Date} variant="datetime" />;
     default:
       return value as React.ReactNode;
   }
@@ -293,7 +293,7 @@ export function getFilterTagDisplay({
     return {
       label: name,
       condition: fieldKey,
-      value: formatFullDate(filter.value as string | number | Date),
+      value: <DateDisplay date={filter.value as string | number | Date} variant="datetime" />,
     };
   }
 

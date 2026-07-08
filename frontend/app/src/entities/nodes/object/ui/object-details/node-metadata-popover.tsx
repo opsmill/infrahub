@@ -5,7 +5,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
-import { formatFullDate } from "@/shared/utils/date";
+import { useFormatDate } from "@/shared/context/date-preferences-context";
 
 import { useGetNodeMetadata } from "@/entities/nodes/object/ui/queries/get-node-metadata.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -29,6 +29,7 @@ interface NodeMetadataProps {
 
 export function NodeMetadata({ objectKind, objectId }: NodeMetadataProps) {
   const { data, isPending, error } = useGetNodeMetadata({ objectKind, objectId });
+  const { formatDate } = useFormatDate();
 
   if (isPending) {
     return <LoadingIndicator className="h-36 w-50" />;
@@ -47,7 +48,7 @@ export function NodeMetadata({ objectKind, objectId }: NodeMetadataProps) {
   const items = [
     {
       name: "Created at",
-      value: created_at ? formatFullDate(created_at) : "-",
+      value: created_at ? formatDate(created_at, "datetime") : "-",
     },
     {
       name: "Created by",
@@ -55,7 +56,7 @@ export function NodeMetadata({ objectKind, objectId }: NodeMetadataProps) {
     },
     {
       name: "Updated at",
-      value: updated_at ? formatFullDate(updated_at) : "-",
+      value: updated_at ? formatDate(updated_at, "datetime") : "-",
     },
     {
       name: "Updated by",
