@@ -38,7 +38,8 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
+# Neo4j naming rules: 3-63 chars, alphanumeric start/end, dots and dashes allowed within.
+VALID_DATABASE_NAME_REGEX = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
 
 
