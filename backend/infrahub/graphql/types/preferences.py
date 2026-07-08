@@ -30,9 +30,8 @@ class PreferenceWriteScope(StrEnum):
 PreferenceWriteScopeType = Enum.from_enum(
     PreferenceWriteScope,
     description=(
-        "The writable axes of the preferences store: USER writes the caller's own preferences, "
-        "GLOBAL writes the organisation-wide ones (gated on manage_global_preferences). EFFECTIVE is "
-        "intentionally absent — the resolved view is read-only."
+        "Which set of preferences to write: USER for the current user's own preferences, GLOBAL for "
+        "the organisation-wide defaults."
     ),
 )
 
