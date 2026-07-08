@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
-import { useObjectDetailsOutlet } from "@/entities/nodes/object/ui/object-details/use-object-details-outlet";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { useObjectDetailsOutlet } from "@/entities/nodes/object/ui/routing/use-object-details-outlet";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 
 export function Component() {

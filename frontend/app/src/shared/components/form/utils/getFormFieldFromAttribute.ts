@@ -13,22 +13,25 @@ import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDef
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
-import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeAttributeWithMetadata, NodeObject } from "@/entities/nodes/types";
-import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
-import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type {
+  NodeAttributeWithMetadata,
+  NodeObject,
+} from "@/entities/nodes/object/domain/model/node";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
+import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
   AttributeKind,
   AttributeSchema,
   ModelSchema,
   NumberAttributeParameters,
   TextAttributeParameters,
-} from "@/entities/schema/types";
-import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
-import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
+} from "@/entities/schema/domain/model/schema";
+import { validateNumberAttribute } from "@/entities/schema/domain/rules/validation/validate-number-attribute";
+import { validateTextAttribute } from "@/entities/schema/domain/rules/validation/validate-text-attribute";
 
 export const getFormFieldFromAttribute = ({
   auth,

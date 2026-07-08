@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
-import { deleteBranch } from "@/entities/branches/domain/delete-branch";
+import { deleteBranch } from "@/entities/branches/domain/use-cases/delete-branch";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { getBranchesInfiniteQueryOptions } from "@/entities/branches/ui/queries/get-branches.query";

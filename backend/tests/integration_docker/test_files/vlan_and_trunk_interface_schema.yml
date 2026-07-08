@@ -1,0 +1,24 @@
+---
+version: "1.0"
+nodes:
+  - name: EventVlan
+    namespace: Testing
+    label: "Event VLAN"
+    human_friendly_id: ['name__value']
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+  - name: EventInterface
+    namespace: Testing
+    label: "Event Interface"
+    human_friendly_id: ['name__value']
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: tagged_vlans
+        peer: TestingEventVlan
+        cardinality: many
+        optional: true

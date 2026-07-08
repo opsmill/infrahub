@@ -22,22 +22,22 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
-import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { isNodeRelationshipOne } from "@/entities/nodes/object/domain/rules/is-node-relationship-one";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { isNodeRelationshipOne } from "@/entities/nodes/object/utils/is-node-relationship-one";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import type { NodeObject } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { Permission } from "@/entities/permission/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import { GENERIC_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import { CheckConnectivityModal } from "@/entities/repository/ui/check-connectivity-modal";
 import { RepositoryMenuSection } from "@/entities/repository/ui/repository-menu-section";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 export interface ObjectDetailsMenuProps extends ButtonProps {
   objectSchema: ModelSchema;
@@ -214,14 +214,14 @@ export function ObjectDetailsMenu({
           title={`Edit ${nodeLabel}`}
           subtitle={objectSchema.description}
         />
-        <ObjectItemEditComponent
+        <ObjectEdit
           closeDrawer={() => setIsEditModalOpen(false)}
           onUpdateComplete={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsEditModalOpen(false);
           }}
           objectId={objectData.id!}
-          objectname={objectSchema.kind!}
+          objectKind={objectSchema.kind!}
         />
       </Sheet>
 

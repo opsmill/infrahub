@@ -8,7 +8,7 @@ import {
   RELATIONSHIP_BULK_REMOVE_PREFIX,
 } from "@/shared/components/form/constants";
 
-import { getRelationshipMutation } from "@/entities/nodes/object/utils/get-relationship-mutations";
+import { getRelationshipMutation } from "@/entities/nodes/object/domain/rules/get-relationship-mutations";
 
 export interface UpdateObjectFromApiParams extends BranchContextParams {
   objectKind: string;

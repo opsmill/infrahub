@@ -1,4 +1,4 @@
-import { getSchema } from "@/entities/schema/domain/get-schema";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 export const getParentRelationship = (peer: string) => {
   const peerSchema = getSchema(peer);

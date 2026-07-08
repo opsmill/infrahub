@@ -52,6 +52,7 @@ from infrahub.permissions import define_global_permission_from_branch
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_VALIDATE_MIGRATION
+from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -314,6 +315,7 @@ async def _validate_migrations(
         context=context,
         expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
+        priority=WorkflowPriority.HIGH,
     )
     error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
@@ -398,7 +400,9 @@ async def load_schema(
             origin_schema=origin_schema,
             candidate_schema=candidate_schema,
             at=Timestamp(),
-            context=context,
+            # The caller blocks on this request: a priority stamped into the
+            # context puts the migration task tree in the interactive lane.
+            context=context.model_copy(update={"priority": WorkflowPriority.HIGH}),
             migration_executor=MigrationExecutor.WORKFLOW,
             diff=result.diff,
             migrations=result.migrations,
@@ -466,6 +470,7 @@ async def check_schema(
         context=context,
         expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
+        priority=WorkflowPriority.HIGH,
     )
     error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
@@ -13,6 +12,7 @@ from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.limits import get_prefect_max_related_resources
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
@@ -47,13 +47,6 @@ from .scoping import (
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.graphql.analyzer import GraphQLQueryReport
-
-
-def get_prefect_max_related_resources() -> int:
-    max_related_resources = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500"))
-    if max_related_resources <= 0:
-        max_related_resources = 500
-    return max_related_resources
 
 
 def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:

@@ -1,0 +1,14 @@
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+
+export type RelationshipNode = {
+  id: string;
+  display_label: string;
+  __typename: string;
+};
+
+export type RelationshipProperties = {
+  is_protected: boolean;
+  updated_at: Date;
+  source: NodeCore | null;
+  owner: NodeCore | null;
+};

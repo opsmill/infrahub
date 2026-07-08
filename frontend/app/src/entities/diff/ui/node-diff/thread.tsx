@@ -5,7 +5,7 @@ import { useParams } from "react-router";
 
 import { getThreadLabel, getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { useGetDiffThread } from "@/entities/diff/ui/queries/get-diff-thread.query";
-import { getPermission } from "@/entities/permission/utils";
+import { getPermission } from "@/entities/permission/domain/rules/get-permission";
 
 import { DiffComments } from "./comments";
 

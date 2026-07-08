@@ -8,8 +8,8 @@ import { Row } from "@/shared/components/container";
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-items-header";
-import type { Permission } from "@/entities/permission/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ProposedChangesManagerToolbarProps {
   schema: ModelSchema;

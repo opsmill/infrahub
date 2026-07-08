@@ -1,6 +1,6 @@
 import { QSP } from "@/shared/config/qsp";
 
-import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import { getAccessToken } from "@/entities/authentication/api/token-storage";
 
 // REST error envelope item. The REST and GraphQL envelopes carry different
 // `code` shapes and must not be conflated:
@@ -31,7 +31,7 @@ export class FetchError extends Error {
 }
 
 export const fetchUrl = async (url: string, payload?: RequestInit) => {
-  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const localToken = getAccessToken();
 
   const newPayload = {
     headers: {

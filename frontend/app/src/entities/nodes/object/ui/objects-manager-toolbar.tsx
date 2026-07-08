@@ -8,7 +8,7 @@ import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-sea
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableSchemaSelector } from "@/entities/nodes/object/ui/object-table/object-table-schema-selector";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
 export function ObjectsManagerToolbar() {
   const { selectedSchema, baseSchema, filters, permission } = useObjectTableContext();

@@ -9,8 +9,12 @@ import { Input } from "@/shared/components/ui/input";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type {
+  AttributeKind,
+  AttributeSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 
 export interface DynamicFilterInputProps {
   fieldSchema: AttributeSchema | RelationshipSchema;

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { removeDropdown } from "@/entities/schema/domain/remove-dropdown";
+import { removeDropdown } from "@/entities/schema/domain/use-cases/remove-dropdown";
 import { invalidateSchemaQueries } from "@/entities/schema/ui/queries/invalidate-schema-queries";
 
 export function useRemoveDropdownMutation() {

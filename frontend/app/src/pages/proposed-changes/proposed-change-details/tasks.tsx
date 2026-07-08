@@ -1,4 +1,4 @@
-import { useProposedChangeOutlet } from "@/entities/proposed-changes/ui/use-proposed-change-outlet";
+import { useProposedChangeOutlet } from "@/entities/proposed-changes/ui/routing/use-proposed-change-outlet";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 
 export function Component() {

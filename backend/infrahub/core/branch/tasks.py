@@ -53,6 +53,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
 )
+from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -117,6 +118,10 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     workflow = get_workflow()
     database = await get_database()
     merge_write_blocker = MergeWriteBlocker(cache=await get_cache())
+
+    medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
+    low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+
     async with database.start_session() as db:
         log = get_run_logger()
         await add_tags(branches=[branch])
@@ -234,13 +239,13 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         if ipam_node_details:
             await workflow.submit_workflow(
                 workflow=IPAM_RECONCILIATION,
-                context=context,
+                context=medium_context,
                 parameters={"branch": user_branch.name, "ipam_node_details": ipam_node_details},
             )
 
     await migrate_branch(branch=branch, context=context, send_events=send_events)
     await workflow.submit_workflow(
-        workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": user_branch.name}
+        workflow=DIFF_REFRESH_ALL, context=low_context, parameters={"branch_name": user_branch.name}
     )
 
     if not send_events:
@@ -323,6 +328,9 @@ async def delete_branch(
 ) -> None:
     await add_tags(branches=[branch], nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
+
+    low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+
     async with database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=str(branch))
 
@@ -342,7 +350,7 @@ async def delete_branch(
         )
 
         await get_workflow().submit_workflow(
-            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, context=context, parameters={"branch_name": branch}
+            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, context=low_context, parameters={"branch_name": branch}
         )
 
         event_service = await get_event_service()
@@ -352,7 +360,7 @@ async def delete_branch(
     if should_delete_git:
         await get_workflow().submit_workflow(
             workflow=GIT_REPOSITORIES_DELETE_BRANCH,
-            context=context,
+            context=low_context,
             parameters={"branch": branch},
         )
 

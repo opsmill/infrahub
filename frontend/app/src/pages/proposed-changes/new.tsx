@@ -4,13 +4,13 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
+import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
 import { ProposedChangeCreateForm } from "@/entities/proposed-changes/ui/create-form";
 
 function ProposedChangeCreatePage() {
-  const { isPending, data: permission, error } = useGetObjectPermissions(PROPOSED_CHANGES_OBJECT);
+  const { isPending, data: permission, error } = useGetObjectPermissions(PROPOSED_CHANGE_OBJECT);
 
   if (isPending) {
     return <LoadingIndicator className="h-full" message="checking permissions..." />;
