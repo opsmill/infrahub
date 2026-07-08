@@ -50,7 +50,7 @@ function SortableDropIndicator({ target }: { target: DropTarget }) {
     // -mt-px offsets the line's own height so this in-flow row adds no space, keeping siblings put.
     <DropIndicator
       target={target}
-      className="-mt-px mx-2 h-px rounded-full bg-cyan-600 shadow-[0_0_6px_1px_rgba(6,182,212,0.55)] outline-hidden"
+      className="-mt-px mx-2 h-px rounded-full bg-cyan-600 shadow-[0_0_6px_1px_rgba(59,98,159,0.55)] outline-hidden"
     />
   );
 }

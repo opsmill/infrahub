@@ -10,6 +10,22 @@
 
 @theme {
   --font-sans: InterVariable, sans-serif;
+
+  /* Brand-accent hue: the design system uses Tailwind's `cyan` scale as its
+     single accent token; remap it to OpsMill Blue (#426DB1) so every cyan-*
+     usage matches current branding. Kept in sync with the consuming app's
+     tailwind.config.js override. */
+  --color-cyan-50: #f1f5fa;
+  --color-cyan-100: #dbe4f2;
+  --color-cyan-200: #bbcce6;
+  --color-cyan-300: #8ca8d4;
+  --color-cyan-400: #527cbe;
+  --color-cyan-500: #3b629f;
+  --color-cyan-600: #335387;
+  --color-cyan-700: #2b4773;
+  --color-cyan-800: #253e65;
+  --color-cyan-900: #213658;
+  --color-cyan-950: #152237;
 }
 
 body {
