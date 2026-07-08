@@ -20,7 +20,7 @@ title: Node events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | The operation that replayed this event (a merge or a rebase), or None for a live mutation |
+| **meta.origin** | How this node mutation was produced: a live edit (the default), or a replay by a merge or rebase. |
 | **kind** | The type of object modified |
 | **node_id** | The ID of the mutated node |
 | **action** | N/A |
@@ -45,7 +45,7 @@ title: Node events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | The operation that replayed this event (a merge or a rebase), or None for a live mutation |
+| **meta.origin** | How this node mutation was produced: a live edit (the default), or a replay by a merge or rebase. |
 | **kind** | The type of object modified |
 | **node_id** | The ID of the mutated node |
 | **action** | N/A |
@@ -70,7 +70,7 @@ title: Node events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | The operation that replayed this event (a merge or a rebase), or None for a live mutation |
+| **meta.origin** | How this node mutation was produced: a live edit (the default), or a replay by a merge or rebase. |
 | **kind** | The type of object modified |
 | **node_id** | The ID of the mutated node |
 | **action** | N/A |
