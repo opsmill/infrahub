@@ -58,7 +58,7 @@ export function buildDateFormatPresets(): Array<DateFormatPreset> {
 }
 
 /** The date-fns pattern for a semantic key, falling back to the default (mirrors the backend). */
-function patternForKey(key: string): string {
+export function patternForKey(key: string): string {
   return (
     (DATE_FORMAT_PRESETS as Record<string, DateFormatPresetDef>)[key]?.pattern ??
     DATE_FORMAT_PRESETS[DEFAULT_DATE_FORMAT].pattern
