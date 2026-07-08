@@ -142,6 +142,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_CACHE_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_CACHE_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | None | None |
 | `INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS` | Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task. | integer | 15 |
+| `INFRAHUB_CACHE_INIT_LOCK_TTL_MINS` | Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, the lock auto-expires after this period so Infrahub can recover on its own. Only enforced with the Redis cache driver. | integer | 20 |
 
 ## Workflow
 

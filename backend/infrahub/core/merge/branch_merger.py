@@ -58,7 +58,7 @@ class BranchMerger:
         self.diff_locker = diff_locker
         self.constraint_validator = constraint_validator
         self.migrations: list[SchemaUpdateMigrationInfo] = []
-        self._merge_at = Timestamp()
+        self._merge_at: Timestamp | None = None
 
         self._source_schema: SchemaBranch | None = None
         self._destination_schema: SchemaBranch | None = None
@@ -236,6 +236,8 @@ class BranchMerger:
             raise MergeConstraintsViolatedError(violations=result.violations, schema_conflicts=result.schema_conflicts)
 
     async def rollback(self) -> None:
+        if self._merge_at is None:
+            return
         await self.diff_merger.rollback(at=self._merge_at)
 
     async def merge_repositories(self) -> None:

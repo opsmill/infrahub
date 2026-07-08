@@ -38,7 +38,8 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
+# Neo4j naming rules: 3-63 chars, alphanumeric start/end, dots and dashes allowed within.
+VALID_DATABASE_NAME_REGEX = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
 
 
@@ -435,6 +436,15 @@ class CacheSettings(BaseSettings):
         default=15,
         ge=1,
         description="Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task.",
+    )
+    init_lock_ttl_mins: int = Field(
+        default=20,
+        ge=1,
+        description=(
+            "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
+            "the lock auto-expires after this period so Infrahub can recover on its own. "
+            "Only enforced with the Redis cache driver."
+        ),
     )
 
     @property

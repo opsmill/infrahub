@@ -40,6 +40,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS: ${INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS:-15}
   INFRAHUB_CACHE_DATABASE: ${INFRAHUB_CACHE_DATABASE:-0}
   INFRAHUB_CACHE_DRIVER: ${INFRAHUB_CACHE_DRIVER:-redis}
+  INFRAHUB_CACHE_INIT_LOCK_TTL_MINS: ${INFRAHUB_CACHE_INIT_LOCK_TTL_MINS:-20}
   INFRAHUB_CACHE_PASSWORD: &cache_password ${INFRAHUB_CACHE_PASSWORD:-}
   INFRAHUB_CACHE_PORT:
   INFRAHUB_CACHE_TLS_CA_FILE:
@@ -243,7 +244,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.10.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.10.3}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -276,7 +277,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.10.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.10.3}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -322,7 +323,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.10.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.10.3}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
