@@ -128,7 +128,7 @@ async def test_effective_mixed_per_attribute_sources(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """Per-attribute resolution: one USER, one GLOBAL, one DEFAULT in a single read."""
+    """Attributes resolve independently: an override on one attribute leaves the other's fallback untouched."""
     # Global defines timezone only; date_format is left unset on the global row.
     await Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC").create(db=db)
     # User overrides date_format only; timezone falls back to global.
