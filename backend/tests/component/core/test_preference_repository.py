@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 
@@ -69,3 +70,14 @@ async def test_get_for_owners_returns_map_of_existing_only(db: InfrahubDatabase,
     assert set(result) == {"owner-a", "owner-b"}
     assert result["owner-a"].timezone == "Europe/Paris"
     assert result["owner-b"].date_format == "ISO_DATETIME"
+
+
+async def test_get_all_returns_rows_for_all_owners(db: InfrahubDatabase, default_branch: Branch) -> None:
+    # get_all is unfiltered: every owner's row comes back, not just one.
+    repository = PreferenceRepository(db=db)
+    await repository.save(Preference(owner_id="owner-a", timezone="Europe/Paris"))
+    await repository.save(Preference(owner_id="owner-b", date_format="ISO_DATETIME"))
+    await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+
+    all_rows = await repository.get_all()
+    assert {preference.owner_id for preference in all_rows} == {"owner-a", "owner-b", GLOBAL_OWNER_ID}
