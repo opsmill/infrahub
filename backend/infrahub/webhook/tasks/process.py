@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 import ujson
 from infrahub_sdk import InfrahubClient  # noqa: TC002  needed for prefect flow
 from infrahub_sdk.protocols import CoreTransformPython, CoreWebhook
 from prefect import flow, task
 from prefect.cache_policies import NONE
+from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 from prefect.runtime import flow_run
-from prefect.states import Failed
+from prefect.states import Cancelled, Failed
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus.types import KVTTL
+from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
@@ -51,6 +54,21 @@ def _attempt_phrase(attempt: int | None) -> str:
     if attempt is None:
         return "outside a flow run"
     return f"attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS}"
+
+
+async def _cancellation_requested() -> bool:
+    """Return whether cancellation was requested for the flow run driving this delivery.
+
+    A cancellation that lands while the run waits between attempts is only recorded server-side:
+    nothing interrupts the in-process wait, and the next attempt would start anyway and overwrite
+    the cancelled state. Each attempt therefore re-checks for a recorded cancellation before
+    sending, so the request is honored no matter when it arrived. Outside a flow run there is no
+    state to consult and nothing to cancel.
+    """
+    if flow_run.id is None:
+        return False
+    async with get_prefect_client(sync_client=False) as client:
+        return await PrefectClientAdapter(client).cancellation_requested(flow_run_id=UUID(flow_run.id))
 
 
 def _log_outgoing_request(
@@ -103,19 +121,24 @@ async def webhook_post(
 )
 async def webhook_send(
     webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, branch_name: str | None = None
-) -> Response:
+) -> Response | State:
     """Send the webhook delivery, retrying the whole send on failure.
 
     This is the operator-facing delivery: it carries the webhook node and branch tags so it is
     listed and addressable on its own. Expected delivery failures (transport, HTTP status,
     configuration) are classified and re-raised with a clean, user-facing message. An unexpected
-    error keeps its traceback so the run surfaces as a genuine crash.
+    error keeps its traceback so the run surfaces as a genuine crash. A delivery whose
+    cancellation was requested ends as cancelled before sending, so no attempt goes out after an
+    operator cancelled it.
 
     Raises:
         WebhookDeliveryError: When an expected delivery failure occurs, carrying the classified reason.
 
     """
     log = get_run_logger()
+    if await _cancellation_requested():
+        log.info("Delivery cancellation was requested; ending the run without sending.")
+        return Cancelled(message="The delivery was cancelled.")
     await add_tags(nodes=[webhook_id], branches=[branch_name] if branch_name else None)
     # flow_run.run_count is the 1-based attempt number within a flow run; it is None outside one, where
     # there is no retry sequence to report.
@@ -260,7 +283,11 @@ async def webhook_process(
     if state.is_completed():
         return None
 
-    # Any non-completed terminal state (failed, crashed, cancelled) is surfaced, not reported as success.
+    # A cancelled delivery carries no result to read; the cancelled state itself is the outcome.
+    if state.is_cancelled():
+        return state
+
+    # Any other non-completed terminal state (failed, crashed) is surfaced, not reported as success.
     outcome = await state.aresult(raise_on_failure=False)
     if isinstance(outcome, WebhookDeliveryError):
         return Failed(message=f"{outcome.failure.message.rstrip('.')}. {outcome.failure.remediation}")

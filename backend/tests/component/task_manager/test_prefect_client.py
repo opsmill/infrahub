@@ -39,3 +39,21 @@ async def test_set_flow_run_state_leaves_a_settled_run_terminal(prefect_client: 
     )
 
     assert resulting_state == StateType.COMPLETED
+
+
+async def test_cancellation_requested_sees_an_overwritten_cancellation(prefect_client: PrefectClient) -> None:
+    adapter = PrefectClientAdapter(prefect_client)
+    run = await prefect_client.create_flow_run(flow=_noop_flow, state=State(type=StateType.SCHEDULED))
+
+    await adapter.set_flow_run_state(flow_run_id=run.id, state=State(type=StateType.CANCELLING), force=False)
+    # A retry resuming overwrites the current state; the recorded request must still be seen.
+    await adapter.set_flow_run_state(flow_run_id=run.id, state=State(type=StateType.RUNNING), force=True)
+
+    assert await adapter.cancellation_requested(flow_run_id=run.id) is True
+
+
+async def test_cancellation_requested_is_false_without_a_request(prefect_client: PrefectClient) -> None:
+    adapter = PrefectClientAdapter(prefect_client)
+    run = await prefect_client.create_flow_run(flow=_noop_flow, state=State(type=StateType.SCHEDULED))
+
+    assert await adapter.cancellation_requested(flow_run_id=run.id) is False
