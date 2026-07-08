@@ -8,7 +8,6 @@ import httpx
 import pytest
 import ujson
 from infrahub_sdk import Config, InfrahubClient
-from prefect.client.orchestration import get_client
 from prefect.client.schemas.filters import FlowFilter, FlowFilterName
 from prefect.client.schemas.objects import State, StateType
 from prefect.client.schemas.sorting import FlowRunSort
@@ -23,7 +22,6 @@ from tests.adapters.http import MemoryHTTP
 
 if TYPE_CHECKING:
     import ssl
-    from collections.abc import AsyncGenerator, Generator
     from uuid import UUID
 
     from fast_depends import Provider
@@ -53,12 +51,6 @@ class CountingHTTP(MemoryHTTP):
     ) -> httpx.Response:
         self.post_count += 1
         return await super().post(url=url, data=data, json=json, headers=headers, verify=verify)
-
-
-@pytest.fixture
-async def prefect_client(prefect_test_fixture: Generator[None]) -> AsyncGenerator[PrefectClient, None]:
-    async with get_client(sync_client=False) as client:
-        yield client
 
 
 @pytest.fixture

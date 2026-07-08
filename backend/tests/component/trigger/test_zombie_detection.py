@@ -8,7 +8,6 @@ from uuid import UUID, uuid4
 import pytest
 from prefect import flow
 from prefect.automations import AutomationCore
-from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import State, StateType
 from prefect.events.clients import get_events_client
 from prefect.events.schemas.events import Event
@@ -16,7 +15,7 @@ from prefect.events.schemas.events import Event
 from infrahub.trigger.system import TRIGGER_CRASH_ZOMBIE_FLOWS
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from prefect.client.orchestration import PrefectClient
 
@@ -32,12 +31,6 @@ POLL_INTERVAL_SECONDS = 1.0
 @flow(name="retrying-under-zombie-watch")
 async def _always_failing() -> None:
     raise ValueError("the target is unavailable")
-
-
-@pytest.fixture
-async def prefect_client(prefect_test_fixture: Generator[None]) -> AsyncGenerator[PrefectClient, None]:
-    async with get_client(sync_client=False) as client:
-        yield client
 
 
 async def register_automation(prefect_client: PrefectClient, definition: SystemTriggerDefinition) -> UUID:
