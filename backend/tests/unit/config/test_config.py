@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from infrahub.config import (
     SETTINGS,
+    DatabaseSettings,
     GitSettings,
     MainSettings,
     SecurityOAuth2Provider1,
@@ -196,6 +197,53 @@ def test_groups_claim_is_stripped_oauth2(case: GroupsClaimStripCase) -> None:
 def test_groups_claim_is_stripped_oidc(case: GroupsClaimStripCase) -> None:
     assert _build_oidc_provider(groups_claim=case.value).groups_claim == case.expected
     assert _build_oidc_provider_2(groups_claim=case.value).groups_claim == case.expected
+
+
+@dataclass
+class DatabaseNameCase:
+    name: str
+    value: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        DatabaseNameCase(name="simple", value="infrahub"),
+        DatabaseNameCase(name="minimum_length", value="abc"),
+        DatabaseNameCase(name="with_digits", value="infrahub2"),
+        DatabaseNameCase(name="leading_digit", value="1nfrahub"),
+        DatabaseNameCase(name="with_dash", value="my-database"),
+        DatabaseNameCase(name="with_dot", value="my.database"),
+        DatabaseNameCase(name="dash_and_dot", value="my-infrahub.db"),
+        DatabaseNameCase(name="maximum_length", value="a" * 63),
+        DatabaseNameCase(name="default_neo4j", value="neo4j"),
+        DatabaseNameCase(name="default_memgraph", value="memgraph"),
+    ],
+    ids=lambda case: case.name,
+)
+def test_database_name_accepts_valid_neo4j_names(case: DatabaseNameCase) -> None:
+    assert DatabaseSettings(database=case.value).database == case.value
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        DatabaseNameCase(name="too_short", value="ab"),
+        DatabaseNameCase(name="too_long", value="a" * 64),
+        DatabaseNameCase(name="trailing_dot", value="infrahub."),
+        DatabaseNameCase(name="trailing_dash", value="infrahub-"),
+        DatabaseNameCase(name="leading_dot", value=".infrahub"),
+        DatabaseNameCase(name="leading_dash", value="-infrahub"),
+        DatabaseNameCase(name="uppercase", value="Infrahub"),
+        DatabaseNameCase(name="underscore", value="my_database"),
+        DatabaseNameCase(name="space", value="my database"),
+        DatabaseNameCase(name="backtick", value="my`database"),
+    ],
+    ids=lambda case: case.name,
+)
+def test_database_name_rejects_invalid_neo4j_names(case: DatabaseNameCase) -> None:
+    with pytest.raises(ValidationError, match="String should match pattern"):
+        DatabaseSettings(database=case.value)
 
 
 def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper) -> None:

@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI } from "../utils/graphql";
 
 test.describe("Branch details view", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
@@ -103,6 +105,36 @@ test.describe("Branch details view", () => {
       await expect(page.getByText("Created by")).toBeVisible();
       await expect(page.getByText("Updated at")).toBeVisible();
       await expect(page.getByText("Updated by")).toBeVisible();
+    });
+  });
+
+  test.describe("branch name containing a slash", () => {
+    test("opens the detail page from the branches list", async ({ page, request }) => {
+      const branchName = generateRandomBranchName("playwright/slash-");
+      await createBranchAPI(request, branchName);
+
+      await page.goto("/branches");
+      await page.getByRole("link", { name: branchName, exact: true }).click();
+
+      await expect(page.getByRole("heading", { name: branchName })).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Tabs" })).toBeVisible();
+      await expect(page).toHaveURL(
+        (url) => url.pathname === `/branches/${encodeURIComponent(branchName)}`
+      );
+    });
+
+    test("navigates to a path-based tab", async ({ page, request }) => {
+      const branchName = generateRandomBranchName("playwright/slash-");
+      await createBranchAPI(request, branchName);
+
+      await page.goto(`/branches/${encodeURIComponent(branchName)}`);
+
+      await page.getByRole("navigation", { name: "Tabs" }).getByText("Data").click();
+
+      await expect(page.getByRole("heading", { name: branchName })).toBeVisible();
+      await expect(page).toHaveURL(
+        (url) => url.pathname === `/branches/${encodeURIComponent(branchName)}/data`
+      );
     });
   });
 });

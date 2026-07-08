@@ -3,8 +3,8 @@
 Two terminal predicates are served by separate entry points:
 
 - ``TerminalById`` is served by a bidirectional ("meet-in-the-middle") search the
-  caller orchestrates: ``render_bfs`` expands a node-bounded BFS frontier inward from
-  each anchor (all hops in one query) to build a per-node shortest-distance map, and
+  caller orchestrates: ``render_bfs_hop`` expands a node-bounded BFS frontier inward from
+  each anchor one hop at a time to build a per-node shortest-distance map, and
   ``render_canonical_join`` reconstructs the shortest paths of one depth tier through
   the candidate middle nodes. This avoids the exponential path enumeration of a single
   deep ``SHORTEST k`` search to a specific target.
@@ -197,6 +197,25 @@ LIMIT 1
 WITH source, target
 """ % {"visible_r": _BRANCH_VISIBLE.format(rv="r")}
 
+# Same active-Node resolution for the target alone (the exhaustive right-half enumeration is
+# anchored on the destination and has no ``source`` in scope).
+_TARGET_ONLY_MATCH = """
+MATCH (target:Node {uuid: $target_id})
+CALL (target) {
+    MATCH (target)-[r:IS_PART_OF]->(:Root)
+    WHERE %(visible_r)s
+    RETURN r AS part_of
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH target, part_of
+WHERE part_of.status = "active"
+WITH target, part_of
+ORDER BY part_of.branch_level DESC, part_of.from DESC
+LIMIT 1
+WITH target
+""" % {"visible_r": _BRANCH_VISIBLE.format(rv="r")}
+
 # Same active-Node resolution for a BFS anchor (the source on a forward expansion, the
 # destination on a backward one), so the search expands from the anchor's active version.
 _SEED_ANCHOR_MATCH = """
@@ -250,37 +269,30 @@ RETURN start_node_uuid, start_node_kind, hops, depth
 # By-id bidirectional ("meet-in-the-middle") search. Reaching a single deep target with a
 # ``SHORTEST k`` quantified-path-pattern forces the engine to enumerate an exponential
 # number of path-steps (cost ~ fan-out ^ depth). Instead, expand a node-bounded BFS
-# frontier of depth ceil(max_depth/2) inward from each anchor (cost ~ fan-out ^ (depth/2),
-# bounded by graph size, not path count), intersect the frontiers to find candidate middle
-# nodes, then reconstruct full paths through that small middle set with exact-length joins.
-# The whole BFS from one anchor runs in a single query (``render_bfs``): the active-anchor
-# resolution followed by one ``CALL`` subquery per hop, each expanding the previous frontier
-# and a carried ``visited`` list deduping globally so a node is recorded at its first-seen
-# (shortest) depth. ``$anchor_id`` is the source uuid on a forward expansion, the destination
-# uuid on a backward one; it is the uuid excluded from the first hop so the search never
-# bounces back onto its anchor.
+# frontier inward from each anchor (cost ~ fan-out ^ (depth/2), bounded by graph size, not
+# path count), intersect the frontiers to find candidate middle nodes, then reconstruct full
+# paths through that small middle set with exact-length joins. The BFS is expanded one hop at a
+# time (``render_bfs_hop``) so the caller can stop as soon as the frontiers meet, rather than
+# always expanding to ``ceil(max_depth/2)``.
 _BFS_EDGES = "-[ri:IS_RELATED]-(rel:Relationship)-[ro:IS_RELATED]-(b:Node)"
 
 _BFS_HOP_TRIPLE_PREDICATE = "[{from_var}.kind, rel.name, b.kind] IN $hop_triples"
 
-# Hop 1: expand the active anchor (excluding the anchor uuid so we never bounce back), seed
-# ``visited``. ``%(where)s`` is the assembled WHERE for this hop.
-_BFS_SEED_HOP = """CALL (anchor) {
-    MATCH (anchor)%(edges)s
-    WHERE %(where)s
-    RETURN collect(DISTINCT b.uuid) AS h1
-}
-WITH h1, [$anchor_id] + h1 AS visited"""
+# Seed expansion: resolve the active anchor (``$anchor_id``) and expand it, excluding the anchor
+# uuid so the search never bounces straight back onto its start.
+_BFS_SEED_EXPAND = """%(seed_match)s
+MATCH (anchor)%(edges)s
+WHERE %(where)s
+RETURN collect(DISTINCT b.uuid) AS frontier
+"""
 
-# Hop N>=2: expand the previous frontier ``%(prev)s``, dedup against ``visited``, then carry
-# every frontier so far (``%(carried)s`` includes ``%(hop)s``) plus the grown ``visited``.
-_BFS_HOP = """CALL (%(prev)s, visited) {
-    UNWIND %(prev)s AS fid
-    MATCH (a:Node {uuid: fid})%(edges)s
-    WHERE %(where)s
-    RETURN collect(DISTINCT b.uuid) AS %(hop)s
-}
-WITH %(carried)s, visited + %(hop)s AS visited"""
+# Frontier expansion: expand every node in ``$frontier`` by one legal edge. The caller dedupes
+# the result against the nodes already seen (recording each at its first-seen depth).
+_BFS_FRONTIER_EXPAND = """UNWIND $frontier AS fid
+MATCH (a:Node {uuid: fid})%(edges)s
+WHERE %(where)s
+RETURN collect(DISTINCT b.uuid) AS frontier
+"""
 
 # ``_CANONICAL_JOIN`` reconstructs every shortest path of length ``left_len + right_len``
 # whose canonical split node sits at forward-distance ``left_len`` and backward-distance
@@ -356,6 +368,56 @@ RETURN start_node_uuid, start_node_kind, hops, depth
 """
 
 
+# Exhaustive-mode half-enumeration. Unlike the pinned canonical join, these enumerate ALL
+# length-``n`` simple paths from one fixed anchor (the active source, or the active target) to
+# any node — the endpoint becomes a candidate middle. The caller joins a left half to a right
+# half on a shared middle (by ``mid_uuid``) and drops pairs that share any other node, so
+# completeness does not depend on a node being reached by its shortest sub-path. Each half is
+# itself kept simple by the distinct-node predicate. ``mid_uuid`` is the half's free endpoint
+# (the join key); ``hops`` runs outward from the fixed anchor (source→mid for the left,
+# mid→target for the right).
+_HALF_FROM_SOURCE = """
+%(source_match)s
+MATCH lpath = (source) %(unit)s{%(length)d} (mid:Node)
+WITH [i IN range(0, %(last)d) | {
+        relationship_identifier: nodes(lpath)[i * 2 + 1].name,
+        uuid: nodes(lpath)[i * 2 + 2].uuid,
+        kind: nodes(lpath)[i * 2 + 2].kind
+    }] AS hops
+WITH hops, [$source_id] + [h IN hops | h.uuid] AS node_uuids
+WHERE all(idx IN range(0, size(node_uuids) - 1) WHERE NOT node_uuids[idx] IN node_uuids[idx + 1..])
+RETURN node_uuids[-1] AS mid_uuid, hops
+LIMIT $half_limit
+"""
+
+_HALF_TO_TARGET = """
+%(target_match)s
+// Resolve each candidate middle UUID to its single active Node vertex (latest IS_PART_OF wins).
+UNWIND $middles AS middle_uuid
+CALL (middle_uuid) {
+    MATCH (m:Node {uuid: middle_uuid})-[r:IS_PART_OF]->(:Root)
+    WHERE %(visible_r)s
+    RETURN m, r AS part_of
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH m, target
+WHERE part_of.status = "active"
+MATCH rpath = (m) %(unit)s{%(length)d} (target)
+WITH m, [i IN range(0, %(last)d) | {
+        relationship_identifier: nodes(rpath)[i * 2 + 1].name,
+        uuid: nodes(rpath)[i * 2 + 2].uuid,
+        kind: nodes(rpath)[i * 2 + 2].kind
+    }] AS hops
+WITH m.uuid AS mid_uuid, hops, [m.uuid] + [h IN hops | h.uuid] AS node_uuids
+WHERE all(idx IN range(0, size(node_uuids) - 1) WHERE NOT node_uuids[idx] IN node_uuids[idx + 1..])
+RETURN mid_uuid, hops
+LIMIT $half_limit
+"""
+
+_HALF_RETURN_LABELS: tuple[str, ...] = ("mid_uuid", "hops")
+
+
 def _reachable_targets_text(*, phase_one_inner: str) -> str:
     return _REACHABLE_TARGETS_ENVELOPE % {"source_match": _SOURCE_MATCH, "phase_one_inner": phase_one_inner}
 
@@ -367,7 +429,7 @@ def _reachable_paths_text(*, phase_two_inner: str) -> str:
 class GraphTraversalCypherRenderer:
     """Renders a ``Plan`` into Cypher.
 
-    - ``render_bfs()`` / ``render_canonical_join()`` handle ``TerminalById`` as a
+    - ``render_bfs_hop()`` / ``render_canonical_join()`` handle ``TerminalById`` as a
       bidirectional search: the caller expands a BFS frontier inward from each anchor
       and then joins the two halves through the discovered middle nodes.
     - ``render_reachable_targets()`` / ``render_paths_to_targets()`` handle
@@ -494,82 +556,59 @@ class GraphTraversalCypherRenderer:
         }
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
 
-    def render_bfs(
-        self,
-        *,
-        plan: Plan,
-        source_id: str,
-        target_id: str,
-        direction: Literal["forward", "backward"],
-        max_hops: int,
-        at: Timestamp | None,
-    ) -> RenderedCypher:
-        """Render the whole BFS from one anchor as a single query.
+    def _bfs_hop_where(self, *, from_var: str, dedup: str | None) -> str:
+        """Assemble the WHERE for one BFS expansion edge ``(from_var)-[ri]-(rel)-[ro]-(b)``.
 
-        Resolves the anchor to its active same-UUID vertex, then chains one ``CALL``
-        subquery per hop (1..``max_hops``): each expands the previous frontier by one legal
-        edge and a carried ``visited`` list dedupes globally, so a node is recorded only at
-        its first-seen (shortest) depth. ``forward`` walks from the source with
-        ``$legal_triples``; ``backward`` walks from the destination with the reversed
-        triples. Returns a single ``frontiers`` column: a list whose ``i``-th element is the
-        list of node uuids first reached at depth ``i + 1``.
+        ``dedup`` is an optional extra predicate (e.g. excluding the anchor on the seed hop);
+        deletion-shadow checks are appended on a user branch.
+        """
+        preds = [
+            _EDGE_ACTIVE_PREDICATE.format(rv="ri"),
+            _EDGE_ACTIVE_PREDICATE.format(rv="ro"),
+            _BFS_HOP_TRIPLE_PREDICATE.format(from_var=from_var),
+        ]
+        if dedup is not None:
+            preds.append(dedup)
+        if self._is_user_branch:
+            preds.append(
+                _DELETION_SHADOW_PREDICATE.format(from_var=from_var, to_var="rel", edge_var="ri", del_var="del_a")
+            )
+            preds.append(_DELETION_SHADOW_PREDICATE.format(from_var="rel", to_var="b", edge_var="ro", del_var="del_b"))
+        return " AND ".join(preds)
+
+    def render_bfs_hop(
+        self, *, plan: Plan, direction: Literal["forward", "backward"], seed: bool, at: Timestamp | None
+    ) -> RenderedCypher:
+        """Render a single BFS expansion, returning the neighbour uuids as ``frontier``.
+
+        ``seed=True`` resolves the active anchor from ``$anchor_id`` and expands it (excluding the
+        anchor uuid). ``seed=False`` expands every node in ``$frontier`` by one legal edge. ``forward``
+        walks with ``$hop_triples`` from the source side, ``backward`` with the reversed triples. The
+        caller dedupes the returned uuids against the nodes already seen and records each at its
+        first-seen (shortest) depth.
 
         Raises:
-            ValueError: when ``plan`` is empty, ``direction`` is unknown, or ``max_hops < 1``.
+            ValueError: when ``plan`` is empty or ``direction`` is unknown.
 
         """
         self._validate(plan=plan)
-        if max_hops < 1:
-            raise ValueError(f"max_hops must be >= 1, got {max_hops}")
         at = at if at is not None else Timestamp()
         if direction == "forward":
             triples = _legal_triples(plan)
-            anchor_id = source_id
         elif direction == "backward":
             triples = _legal_triples_reversed(plan)
-            anchor_id = target_id
         else:
             raise ValueError(f"direction must be 'forward' or 'backward', got {direction!r}")
 
-        def hop_where(from_var: str, dedup: str) -> str:
-            preds = [
-                _EDGE_ACTIVE_PREDICATE.format(rv="ri"),
-                _EDGE_ACTIVE_PREDICATE.format(rv="ro"),
-                _BFS_HOP_TRIPLE_PREDICATE.format(from_var=from_var),
-                dedup,
-            ]
-            if self._is_user_branch:
-                preds.append(
-                    _DELETION_SHADOW_PREDICATE.format(from_var=from_var, to_var="rel", edge_var="ri", del_var="del_a")
-                )
-                preds.append(
-                    _DELETION_SHADOW_PREDICATE.format(from_var="rel", to_var="b", edge_var="ro", del_var="del_b")
-                )
-            return " AND ".join(preds)
+        if seed:
+            where = self._bfs_hop_where(from_var="anchor", dedup="b.uuid <> $anchor_id")
+            text = _BFS_SEED_EXPAND % {"seed_match": _SEED_ANCHOR_MATCH, "edges": _BFS_EDGES, "where": where}
+        else:
+            where = self._bfs_hop_where(from_var="a", dedup=None)
+            text = _BFS_FRONTIER_EXPAND % {"edges": _BFS_EDGES, "where": where}
 
-        parts = [
-            _SEED_ANCHOR_MATCH,
-            _BFS_SEED_HOP % {"edges": _BFS_EDGES, "where": hop_where("anchor", "b.uuid <> $anchor_id")},
-        ]
-        carried = ["h1"]
-        for hop in range(2, max_hops + 1):
-            hop_name = f"h{hop}"
-            carried.append(hop_name)
-            parts.append(
-                _BFS_HOP
-                % {
-                    "prev": f"h{hop - 1}",
-                    "edges": _BFS_EDGES,
-                    "where": hop_where("a", "NOT b.uuid IN visited"),
-                    "hop": hop_name,
-                    "carried": ", ".join(carried),
-                }
-            )
-        parts.append("RETURN [%s] AS frontiers" % ", ".join(carried))
-
-        text = "\n".join(parts)
-        params: dict[str, Any] = {**self._branch_params(at=at), "hop_triples": triples, "anchor_id": anchor_id}
-        return RenderedCypher(text=text, params=params, return_labels=("frontiers",))
+        params: dict[str, Any] = {**self._branch_params(at=at), "hop_triples": triples}
+        return RenderedCypher(text=text, params=params, return_labels=("frontier",))
 
     def render_canonical_join(
         self,
@@ -635,6 +674,73 @@ class GraphTraversalCypherRenderer:
             }
             params["tier_middles"] = list(tier_middles)
         return RenderedCypher(text=text, params=params, return_labels=_RETURN_LABELS)
+
+    def render_half_from_source(
+        self, *, plan: Plan, source_id: str, length: int, limit: int, at: Timestamp | None
+    ) -> RenderedCypher:
+        """Render the exhaustive left half: all length-``length`` simple paths from the active source.
+
+        Each row is one simple path: ``mid_uuid`` is its endpoint (a candidate middle) and ``hops``
+        runs source→mid. ``length`` must be >= 1. ``limit`` bounds the number of rows returned.
+
+        Raises:
+            ValueError: when ``plan`` is empty or ``length < 1``.
+
+        """
+        self._validate(plan=plan)
+        if length < 1:
+            raise ValueError(f"length must be >= 1, got {length}")
+        at = at if at is not None else Timestamp()
+        unit = self._join_unit(_QppVars(start="a", edge_in="ri", rel="relx", edge_out="ro", end="b"))
+        text = _HALF_FROM_SOURCE % {"source_match": _SOURCE_MATCH, "unit": unit, "length": length, "last": length - 1}
+        params: dict[str, Any] = {
+            **self._base_params(source_id=source_id, at=at),
+            "legal_triples": _legal_triples(plan),
+            "half_limit": limit,
+        }
+        return RenderedCypher(text=text, params=params, return_labels=_HALF_RETURN_LABELS)
+
+    def render_half_to_target(
+        self,
+        *,
+        plan: Plan,
+        source_id: str,
+        target_id: str,
+        length: int,
+        middles: list[str],
+        limit: int,
+        at: Timestamp | None,
+    ) -> RenderedCypher:
+        """Render the exhaustive right half: all length-``length`` simple paths into the active target.
+
+        Each path starts at a node in ``$middles``: ``mid_uuid`` is that start and ``hops`` runs
+        mid→target. ``$source_id`` is bound so an intermediate never steps back onto the source.
+        ``limit`` bounds the number of rows returned.
+
+        Raises:
+            ValueError: when ``plan`` is empty or ``length < 1``.
+
+        """
+        self._validate(plan=plan)
+        if length < 1:
+            raise ValueError(f"length must be >= 1, got {length}")
+        at = at if at is not None else Timestamp()
+        unit = self._join_unit(_QppVars(start="c", edge_in="si", rel="srel", edge_out="so", end="d"))
+        text = _HALF_TO_TARGET % {
+            "target_match": _TARGET_ONLY_MATCH,
+            "unit": unit,
+            "length": length,
+            "last": length - 1,
+            "visible_r": _BRANCH_VISIBLE.format(rv="r"),
+        }
+        params: dict[str, Any] = {
+            **self._base_params(source_id=source_id, at=at),
+            "target_id": target_id,
+            "legal_triples": _legal_triples(plan),
+            "middles": list(middles),
+            "half_limit": limit,
+        }
+        return RenderedCypher(text=text, params=params, return_labels=_HALF_RETURN_LABELS)
 
     def _join_unit(self, qpp: _QppVars) -> str:
         """One forward quantified-path-pattern hop for the canonical join."""

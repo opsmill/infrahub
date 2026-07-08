@@ -23738,6 +23738,8 @@ export type PathTraversalInput = {
   max_paths?: InputMaybe<Scalars['Int']['input']>;
   /** Filter to only follow relationships with these names */
   relationship_filter?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** When true (default), return only the shortest path through each intermediate node — fast, but may return fewer than max_paths. When false, return all loopless paths up to max_paths. */
+  shortest_paths_only?: InputMaybe<Scalars['Boolean']['input']>;
   /** UUID of the start node */
   source_id: Scalars['String']['input'];
 };
@@ -23754,6 +23756,8 @@ export type PathTraversalResultType = {
   paths: Array<PathResultType>;
   /** The start node */
   source: PathNodeType;
+  /** Null when the search completed. Otherwise the depth at which it ran out of budget: the returned paths are complete only for depths below this value, and deeper paths may exist. */
+  truncated_at_depth: Maybe<Scalars['Int']['output']>;
 };
 
 export type PermissionType = {

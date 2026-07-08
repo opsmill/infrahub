@@ -2,13 +2,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core import registry
+from infrahub.core.constants import (
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDirection,
+    SchemaPathType,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal.planning.models import Plan, TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
 from tests.helpers.graph_traversal.builders import (
+    CountingQueryRunner,
+    TimeoutOnNthQuery,
     build_path_traversal_executor,
     build_permission_resolver,
     identifier_of,
@@ -18,6 +31,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.graph_traversal.results import PathData
+    from tests.helpers.graph_traversal.builders import BowtieGraph, ShortcutGraph
 
 
 def _build_plan(
@@ -52,9 +66,13 @@ async def _run_paths(
     plan: Plan,
     source_id: str,
     max_paths: int = 10,
+    shortest_paths_only: bool = True,
 ) -> list[PathData]:
     executor = build_path_traversal_executor(db=db, branch=branch, default_branch_name=default_branch_name)
-    return await executor.run(plan=plan, source_id=source_id, max_paths=max_paths)
+    result = await executor.run(
+        plan=plan, source_id=source_id, max_paths=max_paths, shortest_paths_only=shortest_paths_only
+    )
+    return result.paths
 
 
 def _path_signature(path: PathData) -> tuple[int, tuple[str, ...]]:
@@ -65,6 +83,30 @@ def _path_signature(path: PathData) -> tuple[int, tuple[str, ...]]:
 def _path_node_uuids(path: PathData) -> list[str]:
     """The full ordered node sequence of a path: start node followed by each hop's node."""
     return [path.start_node.uuid] + [hop.node.uuid for hop in path.hops]
+
+
+def _full_path(path: PathData) -> tuple[str, int, tuple[tuple[str, str], ...]]:
+    """Exact path identity: start node uuid, depth, and each hop as (relationship_identifier, node uuid)."""
+    return (
+        path.start_node.uuid,
+        path.depth,
+        tuple((hop.relationship_identifier, hop.node.uuid) for hop in path.hops),
+    )
+
+
+async def test_run_reports_no_truncation_when_search_completes(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    """A completed search returns a result object whose ``truncated_at_depth`` is ``None``."""
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    executor = build_path_traversal_executor(db=db, branch=default_branch, default_branch_name=default_branch.name)
+
+    result = await executor.run(plan=plan, source_id=person1.id, max_paths=10)
+
+    assert result.truncated_at_depth is None
+    assert len(result.paths) >= 1
+    assert result.paths[0].depth == 1
 
 
 async def test_excludes_non_simple_paths_through_shared_intermediate(
@@ -92,6 +134,282 @@ async def test_excludes_non_simple_paths_through_shared_intermediate(
     for path in paths:
         uuids = _path_node_uuids(path)
         assert len(uuids) == len(set(uuids)), f"non-simple path returned: {uuids}"
+
+
+async def test_exhaustive_mode_returns_non_shortest_route_default_omits_it(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    linked_vertices_with_shortcut: ShortcutGraph,
+) -> None:
+    """Exhaustive mode returns a non-shortest route the default omits; both stay loopless.
+
+    ``shortest_paths_only=False`` returns a longer simple path whose midpoint is reached by a
+    non-shortest sub-path; the default (``True``) omits it.
+    """
+    graph = linked_vertices_with_shortcut
+
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    assert not plan.is_empty
+
+    fast = await _run_paths(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, plan=plan, source_id=graph.source.id
+    )
+    exhaustive = await _run_paths(
+        db=db,
+        branch=default_branch,
+        default_branch_name=default_branch.name,
+        plan=plan,
+        source_id=graph.source.id,
+        shortest_paths_only=False,
+    )
+
+    # source -> detour -> middle -> bridge -> destination; the midpoint (middle) is not at its
+    # shortest distance from the source, so only the exhaustive search reconstructs it.
+    longer = (4, (graph.detour.id, graph.middle.id, graph.bridge.id, graph.destination.id))
+    assert longer not in {_path_signature(path) for path in fast}, "fast mode must omit the non-shortest route"
+    assert longer in {_path_signature(path) for path in exhaustive}, "exhaustive mode must return it"
+
+    for path in fast + exhaustive:
+        uuids = _path_node_uuids(path)
+        assert len(uuids) == len(set(uuids)), f"non-simple path returned: {uuids}"
+
+
+async def test_exhaustive_truncates_when_half_paths_exceed_cap(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    linked_vertices_with_shortcut: ShortcutGraph,
+) -> None:
+    """A tier whose half-path set exceeds the cap stops the search: shallower paths plus the depth.
+
+    With ``exhaustive_half_cap=2`` the depth-3 shortest route is found, but the depth-4 tier's left
+    half enumerates 3 paths (over the cap), so the search truncates and reports depth 4.
+    """
+    graph = linked_vertices_with_shortcut
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, exhaustive_half_cap=2
+    )
+
+    result = await executor.run(plan=plan, source_id=graph.source.id, max_paths=10, shortest_paths_only=False)
+
+    # The only surviving path is the depth-3 shortest route: source -> middle -> bridge -> destination.
+    links = identifier_of(db=db, branch=default_branch, kind="TestVertex", relationship="links")
+    assert [_full_path(path) for path in result.paths] == [
+        (graph.source.id, 3, ((links, graph.middle.id), (links, graph.bridge.id), (links, graph.destination.id)))
+    ]
+    assert result.truncated_at_depth == 4
+
+
+async def test_exhaustive_handles_same_uuid_vertices_after_kind_migration(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """A kind/inheritance migration leaves two Node vertices sharing the middle's UUID.
+
+    ``source -[hub__endpoint]- middle -[hub__endpoint]- target``, where ``middle`` is its own kind
+    so migrating that kind duplicates only its vertex. Read back at the migration instant, the old
+    vertex's just-closed edges are still visible (``to >= at`` is inclusive) and the default branch
+    has no deletion-shadow, so both same-UUID vertices are momentarily traversable. The right half
+    resolves each candidate middle UUID to its active vertex and identical joined paths are
+    de-duplicated, so the single real ``source -> middle -> target`` path is returned exactly once.
+    """
+    schema = SchemaRoot(
+        generics=[GenericSchema(name="Grouping", namespace="Test")],
+        nodes=[
+            NodeSchema(
+                name="Endpoint",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="hubs",
+                        peer="TestHub",
+                        identifier="hub__endpoint",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            ),
+            NodeSchema(
+                name="Hub",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="endpoints",
+                        peer="TestEndpoint",
+                        identifier="hub__endpoint",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            ),
+        ],
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    source = await Node.init(db=db, schema="TestEndpoint", branch=default_branch)
+    await source.new(db=db, name="S")
+    await source.save(db=db)
+    target = await Node.init(db=db, schema="TestEndpoint", branch=default_branch)
+    await target.new(db=db, name="D")
+    await target.save(db=db)
+    middle = await Node.init(db=db, schema="TestHub", branch=default_branch)
+    await middle.new(db=db, name="M", endpoints=[source, target])
+    await middle.save(db=db)
+
+    # Migrating TestHub's inheritance duplicates the middle's Node vertex (same UUID, new labels).
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema_branch.duplicate()
+    hub_schema = candidate_schema.get_node(name="TestHub")
+    candidate_schema.delete(name="TestHub")
+    hub_schema.inherit_from = ["TestGrouping"]
+    candidate_schema.set(name="TestHub", schema=hub_schema)
+
+    migration_at = Timestamp()
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="TestHub"),
+        new_node_schema=hub_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestHub", field_name="inherit_from"),
+    )
+    migration_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_at), branch=default_branch
+    )
+    assert not migration_result.errors
+    registry.schema.set_schema_branch(name=default_branch.name, schema=candidate_schema)
+
+    plan = _build_plan(db=db, branch=default_branch, source=source, destination=target, max_depth=3)
+    executor = build_path_traversal_executor(db=db, branch=default_branch, default_branch_name=default_branch.name)
+    result = await executor.run(
+        plan=plan, source_id=source.id, max_paths=10, shortest_paths_only=False, at=migration_at
+    )
+
+    assert [_path_signature(path) for path in result.paths] == [(2, (middle.id, target.id))]
+
+
+async def test_exhaustive_truncates_when_joined_tier_exceeds_cap(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    bowtie_graph: BowtieGraph,
+) -> None:
+    """The joined tier is capped independently of the per-half sets.
+
+    Every depth-4 route funnels through the single hub, so the tier joins 3 left halves with 3
+    right halves into 3x3 = 9 candidates. With ``exhaustive_half_cap=5`` each half set (3) is under
+    the cap, yet the 9-way join is over it, so the search truncates at depth 4 with no shallower
+    route to return. A high cap returns all 9 loopless paths without truncation.
+    """
+    graph = bowtie_graph
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    assert not plan.is_empty
+
+    capped = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, exhaustive_half_cap=5
+    )
+    result = await capped.run(plan=plan, source_id=graph.source.id, max_paths=20, shortest_paths_only=False)
+    assert result.paths == []
+    assert result.truncated_at_depth == 4
+
+    uncapped = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, exhaustive_half_cap=100
+    )
+    full = await uncapped.run(plan=plan, source_id=graph.source.id, max_paths=20, shortest_paths_only=False)
+    assert full.truncated_at_depth is None
+    assert len(full.paths) == 9
+    for path in full.paths:
+        assert path.depth == 4
+        uuids = _path_node_uuids(path)
+        assert len(uuids) == len(set(uuids)), f"non-simple path returned: {uuids}"
+
+
+async def test_exhaustive_truncates_and_reports_depth_on_query_timeout(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    linked_vertices_with_shortcut: ShortcutGraph,
+) -> None:
+    """A per-query timeout returns the shallower paths plus the depth where the search gave up."""
+    graph = linked_vertices_with_shortcut
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    # Depths 2, 3 and 4 each enumerate a left half, so the depth-4 left half is the 3rd such query.
+    # Timing it out lets depths 1-3 complete (finding the shortest route) and truncates at depth 4.
+    runner = TimeoutOnNthQuery(name="path_traversal_half_left", nth=3)
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, query_runner=runner
+    )
+
+    result = await executor.run(plan=plan, source_id=graph.source.id, max_paths=10, shortest_paths_only=False)
+
+    # The only surviving path is the depth-3 shortest route: source -> middle -> bridge -> destination.
+    links = identifier_of(db=db, branch=default_branch, kind="TestVertex", relationship="links")
+    assert [_full_path(path) for path in result.paths] == [
+        (graph.source.id, 3, ((links, graph.middle.id), (links, graph.bridge.id), (links, graph.destination.id)))
+    ]
+    assert result.truncated_at_depth == 4
+
+
+async def test_shortest_mode_truncates_and_reports_depth_on_query_timeout(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    """Fast (shortest) mode returns the shallower paths plus the failure depth on a tier timeout."""
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    # The tier joins run at depth 1 then depth 3 (depth 2 has no middle); time out the 2nd join so
+    # the depth-1 path survives and the search truncates at depth 3.
+    runner = TimeoutOnNthQuery(name="path_traversal_join", nth=2)
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, query_runner=runner
+    )
+
+    result = await executor.run(plan=plan, source_id=person1.id, max_paths=10, shortest_paths_only=True)
+
+    # Only the depth-1 path survives: person1 -primary_tag-> blue. The depth-3 tier timed out.
+    primary_tag = identifier_of(db=db, branch=default_branch, kind="TestPerson", relationship="primary_tag")
+    assert [_full_path(path) for path in result.paths] == [(person1.id, 1, ((primary_tag, blue.id),))]
+    assert result.truncated_at_depth == 3
+
+
+async def test_shortest_mode_expands_bfs_lazily(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    """Fast mode expands the BFS frontier lazily — only as deep as needed, not to ceil(max_depth/2).
+
+    With ``max_depth=20`` an eager expansion would run ~20 single-hop expansions (radius 10 per side);
+    a lazy search stops once the small graph's frontiers are exhausted, after only a handful.
+    """
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=20)
+    counter = CountingQueryRunner()
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, query_runner=counter
+    )
+
+    result = await executor.run(plan=plan, source_id=person1.id, max_paths=10, shortest_paths_only=True)
+
+    # Results are unchanged by lazy expansion: the depth-1 and depth-3 routes to blue.
+    assert {path.depth for path in result.paths} == {1, 3}
+    assert result.truncated_at_depth is None
+    # The eager single-shot BFS is no longer used, and the frontier is exhausted within a few hops.
+    assert counter.counts.get("path_traversal_bfs", 0) == 0
+    assert 0 < counter.counts["path_traversal_bfs_hop"] <= 8
+
+
+async def test_shortest_mode_truncates_on_bfs_expansion_timeout(
+    db: InfrahubDatabase, default_branch: Branch, person_with_paths_at_two_depths: tuple[Node, Node]
+) -> None:
+    """A BFS expansion timeout truncates the search at the depth it was reaching for."""
+    person1, blue = person_with_paths_at_two_depths
+    plan = _build_plan(db=db, branch=default_branch, source=person1, destination=blue, max_depth=3)
+    # The first BFS expansion is the depth-1 backward seed; time it out before any tier resolves.
+    runner = TimeoutOnNthQuery(name="path_traversal_bfs_hop", nth=1)
+    executor = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, query_runner=runner
+    )
+
+    result = await executor.run(plan=plan, source_id=person1.id, max_paths=10, shortest_paths_only=True)
+
+    assert result.paths == []
+    assert result.truncated_at_depth == 1
 
 
 async def test_returns_direct_peer_path_on_default_branch(

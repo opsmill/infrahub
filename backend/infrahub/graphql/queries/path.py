@@ -3,17 +3,18 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
+from graphene import Boolean, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.exceptions import QueryTimeoutError, SchemaNotFoundError
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
 from infrahub.graph_traversal.executor import PathTraversalExecutor
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
+from infrahub.graph_traversal.runner import DefaultQueryRunner
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -61,12 +62,7 @@ class PathResultType(ObjectType):
 
 class PathTraversalResultType(ObjectType):
     paths = Field(
-        List(of_type=NonNull(PathResultType)),
-        required=True,
-        description=(
-            "Paths found, ordered shortest first. Only the shortest path through each intermediate "
-            "node is returned; longer routes through the same intermediate are omitted."
-        ),
+        List(of_type=NonNull(PathResultType)), required=True, description="Paths found, ordered shortest first"
     )
     source = Field(PathNodeType, required=True, description="The start node")
     destination = Field(PathNodeType, required=True, description="The end node")
@@ -79,6 +75,14 @@ class PathTraversalResultType(ObjectType):
             "plus the requested excluded_kinds, minus included_kinds."
         ),
     )
+    truncated_at_depth = Field(
+        Int,
+        required=False,
+        description=(
+            "Null when the search completed. Otherwise the depth at which it ran out of budget: "
+            "the returned paths are complete only for depths below this value, and deeper paths may exist."
+        ),
+    )
 
 
 class PathTraversalInput(InputObjectType):
@@ -87,6 +91,15 @@ class PathTraversalInput(InputObjectType):
     max_depth = Int(required=False, default_value=5, description="Maximum number of node hops (default: 5, max: 30)")
     max_paths = Int(
         required=False, default_value=10, description="Maximum number of paths to return (default: 10, max: 100)"
+    )
+    shortest_paths_only = Boolean(
+        required=False,
+        default_value=True,
+        description=(
+            "When true (default), return only the shortest path through each intermediate object — "
+            "fast, but excludes longer paths through the same intermediate objects. When false, "
+            "return all loopless paths up to max_paths."
+        ),
     )
     kind_filter = List(
         of_type=NonNull(String), required=False, description="Filter to only traverse through nodes of these kinds"
@@ -257,6 +270,7 @@ async def path_traversal_resolver(
     destination_id = data.destination_id
     max_depth = data.max_depth or 5
     max_paths = data.max_paths or 10
+    shortest_paths_only = data.shortest_paths_only if data.shortest_paths_only is not None else True
 
     if not 1 <= max_paths <= MAX_PATHS:
         raise GraphQLError(f"max_paths must be in [1, {MAX_PATHS}], got {max_paths}")
@@ -298,6 +312,7 @@ async def path_traversal_resolver(
     except ValueError as exc:
         raise GraphQLError(str(exc)) from exc
 
+    truncated_at_depth: int | None = None
     if plan.is_empty:
         # No schema route survives planning, return an empty result
         path_data_list: list[PathData] = []
@@ -309,22 +324,21 @@ async def path_traversal_resolver(
                 branch=graphql_context.branch,
                 default_branch_name=registry.default_branch,
             ),
+            query_runner=DefaultQueryRunner(),
             timeout_seconds=config.SETTINGS.database.path_traversal_query_timeout,
         )
         try:
-            path_data_list = await executor.run(
+            result = await executor.run(
                 plan=plan,
                 source_id=source_id,
                 max_paths=max_paths,
+                shortest_paths_only=shortest_paths_only,
                 at=graphql_context.at,
             )
+            path_data_list = result.paths
+            truncated_at_depth = result.truncated_at_depth
         except ValueError as exc:
             raise GraphQLError(str(exc)) from exc
-        except QueryTimeoutError as exc:
-            raise GraphQLError(
-                "Path traversal exceeded its time budget. Reduce max_depth, lower max_paths, "
-                "or add excluded_kinds/excluded_namespaces filters to narrow the search."
-            ) from exc
 
     all_node_ids: set[str] = {source_id, destination_id}
     for path_data in path_data_list:
@@ -346,16 +360,14 @@ async def path_traversal_resolver(
         "destination": destination_info,
         "count": len(path_data_list),
         "excluded_kinds": sorted(plan.excluded_kinds),
+        "truncated_at_depth": truncated_at_depth,
     }
 
 
 InfrahubPathTraversal = Field(
     PathTraversalResultType,
     data=PathTraversalInput(required=True),
-    description=(
-        "Find the shortest path(s) between two nodes — the shortest route through each intermediate "
-        "node, up to max_paths."
-    ),
+    description="Find all shortest paths between two nodes in the graph",
     resolver=path_traversal_resolver,
     required=True,
 )

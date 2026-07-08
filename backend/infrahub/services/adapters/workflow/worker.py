@@ -36,7 +36,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
 
     @staticmethod
     async def _setup_task_manager() -> None:
-        async with lock.registry.get(name="global.worker.taskmgr.init"):
+        async with lock.registry.get(name=lock.GLOBAL_WORKER_TASKMGR_INIT_LOCK):
             await setup_task_manager()
 
     @overload

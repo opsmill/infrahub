@@ -207,6 +207,16 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'object-templates/allocate-resources-from-pools', label: 'Allocate resources from pools' },
           ],
         },
+        {
+          type: 'category',
+          label: 'Graph Traversal',
+          link: { type: 'doc', id: 'graph-traversal/overview' }, // hub
+          items: [
+            'graph-traversal/trace-a-path',
+            'graph-traversal/analyze-dependencies',
+            'graph-traversal/query-with-graphql',
+          ],
+        },
       ],
     },
 
@@ -483,6 +493,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
+        { type: 'doc', id: 'development-resources/testcontainers', label: 'Integration testing with Testcontainers' },
         {
           type: 'category',
           label: 'APIs & interfaces',
@@ -598,6 +609,7 @@ const sidebars: SidebarsConfig = {
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
         { type: 'doc', id: 'reference/error-catalogue', label: 'Error Catalogue' },
+        { type: 'doc', id: 'reference/graph-traversal', label: 'Graph Traversal' },
       ],
     },
 
@@ -654,7 +666,11 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 { type: 'doc', id: 'release-notes/infrahub/docs-restructure', label: 'Documentation restructure' },
+                'release-notes/infrahub/release-1_10_3',
+                'release-notes/infrahub/release-1_10_2',
+                'release-notes/infrahub/release-1_10_1',
                 'release-notes/infrahub/release-1_10_0',
+                'release-notes/infrahub/release-1_9_10',
                 'release-notes/infrahub/release-1_9_9',
                 'release-notes/infrahub/release-1_9_8',
                 'release-notes/infrahub/release-1_9_7',

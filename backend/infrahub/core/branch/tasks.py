@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Sequence
 from uuid import uuid4
 
@@ -24,6 +25,7 @@ from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.constraints import MergeConstraintValidator
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
@@ -41,6 +43,7 @@ from infrahub.events.branch_action import (
 )
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
+from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import ValidationError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
@@ -131,6 +134,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
         diff_coordinator.set_logger(log)
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
+        constraint_validator = MergeConstraintValidator(db=db, branch=obj, diff_repository=diff_repository)
         initial_from_time = Timestamp(obj.get_branched_from())
         merger = BranchMerger(
             db=db,
@@ -139,6 +143,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             diff_repository=diff_repository,
             source_branch=obj,
             diff_locker=DiffLocker(),
+            constraint_validator=constraint_validator,
             workflow=workflow,
         )
 
@@ -300,7 +305,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 log.info(f"Branch '{branch}' is not open (status={obj.status}), skipping merge")
                 return
 
-            node_events = await _do_merge_branch(
+            merge_result = await _do_merge_branch(
                 db=db,
                 log=log,
                 branch=obj,
@@ -309,8 +314,17 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
             )
 
         events: list[InfrahubEvent] = [merge_event]
+        if merge_result.schema_was_updated:
+            # Drives the display label, HFID and computed-attribute backfills for the merged schema changes.
+            events.append(
+                SchemaUpdatedEvent(
+                    branch_name=default_branch.name,
+                    schema_hash=registry.schema.get_schema_branch(name=default_branch.name).get_hash(),
+                    meta=EventMeta.from_parent(parent=merge_event, branch=default_branch),
+                )
+            )
 
-        for action, node_changelog in node_events:
+        for action, node_changelog in merge_result.node_events:
             meta = EventMeta.from_parent(parent=merge_event, branch=default_branch)
             node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
             mutate_event = node_event_class(
@@ -364,13 +378,19 @@ async def _rollback_merge(
     return True
 
 
+@dataclass(frozen=True)
+class MergeBranchResult:
+    node_events: Sequence[tuple[DiffAction, NodeChangelog]]
+    schema_was_updated: bool
+
+
 async def _do_merge_branch(
     db: InfrahubDatabase,
     log: Logger | LoggerAdapter,
     branch: Branch,
     context: InfrahubContext,
     proposed_change_id: str | None = None,
-) -> Sequence[tuple[DiffAction, NodeChangelog]]:
+) -> MergeBranchResult:
     component_registry = get_component_registry()
     workflow = get_workflow()
     merge_at = Timestamp()
@@ -381,6 +401,7 @@ async def _do_merge_branch(
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    constraint_validator = MergeConstraintValidator(db=db, branch=branch, diff_repository=diff_repository)
     merger = BranchMerger(
         db=db,
         diff_coordinator=diff_coordinator,
@@ -388,8 +409,10 @@ async def _do_merge_branch(
         diff_repository=diff_repository,
         source_branch=branch,
         diff_locker=DiffLocker(),
+        constraint_validator=constraint_validator,
         workflow=workflow,
     )
+    schema_was_updated = False
     try:
         async with lock.registry.global_graph_lock():
             # Set to MERGING to lock the branch while merge proceeds
@@ -438,6 +461,7 @@ async def _do_merge_branch(
                 manage_rollback=False,
             )
             log.info("Migrations completed")
+            schema_was_updated = True
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the merge
         # -------------------------------------------------------------
@@ -505,7 +529,7 @@ async def _do_merge_branch(
         parameters={"source_branch": branch.name, "target_branch": registry.default_branch},
     )
 
-    return node_events
+    return MergeBranchResult(node_events=node_events, schema_was_updated=schema_was_updated)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")

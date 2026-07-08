@@ -8,24 +8,93 @@ caller supplies.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections import defaultdict
+from typing import TYPE_CHECKING, NamedTuple
 
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.exceptions import QueryTimeoutError
 from infrahub.graph_traversal._cypher import GraphTraversalCypherRenderer
-from infrahub.graph_traversal.executor import PathTraversalExecutor, ReachableNodesExecutor
+from infrahub.graph_traversal.executor import (
+    DEFAULT_EXHAUSTIVE_HALF_CAP,
+    PathTraversalExecutor,
+    ReachableNodesExecutor,
+)
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
+from infrahub.graph_traversal.runner import DefaultQueryRunner, QueryRunner
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.permissions.resolver import PermissionResolver
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from infrahub.core.node import Node
+    from infrahub.core.query import Query
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.database import InfrahubDatabase
     from infrahub.graph_traversal.planning.models import Plan
+
+
+class TimeoutOnNthQuery:
+    """Test ``QueryRunner`` that simulates a server timeout on the ``nth`` query of a given name.
+
+    Every other query runs against the database normally, so a test can let shallow tiers complete
+    and force a single deeper query to time out — exercising the executor's truncation path without
+    a real timeout and without mocking.
+    """
+
+    def __init__(self, *, name: str, nth: int) -> None:
+        self._name = name
+        self._nth = nth
+        self._seen = 0
+
+    async def run(self, query: Query, *, db: InfrahubDatabase, timeout_seconds: float | None) -> None:
+        if query.name == self._name:
+            self._seen += 1
+            if self._seen == self._nth:
+                raise QueryTimeoutError(message=f"simulated timeout on {self._name} #{self._nth}")
+        await query.execute(db=db, timeout_seconds=timeout_seconds)
+
+
+class CountingQueryRunner:
+    """Test ``QueryRunner`` that records how many times each query name was executed."""
+
+    def __init__(self) -> None:
+        self.counts: dict[str, int] = defaultdict(int)
+
+    async def run(self, query: Query, *, db: InfrahubDatabase, timeout_seconds: float | None) -> None:
+        self.counts[query.name] += 1
+        await query.execute(db=db, timeout_seconds=timeout_seconds)
+
+
+class BowtieGraph(NamedTuple):
+    """Vertices of the ``bowtie_graph`` fixture.
+
+    ``source`` and ``destination`` are connected only through paths that funnel through a single
+    ``hub``, so every depth-4 route shares that one middle vertex.
+    """
+
+    source: Node
+    hub: Node
+    destination: Node
+
+
+class ShortcutGraph(NamedTuple):
+    """Vertices of the non-bipartite ``linked_vertices_with_shortcut`` fixture.
+
+    Edges: ``source-middle`` (a shortcut) and ``source-detour-middle``, plus
+    ``middle-bridge-destination`` — so the middle is reachable from the source both by its
+    shortest route (direct) and by a longer one, and the longer ``source-detour-middle-bridge-
+    destination`` path's midpoint is not at its shortest distance.
+    """
+
+    source: Node
+    detour: Node
+    middle: Node
+    bridge: Node
+    destination: Node
 
 
 def dump_adjacency(plan: Plan) -> dict[str, dict[str, frozenset[str]]]:
@@ -128,13 +197,21 @@ def build_path_traversal_executor(
     db: InfrahubDatabase,
     branch: Branch,
     default_branch_name: str,
+    exhaustive_half_cap: int = DEFAULT_EXHAUSTIVE_HALF_CAP,
+    query_runner: QueryRunner | None = None,
 ) -> PathTraversalExecutor:
     """Construct a ``GraphTraversalCypherRenderer`` and a ``PathTraversalExecutor`` around it."""
     renderer = GraphTraversalCypherRenderer(
         branch=branch,
         default_branch_name=default_branch_name,
     )
-    return PathTraversalExecutor(db=db, branch=branch, renderer=renderer)
+    return PathTraversalExecutor(
+        db=db,
+        branch=branch,
+        renderer=renderer,
+        query_runner=query_runner or DefaultQueryRunner(),
+        exhaustive_half_cap=exhaustive_half_cap,
+    )
 
 
 def make_planner(

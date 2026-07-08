@@ -24,3 +24,16 @@ class PathData:
     start_node: PathNodeData
     hops: list[PathHopData]
     depth: int
+
+
+@dataclass(frozen=True)
+class PathTraversalResult:
+    """Outcome of a by-id path traversal.
+
+    ``truncated_at_depth`` is ``None`` when the search ran to completion (``max_paths`` reached or
+    every reachable path enumerated). It is set to the depth at which a query exceeded its budget,
+    in which case ``paths`` holds only the paths found at shallower depths and deeper paths may exist.
+    """
+
+    paths: list[PathData]
+    truncated_at_depth: int | None = None

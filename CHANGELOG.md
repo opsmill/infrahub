@@ -11,6 +11,48 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.3) - 2026-07-07
+
+### Added
+
+- Global initialization locks now expire automatically after a configurable time-to-live (20 minutes by default, set via `INFRAHUB_CACHE_INIT_LOCK_TTL_MINS`). Previously, if a worker died while holding the task-manager or registry initialization lock, the lock was never released and Infrahub could not start until the key was manually deleted from Redis. The lock now auto-expires so the platform recovers on its own. This applies to the Redis cache driver. ([#9277](https://github.com/opsmill/infrahub/issues/9277))
+
+### Fixed
+
+- The search bar now finds an IPv6 address or prefix entered with a prefix length regardless of how it is written. Previously, typing an IPv6 value with host bits set (for example `2a0b:2081:1:d3::1/127`), or its non-collapsed extended form, returned no matching object even when one existed, because the value was not normalized before the lookup. ([#9788](https://github.com/opsmill/infrahub/issues/9788))
+- Running **Check connectivity** on a repository now records the outcome in the repository's operational status. Previously a failed check (for example an unreachable Git server returning an HTTP 504) was only shown to the caller, so the repository kept displaying **Online** and **In sync** while it was actually unreachable. A failed check now sets the status to **Connectivity Error**, **Credential Error**, or **Error**, and a successful check sets it back to **Online**. HTTP 5xx gateway errors and connection timeouts are now classified as connection errors. ([#9818](https://github.com/opsmill/infrahub/issues/9818))
+- Filtering tasks by an id that is not a valid UUID now returns a validation error instead of an internal server error.
+- Fix diff calculation to correctly handle the case when a relationship was removed from a branch's schema while the other branch changed a non-peer property (source, owner, or protected flag) of that relationship. This issue would have previously appeared as a `DiffNoPeerIdError`.
+- Fixed exhaustive path traversal (`shortest_paths_only: false`) so it no longer tries to search through graphs that are too dense. When the paths through a node fan out too far to enumerate within budget, the search now stops and reports how deep it got via `truncated_at_depth`, instead of building an unbounded set of paths in memory. It also no longer returns spurious or duplicate paths through a node that has been renamed or re-parented by a schema migration.
+- Fixed the branch merge rollback so that a database error (such as an out-of-memory error) raised partway through the bulk merge queries no longer leaves partially merged data on the destination branch. The rollback now removes every change stamped with the merge timestamp even when the failure occurred before the merge finished discovering the affected nodes.
+- The task GraphQL query now returns the correct log count when only `logs { count }` is selected, without requesting the log entries themselves.
+
+## [Infrahub - v1.10.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.2) - 2026-07-03
+
+### Fixed
+
+- Node mutation events are no longer silently dropped when the node has a large number of relationship peers. Previously, creating or updating a node with roughly 250 or more peers (for example a trunk interface tagging a large VLAN range) produced an event whose related resources exceeded the maximum accepted by the task manager, which rejected the whole event: it never appeared in the node's activity log and automation triggers never fired for it. The related resources are now capped at that maximum, keeping the node-scoped entries and as many relationship updates as fit. ([#9794](https://github.com/opsmill/infrahub/issues/9794))
+- Display labels, human-friendly IDs, and computed attributes that read across a relationship no longer error when the related peer is missing, such as after the peer has been deleted. The missing value now resolves as empty. This previously caused branch merge, rebase, and diff calculation to fail.
+
+## [Infrahub - v1.10.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.1) - 2026-06-30
+
+### Added
+
+- Add "shortest paths only" toggle to a path traversal request so that user can select the faster, shortest paths only query or the exhaustive version. Add "truncated at depth" to the path traversal response to indicate at which depth a request timed out. Update the frontend to support the new toggle and display a warning message if the response is truncated.
+
+### Fixed
+
+- Periodic Git synchronization now imports new commits on a repository's configured default branch when that branch is not `main`. Previously the sync loaded repositories without their `default_branch` attribute, fell back to the schema default of `main`, and failed to locate the worktree, leaving such repositories pinned to a stale commit while still reporting `in-sync`. ([#9600](https://github.com/opsmill/infrahub/issues/9600))
+- Fixed branches with a slash in their name (e.g. feature/my-branch) not being clickable on the Branches page. ([#9716](https://github.com/opsmill/infrahub/issues/9716))
+- Restored webhook delivery: configured webhooks now fire for every triggering event, including events not associated with a branch such as account activity, instead of silently sending no request. ([#9742](https://github.com/opsmill/infrahub/issues/9742))
+- Fixed webhook automation configuration running a database read on the shared worker database without opening its own session. This left a Neo4j session cached on the shared connection and could trigger `RuntimeError: read() called while another coroutine is already waiting for incoming data` in concurrently running flows. Webhook configuration now opens a dedicated read-only session.
+- Merging a branch that changes a computed attribute, display label, or human-friendly ID template now refreshes those derived values on nodes that exist only on the target branch. Previously the merge applied the new schema without emitting a schema-update event, so the backfill never ran and the affected nodes kept stale values.
+- Merging two branches that each introduced the same unique value could leave duplicate values on the destination branch. A proposed change validated its schema and data integrity earlier in its pipeline but the merge relied on those point-in-time results, so a violation introduced by another branch merged in the meantime was missed. Constraint validation now runs as part of the merge itself, so both proposed-change merges and direct branch merges are checked against the current state of the destination branch. The schema-integrity check also now validates relationship constraints, which were previously skipped. ([#9704](https://github.com/opsmill/infrahub/issues/9704))
+
+### Housekeeping
+
+- Action parameters for all event-driven automations — computed attributes, profiles, human-friendly IDs, display labels, action rules, and schema and branch triggers — are now rendered through a shared helper as explicit string templates, hardening them against the same parameter-serialization failure addressed for webhooks. ([#9742](https://github.com/opsmill/infrahub/issues/9742))
+
 ## [Infrahub - v1.10.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.0) - 2026-06-24
 
 ### Security
@@ -112,6 +154,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 ### Housekeeping
 
 - Refactored permission system to extract decision logic into a single `PermissionResolver` class. `PermissionManager` now delegates resolution to the resolver and the permission report uses the same resolver, ensuring the GraphQL pipeline and UI report always agree.
+
+## [Infrahub - v1.9.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.10) - 2026-07-07
+
+### Fixed
+
+- Fixed the branch merge rollback so that a database error (such as an out-of-memory error) raised
+  partway through the merge queries no longer leaves partially merged data on the destination
+  branch. The rollback now removes every change stamped with the merge timestamp even when the
+  failure occurred before the merge finished writing all of its batches.
 
 ## [Infrahub - v1.9.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.9) - 2026-06-23
 

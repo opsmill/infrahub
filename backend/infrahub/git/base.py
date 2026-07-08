@@ -1115,9 +1115,45 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def _raise_enriched_error_static(
         error: GitCommandError, name: str, location: str, branch_name: str | None = None
     ) -> NoReturn:
+        """Translate a raw ``git`` CLI failure into a typed repository error.
+
+        Classification matches on ``error.stderr`` text rather than a status code because
+        these operations run through the ``git`` command line: ``git`` exits 128 for
+        virtually every fatal error, so ``GitCommandError.status`` carries no useful
+        signal, and when the failure originates in the HTTP transport the HTTP status is
+        only present as text in stderr. The matched substrings are messages emitted by
+        ``git`` itself and by its libcurl-backed HTTP remote helper:
+          - connection: "Failed to connect to", "Could not resolve host",
+            "Couldn't connect to server", "Operation timed out" (libcurl); and for a
+            gateway/proxy in front of the server returning a 5xx,
+            "The requested URL returned error: 5xx" (git http.c) plus
+            "RPC failed; HTTP 5xx" (git remote-curl.c).
+          - not-a-repo / missing: "Repository not found", "does not appear to be a git".
+          - TLS: "SSL certificate problem", "server certificate verification failed".
+          - credentials: "Authentication failed for", "could not read Username".
+        These are stable user-facing git/curl strings, but keyed on text — revisit them if
+        git or libcurl change their wording.
+
+        Raises:
+            RepositoryConnectionError: When the remote is unreachable or a gateway/proxy in
+                front of it returns a 5xx.
+            RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
+            RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
+            RepositoryError: For any other git failure, including the generic fallthrough.
+
+        """
         if any(
             err in error.stderr
-            for err in ("Repository not found", "does not appear to be a git", "Failed to connect to")
+            for err in (
+                "Repository not found",
+                "does not appear to be a git",
+                "Failed to connect to",
+                "Could not resolve host",
+                "Couldn't connect to server",
+                "Operation timed out",
+                "The requested URL returned error: 5",
+                "RPC failed; HTTP 5",
+            )
         ):
             raise RepositoryConnectionError(identifier=name) from error
 
