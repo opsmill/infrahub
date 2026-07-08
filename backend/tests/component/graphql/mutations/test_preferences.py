@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core import registry
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
@@ -219,7 +219,7 @@ async def test_global_denied_for_normal_account(
     )
     assert result.errors is not None
     # Nothing written: the gate raises BEFORE the read-modify-write, so no global row exists.
-    assert await PreferenceRepository(db=db).get_for_owner(owner_id=registry.id) is None
+    assert await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID) is None
 
 
 async def test_global_allowed_for_manager(
@@ -239,7 +239,7 @@ async def test_global_allowed_for_manager(
     assert result.data is not None
     assert result.data["InfrahubSetPreferences"]["ok"] is True
 
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=registry.id)
+    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
     assert global_pref is not None
     assert global_pref.date_format == "ISO_DATETIME"
     assert global_pref.timezone == "UTC"
@@ -263,7 +263,7 @@ async def test_global_allowed_for_super_admin(
     assert result.data is not None
     assert result.data["InfrahubSetPreferences"]["ok"] is True
 
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=registry.id)
+    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
     assert global_pref is not None
     assert global_pref.timezone == "Europe/London"
 
@@ -294,7 +294,7 @@ async def test_global_preserves_other_field(
         variables={"scope": "GLOBAL", "timezone": "UTC"},
     )
 
-    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=registry.id)
+    global_pref = await PreferenceRepository(db=db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
     assert global_pref is not None
     assert global_pref.date_format == "ISO_DATETIME"  # preserved across the second update
     assert global_pref.timezone == "UTC"

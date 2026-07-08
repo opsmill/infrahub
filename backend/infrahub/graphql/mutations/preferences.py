@@ -7,8 +7,9 @@ from graphene import Argument, Boolean, Field, Mutation, String
 from typing_extensions import Self
 
 from infrahub import lock
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
-from infrahub.core.preferences.models import Preference, global_owner_id
+from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
 from infrahub.core.preferences.repository import PREFERENCE_LOCK_NAMESPACE, PreferenceRepository
 from infrahub.database import retry_db_transaction
@@ -38,7 +39,7 @@ class InfrahubSetPreferences(Mutation):
 
     scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
                    no account argument, so there is no path to write another user's preferences).
-    scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
+    scope=GLOBAL → the organisation-wide row (owner_id = a fixed sentinel), gated on
                    manage_global_preferences (super admins bypass) checked BEFORE any read.
 
     The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
@@ -72,7 +73,7 @@ class InfrahubSetPreferences(Mutation):
         if scope == PreferenceWriteScope.GLOBAL:
             # Super admins bypass via the permission manager.
             graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
-            owner_id = global_owner_id()
+            owner_id = GLOBAL_OWNER_ID
         else:
             owner_id = account_id
 

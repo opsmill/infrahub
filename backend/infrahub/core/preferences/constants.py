@@ -23,3 +23,8 @@ class PreferenceSource(InfrahubStringEnum):
 
 # Default date-format key applied when neither the user nor the global layer sets one.
 DEFAULT_DATE_FORMAT = DateFormat.ISO_DATETIME
+
+# `owner_id` of the organisation-wide (global) Preference row. A fixed sentinel rather than a real
+# node id: accounts are UUID-keyed, so this value can never collide with a user's owner id, and the
+# global row needs no link to any node in the graph. It is persisted, so treat it as a stable key.
+GLOBAL_OWNER_ID = "__global__"

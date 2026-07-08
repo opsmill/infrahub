@@ -3,30 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from infrahub.core import registry
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.preferences.constants import DateFormat, PreferenceSource
-
-
-def global_owner_id() -> str:
-    """`owner_id` for the organisation-wide (global) preferences: the Root node id.
-
-    Raises:
-        RuntimeError: if the registry has not been initialised (`registry.id` is unset).
-
-    """
-    if registry.id is None:
-        raise RuntimeError("The registry is not initialised; registry.id (the Root id) is unset")
-    return registry.id
 
 
 class Preference(StandardNode):
     """Preferences owned by a single principal (one class for both user and global preferences).
 
     They share the same fields; the only difference is the owner, identified by `owner_id` — an
-    account id for a user's preferences, or the Root node id (registry.id) for the organisation-wide
-    (global) preferences. Reads NEVER create a row: a missing row means "nothing set" and the caller
-    falls back (user → global → the client's built-in default).
+    account id for a user's preferences, or a fixed sentinel for the organisation-wide (global)
+    preferences (accounts are UUID-keyed, so the sentinel can never collide with one). Reads NEVER
+    create a row: a missing row means "nothing set" and the caller falls back (user → global → the
+    client's built-in default).
 
     `owner_id` is a plain string, not a graph relationship: a StandardNode cannot declare a schema
     relationship with `on_delete: cascade` (that is a schema-Node feature), so deleting an account

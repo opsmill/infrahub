@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 
 from graphene import Field
 
-from infrahub.core.preferences.models import EffectivePreferences, global_owner_id
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
+from infrahub.core.preferences.models import EffectivePreferences
 from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERMISSION
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.types.preferences import (
@@ -26,7 +27,7 @@ async def resolve_effective_preferences(root: dict, info: GraphQLResolveInfo) ->
     """
     graphql_context: GraphqlContext = info.context
     account_id = graphql_context.active_account_session.account_id
-    global_id = global_owner_id()
+    global_id = GLOBAL_OWNER_ID
 
     # StandardNode reads carry no branch filter, so this is branch-agnostic.
     repository = PreferenceRepository(db=graphql_context.db)
@@ -62,7 +63,7 @@ async def resolve_global_preferences(root: dict, info: GraphQLResolveInfo) -> di
     graphql_context: GraphqlContext = info.context
     graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
 
-    global_ = await PreferenceRepository(db=graphql_context.db).get_for_owner(owner_id=global_owner_id())
+    global_ = await PreferenceRepository(db=graphql_context.db).get_for_owner(owner_id=GLOBAL_OWNER_ID)
     return {
         "date_format": global_.date_format if global_ else None,
         "timezone": global_.timezone if global_ else None,

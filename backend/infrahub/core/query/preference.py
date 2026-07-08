@@ -20,7 +20,7 @@ def _nullable_str(result: QueryResult, label: str) -> str | None:
 
 
 class PreferenceGetByOwnerQuery(StandardNodeQuery):
-    """Fetch the Preference rows for the given owner ids (account ids and/or the Root id).
+    """Fetch the Preference rows for the given owner ids (account ids and/or the global sentinel).
 
     There is at most one row per owner (guaranteed by the per-owner upsert lock).
     """
