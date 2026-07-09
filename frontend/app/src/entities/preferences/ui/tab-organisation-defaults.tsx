@@ -12,8 +12,7 @@ import { useGlobalPreferences } from "@/entities/preferences/ui/queries/get-glob
 import { useUpdateGlobalPreferences } from "@/entities/preferences/ui/queries/update-global-preferences.mutation";
 
 export default function TabOrganisationDefaults() {
-  // Gate on the `manage_global_preferences` GLOBAL permission (super admins pass). The editor is
-  // only mounted once authorized, so it never has to handle the unauthorized state itself.
+  // The editor is mounted only once authorized, so it never handles the unauthorized state itself.
   return (
     <RequireGlobalPermission
       action={MANAGE_GLOBAL_PREFERENCES}
@@ -26,8 +25,8 @@ export default function TabOrganisationDefaults() {
 }
 
 function OrganisationDefaultsEditor() {
-  // Form values come from the raw GLOBAL scope — so an admin who also set personal overrides still
-  // prefills from the organisation's own defaults, never their overrides.
+  // Prefill from raw GLOBAL scope so an admin who also set personal overrides still sees the
+  // org's own defaults, never their overrides.
   const globalQuery = useGlobalPreferences();
   const updatePreferences = useUpdateGlobalPreferences();
 
@@ -69,8 +68,8 @@ function OrganisationDefaultsEditor() {
                   }
                 />
               );
-              // Re-throw so the shared Form skips its post-submit reset(): a failed update must
-              // keep the form dirty with the unsaved values, not look as though it saved.
+              // Re-throw so the shared Form skips its post-submit reset(), keeping the form dirty
+              // with the unsaved values rather than looking as though it saved.
               throw error;
             }
           }}

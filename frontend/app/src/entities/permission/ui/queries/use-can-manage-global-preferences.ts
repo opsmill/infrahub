@@ -1,10 +1,7 @@
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { useGlobalPermission } from "@/entities/permission/ui/queries/use-global-permission";
 
-/**
- * Whether the current account may manage the organisation-wide preferences, i.e. holds the
- * `manage_global_preferences` GLOBAL permission. Used to show/hide the "Organisation defaults" tab.
- */
+/** Gates the "Organisation defaults" tab on the `manage_global_preferences` permission. */
 export function useCanManageGlobalPreferences() {
   return useGlobalPermission(MANAGE_GLOBAL_PREFERENCES);
 }

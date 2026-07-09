@@ -4,10 +4,8 @@ import { updateGlobalPreference } from "@/entities/preferences/domain/use-cases/
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 
 /**
- * Updates the organisation-wide defaults via `InfrahubSetPreferences(scope: GLOBAL)`.
- * Invalidates both the effective-preferences query (a changed org default can move
- * a user's resolved value/source) and the raw GLOBAL-scope query the org-defaults
- * card reads from.
+ * Update the org-wide defaults. Invalidates both the effective-preferences query (a changed org
+ * default can move a user's resolved value/source) and the raw GLOBAL query the card reads from.
  */
 export function useUpdateGlobalPreferences() {
   const queryClient = useQueryClient();

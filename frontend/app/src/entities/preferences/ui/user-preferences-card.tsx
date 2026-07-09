@@ -15,12 +15,7 @@ import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
 import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 import { useUpdateMyUserPreferences } from "@/entities/preferences/ui/queries/upsert-my-user-preferences.mutation";
 
-/**
- * The browser's own locale formatting of a date — used as the effective default
- * for the date-format hint when neither the user nor the organisation has set a
- * value. Mirrors the app-wide rendering fallback (browser locale) rather than a
- * fixed pattern.
- */
+/** Browser-locale date formatting: the fallback shown when source is "default". */
 function browserDateExample(referenceDate: Date): string {
   return referenceDate.toLocaleString();
 }
@@ -31,19 +26,12 @@ function browserTimezone(): string {
 }
 
 function presetExample(value: string, referenceDate: Date) {
-  // `value` is a semantic key (e.g. "EU_DATETIME"); show its live example plus the human label,
-  // never the raw key — e.g. "01/07/2026 14:30 (dd/MM/yyyy HH:mm)".
+  // `value` is a semantic key; render its live example + human label, never the raw key,
+  // e.g. "01/07/2026 14:30 (dd/MM/yyyy HH:mm)".
   return `${formatDateFormatExample(value, referenceDate)} (${dateFormatLabel(value)})`;
 }
 
-/**
- * Builds the (i) tooltip text describing the SOURCE of a field's effective value.
- * The source is read directly from the resolved preference (no comparison logic):
- *   - "user"    → "Your preference."
- *   - "global"  → "From the organisation default: <resolved value>." (when the source
- *                 is global the resolved value IS the org default).
- *   - "default" → "From your browser: <browser value>." (computed client-side).
- */
+/** (i) tooltip text for a field's effective value, keyed off its resolved source. */
 function sourceTooltip(resolved: ResolvedPreference, browserValue: string): string {
   switch (resolved.source) {
     case "user":
@@ -55,18 +43,11 @@ function sourceTooltip(resolved: ResolvedPreference, browserValue: string): stri
   }
 }
 
-/**
- * The user's personal date/time preferences, surfaced as a card on the Profile
- * tab below the object details. A field with no personal override inherits the
- * organisation default, or the browser's own locale/timezone when that is also
- * unset. The (i) tooltip beside each field spells out where the current effective
- * value comes from.
- */
+/** The user's personal date/time preferences card on the Profile tab. */
 export function UserPreferencesCard() {
   const effectiveQuery = useEffectivePreferences();
   const updatePreferences = useUpdateMyUserPreferences();
-  // Single reference instant for the source tooltip's live date example, memoised so
-  // it does not churn across renders.
+  // Single reference instant for the live date example, memoised so it does not churn.
   const now = useMemo(() => new Date(), []);
 
   if (effectiveQuery.error) {
@@ -79,9 +60,8 @@ export function UserPreferencesCard() {
 
   const preferences = effectiveQuery.data;
 
-  // The (i) tooltip reads the resolved source directly. For the date-format field a
-  // raw semantic key is unhelpful in prose, so when it resolves to a concrete value we
-  // render it as a live preset example (e.g. "30/06/2026 14:30 (dd/MM/yyyy HH:mm)").
+  // A raw semantic key is unhelpful in prose, so render a concrete date-format value as a
+  // live preset example for the tooltip.
   const dateFormatResolved: ResolvedPreference = {
     source: preferences.dateFormat.source,
     value: preferences.dateFormat.value
@@ -91,9 +71,8 @@ export function UserPreferencesCard() {
   const dateFormatSourceTooltip = sourceTooltip(dateFormatResolved, browserDateExample(now));
   const timezoneSourceTooltip = sourceTooltip(preferences.timezone, browserTimezone());
 
-  // The form shows the caller's OWN override per field: when the value is inherited
-  // (source !== "user") there is no override, so the field is left unset and shows
-  // its "Automatic (inherited)" placeholder.
+  // Show only the caller's OWN override: an inherited value (source !== "user") is left unset
+  // so the field shows its "Automatic (inherited)" placeholder.
   const dateFormatOverride =
     preferences.dateFormat.source === "user" ? preferences.dateFormat.value : null;
   const timezoneOverride =
@@ -126,8 +105,8 @@ export function UserPreferencesCard() {
                 message={error instanceof Error ? error.message : "Failed to update preferences"}
               />
             );
-            // Re-throw so the shared Form does not run its post-submit reset(): a failed update
-            // must keep the form dirty with the unsaved values, not look as though it saved.
+            // Re-throw so the shared Form skips its post-submit reset(), keeping the form dirty
+            // with the unsaved values rather than looking as though it saved.
             throw error;
           }
         }}

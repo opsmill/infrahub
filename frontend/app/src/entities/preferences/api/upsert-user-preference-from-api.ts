@@ -2,9 +2,8 @@ import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-// `scope: USER` writes the caller's OWN row. Passing an explicit `null` for a
-// field resets it (clearing the personal override so the field falls back to the
-// org default); omitting the variable leaves the stored value unchanged.
+// `scope: USER` writes the caller's OWN row. Explicit `null` clears the personal override
+// (field falls back to the org default); omitting the variable leaves the stored value unchanged.
 const UPSERT_USER_PREFERENCE = graphql(`
   mutation UpsertUserPreference($dateFormat: DateFormat, $timezone: String) {
     InfrahubSetPreferences(scope: USER, date_format: $dateFormat, timezone: $timezone) {
@@ -16,26 +15,20 @@ const UPSERT_USER_PREFERENCE = graphql(`
 `);
 
 export interface UpsertUserPreferenceFromApiParams {
-  /**
-   * The caller's own override for `date_format`. Explicit `null` resets it to
-   * the global default. Omitting the key leaves the stored value unchanged.
-   */
+  /** Caller's override for `date_format`. Explicit `null` resets to the global default; omitting leaves unchanged. */
   dateFormat?: string | null;
   /** As `dateFormat`, for `timezone`. */
   timezone?: string | null;
 }
 
 /**
- * Upsert the caller's OWN preference row. The mutation never carries
- * an account argument — the backend resolves the calling account from the
- * session and lazily creates the row on first write. Passing explicit `null`
- * for a field resets it to the global default; omitting a field leaves it
- * unchanged.
+ * Upsert the caller's OWN preference row. No account argument: the backend resolves the account
+ * from the session and lazily creates the row. Explicit `null` resets to the global default;
+ * omitting a field leaves it unchanged.
  */
 export async function upsertUserPreferenceFromApi(params: UpsertUserPreferenceFromApiParams) {
-  // The date-format dropdown constrains values to the DateFormat enum keys; the domain layer
-  // carries date_format as a plain string, so narrow it to the generated variable type here at the
-  // GraphQL boundary (only these keys ever reach this function).
+  // date_format is a plain string in the domain but constrained to DateFormat enum keys by the UI,
+  // so narrow it to the generated variable type here at the GraphQL boundary.
   const variables: VariablesOf<typeof UPSERT_USER_PREFERENCE> = {};
   if ("dateFormat" in params) {
     variables.dateFormat = params.dateFormat as VariablesOf<
@@ -49,9 +42,8 @@ export async function upsertUserPreferenceFromApi(params: UpsertUserPreferenceFr
     variables,
   });
 
-  // Apollo resolves even when the mutation reports an application-level failure without GraphQL
-  // errors, so assert the payload's `ok` flag — otherwise a failed save would run the caller's
-  // success path (toast + cache invalidation) as if it had worked.
+  // Apollo resolves on application-level failures that carry no GraphQL errors, so assert `ok`;
+  // otherwise a failed save would run the caller's success path (toast + cache invalidation).
   if (!result.data?.InfrahubSetPreferences?.ok) {
     throw new Error("Failed to save your preferences");
   }

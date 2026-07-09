@@ -2,19 +2,17 @@ export const ACCOUNT_PERMISSION_OBJECT = "CoreBasePermission";
 export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
 export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 
-/** Global permission action that gates managing organisation-wide preferences. */
 export const MANAGE_GLOBAL_PREFERENCES = "manage_global_preferences";
 
-/** Global permission held by super admins; it bypasses every other global permission check. */
+/** Super-admin grant bypasses every other global permission check. */
 export const SUPER_ADMIN = "super_admin";
 
 export type PermissionDecisionData = "ALLOW" | "ALLOW_DEFAULT" | "ALLOW_OTHER" | "DENY";
 
 /**
- * Backend `PermissionDecision` values (an InfrahubNumberEnum: DENY=1, ALLOW_DEFAULT=2,
- * ALLOW_OTHER=4, ALLOW_ALL=6). GLOBAL permissions expose `decision` on a `String!` field, so it
- * arrives as the stringified integer (e.g. "6"); OBJECT permissions use the string names in
- * {@link PermissionDecisionData} instead.
+ * GLOBAL `decision` arrives as a stringified InfrahubNumberEnum (DENY=1, ALLOW_DEFAULT=2,
+ * ALLOW_OTHER=4, ALLOW_ALL=6), e.g. "6" — unlike OBJECT permissions, which use the string names
+ * in {@link PermissionDecisionData}.
  */
 export const GLOBAL_PERMISSION_DECISION = {
   DENY: "1",
@@ -23,7 +21,7 @@ export const GLOBAL_PERMISSION_DECISION = {
   ALLOW_ALL: "6",
 } as const;
 
-/** GLOBAL decisions that grant a permission — any ALLOW* (i.e. anything but DENY). */
+/** GLOBAL decisions that grant a permission: any ALLOW*, i.e. anything but DENY. */
 export const GRANTING_GLOBAL_DECISIONS: ReadonlySet<string> = new Set([
   GLOBAL_PERMISSION_DECISION.ALLOW_DEFAULT,
   GLOBAL_PERMISSION_DECISION.ALLOW_OTHER,

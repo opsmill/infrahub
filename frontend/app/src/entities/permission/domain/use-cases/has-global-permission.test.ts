@@ -8,8 +8,7 @@ vi.mock("@/entities/permission/api/get-global-permissions-from-api");
 type GlobalPermissionsResult = Awaited<ReturnType<typeof getGlobalPermissionsFromApi>>;
 
 function mockEdges(edges: Array<{ action: string; decision: string }>) {
-  // Only the shape the domain reads matters here; cast the partial stub through
-  // unknown to the full ApolloQueryResult the api returns.
+  // Only the shape the domain reads matters; cast the partial stub to the full result type.
   vi.mocked(getGlobalPermissionsFromApi).mockResolvedValue({
     data: {
       InfrahubPermissions: {

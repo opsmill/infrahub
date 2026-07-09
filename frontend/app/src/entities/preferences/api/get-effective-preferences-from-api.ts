@@ -2,9 +2,8 @@ import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-// The caller's resolved preferences (user → global → default). Each field is a
-// typed, self-describing object carrying the resolved value plus the source
-// (USER | GLOBAL | DEFAULT) it was resolved from.
+// Caller's resolved preferences (user → global → default). Each field carries the resolved
+// value plus the source (USER | GLOBAL | DEFAULT) it came from.
 const GET_EFFECTIVE_PREFERENCES = graphql(`
   query InfrahubEffectivePreferences {
     InfrahubEffectivePreferences {

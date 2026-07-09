@@ -10,9 +10,8 @@ export function toSource(source: string): PreferenceSource {
     case "DEFAULT":
       return "default";
     default:
-      // An unrecognised source (e.g. a backend/frontend enum mismatch) must not silently read as a
-      // browser default — that would show inherited values as if nothing were configured. Surface
-      // it, then fall back conservatively to "default".
+      // Surface an enum mismatch rather than silently reading it as a browser default, which would
+      // show inherited values as if nothing were configured; then fall back conservatively.
       console.warn(`Unknown preference source "${source}"; treating it as the browser default.`);
       return "default";
   }

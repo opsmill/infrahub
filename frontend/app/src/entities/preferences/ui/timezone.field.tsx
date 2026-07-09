@@ -5,9 +5,8 @@ import { ComboboxField } from "@/shared/components/form/fields/combobox.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 
 const RUNTIME_TIMEZONES = Intl.supportedValuesOf("timeZone");
-// V8/Chrome omits plain "UTC" from the supported list (it exposes "Etc/UTC" instead), yet "UTC" is
-// a valid, commonly-expected IANA zone. Ensure it is always selectable, without duplicating it on
-// engines that already include it.
+// V8/Chrome omits plain "UTC" (exposes "Etc/UTC" instead), so ensure it is always selectable
+// without duplicating it on engines that already include it.
 const TIMEZONES = RUNTIME_TIMEZONES.includes("UTC")
   ? RUNTIME_TIMEZONES
   : ["UTC", ...RUNTIME_TIMEZONES];
@@ -15,12 +14,9 @@ const TIMEZONES = RUNTIME_TIMEZONES.includes("UTC")
 export interface TimezoneFieldProps {
   name: string;
   label: string;
-  /** Extra classes for the field's own label (e.g. `sr-only` to hide it visually). */
   labelClassName?: string;
-  /** Forwarded to the trigger so a hint can be announced by screen readers. */
   "aria-describedby"?: string;
   defaultValue?: FormAttributeValue;
-  /** Placeholder shown in the trigger when nothing is selected. */
   placeholder?: string;
 }
 
@@ -33,7 +29,6 @@ export function TimezoneField({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
   placeholder = "Select timezone",
 }: TimezoneFieldProps) {
-  // Stable item identity across renders; the timezone list never changes at runtime.
   const items = useMemo(
     () => TIMEZONES.map((timezone) => ({ value: timezone, label: timezone })),
     []

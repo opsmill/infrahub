@@ -2,9 +2,7 @@ import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-// The caller's account-wide (non-object) permissions. Each edge carries the
-// permission `action` (e.g. "manage_global_preferences") and the `decision` the
-// backend resolved for the caller.
+// Caller's account-wide permissions: each edge pairs an `action` with the backend-resolved `decision`.
 const GET_GLOBAL_PERMISSIONS = graphql(`
   query InfrahubGlobalPermissions {
     InfrahubPermissions {

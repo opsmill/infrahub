@@ -4,10 +4,8 @@ import type { GlobalPreferences } from "@/entities/preferences/domain/model/pref
 export type GetGlobalPreferences = () => Promise<GlobalPreferences>;
 
 /**
- * Read the organisation's OWN raw defaults via `InfrahubPreferences(scope: GLOBAL)`.
- * These are the values the org-defaults editor prefills from — the raw global row,
- * not the caller's merged/effective values, so an admin who also set a personal
- * override still sees the organisation default here.
+ * Read the org's OWN raw defaults — the row the org-defaults editor prefills from, not the caller's
+ * merged/effective values, so an admin who also set a personal override still sees the org default.
  */
 export const getGlobalPreferences: GetGlobalPreferences = async () => {
   const { data } = await getGlobalPreferencesFromApi();

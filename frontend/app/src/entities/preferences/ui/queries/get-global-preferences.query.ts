@@ -11,9 +11,8 @@ export function getGlobalPreferencesQueryOptions() {
 }
 
 /**
- * The raw organisation defaults (scope GLOBAL). Only the org-defaults card loads
- * this — and only when that tab opens — so a regular user never issues the gated
- * GLOBAL-scope request.
+ * Raw org defaults (scope GLOBAL). Loaded only by the org-defaults card when its tab opens, so a
+ * regular user never issues the gated GLOBAL-scope request.
  */
 export function useGlobalPreferences() {
   return useQuery(getGlobalPreferencesQueryOptions());

@@ -36,7 +36,7 @@ describe("UserPreferencesCard", () => {
   test("renders preset selects, not free-text inputs", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    // Both dropdowns are the shared Combobox now, so both expose role="combobox".
+    // Both dropdowns are the shared Combobox, so both expose role="combobox".
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
     await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
     expect(component.getByRole("textbox").elements()).toHaveLength(0);
@@ -55,8 +55,7 @@ describe("UserPreferencesCard", () => {
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
     await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
 
-    // The DetailRow term cells carry the visible field labels next to a leading icon,
-    // in the object-details grid layout (a <dt> term + <dd> value).
+    // DetailRow renders each field as a <dt> term (label + icon) + <dd> value.
     const terms = Array.from(component.container.querySelectorAll("dt")).map((dt) =>
       dt.textContent?.trim()
     );
@@ -89,8 +88,7 @@ describe("UserPreferencesCard", () => {
       expect(row.className).toMatch(/(^|\s)px-3(\s|$)/);
     }
 
-    // The Save button lives in the last child of the same divide container, so it
-    // sits under a full-width line.
+    // The Save button is the last child of the divide container, so it sits under a full-width line.
     const actionRow = rows.at(-1) as HTMLElement;
     expect(actionRow.querySelector("button")).not.toBeNull();
   });
@@ -98,10 +96,8 @@ describe("UserPreferencesCard", () => {
   test("shows the 'Automatic (inherited)' placeholder when the user has no override", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    // Both fields resolve to source "global" (not "user") in baseEffective, so neither
-    // has a personal override: each trigger shows the inherit placeholder rather than a
-    // concrete value. It is placeholder text (not a selectable option), still rendered
-    // in the trigger.
+    // Both fields resolve to source "global" (no personal override), so each trigger shows the
+    // inherit placeholder rather than a concrete value.
     await expect
       .element(component.getByRole("combobox", { name: /date format/i }))
       .toHaveTextContent("Automatic (inherited)");
@@ -154,8 +150,7 @@ describe("UserPreferencesCard", () => {
     expect(row).not.toBeNull();
     expect(row.contains(example)).toBe(true);
 
-    // The example follows the control in document order (to its right): the row's
-    // direct child holding the combobox precedes the example's child.
+    // The example follows the control in document order (to its right).
     const children = Array.from(row.children);
     const controlIndex = children.findIndex((child) => child.contains(combobox));
     const exampleIndex = children.findIndex((child) => child.contains(example));
@@ -199,8 +194,7 @@ describe("UserPreferencesCard", () => {
 
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
 
-    // The old "Inherited from organisation defaults: …" / "Browser default: …"
-    // sentences are gone — the source is now in the (i) tooltip instead.
+    // Source is conveyed via the (i) tooltip, not a below-input sentence.
     expect(component.getByText(/inherited from organisation defaults/i).elements()).toHaveLength(0);
     expect(component.getByText(/browser default:/i).elements()).toHaveLength(0);
   });
@@ -210,8 +204,7 @@ describe("UserPreferencesCard", () => {
 
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
 
-    // One info trigger per field, each a real <button> (a natural tab stop, so it is
-    // keyboard-reachable, not hover-only) with an accessible name.
+    // One info trigger per field, each a real keyboard-focusable <button> (not hover-only).
     const triggers = component.getByRole("button", { name: "Where this value comes from" });
     expect(triggers.elements()).toHaveLength(2);
     for (const trigger of triggers.elements()) {

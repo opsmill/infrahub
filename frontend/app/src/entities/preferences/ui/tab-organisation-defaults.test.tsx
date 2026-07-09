@@ -17,7 +17,7 @@ vi.mock("@/entities/permission/ui/queries/use-global-permission", () => ({
 vi.mock("@/entities/preferences/domain/use-cases/get-global-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
 
-// Gating now flows through RequireGlobalPermission, which reads useGlobalPermission(action).
+// Gating flows through RequireGlobalPermission, which reads useGlobalPermission(action).
 function mockCanManage(canManage: boolean) {
   vi.mocked(useGlobalPermission).mockReturnValue({
     isPending: false,
@@ -72,8 +72,7 @@ describe("TabOrganisationDefaults", () => {
     await expect.element(component.getByText("Global date and time")).toBeVisible();
 
     const title = component.getByText("Global date and time").element() as HTMLElement;
-    // The card is the title's ancestor carrying the width cap; widened from
-    // max-w-2xl to max-w-3xl so the longest inline example never clips.
+    // The card ancestor carries the width cap (max-w-3xl) so the longest inline example never clips.
     const card = title.closest(".max-w-3xl");
     expect(card).not.toBeNull();
     expect(card?.className).not.toMatch(/max-w-2xl/);

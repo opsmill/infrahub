@@ -17,35 +17,24 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 export interface ComboboxFieldItem {
   /** Stored value written back into the form's `{ source, value }` attribute. */
   value: string;
-  /** Visible label shown in the trigger and the option list. */
   label: string;
 }
 
 export interface ComboboxFieldProps {
   name: string;
   label: string;
-  /** Selectable options, presets-only — there is no custom/free-text entry. */
   items: ReadonlyArray<ComboboxFieldItem>;
-  /** Placeholder shown in the trigger when nothing is selected. */
   placeholder?: string;
-  /** Placeholder shown in the search/filter input. */
   searchPlaceholder?: string;
-  /** Message shown when the type-to-filter matches no option. */
   emptyMessage?: string;
-  /** Extra classes for the field's own label (e.g. `sr-only` to hide it visually). */
   labelClassName?: string;
-  /** Forwarded to the trigger so a hint can be announced by screen readers. */
   "aria-describedby"?: string;
   defaultValue?: FormAttributeValue;
 }
 
 /**
- * Searchable, presets-only select over a fixed `items` list. Wraps the shared
- * {@link Combobox} primitives so every preferences dropdown (date format,
- * timezone) renders the exact same trigger and popover. Selection is constrained
- * to the provided items; the type-to-filter is a convenience over the list, never
- * a free-text value. Keeps the `{ source, value }` `FormAttributeValue` contract,
- * including reset/unset semantics (re-selecting the current value clears it).
+ * Searchable, presets-only select over a fixed `items` list; the type-to-filter is a convenience
+ * over the list, never a free-text value. Re-selecting the current value clears it (see onSelect).
  */
 export function ComboboxField({
   name,
@@ -90,8 +79,7 @@ export function ComboboxField({
                       value={item.value}
                       selectedValue={currentValue}
                       onSelect={() => {
-                        // Re-selecting the currently-selected value clears it (stores
-                        // `null`); selecting any other value sets that value.
+                        // Re-selecting the current value clears it (stores `null`).
                         const newValue = item.value === currentValue ? null : item.value;
                         field.onChange(updateFormFieldValue(newValue, defaultValue));
                         setOpen(false);

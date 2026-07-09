@@ -8,7 +8,6 @@ export const getEffectivePreferences: GetEffectivePreferences = async () => {
   const { data } = await getEffectivePreferencesFromApi();
   const effective = data.InfrahubEffectivePreferences;
 
-  // Each field arrives already resolved (value + source) as its own typed object.
   return {
     dateFormat: {
       value: effective.date_format.value ?? null,

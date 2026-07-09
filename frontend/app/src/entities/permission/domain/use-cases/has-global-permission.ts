@@ -7,14 +7,9 @@ import {
 export type HasGlobalPermission = (action: string) => Promise<boolean>;
 
 /**
- * Whether the calling account holds a given account-wide permission `action`.
- *
- * A global permission is "held" when the caller's `global_permissions` list contains an edge for
- * that `action` with a granting (non-DENY) decision.
- *
- * A `super_admin` grant satisfies ANY action — mirroring the backend, where
- * `has_permission(action) == resolve_global_permission(action) or is_super_admin()` — so the UI
- * gate matches server-side enforcement even when the specific action isn't explicitly assigned.
+ * Whether the account holds `action` (an edge with a granting, non-DENY decision).
+ * A `super_admin` grant satisfies ANY action, mirroring the backend's
+ * `resolve_global_permission(action) or is_super_admin()` so the UI gate matches enforcement.
  */
 export const hasGlobalPermission: HasGlobalPermission = async (action) => {
   const { data } = await getGlobalPermissionsFromApi();
