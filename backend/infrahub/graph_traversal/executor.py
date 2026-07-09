@@ -268,21 +268,57 @@ class PathTraversalExecutor:
             for mid, hops in right_halves:
                 right_by_mid[mid].append(hops)
 
-            tier: list[tuple[str, PathData]] = []
-            for mid, left_hops in left_halves:
-                for right_hops in right_by_mid.get(mid, ()):
-                    hops = left_hops + right_hops
-                    node_uuids = [source_id, *(hop.node.uuid for hop in hops)]
-                    if len(node_uuids) != len(set(node_uuids)):
-                        continue  # drop non-simple joins (halves share a node besides the middle)
-                    key = "".join(f"{hop.relationship_identifier}>{hop.node.uuid}" for hop in hops)
-                    tier.append((key, PathData(start_node=start_node, hops=hops, depth=depth)))
-            tier.sort(key=itemgetter(0))
-            for _, path in tier:
+            tier_paths, over_cap = self._join_tier(
+                left_halves=left_halves,
+                right_by_mid=right_by_mid,
+                source_id=source_id,
+                start_node=start_node,
+                depth=depth,
+            )
+            if over_cap:
+                return PathTraversalResult(paths=collected[:max_paths], truncated_at_depth=depth)
+            for path in tier_paths:
                 collected.append(path)
                 if len(collected) >= max_paths:
                     break
         return PathTraversalResult(paths=collected[:max_paths])
+
+    def _join_tier(
+        self,
+        *,
+        left_halves: list[tuple[str, list[PathHopData]]],
+        right_by_mid: dict[str, list[list[PathHopData]]],
+        source_id: str,
+        start_node: PathNodeData,
+        depth: int,
+    ) -> tuple[list[PathData], bool]:
+        """Join the two half-path sets on their shared middle into one ordered, de-duplicated tier.
+
+        Returns ``(ordered_paths, over_cap)``. The product is quadratic in the half sizes, so the
+        tier is bounded by ``cap``: an over-cap tier returns ``over_cap=True`` (the search truncates
+        at this depth) rather than building an unbounded list. ``key`` is the full
+        relationship+UUID sequence — identical keys are the SAME logical path (a UUID resolving to
+        more than one Node vertex, e.g. a kind/namespace/inheritance migration copy) and are
+        de-duplicated.
+        """
+        cap = self._exhaustive_half_cap
+        tier: list[tuple[str, PathData]] = []
+        seen_keys: set[str] = set()
+        for mid, left_hops in left_halves:
+            for right_hops in right_by_mid.get(mid, ()):
+                hops = left_hops + right_hops
+                node_uuids = [source_id, *(hop.node.uuid for hop in hops)]
+                if len(node_uuids) != len(set(node_uuids)):
+                    continue  # drop non-simple joins (halves share a node besides the middle)
+                key = "".join(f"{hop.relationship_identifier}>{hop.node.uuid}" for hop in hops)
+                if key in seen_keys:
+                    continue  # same logical path reached via a duplicate same-UUID vertex
+                seen_keys.add(key)
+                tier.append((key, PathData(start_node=start_node, hops=hops, depth=depth)))
+                if len(tier) > cap:
+                    return [], True
+        tier.sort(key=itemgetter(0))
+        return [path for _, path in tier], False
 
 
 class ReachableNodesExecutor:

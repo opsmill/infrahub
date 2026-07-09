@@ -22,13 +22,13 @@ export interface TooltipProps extends Omit<AriaTooltipProps, "children"> {
 }
 
 const tooltipStyles = tv({
-  base: "group box-border rounded-xl border border-neutral-800 bg-neutral-700 px-2 py-1 font-sans text-white text-xs drop-shadow-lg will-change-transform",
+  base: "group box-border rounded-xl border border-neutral-800 bg-neutral-700 px-2 py-1 font-sans text-xs text-white drop-shadow-lg will-change-transform",
   variants: {
     isEntering: {
-      true: "fade-in data-[placement=bottom]:slide-in-from-top-0.5 data-[placement=top]:slide-in-from-bottom-0.5 data-[placement=left]:slide-in-from-right-0.5 data-[placement=right]:slide-in-from-left-0.5 animate-in duration-200 ease-out",
+      true: "data-[placement=bottom]:slide-in-from-top-0.5 data-[placement=top]:slide-in-from-bottom-0.5 data-[placement=left]:slide-in-from-right-0.5 data-[placement=right]:slide-in-from-left-0.5 animate-in duration-200 ease-out fade-in",
     },
     isExiting: {
-      true: "fade-out data-[placement=bottom]:slide-out-to-top-0.5 data-[placement=top]:slide-out-to-bottom-0.5 data-[placement=left]:slide-out-to-right-0.5 data-[placement=right]:slide-out-to-left-0.5 animate-out duration-150 ease-in",
+      true: "data-[placement=bottom]:slide-out-to-top-0.5 data-[placement=top]:slide-out-to-bottom-0.5 data-[placement=left]:slide-out-to-right-0.5 data-[placement=right]:slide-out-to-left-0.5 animate-out duration-150 ease-in fade-out",
     },
   },
 });

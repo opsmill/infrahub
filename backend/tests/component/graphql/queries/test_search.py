@@ -7,6 +7,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
@@ -220,6 +221,48 @@ async def test_search_ipv6_network_extended_format(
     )
 
 
+async def test_search_ipv6_address_with_prefix_extended_format(
+    db: InfrahubDatabase,
+    ip_dataset_01: dict[str, Any],
+    default_branch: Branch,
+) -> None:
+    """An IPv6 address stored with a prefix length (host bits set) is found regardless of input compression."""
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    address = await Node.init(db=db, schema=address_schema)
+    await address.new(
+        db=db, address="2001:db8::1/64", ip_prefix=ip_dataset_01["net162"], ip_namespace=ip_dataset_01["ns1"]
+    )
+    await address.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    res_collapsed = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "2001:db8::1/64"},
+    )
+
+    res_extended = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "2001:0db8:0000:0000:0000:0000:0000:0001/64"},
+    )
+
+    assert res_collapsed.data
+    assert res_extended.data
+
+    collapsed_ids = {e["node"]["id"] for e in res_collapsed.data["InfrahubSearchAnywhere"]["edges"]}
+    extended_ids = {e["node"]["id"] for e in res_extended.data["InfrahubSearchAnywhere"]["edges"]}
+
+    assert address.id in collapsed_ids
+    assert collapsed_ids == extended_ids
+
+
 async def test_search_ipv6_partial_address(
     db: InfrahubDatabase,
     ip_dataset_01: dict[str, Any],
@@ -322,6 +365,9 @@ async def test_search_ipv4(
         ("2001:0db8:0000:0001:00", "2001:db8:0:1"),
         ("2001:0db8:0001:0002:00", "2001:db8:1:2"),
         ("2001:0db8:0001:0000:0002:0000:0003", "2001:db8:1:0:2:0:3"),
+        ("2a0b:2081:0001:00d3:0000:0000:0000:0001/127", "2a0b:2081:1:d3::1/127"),
+        ("2a0b:2081:1:d3::1/127", "2a0b:2081:1:d3::1/127"),
+        ("2001:0db8:0000:0000:0000:0000:0000:0001/64", "2001:db8::1/64"),
     ],
 )
 def test_collapse_ipv6_address_or_network(query: str, expected: str) -> None:

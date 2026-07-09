@@ -9,16 +9,16 @@ import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";
 import { Command, CommandInput, CommandList } from "@/shared/components/ui/command";
 import { debounce } from "@/shared/utils/common";
 
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { NodeSchema } from "@/entities/schema/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import type { NodeSchema } from "@/entities/schema/domain/model/schema";
 import {
   getRootSchemaOfHierarchicalSchema,
   isHierarchicalSchema,
-} from "@/entities/schema/utils/is-hierarchical-schema";
+} from "@/entities/schema/domain/rules/is-hierarchical-schema";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipHierarchicalComboboxListProps {
   peer: string;

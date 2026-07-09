@@ -1,4 +1,4 @@
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 /**
  * Determines if form submission should be allowed even when the form data is empty.

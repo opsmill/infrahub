@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
+import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
 
 import { render } from "../../../../../../../tests/components/render";
 import {

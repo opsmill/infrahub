@@ -4,22 +4,26 @@ import { Link, type LinkProps } from "react-router";
 import { Row, type RowProps } from "@/shared/components/container";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
-import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
-import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
-import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
+import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/domain/rules/get-prefix-attributes-visible-in-list-view";
 import type {
   NodeAttribute,
   NodeCore,
   NodeObject,
   NodeRelationshipMany,
   NodeRelationshipOne,
-} from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { Permission } from "@/entities/permission/types";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+} from "@/entities/nodes/object/domain/model/node";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
+import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
+import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import type { Permission } from "@/entities/permission/domain/model/permission";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
 
 interface IpPrefixDetailsHeaderProps extends RowProps {
   ipPrefixSchema: ModelSchema;

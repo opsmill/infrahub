@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import {
   type GetCheckDetailsParams,
   getCheckDetails,
-} from "@/entities/diff/domain/get-check-details";
+} from "@/entities/diff/domain/use-cases/get-check-details";
 import { getCheckQueryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 
 export const useGetCheckDetails = (params: GetCheckDetailsParams) => {

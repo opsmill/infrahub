@@ -9,12 +9,12 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 
+import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { canDissociateRelationship } from "@/entities/nodes/relationships/domain/rules/can-dissociate-relationship";
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
-import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {
@@ -117,14 +117,14 @@ export function RelationshipActionsCell({
           currentObjectLabel={relationshipLabel}
           title={`Edit ${relationshipLabel}`}
         />
-        <ObjectItemEditComponent
+        <ObjectEdit
           closeDrawer={() => setShowEditForm(false)}
           onUpdateComplete={async () => {
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setShowEditForm(false);
           }}
           objectId={relationshipId}
-          objectname={relationshipKind}
+          objectKind={relationshipKind}
         />
       </Sheet>
 

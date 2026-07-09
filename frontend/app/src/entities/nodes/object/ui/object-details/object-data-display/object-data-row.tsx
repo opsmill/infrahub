@@ -5,7 +5,7 @@ import { Button, DialogTrigger } from "react-aria-components";
 import { Row } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { SchemaViewerModal } from "@/entities/schema/ui/schema-viewer-modal";

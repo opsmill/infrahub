@@ -9,11 +9,11 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
-import { getSchema } from "@/entities/schema/domain/get-schema";
+import { IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface IpPrefixPoolFormProps extends NodeFormProps {}

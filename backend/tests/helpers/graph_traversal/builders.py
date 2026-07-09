@@ -69,6 +69,18 @@ class CountingQueryRunner:
         await query.execute(db=db, timeout_seconds=timeout_seconds)
 
 
+class BowtieGraph(NamedTuple):
+    """Vertices of the ``bowtie_graph`` fixture.
+
+    ``source`` and ``destination`` are connected only through paths that funnel through a single
+    ``hub``, so every depth-4 route shares that one middle vertex.
+    """
+
+    source: Node
+    hub: Node
+    destination: Node
+
+
 class ShortcutGraph(NamedTuple):
     """Vertices of the non-bipartite ``linked_vertices_with_shortcut`` fixture.
 

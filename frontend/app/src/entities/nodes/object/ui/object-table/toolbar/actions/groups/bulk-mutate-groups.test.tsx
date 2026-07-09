@@ -2,15 +2,15 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
-import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
+import { getRelationships } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../../../../../tests/components/render";
 import { generateNodeSchema } from "../../../../../../../../../tests/fake/schema";
 import { BulkMutateGroups } from "./bulk-mutate-groups";
 
-vi.mock("@/entities/nodes/relationships/domain/get-relationships/get-relationships");
+vi.mock("@/entities/nodes/relationships/domain/use-cases/get-relationships");
 
 describe("BulkMutateGroups Component", () => {
   const mockGroups: RelationshipNode[] = [

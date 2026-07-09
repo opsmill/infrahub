@@ -18,7 +18,7 @@ import {
 import type { CommandItem } from "@/shared/components/ui/command";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 import { useAddDropdownMutation } from "@/entities/schema/ui/queries/add-dropdown.mutation";
 import { useRemoveDropdownMutation } from "@/entities/schema/ui/queries/remove-dropdown.mutation";

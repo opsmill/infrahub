@@ -6,7 +6,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type {
   GetPathTraversalParams,
   PathTraversalResponse,
-} from "@/entities/path-traversal/domain/path-traversal.types";
+} from "@/entities/path-traversal/domain/model/path-traversal";
 
 const nodeFields = {
   id: true,

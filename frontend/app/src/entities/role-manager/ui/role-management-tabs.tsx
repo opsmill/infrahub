@@ -5,15 +5,17 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
+
+import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+import {
+  GLOBAL_PERMISSION_OBJECT,
+  OBJECT_PERMISSION_OBJECT,
+} from "@/entities/permission/domain/model/permission";
 import {
   ACCOUNT_GENERIC_OBJECT,
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_ROLE_OBJECT,
-  GLOBAL_PERMISSION_OBJECT,
-  OBJECT_PERMISSION_OBJECT,
-} from "@/shared/config/constants";
-
-import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
+} from "@/entities/role-manager/domain/model/account";
 
 const tabs = [
   {

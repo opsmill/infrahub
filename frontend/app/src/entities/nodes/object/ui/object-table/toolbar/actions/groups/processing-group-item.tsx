@@ -4,7 +4,7 @@ import { CheckIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import React from "react";
 
 import { GroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-item";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/model/relationships";
 
 export interface ProcessingGroupItemProps {
   group: RelationshipNode;

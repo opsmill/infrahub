@@ -6,7 +6,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type ImportCurrentCommitParams,
   importCurrentCommit,
-} from "@/entities/repository/domain/import-current-commit";
+} from "@/entities/repository/domain/use-cases/import-current-commit";
 
 interface ImportCurrentCommitProps extends MutationConfig<typeof importCurrentCommit> {}
 

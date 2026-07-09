@@ -13,7 +13,7 @@ import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-
 import {
   type GetRelationshipsParams,
   getRelationships,
-} from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+} from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
 
 export type GetRelationshipsQueryParams = Omit<GetRelationshipsParams, keyof PaginationParams>;
 

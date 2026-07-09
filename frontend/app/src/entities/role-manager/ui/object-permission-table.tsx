@@ -1,14 +1,14 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import type { Filter } from "@/shared/hooks/useFilters";
 
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/utils/get-object-actions-column";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
-import { objectDecisionOptions } from "@/entities/role-manager/constants";
+import { objectDecisionOptions } from "@/entities/role-manager/domain/model/decision";
 import {
   getObjectPermissionTableColumns,
   OBJECT_PERMISSION_TABLE_ATTRIBUTES,

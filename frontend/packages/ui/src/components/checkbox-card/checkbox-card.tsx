@@ -13,14 +13,14 @@ import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 const checkboxCardVariants = tv({
   base: [
     focusVisibleStyle,
-    "group/checkbox-card relative flex cursor-pointer items-center gap-3 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-600 text-sm transition-all",
+    "group/checkbox-card relative flex cursor-pointer items-center gap-3 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-600 transition-all",
     "data-disabled:cursor-not-allowed data-disabled:opacity-60",
     "data-pressed:scale-97 data-pressed:shadow-none data-pressed:duration-75",
   ],
   variants: {
     isSelected: {
       true: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] bg-gradient-to-b from-stone-100 to-white text-neutral-800 shadow-xs",
+        "bg-gradient-to-b from-stone-100 to-white text-neutral-800 shadow-xs inset-shadow-[0_1px_0_rgba(255,255,255,0.9)]",
       ],
     },
   },

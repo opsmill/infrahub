@@ -5406,6 +5406,13 @@
                         "title": "Delete Branch After Merge",
                         "description": "When enabled, the Infrahub branch is automatically deleted after a successful merge.",
                         "default": false
+                    },
+                    "merge_failure_grace_period_seconds": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Merge Failure Grace Period Seconds",
+                        "description": "How long a branch may stay in MERGING with a dead merge-lock holder before it is flagged MERGE_FAILED.",
+                        "default": 180
                     }
                 },
                 "additionalProperties": false,

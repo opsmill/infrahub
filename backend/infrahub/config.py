@@ -215,6 +215,12 @@ class MainSettings(BaseSettings):
         default=False,
         description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
     )
+    merge_failure_grace_period_seconds: int = Field(
+        default=180,
+        ge=0,
+        description="How long a branch may stay in MERGING with a dead merge-lock holder before it is "
+        "flagged MERGE_FAILED.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
@@ -435,6 +441,15 @@ class CacheSettings(BaseSettings):
         default=15,
         ge=1,
         description="Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task.",
+    )
+    init_lock_ttl_mins: int = Field(
+        default=20,
+        ge=1,
+        description=(
+            "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
+            "the lock auto-expires after this period so Infrahub can recover on its own. "
+            "Only enforced with the Redis cache driver."
+        ),
     )
 
     @property

@@ -5,7 +5,7 @@ import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { loadSchema } from "@/entities/schema/domain/load-schema";
+import { loadSchema } from "@/entities/schema/domain/use-cases/load-schema";
 import {
   type LoadSchemaQueryKeyParams,
   schemaQueryKeys,

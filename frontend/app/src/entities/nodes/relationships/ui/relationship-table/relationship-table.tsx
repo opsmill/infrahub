@@ -1,10 +1,11 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
 
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
+import { canDissociateRelationship } from "@/entities/nodes/relationships/domain/rules/can-dissociate-relationship";
 import {
   type UseObjectRelationshipsParams,
   useObjectRelationships,
@@ -12,7 +13,6 @@ import {
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
 import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
-import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

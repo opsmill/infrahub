@@ -6,7 +6,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type ReimportLastCommitParams,
   reimportLastCommit,
-} from "@/entities/repository/domain/reimport-last-commit";
+} from "@/entities/repository/domain/use-cases/reimport-last-commit";
 
 interface ReimportLastCommitProps extends MutationConfig<typeof reimportLastCommit> {}
 
