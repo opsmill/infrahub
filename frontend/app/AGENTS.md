@@ -41,6 +41,7 @@ cd frontend/app && pnpm codegen    # Generate GraphQL types
 - `dev/knowledge/frontend/design-system.md` - `@infrahub/ui` package (Button, Card, Modal, Spinner)
 - `dev/knowledge/frontend/file-components.md` - DataViewer and file handling components
 - `dev/knowledge/frontend/auth-methods.md` - Auth method registry, picker, token persistence boundaries
+- `dev/knowledge/frontend/permissions.md` - Object vs global permission checks; global `decision` is a stringified number; super-admin bypass
 
 ### Guides (How to do X)
 
