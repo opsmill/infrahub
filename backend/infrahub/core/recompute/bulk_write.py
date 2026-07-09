@@ -102,22 +102,23 @@ class BulkRecomputeWriter:
 
         fields_to_load = {item.field: None for item in writes}
         written: list[WrittenNode] = []
-        for chunk in _chunks(list(writes_by_node), self.transaction_chunk_size):
-            nodes = await NodeManager.get_many(db=self.db, ids=chunk, fields=fields_to_load, branch=branch)
-            saved: list[tuple[Node, list[str]]] = []
-            async with self.db.start_transaction() as dbt:
-                for node_id in chunk:
-                    node = nodes.get(node_id)
-                    if node is None:
-                        continue
-                    fields = sorted({item.field for item in writes_by_node[node_id]})
-                    for item in writes_by_node[node_id]:
-                        await _apply(node=node, write=item)
-                    await node.save(db=dbt, fields=fields)
-                    saved.append((node, fields))
-            for node, fields in saved:
-                await self._emit(node=node, fields=fields, branch=branch, context=context, origin=origin)
-                written.append(WrittenNode(node_id=node.get_id(), kind=node.get_kind(), fields=tuple(fields)))
+        async with self.db.start_session() as session:
+            for chunk in _chunks(list(writes_by_node), self.transaction_chunk_size):
+                nodes = await NodeManager.get_many(db=session, ids=chunk, fields=fields_to_load, branch=branch)
+                saved: list[tuple[Node, list[str]]] = []
+                async with session.start_transaction() as dbt:
+                    for node_id in chunk:
+                        node = nodes.get(node_id)
+                        if node is None:
+                            continue
+                        fields = sorted({item.field for item in writes_by_node[node_id]})
+                        for item in writes_by_node[node_id]:
+                            await _apply(node=node, write=item)
+                        await node.save(db=dbt, fields=fields)
+                        saved.append((node, fields))
+                for node, fields in saved:
+                    await self._emit(node=node, fields=fields, branch=branch, context=context, origin=origin)
+                    written.append(WrittenNode(node_id=node.get_id(), kind=node.get_kind(), fields=tuple(fields)))
         return written
 
     async def _emit(
