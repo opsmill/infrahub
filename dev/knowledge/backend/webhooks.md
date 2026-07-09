@@ -205,7 +205,7 @@ Each class carries a clean message and a remediation hint. `webhook_send` classi
 
 A `TLS` failure reaches this layer wrapped by httpx as a generic transport error, so the HTTP adapter's `SSLErrorExtractor` walks the exception chain to recognize the certificate problem and raise a TLS-specific error rather than a generic connection error.
 
-The `transient` flag on `ClassifiedFailure` records whether a class could plausibly succeed on a retry. `webhook_send` currently retries every failure (3 attempts, fixed 120s delay); the flag is reserved for a future transient-only retry policy. The run is silent for the duration of each retry wait, so the zombie-detection window is sized above this backoff to avoid crashing a waiting delivery; see [Liveness and zombie detection](async-tasks.md#liveness-and-zombie-detection).
+The `transient` flag on `ClassifiedFailure` records whether a class could plausibly succeed on a retry. `webhook_send` currently retries every failure (three retries, four attempts in total, with a fixed 120s delay); the flag is reserved for a future transient-only retry policy. The run is silent for the duration of each retry wait, so the zombie-detection window is sized above this backoff to avoid crashing a waiting delivery; see [Liveness and zombie detection](async-tasks.md#liveness-and-zombie-detection).
 
 ## Delivery operability
 
