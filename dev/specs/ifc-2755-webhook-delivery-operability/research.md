@@ -48,9 +48,9 @@ A pure function with injected inputs satisfies the no-mock testing rule and the 
 
 **Decision**: A `CapturedHeaders` domain object redacts at capture time, before the artifact write. Masked: every `HeaderKind.ENVIRONMENT`-sourced custom header and the `webhook-signature` header. Verbatim: standard headers (`Accept`, `Content-Type`), `webhook-id`, `webhook-timestamp`, and `HeaderKind.STATIC` custom headers. The `shared_key` is never in the request (only its derived signature).
 
-**Rationale**: `_build_headers` (`webhook/models.py:255-285`) is the single construction site; header provenance is known from `WebhookHeader.kind`. Redacting before the write guarantees no raw secret is ever persisted (SC-002, Principle VI). `webhook-id`/`webhook-timestamp` are signature inputs but not secret, so they stay verbatim to keep the capture diagnosable.
+**Rationale**: `build_headers` (`webhook/models.py:255-285`) is the single construction site; header provenance is known from `WebhookHeader.kind`. Redacting before the write guarantees no raw secret is ever persisted (SC-002, Principle VI). `webhook-id`/`webhook-timestamp` are signature inputs but not secret, so they stay verbatim to keep the capture diagnosable.
 
-**Implementation note**: Capture needs the provenance of each header, which is lost once `_build_headers` returns a flat `dict[str, str]`. Have header assembly return (or expose) the resolved headers alongside their `HeaderKind` so `CapturedHeaders` can decide per key, rather than re-guessing from the flat dict.
+**Implementation note**: Capture needs the provenance of each header, which is lost once `build_headers` returns a flat `dict[str, str]`. Have header assembly return (or expose) the resolved headers alongside their `HeaderKind` so `CapturedHeaders` can decide per key, rather than re-guessing from the flat dict.
 
 **Alternatives considered**: Redact by key-name allowlist/denylist — rejected: brittle, misses arbitrary env-sourced custom header keys.
 
