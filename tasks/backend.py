@@ -322,8 +322,20 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
+    # The user-facing schema models live in the Python SDK submodule but are generated here from
+    # the same internal definitions. `git diff` from the superproject only tracks the submodule
+    # pointer, so the diff must run inside the submodule to see the generated files themselves.
+    exec_cmd = "git -C python_sdk diff --exit-code infrahub_sdk/schema/generated"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
     _generate_protocols(context=context)
     exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py backend/tests/protocols.py"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+    # The SDK protocols are likewise generated into the submodule from the core models here.
+    exec_cmd = "git -C python_sdk diff --exit-code infrahub_sdk/protocols.py"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
