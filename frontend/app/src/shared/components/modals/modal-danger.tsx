@@ -41,7 +41,7 @@ export function ModalDanger({
           {title}
         </Heading>
 
-        {description && <p className="px-8 text-gray-500 text-sm">{description}</p>}
+        {description && <div className="px-8 text-gray-500 text-sm">{description}</div>}
       </Col>
 
       <Row className="justify-end bg-gray-50 p-3">
