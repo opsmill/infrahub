@@ -7,6 +7,8 @@ from prefect.client.schemas.filters import ArtifactFilter, FlowFilter, FlowRunFi
 from prefect.client.schemas.objects import Artifact, Flow, FlowRun, Log, StateType
 from prefect.client.schemas.sorting import FlowRunSort
 
+CANCEL_REQUEST_STATE_TYPES = frozenset({StateType.CANCELLING, StateType.CANCELLED})
+
 
 class FlowRunQuerying(Protocol):
     async def read_flow_runs(
@@ -38,6 +40,17 @@ class FlowRunMaintenance(Protocol):
 
     async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> StateType | None:
         """Request a state transition, returning the state the run ended in after orchestration."""
+        ...
+
+
+class FlowRunCancellationReading(Protocol):
+    async def cancellation_requested(self, flow_run_id: UUID) -> bool:
+        """Return whether a cancellation was ever recorded for the flow run.
+
+        The state history is consulted rather than the current state, because a transition that
+        happens after the cancellation (such as a retry resuming) overwrites the current state
+        while the recorded request remains in the history.
+        """
         ...
 
 
@@ -87,3 +100,7 @@ class PrefectClientAdapter:
     async def set_flow_run_state(self, flow_run_id: UUID, state: State, force: bool) -> StateType | None:
         result = await self.client.set_flow_run_state(flow_run_id=flow_run_id, state=state, force=force)
         return result.state.type if result.state else None
+
+    async def cancellation_requested(self, flow_run_id: UUID) -> bool:
+        states = await self.client.read_flow_run_states(flow_run_id=flow_run_id)
+        return any(state.type in CANCEL_REQUEST_STATE_TYPES for state in states)

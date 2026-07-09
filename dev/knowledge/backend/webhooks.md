@@ -205,7 +205,7 @@ Each class carries a clean message and a remediation hint. `webhook_send` classi
 
 A `TLS` failure reaches this layer wrapped by httpx as a generic transport error, so the HTTP adapter's `SSLErrorExtractor` walks the exception chain to recognize the certificate problem and raise a TLS-specific error rather than a generic connection error.
 
-The `transient` flag on `ClassifiedFailure` records whether a class could plausibly succeed on a retry. `webhook_send` currently retries every failure (3 attempts, fixed 120s delay); the flag is reserved for a future transient-only retry policy.
+The `transient` flag on `ClassifiedFailure` records whether a class could plausibly succeed on a retry. `webhook_send` currently retries every failure (3 attempts, fixed 120s delay); the flag is reserved for a future transient-only retry policy. The run is silent for the duration of each retry wait, so the zombie-detection window is sized above this backoff to avoid crashing a waiting delivery; see [Liveness and zombie detection](async-tasks.md#liveness-and-zombie-detection).
 
 ## Delivery operability
 
@@ -214,7 +214,7 @@ A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskAc
 | Action | Available when | Effect |
 |--------|----------------|--------|
 | `RETRY` | The delivery has settled (a terminal state) | Submits `WEBHOOK_SEND` again with the original run's frozen parameters, as a new independent run. The original run is left unchanged as a record. |
-| `CANCEL` | The delivery has not settled | Requests the `CANCELLING` state without forcing it. A run with no infrastructure (a delivery awaiting a retry) is routed straight to `CANCELLED` by Prefect's orchestration; a running delivery is torn down by its worker. An in-flight HTTP request is not recalled, but no further attempts run. |
+| `CANCEL` | The delivery has not settled | Requests the `CANCELLING` state without forcing it. A running delivery is torn down by its worker. A delivery waiting between attempts keeps its in-process wait, which nothing interrupts, so each attempt re-checks for a recorded cancellation before sending and stops the sequence once one is present. An in-flight HTTP request is not recalled, but no further attempts run. |
 
 The `available_actions` field on the task query reports each action with whether it currently applies and, when it does not, the reason. Selecting `available_actions` forces resolution of the run's workflow name, since the field is derived from it.
 
