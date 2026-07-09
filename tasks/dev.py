@@ -559,22 +559,28 @@ def test_repository_cascade_delete(context: Context, repo_id: str) -> None:  # n
     # Walk repository-owned relationships that should cascade
     for transform in repo.transformations.peers:  # type: ignore[attr-defined]
         descendant_ids.append(transform.id)
-        # Artifact definitions owned by this transform
+        # Artifact definitions owned by this transform, and their artifacts + validators
         for adef in client.filters(kind="CoreArtifactDefinition", transformation__ids=[transform.id]):
             descendant_ids.append(adef.id)
             descendant_ids.extend(art.id for art in client.filters(kind="CoreArtifact", definition__ids=[adef.id]))
+            descendant_ids.extend(
+                av.id for av in client.filters(kind="CoreArtifactValidator", definition__ids=[adef.id])
+            )
 
     for qry in repo.queries.peers:  # type: ignore[attr-defined]
         descendant_ids.append(qry.id)
         descendant_ids.extend(qgrp.id for qgrp in client.filters(kind="CoreGraphQLQueryGroup", query__ids=[qry.id]))
 
-    descendant_ids.extend(chk.id for chk in repo.checks.peers)  # type: ignore[attr-defined]
+    for chk in repo.checks.peers:  # type: ignore[attr-defined]
+        descendant_ids.append(chk.id)
+        descendant_ids.extend(uv.id for uv in client.filters(kind="CoreUserValidator", check_definition__ids=[chk.id]))
 
     for gen in repo.generators.peers:  # type: ignore[attr-defined]
         descendant_ids.append(gen.id)
         descendant_ids.extend(
             ginst.id for ginst in client.filters(kind="CoreGeneratorInstance", definition__ids=[gen.id])
         )
+        descendant_ids.extend(gv.id for gv in client.filters(kind="CoreGeneratorValidator", definition__ids=[gen.id]))
 
     descendant_ids.extend(rgrp.id for rgrp in repo.groups_objects.peers)  # type: ignore[attr-defined]
 
@@ -602,6 +608,9 @@ def test_repository_cascade_delete(context: Context, repo_id: str) -> None:  # n
         "CoreGeneratorDefinition",
         "CoreGeneratorInstance",
         "CoreRepositoryGroup",
+        "CoreArtifactValidator",
+        "CoreGeneratorValidator",
+        "CoreUserValidator",
     ]
     surviving: list[str] = []
     for desc_id in descendant_ids:
