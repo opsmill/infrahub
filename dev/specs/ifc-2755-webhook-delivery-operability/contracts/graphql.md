@@ -77,19 +77,21 @@ Bespoke (non-CRUD) mutations modeled on `BranchCreate`, registered as direct fie
 ```graphql
 input TaskActionInput { id: String! }
 
-type TaskRetry {
-  ok: Boolean!
-  task: TaskNodeInterface     # the NEW delivery produced by the retry
+type TaskInfo { id: String }
+
+type InfrahubTaskRetry {
+  ok: Boolean
+  task: TaskInfo     # id of the new delivery produced by the retry
 }
 
-type TaskCancel {
-  ok: Boolean!
-  task: TaskNodeInterface     # the cancelled (now non-terminal→cancelling) delivery
+type InfrahubTaskCancel {
+  ok: Boolean
+  task: TaskInfo     # id of the cancelled delivery
 }
 
 extend type Mutation {
-  InfrahubTaskRetry(data: TaskActionInput!): TaskRetry
-  InfrahubTaskCancel(data: TaskActionInput!): TaskCancel
+  InfrahubTaskRetry(data: TaskActionInput!): InfrahubTaskRetry
+  InfrahubTaskCancel(data: TaskActionInput!): InfrahubTaskCancel
 }
 ```
 
@@ -99,13 +101,13 @@ extend type Mutation {
 - Auth: requires update permission on the target webhook node (resolved from the run's `webhook_id`). Mutating op ⇒ authentication required.
 - Precondition: target is a `WEBHOOK_SEND` run in a **terminal** state (any, including COMPLETED). Otherwise → error "retry unavailable: delivery still in progress".
 - Not found: original run purged from retention → error "delivery no longer available" (FR-020).
-- Effect: read frozen `parameters` by id; resubmit `WEBHOOK_SEND` with the same `{webhook_id, webhook_kind, webhook_name, payload}`; new standalone run re-tags + re-resolves config + re-signs. Original unchanged. Returns the new task.
+- Effect: read frozen `parameters` by id; resubmit `WEBHOOK_SEND` with the same `{webhook_id, webhook_kind, webhook_name, payload}`; new standalone run re-tags + re-resolves config + re-signs. Original unchanged. Returns the new run's id (`task.id`); query the task API for its details.
 - Re-validates availability at execution (rejects a stale action, FR-026).
 
 **InfrahubTaskCancel(id)**
 - Auth: same as retry.
 - Precondition: target is a `WEBHOOK_SEND` run in a **non-terminal** state. Otherwise → error "cancel unavailable: delivery already settled".
-- Effect: set run state to CANCELLING. Stops further scheduled auto-retries. Best-effort for an in-flight request (not recalled). Returns the task.
+- Effect: set run state to CANCELLING. Stops further scheduled auto-retries. Best-effort for an in-flight request (not recalled). Returns the run's id (`task.id`).
 
 ### Error surface
 
