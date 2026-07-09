@@ -59,6 +59,7 @@ class SchemaAttribute(BaseModel):
     regex: str | None = None
     unique: bool | None = None
     optional: bool | None = None
+    ordered: bool | None = None
     min_length: int | None = None
     max_length: int | None = None
     enum: list[str] | None = None
@@ -297,6 +298,7 @@ base_node_schema = SchemaNode(
             internal_kind=str,
             description="Human friendly and unique identifier for the object.",
             optional=True,
+            ordered=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
@@ -312,6 +314,7 @@ base_node_schema = SchemaNode(
             internal_kind=str,
             description="List of attributes to use to generate the display label (deprecated)",
             optional=True,
+            ordered=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
@@ -346,6 +349,7 @@ base_node_schema = SchemaNode(
                 "and node_metadata with __asc/__desc."
             ),
             optional=True,
+            ordered=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
@@ -354,6 +358,7 @@ base_node_schema = SchemaNode(
             internal_kind=list[list[str]],
             description="List of multi-element uniqueness constraints that can combine relationships and attributes",
             optional=True,
+            ordered=True,
             extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
@@ -513,6 +518,7 @@ attribute_schema = SchemaNode(
             kind="List",
             description="Define a list of valid values for the attribute.",
             optional=True,
+            ordered=False,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
@@ -529,6 +535,7 @@ attribute_schema = SchemaNode(
             internal_kind=DropdownChoice,
             description="Define a list of valid choices for a dropdown attribute.",
             optional=True,
+            ordered=False,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
@@ -607,6 +614,15 @@ attribute_schema = SchemaNode(
             name="order_weight",
             kind="Number",
             description="Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="ordered",
+            kind="Boolean",
+            description="Whether element order is significant. When False, reordering a List "
+            "or JSON-array attribute is not a merge/rebase conflict.",
+            default_value=True,
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
@@ -960,6 +976,7 @@ generic_schema = SchemaNode(
             default_factory="list",
             description="List of Nodes that are referencing this Generic",
             optional=True,
+            ordered=False,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
         SchemaAttribute(
@@ -968,6 +985,7 @@ generic_schema = SchemaNode(
             internal_kind=str,
             description="Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
             optional=True,
+            ordered=False,
             extra={"update": UpdateSupport.ALLOWED},
         ),
     ],

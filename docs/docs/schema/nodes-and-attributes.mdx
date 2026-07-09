@@ -264,6 +264,10 @@ To control the order of the objects within a list — which object appears first
 
 <ReferenceLink title="Default ordering" url="./default-ordering" />
 
+A third, distinct property, `ordered`, controls whether a difference in the *element order within a single `List` or `JSON`-array attribute value* causes a conflict during branch merge or rebase. When set to `false` (default is `true`), two branches that hold the same elements in a different order no longer conflict on that attribute. The order is not ignored: the reordered value still merges to the target normally. `ordered: false` only stops a differing order from *raising a conflict*. A change to which elements are present will still conflict. This is unrelated to `order_weight` (field position in the frontend) and `order_by` (order of objects in a list) above.
+
+<ReferenceLink title="Attribute reference: ordered" url="../reference/schema/attribute#ordered" />
+
 ## Reserved namespaces and attribute names
 
 Some namespaces like `Core`, `Infrahub`, `Profile`, and `Builtin` are reserved and can't be used by users to define new Nodes and Generics.
