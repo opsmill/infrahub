@@ -2,6 +2,12 @@ export const ACCOUNT_PERMISSION_OBJECT = "CoreBasePermission";
 export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
 export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 
+/** Global permission action that gates managing organisation-wide preferences. */
+export const MANAGE_GLOBAL_PREFERENCES = "manage_global_preferences";
+
+/** Global permission held by super admins; it bypasses every other global permission check. */
+export const SUPER_ADMIN = "super_admin";
+
 export type PermissionDecisionData = "ALLOW" | "ALLOW_DEFAULT" | "ALLOW_OTHER" | "DENY";
 
 export type PermissionAction = "view" | "create" | "update" | "delete";

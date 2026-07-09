@@ -1,5 +1,5 @@
 import { getGlobalPermissionsFromApi } from "@/entities/permission/api/get-global-permissions-from-api";
-import { SUPER_ADMIN } from "@/entities/permission/constants";
+import { SUPER_ADMIN } from "@/entities/permission/domain/model/permission";
 
 export type HasGlobalPermission = (action: string) => Promise<boolean>;
 
