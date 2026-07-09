@@ -135,6 +135,7 @@ async def process_hfid(
                 writes.append(AttributeValueWrite(node_id=node.node_id, field=HFID_FIELD, value=rendered_hfid))
         if writes:
             coalesced = object_ids is not None
+            await add_tags(nodes=sorted({item.node_id for item in writes}), db_change=True)
             db = await get_database()
             branch = await registry.get_branch(db=db, branch=branch_name)
             writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())

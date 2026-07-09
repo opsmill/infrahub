@@ -148,6 +148,35 @@ async def test_bulk_writer_stamps_recompute_origin_so_per_node_automations_skip_
     assert recorder.events[0].meta.origin is NodeMutationOrigin.RECOMPUTE
 
 
+async def test_bulk_writer_skips_a_no_op_write_so_it_does_not_fan_out(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    await load_profile_schema(db=db)
+    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
+
+    writer = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
+    await writer.write(
+        branch=default_branch,
+        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="custom label")],
+        context=_event_context(),
+    )
+
+    # Re-writing the stored value persists nothing, so no event is emitted and no node is returned to
+    # chain the next level.
+    recorder = MemoryInfrahubEvent()
+    rewriter = BulkRecomputeWriter(db=db, event_service=recorder)
+    written = await rewriter.write(
+        branch=default_branch,
+        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="custom label")],
+        context=_event_context(),
+    )
+
+    assert written == []
+    assert recorder.events == []
+
+
 async def test_chain_coalesces_the_next_level_into_one_submission(
     db: InfrahubDatabase,
     default_branch: Branch,

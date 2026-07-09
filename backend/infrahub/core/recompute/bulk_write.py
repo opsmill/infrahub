@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.manager import NodeManager
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta
@@ -101,6 +102,7 @@ class BulkRecomputeWriter:
             writes_by_node.setdefault(item.node_id, []).append(item)
 
         fields_to_load = {item.field: None for item in writes}
+        user_id = context.account_id or SYSTEM_USER_ID
         written: list[WrittenNode] = []
         async with self.db.start_session() as session:
             for chunk in _chunks(list(writes_by_node), self.transaction_chunk_size):
@@ -114,8 +116,11 @@ class BulkRecomputeWriter:
                         fields = sorted({item.field for item in writes_by_node[node_id]})
                         for item in writes_by_node[node_id]:
                             await _apply(node=node, write=item)
-                        await node.save(db=dbt, fields=fields)
-                        saved.append((node, fields))
+                        await node.save(db=dbt, user_id=user_id, fields=fields)
+                        # A recompute can render a value identical to the stored one; skip the event and
+                        # the chained write for a no-op save so it does not fan out.
+                        if node.node_changelog.has_changes:
+                            saved.append((node, fields))
                 for node, fields in saved:
                     await self._emit(node=node, fields=fields, branch=branch, context=context, origin=origin)
                     written.append(WrittenNode(node_id=node.get_id(), kind=node.get_kind(), fields=tuple(fields)))
