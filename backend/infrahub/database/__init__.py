@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
+    Address,
     AsyncDriver,
     AsyncGraphDatabase,
     AsyncResult,
@@ -469,7 +470,9 @@ class InfrahubDatabase:
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:
     default_db = driver.session()
-    await default_db.run(f"CREATE DATABASE {database_name} WAIT")
+    # Backtick-quote so dashes and dots in the name are not parsed as Cypher operators.
+    escaped_name = database_name.replace("`", "``")
+    await default_db.run(f"CREATE DATABASE `{escaped_name}` WAIT")
 
 
 async def validate_database(
@@ -505,6 +508,25 @@ async def validate_database(
     return True
 
 
+def build_address_resolver(members: list[str], default_port: int) -> Callable[[Address], list[Address]]:
+    """Build a driver address resolver that expands the initial address into all configured cluster members.
+
+    The driver tries the returned addresses in order, providing failover for the initial
+    connection when one of the members is unreachable. The driver invokes the resolver for
+    every connection it opens, including ones targeting specific servers discovered through
+    a routing table, so any address other than the initial one is passed through unchanged.
+    """
+    addresses = [Address.parse(member, default_port=default_port) for member in members]
+    initial_address = addresses[0]
+
+    def resolver(address: Address) -> list[Address]:
+        if (address.host, address.port) == (initial_address.host, initial_address.port):
+            return addresses
+        return [address]
+
+    return resolver
+
+
 async def get_db(retry: int = 0) -> AsyncDriver:
     trusted_certificates = TrustSystemCAs()
     if config.SETTINGS.database.tls_insecure:
@@ -512,11 +534,24 @@ async def get_db(retry: int = 0) -> AsyncDriver:
     elif config.SETTINGS.database.tls_ca_file:
         trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
 
+    address_resolver = None
+    members = config.SETTINGS.database.address_members
+    if len(members) > 1:
+        if config.SETTINGS.database.protocol == "bolt":
+            log.warning(
+                "Multiple database members are configured with the 'bolt' protocol: "
+                "the driver will pin all traffic to the first reachable member, without "
+                "routing awareness. The 'neo4j' protocol is recommended for clusters.",
+                members=members,
+            )
+        address_resolver = build_address_resolver(members=members, default_port=config.SETTINGS.database.port)
+
     driver = AsyncGraphDatabase.driver(
         config.SETTINGS.database.database_uri,
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
+        resolver=address_resolver,
         notifications_disabled_classifications=[
             NotificationDisabledClassification.UNRECOGNIZED,
             # Suppress spurious warnings for optional relationship types not yet in DB schema (HAS_OWNER, HAS_SOURCE, etc.)
