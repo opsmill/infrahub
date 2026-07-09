@@ -22,10 +22,11 @@ class RecordingLock(InfrahubLock):
         connection: redis.Redis | InfrahubServices | None = None,
         in_multi: bool = False,
         metrics: bool = True,
+        ttl: int | None = None,
         *,
         timeline: LockTimeline,
     ) -> None:
-        super().__init__(name=name, connection=connection, in_multi=in_multi, metrics=metrics)
+        super().__init__(name=name, connection=connection, in_multi=in_multi, metrics=metrics, ttl=ttl)
         self._timeline = timeline
 
     async def acquire(self) -> None:
@@ -48,24 +49,15 @@ class RecordingLockRegistry(InfrahubLockRegistry):
         super().__init__(local_only=True)
         self.timeline = timeline
 
-    def get(
-        self,
-        name: str,
-        namespace: str | None = None,
-        local: bool | None = None,
-        in_multi: bool = False,
-        metrics: bool = True,
-    ) -> InfrahubLock:
-        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
-        if lock_name not in self.locks:
-            self.locks[lock_name] = RecordingLock(
-                name=lock_name,
-                connection=self.connection,
-                in_multi=in_multi,
-                metrics=metrics,
-                timeline=self.timeline,
-            )
-        return self.locks[lock_name]
+    def _create_lock(self, name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
+        return RecordingLock(
+            name=name,
+            connection=self.connection,
+            in_multi=in_multi,
+            metrics=metrics,
+            ttl=ttl,
+            timeline=self.timeline,
+        )
 
 
 def install_recording_lock_registry(timeline: LockTimeline | None = None) -> LockTimeline:

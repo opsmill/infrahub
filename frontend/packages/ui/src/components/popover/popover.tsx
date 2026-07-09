@@ -18,10 +18,10 @@ const popoverStyles = tv({
   ],
   variants: {
     isEntering: {
-      true: "fade-in-0 zoom-in-95 animate-in",
+      true: "animate-in fade-in-0 zoom-in-95",
     },
     isExiting: {
-      true: "fade-out-0 zoom-out-95 animate-out",
+      true: "animate-out fade-out-0 zoom-out-95",
     },
     matchTriggerWidth: {
       true: "w-(--trigger-width)",

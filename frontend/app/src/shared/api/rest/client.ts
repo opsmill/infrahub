@@ -4,8 +4,8 @@ import createClient, { type Middleware } from "openapi-fetch";
 import type { paths } from "@/shared/api/rest/types.generated";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
-import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
-import { redirectToLogin } from "@/entities/authentication/domain/redirect-to-login";
+import { getAccessToken } from "@/entities/authentication/api/token-storage";
+import { redirectToLogin } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
 
 export const queryClient = new QueryClient({
@@ -27,7 +27,7 @@ const authMiddleware: Middleware = {
     const hadAuth = request.headers.has("Authorization");
     if (hadAuth) return request;
 
-    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const accessToken = getAccessToken();
     if (!accessToken) return request;
 
     request.headers.set("Authorization", `Bearer ${accessToken}`);

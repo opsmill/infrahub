@@ -4,14 +4,14 @@ import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import type { FormField } from "@/shared/components/ui/form";
 
-import type { NodeCore } from "@/entities/nodes/types";
-import type { NumberPool } from "@/entities/resource-manager/domain/type";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
+import type { NumberPool } from "@/entities/resource-manager/domain/model/number-pool";
 import type {
   AttributeKind,
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
-} from "@/entities/schema/types";
+} from "@/entities/schema/domain/model/schema";
 
 type SourceType = "schema" | "user";
 

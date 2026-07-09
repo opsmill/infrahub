@@ -27,7 +27,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="font-medium text-[10px] text-neutral-400 uppercase tracking-wider">
+  <div className="text-[10px] font-medium tracking-wider text-neutral-400 uppercase">
     {children}
   </div>
 );

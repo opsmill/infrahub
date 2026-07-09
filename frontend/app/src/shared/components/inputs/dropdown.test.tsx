@@ -4,8 +4,8 @@ import { afterEach, describe, expect, test } from "vitest";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { store } from "@/shared/stores";
 
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
 import { namespacesAtom } from "@/entities/schema/stores/schema.atom";
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 import { render } from "../../../../tests/components/render";
 import { Dropdown } from "./dropdown";

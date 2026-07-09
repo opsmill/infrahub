@@ -7,10 +7,10 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
-import type { TaskHomepageNode } from "@/entities/tasks/domain/get-tasks-homepage/get-tasks-homepage";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
+import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
+import type { TaskHomepageNode } from "@/entities/tasks/domain/use-cases/get-tasks-homepage";
 
 export const TaskHomepageItem = ({
   id,

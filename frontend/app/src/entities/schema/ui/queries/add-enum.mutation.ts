@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { addEnum } from "@/entities/schema/domain/add-enum";
+import { addEnum } from "@/entities/schema/domain/use-cases/add-enum";
 import { invalidateSchemaQueries } from "@/entities/schema/ui/queries/invalidate-schema-queries";
 
 export function useAddEnumMutation() {

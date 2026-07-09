@@ -1,6 +1,6 @@
 import { useGetFilesDiff } from "@/entities/diff/ui/queries/get-files-diff.query";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
-import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 
 export interface FilesTabProps {
   sourceBranch: string;

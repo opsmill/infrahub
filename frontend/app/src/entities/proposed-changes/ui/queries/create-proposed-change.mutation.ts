@@ -5,7 +5,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import {
   type CreateProposedChangeParams,
   createProposedChange,
-} from "@/entities/proposed-changes/domain/create-proposed-change";
+} from "@/entities/proposed-changes/domain/use-cases/create-proposed-change";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";
 
 export function useCreateProposedChange() {

@@ -8,7 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetRelationshipCountParams,
   getRelationshipCount,
-} from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count";
+} from "@/entities/nodes/relationships/domain/use-cases/get-relationship-count";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/ui/queries/relationships.query-keys";
 
 export function getRelationshipCountQueryOptions(params: GetRelationshipCountParams) {

@@ -5,7 +5,19 @@ import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
+import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import type {
+  NodeAttribute,
+  NodeObject,
+  NodeRelationship,
+  NodeRelationshipOne,
+} from "@/entities/nodes/object/domain/model/node";
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/domain/rules/get-attributes-visible-in-list-view";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/domain/rules/get-relationships-visible-in-list-view";
+import { isFromResourcePoolRelationship } from "@/entities/nodes/object/domain/rules/is-from-resource-pool-relationship";
+import { resolveRelationshipData } from "@/entities/nodes/object/domain/rules/resolve-relationship-data";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
@@ -17,19 +29,8 @@ import {
   TableRelationshipCell,
 } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is-from-resource-pool-relationship";
-import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
-import type {
-  NodeAttribute,
-  NodeObject,
-  NodeRelationship,
-  NodeRelationshipOne,
-} from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 
 const columnHelper = createColumnHelper<NodeObject>();
 

@@ -31,7 +31,10 @@ import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/crea
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { NODE_TRIGGER_RELATIONSHIP_MATCH, NODE_TRIGGER_RULE } from "@/entities/triggers/constants";
+import {
+  NODE_TRIGGER_RELATIONSHIP_MATCH,
+  NODE_TRIGGER_RULE,
+} from "@/entities/triggers/domain/model/trigger";
 
 interface NodeRelationshipMatchFormProps extends NodeFormProps {}
 

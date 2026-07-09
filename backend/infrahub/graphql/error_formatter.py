@@ -19,6 +19,7 @@ from infrahub.errors.payloads import (
     BranchNeedsRebaseData,
     BranchNotFoundData,
     MergeInProgressData,
+    MergeRecoveryRequiredData,
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
@@ -32,6 +33,7 @@ from infrahub.exceptions import (
     BranchNotFoundError,
     Error,
     MergeInProgressError,
+    MergeRecoveryRequiredError,
     NodeNotFoundError,
     SchemaNotFoundError,
 )
@@ -88,6 +90,8 @@ def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
             payload = BranchNeedsRebaseData(branch_name=exc.identifier)
         case "MERGE_IN_PROGRESS" if isinstance(exc, MergeInProgressError):
             payload = MergeInProgressData(branch_name=exc.identifier, merging_branch=exc.merging_branch)
+        case "MERGE_RECOVERY_REQUIRED" if isinstance(exc, MergeRecoveryRequiredError):
+            payload = MergeRecoveryRequiredData(branch_name=exc.identifier, merging_branch=exc.merging_branch)
         case "SCHEMA_NOT_FOUND" if isinstance(exc, SchemaNotFoundError):
             payload = SchemaNotFoundData(kind=exc.identifier)
     return payload.model_dump(mode="json")
