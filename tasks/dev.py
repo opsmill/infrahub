@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import subprocess  # noqa: S404
 from typing import TYPE_CHECKING
 
 from invoke.tasks import task
@@ -277,41 +276,42 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
         client.get(kind="LocationContinent", hfid=data_to_check, branch=branch)
 
 
-def _init_git_repo_in_worker(git_repo_path: str) -> None:
+def _init_git_repo_in_worker(context: Context, git_repo_path: str, database: str = INFRAHUB_DATABASE) -> None:
     """Initialise a bare git repo at *git_repo_path* inside the running task-worker container.
 
     The task-worker's ``/remote`` volume is used as the working area.  The repo is seeded
     from the demo-edge fixture tree that is always present in the container at
     ``/source/backend/tests/fixtures/repos/infrahub-demo-edge/initial__main``.
+
+    Every step runs through the shared compose abstractions (``get_compose_cmd`` /
+    ``build_compose_files_cmd`` / ``execute_command``) so the helper honours the same
+    profiles, ``--ansi`` handling and ``sudo`` wrapping as the rest of the dev tasks.
+    We use ``docker compose exec`` against the already-running worker — never ``run``,
+    which would start the service's ``depends_on`` dependencies and recreate the
+    server container on a fresh random port, breaking the SDK connection used by the
+    calling task.
     """
-    # Identify one of the running task-worker containers via the compose project name.
-    worker_id = (
-        subprocess.check_output(  # noqa: S603
-            ["docker", "compose", "-p", BUILD_NAME, "ps", "-q", "task-worker"],  # noqa: S607
-            text=True,
+    fixture_path = "/source/backend/tests/fixtures/repos/infrahub-demo-edge/initial__main"
+    git_ci_opts = "-c user.email=ci@test.invalid -c user.name=CI"
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
+        compose_cmd = get_compose_cmd(namespace=NAMESPACE)
+        base_cmd = f"{get_env_vars(context, namespace=NAMESPACE)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
+        worker_exec = f"{base_cmd} exec --workdir {git_repo_path} {SERVICE_WORKER_NAME}"
+        # hide=True keeps the git/docker chatter off stdout: the calling task prints
+        # only the repo id, which the version-upgrade workflow captures via `$(...)`.
+        execute_command(
+            context=context,
+            command=f"{base_cmd} exec {SERVICE_WORKER_NAME} cp -r {fixture_path} {git_repo_path}",
+            hide=True,
         )
-        .splitlines()[0]
-        .strip()
-    )
-    subprocess.check_call(  # noqa: S603
-        [  # noqa: S607
-            "docker",
-            "exec",
-            worker_id,
-            "bash",
-            "-c",
-            "cp -r /source/backend/tests/fixtures/repos/infrahub-demo-edge/initial__main "
-            f"{git_repo_path} && "
-            f"cd {git_repo_path} && "
-            "git init --initial-branch main && "
-            "git add . && "
-            "git -c user.email=ci@test.invalid -c user.name=CI commit -m initial",
-        ]
-    )
+        execute_command(context=context, command=f"{worker_exec} git init --initial-branch main", hide=True)
+        execute_command(context=context, command=f"{worker_exec} git add .", hide=True)
+        execute_command(context=context, command=f"{worker_exec} git {git_ci_opts} commit -m initial", hide=True)
 
 
 @task
-def test_add_repository_cascade_data(context: Context, branch: str = "main") -> str:  # noqa: ARG001
+def test_add_repository_cascade_data(context: Context, branch: str = "main") -> str:
     """Create a CoreReadOnlyRepository and one of every managed object linked to it.
 
     Used by the version-upgrade CI job to prove cascade-delete still works after
@@ -336,7 +336,7 @@ def test_add_repository_cascade_data(context: Context, branch: str = "main") -> 
     # connectivity check passes without needing an external network connection.
     # Each invocation uses a fresh directory name (via suffix) to avoid location uniqueness conflicts.
     git_repo_path = f"/remote/cascade-test-{suffix}"
-    _init_git_repo_in_worker(git_repo_path)
+    _init_git_repo_in_worker(context, git_repo_path)
 
     repo = client.create(
         kind="CoreReadOnlyRepository",
