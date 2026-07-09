@@ -246,7 +246,7 @@ Three headers are added to signed requests:
 
 ### Log redaction
 
-When a delivery request is logged, secret-bearing header values are masked as `***`. A header value is masked when the header is environment-sourced, is the signature header, or matches a well-known credential header name (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`). Matching is case-insensitive, since HTTP header names are, so a secret cannot slip through under a different casing. Standard and statically configured non-credential headers are logged verbatim so the record stays useful; the payload is logged in full only at debug level.
+When a delivery request is logged, secret-bearing header values are masked as `***`. A header value is masked when the header is environment-sourced, is the signature header, or matches a well-known credential header name (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`). Matching is case-insensitive, since HTTP header names are, so a secret cannot slip through under a different casing. Standard and statically configured non-credential headers are logged verbatim so the record stays useful; the payload is logged in full only at debug level. A static header value is not treated as a secret unless its name is well-known, so a secret that must stay out of the logs should be supplied as an environment-sourced header, which is always masked, rather than as a static value.
 
 ## Caching
 

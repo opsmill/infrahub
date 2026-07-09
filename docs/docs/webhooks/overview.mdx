@@ -293,6 +293,10 @@ Authentication header values must include the full value including any type pref
 
 Every delivery attempt is logged with the target URL, the request headers, and the payload, so you can see what was sent from the delivery's task logs. Secret-bearing header values are masked as `***` in that log: environment-sourced values, the `webhook-signature`, and well-known credential headers (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`) — matched case-insensitively, regardless of whether the header was configured as static or environment-sourced. The payload is truncated in the log, with the full body available only at debug level.
 
+:::warning
+A static header value is logged verbatim unless its name is one of the well-known credential headers listed above. To keep a secret out of the delivery logs when it is not sent under one of those names, store it as an **Environment Variable Key-Value** header — environment-sourced values are always masked.
+:::
+
 ### When a delivery fails
 
 A failed delivery reports a short classified reason with a remediation hint in its task logs — a connection problem, a TLS problem, a timeout, a client-side 4xx, a server-side 5xx, or a configuration error — instead of a raw Python traceback. While retries remain, the log also records when the next attempt will run, so you can tell whether to wait for an automatic retry or step in. An unexpected error that is not a delivery failure still surfaces with its full traceback, so a genuine crash remains distinguishable from an expected failure.
