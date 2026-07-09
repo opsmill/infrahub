@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess  # noqa: S404
 from typing import TYPE_CHECKING
 
 from invoke.tasks import task
@@ -274,6 +275,350 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
 
     if data_to_check:
         client.get(kind="LocationContinent", hfid=data_to_check, branch=branch)
+
+
+def _init_git_repo_in_worker(git_repo_path: str) -> None:
+    """Initialise a bare git repo at *git_repo_path* inside the running task-worker container.
+
+    The task-worker's ``/remote`` volume is used as the working area.  The repo is seeded
+    from the demo-edge fixture tree that is always present in the container at
+    ``/source/backend/tests/fixtures/repos/infrahub-demo-edge/initial__main``.
+    """
+    # Identify one of the running task-worker containers via the compose project name.
+    worker_id = (
+        subprocess.check_output(  # noqa: S603
+            ["docker", "compose", "-p", BUILD_NAME, "ps", "-q", "task-worker"],  # noqa: S607
+            text=True,
+        )
+        .splitlines()[0]
+        .strip()
+    )
+    subprocess.check_call(  # noqa: S603
+        [  # noqa: S607
+            "docker",
+            "exec",
+            worker_id,
+            "bash",
+            "-c",
+            "cp -r /source/backend/tests/fixtures/repos/infrahub-demo-edge/initial__main "
+            f"{git_repo_path} && "
+            f"cd {git_repo_path} && "
+            "git init --initial-branch main && "
+            "git add . && "
+            "git -c user.email=ci@test.invalid -c user.name=CI commit -m initial",
+        ]
+    )
+
+
+@task
+def test_add_repository_cascade_data(context: Context, branch: str = "main") -> str:  # noqa: ARG001
+    """Create a CoreReadOnlyRepository and one of every managed object linked to it.
+
+    Used by the version-upgrade CI job to prove cascade-delete still works after
+    a schema migration (the on_delete=CASCADE value is only persisted after upgrade).
+
+    Returns:
+        str: The repository node id, printed to stdout for capture by the workflow.
+
+    Raises:
+        RuntimeError: When no InfraDevice nodes are found (demo.load-infra-data must run first).
+
+    """
+    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk.uuidt import generate_uuid
+
+    client = InfrahubClientSync()
+
+    suffix = generate_uuid()[:8]
+
+    # Create the repository under test.
+    # Initialise a throw-away bare git repo inside the task-worker container so the
+    # connectivity check passes without needing an external network connection.
+    # Each invocation uses a fresh directory name (via suffix) to avoid location uniqueness conflicts.
+    git_repo_path = f"/remote/cascade-test-{suffix}"
+    _init_git_repo_in_worker(git_repo_path)
+
+    repo = client.create(
+        kind="CoreReadOnlyRepository",
+        data={
+            "name": f"cascade-test-repo-{suffix}",
+            "location": f"file://{git_repo_path}",
+        },
+        branch=branch,
+    )
+    repo.save()
+
+    # GraphQL query linked to the repository
+    gql_query = client.create(
+        kind="CoreGraphQLQuery",
+        data={
+            "name": f"cascade-test-query-{suffix}",
+            "query": "{ CoreReadOnlyRepository { edges { node { id } } } }",
+            "repository": {"id": repo.id},
+        },
+        branch=branch,
+    )
+    gql_query.save()
+
+    # GraphQL query group referencing the query
+    query_group = client.create(
+        kind="CoreGraphQLQueryGroup",
+        data={
+            "name": f"cascade-test-qgroup-{suffix}",
+            "query": {"id": gql_query.id},
+        },
+        branch=branch,
+    )
+    query_group.save()
+
+    # Standard group used as targets for artifact/generator definitions
+    group = client.create(
+        kind="CoreStandardGroup",
+        data={"name": f"cascade-test-group-{suffix}"},
+        branch=branch,
+    )
+    group.save()
+
+    # Python transform linked to the repository and query
+    transform = client.create(
+        kind="CoreTransformPython",
+        data={
+            "name": f"cascade-test-transform-{suffix}",
+            "repository": {"id": repo.id},
+            "query": {"id": gql_query.id},
+            "file_path": "transform.py",
+            "class_name": "CascadeTransform",
+        },
+        branch=branch,
+    )
+    transform.save()
+
+    # Artifact definition referencing the transform and targeting the group
+    artifact_def = client.create(
+        kind="CoreArtifactDefinition",
+        data={
+            "name": f"cascade-test-artifactdef-{suffix}",
+            "transformation": {"id": transform.id},
+            "targets": {"id": group.id},
+            "artifact_name": f"cascade-artifact-{suffix}",
+            "content_type": "application/json",
+            "parameters": {"value": {"name": "name__value"}},
+        },
+        branch=branch,
+    )
+    artifact_def.save()
+
+    # Fetch an InfraDevice node (created by load-infra-data) to use as the Artifact object
+    devices = client.all(kind="InfraDevice", branch=branch, limit=1)
+    device_list = list(devices)
+    if not device_list:
+        raise RuntimeError("No InfraDevice found — ensure demo.load-infra-data ran before this task")
+    artifact_target = device_list[0]
+
+    # Artifact referencing the artifact definition and an ArtifactTarget object
+    artifact = client.create(
+        kind="CoreArtifact",
+        data={
+            "name": f"cascade-test-artifact-{suffix}",
+            "definition": {"id": artifact_def.id},
+            "object": {"id": artifact_target.id},
+            "status": "Ready",
+            "content_type": "application/json",
+            "storage_id": f"00000000-0000-0000-0000-{suffix}",
+            "checksum": f"abc{suffix}",
+        },
+        branch=branch,
+    )
+    artifact.save()
+
+    # Check definition linked to the repository
+    check_def = client.create(
+        kind="CoreCheckDefinition",
+        data={
+            "name": f"cascade-test-checkdef-{suffix}",
+            "repository": {"id": repo.id},
+            "class_name": "CascadeCheck",
+            "file_path": "check.py",
+        },
+        branch=branch,
+    )
+    check_def.save()
+
+    # Generator definition linked to the repository
+    generator_def = client.create(
+        kind="CoreGeneratorDefinition",
+        data={
+            "name": f"cascade-test-generatordef-{suffix}",
+            "repository": {"id": repo.id},
+            "query": {"id": gql_query.id},
+            "targets": {"id": group.id},
+            "class_name": "CascadeGenerator",
+            "file_path": "generator.py",
+            "parameters": {"value": {"name": "name__value"}},
+        },
+        branch=branch,
+    )
+    generator_def.save()
+
+    # Generator instance linked to the generator definition
+    generator_instance = client.create(
+        kind="CoreGeneratorInstance",
+        data={
+            "name": f"cascade-test-geninstance-{suffix}",
+            "definition": {"id": generator_def.id},
+            "object": {"id": artifact_target.id},
+            "status": "Ready",
+        },
+        branch=branch,
+    )
+    generator_instance.save()
+
+    # Repository group tracking the repository
+    repo_group = client.create(
+        kind="CoreRepositoryGroup",
+        data={
+            "name": f"cascade-test-repogroup-{suffix}",
+            "repository": {"id": repo.id},
+            "content": "object",
+        },
+        branch=branch,
+    )
+    repo_group.save()
+
+    # Proposed change required for validators — source and destination must differ.
+    # Create a throw-away source branch then propose merging it back into main.
+    pc_branch_name = f"cascade-test-branch-{suffix}"
+    client.branch.create(branch_name=pc_branch_name, sync_with_git=False)
+    proposed_change = client.create(
+        kind="CoreProposedChange",
+        data={
+            "name": f"cascade-test-pc-{suffix}",
+            "source_branch": pc_branch_name,
+            "destination_branch": "main",
+        },
+        branch="main",
+    )
+    proposed_change.save()
+
+    # Artifact validator referencing the artifact definition and proposed change
+    artifact_validator = client.create(
+        kind="CoreArtifactValidator",
+        data={
+            "proposed_change": {"id": proposed_change.id},
+            "definition": {"id": artifact_def.id},
+        },
+        branch="main",
+    )
+    artifact_validator.save()
+
+    # Generator validator referencing the generator definition and proposed change
+    generator_validator = client.create(
+        kind="CoreGeneratorValidator",
+        data={
+            "proposed_change": {"id": proposed_change.id},
+            "definition": {"id": generator_def.id},
+        },
+        branch="main",
+    )
+    generator_validator.save()
+
+    # User validator referencing the check definition, repository and proposed change
+    user_validator = client.create(
+        kind="CoreUserValidator",
+        data={
+            "proposed_change": {"id": proposed_change.id},
+            "check_definition": {"id": check_def.id},
+            "repository": {"id": repo.id},
+        },
+        branch="main",
+    )
+    user_validator.save()
+
+    print(repo.id)
+    return repo.id
+
+
+@task
+def test_repository_cascade_delete(context: Context, repo_id: str) -> None:  # noqa: ARG001
+    """Delete a repository by id and assert every descendant is also gone.
+
+    Raises:
+        AssertionError: When the repository or any descendant survives deletion.
+
+    """
+    from infrahub_sdk import InfrahubClientSync
+    from infrahub_sdk.exceptions import NodeNotFoundError
+
+    client = InfrahubClientSync()
+
+    # Fetch the repository and collect descendant ids via its relationships
+    repo = client.get(kind="CoreReadOnlyRepository", id=repo_id)
+
+    descendant_ids: list[str] = []
+
+    # Walk repository-owned relationships that should cascade
+    for transform in repo.transformations.peers:  # type: ignore[attr-defined]
+        descendant_ids.append(transform.id)
+        # Artifact definitions owned by this transform
+        for adef in client.filters(kind="CoreArtifactDefinition", transformation__ids=[transform.id]):
+            descendant_ids.append(adef.id)
+            descendant_ids.extend(art.id for art in client.filters(kind="CoreArtifact", definition__ids=[adef.id]))
+
+    for qry in repo.queries.peers:  # type: ignore[attr-defined]
+        descendant_ids.append(qry.id)
+        descendant_ids.extend(qgrp.id for qgrp in client.filters(kind="CoreGraphQLQueryGroup", query__ids=[qry.id]))
+
+    descendant_ids.extend(chk.id for chk in repo.checks.peers)  # type: ignore[attr-defined]
+
+    for gen in repo.generators.peers:  # type: ignore[attr-defined]
+        descendant_ids.append(gen.id)
+        descendant_ids.extend(
+            ginst.id for ginst in client.filters(kind="CoreGeneratorInstance", definition__ids=[gen.id])
+        )
+
+    descendant_ids.extend(rgrp.id for rgrp in repo.groups_objects.peers)  # type: ignore[attr-defined]
+
+    # Delete the repository
+    client.delete(kind="CoreReadOnlyRepository", id=repo_id)
+
+    # Verify the repository itself is gone
+    missing_repo = False
+    try:
+        client.get(kind="CoreReadOnlyRepository", id=repo_id)
+    except NodeNotFoundError:
+        missing_repo = True
+    if not missing_repo:
+        raise AssertionError(f"Repository {repo_id!r} was NOT deleted")
+
+    # Verify every tracked descendant is also gone by trying each known kind in order.
+    # The first kind that returns the node is recorded as a survivor.
+    all_descendant_kinds = [
+        "CoreTransformPython",
+        "CoreArtifactDefinition",
+        "CoreArtifact",
+        "CoreGraphQLQuery",
+        "CoreGraphQLQueryGroup",
+        "CoreCheckDefinition",
+        "CoreGeneratorDefinition",
+        "CoreGeneratorInstance",
+        "CoreRepositoryGroup",
+    ]
+    surviving: list[str] = []
+    for desc_id in descendant_ids:
+        for kind in all_descendant_kinds:
+            try:
+                client.get(kind=kind, id=desc_id)
+                surviving.append(f"{kind}:{desc_id}")
+                break
+            except NodeNotFoundError:
+                pass
+
+    if surviving:
+        raise AssertionError(
+            f"Repository cascade-delete did NOT remove {len(surviving)} descendant(s):\n" + "\n".join(surviving)
+        )
+
+    print(f"OK: repository {repo_id!r} and {len(descendant_ids)} descendant(s) all deleted")
 
 
 @task
