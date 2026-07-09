@@ -82,9 +82,13 @@ class StandardNode(BaseModel):
 
         # `Optional[X]` resolves to `Union` while `X | None` resolves to `UnionType` on Python < 3.14,
         # where the two are distinct; both must be recognized as nullable fields.
-        if (
-            annotation_origin in (Union, UnionType) and len(annotation_args) == 2 and type(None) in annotation_args
-        ) or (annotation_origin is list and len(annotation_args)):
+        if annotation_origin in (Union, UnionType) and len(annotation_args) == 2 and type(None) in annotation_args:
+            # Union member order is preserved, so pick the non-None member rather than assuming its
+            # position: `X | None` and `None | X` must both resolve to `X`.
+            wrapped = next(arg for arg in annotation_args if arg is not type(None))
+            return get_origin(wrapped) or wrapped
+
+        if annotation_origin is list and len(annotation_args):
             return get_origin(annotation_args[0]) or annotation_args[0]
 
         return annotation_origin or field.annotation
