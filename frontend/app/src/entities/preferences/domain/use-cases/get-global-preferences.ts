@@ -1,5 +1,5 @@
 import { getGlobalPreferencesFromApi } from "@/entities/preferences/api/get-global-preferences-from-api";
-import type { GlobalPreferences } from "@/entities/preferences/domain/types";
+import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
 
 export type GetGlobalPreferences = () => Promise<GlobalPreferences>;
 

@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { hasGlobalPermission } from "@/entities/permission/domain/has-global-permission";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
+import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-global-permission";
 
 export function canManageGlobalPreferencesQueryOptions() {
   return queryOptions({

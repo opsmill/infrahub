@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { getGlobalPermissionsFromApi } from "@/entities/permission/api/get-global-permissions-from-api";
-import { hasGlobalPermission } from "@/entities/permission/domain/has-global-permission";
+import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-global-permission";
 
 vi.mock("@/entities/permission/api/get-global-permissions-from-api");
 

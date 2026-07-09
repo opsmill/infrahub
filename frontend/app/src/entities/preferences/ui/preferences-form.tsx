@@ -9,11 +9,11 @@ import { ComboboxField } from "@/shared/components/form/fields/combobox.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
+import type { PreferenceValues } from "@/entities/preferences/domain/model/preference";
 import {
   buildDateFormatPresets,
   formatDateFormatExample,
-} from "@/entities/preferences/domain/date-format-presets";
-import type { PreferenceValues } from "@/entities/preferences/domain/types";
+} from "@/entities/preferences/domain/rules/date-format";
 import { TimezoneField } from "@/entities/preferences/ui/timezone.field";
 
 export interface PreferencesFormProps {

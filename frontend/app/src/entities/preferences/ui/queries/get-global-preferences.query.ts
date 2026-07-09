@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { getGlobalPreferences } from "@/entities/preferences/domain/get-global-preferences";
+import { getGlobalPreferences } from "@/entities/preferences/domain/use-cases/get-global-preferences";
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 
 export function getGlobalPreferencesQueryOptions() {

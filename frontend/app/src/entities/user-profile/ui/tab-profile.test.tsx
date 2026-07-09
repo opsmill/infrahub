@@ -1,9 +1,9 @@
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { getEffectivePreferences } from "@/entities/preferences/domain/get-effective-preferences";
-import type { EffectivePreferences } from "@/entities/preferences/domain/types";
-import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
+import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
+import { getEffectivePreferences } from "@/entities/preferences/domain/use-cases/get-effective-preferences";
+import { upsertMyUserPreference } from "@/entities/preferences/domain/use-cases/upsert-my-user-preference";
 
 import { render } from "../../../../tests/components/render";
 import TabProfile from "./tab-profile";
@@ -36,8 +36,8 @@ vi.mock("@/entities/permission/ui/queries/get-object-permissions.query", () => (
 
 // The preferences card calls the same domain functions the old tab-preferences
 // test mocked; the query hooks delegate to these.
-vi.mock("@/entities/preferences/domain/get-effective-preferences");
-vi.mock("@/entities/preferences/domain/upsert-my-user-preference");
+vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
+vi.mock("@/entities/preferences/domain/use-cases/upsert-my-user-preference");
 
 const baseEffective: EffectivePreferences = {
   dateFormat: { value: "EU_DATETIME", source: "global" },

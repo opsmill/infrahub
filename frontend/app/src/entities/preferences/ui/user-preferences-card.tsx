@@ -6,11 +6,11 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import type { ResolvedPreference } from "@/entities/preferences/domain/model/preference";
 import {
   dateFormatLabel,
   formatDateFormatExample,
-} from "@/entities/preferences/domain/date-format-presets";
-import type { ResolvedPreference } from "@/entities/preferences/domain/types";
+} from "@/entities/preferences/domain/rules/date-format";
 import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
 import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 import { useUpdateMyUserPreferences } from "@/entities/preferences/ui/queries/upsert-my-user-preferences.mutation";
