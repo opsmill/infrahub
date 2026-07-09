@@ -9,16 +9,16 @@ import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
+import { isNodeSchema } from "@/entities/schema/domain/rules/is-node-schema";
+import { isProfileSchema } from "@/entities/schema/domain/rules/is-profile-schema";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
-import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
 
 import { AttributeDisplay } from "./attribute-display";
 import { RelationshipDisplay } from "./relationship-display";

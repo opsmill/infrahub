@@ -1,8 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  AttributeKind,
+  AttributeSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
+import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   Text: "mdi:text",

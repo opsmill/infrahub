@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 
-import useFilters from "@/shared/hooks/useFilters";
+import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
 export function BranchesEmpty() {
   const [filters, setFilters] = useFilters();

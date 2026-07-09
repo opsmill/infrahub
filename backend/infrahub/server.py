@@ -24,6 +24,7 @@ from infrahub.api.exception_handlers import generic_api_exception_handler, log_f
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
+from infrahub.core.merge.failure_identifier import scan_for_failed_merges
 from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ForwardableError, ValidationError
@@ -92,6 +93,11 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
         is_initial_setup = await initialization(db=db, add_database_indexes=True)
+        # Detect a failed merge, best effort to not block startup
+        try:
+            await scan_for_failed_merges(db=db, service=service)
+        except Exception:
+            log.exception("Failed-merge detection on startup failed; the recurring scan will retry")
 
     async with database.start_session() as dbs:
         await validate_graph_version(db=dbs)

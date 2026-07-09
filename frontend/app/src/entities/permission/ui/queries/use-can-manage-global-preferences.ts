@@ -1,20 +1,10 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
-
-import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/constants";
-import { hasGlobalPermission } from "@/entities/permission/domain/has-global-permission";
-
-export function canManageGlobalPreferencesQueryOptions() {
-  return queryOptions({
-    queryKey: ["permissions", "global", MANAGE_GLOBAL_PREFERENCES],
-    queryFn: () => hasGlobalPermission(MANAGE_GLOBAL_PREFERENCES),
-  });
-}
+import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
+import { useGlobalPermission } from "@/entities/permission/ui/queries/use-global-permission";
 
 /**
- * Whether the current account may manage the organisation-wide preferences, i.e.
- * holds the `manage_global_preferences` GLOBAL permission. Gates the
- * "Organisation defaults" tab and its editor.
+ * Whether the current account may manage the organisation-wide preferences, i.e. holds the
+ * `manage_global_preferences` GLOBAL permission. Used to show/hide the "Organisation defaults" tab.
  */
 export function useCanManageGlobalPreferences() {
-  return useQuery(canManageGlobalPreferencesQueryOptions());
+  return useGlobalPermission(MANAGE_GLOBAL_PREFERENCES);
 }

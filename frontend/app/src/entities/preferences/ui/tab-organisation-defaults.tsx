@@ -2,33 +2,41 @@ import { Card, CardHeader } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { useCanManageGlobalPreferences } from "@/entities/permission/ui/queries/use-can-manage-global-preferences";
+import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
+import { RequireGlobalPermission } from "@/entities/permission/ui/require-global-permission";
 import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
 import { useGlobalPreferences } from "@/entities/preferences/ui/queries/get-global-preferences.query";
 import { useUpdateGlobalPreferences } from "@/entities/preferences/ui/queries/update-global-preferences.mutation";
 
 export default function TabOrganisationDefaults() {
-  // The gate comes from the `manage_global_preferences` GLOBAL permission, while
-  // the form values come from the raw GLOBAL scope — so an admin who also set
-  // personal overrides still prefills from the organisation's own defaults.
-  const canManageQuery = useCanManageGlobalPreferences();
+  // Gate on the `manage_global_preferences` GLOBAL permission (super admins pass). The editor is
+  // only mounted once authorized, so it never has to handle the unauthorized state itself.
+  return (
+    <RequireGlobalPermission
+      action={MANAGE_GLOBAL_PREFERENCES}
+      loadingClassName="h-32"
+      unauthorizedMessage="You don't have permission to edit organisation defaults"
+    >
+      <OrganisationDefaultsEditor />
+    </RequireGlobalPermission>
+  );
+}
+
+function OrganisationDefaultsEditor() {
+  // Form values come from the raw GLOBAL scope — so an admin who also set personal overrides still
+  // prefills from the organisation's own defaults, never their overrides.
   const globalQuery = useGlobalPreferences();
   const updatePreferences = useUpdateGlobalPreferences();
 
-  if (canManageQuery.error || globalQuery.error) {
+  if (globalQuery.error) {
     return <ErrorScreen message="Something went wrong when fetching the organisation defaults" />;
   }
 
-  if (canManageQuery.isPending || globalQuery.isPending) {
+  if (globalQuery.isPending) {
     return <LoadingIndicator className="h-32" />;
-  }
-
-  if (!canManageQuery.data) {
-    return <UnauthorizedScreen message="You don't have permission to edit organisation defaults" />;
   }
 
   const global = globalQuery.data;

@@ -11,9 +11,15 @@ vi.mock("@/shared/api/graphql/graphqlClientApollo", () => ({
   },
 }));
 
+// A successful mutation payload (the resolver's `ok` flag is asserted by the helper).
+const OK_RESULT = {
+  data: { InfrahubSetPreferences: { ok: true, date_format: null, timezone: null } },
+};
+
 describe("upsertUserPreferenceFromApi", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(graphqlClient.mutate).mockResolvedValue(OK_RESULT as never);
   });
 
   test("sends date_format and timezone with no account argument", async () => {
@@ -51,5 +57,14 @@ describe("upsertUserPreferenceFromApi", () => {
     const { variables } = vi.mocked(graphqlClient.mutate).mock.calls[0]?.[0] ?? {};
     expect(variables).toEqual({ timezone: "UTC" });
     expect(variables).not.toHaveProperty("dateFormat");
+  });
+
+  test("throws when the mutation reports ok: false (application-level failure)", async () => {
+    // Apollo resolves without GraphQL errors, but ok: false means the save did not happen.
+    vi.mocked(graphqlClient.mutate).mockResolvedValue({
+      data: { InfrahubSetPreferences: { ok: false, date_format: null, timezone: null } },
+    } as never);
+
+    await expect(upsertUserPreferenceFromApi({ timezone: "UTC" })).rejects.toThrow();
   });
 });

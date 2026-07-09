@@ -4,7 +4,7 @@ title: Error Catalogue
 
 # Error Catalogue
 
-**Catalogue version**: 1 — 13 codes
+**Catalogue version**: 1 — 14 codes
 
 Every GraphQL error response carries an `extensions` block with a stable string `code`, the logical `http_status`, and a typed `data` payload. Switch on `code` rather than parsing the human-readable `message`, which is not part of the stable contract.
 
@@ -273,6 +273,41 @@ The write was rejected because a branch merge is in progress. The block is trans
       "message": "The write was rejected because a branch merge is in progress. The block is transient; retry once the merge completes.",
       "extensions": {
         "code": "MERGE_IN_PROGRESS",
+        "http_status": 423,
+        "data": {
+          "branch_name": "example",
+          "merging_branch": "example"
+        }
+      }
+    }
+  ]
+}
+```
+
+### MERGE_RECOVERY_REQUIRED
+
+The write was rejected because a previous branch merge failed and left the default branch protected. Recovery is required: an administrator must run `infrahub recover`. Unlike MERGE_IN_PROGRESS this is not retryable.
+
+- **Stability**: `evolving`
+- **HTTP status**: `423`
+
+**`data` payload**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `branch_name` | string | yes |
+| `merging_branch` | string | yes |
+
+**Example response**
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "The write was rejected because a previous branch merge failed and left the default branch protected. Recovery is required: an administrator must run `infrahub recover`. Unlike MERGE_IN_PROGRESS this is not retryable.",
+      "extensions": {
+        "code": "MERGE_RECOVERY_REQUIRED",
         "http_status": 423,
         "data": {
           "branch_name": "example",

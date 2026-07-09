@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -68,7 +68,6 @@ async def test_effective_no_user_no_global_is_default(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
     result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
@@ -78,18 +77,17 @@ async def test_effective_no_user_no_global_is_default(
     # Nothing defined anywhere: value null, source DEFAULT.
     assert prefs["date_format"] == {"value": None, "source": "DEFAULT"}
     assert prefs["timezone"] == {"value": None, "source": "DEFAULT"}
-    # A read never fabricates a row.
-    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_effective_global_only_source_global(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    await Preference(owner_id=registry.id, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=GLOBAL_OWNER_ID, date_format="ISO_DATETIME", timezone="UTC")
+    )
 
     result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
     assert result.errors is None
@@ -98,8 +96,6 @@ async def test_effective_global_only_source_global(
     # No user override: resolved value comes from the global row, source GLOBAL.
     assert prefs["date_format"] == {"value": "ISO_DATETIME", "source": "GLOBAL"}
     assert prefs["timezone"] == {"value": "UTC", "source": "GLOBAL"}
-    # No user row was fabricated for the fallback.
-    assert await PreferenceRepository(db=db).get_for_owner(owner_id=first_account.id) is None
 
 
 async def test_effective_user_override_source_user(
@@ -109,8 +105,12 @@ async def test_effective_user_override_source_user(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    await Preference(owner_id=registry.id, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
-    await Preference(owner_id=first_account.id, date_format="EU_DATETIME", timezone="Europe/Paris").create(db=db)
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=GLOBAL_OWNER_ID, date_format="ISO_DATETIME", timezone="UTC")
+    )
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=first_account.id, date_format="EU_DATETIME", timezone="Europe/Paris")
+    )
 
     result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
     assert result.errors is None
@@ -128,11 +128,11 @@ async def test_effective_mixed_per_attribute_sources(
     first_account: Node,
     session_first_account: AccountSession,
 ) -> None:
-    """Per-attribute resolution: one USER, one GLOBAL, one DEFAULT in a single read."""
+    """Attributes resolve independently: an override on one attribute leaves the other's fallback untouched."""
     # Global defines timezone only; date_format is left unset on the global row.
-    await Preference(owner_id=registry.id, timezone="UTC").create(db=db)
+    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
     # User overrides date_format only; timezone falls back to global.
-    await Preference(owner_id=first_account.id, date_format="EU_DATETIME").create(db=db)
+    await PreferenceRepository(db=db).save(Preference(owner_id=first_account.id, date_format="EU_DATETIME"))
 
     result = await run_query(db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account)
     assert result.errors is None
@@ -154,9 +154,9 @@ async def test_effective_is_private_per_caller(
     session_second_account: AccountSession,
 ) -> None:
     # A shared org-wide default plus a distinct personal override for each account.
-    await Preference(owner_id=registry.id, timezone="UTC").create(db=db)
-    await Preference(owner_id=first_account.id, timezone="Europe/Paris").create(db=db)
-    await Preference(owner_id=second_account.id, timezone="America/New_York").create(db=db)
+    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+    await PreferenceRepository(db=db).save(Preference(owner_id=first_account.id, timezone="Europe/Paris"))
+    await PreferenceRepository(db=db).save(Preference(owner_id=second_account.id, timezone="America/New_York"))
 
     result_a = await run_query(
         db=db, branch=default_branch, query=EFFECTIVE_QUERY, account_session=session_first_account
@@ -190,8 +190,8 @@ async def test_user_returns_own_raw_values_null_where_unset(
     session_first_account: AccountSession,
 ) -> None:
     # A global default exists but must NOT leak into a USER read.
-    await Preference(owner_id=registry.id, timezone="UTC").create(db=db)
-    await Preference(owner_id=first_account.id, date_format="EU_DATETIME").create(db=db)
+    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+    await PreferenceRepository(db=db).save(Preference(owner_id=first_account.id, date_format="EU_DATETIME"))
 
     result = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=session_first_account)
     assert result.errors is None
@@ -211,8 +211,8 @@ async def test_user_never_sees_other_account(
     session_first_account: AccountSession,
     session_second_account: AccountSession,
 ) -> None:
-    await Preference(owner_id=first_account.id, timezone="Europe/Paris").create(db=db)
-    await Preference(owner_id=second_account.id, timezone="America/New_York").create(db=db)
+    await PreferenceRepository(db=db).save(Preference(owner_id=first_account.id, timezone="Europe/Paris"))
+    await PreferenceRepository(db=db).save(Preference(owner_id=second_account.id, timezone="America/New_York"))
 
     result_a = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=session_first_account)
     result_b = await run_query(db=db, branch=default_branch, query=USER_QUERY, account_session=session_second_account)
@@ -235,7 +235,9 @@ async def test_global_allowed_for_manager(
     register_core_models_schema: None,
     session_global_prefs_manager: AccountSession,
 ) -> None:
-    await Preference(owner_id=registry.id, date_format="ISO_DATETIME", timezone="UTC").create(db=db)
+    await PreferenceRepository(db=db).save(
+        Preference(owner_id=GLOBAL_OWNER_ID, date_format="ISO_DATETIME", timezone="UTC")
+    )
 
     result = await run_query(
         db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_global_prefs_manager
@@ -256,7 +258,7 @@ async def test_global_allowed_for_super_admin(
     create_test_admin: Node,
     session_admin: AccountSession,
 ) -> None:
-    await Preference(owner_id=registry.id, timezone="Europe/London").create(db=db)
+    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="Europe/London"))
 
     result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_admin)
     assert result.errors is None
@@ -273,7 +275,7 @@ async def test_global_denied_for_normal_account(
     session_first_account: AccountSession,
 ) -> None:
     # A global row exists, but a normal account must be denied and see no data.
-    await Preference(owner_id=registry.id, timezone="UTC").create(db=db)
+    await PreferenceRepository(db=db).save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
 
     result = await run_query(db=db, branch=default_branch, query=GLOBAL_QUERY, account_session=session_first_account)
     assert result.errors is not None

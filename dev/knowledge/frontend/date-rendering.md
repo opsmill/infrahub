@@ -29,8 +29,8 @@ and never a hardcoded pattern.
   `DateDisplay`/`useFormatDate` are always safe to use, including in tests/stories.
 - Timezone rendering uses date-fns v4 + the first-party **`@date-fns/tz`** (`TZDate`). The semantic
   `date_format` key → date-fns pattern mapping is `patternForKey`
-  (`entities/preferences/domain/date-format-presets.ts`); the `date` variant derives a date-only
-  pattern by stripping the preferred pattern at its first time token.
+  (`entities/preferences/domain/rules/date-format.ts`; the key set lives in `domain/model/date-format.ts`);
+  the `date` variant derives a date-only pattern by stripping the preferred pattern at its first time token.
 
 ## Do NOT route through it
 

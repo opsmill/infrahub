@@ -13,13 +13,13 @@ import { cellFooterStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import {
   type ObjectTableSelectionToolbarProps,
   ObjectTableToolbar,
 } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
-import type { NodeCore } from "@/entities/nodes/types";
 
 export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;

@@ -8,7 +8,7 @@ import {
   DiffSummaryTag,
   DiffSummaryTagGroup,
 } from "@/entities/proposed-changes/ui/diff-summary/diff-summary-tag-group";
-import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
 
 interface ProposedChangeDiffSummaryProps {
   branchName: string;

@@ -3,14 +3,14 @@ import type React from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
-import { updateGlobalPreference } from "@/entities/preferences/domain/update-global-preference";
-import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
+import { updateGlobalPreference } from "@/entities/preferences/domain/use-cases/update-global-preference";
+import { upsertMyUserPreference } from "@/entities/preferences/domain/use-cases/upsert-my-user-preference";
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 import { useUpdateGlobalPreferences } from "@/entities/preferences/ui/queries/update-global-preferences.mutation";
 import { useUpdateMyUserPreferences } from "@/entities/preferences/ui/queries/upsert-my-user-preferences.mutation";
 
-vi.mock("@/entities/preferences/domain/upsert-my-user-preference");
-vi.mock("@/entities/preferences/domain/update-global-preference");
+vi.mock("@/entities/preferences/domain/use-cases/upsert-my-user-preference");
+vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
 
 function setup() {
   const queryClient = new QueryClient({

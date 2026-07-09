@@ -2,7 +2,7 @@ import type React from "react";
 
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
-import type { GroupAutoCreateEvent } from "@/entities/events/types";
+import type { GroupAutoCreateEvent } from "@/entities/events/domain/model/event";
 
 interface AutoCreateLayoutProps {
   idp: string;

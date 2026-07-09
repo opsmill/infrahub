@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { UpsertMyUserPreferenceParams } from "@/entities/preferences/domain/upsert-my-user-preference";
-import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
+import type { UpsertMyUserPreferenceParams } from "@/entities/preferences/domain/use-cases/upsert-my-user-preference";
+import { upsertMyUserPreference } from "@/entities/preferences/domain/use-cases/upsert-my-user-preference";
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 
 /**

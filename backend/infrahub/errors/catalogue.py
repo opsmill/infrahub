@@ -9,6 +9,7 @@ from infrahub.exceptions import (
     BranchNeedsRebaseError,
     BranchNotFoundError,
     MergeInProgressError,
+    MergeRecoveryRequiredError,
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
@@ -28,6 +29,7 @@ from .payloads import (
     BranchNeedsRebaseData,
     BranchNotFoundData,
     MergeInProgressData,
+    MergeRecoveryRequiredData,
     NodeNotFoundData,
     PermissionDeniedData,
     SchemaNotFoundData,
@@ -169,6 +171,20 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
                 http_status=423,
                 payload_model=MergeInProgressData,
                 exception_class=MergeInProgressError,
+            ),
+        ),
+        (
+            "MERGE_RECOVERY_REQUIRED",
+            CatalogueEntry(
+                description=(
+                    "The write was rejected because a previous branch merge failed and left the default "
+                    "branch protected. Recovery is required: an administrator must run `infrahub recover`. "
+                    "Unlike MERGE_IN_PROGRESS this is not retryable."
+                ),
+                stability="evolving",
+                http_status=423,
+                payload_model=MergeRecoveryRequiredData,
+                exception_class=MergeRecoveryRequiredError,
             ),
         ),
         (

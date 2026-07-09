@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { getEffectivePreferences } from "@/entities/preferences/domain/get-effective-preferences";
-import type { EffectivePreferences } from "@/entities/preferences/domain/types";
-import { upsertMyUserPreference } from "@/entities/preferences/domain/upsert-my-user-preference";
+import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
+import { getEffectivePreferences } from "@/entities/preferences/domain/use-cases/get-effective-preferences";
+import { upsertMyUserPreference } from "@/entities/preferences/domain/use-cases/upsert-my-user-preference";
 
 import { render } from "../../../../tests/components/render";
 import { initPointerTracking, selectComboboxOption } from "../../../../tests/components/utils";
 import { UserPreferencesCard } from "./user-preferences-card";
 
-vi.mock("@/entities/preferences/domain/get-effective-preferences");
-vi.mock("@/entities/preferences/domain/upsert-my-user-preference");
+vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
+vi.mock("@/entities/preferences/domain/use-cases/upsert-my-user-preference");
 
 const baseEffective: EffectivePreferences = {
   // No personal override → both fields resolve to the org default (source "global").

@@ -7,13 +7,13 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { assertArtifactObject } from "@/entities/artifacts/types";
+import { assertArtifactObject } from "@/entities/artifacts/domain/rules/assert-artifact-object";
 import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
 import { ArtifactHeader } from "@/entities/artifacts/ui/artifact-header";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface ArtifactsDetailsProps {
   artifactSchema: ModelSchema;

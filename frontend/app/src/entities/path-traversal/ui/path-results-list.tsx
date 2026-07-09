@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
-import type { PathResult } from "../domain/path-traversal.types";
-import { getKindColor } from "./utils";
+import type { PathResult } from "../domain/model/path-traversal";
+import { getKindColor } from "./get-kind-color";
 
 type Variant = "blue" | "amber";
 

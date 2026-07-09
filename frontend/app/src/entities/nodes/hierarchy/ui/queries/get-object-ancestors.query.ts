@@ -8,7 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetObjectAncestorsParams,
   getObjectAncestors,
-} from "@/entities/nodes/hierarchy/domain/get-object-ancestors";
+} from "@/entities/nodes/hierarchy/domain/use-cases/get-object-ancestors";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 export function getObjectAncestorsQueryOptions(params: GetObjectAncestorsParams) {

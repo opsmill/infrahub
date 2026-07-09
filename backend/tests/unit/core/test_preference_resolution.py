@@ -60,5 +60,5 @@ RESOLUTION_CASES = [
 def test_effective_preference_resolution(case: ResolutionCase) -> None:
     effective = EffectivePreferences(user=case.user, global_=case.global_)
 
-    assert effective.resolve_date_format() == case.expected_date_format
-    assert effective.resolve_timezone() == case.expected_timezone
+    assert effective.resolved_date_format() == case.expected_date_format
+    assert effective.resolved_timezone() == case.expected_timezone

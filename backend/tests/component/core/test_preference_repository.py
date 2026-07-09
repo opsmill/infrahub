@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
 from infrahub.core.preferences.models import Preference
 from infrahub.core.preferences.repository import PreferenceRepository
 
@@ -15,7 +16,7 @@ async def test_get_for_owner_none_when_absent_and_never_creates(db: InfrahubData
     repository = PreferenceRepository(db=db)
 
     assert await repository.get_for_owner(owner_id="owner-absent") is None
-    assert await Preference.get_list(db=db) == []
+    assert await repository.get_all() == []
 
 
 async def test_save_then_get_for_owner_round_trip(db: InfrahubDatabase, default_branch: Branch) -> None:
@@ -45,7 +46,7 @@ async def test_save_updates_in_place_without_creating_a_second_row(
     assert updated is not None
     assert updated.uuid == created.uuid
     assert updated.timezone == "UTC"
-    assert len([p for p in await Preference.get_list(db=db) if p.owner_id == "owner-a"]) == 1
+    assert len([p for p in await repository.get_all() if p.owner_id == "owner-a"]) == 1
 
 
 async def test_get_for_owner_is_owner_scoped(db: InfrahubDatabase, default_branch: Branch) -> None:
@@ -69,3 +70,14 @@ async def test_get_for_owners_returns_map_of_existing_only(db: InfrahubDatabase,
     assert set(result) == {"owner-a", "owner-b"}
     assert result["owner-a"].timezone == "Europe/Paris"
     assert result["owner-b"].date_format == "ISO_DATETIME"
+
+
+async def test_get_all_returns_rows_for_all_owners(db: InfrahubDatabase, default_branch: Branch) -> None:
+    # get_all is unfiltered: every owner's row comes back, not just one.
+    repository = PreferenceRepository(db=db)
+    await repository.save(Preference(owner_id="owner-a", timezone="Europe/Paris"))
+    await repository.save(Preference(owner_id="owner-b", date_format="ISO_DATETIME"))
+    await repository.save(Preference(owner_id=GLOBAL_OWNER_ID, timezone="UTC"))
+
+    all_rows = await repository.get_all()
+    assert {preference.owner_id for preference in all_rows} == {"owner-a", "owner-b", GLOBAL_OWNER_ID}

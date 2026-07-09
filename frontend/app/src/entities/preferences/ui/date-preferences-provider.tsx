@@ -5,7 +5,7 @@ import {
   type ResolvedDatePreferences,
 } from "@/shared/context/date-preferences-context";
 
-import { patternForKey } from "@/entities/preferences/domain/date-format-presets";
+import { patternForKey } from "@/entities/preferences/domain/rules/date-format";
 import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 
 /**

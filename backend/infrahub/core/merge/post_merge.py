@@ -15,6 +15,7 @@ from infrahub.workflows.catalogue import (
     BRANCH_MERGE_POST_PROCESS,
     IPAM_RECONCILIATION,
 )
+from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
@@ -69,29 +70,35 @@ class PostMergeDispatcher:
         except Exception:
             self.log.exception("Repository merge failed after branch merge committed")
 
+        # The user-visible merge is already done, so the follow-up trees must not inherit its
+        # priority from the caller's context: each runs from a context stamped with its own lane,
+        # which trickles down to all of its subtasks.
+        medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
+        low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
+
         # Trigger the reconciliation of IPAM data now that the graph merge is complete.
         if ipam_node_details:
             await self._submit_workflow(
-                context=context,
+                context=medium_context,
                 workflow_definition=IPAM_RECONCILIATION,
                 parameters={"branch": self.default_branch.name, "ipam_node_details": ipam_node_details},
             )
 
         await self._submit_workflow(
-            context=context,
+            context=low_context,
             workflow_definition=BRANCH_CANCEL_PROPOSED_CHANGES,
             parameters={"branch_name": branch.name},
         )
 
         if config.SETTINGS.main.delete_branch_after_merge and not branch.is_default:
             await self._submit_workflow(
-                context=context,
+                context=low_context,
                 workflow_definition=BRANCH_DELETE,
                 parameters={"branch": branch.name, "proposed_change_id": proposed_change_id},
             )
 
         await self._submit_workflow(
-            context=context,
+            context=low_context,
             workflow_definition=BRANCH_MERGE_POST_PROCESS,
             parameters={"source_branch": branch.name, "target_branch": self.default_branch.name},
         )

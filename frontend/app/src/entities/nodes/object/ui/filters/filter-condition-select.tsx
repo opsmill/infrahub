@@ -1,7 +1,7 @@
 import { Select, SelectItem, SelectList, SelectTrigger } from "@infrahub/ui";
 import type { SelectProps } from "react-aria-components";
 
-import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

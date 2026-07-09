@@ -1,4 +1,4 @@
-import type { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/domain/model/permission";
 
 export type GeneratePermissionOptions = {
   view?: boolean;

@@ -50,7 +50,7 @@ function SortableDropIndicator({ target }: { target: DropTarget }) {
     // -mt-px offsets the line's own height so this in-flow row adds no space, keeping siblings put.
     <DropIndicator
       target={target}
-      className="-mt-px mx-2 h-px rounded-full bg-cyan-600 shadow-[0_0_6px_1px_rgba(6,182,212,0.55)] outline-hidden"
+      className="mx-2 -mt-px h-px rounded-full bg-cyan-600 shadow-[0_0_6px_1px_rgba(6,182,212,0.55)] outline-hidden"
     />
   );
 }
@@ -78,7 +78,7 @@ export function SortableList<T extends { id: Key }>({
 
 const sortableItemStyles = tv({
   base: [
-    "flex cursor-grab select-none items-center gap-2 rounded-lg border border-transparent p-1 text-sm text-stone-600 outline-hidden",
+    "flex cursor-grab items-center gap-2 rounded-lg border border-transparent p-1 text-sm text-stone-600 outline-hidden select-none",
     "data-hovered:bg-stone-700/10 data-hovered:text-stone-800",
     "data-selected:bg-stone-700/10 data-selected:text-stone-800",
     "data-dragging:cursor-grabbing",

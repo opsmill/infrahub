@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { updateGlobalPreference } from "@/entities/preferences/domain/update-global-preference";
+import { updateGlobalPreference } from "@/entities/preferences/domain/use-cases/update-global-preference";
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 
 /**

@@ -40,7 +40,7 @@ function AutocompleteSearchField({
         variant="ghost"
         shape="square"
         size="xxs"
-        className="opacity-50 hover:opacity-100 group-data-empty:invisible"
+        className="opacity-50 group-data-empty:invisible hover:opacity-100"
       >
         <XIcon />
       </Button>
@@ -66,7 +66,7 @@ export function Autocomplete({
   return (
     <AriaAutocomplete filter={resolvedFilter} onInputChange={onInputChange} {...props}>
       <div className="max-h-[inherit] overflow-hidden">
-        <div className="sticky flex w-full items-center gap-0 overflow-hidden border-neutral-300 border-b pr-1">
+        <div className="sticky flex w-full items-center gap-0 overflow-hidden border-b border-neutral-300 pr-1">
           <AutocompleteSearchField placeholder="Search..." className="grow" />
           {suffix}
         </div>

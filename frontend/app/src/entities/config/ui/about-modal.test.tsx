@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 
-import { getAppInfo } from "@/entities/config/domain/get-app-info";
+import { getAppInfo } from "@/entities/config/domain/use-cases/get-app-info";
 import { ConfigContext } from "@/entities/config/ui/config-provider";
 
 import { render } from "../../../../tests/components/render";
 import { AboutModal } from "./about-modal";
 
-vi.mock("@/entities/config/domain/get-app-info");
+vi.mock("@/entities/config/domain/use-cases/get-app-info");
 
 const config = { installation_type: "community" } as any;
 

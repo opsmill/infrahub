@@ -6,9 +6,9 @@ import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
 import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/ui/queries/get-object-ancestors.query";
-import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import type { NodeCoreWithParent } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { NodeCoreWithParent } from "@/entities/nodes/object/domain/model/node";
+import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/get-relationships";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface BreadcrumbObjectDetailsHierarchyProps {
