@@ -1,0 +1,33 @@
+---
+title: Release 1.10.3
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.10.3</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>July 7th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.10.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.10.3)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Added
+
+- Global initialization locks now expire automatically after a configurable time-to-live (20 minutes by default, set via `INFRAHUB_CACHE_INIT_LOCK_TTL_MINS`). Previously, if a worker died while holding the task-manager or registry initialization lock, the lock was never released and Infrahub could not start until the key was manually deleted from Redis. The lock now auto-expires so the platform recovers on its own. This applies to the Redis cache driver. ([#9277](https://github.com/opsmill/infrahub/issues/9277))
+
+### Fixed
+
+- The search bar now finds an IPv6 address or prefix entered with a prefix length regardless of how it is written. Previously, typing an IPv6 value with host bits set (for example `2a0b:2081:1:d3::1/127`), or its non-collapsed extended form, returned no matching object even when one existed, because the value was not normalized before the lookup. ([#9788](https://github.com/opsmill/infrahub/issues/9788))
+- Running **Check connectivity** on a repository now records the outcome in the repository's operational status. Previously a failed check (for example an unreachable Git server returning an HTTP 504) was only shown to the caller, so the repository kept displaying **Online** and **In sync** while it was actually unreachable. A failed check now sets the status to **Connectivity Error**, **Credential Error**, or **Error**, and a successful check sets it back to **Online**. HTTP 5xx gateway errors and connection timeouts are now classified as connection errors. ([#9818](https://github.com/opsmill/infrahub/issues/9818))
+- Filtering tasks by an id that is not a valid UUID now returns a validation error instead of an internal server error.
+- Fix diff calculation to correctly handle the case when a relationship was removed from a branch's schema while the other branch changed a non-peer property (source, owner, or protected flag) of that relationship. This issue would have previously appeared as a `DiffNoPeerIdError`.
+- Fixed exhaustive path traversal (`shortest_paths_only: false`) so it no longer tries to search through graphs that are too dense. When the paths through a node fan out too far to enumerate within budget, the search now stops and reports how deep it got via `truncated_at_depth`, instead of building an unbounded set of paths in memory. It also no longer returns spurious or duplicate paths through a node that has been renamed or re-parented by a schema migration.
+- Fixed the branch merge rollback so that a database error (such as an out-of-memory error) raised partway through the bulk merge queries no longer leaves partially merged data on the destination branch. The rollback now removes every change stamped with the merge timestamp even when the failure occurred before the merge finished discovering the affected nodes.
+- The task GraphQL query now returns the correct log count when only `logs { count }` is selected, without requesting the log entries themselves.
