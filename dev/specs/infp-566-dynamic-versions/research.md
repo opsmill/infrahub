@@ -218,7 +218,7 @@ source = "vcs"
 fallback-version = "1.10.1.dev0"   # raise to next release after end-to-end validation
 
 [tool.hatch.version.raw-options]
-git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "infrahub-v*"]
+git_describe_command = ["git", "describe", "--tags", "--long", "--match", "infrahub-v*"]
 
 [tool.hatch.build.hooks.vcs]
 version-file = "backend/infrahub/_version.py"
@@ -233,6 +233,14 @@ version-file = "backend/infrahub/_version.py"
 | No `.git/` (sdist rebuild) | `1.10.1.dev0` (literal fallback) | US3 ✅ |
 | Subdirectory pkg, `raw-options.root = ".."` | parent repo's tag resolved | FR-002 ✅ |
 | `uv lock` with dynamic members | no `version` recorded | FR-008/OQ-2 ✅ |
+
+> **Follow-up (post-cutover): `--dirty` dropped from `git_describe_command`.** The findings above
+> were captured with `--dirty`. The first release exposed the case deferred at T026: the Docker
+> build resolves the version against a work tree that `.dockerignore` strips of tracked files, so
+> `git describe --dirty` reported it dirty and setuptools-scm bumped every on-tag image to
+> `{next}.devN+g<node>.d<date>`. Removing `--dirty` derives the version from committed state only.
+> The `.d<date>` suffix in the scenarios above no longer appears; a dirty work tree no longer
+> affects the resolved version.
 | `version-file` in sdist | `_version.py` present in tarball | OQ-3 ✅ |
 
 The default setuptools-scm `tag_regex` already strips the `infrahub-` prefix; `--match
