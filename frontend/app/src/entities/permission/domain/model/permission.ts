@@ -10,6 +10,26 @@ export const SUPER_ADMIN = "super_admin";
 
 export type PermissionDecisionData = "ALLOW" | "ALLOW_DEFAULT" | "ALLOW_OTHER" | "DENY";
 
+/**
+ * Backend `PermissionDecision` values (an InfrahubNumberEnum: DENY=1, ALLOW_DEFAULT=2,
+ * ALLOW_OTHER=4, ALLOW_ALL=6). GLOBAL permissions expose `decision` on a `String!` field, so it
+ * arrives as the stringified integer (e.g. "6"); OBJECT permissions use the string names in
+ * {@link PermissionDecisionData} instead.
+ */
+export const GLOBAL_PERMISSION_DECISION = {
+  DENY: "1",
+  ALLOW_DEFAULT: "2",
+  ALLOW_OTHER: "4",
+  ALLOW_ALL: "6",
+} as const;
+
+/** GLOBAL decisions that grant a permission — any ALLOW* (i.e. anything but DENY). */
+export const GRANTING_GLOBAL_DECISIONS: ReadonlySet<string> = new Set([
+  GLOBAL_PERMISSION_DECISION.ALLOW_DEFAULT,
+  GLOBAL_PERMISSION_DECISION.ALLOW_OTHER,
+  GLOBAL_PERMISSION_DECISION.ALLOW_ALL,
+]);
+
 export type PermissionAction = "view" | "create" | "update" | "delete";
 
 export type PermissionData = Record<PermissionAction, PermissionDecisionData> & { kind: string };

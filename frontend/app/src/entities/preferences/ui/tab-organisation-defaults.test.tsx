@@ -1,7 +1,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { useCanManageGlobalPreferences } from "@/entities/permission/ui/queries/use-can-manage-global-preferences";
+import { useGlobalPermission } from "@/entities/permission/ui/queries/use-global-permission";
 import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
 import { getGlobalPreferences } from "@/entities/preferences/domain/use-cases/get-global-preferences";
 import { updateGlobalPreference } from "@/entities/preferences/domain/use-cases/update-global-preference";
@@ -10,15 +10,15 @@ import { render } from "../../../../tests/components/render";
 import { selectComboboxOption } from "../../../../tests/components/utils";
 import TabOrganisationDefaults from "./tab-organisation-defaults";
 
-vi.mock("@/entities/permission/ui/queries/use-can-manage-global-preferences", () => ({
-  useCanManageGlobalPreferences: vi.fn(),
+vi.mock("@/entities/permission/ui/queries/use-global-permission", () => ({
+  useGlobalPermission: vi.fn(),
 }));
 vi.mock("@/entities/preferences/domain/use-cases/get-global-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
 
-// Gating now comes from the `manage_global_preferences` GLOBAL permission hook.
+// Gating now flows through RequireGlobalPermission, which reads useGlobalPermission(action).
 function mockCanManage(canManage: boolean) {
-  vi.mocked(useCanManageGlobalPreferences).mockReturnValue({
+  vi.mocked(useGlobalPermission).mockReturnValue({
     isPending: false,
     error: null,
     data: canManage,

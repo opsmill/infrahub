@@ -32,7 +32,7 @@ export interface UpsertUserPreferenceFromApiParams {
  * for a field resets it to the global default; omitting a field leaves it
  * unchanged.
  */
-export function upsertUserPreferenceFromApi(params: UpsertUserPreferenceFromApiParams) {
+export async function upsertUserPreferenceFromApi(params: UpsertUserPreferenceFromApiParams) {
   // The date-format dropdown constrains values to the DateFormat enum keys; the domain layer
   // carries date_format as a plain string, so narrow it to the generated variable type here at the
   // GraphQL boundary (only these keys ever reach this function).
@@ -44,8 +44,17 @@ export function upsertUserPreferenceFromApi(params: UpsertUserPreferenceFromApiP
   }
   if ("timezone" in params) variables.timezone = params.timezone;
 
-  return graphqlClient.mutate({
+  const result = await graphqlClient.mutate({
     mutation: UPSERT_USER_PREFERENCE,
     variables,
   });
+
+  // Apollo resolves even when the mutation reports an application-level failure without GraphQL
+  // errors, so assert the payload's `ok` flag — otherwise a failed save would run the caller's
+  // success path (toast + cache invalidation) as if it had worked.
+  if (!result.data?.InfrahubSetPreferences?.ok) {
+    throw new Error("Failed to save your preferences");
+  }
+
+  return result;
 }

@@ -1,13 +1,10 @@
 import { getGlobalPermissionsFromApi } from "@/entities/permission/api/get-global-permissions-from-api";
-import { SUPER_ADMIN } from "@/entities/permission/domain/model/permission";
+import {
+  GRANTING_GLOBAL_DECISIONS,
+  SUPER_ADMIN,
+} from "@/entities/permission/domain/model/permission";
 
 export type HasGlobalPermission = (action: string) => Promise<boolean>;
-
-// A GLOBAL permission's `decision` is the backend `PermissionDecision` (an InfrahubNumberEnum:
-// DENY=1, ALLOW_DEFAULT=2, ALLOW_OTHER=4, ALLOW_ALL=6) exposed on a `String!` field, so it arrives
-// as the stringified integer (e.g. "6"). A permission is granted for any ALLOW* decision, i.e. not
-// DENY. (This differs from OBJECT permissions, whose decision is a string enum name like "ALLOW".)
-const GRANTING_GLOBAL_DECISIONS = new Set(["2", "4", "6"]);
 
 /**
  * Whether the calling account holds a given account-wide permission `action`.

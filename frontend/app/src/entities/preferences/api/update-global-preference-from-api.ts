@@ -27,7 +27,7 @@ export interface UpdateGlobalPreferenceFromApiParams {
  * lazily materialised by the resolver). Passing explicit `null` for a field clears
  * it; omitting a field leaves the stored value unchanged.
  */
-export function updateGlobalPreferenceFromApi(params: UpdateGlobalPreferenceFromApiParams) {
+export async function updateGlobalPreferenceFromApi(params: UpdateGlobalPreferenceFromApiParams) {
   // The date-format dropdown constrains values to the DateFormat enum keys; the domain layer
   // carries date_format as a plain string, so narrow it to the generated variable type here at the
   // GraphQL boundary (only these keys ever reach this function).
@@ -39,8 +39,17 @@ export function updateGlobalPreferenceFromApi(params: UpdateGlobalPreferenceFrom
   }
   if ("timezone" in params) variables.timezone = params.timezone;
 
-  return graphqlClient.mutate({
+  const result = await graphqlClient.mutate({
     mutation: UPDATE_GLOBAL_PREFERENCE,
     variables,
   });
+
+  // Apollo resolves even when the mutation reports an application-level failure without GraphQL
+  // errors, so assert the payload's `ok` flag — otherwise a failed update would run the caller's
+  // success path (toast + cache invalidation) as if it had worked.
+  if (!result.data?.InfrahubSetPreferences?.ok) {
+    throw new Error("Failed to update the organisation defaults");
+  }
+
+  return result;
 }
