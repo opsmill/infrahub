@@ -2,10 +2,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core import registry
+from infrahub.core.constants import (
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDirection,
+    SchemaPathType,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.timestamp import Timestamp
 from infrahub.graph_traversal.planning.models import Plan, TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
 from tests.helpers.graph_traversal.builders import (
@@ -20,7 +31,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.graph_traversal.results import PathData
-    from tests.helpers.graph_traversal.builders import ShortcutGraph
+    from tests.helpers.graph_traversal.builders import BowtieGraph, ShortcutGraph
 
 
 def _build_plan(
@@ -187,6 +198,129 @@ async def test_exhaustive_truncates_when_half_paths_exceed_cap(
         (graph.source.id, 3, ((links, graph.middle.id), (links, graph.bridge.id), (links, graph.destination.id)))
     ]
     assert result.truncated_at_depth == 4
+
+
+async def test_exhaustive_handles_same_uuid_vertices_after_kind_migration(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """A kind/inheritance migration leaves two Node vertices sharing the middle's UUID.
+
+    ``source -[hub__endpoint]- middle -[hub__endpoint]- target``, where ``middle`` is its own kind
+    so migrating that kind duplicates only its vertex. Read back at the migration instant, the old
+    vertex's just-closed edges are still visible (``to >= at`` is inclusive) and the default branch
+    has no deletion-shadow, so both same-UUID vertices are momentarily traversable. The right half
+    resolves each candidate middle UUID to its active vertex and identical joined paths are
+    de-duplicated, so the single real ``source -> middle -> target`` path is returned exactly once.
+    """
+    schema = SchemaRoot(
+        generics=[GenericSchema(name="Grouping", namespace="Test")],
+        nodes=[
+            NodeSchema(
+                name="Endpoint",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="hubs",
+                        peer="TestHub",
+                        identifier="hub__endpoint",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            ),
+            NodeSchema(
+                name="Hub",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="endpoints",
+                        peer="TestEndpoint",
+                        identifier="hub__endpoint",
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                        direction=RelationshipDirection.BIDIR,
+                    )
+                ],
+            ),
+        ],
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    source = await Node.init(db=db, schema="TestEndpoint", branch=default_branch)
+    await source.new(db=db, name="S")
+    await source.save(db=db)
+    target = await Node.init(db=db, schema="TestEndpoint", branch=default_branch)
+    await target.new(db=db, name="D")
+    await target.save(db=db)
+    middle = await Node.init(db=db, schema="TestHub", branch=default_branch)
+    await middle.new(db=db, name="M", endpoints=[source, target])
+    await middle.save(db=db)
+
+    # Migrating TestHub's inheritance duplicates the middle's Node vertex (same UUID, new labels).
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema_branch.duplicate()
+    hub_schema = candidate_schema.get_node(name="TestHub")
+    candidate_schema.delete(name="TestHub")
+    hub_schema.inherit_from = ["TestGrouping"]
+    candidate_schema.set(name="TestHub", schema=hub_schema)
+
+    migration_at = Timestamp()
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="TestHub"),
+        new_node_schema=hub_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestHub", field_name="inherit_from"),
+    )
+    migration_result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=migration_at), branch=default_branch
+    )
+    assert not migration_result.errors
+    registry.schema.set_schema_branch(name=default_branch.name, schema=candidate_schema)
+
+    plan = _build_plan(db=db, branch=default_branch, source=source, destination=target, max_depth=3)
+    executor = build_path_traversal_executor(db=db, branch=default_branch, default_branch_name=default_branch.name)
+    result = await executor.run(
+        plan=plan, source_id=source.id, max_paths=10, shortest_paths_only=False, at=migration_at
+    )
+
+    assert [_path_signature(path) for path in result.paths] == [(2, (middle.id, target.id))]
+
+
+async def test_exhaustive_truncates_when_joined_tier_exceeds_cap(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    bowtie_graph: BowtieGraph,
+) -> None:
+    """The joined tier is capped independently of the per-half sets.
+
+    Every depth-4 route funnels through the single hub, so the tier joins 3 left halves with 3
+    right halves into 3x3 = 9 candidates. With ``exhaustive_half_cap=5`` each half set (3) is under
+    the cap, yet the 9-way join is over it, so the search truncates at depth 4 with no shallower
+    route to return. A high cap returns all 9 loopless paths without truncation.
+    """
+    graph = bowtie_graph
+    plan = _build_plan(db=db, branch=default_branch, source=graph.source, destination=graph.destination, max_depth=4)
+    assert not plan.is_empty
+
+    capped = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, exhaustive_half_cap=5
+    )
+    result = await capped.run(plan=plan, source_id=graph.source.id, max_paths=20, shortest_paths_only=False)
+    assert result.paths == []
+    assert result.truncated_at_depth == 4
+
+    uncapped = build_path_traversal_executor(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, exhaustive_half_cap=100
+    )
+    full = await uncapped.run(plan=plan, source_id=graph.source.id, max_paths=20, shortest_paths_only=False)
+    assert full.truncated_at_depth is None
+    assert len(full.paths) == 9
+    for path in full.paths:
+        assert path.depth == 4
+        uuids = _path_node_uuids(path)
+        assert len(uuids) == len(set(uuids)), f"non-simple path returned: {uuids}"
 
 
 async def test_exhaustive_truncates_and_reports_depth_on_query_timeout(

@@ -179,42 +179,48 @@ deleted/reopened; the `updated_at >= merge_at` filter excludes already-restored 
 
 **New file**: `backend/infrahub/core/merge/failure_recovery.py`
 
-A DI component (constructor-injected collaborators) with two entry points:
+A DI component (constructor-injected collaborators). Detection (this increment) exposes a single
+entry point `scan`; recovery (PR-5) adds `recover` and injects a `diff_merger` for the range
+rollback.
 
 ```python
 class MergeFailureRecovery:
     def __init__(
         self,
         db: InfrahubDatabase,
-        diff_merger: DiffMerger,       # owns the range rollback query (no get_affected_node_uuids needed)
-        cache: InfrahubCache,          # merge:protected key set/update/delete; read the lock-holder token
-        component: InfrahubComponent,  # list_workers() -> active-worker set for the liveness predicate
-        merge_locker: MergeLocker,     # read-side helper: current merge-lock holder worker_id (or None)
+        cache: InfrahubCache,                    # read the merge-lock holder token
+        component: InfrahubComponent,            # list_workers() -> active-worker set for the liveness check
+        merge_write_blocker: MergeWriteBlocker,  # owns the merge:protected key (set/get/delete)
+        # recovery (PR-5) additionally injects: diff_merger: DiffMerger (the range rollback query)
     ) -> None: ...
 
-    async def detect_and_mark(self) -> str | None:
-        """Evaluate the failed-merge predicate and, if matched, transition the
-        branch MERGING -> MERGE_FAILED (preserving merge_started_at) and update
-        the merge:protected cache key to '{branch}::MERGE_FAILED'.
-        Idempotent. Returns the branch name marked failed, or None.
+    async def scan(self) -> str | None:
+        """Detect a dead merge and reconcile the protection key, in one pass. Idempotent.
+        Returns the branch flagged failed this pass, or None.
 
-        Predicate: status == MERGING AND the MergeLocker 'all_branches' lock is
-        PRESENT AND its token worker_id is not in the active-worker set AND
-        (now - merge_started_at) > grace_period. The lock must be present (a dead
-        worker cannot release it, so a real failure leaves it present); an ABSENT
-        lock is not auto-flagged, because absence is ambiguous (a cache flush
-        during a live merge would otherwise false-positive). A branch whose lock
-        holder is active, or whose merge is younger than the grace period, is
-        healthy in-progress and left untouched. The grace period (small,
-        configurable, default ~2-3 min) absorbs a transient heartbeat-write blip.
+        _detect_and_mark: if a MERGING branch's merge is dead, transition it
+        MERGING -> MERGE_FAILED (preserving merge_started_at) and update the
+        merge:protected key to '{branch}::MERGE_FAILED'.
+        _reconcile_protection_key: re-align the merge:protected key with the durable
+        MERGING/MERGE_FAILED branch status (a single multi-status query) so it
+        self-heals after a restart or cache flush.
+
+        A merge is dead when: status == MERGING AND the 'all_branches' merge lock is
+        HELD by a worker_id not in the active-worker set AND (now - merge_started_at)
+        > grace_period. The lock must be held (a dead worker cannot release it, so a
+        real failure leaves it held); an ABSENT lock is not auto-flagged, because
+        absence is ambiguous (a cache flush during a live merge would otherwise
+        false-positive). A branch whose lock holder is active, or whose merge is
+        younger than the grace period, is healthy in-progress and left untouched. The
+        grace period (configurable, default ~3 min) absorbs a transient heartbeat blip.
         """
 
-    async def recover(self, *, confirmed: bool) -> RecoveryReport:
+    async def recover(self, *, confirmed: bool) -> RecoveryReport:   # PR-5 — not yet implemented
         """Find the failed merge and (when confirmed) recover it.
 
         Detection covers BOTH (FR-016): (i) a branch recorded MERGE_FAILED, and
         (ii) a branch stuck in MERGING whose merge-lock holder is not a live
-        worker (the ambiguous case detect_and_mark deliberately does not flag).
+        worker (the ambiguous case scan deliberately does not flag).
         The human confirmation is what makes acting on (ii) safe. Then:
 
           1. Run the range rollback (§3) over the default branch: reopen edges
@@ -252,18 +258,30 @@ The `outcome` enum (not a free-text `note`) lets the CLI format its own human-re
 lets tests assert on a structured value; the remaining fields carry what to report (branch name, the
 persisted merge timestamp, the associated proposed change if any).
 
-The failed-merge **predicate** is a pure helper (unit-testable without DB), taking
-`(status, lock_token: str | None, active_worker_ids: set[str], merge_started_at: Timestamp | None,
-now: Timestamp, grace_period: Duration)` → `bool`. Both `detect_and_mark` and the on-write/on-merge
-fast paths call it.
+The failed-merge **predicate** `is_failed_merge` is a side-effect-free method on the component
+(unit-testable without a DB), taking `(status, lock_holder_worker_id: str | None,
+active_worker_ids: set[str], merge_started_at: Timestamp | None, now: Timestamp,
+grace_period_seconds: int)` → `bool`. It does no parsing: the lock-holder worker id is read via
+`merge_locker.get_merge_lock_holder_worker_id(cache)`, which parses the token with
+`lock.get_worker_id_from_lock_token` (the token format lives beside the lock). An optional on-write/
+on-merge escalation could call the same predicate, but the block does not depend on it and it is not
+implemented in this increment.
 
 **Detection callers**:
 
-- Recurring scan flow (new) — see §8.
-- `backend/infrahub/core/initialization.py`, after `initialize_registry()` (runs on both API server
-  and git-agent startup).
-- Write gate (§5) when a default-branch write finds a branch in `MERGING`.
-- Merge/rebase gate (§5) before starting a new operation.
+- Recurring scan flow (new, the `MERGE_WATCHER` Prefect cron that runs on the task workers) — see §8.
+  This is the continuous, authoritative detector.
+- **API server startup**: a best-effort `detect_failed_merge_on_startup` call from the API server
+  entry point (`backend/infrahub/server.py`), right after `initialization()`, for immediate
+  detection on a full-stack restart rather than waiting up to one scan interval. It is *not* wired
+  into `initialization()` itself (which is also called by offline CLI/migration paths that have no
+  `service`) nor into the `git-agent` entry point: the git-agent is a hidden/legacy command that
+  runs no flows and requires the API server to be up anyway, so the API-server startup check plus the
+  recurring cron already cover it.
+- Write gate (§5) when a default-branch write finds a branch in `MERGING` — optional fast-path
+  escalation (FR-011b); the block does not depend on it, so it can be added later without changing
+  behavior.
+- Merge/rebase gate (§5) before starting a new operation — same optional escalation.
 
 **Recovery caller**: the `infrahub recover` CLI command (§7).
 
@@ -400,8 +418,9 @@ MERGE_WATCHER = WorkflowDefinition(
 
 `setup_deployments()` (`backend/infrahub/workflows/initialization.py`) iterates `get_workflows()`
 and creates the cron deployment automatically once `MERGE_WATCHER` is in `WORKFLOWS`. The flow calls
-`MergeFailureRecovery.detect_and_mark()`. `concurrency_limit=1` + `CANCEL_NEW` single-flights it
-across workers (same guarantee as `clean-up-deadlocks`).
+`scan_for_failed_merges(db, service)`, which runs `MergeFailureRecovery.scan()` (detect + reconcile).
+`concurrency_limit=1` + `CANCEL_NEW` single-flights it across workers (same guarantee as
+`clean-up-deadlocks`).
 
 ## 9. Logging events
 
@@ -415,7 +434,7 @@ downstream automation, but that is out of scope here and recovery must not depen
 
 | Log event | Where | Fields |
 |-------|-------|--------|
-| `merge.failure.detected` | `MergeFailureRecovery.detect_and_mark` (task worker) | `branch`, `merge_started_at`, `proposed_change`, `worker_id`, `source` |
+| `merge.failure.detected` | `MergeFailureRecovery` detection (task worker) | `branch`, `merge_started_at`, `proposed_change`, `worker_id`, `source` |
 | `merge.recovery.started` | `MergeFailureRecovery.recover` (CLI) | `branch`, `merge_started_at`, `proposed_change` |
 | `merge.recovery.completed` | `MergeFailureRecovery.recover` (CLI) | `branch`, `proposed_change`, `duration_ms` |
 | `merge.recovery.failed` | `MergeFailureRecovery.recover` (CLI) | `branch`, `error` |

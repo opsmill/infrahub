@@ -421,6 +421,7 @@ enum BranchRelativePermissionDecision {
 enum BranchStatus {
   DELETING
   MERGED
+  MERGE_FAILED
   MERGING
   NEED_REBASE
   NEED_UPGRADE_REBASE
@@ -7513,6 +7514,17 @@ input CoreWeightedPoolResourceUpdateInput {
 }
 
 """
+Semantic date-format keys. The stored date_format is one of these keys (not a rendering pattern); each client maps the key to its own formatter. Single source of truth for the value on Preference.date_format.
+"""
+enum DateFormat {
+  EU_DATETIME
+  ISO_8601
+  ISO_DATETIME
+  ISO_DATETIME_SECONDS
+  US_12H
+}
+
+"""
 The `DateTime` scalar type represents a DateTime
 value as specified by
 [iso8601](https://en.wikipedia.org/wiki/ISO_8601).
@@ -8296,6 +8308,32 @@ type EdgedProfileIpamNamespace {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""
+An effective `date_format` value and the source it was resolved from.
+
+`value` is a DateFormat key, or null when nothing is set.
+"""
+type EffectiveDateFormat {
+  source: PreferenceSource!
+  value: DateFormat
+}
+
+"""
+The caller's resolved preferences (user → global → default) as typed, self-describing fields.
+"""
+type EffectivePreferencesType {
+  date_format: EffectiveDateFormat!
+  timezone: EffectiveTimezone!
+}
+
+"""
+An effective `timezone`: the resolved IANA name (null when nothing is set) and its source.
+"""
+type EffectiveTimezone {
+  source: PreferenceSource!
+  value: String
+}
+
 interface EventNodeInterface {
   """The account ID that triggered the event."""
   account_id: String
@@ -8837,6 +8875,24 @@ type InfrahubRelationshipMetadata {
   created_by: CoreGenericAccount
   updated_at: DateTime
   updated_by: CoreGenericAccount
+}
+
+"""
+Write preferences for one writable scope, USER or GLOBAL.
+
+scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
+               no account argument, so there is no path to write another user's preferences).
+scope=GLOBAL → the organisation-wide row (owner_id = a fixed sentinel), gated on
+               manage_global_preferences (super admins bypass) checked BEFORE any read.
+
+The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
+is lazily created on first write under a per-owner lock — the only path that ever creates a
+Preference row.
+"""
+type InfrahubSetPreferences {
+  date_format: DateFormat
+  ok: Boolean
+  timezone: String
 }
 
 """Token for User Account"""
@@ -9759,6 +9815,19 @@ type Mutation {
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
   InfrahubRepositoryProcess(data: IdentifierInput!): ProcessRepository
+  """
+  Write preferences for one writable scope, USER or GLOBAL.
+  
+  scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
+                 no account argument, so there is no path to write another user's preferences).
+  scope=GLOBAL → the organisation-wide row (owner_id = a fixed sentinel), gated on
+                 manage_global_preferences (super admins bypass) checked BEFORE any read.
+  
+  The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
+  is lazily created on first write under a per-owner lock — the only path that ever creates a
+  Preference row.
+  """
+  InfrahubSetPreferences(date_format: DateFormat, scope: PreferenceWriteScope!, timezone: String): InfrahubSetPreferences
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
   InfrahubUpdateDisplayLabel(context: ContextInput, data: InfrahubDisplayLabelUpdateInput!): UpdateDisplayLabel
   InfrahubUpdateHFID(context: ContextInput, data: InfrahubHFIDUpdateInput!): UpdateHFID
@@ -12259,6 +12328,23 @@ type PoolUtilization {
   utilization_branches: Float!
   """The overall utilization of the pool isolated to the default branch."""
   utilization_default_branch: Float!
+}
+
+"""
+Where an effective preference value came from: USER = the caller's own override, GLOBAL = the organisation-wide default, DEFAULT = nothing is stored anywhere and the client applies its built-in default.
+"""
+enum PreferenceSource {
+  DEFAULT
+  GLOBAL
+  USER
+}
+
+"""
+Which set of preferences to write: USER for the current user's own preferences, GLOBAL for the organisation-wide defaults.
+"""
+enum PreferenceWriteScope {
+  GLOBAL
+  USER
 }
 
 type ProcessRepository {
@@ -25145,6 +25231,7 @@ type Query {
     """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
     status__value: BranchStatus
   ): InfrahubBranchType!
+  InfrahubEffectivePreferences: EffectivePreferencesType!
   InfrahubEvent(
     """Filter the query to specific accounts"""
     account__ids: [String!]
@@ -25175,6 +25262,7 @@ type Query {
     """Search events until this timestamp, defaults the current time"""
     until: DateTime
   ): Events!
+  InfrahubGlobalPreferences: RawPreferencesType!
   """
   Analyze a GraphQL query string and return a report describing how Infrahub will interpret it.
   """
@@ -25200,6 +25288,7 @@ type Query {
   Return the list of all pending or running tasks that can modify the data, for a given branch
   """
   InfrahubTaskBranchStatus(branch: String): Tasks!
+  InfrahubUserPreferences: RawPreferencesType!
   IpamNamespace(
     any__is_protected: Boolean
     any__owner__id: ID
@@ -25979,6 +26068,17 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedProfileIpamNamespace!
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
+}
+
+"""
+Raw stored preferences for a single scope (USER = the caller's own, GLOBAL = organisation-wide).
+
+Each field is null when nothing is stored for it. Unlike the effective view there is no `source`
+— the scope IS the source.
+"""
+type RawPreferencesType {
+  date_format: DateFormat
+  timezone: String
 }
 
 type ReachableNodeType {

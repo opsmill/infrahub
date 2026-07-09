@@ -21,7 +21,7 @@ const PanelContent = ({ label }: { label: string }) => (
 
 export const Horizontal: Story = {
   render: () => (
-    <div className="h-64 w-[640px] rounded border border-stone-300 overflow-hidden">
+    <div className="h-64 w-[640px] overflow-hidden rounded border border-stone-300">
       <ResizablePanelGroup>
         <ResizablePanel defaultSize={200} minSize={80}>
           <PanelContent label="Left" />
@@ -37,7 +37,7 @@ export const Horizontal: Story = {
 
 export const Vertical: Story = {
   render: () => (
-    <div className="h-64 w-[640px] rounded border border-stone-300 overflow-hidden">
+    <div className="h-64 w-[640px] overflow-hidden rounded border border-stone-300">
       <ResizablePanelGroup orientation="vertical">
         <ResizablePanel defaultSize={120} minSize={40}>
           <PanelContent label="Top" />
@@ -62,7 +62,7 @@ export const Playground: Story = {
     },
   },
   render: (args) => (
-    <div className="h-64 w-[640px] rounded border border-stone-300 overflow-hidden">
+    <div className="h-64 w-[640px] overflow-hidden rounded border border-stone-300">
       <ResizablePanelGroup {...args}>
         <ResizablePanel defaultSize={200} minSize={80}>
           <PanelContent label="Panel A" />

@@ -12,9 +12,11 @@ import redis.asyncio as redis
 from prometheus_client import Histogram
 from redis import UsernamePasswordCredentialProvider
 from redis.asyncio.lock import Lock as GlobalLock
+from redis.exceptions import LockNotOwnedError
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
+from infrahub.log import get_logger
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -22,6 +24,8 @@ if TYPE_CHECKING:
 
     from infrahub.services import InfrahubServices
 
+
+log = get_logger()
 
 registry: InfrahubLockRegistry = None
 
@@ -45,8 +49,28 @@ LOCK_RESERVE_TIME_METRICS = Histogram(
 
 LOCAL_SCHEMA_LOCK = "local.schema"
 GLOBAL_INIT_LOCK = "global.init"
+GLOBAL_TASKMGR_INIT_LOCK = "global.taskmgr.init"
+GLOBAL_WORKER_TASKMGR_INIT_LOCK = "global.worker.taskmgr.init"
 GLOBAL_SCHEMA_LOCK = "global.schema"
 GLOBAL_GRAPH_LOCK = "global.graph"
+GLOBAL_INIT_LOCKS = frozenset({GLOBAL_INIT_LOCK, GLOBAL_TASKMGR_INIT_LOCK, GLOBAL_WORKER_TASKMGR_INIT_LOCK})
+
+_LOCK_TOKEN_SEPARATOR = "::"
+
+
+def get_worker_id_from_lock_token(token: str | None) -> str | None:
+    """Return the worker id from a lock token, or ``None`` if it is absent or malformed.
+
+    A held lock stores a token of the form ``"{timestamp}::{worker_id}"`` (written on acquire). This
+    is the inverse, kept beside the token format so the two stay in sync. ``None`` for a missing or
+    unparseable token means callers never mistake a dropped/garbled lock for one held by a worker.
+    """
+    if not token:
+        return None
+    _, separator, worker_id = token.partition(_LOCK_TOKEN_SEPARATOR)
+    if not separator or not worker_id:
+        return None
+    return worker_id
 
 
 class InfrahubMultiLock:
@@ -129,6 +153,7 @@ class InfrahubLock:
         local: bool | None = None,
         in_multi: bool = False,
         metrics: bool = True,
+        ttl: int | None = None,
     ) -> None:
         self.use_local: bool | None = local
         self.local: LocalLock = None
@@ -141,6 +166,7 @@ class InfrahubLock:
         self.event = asyncio.Event()
         self._recursion_var: ContextVar[int | None] = ContextVar(f"infrahub_lock_recursion_{self.name}", default=None)
         self.metrics = metrics
+        self.ttl: int | None = ttl
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
@@ -148,7 +174,7 @@ class InfrahubLock:
         if self.use_local:
             self.local = LocalLock()
         elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-            self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
+            self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=ttl)
         else:
             self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
 
@@ -211,7 +237,14 @@ class InfrahubLock:
             self.acquire_time = None
 
         if not self.use_local:
-            await self.remote.release()
+            try:
+                await self.remote.release()
+            except LockNotOwnedError:
+                # When a TTL is set the lock may have auto-expired (and possibly been re-acquired by
+                # another worker) before we got here. There is nothing left for us to release.
+                if self.ttl is None:
+                    raise
+                log.warning("Lock expired before it could be released", lock=self.name, ttl=self.ttl)
         else:
             self.local.release()
 
@@ -318,18 +351,22 @@ class InfrahubLockRegistry:
         local: bool | None = None,
         in_multi: bool = False,
         metrics: bool = True,
+        ttl: int | None = None,
     ) -> InfrahubLock:
         lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
+        if ttl is None and lock_name in GLOBAL_INIT_LOCKS:
+            ttl = _init_lock_ttl_seconds()
         if lock_name not in self.locks:
-            self.locks[lock_name] = InfrahubLock(
-                name=lock_name, connection=self.connection, in_multi=in_multi, metrics=metrics
-            )
+            self.locks[lock_name] = self._create_lock(name=lock_name, in_multi=in_multi, metrics=metrics, ttl=ttl)
         return self.locks[lock_name]
 
-    def local_schema_lock(self) -> LocalLock:
+    def _create_lock(self, name: str, in_multi: bool, metrics: bool, ttl: int | None) -> InfrahubLock:
+        return InfrahubLock(name=name, connection=self.connection, in_multi=in_multi, metrics=metrics, ttl=ttl)
+
+    def local_schema_lock(self) -> InfrahubLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)
 
-    def initialization(self) -> LocalLock:
+    def initialization(self) -> InfrahubLock:
         return self.get(name=GLOBAL_INIT_LOCK)
 
     async def local_schema_wait(self) -> None:
@@ -340,6 +377,10 @@ class InfrahubLockRegistry:
 
     def global_graph_lock(self) -> InfrahubMultiLock:
         return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
+
+
+def _init_lock_ttl_seconds() -> int:
+    return config.SETTINGS.cache.init_lock_ttl_mins * 60
 
 
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:

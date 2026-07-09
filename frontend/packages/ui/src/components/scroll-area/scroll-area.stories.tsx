@@ -59,19 +59,19 @@ export const Default: Story = {
   render: () => (
     <div className="flex gap-4">
       <div className="rounded border border-stone-300">
-        <p className="px-3 py-2 font-medium text-stone-700 text-xs">Both</p>
+        <p className="px-3 py-2 text-xs font-medium text-stone-700">Both</p>
         <ScrollArea scrollX scrollY className="h-48 w-64">
           <BothContent />
         </ScrollArea>
       </div>
       <div className="rounded border border-stone-300">
-        <p className="px-3 py-2 font-medium text-stone-700 text-xs">Vertical</p>
+        <p className="px-3 py-2 text-xs font-medium text-stone-700">Vertical</p>
         <ScrollArea className="h-48 w-64">
           <VerticalContent />
         </ScrollArea>
       </div>
       <div className="rounded border border-stone-300">
-        <p className="px-3 py-2 font-medium text-stone-700 text-xs">Horizontal</p>
+        <p className="px-3 py-2 text-xs font-medium text-stone-700">Horizontal</p>
         <ScrollArea scrollX scrollY={false} className="h-48 w-64">
           <HorizontalContent />
         </ScrollArea>

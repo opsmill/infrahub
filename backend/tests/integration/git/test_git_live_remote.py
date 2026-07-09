@@ -163,6 +163,42 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         assert updated.operational_status.value == RepositoryOperationalStatus.ERROR_CRED.value
 
+    async def test_failed_connectivity_check_persists_error_status(
+        self,
+        auth_failure_dataset: dict,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ) -> None:
+        """A failed connectivity check writes an error operational status back to the repository node.
+
+        The check used to report the failure only to the caller, leaving operational_status stuck on
+        its last value, so an unreachable repository kept showing as online.
+        """
+        node_id = auth_failure_dataset["node_id"]
+
+        # Start from a known-good status so the assertion proves the check flipped it.
+        repo_before: CoreRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        repo_before.operational_status.value = RepositoryOperationalStatus.ONLINE.value
+        await repo_before.save(db=db)
+
+        query = """
+        mutation InfrahubRepositoryConnectivity($id: String!) {
+            InfrahubRepositoryConnectivity(data: {id: $id}) {
+                ok
+                message
+            }
+        }
+        """
+        result = await client.execute_graphql(query=query, variables={"id": node_id})
+        assert result["InfrahubRepositoryConnectivity"]["ok"] is False
+
+        repo_after: CoreRepository = await NodeManager.get_one(
+            db=db, id=node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert repo_after.operational_status.value == RepositoryOperationalStatus.ERROR_CRED.value
+
     async def test_push_rejected_non_fast_forward(
         self,
         push_rejection_dataset: dict,

@@ -38,6 +38,8 @@ python_sdk/dist/*
 
 # Generated files
 /.generated/
+# hatch-vcs version file (written at build time; must not be tracked)
+backend/infrahub/_version.py
 query_performance_results/
 sync/dist/
 helm/charts/
@@ -54,3 +56,4 @@ schema/node_modules/*
 .claude/worktrees/
 .bug-analysis-*.md
 .specify/**/.cache/
+.specify/feature.json

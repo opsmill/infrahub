@@ -676,6 +676,16 @@ CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     default_priority=WorkflowPriority.HIGH,
 )
 
+MERGE_WATCHER = WorkflowDefinition(
+    name="merge-watcher",
+    type=WorkflowType.INTERNAL,
+    cron="* * * * *",
+    module="infrahub.tasks.merge_watcher",
+    function="detect_failed_merges",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+)
+
 
 WORKER_POOLS = [INFRAHUB_WORKER_POOL]
 
@@ -728,6 +738,7 @@ WORKFLOWS = [
     HFID_SETUP,
     HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
+    MERGE_WATCHER,
     PROFILE_REFRESH,
     PROFILE_REFRESH_MULTIPLE,
     PROFILE_REFRESH_PROCESS,
