@@ -63,7 +63,7 @@ When a delivery fails, the operator sees a short, classified reason (for example
 
 ### User Story 3 - Retry a delivery (Priority: P3)
 
-An operator retrys a settled delivery. The retry replays the original frozen payload against the webhook's current configuration, producing a new delivery with a freshly computed signature. Retry is available on any delivery that has reached a terminal state — including one that previously succeeded — so an operator can re-deliver an event on demand (for example after fixing a downstream system, or to re-trigger a handler during integration testing). Retry is not available while a delivery is still in progress or auto-retrying, because that would race the pending attempt and double-send.
+An operator retries a settled delivery. The retry replays the original frozen payload against the webhook's current configuration, producing a new delivery with a freshly computed signature. Retry is available on any delivery that has reached a terminal state — including one that previously succeeded — so an operator can re-deliver an event on demand (for example after fixing a downstream system, or to re-trigger a handler during integration testing). Retry is not available while a delivery is still in progress or auto-retrying, because that would race the pending attempt and double-send.
 
 **Why this priority**: Retry is the long-standing recovery gap: today the only way to retry is to re-create the original event, which is impossible once the source node is gone. It depends on the delivery record (US1) existing to retry from. Allowing retry from any terminal state — not only failures — lets operators re-deliver and test on demand.
 
@@ -71,11 +71,11 @@ An operator retrys a settled delivery. The retry replays the original frozen pay
 
 **Acceptance Scenarios**:
 
-1. **Given** a failed delivery whose target is now reachable, **When** the operator retrys it and confirms, **Then** a new delivery is created with the same payload and a fresh signature, and it succeeds.
-2. **Given** a delivery that succeeded, **When** the operator retrys it, **Then** the confirmation calls out that this re-delivers an already-processed event, and on confirming, a new delivery is created and delivered.
+1. **Given** a failed delivery whose target is now reachable, **When** the operator retries it and confirms, **Then** a new delivery is created with the same payload and a fresh signature, and it succeeds.
+2. **Given** a delivery that succeeded, **When** the operator retries it, **Then** the confirmation calls out that this re-delivers an already-processed event, and on confirming, a new delivery is created and delivered.
 3. **Given** a delivery still in progress or awaiting an auto-retry, **When** the operator views it, **Then** the retry action is unavailable with a reason indicating the delivery is still in progress.
 4. **Given** a delivery whose original run has aged out of the retention window, **When** the operator attempts to retry, **Then** the system reports the delivery as no longer available rather than producing a broken retry.
-5. **Given** a delivery whose webhook configuration no longer resolves (the webhook was deleted), **When** the operator retrys, **Then** the retried delivery is created and fails at runtime with a clear configuration-class reason.
+5. **Given** a delivery whose webhook configuration no longer resolves (the webhook was deleted), **When** the operator retries, **Then** the retried delivery is created and fails at runtime with a clear configuration-class reason.
 6. **Given** the original delivery, **When** it is resent, **Then** the original record is left unchanged as an immutable record and the retry appears as a new delivery.
 
 ---
