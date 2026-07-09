@@ -1,6 +1,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { useGlobalPermission } from "@/entities/permission/ui/queries/use-global-permission";
 import type { GlobalPreferences } from "@/entities/preferences/domain/model/preference";
 import { getGlobalPreferences } from "@/entities/preferences/domain/use-cases/get-global-preferences";
@@ -50,6 +51,13 @@ describe("TabOrganisationDefaults", () => {
 
     await expect.element(component.getByText("You can't access this view")).toBeVisible();
     expect(component.getByRole("button", { name: "Save" }).elements()).toHaveLength(0);
+  });
+
+  test("gates on the manage_global_preferences permission action", async () => {
+    await render(<TabOrganisationDefaults />);
+
+    // Pin the exact action so gating on the wrong (or no) global permission can't pass silently.
+    expect(useGlobalPermission).toHaveBeenCalledWith(MANAGE_GLOBAL_PREFERENCES);
   });
 
   test("uses the global card title", async () => {
