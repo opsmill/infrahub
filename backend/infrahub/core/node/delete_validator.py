@@ -82,7 +82,7 @@ class NodeDeleteIndex:
         for kind in cascade_kinds:
             start_schema_kinds.add(kind)
             schema = self._all_schemas_map[kind]
-            if isinstance(schema, NodeSchema):
+            if isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema)):
                 start_schema_kinds.update(schema.inherit_from)
         for node_schema in self._all_schemas_map.values():
             for relationship_schema in node_schema.relationships:
