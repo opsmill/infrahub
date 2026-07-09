@@ -51,7 +51,7 @@ Confirm per-attempt progress is visible in the delivery **logs**, and the final 
 
 GraphQL check:
 ```graphql
-mutation { InfrahubTaskRetry(data: {id: "<run-id>"}) { ok task { id state } } }
+mutation { InfrahubTaskRetry(data: {id: "<run-id>"}) { ok task { id } } }
 ```
 
 ## US4 — Cancel an in-progress delivery (P4)
@@ -63,7 +63,7 @@ mutation { InfrahubTaskRetry(data: {id: "<run-id>"}) { ok task { id state } } }
 
 GraphQL check:
 ```graphql
-mutation { InfrahubTaskCancel(data: {id: "<run-id>"}) { ok task { id state } } }
+mutation { InfrahubTaskCancel(data: {id: "<run-id>"}) { ok task { id } } }
 ```
 
 ## Authorization
