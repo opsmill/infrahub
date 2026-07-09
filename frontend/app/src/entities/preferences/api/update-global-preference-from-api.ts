@@ -22,7 +22,7 @@ export interface UpdateGlobalPreferenceFromApiParams {
 }
 
 /**
- * Update the organisation-wide singleton (IFC-2720). Backend-gated on
+ * Update the organisation-wide singleton. Backend-gated on
  * `manage_global_preferences`; there is no id argument (the row is a singleton
  * lazily materialised by the resolver). Passing explicit `null` for a field clears
  * it; omitting a field leaves the stored value unchanged.

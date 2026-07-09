@@ -22,7 +22,7 @@ export interface ResolvedPreference {
 }
 
 /**
- * The effective-preferences view (IFC-2720). Backed by the
+ * The effective-preferences view. Backed by the
  * `InfrahubEffectivePreferences` query: each field is resolved (value + source)
  * so consumers know where the value comes from. The raw organisation defaults are
  * NOT part of this view — the org-defaults editor reads them via

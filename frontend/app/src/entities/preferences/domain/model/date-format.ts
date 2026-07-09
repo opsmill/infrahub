@@ -1,4 +1,4 @@
-// Curated date-format presets (IFC-2720). The STORED value is a semantic key (e.g. "ISO_DATETIME"),
+// Curated date-format presets. The STORED value is a semantic key (e.g. "ISO_DATETIME"),
 // validated backend-side by the `DateFormat` GraphQL enum — it is NOT a date-fns pattern. Each
 // client maps the key to its own renderer; here we map key -> date-fns pattern for the dropdown's
 // live example (and, later, DateDisplay). The key set mirrors the backend exactly

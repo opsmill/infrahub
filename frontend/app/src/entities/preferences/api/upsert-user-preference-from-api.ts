@@ -26,7 +26,7 @@ export interface UpsertUserPreferenceFromApiParams {
 }
 
 /**
- * Upsert the caller's OWN preference row (IFC-2720). The mutation never carries
+ * Upsert the caller's OWN preference row. The mutation never carries
  * an account argument — the backend resolves the calling account from the
  * session and lazily creates the row on first write. Passing explicit `null`
  * for a field resets it to the global default; omitting a field leaves it
