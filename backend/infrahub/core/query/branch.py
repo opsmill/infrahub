@@ -208,6 +208,11 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
             self._branch_filter_params[param_name] = self.branch_filters.status.value
             conditions.append(f"n.status = ${param_name}")
 
+        if self.branch_filters.statuses:
+            param_name = "filter_statuses"
+            self._branch_filter_params[param_name] = [status.value for status in self.branch_filters.statuses]
+            conditions.append(f"n.status IN ${param_name}")
+
         if self.branch_filters.created_by_id:
             param_name = "filter_created_by"
             self._branch_filter_params[param_name] = self.branch_filters.created_by_id

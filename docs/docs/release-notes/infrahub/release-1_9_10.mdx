@@ -1,0 +1,26 @@
+---
+title: Release 1.9.10
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.9.10</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>July 7th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.9.10](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.9.10)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Fixed the branch merge rollback so that a database error (such as an out-of-memory error) raised
+  partway through the merge queries no longer leaves partially merged data on the destination
+  branch. The rollback now removes every change stamped with the merge timestamp even when the
+  failure occurred before the merge finished writing all of its batches.

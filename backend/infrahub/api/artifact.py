@@ -25,6 +25,7 @@ from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
+from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
@@ -113,5 +114,8 @@ async def generate_artifact(
     )
 
     await service.workflow.submit_workflow(
-        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": model}
+        workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+        context=context,
+        parameters={"model": model},
+        priority=WorkflowPriority.HIGH,
     )

@@ -12,6 +12,7 @@ from infrahub.workflows.initialization import setup_task_manager, setup_task_man
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
+from .priority import prepare_dispatch
 
 if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
     from infrahub.tls.registry import TlsContextRegistry
+    from infrahub.workflows.constants import WorkflowPriority
     from infrahub.workflows.models import WorkflowDefinition
 
 
@@ -36,7 +38,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
 
     @staticmethod
     async def _setup_task_manager() -> None:
-        async with lock.registry.get(name="global.worker.taskmgr.init"):
+        async with lock.registry.get(name=lock.GLOBAL_WORKER_TASKMGR_INIT_LOCK):
             await setup_task_manager()
 
     @overload
@@ -47,6 +49,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        priority: WorkflowPriority | None = ...,
     ) -> Return: ...
 
     @overload
@@ -57,6 +60,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        priority: WorkflowPriority | None = ...,
     ) -> Any: ...
 
     # TODO Make expected_return mandatory and remove above overloads.
@@ -67,13 +71,19 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
-        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
+        dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
+        inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
         response: FlowRun = await run_deployment(
-            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags
+            name=workflow.full_name,
+            poll_interval=1,
+            parameters=parameters or {},
+            tags=tags,
+            work_queue_name=work_queue_name,
         )  # type: ignore[misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
@@ -89,14 +99,22 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
     ) -> WorkflowInfo:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
-        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
+        dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
+        inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
 
         tls_insecure = config.SETTINGS.http.tls_insecure
         tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
         tls_context = self._tls_registry.get(insecure=tls_insecure, ca_bundle=tls_ca_bundle)
         async with AsyncClientContext(httpx_settings={"verify": tls_context}):
-            flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[misc]
+            flow_run = await run_deployment(
+                name=workflow.full_name,
+                timeout=0,
+                parameters=parameters or {},
+                tags=tags,
+                work_queue_name=work_queue_name,
+            )  # type: ignore[misc]
         return WorkflowInfo.from_flow(flow_run=flow_run)

@@ -9,6 +9,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_enricher import ConflictsEnricher
 from infrahub.core.diff.model.path import EnrichedDiffConflict, EnrichedDiffRoot
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -34,7 +35,7 @@ class TestConflictsEnricher:
     async def __call_system_under_test(
         self, db: InfrahubDatabase, base_enriched_diff: EnrichedDiffRoot, branch_enriched_diff: EnrichedDiffRoot
     ) -> None:
-        conflicts_enricher = ConflictsEnricher()
+        conflicts_enricher = ConflictsEnricher(db=db)
         return await conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=base_enriched_diff, branch_diff_root=branch_enriched_diff
         )
@@ -843,6 +844,170 @@ class TestConflictsEnricher:
 
         for node in branch_root.nodes:
             assert node.conflict is None
+
+    def _build_value_conflict_roots(
+        self,
+        *,
+        node_kind: str,
+        attribute_name: str,
+        base_value: str,
+        branch_value: str,
+    ) -> tuple[EnrichedDiffRoot, EnrichedDiffRoot, str]:
+        """Two single-attribute diff roots that both UPDATE the same node's list attribute value."""
+        node_uuid = str(uuid4())
+
+        def _make_root(value: str) -> EnrichedDiffRoot:
+            value_property = EnrichedPropertyFactory.build(
+                property_type=DatabaseEdgeType.HAS_VALUE,
+                action=DiffAction.UPDATED,
+                new_value=value,
+            )
+            attribute = EnrichedAttributeFactory.build(
+                name=attribute_name,
+                action=DiffAction.UPDATED,
+                properties={value_property},
+            )
+            node = EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                attributes={attribute},
+                relationships=set(),
+            )
+            return EnrichedRootFactory.build(nodes={node}, base_branch_name="main", diff_branch_name="main")
+
+        return _make_root(base_value), _make_root(branch_value), node_uuid
+
+    @staticmethod
+    def _get_value_conflict(root: EnrichedDiffRoot, node_uuid: str, attribute_name: str) -> EnrichedDiffConflict | None:
+        for node in root.nodes:
+            if node.uuid != node_uuid:
+                continue
+            for attribute in node.attributes:
+                if attribute.name != attribute_name:
+                    continue
+                for prop in attribute.properties:
+                    if prop.property_type is DatabaseEdgeType.HAS_VALUE:
+                        return prop.conflict
+        return None
+
+    async def test_ordered_false_reordered_list_no_conflict(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        # SchemaAttribute.choices ships with ordered=False, so a pure reorder is not a conflict
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind="SchemaAttribute",
+            attribute_name="choices",
+            base_value='["a", "b", "c"]',
+            branch_value='["c", "a", "b"]',
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "choices") is None
+
+    async def test_ordered_false_content_change_still_conflicts(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind="SchemaAttribute",
+            attribute_name="choices",
+            base_value='["a", "b"]',
+            branch_value='["a", "b", "c"]',
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "choices") is not None
+
+    async def test_ordered_false_duplicate_count_still_conflicts(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        # multiset semantics: differing element multiplicity is a real change, not a reorder
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind="SchemaAttribute",
+            attribute_name="choices",
+            base_value='["a", "a", "b"]',
+            branch_value='["a", "b"]',
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "choices") is not None
+
+    async def test_ordered_true_reordered_list_still_conflicts(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        # SchemaNode.order_by is ordered (default True), so a reorder remains a conflict
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind="SchemaNode",
+            attribute_name="order_by",
+            base_value='["a", "b"]',
+            branch_value='["b", "a"]',
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "order_by") is not None
+
+    @staticmethod
+    def _register_unordered_json_schema(schema_branch: SchemaBranch) -> None:
+        """Register a node kind holding a JSON attribute with ordered=False."""
+        node_schema = NodeSchema(
+            name="Widget",
+            namespace="Testing",
+            attributes=[AttributeSchema(name="config", kind="JSON", optional=True, ordered=False)],
+        )
+        schema_branch.set(name="TestingWidget", schema=node_schema)
+
+    async def test_ordered_false_json_reordered_array_no_conflict(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        self._register_unordered_json_schema(schema_branch=register_core_models_schema)
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind="TestingWidget",
+            attribute_name="config",
+            base_value='["a", "b", "c"]',
+            branch_value='["c", "a", "b"]',
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "config") is None
+
+    async def test_ordered_false_json_nested_object_change_still_conflicts(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        # elements are compared whole: a changed value inside one nested object is a real
+        # difference even when the other elements match and the order differs
+        self._register_unordered_json_schema(schema_branch=register_core_models_schema)
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind="TestingWidget",
+            attribute_name="config",
+            base_value='[{"a": 1}, {"b": 2}]',
+            branch_value='[{"b": 2}, {"a": 2}]',
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "config") is not None
+
+    async def test_ordered_false_json_dict_value_still_conflicts(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    ) -> None:
+        # a top-level JSON object is not a reorderable collection, so equivalent dicts serialized
+        # with different key order fall back to exact comparison and remain a conflict
+        self._register_unordered_json_schema(schema_branch=register_core_models_schema)
+        base_root, branch_root, node_uuid = self._build_value_conflict_roots(
+            node_kind="TestingWidget",
+            attribute_name="config",
+            base_value='{"a": 1, "b": 2}',
+            branch_value='{"b": 2, "a": 1}',
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert self._get_value_conflict(branch_root, node_uuid, "config") is not None
 
     async def test_manually_fixed_node_conflict_cleared(self, db: InfrahubDatabase) -> None:
         node_uuid = str(uuid4())

@@ -568,9 +568,12 @@ class DiffQueryParser:
         return diff_node
 
     def _get_relationship_schema(self, database_path: DatabasePath) -> RelationshipSchema | None:
+        # Prefer the schema on the path's own branch, then fall back to the other branches
+        # in case the schema was deleted on this branch
         branches_to_check = [database_path.deepest_branch]
-        if database_path.deepest_branch == self.diff_branch_name:
-            branches_to_check.append(self.base_branch_name)
+        for fallback_branch in (self.diff_branch_name, self.base_branch_name):
+            if fallback_branch not in branches_to_check:
+                branches_to_check.append(fallback_branch)
         for schema_branch_name in branches_to_check:
             try:
                 node_schema = self.schema_manager.get(

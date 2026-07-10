@@ -928,7 +928,10 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
     workflow = get_workflow()
     checks_coroutines = [
         workflow.execute_workflow(
-            workflow=GIT_REPOSITORY_USER_CHECK_RUN, parameters={"model": model}, expected_return=ValidatorConclusion
+            workflow=GIT_REPOSITORY_USER_CHECK_RUN,
+            context=context,
+            parameters={"model": model},
+            expected_return=ValidatorConclusion,
         )
         for model in check_models
     ]
@@ -1040,6 +1043,7 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
 
     check_coroutine = get_workflow().execute_workflow(
         workflow=GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
+        context=context,
         parameters={"model": check_merge_conflict_model},
         expected_return=ValidatorConclusion,
     )

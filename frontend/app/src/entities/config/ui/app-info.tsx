@@ -6,7 +6,7 @@ import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
 
 export function AppInfo() {
   return (
-    <div className="inline-flex w-full items-center justify-end text-gray-400 text-xs">
+    <div className="inline-flex w-full items-center justify-end text-stone-400 text-xs">
       Infrahub - <AppInstallationType /> - <AppVersion />
     </div>
   );

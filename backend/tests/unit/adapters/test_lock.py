@@ -1,5 +1,11 @@
-from infrahub import lock
-from infrahub.lock import GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK, LOCAL_SCHEMA_LOCK
+from infrahub import config, lock
+from infrahub.lock import (
+    GLOBAL_GRAPH_LOCK,
+    GLOBAL_INIT_LOCK,
+    GLOBAL_SCHEMA_LOCK,
+    GLOBAL_TASKMGR_INIT_LOCK,
+    LOCAL_SCHEMA_LOCK,
+)
 from tests.adapters.lock import LockAction, LockTimeline, RecordingLockRegistry
 
 
@@ -60,3 +66,13 @@ async def test_fixture_swaps_registry_and_exposes_timeline(recording_lock_timeli
     assert isinstance(recording_lock_timeline, LockTimeline)
     assert isinstance(lock.registry, RecordingLockRegistry)
     assert lock.registry.timeline is recording_lock_timeline
+
+
+async def test_recording_registry_applies_init_lock_ttl(recording_lock_timeline: LockTimeline) -> None:
+    # The recording registry must resolve TTLs the same way production does, otherwise init locks
+    # would silently behave differently under test than they do at runtime.
+    expected_ttl = config.SETTINGS.cache.init_lock_ttl_mins * 60
+
+    assert lock.registry.get(name=GLOBAL_INIT_LOCK).ttl == expected_ttl
+    assert lock.registry.get(name=GLOBAL_TASKMGR_INIT_LOCK).ttl == expected_ttl
+    assert lock.registry.get(name="repo-a", namespace="repository").ttl is None

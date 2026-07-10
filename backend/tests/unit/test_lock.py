@@ -1,8 +1,39 @@
 import operator
 import time
 from asyncio import gather, sleep
+from dataclasses import dataclass
 
-from infrahub import lock
+import pytest
+
+from infrahub import config, lock
+from infrahub.config import CacheSettings
+from infrahub.lock import (
+    GLOBAL_TASKMGR_INIT_LOCK,
+    GLOBAL_WORKER_TASKMGR_INIT_LOCK,
+    InfrahubLockRegistry,
+    get_worker_id_from_lock_token,
+)
+
+
+@dataclass
+class LockTokenCase:
+    name: str
+    token: str | None
+    expected: str | None
+
+
+LOCK_TOKEN_CASES = [
+    LockTokenCase(name="valid", token="2026-01-01T00:00:00.000000Z::worker-7", expected="worker-7"),
+    LockTokenCase(name="none", token=None, expected=None),
+    LockTokenCase(name="empty", token="", expected=None),
+    LockTokenCase(name="no-separator", token="no-separator", expected=None),
+    LockTokenCase(name="empty-worker-id", token="2026-01-01T00:00:00.000000Z::", expected=None),
+]
+
+
+@pytest.mark.parametrize("case", LOCK_TOKEN_CASES, ids=[c.name for c in LOCK_TOKEN_CASES])
+def test_get_worker_id_from_lock_token(case: LockTokenCase) -> None:
+    assert get_worker_id_from_lock_token(case.token) == case.expected
 
 
 async def do_nothing(id: str, wait_sec: float, lock_name: str = "test1") -> tuple[str, int, int]:
@@ -76,6 +107,39 @@ def test_unpack_name() -> None:
     assert unpack_name("repository.simple-test.long-name") == ("simple-test.long-name", "repository", None)
     assert unpack_name("local.repository.simple") == ("simple", "repository", True)
     assert unpack_name("global.repository.simple") == ("simple", "repository", False)
+
+
+def test_init_lock_ttl_defaults_to_twenty_minutes() -> None:
+    assert CacheSettings.model_fields["init_lock_ttl_mins"].default == 20
+
+
+async def test_init_locks_carry_configured_ttl() -> None:
+    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
+        pytest.skip("TTL is only enforced with the Redis cache driver")
+
+    registry = InfrahubLockRegistry(local_only=False)
+    expected_ttl = config.SETTINGS.cache.init_lock_ttl_mins * 60
+
+    init_locks = [
+        registry.initialization(),
+        registry.get(name=GLOBAL_TASKMGR_INIT_LOCK),
+        registry.get(name=GLOBAL_WORKER_TASKMGR_INIT_LOCK),
+    ]
+
+    for init_lock in init_locks:
+        assert init_lock.ttl == expected_ttl
+        assert init_lock.remote.timeout == expected_ttl
+
+
+async def test_regular_locks_have_no_ttl() -> None:
+    if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
+        pytest.skip("TTL is only enforced with the Redis cache driver")
+
+    registry = InfrahubLockRegistry(local_only=False)
+    regular_lock = registry.get(name="repo-a", namespace="repository")
+
+    assert regular_lock.ttl is None
+    assert regular_lock.remote.timeout is None
 
 
 async def test_reentrant_lock_allows_nested_acquisitions() -> None:

@@ -11,7 +11,7 @@ export const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
-const avatarVariants = cva("flex items-center justify-center rounded-full", {
+const avatarVariants = cva("flex shrink-0 items-center justify-center rounded-full", {
   variants: {
     variant: {
       primary: "bg-custom-blue-200 text-custom-white",
