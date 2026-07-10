@@ -1,0 +1,255 @@
+# Research: Incremental generator & artifact execution on merge (IFC-2704)
+
+**Date**: 2026-07-10 · **Spec**: [spec.md](./spec.md)
+
+All findings below are verified against the working tree; file:line references are the
+citations for the plan. Where the source epic's framing did not match the code, the
+correction is called out inline.
+
+## Current behavior (the thing being replaced)
+
+`BranchMergeOrchestrator.merge` (`backend/infrahub/core/merge/orchestrator.py:68-177`)
+performs the graph merge, then at `:95-101` loads the enriched diff for changelog
+collection and, at `:146-153`, marks the diff root `is_merged=TRUE` and rewrites its
+tracking id from `branch.{name}` to `frozen.{name}`. It then calls
+`PostMergeDispatcher.run_follow_ups` at `:163`.
+
+`PostMergeDispatcher.run_follow_ups` (`backend/infrahub/core/merge/post_merge.py:58-104`)
+merges repositories first (`:68-71`), then submits several follow-up workflows, last of
+which is `BRANCH_MERGE_POST_PROCESS` (`:100-104`) with parameters
+`{source_branch, target_branch}`.
+
+`post_process_branch_merge` (`backend/infrahub/core/branch/tasks.py:434-478`) — the target
+of that workflow — unconditionally submits two workflows keyed only on the target branch:
+
+- `TRIGGER_ARTIFACT_DEFINITION_GENERATE` → `generate_artifact_definition`
+  (`backend/infrahub/git/tasks.py:495-508`) fetches **all** `CoreArtifactDefinition` and
+  fans out `REQUEST_ARTIFACT_DEFINITION_GENERATE` per definition, no `limit`.
+- `TRIGGER_GENERATOR_DEFINITION_RUN` (`source=MERGE`) → `run_generator_definition`
+  (`backend/infrahub/generators/tasks.py:138-178`) fetches **all** generator definitions,
+  filters only by `execute_after_merge` (`:150-153`), fans out
+  `REQUEST_GENERATOR_DEFINITION_RUN` per definition, no `target_members`.
+
+Both `TRIGGER_*` constants are submitted from **exactly one** production site
+(`branch/tasks.py:450` and `:456`); `BRANCH_MERGE_POST_PROCESS` from exactly one
+(`post_merge.py:102`). Replacing the merge path touches no other caller — confirmed by grep
+(catalogue defs at `backend/infrahub/workflows/catalogue.py:78-91, 274-281`).
+
+## Decision 1 — Capture the diff in the orchestrator, before the freeze
+
+**Decision**: Serialize `branch_diff.nodes` (action != `UNCHANGED`) into the SDK `NodeDiff`
+summary shape inside `BranchMergeOrchestrator.merge`, right after changelog collection
+(`orchestrator.py:~101`) and before `freeze_diffs_for_branch` (`:146-153`).
+
+**Rationale**: Post-merge retrieval is impossible. `get_node_field_summaries`
+(`core/diff/repository/repository.py:588-595`) and its query
+(`core/diff/query/field_summary.py:37-61`) exclude `is_merged=TRUE`; `get_one`
+(`repository.py:224-250`) keyed on `BranchTrackingId` can no longer match after the freeze
+rewrites the tracking id to `frozen.{name}`. The clean source is the live `branch_diff`
+(`EnrichedDiffRoot`, `core/diff/model/path.py:497`) already in hand at merge time.
+
+**Do not source from the changelog collector**: `DiffChangelogCollector.collect_changelogs`
+(`core/changelog/diff.py:231-238`) drops `UNCHANGED` nodes **and** nodes whose only change
+was a conflict resolved to the base branch (`_keep_branch_update`, `diff.py:241-244`, via
+`has_changes`, `core/changelog/models.py:250-251`). Those are real changes for regeneration.
+Source from `branch_diff.nodes` with `action != DiffAction.UNCHANGED` directly.
+
+**Alternatives rejected**: recomputing the diff after merge (returns empty set →
+under-execution, the forbidden failure mode); reusing the changelog node set (narrowed too
+far, same problem).
+
+## Decision 2 — Reuse the proposed-change `NodeDiff` cache shape, merge-scoped key
+
+**Decision**: Store the serialized summary as `list[NodeDiff]` JSON in `InfrahubCache`,
+mirroring `set_diff_summary_cache` (`backend/infrahub/proposed_change/branch_diff.py:133-151`)
+but under a merge-scoped key derived from the **diff-root uuid**
+(`EnrichedDiffRootMetadata.uuid`, `path.py:463`), which is stable across the freeze. Thread
+only that key string through the follow-up chain.
+
+**Rationale**: The whole selection pipeline (`get_modified_kinds`, the predicates,
+`get_field_level_impacted_subscribers`) already consumes exactly this shape. Reusing it means
+the selection logic works unmodified. A direct merge has no proposed change and no pipeline
+id, so the pipeline-id key cannot be reused; the diff-root uuid is stable and unique. Passing
+only the key (not the payload) through Prefect parameters avoids the parameter-size problem.
+TTL mirrors the PC cache (`KVTTL.TWO_HOURS`).
+
+**`NodeDiff` shape** (SDK `python_sdk/infrahub_sdk/diff.py:11-36`):
+`{branch, kind, id, action, display_label, elements[]}`; each element
+`{name, element_type ∈ {ATTRIBUTE, RELATIONSHIP_ONE, RELATIONSHIP_MANY}, action, summary{added,updated,removed}, peers?}`.
+
+**Serialization mapping** (no existing converter — must be written):
+
+| `NodeDiff` field | Source on `EnrichedDiffNode` (`path.py:342-454`) |
+|---|---|
+| `id` | `node.uuid` |
+| `kind` | `node.kind` |
+| `branch` | `branch_diff.diff_branch_name` |
+| `display_label` | `node.label` |
+| `action` | `node.action` (`DiffAction`) → **uppercase name** (`"ADDED"/"UPDATED"/"REMOVED"`) |
+| `elements[]` | `node.attributes` (`element_type="ATTRIBUTE"`) + `node.relationships` (`element_type` from `cardinality`) |
+| `elements[].summary` | `BaseSummary` counts (`num_added/updated/removed`) |
+| `elements[].peers` | `EnrichedDiffRelationship.relationships` (per-peer `EnrichedDiffSingleRelationship`) |
+
+**Uppercase-action trap**: `get_diff_summary` serializes `action` as the GraphQL enum
+**name** (uppercase), while `DiffAction.*.value` is lowercase. Consumers already normalize via
+`_is_triggering_action` → `.lower()` (`proposed_change/tasks.py:1354-1365`). The converter
+MUST emit uppercase names so a fingerprint/definition change reads identically to the PC path.
+
+**Alternatives rejected**: a bespoke merge-only summary model (would fork the predicates);
+keying on a fresh UUID (works, but the diff-root uuid is already unique, stable, and
+meaningful).
+
+## Decision 3 — Thread the cache key through the follow-up chain
+
+**Decision**: `orchestrator.merge` → `run_follow_ups(..., merge_diff_cache_key: str | None)`
+→ `BRANCH_MERGE_POST_PROCESS` parameters `{source_branch, target_branch, merge_diff_cache_key}`
+→ `post_process_branch_merge(..., merge_diff_cache_key: str | None = None)`.
+
+**Rationale**: Only a string crosses the Prefect boundary. `None` (older submissions,
+capture failure) routes to the full-regeneration fallback (Decision 6).
+
+## Decision 4 — Port the PC selection logic into the merge path
+
+**Framing correction**: The PC tasks `run_generators` (`proposed_change/tasks.py:400-505`)
+and `refresh_artifacts` (`:1720-1793`) dispatch `*_CHECK` workflows, and member-level
+narrowing happens **inside** the CHECK flows (`validate_artifacts_generation` `:914-1047`,
+`request_generator_definition_check` `:1251-1351`). The `limit` / `target_members` knobs live
+on the **merge/manual** `*_RUN` / `*_GENERATE` workflows, which the CHECK flows do not use.
+Reuse therefore means: replicate the definition-level gate logic **and** the member-level
+`get_field_level_impacted_subscribers` analysis in the merge path, then translate the result
+into `target_members` (generators) and a new member filter (artifacts).
+
+**Decision**: Add a merge selection routine (new module
+`backend/infrahub/core/merge/selective_regen.py`) that, given the cached `list[NodeDiff]`:
+
+1. **Definition level** — reuse `RegenerationDefinition` (Protocol, `tasks.py:1383-1404`),
+   `DefinitionSelect` (`:1550-1581`), `PredicateOutcome` (`:1368-1380`), and the predicates
+   `_query_changed` (`:1407`), `_definition_changed` (`:1439`), plus the `MODIFIED_KINDS`
+   intersection with `query_models` (generator `:471-476`; artifact `:1764-1776`, with the
+   `Profile`-strip variant). Keep the `execute_after_merge` filter for generators
+   (`generators/tasks.py:150-153`).
+2. **Repo-code signal replaces `_transform_changed`** — `_transform_changed`
+   (`tasks.py:1480-1540`) reads a `ProposedChangeRepository` **file** diff, which does not
+   exist post-merge. It is replaced by the fingerprint-in-diff signal: a transform/query
+   change recomputes the definition's own `fingerprint` at import (IFC-2844 layered
+   composition), so the definition node appears as `UPDATED` in the merge diff and
+   `_definition_changed` already fires — no new predicate needed for the populated-fingerprint
+   case. Plus the null-fingerprint fallback (Decision 6).
+3. **Member level** — reuse `get_field_level_impacted_subscribers` (`tasks.py:790-847`) and
+   `ImpactScope` (`:753-764`): `ALL` → dispatch for all members; `SPECIFIC` → the returned
+   subscriber ids **plus** any new members (see Decision 5); `NONE` → skip the definition.
+
+**Refactor**: `get_field_level_impacted_subscribers` and the predicate functions currently
+resolve the summary internally via `get_diff_summary_cache(pipeline_id=...)`. Generalize them
+to accept a resolved `diff_summary: list[NodeDiff]` (or a cache-key abstraction) so both the
+PC path and the merge path can call them. This is a two-caller extraction, satisfying the
+"serve ≥2 callers" bar in constitution VII.
+
+**Note on `ImpactScope` provenance**: `get_field_level_impacted_subscribers` / `ImpactScope`
+came from commit `efda963be` (field-level data-change scoping), not INFP-409. The invariant
+("over-execution acceptable, under-execution not") is the INFP-409 contribution.
+
+## Decision 5 — Fix the artifact `limit` trap with a member-id filter
+
+**Decision**: Add a `members: list[str]` field (member **node ids**) to
+`RequestArtifactDefinitionGenerate` (`backend/infrahub/git/models.py:19-28`) and consume it in
+`generate_request_artifact_definition` (`backend/infrahub/git/tasks.py:594-598`) mirroring the
+generator's `target_members` semantics (filter on `member.id`). The merge path uses `members`,
+never `limit`.
+
+**Rationale (confirmed trap)**: `limit` is matched against `artifacts_by_member.get(member.id)`
+— the **existing** artifact id, or `None` for a member that has no artifact yet
+(`git/tasks.py:565-568, 594-598`). A non-empty `limit` therefore silently skips brand-new
+members (`None not in limit` → skip) → under-execution. `target_members`
+(`generators/models.py:31-38`, consumed `generators/tasks.py:224-228`) already filters on
+`member.id` and is safe. `members` defaults to empty, so existing `limit`-based callers are
+unaffected.
+
+**Alternatives rejected**: re-keying `limit` on member ids (breaks existing callers);
+force-including new members into `limit` as fake ids (fragile).
+
+## Decision 6 — Fallbacks all point at over-execution
+
+**Decision**: For a given merge, fall back to the current blanket behavior (submit the two
+`TRIGGER_*` workflows) when any of: the flag is off; `merge_diff_cache_key` is `None`; the
+cached summary is missing/unloadable (`ResourceNotFoundError`); or the diff capture failed.
+Additionally, per definition: if a definition's `fingerprint` is null (pre-IFC-2844 data) and
+the merge diff contains a repository **commit change** for that definition's repository, run
+**all** definitions of that repository. If `dependencies_complete` is not `True`, the
+definition is selected (over-execution), matching the PC predicate's safety fallback.
+
+**Rationale**: Direct restatement of the INFP-409 invariant. Every uncertain path regenerates.
+
+## Decision 7 — Generator-output cascade on direct merges (resolves Open Question 1)
+
+**Finding**: For a merge **via a proposed change**, generators ran as checks and their output
+is already committed to the branch, so it appears in `branch_diff` → artifact selection is
+correct. For a **direct merge**, `execute_after_merge` generators run in the follow-up and
+mutate default-branch data **after** the diff was captured; artifacts depending on that output
+are not in the captured diff.
+
+**Decision**: On a **direct merge** (no proposed change) where the selective step dispatches
+**≥1 generator run**, fall back to **full artifact regeneration** for that merge (submit
+`TRIGGER_ARTIFACT_DEFINITION_GENERATE` with no filter). Selective generator dispatch is still
+applied. Proposed-change merges keep full selective artifact behavior.
+
+**Rationale**: Honors the no-under-execution invariant with minimal complexity (constitution
+VII). Precise sequencing (capture generator output, fold into artifact selection) is a future
+optimization, not required for correctness. A validation spike (T-task) will confirm whether
+the existing event-driven machinery already regenerates artifacts on generator-produced data
+mutations; if it does, this fallback can later be narrowed.
+
+**Alternatives rejected**: sequencing artifact selection after generator completion (complex,
+cross-workflow ordering); assuming event machinery covers it without validation (risks
+under-execution).
+
+## Decision 8 — Repo merge ordering / double-trigger (resolves Open Question 2)
+
+**Finding**: `run_follow_ups` merges repositories and re-imports code on the default branch
+**before** submitting `BRANCH_MERGE_POST_PROCESS` (`post_merge.py:68-104`). The re-import
+recomputes fingerprints from content hashes to **identical** values, so it produces no net
+fingerprint change on the default branch and cannot add a second signal. The branch's
+fingerprint change is already captured in `branch_diff` (Decision 1).
+
+**Decision**: No design change. Add an explicit regression test asserting a
+transform-file-change merge triggers regeneration exactly once (no double-trigger from the
+default-branch re-import).
+
+## Decision 9 — Config gate
+
+**Decision**: Add `selective_execution_after_merge: bool = True` to `MainSettings`
+(`backend/infrahub/config.py:183`, mirroring `delete_branch_after_merge` at `:215`). Env var
+`INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`. Read via `config.SETTINGS.main.selective_execution_after_merge`
+inside `post_process_branch_merge`. When `False`, the current blanket path runs unchanged
+(baseline for scale tests, reversible rollout).
+
+**Default rationale**: The fallbacks (Decision 6/7) preserve no-under-execution even when
+enabled, and the originating bug is severe; shipping disabled would leave it unfixed.
+
+**Generated-file impact**: Adding an `INFRAHUB_` setting requires regenerating
+`docker-compose.yml` (`uv run invoke release.gen-config-env --update-docker-file`; CI job
+`validate-docker-compose-env-vars`) and `docs/docs/reference/configuration.mdx`
+(`uv run invoke docs.generate`; CI job `validate-generated-documentation`). Both must be
+committed or CI fails.
+
+## Reused components (no reimplementation)
+
+| Component | Location | Reused for |
+|---|---|---|
+| `RegenerationDefinition` protocol | `proposed_change/tasks.py:1383-1404` | definition-level gate inputs |
+| `DefinitionSelect` / `PredicateOutcome` | `tasks.py:1550-1581`, `:1368-1380` | gate accumulation + logging |
+| `_query_changed` / `_definition_changed` | `tasks.py:1407-1477` | query & definition (+fingerprint) change |
+| `get_modified_kinds` | `proposed_change/branch_diff.py:122-130` | `MODIFIED_KINDS` intersection |
+| `get_field_level_impacted_subscribers` / `ImpactScope` | `tasks.py:790-847`, `:753-764` | member-level narrowing |
+| `only_has_unique_targets` | `graphql/analyzer.py:385-388` | SPECIFIC vs ALL member scope |
+| `set/get_diff_summary_cache` shape | `proposed_change/branch_diff.py:133-151` | cache format |
+| `fingerprint` attribute (branch-aware) | IFC-2844, on the 4 definition kinds | repo-code signal in diff |
+| `dependencies` / `dependencies_complete` | IFC-2738/INFP-409, on transform & generator | over-execution fallback |
+| `execute_after_merge` | `core/schema/definitions/core/generator.py:50-56` | generator merge filter |
+| `RequestGeneratorDefinitionRun.target_members` | `generators/models.py:31-38` | member dispatch (safe) |
+
+## Open items carried to tasks
+
+- Validation spike for Decision 7 (event-driven cascade coverage on direct merges).
+- Confirm no other caller of the artifact `GENERATE` workflow regresses when `members` is
+  added (default-empty preserves behavior; verify by grep + test).
