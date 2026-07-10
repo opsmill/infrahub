@@ -9,9 +9,4 @@ export interface Sort {
   direction: SortDirection;
 }
 
-export interface SortableField {
-  field: SortField;
-  label: string;
-}
-
 export const SORT_DIRECTION = OrderDirection;
