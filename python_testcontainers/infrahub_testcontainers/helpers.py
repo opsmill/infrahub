@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import subprocess  # noqa: S404
 import uuid
@@ -16,6 +17,27 @@ if TYPE_CHECKING:
 from infrahub_testcontainers import __version__ as infrahub_version
 
 from .container import PROJECT_ENV_VARIABLES, InfrahubDockerCompose
+
+
+def _seed_database_from_snapshot(compose: InfrahubDockerCompose) -> None:
+    """Restore the DB snapshot at ``INFRAHUB_TESTING_DB_SNAPSHOT`` into the started database service.
+
+    The Infrahub backend is imported lazily (it is not a dependency of this package) and is only
+    reached when the opt-in env var is set, i.e. from within Infrahub's own backend test suite.
+    """
+    from infrahub.database.snapshot import restore_snapshot_over_bolt  # noqa: PLC0415
+
+    # Only the database service is up at this point, so ask for its port directly rather than
+    # get_services_port() which resolves every (not-yet-started) service.
+    port = compose.get_service_port(service_name="database", port=7687)
+    asyncio.run(
+        restore_snapshot_over_bolt(
+            uri=f"bolt://localhost:{port}",
+            username="neo4j",
+            password="admin",  # noqa: S106
+            snapshot_path=os.environ["INFRAHUB_TESTING_DB_SNAPSHOT"],
+        )
+    )
 
 
 class TestInfrahubDocker:
@@ -104,7 +126,10 @@ class TestInfrahubDocker:
         tests_failed_before_class = request.session.testsfailed
 
         try:
-            infrahub_compose.start()
+            if os.environ.get("INFRAHUB_TESTING_DB_SNAPSHOT"):
+                infrahub_compose.start_with_snapshot(_seed_database_from_snapshot)
+            else:
+                infrahub_compose.start()
         except Exception as exc:
             stdout, stderr = infrahub_compose.get_logs()
             raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc

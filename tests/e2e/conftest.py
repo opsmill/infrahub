@@ -200,6 +200,27 @@ def infrahub_compose_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return directory
 
 
+def _seed_database_from_snapshot(compose: InfrahubDockerCompose) -> None:
+    """Restore the committed DB snapshot into the freshly started database service (host-side).
+
+    Runs before the server is started so the booting server finds an initialized database and
+    skips first-time initialization.
+    """
+    from infrahub.database.snapshot import restore_snapshot_over_bolt
+
+    # Only the database service is up at this point, so ask for its port directly rather than
+    # get_services_port() which resolves every (not-yet-started) service.
+    port = compose.get_service_port(service_name="database", port=7687)
+    asyncio.run(
+        restore_snapshot_over_bolt(
+            uri=f"bolt://localhost:{port}",
+            username="neo4j",
+            password="admin",
+            snapshot_path=os.environ["INFRAHUB_TESTING_DB_SNAPSHOT"],
+        )
+    )
+
+
 @pytest.fixture(scope="session")
 def infrahub_app(
     request: pytest.FixtureRequest,
@@ -213,10 +234,17 @@ def infrahub_app(
     legacy TS suite did). Yields the compose object so dependents can read mapped
     ports (get_services_port) and toggle runtime settings (set_server_response_delay).
     Stays synchronous: compose operations are blocking subprocess calls.
+
+    When ``INFRAHUB_TESTING_DB_SNAPSHOT`` points at a snapshot file, the database is seeded from
+    it before the server starts (skips first-time initialization); otherwise the stack boots
+    normally and runs it.
     """
     compose = InfrahubDockerCompose.init(directory=infrahub_compose_dir, version=infrahub_version)
     try:
-        compose.start()
+        if os.environ.get("INFRAHUB_TESTING_DB_SNAPSHOT"):
+            compose.start_with_snapshot(_seed_database_from_snapshot)
+        else:
+            compose.start()
     except Exception as exc:  # pragma: no cover - surfaced with logs for debugging
         stdout, stderr = compose.get_logs()
         raise RuntimeError(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc

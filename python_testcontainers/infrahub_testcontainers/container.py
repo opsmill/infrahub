@@ -6,6 +6,7 @@ import shutil
 import time
 import urllib.request
 import uuid
+from collections.abc import Callable  # noqa: TC003
 from dataclasses import dataclass, field
 from functools import cached_property
 from http import HTTPStatus
@@ -238,6 +239,21 @@ class InfrahubDockerCompose(DockerCompose):
             with urllib.request.urlopen(probe, timeout=30 + delay):  # noqa: S310 (fixed localhost URL)
                 pass
             consecutive_delayed = consecutive_delayed + 1 if time.monotonic() - start >= delay else 0
+
+    def start_with_snapshot(self, restore_callback: Callable[[InfrahubDockerCompose], None]) -> None:
+        """Start the stack with a pre-seeded database instead of running first-time initialization.
+
+        Brings up only the database service first (waiting for it to be healthy), invokes
+        ``restore_callback`` to load a snapshot into it, then brings up the remaining services. The
+        booting server finds an already-initialized database and skips first-time initialization.
+
+        ``restore_callback`` receives this compose object (e.g. to read the mapped database port via
+        ``get_services_port()``). The restore itself lives in the caller so this package stays
+        independent of the Infrahub backend.
+        """
+        self.start_container("database")
+        restore_callback(self)
+        self.start()
 
     def start_container(self, service_name: str | list[str]) -> None:
         """
