@@ -58,6 +58,7 @@ specs/001-user-auth/
   plan.md
   tasks.md
   review.md      ← phase 5
+  retrospective.md ← phase 10
   → PR URL recorded in ship.md (phase 8), CI status (phase 9)
 ```
 
@@ -68,8 +69,10 @@ The skill's core rule. Each capability resolves through a priority chain
 gets better as more tools are installed. These all ship in-repo under `.agents/`:
 `creating-issues`, `creating-prd`, `grilling-ideas`, `/bug-analyze`·`/bug-tdd`·`/bug-fix`, the
 `speckit-*` suite (including `speckit-review-{code,tests,types,errors,comments,simplify}` and
-`speckit-critique-run`), `pruning-residues` (post-implement cleanup of leftover debug/dead code),
-`capturing-knowledge`, `rebase`, `commit`, `pr`, and `monitoring-pull-requests` (post-open CI watch).
+`speckit-critique-run`), `pruning-residues` (post-implement cleanup of dead code, debug logs, and
+redundant comments), `capturing-knowledge`, `/audit-docs`·`/add-docs` (docs-consistency audit),
+`rebase`, `commit`, `pr`, `monitoring-pull-requests` (post-open CI watch), and
+`speckit-opsmill-retrospect` (closing retrospective).
 
 ## The pipeline at a glance
 
@@ -79,14 +82,17 @@ gets better as more tools are installed. These all ship in-repo under `.agents/`
 | 1 | Ticket & branch | `creating-issues`, `/speckit-git-feature` | gate |
 | 2 | Understand | `/bug-analyze` / `grilling-ideas`+`/speckit-specify` | gate (+ parallel on feature M/L) |
 | 3 | Plan | `/speckit-plan`+`/speckit-tasks` | gate + parallel (+ skeptic on risk) |
-| 4 | Implement | `/bug-tdd`+`/bug-fix` / TDD agents | gate + adversarial verify |
+| 4 | Implement | `/bug-tdd`+`/bug-fix` / TDD agents · prune residues | gate + adversarial verify |
 | 5 | Review | `speckit-review-run`, `coderabbit`, `/security-review` | gate + parallel + verify |
-| 6 | Knowledge | `capturing-knowledge` | conditional |
+| 6 | Knowledge & docs | `capturing-knowledge` + `/audit-docs`→`/add-docs` | conditional |
 | 7 | CI gate | `/pre-ci` | gate |
 | 8 | Commit & PR | `commit`, `pr`, split assessment | parallel (split) |
 | 9 | CI watch | `monitoring-pull-requests` | gate |
+| 10 | Retrospective | `speckit-opsmill-retrospect` | conditional |
 
 Checkpoints sit between phases; the user can pause, redirect, reclassify, or jump at any of them.
+**Two cleanups keep it consistent:** code residues + stale comments at phase 4 (`pruning-residues`),
+docs & knowledge at phase 6 (`capturing-knowledge` + `/audit-docs`).
 
 ## Open questions for the team
 
@@ -98,8 +104,8 @@ Checkpoints sit between phases; the user can pause, redirect, reclassify, or jum
 
 ## Status
 
-Draft skill on branch `ple-test-shipping-features-skill`, rebased onto latest `develop` so all the
-in-repo skills it delegates to (`creating-issues`, `grilling-ideas`, `pr`, `monitoring-pull-requests`,
-the `speckit-review-*` suite, …) resolve today. **Not yet pressure-tested** — per the skill-authoring
-discipline (RED→GREEN→REFACTOR against baseline agent behavior), the next step is a test pass with
-subagents before we trust it in anger.
+Draft skill on branch `ple-test-shipping-features-skill`, rebased onto latest `develop` so every
+in-repo tool it delegates to resolves today. A first **pressure-test pass** held: fresh agents kept
+the rules — resume-scan on empty input, classify-don't-over-engineer under time pressure, refuse a
+red CI gate, and never mark a phase done without its gate — under "we're late, skip it" pressure.
+A fuller RED→GREEN→REFACTOR pass is still worthwhile before heavy use.
