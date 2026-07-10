@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, Self, assert_never
+from typing import TYPE_CHECKING, Any, Literal, assert_never
 
 from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.events.limits import get_submission_chunk_size
@@ -408,13 +408,6 @@ class MergeRecomputeCoordinator:
     def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
         self.builder = builder
         self.submitter = submitter
-
-    @classmethod
-    def new(cls, *, schema_branch: SchemaBranch, workflow: InfrahubWorkflow) -> Self:
-        return cls(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=workflow),
-        )
 
     async def run(
         self, *, changes: Iterable[MergeChange], branch: str, context: EventContext

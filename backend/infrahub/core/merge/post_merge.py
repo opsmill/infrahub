@@ -6,6 +6,8 @@ from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import MutationAction
 from infrahub.core.merge.recompute_coalescing import (
+    CoalescedRecomputeBuilder,
+    CoalescedRecomputeSubmitter,
     MergeChange,
     MergeRecomputeCoordinator,
 )
@@ -172,7 +174,10 @@ class PostMergeDispatcher:
 
         try:
             schema_branch = registry.schema.get_schema_branch(name=self.default_branch.name)
-            coordinator = MergeRecomputeCoordinator.new(schema_branch=schema_branch, workflow=self.workflow)
+            coordinator = MergeRecomputeCoordinator(
+                builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+                submitter=CoalescedRecomputeSubmitter(workflow=self.workflow),
+            )
             await coordinator.run(changes=changes, branch=self.default_branch.name, context=event_context)
         except Exception:
             self.log.exception("Failed to submit the coalesced post-merge recompute")
