@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1-labs
 # ****************************************************************
 # STAGE : Base Python Image
 # ****************************************************************
@@ -17,15 +18,7 @@ RUN mkdir /prom_shared /remote
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y tini curl git pkg-config build-essential ca-certificates gnupg2 && \
-    install -m 0755 -d /etc/apt/keyrings && \
-    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-    chmod a+r /etc/apt/keyrings/docker.gpg && \
-    echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
-    "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-    tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    apt-get update && \
-    apt-get install --no-install-recommends -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
+    apt-get install --no-install-recommends -y tini curl git pkg-config build-essential ca-certificates && \
     curl -sSL https://astral.sh/uv/$UV_VER/install.sh | sh - && \
     apt-get autoremove -y && \
     apt-get clean all && \
@@ -122,9 +115,13 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-ins
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
+#   .git is excluded from the copy so it never lands in the image; it is bind-mounted transiently
+#   on the install step below so hatch-vcs can resolve the version from the git tag.
 # --------------------------------------------
-COPY . ./
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
+COPY --exclude=.git . ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=.git,target=/source/.git \
+    uv sync --frozen --no-dev
 
 # Import Frontend & Documentation builds last so frontend/docs edits don't invalidate any uv sync layer
 COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist

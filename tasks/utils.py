@@ -1,15 +1,7 @@
-import sys
+import importlib.metadata
 from pathlib import Path
 
 from invoke import Context, UnexpectedExit
-
-try:
-    import tomllib
-except ModuleNotFoundError:
-    try:
-        import tomli as tomllib
-    except ModuleNotFoundError:
-        sys.exit("Please make sure to `pip install tomli` or enable the uv shell and run `uv sync`.")
 
 path = Path(__file__)
 TASKS_DIR = path.parent
@@ -46,10 +38,9 @@ def escape_path(path: Path) -> str:
 ESCAPED_REPO_PATH = escape_path(REPO_BASE)
 
 
-def project_ver() -> str:
-    """Find version from pyproject.toml to use for docker image tagging."""
-    with (REPO_BASE / "pyproject.toml").open("rb") as file:
-        return tomllib.load(file)["project"].get("version", "latest")
+def get_project_version() -> str:
+    """Return the installed infrahub-server version, the single source for release-time reads."""
+    return importlib.metadata.version("infrahub-server")
 
 
 def git_info(context: Context) -> tuple[str, str]:
@@ -106,12 +97,6 @@ def str_to_bool(value: str) -> bool:
         return MAP[value.lower()]
     except KeyError as exc:
         raise ValueError(f"{value} can not be converted into a boolean") from exc
-
-
-def get_version_from_pyproject() -> str:
-    """Retrieve the current version from the pyproject.toml file."""
-    with (REPO_BASE / "pyproject.toml").open("rb") as file:
-        return tomllib.load(file)["project"]["version"]
 
 
 def get_yamllint_rules() -> dict:

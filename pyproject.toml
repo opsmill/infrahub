@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.10.2"
+dynamic = ["version"]
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -52,7 +52,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi==0.60b0",
     "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
-    "nats-py==2.7.2",
+    "nats-py==2.15.0",
     "netaddr==1.3.0",
     "authlib==1.6.12",
     "aiodataloader==0.4.3",
@@ -672,13 +672,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-]
-
-"backend/infrahub/core/node/standard.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "UP045",  # Use X | Y for type annotations
 ]
 
 "backend/infrahub/core/query/**.py" = [
@@ -1986,6 +1979,20 @@ include = [
 "python_sdk/infrahub_sdk" = "infrahub_sdk"
 "python_testcontainers/infrahub_testcontainers" = "infrahub_testcontainers"
 
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0.dev0"  # static sentinel for tag-less checkouts; identical on every branch so releases never touch it (no stable/develop merge conflicts); publish-guarded in release.yml
+
+[tool.hatch.version.raw-options]
+# No --dirty: the Docker build resolves the version against a work tree that .dockerignore strips of
+# tracked files (.gitignore, .gitmodules, .gitattributes, .github/), which git would report as
+# "-dirty". setuptools-scm would then bump an on-tag build to {next}.devN+g<node>.d<date> on every
+# image instead of the clean tag. Version comes from committed state only. See INFP-566.
+git_describe_command = ["git", "describe", "--tags", "--long", "--match", "infrahub-v*"]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "backend/infrahub/_version.py"
+
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"

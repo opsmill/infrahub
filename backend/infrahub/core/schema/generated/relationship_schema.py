@@ -57,7 +57,7 @@ class GeneratedRelationshipSchema(HashableModel):
         description="Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction.",
         pattern=r"^[a-z0-9\_]+$",
         max_length=128,
-        json_schema_extra={"update": "allowed"},
+        json_schema_extra={"update": "not_supported"},
     )
     cardinality: RelationshipCardinality = Field(
         default=RelationshipCardinality.MANY,
