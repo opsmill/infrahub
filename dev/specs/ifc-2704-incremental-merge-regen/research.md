@@ -83,7 +83,7 @@ TTL mirrors the PC cache (`KVTTL.TWO_HOURS`).
 |---|---|
 | `id` | `node.uuid` |
 | `kind` | `node.kind` |
-| `branch` | `branch_diff.diff_branch_name` |
+| `branch` | the **default/target branch name** (see below), *not* `diff_branch_name` |
 | `display_label` | `node.label` |
 | `action` | `node.action` (`DiffAction`) → **uppercase name** (`"ADDED"/"UPDATED"/"REMOVED"`) |
 | `elements[]` | `node.attributes` (`element_type="ATTRIBUTE"`) + `node.relationships` (`element_type` from `cardinality`) |
@@ -94,6 +94,21 @@ TTL mirrors the PC cache (`KVTTL.TWO_HOURS`).
 **name** (uppercase), while `DiffAction.*.value` is lowercase. Consumers already normalize via
 `_is_triggering_action` → `.lower()` (`proposed_change/tasks.py:1354-1365`). The converter
 MUST emit uppercase names so a fingerprint/definition change reads identically to the PC path.
+
+**Branch-tag decision (resolves critique E3, branch coupling)**: the enriched diff's
+`diff_branch_name` is the *source* branch, but post-merge the changed data lives on the
+**default/target** branch, and that is also where the selection must run its live lookups
+(schema, GraphQL params, subscriber and group queries). Tag every `NodeDiff.branch` with the
+**default-branch name** so the summary's branch tag and the live-query branch are one and the
+same. `get_modified_kinds` (`branch_diff.py:122-130`, filters `entry["branch"] == branch`) and
+`_relevant_node_changes` (`tasks.py:779`) then work against the default branch with no special
+casing, and the source branch can be deleted (`delete_branch_after_merge`) without affecting
+selection — only its now-merged data, on the default branch, is needed.
+
+**Capture safety (resolves critique E7)**: the capture point sits inside the merge's rollback
+try-block. The capture + `set_merge_diff_summary_cache` MUST be wrapped in its own inner
+try/except that, on any failure, logs and sets `merge_diff_cache_key = None` (→ full-regen
+fallback) and never re-raises — a serialization bug must never roll back a committed merge.
 
 **Alternatives rejected**: a bespoke merge-only summary model (would fork the predicates);
 keying on a fresh UUID (works, but the diff-root uuid is already unique, stable, and
@@ -136,14 +151,65 @@ into `target_members` (generators) and a new member filter (artifacts).
    `_definition_changed` already fires — no new predicate needed for the populated-fingerprint
    case. Plus the null-fingerprint fallback (Decision 6).
 3. **Member level** — reuse `get_field_level_impacted_subscribers` (`tasks.py:790-847`) and
-   `ImpactScope` (`:753-764`): `ALL` → dispatch for all members; `SPECIFIC` → the returned
-   subscriber ids **plus** any new members (see Decision 5); `NONE` → skip the definition.
+   `ImpactScope` (`:753-764`) for the *impact signal only*, then reconcile against the **live
+   group** exactly as the proposed-change CHECK flow does. See Decision 4a — this is the
+   load-bearing safety mechanism, not an optimization.
 
 **Refactor**: `get_field_level_impacted_subscribers` and the predicate functions currently
 resolve the summary internally via `get_diff_summary_cache(pipeline_id=...)`. Generalize them
-to accept a resolved `diff_summary: list[NodeDiff]` (or a cache-key abstraction) so both the
-PC path and the merge path can call them. This is a two-caller extraction, satisfying the
-"serve ≥2 callers" bar in constitution VII.
+to accept a resolved `diff_summary: list[NodeDiff]` **and an explicit query branch** (the
+default/target branch) so both the PC path and the merge path can call them. This is a
+two-caller extraction, satisfying the "serve ≥2 callers" bar in constitution VII.
+
+## Decision 4a — Member selection reconciles against the live group (resolves E1, E2, X1)
+
+**The hole**: `get_field_level_impacted_subscribers` returns **subscriber ids** (existing
+artifact / generator-instance node ids, `tasks.py:836`), while the dispatch filters
+`target_members` (`generators/tasks.py:227`) and the new `members` (`git/tasks.py:594-598`)
+key on **member node ids**. Passing subscriber ids into a member filter makes
+`member.id not in members` true for every real member → the whole definition is skipped
+(silent, total under-execution). And a diff-derived member list cannot enumerate a newly added
+member (its subscriber query returns `[]`) nor an existing-object membership-only change
+(surfaces as a relationship element the query never reads).
+
+**Decision**: The merge path MUST NOT derive the member filter from the diff alone. Per
+selected definition it reproduces the proven CHECK-flow reconciliation on the **target branch**:
+
+1. Fetch the definition's **live group members** on the default/target branch (the CHECK flow
+   uses `fetch_artifact_definition_targets` / `group.members`) and build the
+   `member.id → existing subscriber_id` map (`artifacts_by_member`, `git/tasks.py:565-568`).
+2. Compute `managed_branch` for the definition = query changed OR definition/fingerprint
+   changed OR repo-code change — i.e. the definition-level gates from step 2 above.
+3. Compute the impacted subscriber ids via `get_field_level_impacted_subscribers` against the
+   merge summary, querying the **target branch**.
+4. For each live member decide render with the existing predicate logic
+   (`_should_render_artifact` `:1030-1047`, `_run_generator` `:1338-1351`):
+   render iff `managed_branch` **or** the member has **no** existing subscriber (new member)
+   **or** its subscriber id ∈ impacted ids **or** `ImpactScope.ALL`.
+5. Translate the rendered members back to **member ids** for the dispatch filter
+   (`target_members` / `members`). If every live member renders, send an empty filter (= all).
+
+This closes E1 (impacted subscriber ids are mapped to member ids through the live-group map,
+never passed raw), E2 (new members and membership-only additions are covered by live-group
+iteration + the no-subscriber short-circuit, not by the diff), and X1 (the reconciliation is
+the spine, not an add-on).
+
+**Group-membership definition gate**: because a membership-only change may not fire the
+data/query/definition gates, a definition is **also** selected when its target group appears in
+the merge summary (as a changed group node or a group `members` relationship change). Combined
+with step 4's new-member short-circuit, this guarantees a member added to a targeted group
+regenerates even when nothing the query reads changed.
+
+**Cost note**: steps 1/3 perform bounded per-selected-definition group and subscriber fetches —
+the same fetches the PC CHECK flow already runs. The "diff already loaded, no new hot-path
+Cypher" claim applies to the *definition-level* gate, not the member level; correct new-member
+coverage requires these fetches (constitution V note in plan.md updated accordingly).
+
+**Alternatives rejected**: deriving members purely from the diff (the original draft — under-
+executes on new members and SPECIFIC scope); comparing in artifact-id space like the PC CHECK
+flow and dispatching per-member check workflows (would require porting the whole CHECK-flow
+fan-out; the merge `*_RUN`/`*_GENERATE` workflows already iterate members, so a member-id
+filter is the smaller, correct surface).
 
 **Note on `ImpactScope` provenance**: `get_field_level_impacted_subscribers` / `ImpactScope`
 came from commit `efda963be` (field-level data-change scoping), not INFP-409. The invariant
@@ -174,9 +240,20 @@ force-including new members into `limit` as fake ids (fragile).
 `TRIGGER_*` workflows) when any of: the flag is off; `merge_diff_cache_key` is `None`; the
 cached summary is missing/unloadable (`ResourceNotFoundError`); or the diff capture failed.
 Additionally, per definition: if a definition's `fingerprint` is null (pre-IFC-2844 data) and
-the merge diff contains a repository **commit change** for that definition's repository, run
-**all** definitions of that repository. If `dependencies_complete` is not `True`, the
-definition is selected (over-execution), matching the PC predicate's safety fallback.
+the merge diff contains a repository code signal for that definition's repository, run **all**
+definitions of that repository. If `dependencies_complete` is not `True`, the definition is
+selected (over-execution), matching the PC predicate's safety fallback.
+
+**Repo signal verification (resolves E6)**: the null-fingerprint fallback assumed a
+`CoreRepository.commit` change is present in `branch_diff.nodes` at capture. But repositories
+are re-imported on the **default branch during the follow-up** (Decision 8), *after* capture,
+so the commit bump may not be in the pre-freeze diff. A task MUST verify whether a source-branch
+code change yields a `CoreRepository`/`CoreGenericRepository` node with a triggering `commit`
+attribute element in `branch_diff.nodes` at capture time. If the signal is present → use it. If
+it is **absent or unreliable**, escalate: any null-fingerprint definition present in the merge
+triggers **full regeneration of that repository's definitions** (coarsest safe fallback). The
+null-fingerprint state is transient (self-heals on the next re-import), so coarse
+over-execution here is acceptable.
 
 **Rationale**: Direct restatement of the INFP-409 invariant. Every uncertain path regenerates.
 
@@ -193,15 +270,24 @@ are not in the captured diff.
 `TRIGGER_ARTIFACT_DEFINITION_GENERATE` with no filter). Selective generator dispatch is still
 applied. Proposed-change merges keep full selective artifact behavior.
 
-**Rationale**: Honors the no-under-execution invariant with minimal complexity (constitution
-VII). Precise sequencing (capture generator output, fold into artifact selection) is a future
-optimization, not required for correctness. A validation spike (T-task) will confirm whether
-the existing event-driven machinery already regenerates artifacts on generator-produced data
-mutations; if it does, this fallback can later be narrowed.
+**Sequencing hazard (resolves E4)**: the current `TRIGGER_*` submissions are fire-and-forget,
+so a full-artifact-regen fallback submitted *alongside* the generator run can execute **before**
+the generators mutate default-branch data → artifacts render against pre-generator state and
+stay stale. A concurrent fallback therefore does **not** close FR-011.
 
-**Alternatives rejected**: sequencing artifact selection after generator completion (complex,
-cross-workflow ordering); assuming event machinery covers it without validation (risks
-under-execution).
+**The spike is a blocking prerequisite, not optional.** Before this fallback is finalized, a
+task MUST determine whether the existing event-driven machinery already regenerates artifacts
+on generator-produced data mutations:
+
+- **If yes** → rely on it; drop the full-artifact fallback entirely (it would be redundant).
+- **If no** → the fallback MUST **await** generator completion before triggering artifact
+  regeneration (sequenced, not concurrent). This is the only ordering that closes FR-011.
+
+**Rationale**: Honors the no-under-execution invariant. Precise per-artifact sequencing
+(capture generator output, fold into artifact selection) remains a future optimization.
+
+**Alternatives rejected**: concurrent full-artifact fallback (races generator mutation — the
+E4 hole); assuming event machinery covers it without running the spike (risks under-execution).
 
 ## Decision 8 — Repo merge ordering / double-trigger (resolves Open Question 2)
 
@@ -224,7 +310,14 @@ inside `post_process_branch_merge`. When `False`, the current blanket path runs 
 (baseline for scale tests, reversible rollout).
 
 **Default rationale**: The fallbacks (Decision 6/7) preserve no-under-execution even when
-enabled, and the originating bug is severe; shipping disabled would leave it unfixed.
+enabled, and the originating bug is severe; shipping disabled would leave it unfixed. Default-
+True is safe as a mechanism (the `None` key and every fallback route to byte-for-byte current
+behavior) and is acceptable now that E1–E3 are closed.
+
+**Observability (resolves E8)**: every merge follow-up MUST log/emit a metric recording whether
+it took the **selective** or a **fallback** path, and the dispatched generator/artifact counts.
+Silent under-execution is the failure mode with no natural alarm; this makes selective-vs-
+fallback ratio and dispatch volume observable in production so a regression is caught.
 
 **Generated-file impact**: Adding an `INFRAHUB_` setting requires regenerating
 `docker-compose.yml` (`uv run invoke release.gen-config-env --update-docker-file`; CI job
@@ -250,6 +343,15 @@ committed or CI fails.
 
 ## Open items carried to tasks
 
-- Validation spike for Decision 7 (event-driven cascade coverage on direct merges).
+- **Blocking spike (D7/E4)**: determine whether the event-driven machinery covers
+  generator→artifact staleness on direct merges. Outcome decides whether the fallback is
+  dropped or must await generator completion. Resolve before finalizing direct-merge dispatch.
+- **Verification (D6/E6)**: confirm a source-branch code change produces a `CoreRepository`
+  node with a triggering `commit` element in `branch_diff.nodes` at capture; else escalate the
+  null-fingerprint case to repository-wide full regeneration.
 - Confirm no other caller of the artifact `GENERATE` workflow regresses when `members` is
   added (default-empty preserves behavior; verify by grep + test).
+- Member reconciliation (D4a) must be covered by a functional test for each of: new object
+  added to a targeted group, existing object added to a targeted group (membership-only), and
+  SPECIFIC-scope field change — each asserting the correct member(s) regenerate and no member
+  is dropped.

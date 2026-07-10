@@ -40,10 +40,12 @@ uv run invoke backend.test-integration -k "incremental_merge"
 | 8 | Fallback: cache miss | Force the merge cache entry absent when follow-up runs | Full regeneration; nothing left stale | SC-003, FR-008 |
 | 9 | Fallback: null fingerprint | Pre-feature data (null fingerprint) + a repo commit change in the diff | All definitions of that repository regenerate | FR-008 |
 | 10 | Fallback: incomplete closure | A definition with `dependencies_complete != True` | That definition regenerates (over-execution) | FR-008 |
-| 11 | Direct-merge generator cascade | Direct (non-PC) merge that dispatches ≥1 `execute_after_merge` generator | Full artifact regeneration for that merge (no stale artifact from generator output) | FR-011 (D7) |
+| 11 | Direct-merge generator cascade | Direct (non-PC) merge that dispatches ≥1 `execute_after_merge` generator | Artifacts consuming generator output are not stale — via the event machinery, or (if the spike shows it is not covered) full artifact regen **sequenced after** generator completion, never racing it | FR-011 (D7/E4) |
 | 12 | No double-trigger | Merge a transform-file change; repo re-imports on default branch | Regeneration triggered exactly once | D8 (OQ2) |
 | 13 | PC vs direct parity | Same underlying diff merged via a PC and directly | Same affected-set decision (artifact cascade differs only per D7) | FR-009 |
 | 14 | Baseline scale | Representative dataset; run with flag on vs off | Flag-off reproduces the prior full dispatched-task count; flag-on is proportional to affected set | SC-004 |
+| 15 | Membership-only addition | Merge a branch that adds an **existing** object to a targeted group (no other change) | The definition is selected via the group-membership gate; the added member regenerates (live-group reconciliation, no-subscriber short-circuit) | FR-007, D4a (E2) |
+| 16 | SPECIFIC-scope mapping | Merge a field change that impacts a subset of members with existing artifacts | Only the impacted members regenerate; impacted subscriber ids are correctly mapped to member ids (no member wrongly dropped) | D4a (E1) |
 
 ## Manual smoke check
 

@@ -73,16 +73,31 @@ FILE_CHANGES | QUERY_CHANGED | DEFINITION_CHANGED`; truthy → the definition is
 - `ids: list[str]` — for `SPECIFIC`, the **existing** subscriber (artifact/generator-instance)
   ids whose read fields intersect the changed elements.
 
-**Member-selection rule** (merge path):
+**Member-selection rule** (merge path — reconciled against the live group, research D4a).
+`ids` are **subscriber** (artifact/instance) ids and are never placed in a member filter
+directly. Per selected definition, fetch live group members on the **target branch**, build the
+`member.id → subscriber_id` map, and decide render per member:
 
-| `scope` | Generators (`target_members`) | Artifacts (`members`) |
-|---|---|---|
-| `ALL` | empty list → all members | empty list → all members |
-| `NONE` | definition skipped | definition skipped |
-| `SPECIFIC` | member ids of `ids` **+ new members** | member ids of `ids` **+ new members** |
+```
+render(member) = managed_branch                      # query/definition/fingerprint/code change
+              or subscriber_of(member) is None        # new member (no existing subscriber)
+              or scope == ALL
+              or subscriber_of(member) in impacted.ids # SPECIFIC, mapped via the live-group map
+```
 
-New members (group members with no existing artifact/instance) MUST be added explicitly for
-`SPECIFIC` — the impact analysis returns only existing subscriber ids (Decision 5).
+The dispatch filter (`target_members` / `members`) is then the **member ids** of the rendered
+members, or an empty list when every member renders (= all).
+
+| `scope` | Result (after reconciliation) |
+|---|---|
+| `ALL` | all live members render (empty filter) |
+| `NONE` | only new members render; if none, definition dispatches nothing |
+| `SPECIFIC` | members whose subscriber ∈ `ids`, **plus** all new members, **plus** all when `managed_branch` |
+
+New members are covered by the `subscriber_of(member) is None` short-circuit, not by the diff
+(Decision 4a / critique E1, E2). A definition is additionally selected at the definition level
+when its target group appears in the merge summary (group-membership gate), so a membership-only
+addition still reaches this reconciliation.
 
 ## 6. Dispatch payloads (message models)
 

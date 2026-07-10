@@ -40,19 +40,29 @@ else:
   (and all definitions of that repository).
 - `dependencies` null or `dependencies_complete != True` → select (over-execution).
 
-**Member level** (per selected definition): run `get_field_level_impacted_subscribers` against
-the merge summary →
+**Member level** (per selected definition — reconciled against the live group, D4a). The impact
+analysis returns **subscriber** ids, which are never passed to a member filter directly:
 
-- `ALL` → dispatch with empty member filter (all members).
-- `NONE` → skip.
-- `SPECIFIC` → member ids from `ids` **plus** new members (group members with no existing
-  subscriber). Dispatch `REQUEST_GENERATOR_DEFINITION_RUN(target_members=...)` /
-  `REQUEST_ARTIFACT_DEFINITION_GENERATE(members=...)`.
+1. Fetch the definition's live group members on the **target branch**; build
+   `member.id → existing subscriber_id`.
+2. `managed_branch` = the definition-level gate result (query/definition/fingerprint/code).
+3. `impacted = get_field_level_impacted_subscribers(summary, query_branch=target_branch, ...)`.
+4. `render(member)` iff `managed_branch` **or** `subscriber_of(member) is None` (new member)
+   **or** `impacted.scope == ALL` **or** `subscriber_of(member) in impacted.ids`.
+5. Dispatch with the **member ids** of rendered members
+   (`REQUEST_GENERATOR_DEFINITION_RUN(target_members=...)` /
+   `REQUEST_ARTIFACT_DEFINITION_GENERATE(members=...)`), or an empty filter when all render.
+
+New members and membership-only additions are covered by step 4's `is None` short-circuit plus
+the definition-level group-membership gate — not by the diff (critique E1/E2).
 
 **Direct-merge generator cascade (D7)**: if `is_proposed_change_merge` is `False` **and** ≥1
-generator was dispatched, additionally submit full artifact regeneration
-(`TRIGGER_ARTIFACT_DEFINITION_GENERATE`, no filter) for that merge. Proposed-change merges keep
-full selective artifact behavior.
+generator was dispatched, the artifacts that consume generator output must not be left stale.
+The cascade coverage depends on a **blocking spike** (critique E4): if the event-driven
+machinery regenerates artifacts on generator-produced data mutations, rely on it (no extra
+submission); otherwise submit full artifact regeneration **sequenced after** generator
+completion (awaited) — never concurrent, which would race generator mutation. Proposed-change
+merges keep full selective artifact behavior (generator output is already in the merge diff).
 
 ## Invariants
 

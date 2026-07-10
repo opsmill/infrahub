@@ -17,7 +17,7 @@ for node in root.nodes:
     if node.action == DiffAction.UNCHANGED: skip
     NodeDiff.id            = node.uuid
     NodeDiff.kind          = node.kind
-    NodeDiff.branch        = root.diff_branch_name
+    NodeDiff.branch        = default_branch_name       # NOT root.diff_branch_name — see below
     NodeDiff.display_label = node.label
     NodeDiff.action        = node.action.name        # UPPERCASE
     NodeDiff.elements       =
@@ -34,14 +34,21 @@ for node in root.nodes:
 
 - `action` is emitted as the **uppercase** GraphQL enum name so `_is_triggering_action`
   (`.lower()` compare) and the predicates read it identically to the PC path.
+- `branch` is tagged with the **default/target branch name**, not the source
+  `diff_branch_name`: post-merge the changed data lives on the default branch, and the
+  selection runs its live lookups there, so the summary tag and the query branch match and the
+  source branch may be deleted without affecting selection (research D2, critique E3).
 - Nodes changed only via a conflict resolved to the base branch are **retained** (the
   changelog narrowing is not applied here).
 - A definition whose `fingerprint` attribute changed appears as an `UPDATED` node with an
   `ATTRIBUTE` element named `fingerprint` — `_definition_changed` fires on it with no special
   casing.
 
-**Failure mode**: any exception during conversion is caught by the caller; the merge proceeds
-and the follow-up takes the full-regeneration fallback (`merge_diff_cache_key = None`).
+**Failure mode (hard requirement, critique E7)**: the capture + `set_merge_diff_summary_cache`
+MUST be wrapped in its own inner try/except. On any failure it logs and yields
+`merge_diff_cache_key = None` (→ full-regeneration fallback) and MUST NOT re-raise — the
+capture sits inside the merge's rollback try-block, so a serialization bug must never roll back
+a committed merge.
 
 ## Cache functions
 
