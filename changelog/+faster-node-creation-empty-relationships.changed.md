@@ -1,0 +1,1 @@
+Node creation no longer issues a redundant database query to resolve peers for empty many-cardinality relationships, since a newly created node has none stored yet. This removes hundreds of round-trips during the first-time database initialization and speeds up node creation.
