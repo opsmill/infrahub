@@ -1015,7 +1015,7 @@ jobs:
       (needs.files-changed.outputs.dev_guidelines == 'true') ||
       (needs.files-changed.outputs.javascript == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
-    runs-on: "ubuntu-22.04"
+    runs-on: "ubuntu-24.04"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
