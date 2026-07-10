@@ -638,7 +638,11 @@ async def test_delete_repository_cascades_managed_objects(
     default_branch: Branch,
     car_person_data_generic: dict[str, Node],
 ) -> None:
-    """Deleting a repository must cascade-delete its transforms and everything they own."""
+    """Deleting a repository must cascade-delete its transforms, checks, generators and everything they own.
+
+    Covers the full managed-object tree: transform -> artifact definition -> artifact and its validator,
+    check definition -> user validator, generator definition -> instance and its validator.
+    """
     c1 = car_person_data_generic["c1"]
     q1 = car_person_data_generic["q1"]
     r1 = car_person_data_generic["r1"]
@@ -716,6 +720,32 @@ async def test_delete_repository_cascades_managed_objects(
     )
     await generator_instance.save(db=db)
 
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db,
+        name="repo-cascade-pc",
+        source_branch="repo-cascade-source",
+        destination_branch=default_branch.name,
+    )
+    await proposed_change.save(db=db)
+
+    artifact_validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+    await artifact_validator.new(db=db, proposed_change=proposed_change, definition=definition)
+    await artifact_validator.save(db=db)
+
+    generator_validator = await Node.init(db=db, schema=InfrahubKind.GENERATORVALIDATOR)
+    await generator_validator.new(db=db, proposed_change=proposed_change, definition=generator_def)
+    await generator_validator.save(db=db)
+
+    user_validator = await Node.init(db=db, schema=InfrahubKind.USERVALIDATOR)
+    await user_validator.new(
+        db=db,
+        proposed_change=proposed_change,
+        check_definition=check_def,
+        repository=str(r1.id),
+    )
+    await user_validator.save(db=db)
+
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
 
     deleted_ids = {d.id for d in deleted}
@@ -727,12 +757,31 @@ async def test_delete_repository_cascades_managed_objects(
         check_def.id,
         generator_def.id,
         generator_instance.id,
+        artifact_validator.id,
+        generator_validator.id,
+        user_validator.id,
     } <= deleted_ids
     node_map = await NodeManager.get_many(
         db=db,
-        ids=[r1.id, transform.id, definition.id, artifact.id, check_def.id, generator_def.id, generator_instance.id],
+        ids=[
+            r1.id,
+            transform.id,
+            definition.id,
+            artifact.id,
+            check_def.id,
+            generator_def.id,
+            generator_instance.id,
+            artifact_validator.id,
+            generator_validator.id,
+            user_validator.id,
+        ],
     )
     assert node_map == {}
+
+    # The proposed change owns the validators as a parent but is not part of the
+    # repository's ownership tree, so it must survive the cascade.
+    surviving_pc = await NodeManager.get_one(db=db, id=proposed_change.id, branch=default_branch)
+    assert surviving_pc is not None
 
 
 async def test_delete_repository_query_group_cascade(

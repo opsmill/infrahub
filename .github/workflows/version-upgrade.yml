@@ -134,9 +134,6 @@ jobs:
       - name: Load custom data
         run: echo "DATA_NAME=$(uv run invoke dev.test-add-dummy-data)" >> $GITHUB_ENV
 
-      - name: Load repository cascade data
-        run: echo "REPO_CASCADE_ID=$(uv run invoke dev.test-add-repository-cascade-data)" >> $GITHUB_ENV
-
       - name: Stop Demo
         run: uv run invoke demo.stop
 
@@ -161,9 +158,6 @@ jobs:
 
       - name: Verify branch graph version
         run: uv run invoke dev.test-branch-graph-version --branch atl1-delete-upstream
-
-      - name: Verify repository cascade delete
-        run: uv run invoke dev.test-repository-cascade-delete --repo-id=$REPO_CASCADE_ID
 
       - name: Containers after tests
         if: always()
