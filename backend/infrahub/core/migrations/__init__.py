@@ -28,6 +28,6 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "attribute.unique.update": AttributeSupportsGeneratedSchemaMigration,
     "relationship.branch.update": None,
     "relationship.direction.update": None,
-    "relationship.identifier.update": PlaceholderDummyMigration,
+    "relationship.identifier.update": None,
     "relationship.hierarchical.update": None,
 }

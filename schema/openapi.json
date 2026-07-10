@@ -3907,6 +3907,13 @@
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.",
                         "update": "allowed"
                     },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true,
+                        "update": "allowed"
+                    },
                     "default_value": {
                         "anyOf": [
                             {},
@@ -4171,6 +4178,13 @@
                         ],
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first.",
+                        "update": "allowed"
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true,
                         "update": "allowed"
                     },
                     "default_value": {
@@ -6177,7 +6191,7 @@
                         ],
                         "title": "Identifier",
                         "description": "Unique identifier of the relationship within a model, identifiers must match to traverse a relationship on both direction.",
-                        "update": "allowed"
+                        "update": "not_supported"
                     },
                     "cardinality": {
                         "$ref": "#/components/schemas/RelationshipCardinality",

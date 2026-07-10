@@ -1,1 +1,0 @@
-Fix diff calculation to correctly handle the case when a relationship was removed from a branch's schema while the other branch changed a non-peer property (source, owner, or protected flag) of that relationship. This issue would have previously appeared as a `DiffNoPeerIdError`.

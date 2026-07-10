@@ -38,8 +38,8 @@ Schema definitions (Python)
 | Change | Command |
 |--------|---------|
 | Added/modified schema definitions (attributes, relationships) | `uv run invoke backend.generate` |
-| Changed GraphQL schema structure | `uv run invoke schema.generate-graphqlschema` + `npm run codegen` |
-| New GraphQL queries/mutations in frontend | `npm run codegen` |
+| Changed GraphQL schema structure (new nodes, custom queries/mutations — **even backend-only PRs**) | `uv run invoke schema.generate-graphqlschema`, then `cd frontend/app && pnpm codegen:graphql` and commit `src/shared/api/graphql/generated/graphql-env.d.ts` + `graphql-cache.d.ts`. CI's `frontend-validate-graphql-types` job fails when these gql.tada files are stale. |
+| New GraphQL queries/mutations in frontend | `pnpm codegen:graphql` (gql.tada types) and/or `pnpm codegen` (graphql-codegen `types.ts`) |
 | New FastAPI route, changed request/response model, or added field on a response model | `uv run invoke schema.generate-jsonschema` (regenerates `schema/openapi.json`) + `npm run codegen` |
 | Changed event classes, schema docstrings, CLI commands, or config | `uv run invoke docs.generate` |
 
