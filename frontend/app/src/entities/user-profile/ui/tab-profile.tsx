@@ -1,9 +1,12 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
+import { DetailsColumns } from "@/shared/components/layout/details-columns";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
+import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
+import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
+import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { UserPreferencesCard } from "@/entities/preferences/ui/user-preferences-card";
@@ -44,10 +47,24 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     return <ErrorScreen message={objectError?.message || permissionError?.message} />;
   }
 
+  // The Profile tab owns its layout rather than rendering the generic <ObjectDetails/>: user
+  // preferences are a distinct concern, not part of the account node, so the card sits beside the
+  // account details in the main column via the shared DetailsColumns primitive.
   return (
-    <>
-      <ObjectDetails objectSchema={schema} objectData={objectData} permission={permission} />
-      <UserPreferencesCard />
-    </>
+    <DetailsColumns>
+      <DetailsColumns.Main>
+        <ObjectDetailsCard objectSchema={schema} objectData={objectData} permission={permission} />
+        <UserPreferencesCard />
+      </DetailsColumns.Main>
+
+      <DetailsColumns.Aside>
+        <ObjectProfilesGroupsCard
+          objectSchema={schema}
+          objectData={objectData}
+          permission={permission}
+        />
+        <ObjectActivitiesCard objectKind={objectData.__typename} objectId={objectData.id} />
+      </DetailsColumns.Aside>
+    </DetailsColumns>
   );
 }

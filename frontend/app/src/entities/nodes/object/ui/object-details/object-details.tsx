@@ -1,4 +1,4 @@
-import { Col } from "@/shared/components/container";
+import { DetailsColumns } from "@/shared/components/layout/details-columns";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import type {
@@ -25,8 +25,8 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
   useTitle(`${getNodeLabel(objectData)} details`);
 
   return (
-    <div className="flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start">
-      <Col className="shrink-0 grow md:col-span-2">
+    <DetailsColumns>
+      <DetailsColumns.Main>
         <ObjectDetailsCard
           objectSchema={objectSchema}
           objectData={objectData}
@@ -36,16 +36,16 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
         {isOfKind(FILE_OBJECT_KIND, objectSchema) && (
           <FilePreviewCard objectData={objectData as unknown as NodeFileObject} />
         )}
-      </Col>
+      </DetailsColumns.Main>
 
-      <Col>
+      <DetailsColumns.Aside>
         <ObjectProfilesGroupsCard
           objectSchema={objectSchema}
           objectData={objectData}
           permission={permission}
         />
         <ObjectActivitiesCard objectKind={objectData.__typename} objectId={objectData.id} />
-      </Col>
-    </div>
+      </DetailsColumns.Aside>
+    </DetailsColumns>
   );
 }

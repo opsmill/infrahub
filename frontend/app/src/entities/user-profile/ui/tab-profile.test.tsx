@@ -1,4 +1,3 @@
-import type React from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
@@ -8,18 +7,16 @@ import { upsertMyUserPreference } from "@/entities/preferences/domain/use-cases/
 import { render } from "../../../../tests/components/render";
 import TabProfile from "./tab-profile";
 
-// The object-details subtree pulls in schema/query machinery that is out of scope
-// here; we only assert that the profile tab composes <ObjectDetails/> with the
-// user-preferences card slotted into its left column. The stub mirrors the real
-// component by rendering the details sentinel and then the leftColumnExtra slot
-// (below it), so the composition under test is preserved.
-vi.mock("@/entities/nodes/object/ui/object-details/object-details", () => ({
-  ObjectDetails: ({ leftColumnExtra }: { leftColumnExtra?: React.ReactNode }) => (
-    <div data-testid="object-details">
-      <div>object details</div>
-      {leftColumnExtra}
-    </div>
-  ),
+// Stub the account-detail cards (their schema/query machinery is out of scope here); we only assert
+// the profile tab composes the account details with the user-preferences card in the main column.
+vi.mock("@/entities/nodes/object/ui/object-details/object-details-card", () => ({
+  ObjectDetailsCard: () => <div data-testid="object-details-card">account details</div>,
+}));
+vi.mock("@/entities/nodes/object/ui/object-details/object-profiles-groups-card", () => ({
+  ObjectProfilesGroupsCard: () => null,
+}));
+vi.mock("@/entities/nodes/object/ui/object-details/object-activities-card", () => ({
+  ObjectActivitiesCard: () => null,
 }));
 
 vi.mock("@/entities/schema/ui/hooks/useSchema", () => ({
@@ -57,19 +54,18 @@ describe("TabProfile", () => {
     vi.useRealTimers();
   });
 
-  test("renders the object details with the user-preferences card below it", async () => {
+  test("composes the account details with the user-preferences card in the main column", async () => {
     const component = await render(<TabProfile />);
 
-    const details = component.getByTestId("object-details");
+    const details = component.getByTestId("object-details-card");
     await expect.element(details).toBeVisible();
 
-    // The user-preferences card renders below the details.
     const preferencesTitle = component.getByText("Preferences");
     await expect.element(preferencesTitle).toBeVisible();
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
     await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
 
-    // The preferences card comes after the details in document order.
+    // The preferences card comes after the account details in the main column.
     const ordered = Array.from(component.container.querySelectorAll<HTMLElement>("*"));
     const detailsIndex = ordered.indexOf(details.element() as HTMLElement);
     const titleIndex = ordered.indexOf(preferencesTitle.element() as HTMLElement);
