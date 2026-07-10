@@ -112,6 +112,14 @@ backend/tests/
 - **Inert-by-default**: with no caller sending `X-Priority`, everything is `normal`; under normal load nothing is shed (SC-006). The `backpressure_enabled` kill-switch bypasses the layer entirely when off.
 - Data structures, fields, and state transitions are detailed in [data-model.md](./data-model.md); external contracts in [contracts/](./contracts/).
 
+## Risk & remediation notes (from critique-20260710)
+
+- **Capacity signal must bind first (E1/X1, Must-Address).** Sojourn only rises when in-flight requests reach `max_concurrency`. If the derived cap (= Neo4j pool size) exceeds what Neo4j can actually serve at acceptable latency, requests are admitted into a saturating DB with near-zero slot-wait and nothing sheds. The capacity derivation therefore assumes ~1 DB connection per in-flight request, and `backpressure_max_concurrency_factor` (default `1.0`, set `<1.0` for headroom) is the knob to pull the cap below raw pool size. The SC-001 discovery scenario MUST verify the sojourn signal actually rises under real overload; this is an implementation acceptance gate, not just documentation.
+- **Rollout sequencing (X1/P1).** `backpressure_enabled` defaults on but the interactive-protection value depends on the frontend sending `X-Priority: high` (separate ticket). Until then, `normal` interactive traffic is shed like background `normal` under overload. The kill-switch makes this reversible; validate the cap and update the frontend before relying on the layer for interactive protection.
+- **Prometheus multiprocess gauges (E4).** Confirm during implementation whether the **API** server (gunicorn, not just the task-worker) runs with `PROMETHEUS_MULTIPROC_DIR` set. If so, set `multiprocess_mode` (`livesum` for `in_flight`/`waiters`, `max` for `max_concurrency`) on the gauges; otherwise document that per-worker series is the intended read.
+- **Explicit dependency (E5).** Add `prometheus-client` as an explicit direct dependency in `pyproject.toml` in the same PR (it is currently a transitive pin already imported directly in four modules; no version change). Keeps "no new dependency" honest.
+- **Misuse visibility (E2, deferred).** A first-party caller wrongly defaulting to `high` would silently defeat the gradient and not show up distinctly; per-source breakdown is a fast-follow, not v1.
+
 ## Complexity Tracking
 
 No constitution violations requiring justification. (Table intentionally omitted.)
