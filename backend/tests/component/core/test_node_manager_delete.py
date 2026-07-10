@@ -12,9 +12,11 @@ from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from tests.constants import TestKind
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -31,6 +33,8 @@ async def test_delete_succeeds(
     assert {d.id for d in deleted} == {person_albert_main.id}
     node = await NodeManager.get_one(db=db, id=person_albert_main.id)
     assert node is None
+
+    await verify_graph(db=db)
 
 
 async def test_delete_prevented(
@@ -103,6 +107,8 @@ async def test_source_node_already_deleted(
     node = await NodeManager.get_one(db=db, id=person_jane_main.id)
     assert node is None
 
+    await verify_graph(db=db)
+
 
 async def test_cascade_delete_not_prevented(
     db: AsyncGenerator[InfrahubDatabase, None],
@@ -121,6 +127,8 @@ async def test_cascade_delete_not_prevented(
     assert {d.id for d in deleted} == {person_jane_main.id, car_camry_main.id}
     node_map = await NodeManager.get_many(db=db, ids=[person_jane_main.id, car_camry_main.id])
     assert node_map == {}
+
+    await verify_graph(db=db)
 
 
 async def test_delete_with_cascade_on_many_relationship(
@@ -142,6 +150,8 @@ async def test_delete_with_cascade_on_many_relationship(
     node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id, car_prius_main.id])
     assert node_map == {}
 
+    await verify_graph(db=db)
+
 
 async def test_delete_with_cascade_on_one_relationship(
     db: AsyncGenerator[InfrahubDatabase, None],
@@ -159,6 +169,8 @@ async def test_delete_with_cascade_on_one_relationship(
     assert {d.id for d in deleted} == {person_john_main.id, car_accord_main.id}
     node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id])
     assert node_map == {}
+
+    await verify_graph(db=db)
 
 
 async def test_delete_with_cascade_multiple_input_nodes(
@@ -179,6 +191,8 @@ async def test_delete_with_cascade_multiple_input_nodes(
     assert {d.id for d in deleted} == {person_john_main.id, car_accord_main.id, car_prius_main.id}
     node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id, car_prius_main.id])
     assert node_map == {}
+
+    await verify_graph(db=db)
 
 
 async def test_delete_with_cascade_both_directions_succeeds(
@@ -201,6 +215,8 @@ async def test_delete_with_cascade_both_directions_succeeds(
     assert {d.id for d in deleted} == {person_john_main.id, car_accord_main.id, car_prius_main.id}
     node_map = await NodeManager.get_many(db=db, ids=[person_john_main.id, car_accord_main.id, car_prius_main.id])
     assert node_map == {}
+
+    await verify_graph(db=db)
 
 
 async def test_delete_with_required_on_generic_prevented(
@@ -245,6 +261,8 @@ async def test_delete_with_cascade_on_generic_allowed(
     node_map = await NodeManager.get_many(db=db, ids=[human.id, dog.id])
     assert node_map == {}
 
+    await verify_graph(db=db)
+
 
 class TestDeleteUnidirectionalRelationship(TestInfrahubApp):
     async def test_delete_unidirectional_optional_relationship(
@@ -274,6 +292,8 @@ class TestDeleteUnidirectionalRelationship(TestInfrahubApp):
         res = await NodeManager.get_many(db=db, ids=[car.id])
         rels = await res[car.id].previous_owner.get_relationships(db=db)
         assert len(rels) == 0
+
+        await verify_graph(db=db)
 
 
 async def test_delete_branch_aware_node_with_branch_agnostic_attribute_on_branch(
@@ -354,6 +374,8 @@ async def test_delete_branch_aware_node_with_branch_agnostic_attribute_on_branch
     assert car_on_branch3_after_main_delete.nbr_seats.value == 5, (
         "Branch-agnostic attribute 'nbr_seats' should still exist on branch3 after the node is deleted on main branch"
     )
+
+    await verify_graph(db=db)
 
 
 async def test_delete_branch_aware_node_with_agnostic_relationship(
@@ -493,6 +515,8 @@ async def test_delete_branch_aware_node_with_agnostic_relationship(
         "Location's devices relationship SHOULD include the device on branch3 after device deleted on branch2"
     )
 
+    await verify_graph(db=db)
+
 
 async def test_error_only_includes_violation_node_during_cascade_delete(
     db: InfrahubDatabase,
@@ -591,3 +615,30 @@ async def test_delete_cascade_artifacts(
     assert artifact.id in {d.id for d in deleted}
     node_map = await NodeManager.get_many(db=db, ids=[c1.id, artifact.id])
     assert node_map == {}
+
+    await verify_graph(db=db)
+
+
+async def test_cascade_delete_both_endpoints_on_branch_no_duplicate_edges(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_camry_main: Node,
+    person_jane_main: Node,
+) -> None:
+    """Cascade-deleting both endpoints of a relationship on a branch must not duplicate closing edges.
+
+    Both the source and the cascaded peer close the shared Relationship vertex's property edges. On a
+    branch, each close writes a new deleted edge, and when they share a timestamp the two closings must
+    collapse to a single deleted edge per property rather than two.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    person_schema = schema_branch.get(name="TestPerson", duplicate=False)
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
+
+    branch = await create_branch(db=db, branch_name="branch_cascade_delete")
+    jane_on_branch = await NodeManager.get_one(db=db, id=person_jane_main.id, branch=branch)
+
+    deleted = await NodeManager.delete(db=db, branch=branch, nodes=[jane_on_branch], at=Timestamp())
+    assert {d.id for d in deleted} == {person_jane_main.id, car_camry_main.id}
+
+    await verify_graph(db=db)
