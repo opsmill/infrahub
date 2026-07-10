@@ -7,7 +7,6 @@ from .schema.node_kind_update import NodeKindUpdateMigration
 from .schema.node_relationship_remove import NodeRelationshipRemoveMigration
 from .schema.node_remove import NodeRemoveMigration
 from .schema.node_uniqueness_constraints_update import NodeUniquenessConstraintsUpdateMigration
-from .schema.placeholder_dummy import PlaceholderDummyMigration
 from .shared import SchemaMigration
 
 MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
