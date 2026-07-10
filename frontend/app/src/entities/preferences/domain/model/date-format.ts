@@ -3,13 +3,10 @@
 // pattern. The key set mirrors backend/infrahub/core/preferences/formats.py (there: key -> strftime).
 // See dev/specs/2026-04-user-preferences.md.
 
-/** Semantic date-format keys. Must stay in sync with the backend `DateFormat` enum. */
-export type DateFormatKey =
-  | "ISO_8601"
-  | "ISO_DATETIME"
-  | "ISO_DATETIME_SECONDS"
-  | "EU_DATETIME"
-  | "US_12H";
+import type { DateFormat } from "@/shared/api/graphql/generated/types";
+
+/** Semantic date-format keys — the generated GraphQL `DateFormat` enum. */
+export type DateFormatKey = DateFormat;
 
 /** Applied when neither the user nor the organisation has set date_format (same key as backend). */
 export const DEFAULT_DATE_FORMAT: DateFormatKey = "ISO_DATETIME";

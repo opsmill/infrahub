@@ -1,16 +1,11 @@
+import type { PreferenceSource } from "@/shared/api/graphql/generated/types";
+
+export type { PreferenceSource };
+
 export interface PreferenceValues {
   dateFormat: string | null;
   timezone: string | null;
 }
-
-/**
- * Where a resolved field's effective value came from (the GraphQL `PreferenceSource` enum, used
- * as-is):
- *   - "USER"    → caller set a personal override.
- *   - "GLOBAL"  → inherited from the org default (no personal override).
- *   - "DEFAULT" → nothing set anywhere; falls back to the browser.
- */
-export type PreferenceSource = "USER" | "GLOBAL" | "DEFAULT";
 
 /** A resolved field: effective value (null when unset everywhere) plus its source. */
 export interface ResolvedPreference {

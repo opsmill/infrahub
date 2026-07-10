@@ -1,8 +1,4 @@
-/**
- * React Aria tooltips require a prior pointer interaction to "warm up"
- * before they respond to hover events. Call this once before any `.hover()`
- * that needs to trigger a tooltip.
- */
+/** React Aria tooltips need a prior pointer interaction; call once before a `.hover()` that opens one. */
 export async function initPointerTracking(locator: {
   click(options?: { position?: { x: number; y: number } }): Promise<void>;
 }) {
@@ -10,20 +6,9 @@ export async function initPointerTracking(locator: {
 }
 
 /**
- * Pick an option from the shared {@link Combobox} (a Radix popover wrapping a cmdk
- * `Command`) — the element our `ComboboxField`/`TimezoneField` render.
- *
- * The trigger is a `<button role="combobox">` whose accessible name is the field
- * label; opening it mounts a cmdk list whose items are `role="option"`. Unlike the
- * React Aria `Select`, the popover has no enter animation that detaches the target,
- * so opening the trigger and clicking the option by its exact visible label is
- * deterministic. cmdk auto-focuses the search input on open, so passing a `filter`
- * narrows the list first (the input is auto-focused, so we type via keyboard rather
- * than relying on its accessible name) — useful for long lists such as timezones.
- *
- * `triggerName` matches the field label (e.g. /date format/i); `optionName` is the
- * option's exact visible text (for the preferences combobox this equals the stored
- * value). Matching is exact so e.g. "yyyy-MM-dd" cannot also match "yyyy-MM-dd HH:mm".
+ * Open the shared Combobox (`triggerName` = field label) and click the option whose exact visible
+ * text is `optionName` (exact so "yyyy-MM-dd" can't match "yyyy-MM-dd HH:mm"). For long lists (e.g.
+ * timezones), pass `filter` — typed into cmdk's auto-focused search box — to narrow first.
  */
 export async function selectComboboxOption(
   component: {

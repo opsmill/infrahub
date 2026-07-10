@@ -1,5 +1,3 @@
-import type React from "react";
-
 import { Col } from "@/shared/components/container";
 import { useTitle } from "@/shared/hooks/useTitle";
 
@@ -21,21 +19,9 @@ interface ObjectDetailsProps {
   objectSchema: ModelSchema;
   objectData: NodeObjectWithMetadata;
   permission: Permission;
-  /**
-   * Optional extra content rendered inside the LEFT column, directly below the
-   * object-details card (and the file-preview card), so it shares the same column
-   * width, gap, and the grid's padding. Defaults to nothing, so every other caller
-   * is unaffected. Used by the profile tab to slot in the user-preferences card.
-   */
-  leftColumnExtra?: React.ReactNode;
 }
 
-export function ObjectDetails({
-  objectSchema,
-  objectData,
-  permission,
-  leftColumnExtra,
-}: ObjectDetailsProps) {
+export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDetailsProps) {
   useTitle(`${getNodeLabel(objectData)} details`);
 
   return (
@@ -50,8 +36,6 @@ export function ObjectDetails({
         {isOfKind(FILE_OBJECT_KIND, objectSchema) && (
           <FilePreviewCard objectData={objectData as unknown as NodeFileObject} />
         )}
-
-        {leftColumnExtra}
       </Col>
 
       <Col>

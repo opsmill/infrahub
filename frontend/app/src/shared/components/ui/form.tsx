@@ -61,11 +61,9 @@ export const Form = ({
           }
 
           if (onSubmit) {
-            // reset(data) runs only after a successful onSubmit, so a handler that throws (e.g. a
-            // failed save re-throwing to keep the form dirty) leaves the form untouched. Swallow the
-            // resulting rejection here — react-hook-form's handleSubmit re-throws it and we discard
-            // the promise, which would otherwise fire an unhandled `unhandledrejection`. Surfacing
-            // the error to the user is the submit handler's own responsibility (e.g. a toast).
+            // reset() runs only after a successful onSubmit, so a handler that throws keeps the form
+            // dirty. Swallow the re-thrown rejection (the handler surfaces its own error) to avoid an
+            // unhandled `unhandledrejection`.
             currentForm
               .handleSubmit(async (data) => {
                 await onSubmit(data);

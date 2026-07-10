@@ -44,16 +44,10 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     return <ErrorScreen message={objectError?.message || permissionError?.message} />;
   }
 
-  // The preferences card is slotted into the object-details left column (below the
-  // account-details card) so it shares the SAME column width, gap, and grid padding
-  // as the other cards — rather than sitting flush against the page edge outside the
-  // padded grid.
   return (
-    <ObjectDetails
-      objectSchema={schema}
-      objectData={objectData}
-      permission={permission}
-      leftColumnExtra={<UserPreferencesCard />}
-    />
+    <>
+      <ObjectDetails objectSchema={schema} objectData={objectData} permission={permission} />
+      <UserPreferencesCard />
+    </>
   );
 }
