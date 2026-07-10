@@ -10,6 +10,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.objects import State, StateType
 from prefect.events.schemas.events import Event, Resource
 
+from infrahub.events.account_action import AccountLoggedInEvent
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent
 from infrahub.events.utils import get_all_events
@@ -28,7 +29,7 @@ from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 if TYPE_CHECKING:
     from prefect.types import DateTime
 
-LOGIN_EVENT_NAME = "infrahub.account.logged_in"
+LOGIN_EVENT_NAME = AccountLoggedInEvent.event_name
 WEBHOOK_FLOW_NAME = WEBHOOK_PROCESS.name
 
 

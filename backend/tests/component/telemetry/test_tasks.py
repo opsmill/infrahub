@@ -36,8 +36,7 @@ from infrahub.workers.dependencies import build_component, clear_singletons, set
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 
-# A calendar day far enough in the past that no test in any session has seeded an event into it;
-# used to prove the genuine-empty -> 0 contract independent of shared Prefect server state.
+# A far-past day no test ever seeds into: proves genuine-empty -> 0 without shared server state.
 _EMPTY_WINDOW_START = datetime(2000, 1, 1, tzinfo=UTC)
 _EMPTY_WINDOW_END = datetime(2000, 1, 2, tzinfo=UTC)
 
@@ -70,7 +69,7 @@ async def _create_account_group(db: InfrahubDatabase, name: str) -> None:
 
 
 async def _store_snapshot(db: InfrahubDatabase, data: TelemetryData) -> TelemetrySnapshot:
-    """Persist a telemetry payload exactly as the send flow does, returning the saved snapshot."""
+    """Persist a telemetry payload and return the saved snapshot."""
     data_dict = data.model_dump(mode="json")
     checksum = hashlib.sha256(json.dumps(data_dict).encode()).hexdigest()
     snapshot = TelemetrySnapshot(
@@ -125,13 +124,9 @@ async def telemetry_environment(
     register_core_models_schema: SchemaBranch,
     prefect_test_fixture: Generator[None, None, None],
 ) -> AsyncGenerator[InfrahubDatabase, None]:
-    """Wire the real in-memory collaborators the gather orchestrator depends on, no mocks.
+    """Wire the in-memory cache and message-bus adapters and a heartbeating component.
 
-    ``gather_anonymous_telemetry_data`` resolves a cache- and message-bus-backed component plus
-    a Prefect client. The cache and bus are the project's in-memory adapters (the sanctioned
-    test doubles), set through the dependency-override hooks the builders already honor; the
-    component type is set so a worker heartbeat key exists. Singletons are cleared on both sides
-    so the wiring does not leak into or out of this module.
+    Overrides are restored and singletons cleared on teardown so nothing leaks between modules.
     """
     previous_cache = config.OVERRIDE.cache
     previous_message_bus = config.OVERRIDE.message_bus
@@ -158,32 +153,27 @@ async def test_gather_full_payload_fields_present(telemetry_environment: Infrahu
 
     assert isinstance(data, TelemetryData)
 
-    # Accounts adoption metrics are present.
     assert data.accounts.active is not None
     assert data.accounts.groups is not None
 
-    # Active branch count is present.
     assert data.branches.active is not None
 
-    # Branch-correct managed-node count is present inside node_count.
     assert "corenode" in data.database.node_count
     assert data.database.node_count["corenode"] is not None
 
-    # User-defined-namespace node count is present inside node_count.
     assert "user" in data.database.node_count
     assert data.database.node_count["user"] is not None
 
-    # Every activity_24h field is present (an empty window is 0, not null).
+    # An empty window is 0, not null, so every field is populated.
     for field in _ACTIVITY_FIELDS:
         assert getattr(data.activity_24h, field) is not None, field
 
 
 async def _empty_window_activity_gatherer() -> TelemetryActivity24hData:
-    """Assemble activity_24h over a deterministically empty far-past window via real counters.
+    """Assemble activity_24h over a far-past window no test seeds, via the real counters.
 
-    Reuses the production windowed counters against a window no test ever seeds, so the sources
-    succeed but legitimately count nothing. This isolates the genuine-empty -> 0 contract from
-    the session-shared Prefect event store, which other modules populate around the live window.
+    The sources succeed but legitimately count nothing, isolating the empty -> 0 case from the
+    session-shared event store other modules populate around the live window.
     """
     async with get_client(sync_client=False) as client:
         logins = await count_windowed_event.fn(
@@ -218,17 +208,9 @@ async def _empty_window_activity_gatherer() -> TelemetryActivity24hData:
 
 
 async def test_gather_genuine_empty_activity_is_zero(telemetry_environment: InfrahubDatabase) -> None:
-    """A window with no seeded events yields 0 on the activity counts, never null.
-
-    The activity source is gathered over a far-past window via the real production counters, so
-    the sources genuinely succeed with nothing to count. The result must be 0 (a successful
-    empty), never None (which would mean the source failed) — the core of the degradation
-    contract.
-    """
+    """An empty window yields 0 on the activity counts, never null (a succeeded-but-empty source)."""
     data = await gather_anonymous_telemetry_data.fn(activity_gatherer=_empty_window_activity_gatherer)
 
-    # Each windowed count is a genuine empty: 0, distinguishing "succeeded with nothing to
-    # count" from "source failed" (which would be None).
     assert data.activity_24h.logins == 0
     assert data.activity_24h.unique_logins == 0
     assert data.activity_24h.webhooks_fired_success == 0
@@ -250,28 +232,20 @@ async def _boom_active_branches() -> int:
 async def test_gather_one_source_fails_others_populated_and_stored(
     telemetry_environment: InfrahubDatabase,
 ) -> None:
-    """One failing source nulls only its own field(s); the rest is populated and storable.
-
-    The failing collaborator is a real coroutine that raises — the adapter pattern, not a mock.
-    The orchestrator isolates it through the degradation helper, so the accounts object comes
-    back fully null while every other metric (branches, corenode, the whole activity_24h
-    object) is still populated, and the resulting snapshot still persists to the repository.
-    """
+    """One failing source nulls only its own fields; the rest is populated and still storable."""
     db = telemetry_environment
 
     data = await gather_anonymous_telemetry_data.fn(account_gatherer=_boom_accounts)
 
-    # The failed source is null on both its fields.
     assert data.accounts.active is None
     assert data.accounts.groups is None
 
-    # Every other new metric is still populated.
     assert data.branches.active is not None
     assert data.database.node_count["corenode"] is not None
     for field in _ACTIVITY_FIELDS:
         assert getattr(data.activity_24h, field) is not None, field
 
-    # The payload is still storable end to end despite the failed source.
+    # The payload still persists end to end despite the failed source.
     snapshot = await _store_snapshot(db=db, data=data)
     repository = TelemetrySnapshotRepository(db=db)
     stored = await repository.get_list(limit=1)

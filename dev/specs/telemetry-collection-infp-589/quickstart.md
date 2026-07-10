@@ -15,7 +15,7 @@ export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock   # component tests need
 Validates `null`-on-failure vs `0`-on-empty in isolation (SC-001).
 
 ```bash
-uv run pytest backend/tests/unit/telemetry/test_degradation.py -q
+uv run pytest backend/tests/unit/telemetry/test_utils.py -q
 ```
 
 Expected: a failing metric coroutine yields `None`; a succeeding-but-empty coroutine yields `0`.
@@ -23,7 +23,7 @@ Expected: a failing metric coroutine yields `None`; a succeeding-but-empty corou
 ## 2. Component: managed-node count exactness (SC-003)
 
 ```bash
-uv run pytest backend/tests/component/telemetry/test_datatabase.py -q
+uv run pytest backend/tests/component/telemetry/test_database.py -q
 ```
 
 Expected: with a fixture of N managed nodes seeded via existing schema helpers,

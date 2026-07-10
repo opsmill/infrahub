@@ -8,7 +8,7 @@ falsy ``0`` (interpreted as "source succeeded with nothing to count").
 
 from __future__ import annotations
 
-from infrahub.telemetry.tasks import safe_metric
+from infrahub.telemetry.utils import safe_metric
 
 
 async def _raises() -> int:
