@@ -9,7 +9,6 @@ export function globalPermissionQueryOptions(action: string) {
   });
 }
 
-/** Whether the current account holds the given GLOBAL permission `action` (or is a super admin). */
 export function useGlobalPermission(action: string) {
   return useQuery(globalPermissionQueryOptions(action));
 }

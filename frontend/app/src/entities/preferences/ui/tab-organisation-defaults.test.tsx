@@ -17,7 +17,6 @@ vi.mock("@/entities/permission/ui/queries/use-global-permission", () => ({
 vi.mock("@/entities/preferences/domain/use-cases/get-global-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
 
-// Gating flows through RequireGlobalPermission, which reads useGlobalPermission(action).
 function mockCanManage(canManage: boolean) {
   vi.mocked(useGlobalPermission).mockReturnValue({
     isPending: false,
@@ -26,7 +25,6 @@ function mockCanManage(canManage: boolean) {
   } as UseQueryResult<boolean>);
 }
 
-// The raw organisation defaults (scope GLOBAL) the form prefills from.
 const baseGlobal: GlobalPreferences = { dateFormat: null, timezone: "Europe/Paris" };
 
 describe("TabOrganisationDefaults", () => {
@@ -72,7 +70,6 @@ describe("TabOrganisationDefaults", () => {
     await expect.element(component.getByText("Global date and time")).toBeVisible();
 
     const title = component.getByText("Global date and time").element() as HTMLElement;
-    // The card ancestor carries the width cap (max-w-3xl) so the longest inline example never clips.
     const card = title.closest(".max-w-3xl");
     expect(card).not.toBeNull();
     expect(card?.className).not.toMatch(/max-w-2xl/);
@@ -81,7 +78,6 @@ describe("TabOrganisationDefaults", () => {
   test("shows the live date-format example inline next to the control", async () => {
     const component = await render(<TabOrganisationDefaults />);
 
-    // Frozen at 2026-06-30T14:30:00; selecting a concrete preset surfaces the example.
     await selectComboboxOption(component, /date format/i, "yyyy-MM-dd HH:mm");
 
     const combobox = component.getByRole("combobox", { name: /date format/i }).element();
@@ -95,7 +91,6 @@ describe("TabOrganisationDefaults", () => {
   test("edits the raw global_* values via the global mutation when allowed", async () => {
     const component = await render(<TabOrganisationDefaults />);
 
-    // Select an option by its visible label; the stored value is the semantic key behind it.
     await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
     await component.getByRole("button", { name: "Save" }).click();
 
@@ -108,9 +103,7 @@ describe("TabOrganisationDefaults", () => {
   });
 
   test("prefills the form from the raw GLOBAL scope values", async () => {
-    // This tab reads ONLY the GLOBAL scope (useGlobalPreferences) — it never reads the caller's
-    // effective/personal preferences — so an admin's own overrides structurally cannot leak into
-    // the org-defaults form; it always shows the organisation's own values.
+    // Reads ONLY the GLOBAL scope, so an admin's own overrides can't leak into this form.
     vi.mocked(getGlobalPreferences).mockResolvedValue({
       dateFormat: "ISO_DATETIME",
       timezone: "Europe/Paris",
@@ -118,7 +111,6 @@ describe("TabOrganisationDefaults", () => {
 
     const component = await render(<TabOrganisationDefaults />);
 
-    // The form prefills from the GLOBAL scope: the ISO_DATETIME key surfaces as its label.
     await expect
       .element(component.getByRole("combobox", { name: /date format/i }))
       .toHaveTextContent("yyyy-MM-dd HH:mm");

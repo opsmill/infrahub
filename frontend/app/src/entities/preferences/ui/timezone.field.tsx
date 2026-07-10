@@ -20,7 +20,6 @@ export interface TimezoneFieldProps {
   placeholder?: string;
 }
 
-/** Searchable select over the IANA timezones supported by the runtime. */
 export function TimezoneField({
   name,
   label,

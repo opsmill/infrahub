@@ -9,11 +9,7 @@ export const SUPER_ADMIN = "super_admin";
 
 export type PermissionDecisionData = "ALLOW" | "ALLOW_DEFAULT" | "ALLOW_OTHER" | "DENY";
 
-/**
- * GLOBAL `decision` arrives as a stringified InfrahubNumberEnum (DENY=1, ALLOW_DEFAULT=2,
- * ALLOW_OTHER=4, ALLOW_ALL=6), e.g. "6" — unlike OBJECT permissions, which use the string names
- * in {@link PermissionDecisionData}.
- */
+// GLOBAL decision is a stringified InfrahubNumberEnum (DENY=1, ALLOW_DEFAULT=2, ALLOW_OTHER=4, ALLOW_ALL=6) — unlike OBJECT perms, which use string names.
 export const GLOBAL_PERMISSION_DECISION = {
   DENY: "1",
   ALLOW_DEFAULT: "2",

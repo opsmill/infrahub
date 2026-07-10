@@ -35,8 +35,7 @@ describe("preferences mutations", () => {
     const { result } = await renderHook(() => useUpdateMyUserPreferences(), { wrapper });
     await result.current.mutateAsync({ dateFormat: "ISO_DATETIME", timezone: "UTC" });
 
-    // Assert the variables (first arg); react-query passes extra args to mutationFn.
-    expect(vi.mocked(upsertMyUserPreference).mock.calls[0]?.[0]).toEqual({
+    expect(upsertMyUserPreference).toHaveBeenCalledWith({
       dateFormat: "ISO_DATETIME",
       timezone: "UTC",
     });
@@ -52,7 +51,7 @@ describe("preferences mutations", () => {
     const { result } = await renderHook(() => useUpdateMyUserPreferences(), { wrapper });
     await result.current.mutateAsync({ dateFormat: null, timezone: null });
 
-    expect(vi.mocked(upsertMyUserPreference).mock.calls[0]?.[0]).toEqual({
+    expect(upsertMyUserPreference).toHaveBeenCalledWith({
       dateFormat: null,
       timezone: null,
     });
@@ -68,7 +67,7 @@ describe("preferences mutations", () => {
       timezone: "Europe/Paris",
     });
 
-    expect(vi.mocked(updateGlobalPreference).mock.calls[0]?.[0]).toEqual({
+    expect(updateGlobalPreference).toHaveBeenCalledWith({
       dateFormat: "EU_DATETIME",
       timezone: "Europe/Paris",
     });

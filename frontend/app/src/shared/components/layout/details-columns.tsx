@@ -3,11 +3,7 @@ import type React from "react";
 import { Col } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
-/**
- * Responsive two-column layout for detail screens: stacked on small viewports, a 2/3 main column
- * plus a 1/3 aside from `xl`. The shell is reusable so a page composes its own cards into the
- * columns (see the Profile tab) rather than injecting content into a specific details component.
- */
+// Responsive detail-screen layout: stacked on small viewports, 2/3 main + 1/3 aside from xl; pages compose their own cards.
 function DetailsColumns({
   children,
   className,

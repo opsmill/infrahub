@@ -13,7 +13,6 @@ export interface RequireGlobalPermissionProps {
   children?: React.ReactNode;
 }
 
-/** Gates children on a GLOBAL permission; the account-wide counterpart of {@link RequireObjectPermissions}. */
 export function RequireGlobalPermission({
   action,
   children,

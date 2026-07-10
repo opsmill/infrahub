@@ -1,14 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { upsertMyUserPreference } from "@/entities/preferences/domain/use-cases/upsert-my-user-preference";
+import {
+  type UpsertMyUserPreferenceParams,
+  upsertMyUserPreference,
+} from "@/entities/preferences/domain/use-cases/upsert-my-user-preference";
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
 
-/** Write the caller's own row, then invalidate the effective-preferences query. */
 export function useUpdateMyUserPreferences() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: upsertMyUserPreference,
+    // Wrap so mutationFn gets only `params`; react-query passes extra positionals to a bare ref.
+    mutationFn: (params: UpsertMyUserPreferenceParams) => upsertMyUserPreference(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.effective() });
     },

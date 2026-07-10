@@ -6,11 +6,7 @@ import {
 
 export type HasGlobalPermission = (action: string) => Promise<boolean>;
 
-/**
- * Whether the account holds `action` (an edge with a granting, non-DENY decision).
- * A `super_admin` grant satisfies ANY action, mirroring the backend's
- * `resolve_global_permission(action) or is_super_admin()` so the UI gate matches enforcement.
- */
+// A super_admin grant satisfies ANY action, mirroring backend enforcement.
 export const hasGlobalPermission: HasGlobalPermission = async (action) => {
   const { data } = await getGlobalPermissionsFromApi();
   const edges = data.InfrahubPermissions.global_permissions?.edges ?? [];

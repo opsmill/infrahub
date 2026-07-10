@@ -47,9 +47,7 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     return <ErrorScreen message={objectError?.message || permissionError?.message} />;
   }
 
-  // The Profile tab owns its layout rather than rendering the generic <ObjectDetails/>: user
-  // preferences are a distinct concern, not part of the account node, so the card sits beside the
-  // account details in the main column via the shared DetailsColumns primitive.
+  // Profile tab owns its layout: user preferences aren't part of the account node, so the card sits beside account details via the shared DetailsColumns primitive.
   return (
     <DetailsColumns>
       <DetailsColumns.Main>

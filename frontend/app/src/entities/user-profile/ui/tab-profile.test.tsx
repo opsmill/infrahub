@@ -7,8 +7,6 @@ import { upsertMyUserPreference } from "@/entities/preferences/domain/use-cases/
 import { render } from "../../../../tests/components/render";
 import TabProfile from "./tab-profile";
 
-// Stub the account-detail cards (their schema/query machinery is out of scope here); we only assert
-// the profile tab composes the account details with the user-preferences card in the main column.
 vi.mock("@/entities/nodes/object/ui/object-details/object-details-card", () => ({
   ObjectDetailsCard: () => <div data-testid="object-details-card">account details</div>,
 }));
@@ -31,8 +29,6 @@ vi.mock("@/entities/permission/ui/queries/get-object-permissions.query", () => (
   useGetObjectPermissions: () => ({ data: {}, error: null, isPending: false }),
 }));
 
-// The preferences card calls the same domain functions the old tab-preferences
-// test mocked; the query hooks delegate to these.
 vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/upsert-my-user-preference");
 
@@ -65,7 +61,6 @@ describe("TabProfile", () => {
     await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
     await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
 
-    // The preferences card comes after the account details in the main column.
     const ordered = Array.from(component.container.querySelectorAll<HTMLElement>("*"));
     const detailsIndex = ordered.indexOf(details.element() as HTMLElement);
     const titleIndex = ordered.indexOf(preferencesTitle.element() as HTMLElement);

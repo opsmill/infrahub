@@ -10,10 +10,7 @@ export function getGlobalPreferencesQueryOptions() {
   });
 }
 
-/**
- * Raw org defaults (scope GLOBAL). Loaded only by the org-defaults card when its tab opens, so a
- * regular user never issues the gated GLOBAL-scope request.
- */
+/** Loaded only by the org-defaults card, so a regular user never issues the gated GLOBAL-scope request. */
 export function useGlobalPreferences() {
   return useQuery(getGlobalPreferencesQueryOptions());
 }

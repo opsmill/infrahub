@@ -8,7 +8,6 @@ vi.mock("@/entities/permission/api/get-global-permissions-from-api");
 type GlobalPermissionsResult = Awaited<ReturnType<typeof getGlobalPermissionsFromApi>>;
 
 function mockEdges(edges: Array<{ action: string; decision: string }>) {
-  // Only the shape the domain reads matters; cast the partial stub to the full result type.
   vi.mocked(getGlobalPermissionsFromApi).mockResolvedValue({
     data: {
       InfrahubPermissions: {
@@ -23,7 +22,7 @@ describe("hasGlobalPermission", () => {
     vi.clearAllMocks();
   });
 
-  // decision is the stringified PermissionDecision int: DENY=1, ALLOW_DEFAULT=2, ALLOW_OTHER=4, ALLOW_ALL=6.
+  // decision is the stringified int: DENY=1, ALLOW_DEFAULT=2, ALLOW_OTHER=4, ALLOW_ALL=6.
   test("returns true when the action is present with ALLOW_ALL (6)", async () => {
     mockEdges([{ action: "manage_global_preferences", decision: "6" }]);
 

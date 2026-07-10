@@ -15,23 +15,19 @@ import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
 import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 import { useUpdateMyUserPreferences } from "@/entities/preferences/ui/queries/upsert-my-user-preferences.mutation";
 
-/** Browser-locale date formatting: the fallback shown when source is "default". */
 function browserDateExample(referenceDate: Date): string {
   return referenceDate.toLocaleString();
 }
 
-/** The browser's resolved IANA timezone, e.g. "Europe/Paris". */
 function browserTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 function presetExample(value: string, referenceDate: Date) {
-  // `value` is a semantic key; render its live example + human label, never the raw key,
-  // e.g. "01/07/2026 14:30 (dd/MM/yyyy HH:mm)".
+  // `value` is a semantic key; render its live example + label, never the raw key.
   return `${formatDateFormatExample(value, referenceDate)} (${dateFormatLabel(value)})`;
 }
 
-/** (i) tooltip text for a field's effective value, keyed off its resolved source. */
 function sourceTooltip(resolved: ResolvedPreference, browserValue: string): string {
   switch (resolved.source) {
     case "USER":
@@ -43,11 +39,9 @@ function sourceTooltip(resolved: ResolvedPreference, browserValue: string): stri
   }
 }
 
-/** The user's personal date/time preferences card on the Profile tab. */
 export function UserPreferencesCard() {
   const effectiveQuery = useEffectivePreferences();
   const updatePreferences = useUpdateMyUserPreferences();
-  // Single reference instant for the live date example, memoised so it does not churn.
   const now = useMemo(() => new Date(), []);
 
   if (effectiveQuery.error) {
@@ -60,8 +54,6 @@ export function UserPreferencesCard() {
 
   const preferences = effectiveQuery.data;
 
-  // A raw semantic key is unhelpful in prose, so render a concrete date-format value as a
-  // live preset example for the tooltip.
   const dateFormatResolved: ResolvedPreference = {
     source: preferences.dateFormat.source,
     value: preferences.dateFormat.value
@@ -71,8 +63,7 @@ export function UserPreferencesCard() {
   const dateFormatSourceTooltip = sourceTooltip(dateFormatResolved, browserDateExample(now));
   const timezoneSourceTooltip = sourceTooltip(preferences.timezone, browserTimezone());
 
-  // Show only the caller's OWN override: an inherited value (source !== "user") is left unset
-  // so the field shows its "Automatic (inherited)" placeholder.
+  // Show only the caller's OWN override; inherited values stay unset so the field shows its placeholder.
   const dateFormatOverride =
     preferences.dateFormat.source === "USER" ? preferences.dateFormat.value : null;
   const timezoneOverride =
@@ -105,8 +96,7 @@ export function UserPreferencesCard() {
                 message={error instanceof Error ? error.message : "Failed to update preferences"}
               />
             );
-            // Re-throw so the shared Form skips its post-submit reset(), keeping the form dirty
-            // with the unsaved values rather than looking as though it saved.
+            // Re-throw so the shared Form skips its post-submit reset() and stays dirty.
             throw error;
           }
         }}

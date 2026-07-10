@@ -14,19 +14,13 @@ const UPDATE_GLOBAL_PREFERENCE = graphql(`
 `);
 
 export interface UpdateGlobalPreferenceFromApiParams {
-  /** Org default for `date_format`. Explicit `null` clears it; omitting the key leaves it unchanged. */
+  /** Explicit `null` clears the field; omitting the key leaves it unchanged. */
   dateFormat?: string | null;
-  /** As `dateFormat`, for `timezone`. */
   timezone?: string | null;
 }
 
-/**
- * Update the org-wide singleton (no id argument; the resolver lazily materialises the row).
- * Explicit `null` clears a field; omitting it leaves the stored value unchanged.
- */
 export async function updateGlobalPreferenceFromApi(params: UpdateGlobalPreferenceFromApiParams) {
-  // date_format is a plain string in the domain but constrained to DateFormat enum keys by the UI,
-  // so narrow it to the generated variable type here at the GraphQL boundary.
+  // date_format is a plain string in the domain; narrow to the generated DateFormat enum type at the GraphQL boundary.
   const variables: VariablesOf<typeof UPDATE_GLOBAL_PREFERENCE> = {};
   if ("dateFormat" in params) {
     variables.dateFormat = params.dateFormat as VariablesOf<
@@ -40,8 +34,7 @@ export async function updateGlobalPreferenceFromApi(params: UpdateGlobalPreferen
     variables,
   });
 
-  // Apollo resolves on application-level failures that carry no GraphQL errors, so assert `ok`;
-  // otherwise a failed update would run the caller's success path (toast + cache invalidation).
+  // Apollo resolves on application-level failures that carry no GraphQL errors, so assert `ok`.
   if (!result.data?.InfrahubSetPreferences?.ok) {
     throw new Error("Failed to update the organisation defaults");
   }

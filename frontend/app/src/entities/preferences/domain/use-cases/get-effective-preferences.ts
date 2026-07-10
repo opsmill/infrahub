@@ -7,7 +7,6 @@ export const getEffectivePreferences: GetEffectivePreferences = async () => {
   const { data } = await getEffectivePreferencesFromApi();
   const effective = data.InfrahubEffectivePreferences;
 
-  // `source` is the GraphQL PreferenceSource enum (USER/GLOBAL/DEFAULT), used as-is.
   return {
     dateFormat: {
       value: effective.date_format.value ?? null,

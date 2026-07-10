@@ -27,7 +27,6 @@ export interface PreferencesFormProps {
   children?: React.ReactNode;
 }
 
-/** (i) tooltip explaining the SOURCE of a field's effective value. */
 function SourceInfo({ message }: { message: React.ReactNode }) {
   if (!message) return null;
   return (
@@ -47,7 +46,6 @@ function SourceInfo({ message }: { message: React.ReactNode }) {
   );
 }
 
-/** Disabled while the form is pristine, so an untouched form cannot be submitted. */
 function SaveButton({ isDisabled }: { isDisabled?: boolean }) {
   const { isDirty } = useFormState();
 
@@ -59,7 +57,6 @@ function toFieldValue(value: string | null): FormAttributeValue {
   return { source: { type: "user" }, value };
 }
 
-/** Live example of the selected date format; renders nothing when no value is selected. */
 function DateFormatExample({ id, now }: { id: string; now: Date }) {
   const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
   const selected = (fieldValue?.value as string | null | undefined) ?? null;
@@ -73,7 +70,6 @@ function DateFormatExample({ id, now }: { id: string; now: Date }) {
   );
 }
 
-/** Shared date-format + timezone form for the user and organisation tabs. */
 export function PreferencesForm({
   values,
   dateFormatSourceTooltip,
@@ -82,12 +78,11 @@ export function PreferencesForm({
   isSubmitDisabled,
   children,
 }: PreferencesFormProps) {
-  // ComboboxField takes `{ value, label }`; the stored value is the preset key.
+  // The stored value is the preset key, not the human label.
   const items = useMemo(
     () => buildDateFormatPresets().map(({ key, label }) => ({ value: key, label })),
     []
   );
-  // Single reference instant for the live example, memoised so it does not churn.
   const now = useMemo(() => new Date(), []);
 
   const dateFormatLabelId = useId();
@@ -109,13 +104,10 @@ export function PreferencesForm({
         });
       }}
     >
-      {/* Full-bleed separators: the `divide-y` container has no horizontal padding so dividers
-          reach both card edges; each child supplies its own padding. */}
+      {/* No horizontal padding on the divide-y container so dividers reach both card edges; each child pads itself. */}
       <div className="divide-y divide-gray-200">
         <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
-          {/* Both fields share the same fixed w-64 so they line up. The example is an
-              always-present flex-1 slot (mirroring the timezone spacer) so the (i) icons on
-              both rows stay pinned right and aligned whether or not an example shows. */}
+          {/* Fixed w-64 + always-present flex-1 example slot (mirrored by the timezone spacer) keeps the (i) icons aligned across rows. */}
           <div className="flex items-center gap-2">
             <div className="w-64 shrink-0">
               <ComboboxField

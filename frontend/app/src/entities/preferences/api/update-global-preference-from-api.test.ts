@@ -11,7 +11,6 @@ vi.mock("@/shared/api/graphql/graphqlClientApollo", () => ({
   },
 }));
 
-// A successful mutation payload (the resolver's `ok` flag is asserted by the helper).
 const OK_RESULT = {
   data: { InfrahubSetPreferences: { ok: true, date_format: null, timezone: null } },
 };
@@ -47,7 +46,7 @@ describe("updateGlobalPreferenceFromApi", () => {
   });
 
   test("throws when the mutation reports ok: false (application-level failure)", async () => {
-    // Apollo resolves without GraphQL errors, but ok: false means the update did not happen.
+    // ok: false means the update did not happen, even though Apollo resolved without errors.
     vi.mocked(graphqlClient.mutate).mockResolvedValue({
       data: { InfrahubSetPreferences: { ok: false, date_format: null, timezone: null } },
     } as never);

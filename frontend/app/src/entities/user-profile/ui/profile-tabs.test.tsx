@@ -31,7 +31,6 @@ describe("ProfileTabs", () => {
     await expect.element(component.getByRole("link", { name: "Profile" })).toBeVisible();
     await expect.element(component.getByRole("link", { name: "Tokens" })).toBeVisible();
     await expect.element(component.getByRole("link", { name: "Password" })).toBeVisible();
-    // User preferences now live inside the Profile tab, so there is no standalone tab.
     expect(component.getByRole("link", { name: "Preferences" }).elements()).toHaveLength(0);
   });
 
