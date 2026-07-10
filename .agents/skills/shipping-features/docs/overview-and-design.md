@@ -54,12 +54,12 @@ whole state).
 ```
 specs/001-user-auth/
   ship.md        ← manifest: classification, phase status, artifact links
-  spec.md        ← phase 2 (feature)  |  analysis.md ← phase 2 (bug)
+  spec.md        ← phase 3 (feature)  |  analysis.md ← phase 3 (bug)
   plan.md
   tasks.md
-  review.md      ← phase 5
-  retrospective.md ← phase 6
-  → PR URL recorded in ship.md (phase 8), CI status (phase 9)
+  review.md      ← phase 6
+  retrospective.md ← phase 7
+  → PR URL recorded in ship.md (phase 9), CI status (phase 10)
 ```
 
 ## Reuse over reimplementation
@@ -79,27 +79,27 @@ run at the knowledge step).
 
 | # | Phase | Delegates to | Reliability layers |
 |---|---|---|---|
-| 0 | Classify | (this skill) | checkpoint |
-| 1 | Ticket & branch | `creating-issues`, `/speckit-git-feature` | gate |
-| 2 | Understand | `/bug-analyze` / `grilling-ideas`+`/speckit-specify` | gate (+ parallel on feature M/L) |
-| 3 | Plan | `/speckit-plan`+`/speckit-tasks` | gate + parallel (+ skeptic on risk) |
-| 4 | Implement | `/bug-tdd`+`/bug-fix` / TDD agents · prune residues | gate + adversarial verify |
-| 5 | Review | `speckit-review-run`, `coderabbit`, `/security-review` | gate + parallel + verify |
-| 6 | Knowledge, learning & retrospective | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `audit-docs`→`add-docs` | conditional |
-| 7 | CI gate | `/pre-ci` | gate |
-| 8 | Commit & PR | `commit`, `pr`, split assessment | parallel (split) |
-| 9 | CI watch | `monitoring-pull-requests` | gate |
+| 1 | Classify | (this skill) | checkpoint |
+| 2 | Ticket & branch | `creating-issues`, `/speckit-git-feature` | gate |
+| 3 | Understand | `/bug-analyze` / `grilling-ideas`+`/speckit-specify` | gate (+ parallel on feature M/L) |
+| 4 | Plan | `/speckit-plan`+`/speckit-tasks` | gate + parallel (+ skeptic on risk) |
+| 5 | Implement | `/bug-tdd`+`/bug-fix` / TDD agents · prune residues | gate + adversarial verify |
+| 6 | Review | `speckit-review-run`, `coderabbit`, `/security-review` | gate + parallel + verify |
+| 7 | Knowledge, learning & retrospective | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `audit-docs`→`add-docs` | conditional |
+| 8 | CI gate | `/pre-ci` | gate |
+| 9 | Commit & PR | `commit`, `pr`, split assessment | parallel (split) |
+| 10 | CI watch | `monitoring-pull-requests` | gate |
 
 Checkpoints sit between phases; the user can pause, redirect, reclassify, or jump at any of them.
-**Two cleanups keep it consistent:** code residues + stale comments at phase 4 (`pruning-residues`),
-docs & knowledge at phase 6 (`capturing-knowledge` + `audit-docs`).
+**Two cleanups keep it consistent:** code residues + stale comments at phase 5 (`pruning-residues`),
+docs & knowledge at phase 7 (`capturing-knowledge` + `audit-docs`).
 
 ## Open questions for the team
 
 - Is `specs/NNN-slug/` the right home for `ship.md`, or should bug/chore work (which may skip
   speckit) use a lighter location?
 - Which risk flags actually earn stacked verification in our codebase? Are four too many/few?
-- Should phase 9 (CI watch) block the "done" state, or just report?
+- Should phase 10 (CI watch) block the "done" state, or just report?
 - What's the right default size→depth mapping — is `L` too eager to spin up worktrees + 3–4 agents?
 
 ## Status

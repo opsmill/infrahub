@@ -74,7 +74,7 @@ When the skill is invoked with empty `$ARGUMENTS`, or on any re-entry:
 
 1. **Scan** for an unfinished `ship.md` (search `specs/*/ship.md` with an incomplete phase list;
    prefer one whose `branch` matches the current git branch).
-2. **None found** → this is new work; ask what to ship and start at phase 0.
+2. **None found** → this is new work; ask what to ship and start at phase 1.
 3. **Found** → print a **status board**: the phase list with markers, the classification line, and
    the next action. This is the "where am I" answer.
 4. **Reconcile before trusting** — the manifest can drift from reality (a branch was reset, a
@@ -84,7 +84,7 @@ When the skill is invoked with empty `$ARGUMENTS`, or on any re-entry:
    |---|---|
    | ticket-branch | branch exists and is checked out |
    | understand/plan | the named artifact file exists and is non-empty |
-   | implement | branch is ahead of base; the phase-4 gate test is still green |
+   | implement | branch is ahead of base; the phase-5 gate test is still green |
    | ci | re-run is fast? if not, trust the recorded result but flag its age |
    | commit-pr | the PR URL still resolves and is open |
 

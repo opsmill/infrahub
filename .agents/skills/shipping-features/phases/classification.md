@@ -1,4 +1,4 @@
-# Phase 0 — Classification
+# Phase 1 — Classification
 
 The first thing every `shipping-features` run does. Classification selects the **lane** (which
 sibling skills run) and the **depth** (how much divergence/verification), so an `S` bug and an

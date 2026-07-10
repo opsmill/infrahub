@@ -67,7 +67,7 @@ official marketplace with `claude plugin install <name>` (or the `/plugin` menu)
 
 ## Preflight: check companions once (non-blocking)
 
-Before phase 1, probe for the plugins above **once**. If any are missing, print a single
+Before phase 2, probe for the plugins above **once**. If any are missing, print a single
 consolidated note naming what's absent and the install command, then **proceed immediately** with
 the in-repo skills and built-in fallbacks. Do not prompt, wait, re-suggest, or auto-install.
 
@@ -103,7 +103,7 @@ command the repo lacks; surface ambiguity to the user. Column 1 lists the in-rep
 | PR | `pr`, `/git-pr` | `commit-commands:commit-push-pr`, `superpowers:finishing-a-development-branch` | `gh pr create` |
 | Post-open CI watch | `monitoring-pull-requests` | — | `gh run watch` / skip |
 
-## Reliability model (read before phase 1)
+## Reliability model (read before phase 2)
 
 Three layers, applied per phase, scaled by size, stacked only on risk. Full rules and the
 risk-triggered stacking table are in [phases/reliability.md](phases/reliability.md). In brief:
@@ -117,7 +117,7 @@ risk-triggered stacking table are in [phases/reliability.md](phases/reliability.
 - **Stack all three** on a phase only when a **risk flag** (`irreversible | security | cross-team
   | crux-algorithm`) is set at classification — the user confirms it, the model does not guess it.
 
-## Classification (phase 0 — opens every run)
+## Classification (phase 1 — opens every run)
 
 Follow [phases/classification.md](phases/classification.md): propose `type` (bug / feature /
 chore), `size` (S / M / L), and any `risk` flags from the ticket text and diff surface; the user
@@ -157,16 +157,16 @@ Each phase below: **delegates to** a discovered tool, **reads** the upstream art
 `ship.md`, **writes** its own artifact back, runs its **gate**, then **checkpoints**. Update
 `ship.md` at every transition.
 
-### Phase 0 — Classify
+### Phase 1 — Classify
 Per [phases/classification.md](phases/classification.md). Create `ship.md` (or resume an existing
 one). **Checkpoint:** user confirms type / size / risk before any work.
 
-### Phase 1 — Ticket & branch
+### Phase 2 — Ticket & branch
 If no ticket and the project tracks issues, offer `creating-issues` (or `/create-jira-tickets`).
 Create the feature branch via `/speckit-git-feature` (validates Jira/JPD ref, names the branch) or
 `git checkout -b` fallback. Record ticket + branch in `ship.md`. **Gate:** on a named branch, not the base branch.
 
-### Phase 2 — Understand
+### Phase 3 — Understand
 - **bug:** `/bug-analyze` → `analysis.md` (root cause + repro). **Gate:** a concrete repro exists.
 - **feature:** harden with `grilling-ideas` (or `creating-prd`) if fuzzy; **diverge** (3 `Explore` framings: existing
   patterns / related entities & APIs / test-coverage gaps) → **synthesize** 1 brief; formalize
@@ -175,13 +175,13 @@ Create the feature branch via `/speckit-git-feature` (validates Jira/JPD ref, na
 - **chore:** short inline brief. **Gate:** scope stated in one paragraph.
 **Checkpoint:** show the artifact + open questions.
 
-### Phase 3 — Plan (feature `M`/`L`; skipped otherwise)
+### Phase 4 — Plan (feature `M`/`L`; skipped otherwise)
 **Diverge** (3 `Plan` framings: minimal / refactor-friendly / test-first) → **synthesize** one
 ordered task list; formalize with `/speckit-plan` + `/speckit-tasks` → `plan.md`, `tasks.md`.
 On a risk flag, add a skeptic pass on the synthesis (see reliability). **Gate:** every task
 references files that exist; plan cites the spec. **Checkpoint:** merged plan + tradeoffs.
 
-### Phase 4 — Implement
+### Phase 5 — Implement
 - **bug:** `/bug-tdd` (failing test) → `/bug-fix`.
 - **feature/chore:** group `tasks.md` into independent units; run TDD agents (worktree isolation
   on `L`); independent units in parallel (one message), dependent units sequentially.
@@ -193,7 +193,7 @@ Verify the real diff, never the self-report. **Gate + adversarial verify:** a te
 now green (on the pruned diff) *and* a skeptic agent fails to refute "this actually implements the
 spec/fixes the bug." **Checkpoint** only if a blocker surfaces or on `L`.
 
-### Phase 5 — Review (pre-PR)
+### Phase 6 — Review (pre-PR)
 The in-repo `speckit-review-*` suite already **is** the divergence — its lenses (`speckit-review-code`,
 `-tests`, `-types`, `-errors`, `-comments`) map onto the parallel framings. Prefer `speckit-review-run`
 (runs the suite) or the individual lenses in parallel, plus `speckit-review-simplify` and
@@ -204,13 +204,13 @@ with `superpowers:requesting-code-review` / `receiving-code-review` when present
 **Gate:** zero unaddressed blockers. **Checkpoint:** ranked list, then fix pass (small parallel
 agents per file group).
 
-### Phase 6 — Knowledge, learning & retrospective (opportunistic)
+### Phase 7 — Knowledge, learning & retrospective (opportunistic)
 1. **Capture domain facts** — delegate to `capturing-knowledge` (no args). Skip silently if nothing
    genuinely new was learned — empty captures are a feature.
 2. **Learn from the review** — delegate to `learning-from-review` (PR ref, or the current branch's PR;
-   else the phase-5 review threads). It reconstructs proposed → rejected → corrected, distills the
+   else the phase-6 review threads). It reconstructs proposed → rejected → corrected, distills the
    durable lesson that would have produced the accepted version first time, and hands it to
-   `capturing-knowledge` to persist. Skip if phase 5 requested no changes — there is nothing to learn.
+   `capturing-knowledge` to persist. Skip if phase 6 requested no changes — there is nothing to learn.
 3. **Audit docs** — delegate to the `audit-docs` skill (fallback: the `/audit-docs` command) against
    this branch's changes; it cross-references the doc layers and reports gaps/drift, so the docs stay
    consistent with what was actually built. For each real gap, update or create the doc with the
@@ -226,14 +226,14 @@ Any doc changes join **this** PR (no separate docs PR unless the user asks). Rec
 report path + chosen dispositions in `ship.md`. **Checkpoint** only if any step proposes changes —
 otherwise skip silently.
 
-### Phase 7 — CI gate (must-pass before PR)
+### Phase 8 — CI gate (must-pass before PR)
 Run `/pre-ci` (or `superpowers:verification-before-completion`, or detected test+lint commands —
-never invented). Red → loop back to the phase 5 fix pass. **Do not proceed with a red gate.**
+never invented). Red → loop back to the phase 6 fix pass. **Do not proceed with a red gate.**
 **Checkpoint:** results.
 
-### Phase 8 — Commit & PR
+### Phase 9 — Commit & PR
 1. **Commit** any final drift with `commit` → `/git-commit` → `commit-commands:commit` →
-   `git commit`. By now work was committed iteratively in phase 4; do not auto-commit to satisfy a
+   `git commit`. By now work was committed iteratively in phase 5; do not auto-commit to satisfy a
    command — surface a dirty-tree refusal instead.
 2. **Split assessment** (bias toward single PR) per [phases/pr-split.md](phases/pr-split.md).
    **Checkpoint:** user picks single / accepts split / proposes another. Never force a split.
@@ -241,9 +241,9 @@ never invented). Red → loop back to the phase 5 fix pass. **Do not proceed wit
    `superpowers:finishing-a-development-branch` → `gh pr create`. For split PRs prepend
    `Depends on #<sibling>` and open in dependency order. Record PR URL(s) in `ship.md`.
 
-### Phase 9 — Post-open CI watch
+### Phase 10 — Post-open CI watch
 Delegate to `monitoring-pull-requests` (or `gh run watch`) to watch the opened PR's CI. On red, surface the
-failure and loop back to phase 5's fix pass. Record final CI status in `ship.md`. Skip cleanly if
+failure and loop back to phase 6's fix pass. Record final CI status in `ship.md`. Skip cleanly if
 no watch tool resolves. **Terminal checkpoint:** green CI + PR URL(s) → shipped & done.
 
 ## Anti-patterns
