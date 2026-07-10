@@ -51,6 +51,8 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -210,7 +212,10 @@ class NodeCreateAllQuery(NodeQuery):
         relationships: list[RelationshipCreateData] = []
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
-            if rel_manager.schema.cardinality == "many":
+            peers: Mapping[str, Node] = {}
+            # This is a create query, so the node has no relationships in the database yet: only
+            # resolve peers when there are locally-set relationships to write.
+            if rel_manager.schema.cardinality == "many" and len(rel_manager._relationships):
                 # Fetch all relationship peers through a single database call for performances.
                 peers = await rel_manager.get_peers(db=db, branch_agnostic=self.branch_agnostic)
 
