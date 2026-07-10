@@ -21,7 +21,7 @@ from infrahub.workflows.catalogue import (
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
-from tests.helpers.merge_recompute.dataset import PROFILE_NODE_KIND, load_profile_schema, seed_branch
+from tests.helpers.merge_recompute.dataset import load_profile_schema, seed_branch
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -75,18 +75,16 @@ async def test_merge_submits_one_coalesced_recompute_per_target(
     display = workflow_recorder.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)
     hfid = workflow_recorder.get_submit_calls_for(HFID_PROCESS)
 
-    # The mains' computed attribute and display label recompute once each over the union of changed
-    # peers; the human-friendly id reads only the local name, so a peer change does not fan out to it.
+    # The computed attribute and display label recompute once each over the union of changed peers;
+    # the human-friendly id reads only the local name, so a peer change does not fan out to it. The
+    # exact target shape is covered by the unit submission tests.
     assert len(computed) == 1
     assert len(display) == 1
     assert hfid == []
 
-    assert computed[0]["parameters"]["computed_attribute_kind"] == PROFILE_NODE_KIND
-    assert computed[0]["parameters"]["computed_attribute_name"] == "summary"
-    assert sorted(computed[0]["parameters"]["object_ids"]) == sorted(seeded.peer_ids)
-
-    assert display[0]["parameters"]["target_kind"] == PROFILE_NODE_KIND
-    assert sorted(display[0]["parameters"]["object_ids"]) == sorted(seeded.peer_ids)
+    # A merge recomputes on the destination branch.
+    assert computed[0]["parameters"]["branch_name"] == default_branch.name
+    assert display[0]["parameters"]["branch_name"] == default_branch.name
 
 
 async def test_rebase_submits_one_coalesced_recompute_per_target(
@@ -133,11 +131,6 @@ async def test_rebase_submits_one_coalesced_recompute_per_target(
     assert len(display) == 1
     assert hfid == []
 
-    # Rebase recomputes on the user branch, not the destination.
+    # A rebase recomputes on the user branch, not the destination.
     assert computed[0]["parameters"]["branch_name"] == seeded.branch_name
-    assert computed[0]["parameters"]["computed_attribute_kind"] == PROFILE_NODE_KIND
-    assert sorted(computed[0]["parameters"]["object_ids"]) == sorted(seeded.peer_ids)
-
     assert display[0]["parameters"]["branch_name"] == seeded.branch_name
-    assert display[0]["parameters"]["target_kind"] == PROFILE_NODE_KIND
-    assert sorted(display[0]["parameters"]["object_ids"]) == sorted(seeded.peer_ids)

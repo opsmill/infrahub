@@ -273,8 +273,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for action, node_changelog in changelog_collector.collect_changelogs():
         mutation_action = MutationAction.from_diff_action(diff_action=action)
         meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
-        # Mark the event as rebase-originated so the coalesced recompute owns these families and
-        # their per-node automations skip the replayed change.
         meta.origin = NodeMutationOrigin.REBASE
         mutate_event = get_node_event(mutation_action)(
             kind=node_changelog.node_kind,
@@ -297,9 +295,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     for event in events:
         await event_service.send(event)
 
-    # Rebase recomputes on the user branch (a merge recomputes on the destination). One coalesced
-    # recompute replaces the per-node fan-out for the families it owns; a submission failure must not
-    # fail the rebase, which is already applied.
     try:
         schema_name = (
             user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch

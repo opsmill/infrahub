@@ -93,8 +93,6 @@ async def process_display_label(
     log = get_run_logger()
     client = get_client()
 
-    # The live trigger passes a single object_id; the coalesced merge/rebase recompute passes the
-    # union of changed node ids. Both feed the same relationship filter.
     filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
     if not filter_id:
         log.debug("No object id provided for display label recompute")

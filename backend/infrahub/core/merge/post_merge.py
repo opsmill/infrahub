@@ -143,8 +143,6 @@ class PostMergeDispatcher:
         for action, node_changelog in node_events:
             mutation_action = MutationAction.from_diff_action(diff_action=action)
             meta = EventMeta.from_parent(parent=merge_event, branch=self.default_branch)
-            # Mark the event as merge-originated so the coalesced recompute owns these families and
-            # their per-node automations skip the replayed change.
             meta.origin = NodeMutationOrigin.MERGE
             node_event_class = get_node_event(mutation_action)
             mutate_event = node_event_class(
@@ -172,9 +170,6 @@ class PostMergeDispatcher:
             except Exception:
                 self.log.exception("Failed to send post-merge event '%s'", type(event).__name__)
 
-        # One coalesced recompute on the destination branch replaces the per-node fan-out for the
-        # families it owns; their per-node automations were suppressed for these merge-origin events.
-        # The merge is already committed, so a failure here must not surface as a merge failure.
         try:
             schema_branch = registry.schema.get_schema_branch(name=self.default_branch.name)
             coordinator = MergeRecomputeCoordinator.new(schema_branch=schema_branch, workflow=self.workflow)

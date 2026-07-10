@@ -127,10 +127,8 @@ class DisplayLabelTriggerDefinition(TriggerBranchDefinition):
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
-        # The coalesced merge and rebase recompute owns this family, so its per-node automation
-        # fires only for live mutations, excluding the replayed merge and rebase changes.
-        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
 
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
             "infrahub.field.name": fields,

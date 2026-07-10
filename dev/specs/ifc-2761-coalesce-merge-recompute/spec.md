@@ -19,7 +19,7 @@ This is a behavior-preserving performance change. The derived values an instance
 ### Session 2026-06-25
 
 - Q: Which derived-value families should the coalesced recompute cover in this work? → A: Jinja2 computed attributes, display labels, and human-friendly ids in this increment; Python-transform computed attributes are a follow-up using the same approach.
-- Q: How should the coalesced pass handle nodes that read a node deleted by the merge? → A: Recompute readers of deleted nodes so their derived values are refreshed or cleared.
+- Q: How should the coalesced pass handle nodes that read a node deleted by the merge? → A: The coalesced pass derives these targets, but the end-to-end refresh is a known gap deferred to IFC-2852 (the reverse-relationship reader query finds no readers once the deleted peer's edges close); a strict xfail guards it until then.
 - Q: How precise must the recompute targeting be? → A: Precise wherever the dependency derivation supports it; a bounded, logged safe over-approximation only where precise derivation is genuinely unavailable.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -80,7 +80,7 @@ Most merges are small. The coalescing must not make small merges slower or add n
 - A single merge that both creates nodes and changes read-targets: both triggers must be handled in one coalesced pass.
 - One changed node read by many nodes: each reader's affected families recompute, with no duplicate jobs for the same target.
 - A derived value that reads only local fields (for example a human-friendly id built from the node's own name): it must recompute when its node is created but not when a related node it does not read changes.
-- A node deleted by the merge: nodes that read the deleted node MUST be recomputed by the coalesced pass so their derived values are refreshed or cleared.
+- A node deleted by the merge: the coalesced pass derives the readers of the deleted node as targets, but the end-to-end refresh of their derived values is a known gap deferred to IFC-2852 (the reverse-relationship reader query finds no readers once the deleted peer's edges close), guarded by a strict xfail.
 - The merge data-change path and the coalesced pass must not both process the same change (no double recompute).
 - A merge that also changes the schema: schema-driven recompute (migrations) is a separate path and is out of scope here.
 - Two merges close together: each merge's coalesced recompute must cover its own change and not drop work when they overlap.
@@ -117,7 +117,7 @@ Most merges are small. The coalescing must not make small merges slower or add n
 
 - **SC-001**: At the large profile scenario (about 1000 changed read-targets), the number of recompute jobs after a merge is bounded by the number of affected derived values, not the changed-node count times the number of automations. This structural bound is the firm criterion; the concrete reduction versus the per-node fan-out baseline is recorded from the before/after harness run.
 - **SC-002**: At the large profile scenario, the trailing recompute window (from merge completion to all derived values settled) is reduced versus the profile baseline (baseline about 11 minutes for 1000 changed nodes); the concrete percentage is recorded from the before/after harness run.
-- **SC-003**: After a merge or rebase, no derived value that depends on the merged change is stale, verified against a full recompute, including cross-relationship and transitive dependencies, node creations, and readers of deleted nodes.
+- **SC-003**: After a merge or rebase, no derived value that depends on the merged change is stale, verified against a full recompute, including cross-relationship and transitive dependencies and node creations. Readers of deleted nodes are the one exception: their end-to-end refresh is a known gap deferred to IFC-2852 (see FR-013), guarded by a strict xfail.
 - **SC-004**: Small-graph merges (about 10 changed nodes) are no slower than the baseline within the harness's observed run-to-run variance at that scale.
 - **SC-005**: Both merge and rebase show the reduction and the correctness guarantee.
 
@@ -133,5 +133,5 @@ Most merges are small. The coalescing must not make small merges slower or add n
 - A configurable per-instance recompute policy is out of scope for this work.
 - The profiling harness from the first task (on the `merge-recompute-profile-ifc-2761` branch) is the before/after measurement tool and is available to this work.
 - Python-transform computed attributes and the profile-refresh family are deferred to a follow-up increment; both keep their current per-node recompute path. This increment covers Jinja2 computed attributes, display labels, and human-friendly ids, which are the families the coalesced pass replaces and suppresses on the merge/rebase path.
-- Readers of a node deleted by the merge are recomputed by the coalesced pass so their derived values no longer reflect the deleted node.
+- Readers of a node deleted by the merge have their targets derived by the coalesced pass, but the end-to-end refresh is a known gap deferred to IFC-2852 (see FR-013), guarded by a strict xfail.
 - Absolute timings are stack-relative; the success criteria are judged on the growth shape and the relative reduction against the profile baseline, not on fixed second counts.

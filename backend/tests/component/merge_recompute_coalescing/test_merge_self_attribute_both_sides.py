@@ -1,10 +1,4 @@
-"""A self computed attribute whose two inputs change on each side of a merge.
-
-Reproduces the question raised in review: the branch edits one input and the destination edits
-another after the fork, so each side inline-recomputed the value to a different result. The merge's
-conflict gate re-derives the diff and sees the computed attribute differ on both sides, so it blocks
-the merge with an unresolved conflict rather than silently committing a value missing one edit.
-"""
+"""A self computed attribute whose two inputs change on each side of a merge."""
 
 from __future__ import annotations
 
@@ -117,6 +111,9 @@ async def test_merge_conflicts_when_a_self_attribute_input_changes_on_each_side(
         dependency_provider.scope(build_event_service, lambda: event_recorder),
         dependency_provider.scope(build_workflow, lambda: workflow_recorder),
         dependency_provider.scope(build_cache, lambda: cache),
-        pytest.raises(MergeConflictsUnresolvedError, match=r"conflict resolution missing:.*summary/value"),
+        pytest.raises(
+            MergeConflictsUnresolvedError,
+            match=r"^Unable to merge the branch 'two-sided-self', conflict resolution missing:.*summary/value",
+        ),
     ):
         await merge_branch(branch=branch.name, context=context)

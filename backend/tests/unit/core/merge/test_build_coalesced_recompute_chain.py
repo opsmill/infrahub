@@ -63,7 +63,11 @@ def test_intermediate_change_reaches_the_next_hop() -> None:
 
 
 def test_full_chain_diff_covers_each_reader_level_once() -> None:
-    """A diff carrying every level derives one target per reader level; the chain tip reads nothing."""
+    """A diff carrying every level derives each reader level once, reached only by the level below.
+
+    The l3 change reaches no target because the tip has no reader, so it does not fan out past the
+    end of the chain.
+    """
     builder = CoalescedRecomputeBuilder(schema_branch=_chain_schema_branch())
     l1, l2, l3 = chain_kind(1), chain_kind(2), chain_kind(3)
     changes = [
@@ -74,7 +78,7 @@ def test_full_chain_diff_covers_each_reader_level_once() -> None:
 
     result = builder.build(changes=changes, branch="main")
 
-    assert _identities(result) == {
-        (COMPUTED_ATTRIBUTE, l2, "summary"),
-        (COMPUTED_ATTRIBUTE, l3, "summary"),
-    }
+    targets = {(target.target_kind, target.attribute_name): target for target in result.targets}
+    assert set(targets) == {(l2, "summary"), (l3, "summary")}
+    assert _lookups(targets[l2, "summary"]) == {(l1, "source__ids", frozenset({"l1-0"}))}
+    assert _lookups(targets[l3, "summary"]) == {(l2, "source__ids", frozenset({"l2-0"}))}

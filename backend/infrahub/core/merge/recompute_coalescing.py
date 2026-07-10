@@ -176,11 +176,7 @@ def _chunk(ids: tuple[str, ...], size: int) -> Iterator[tuple[str, ...]]:
 
 
 class CoalescedRecomputeBuilder:
-    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch.
-
-    The schema branch is the dependency the derivation reads, so it is held on the instance rather
-    than threaded through every call.
-    """
+    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch."""
 
     def __init__(self, schema_branch: SchemaBranch) -> None:
         self.schema_branch = schema_branch
@@ -312,10 +308,7 @@ class CoalescedRecomputeBuilder:
 
 
 class CoalescedRecomputeSubmitter:
-    """Submit a coalesced recompute by reusing the existing per-family process flows.
-
-    The workflow adapter is the dependency the submission needs, so it is held on the instance.
-    """
+    """Submit a coalesced recompute by reusing the existing per-family process flows."""
 
     def __init__(self, workflow: InfrahubWorkflow) -> None:
         self.workflow = workflow

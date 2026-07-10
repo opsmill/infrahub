@@ -8,6 +8,9 @@ automations skip the replayed change. A live mutation keeps the default origin a
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
+
+import pytest
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
@@ -46,16 +49,23 @@ def _node_event(origin: NodeMutationOrigin | None = None) -> NodeUpdatedEvent:
     )
 
 
-def test_live_node_event_carries_the_default_origin() -> None:
-    assert _node_event().get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE
+@dataclass
+class OriginCase:
+    name: str
+    origin: NodeMutationOrigin | None
+    expected: NodeMutationOrigin
 
 
-def test_merge_node_event_carries_the_merge_origin() -> None:
-    assert _node_event(origin=NodeMutationOrigin.MERGE).get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.MERGE
+ORIGIN_CASES = [
+    OriginCase(name="live_default", origin=None, expected=NodeMutationOrigin.LIVE),
+    OriginCase(name="merge", origin=NodeMutationOrigin.MERGE, expected=NodeMutationOrigin.MERGE),
+    OriginCase(name="rebase", origin=NodeMutationOrigin.REBASE, expected=NodeMutationOrigin.REBASE),
+]
 
 
-def test_rebase_node_event_carries_the_rebase_origin() -> None:
-    assert _node_event(origin=NodeMutationOrigin.REBASE).get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.REBASE
+@pytest.mark.parametrize("case", ORIGIN_CASES, ids=lambda case: case.name)
+def test_node_event_carries_its_origin(case: OriginCase) -> None:
+    assert _node_event(origin=case.origin).get_resource()[NODE_ORIGIN_LABEL] == case.expected
 
 
 def test_origin_label_is_a_plain_string_on_the_wire() -> None:

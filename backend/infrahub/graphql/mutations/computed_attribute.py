@@ -119,8 +119,6 @@ class UpdateComputedAttribute(Mutation):
                     request_id=request_id,
                     account_id=graphql_context.active_account_session.account_id,
                     branch=graphql_context.branch,
-                    # Emit as a live edit so the per-node recompute automations act on it; a merge or
-                    # rebase origin would be skipped as a replay, leaving dependent values stale.
                     origin=NodeMutationOrigin.LIVE,
                 ),
             )
