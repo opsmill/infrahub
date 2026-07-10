@@ -22,5 +22,11 @@ export function SortEditor({ schema }: SortEditorProps) {
   }
 
   // TODO: managing active sorting, it's a placeholder
-  return <AddSortPicker schema={schema} onSelect={addSort} />;
+  return (
+    <AddSortPicker
+      schema={schema}
+      activeFields={new Set(currentSort.map((sort) => sort.field))}
+      onSelect={addSort}
+    />
+  );
 }

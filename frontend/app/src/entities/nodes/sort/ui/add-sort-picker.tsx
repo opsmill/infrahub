@@ -23,7 +23,7 @@ interface SortableField {
   label: string;
 }
 
-const NODE_METADATA_SORTABLE_FIELDS: SortableField[] = [
+const METADATA_SORTABLE_FIELDS: SortableField[] = [
   { field: "node_metadata__created_at", label: "Created at" },
   { field: "node_metadata__updated_at", label: "Updated at" },
 ];
@@ -87,17 +87,31 @@ function SortableAttributeMenuItem({ attribute, onSelect }: SortableAttributeMen
 
 interface SortableRelationshipMenuItemProps {
   relationship: RelationshipSchema;
+  activeFields: ReadonlySet<SortField>;
   onSelect: (sort: Sort) => void;
+}
+
+function getAvailablePeerAttributes(
+  peerSchema: ModelSchema,
+  relationship: RelationshipSchema,
+  activeFields: ReadonlySet<SortField>
+): AttributeSchema[] {
+  return (peerSchema.attributes ?? []).filter(isSortableAttribute).filter((attribute) => {
+    const attributeField = buildAttributeSortField(attribute.name);
+    const relationshipField = buildRelationshipSortField(relationship.name, attributeField);
+    return !activeFields.has(relationshipField);
+  });
 }
 
 function GroupedSortableRelationshipMenuItem({
   relationship,
+  activeFields,
   onSelect,
 }: SortableRelationshipMenuItemProps) {
   const { schema: peerSchema } = useSchema(relationship.peer);
   if (!peerSchema) return null;
 
-  const sortableAttributes = (peerSchema.attributes ?? []).filter(isSortableAttribute);
+  const sortableAttributes = getAvailablePeerAttributes(peerSchema, relationship, activeFields);
   if (sortableAttributes.length === 0) return null;
 
   const relationshipLabel = relationship.label ?? relationship.name;
@@ -128,12 +142,13 @@ function GroupedSortableRelationshipMenuItem({
 
 function FlatSortableRelationshipMenuItems({
   relationship,
+  activeFields,
   onSelect,
 }: SortableRelationshipMenuItemProps) {
   const { schema: peerSchema } = useSchema(relationship.peer);
   if (!peerSchema) return null;
 
-  const sortableAttributes = (peerSchema.attributes ?? []).filter(isSortableAttribute);
+  const sortableAttributes = getAvailablePeerAttributes(peerSchema, relationship, activeFields);
   const relationshipLabel = relationship.label ?? relationship.name;
 
   return (
@@ -155,12 +170,19 @@ function FlatSortableRelationshipMenuItems({
   );
 }
 
+const NO_ACTIVE_FIELDS: ReadonlySet<SortField> = new Set();
+
 interface AddSortPickerProps {
   schema: ModelSchema;
+  activeFields?: ReadonlySet<SortField>;
   onSelect: (sort: Sort) => void;
 }
 
-export function AddSortPicker({ schema, onSelect }: AddSortPickerProps) {
+export function AddSortPicker({
+  schema,
+  activeFields = NO_ACTIVE_FIELDS,
+  onSelect,
+}: AddSortPickerProps) {
   const { contains } = useFilter({ sensitivity: "base" });
   const [search, setSearch] = React.useState("");
   const isSearching = search.trim() !== "";
@@ -169,12 +191,24 @@ export function AddSortPicker({ schema, onSelect }: AddSortPickerProps) {
     ? FlatSortableRelationshipMenuItems
     : GroupedSortableRelationshipMenuItem;
 
-  const sortableAttributes = (schema.attributes ?? []).filter(isSortableAttribute);
+  const sortableAttributes = (schema.attributes ?? [])
+    .filter(isSortableAttribute)
+    .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
   const sortableRelationships = (schema.relationships ?? []).filter(isSortableRelationship);
+  const metadataFields = METADATA_SORTABLE_FIELDS.filter(({ field }) => !activeFields.has(field));
 
   return (
     <Autocomplete filter={contains} onInputChange={setSearch}>
-      <Menu variant="picker" aria-label="Add sort field" className="max-h-72">
+      <Menu
+        variant="picker"
+        aria-label="Add sort field"
+        className="max-h-72"
+        renderEmptyState={() => (
+          <div className="px-2 py-1 text-sm text-stone-500">
+            {isSearching ? "No fields match" : "All sortable fields are in use"}
+          </div>
+        )}
+      >
         {sortableAttributes.map((attribute) => (
           <SortableAttributeMenuItem
             key={attribute.name}
@@ -187,11 +221,12 @@ export function AddSortPicker({ schema, onSelect }: AddSortPickerProps) {
           <SortableRelationshipMenuItems
             key={relationship.name}
             relationship={relationship}
+            activeFields={activeFields}
             onSelect={onSelect}
           />
         ))}
 
-        {NODE_METADATA_SORTABLE_FIELDS.map((metadata) => (
+        {metadataFields.map((metadata) => (
           <SortableFieldMenuItem key={metadata.field} field={metadata.field} onSelect={onSelect}>
             {metadata.label}
           </SortableFieldMenuItem>

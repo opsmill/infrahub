@@ -161,6 +161,127 @@ describe("AddSortPicker", () => {
     await expect.element(component.getByRole("menuitem", { name: "Site › rack" })).toBeVisible();
   });
 
+  test("hides an attribute that is already active", async () => {
+    // GIVEN
+    const component = await render(
+      <AddSortPicker schema={schema} activeFields={new Set(["name__value"])} onSelect={vi.fn()} />
+    );
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Site" })).toBeVisible();
+    await expect.element(component.getByRole("menuitem", { name: "Name" })).not.toBeInTheDocument();
+  });
+
+  test("hides a metadata field that is already active", async () => {
+    // GIVEN
+    const component = await render(
+      <AddSortPicker
+        schema={schema}
+        activeFields={new Set(["node_metadata__created_at"])}
+        onSelect={vi.fn()}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Updated at" })).toBeVisible();
+    await expect
+      .element(component.getByRole("menuitem", { name: "Created at" }))
+      .not.toBeInTheDocument();
+  });
+
+  test("keeps a peer attribute visible when a same-named top-level attribute is active", async () => {
+    // GIVEN
+    const component = await render(
+      <AddSortPicker schema={schema} activeFields={new Set(["name__value"])} onSelect={vi.fn()} />
+    );
+
+    // WHEN
+    await component.getByRole("menuitem", { name: "Site" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
+  });
+
+  test("hides only the peer attribute when a relationship field is active", async () => {
+    // GIVEN
+    const component = await render(
+      <AddSortPicker
+        schema={schema}
+        activeFields={new Set(["site__name__value"])}
+        onSelect={vi.fn()}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
+
+    // WHEN
+    await component.getByRole("menuitem", { name: "Site" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Description" })).toBeVisible();
+    await expect
+      .element(component.getByRole("menuitem", { name: "Name" }).nth(1))
+      .not.toBeInTheDocument();
+  });
+
+  test("hides a relationship submenu when all its peer attributes are active", async () => {
+    // GIVEN
+    const component = await render(
+      <AddSortPicker
+        schema={schema}
+        activeFields={
+          new Set(["site__name__value", "site__description__value", "site__rack__value"])
+        }
+        onSelect={vi.fn()}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
+    await expect.element(component.getByRole("menuitem", { name: "Site" })).not.toBeInTheDocument();
+  });
+
+  test("hides active fields when searching", async () => {
+    // GIVEN
+    const component = await render(
+      <AddSortPicker
+        schema={schema}
+        activeFields={new Set(["site__description__value"])}
+        onSelect={vi.fn()}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("searchbox").fill("des");
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Site › Description" }))
+      .not.toBeInTheDocument();
+    await expect.element(component.getByText("No fields match")).toBeVisible();
+  });
+
+  test("shows an empty state when every field is already active", async () => {
+    // GIVEN
+    const standalone = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "name", label: "Name", kind: "Text" })],
+      relationships: [],
+    });
+    const component = await render(
+      <AddSortPicker
+        schema={standalone}
+        activeFields={
+          new Set(["name__value", "node_metadata__created_at", "node_metadata__updated_at"])
+        }
+        onSelect={vi.fn()}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByText("All sortable fields are in use")).toBeVisible();
+  });
+
   test("restores the grouped layout when the search is cleared", async () => {
     // GIVEN
     const component = await render(<AddSortPicker schema={schema} onSelect={vi.fn()} />);
