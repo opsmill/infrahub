@@ -228,10 +228,8 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
 
         # Expand the population to the profile and object-template copies of the kind, and for a generic
         # to the profile/template copies of the kinds that inherit it.
-        node_kinds: list[str] = [node_kind]
+        node_kinds: list[str] = [node_kind, f"Profile{node_kind}", f"Template{node_kind}"]
         schema = db.schema.get(name=node_kind, branch=branch, duplicate=False)
-        if isinstance(schema, NodeSchema):
-            node_kinds.extend([f"Profile{node_kind}", f"Template{node_kind}"])
         if isinstance(schema, GenericSchema):
             for inheriting_kind in schema.used_by:
                 node_kinds.extend([f"Profile{inheriting_kind}", f"Template{inheriting_kind}"])

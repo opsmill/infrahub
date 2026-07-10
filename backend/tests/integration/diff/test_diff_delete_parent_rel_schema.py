@@ -178,9 +178,8 @@ class TestDiffDeleteParentRelSchema(TestInfrahubApp):
         assert vi_node.kind == VIRTUAL_INTERFACE_KIND
 
         # The provider relationship was both created and removed on this branch, so it is a no-op once
-        # the branch merges into main. The diff therefore does not report it as a change; the peer is
-        # only ever surfaced as unchanged, never added/updated/removed.
-        provider_rel = next((rel for rel in vi_node.relationships if rel.name == "provider"), None)
-        if provider_rel is not None:
-            assert provider_rel.action is DiffAction.UNCHANGED
-            assert all(element.action is DiffAction.UNCHANGED for element in provider_rel.relationships)
+        # the branch merges into main. The diff still surfaces the relationship, but only as unchanged,
+        # never added/updated/removed.
+        provider_rel = next(rel for rel in vi_node.relationships if rel.name == "provider")
+        assert provider_rel.action is DiffAction.UNCHANGED
+        assert all(element.action is DiffAction.UNCHANGED for element in provider_rel.relationships)
