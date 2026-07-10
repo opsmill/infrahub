@@ -144,7 +144,7 @@ An operator inspects the existing `/metrics` endpoint and sees, per priority cla
 
 ### Measurable Outcomes
 
-- **SC-001** (headline, discovery-measured): On a defined test scenario, high-priority request latency holds steady while background traffic is shed. Concrete latency bounds are set from measurement on that scenario, not pre-committed, so the guarantee holds across deployment sizes without a hard-coded target. *(The scenario and the measured bounds are defined during implementation — see Assumptions.)*
+- **SC-001** (headline, discovery-measured): On a defined test scenario, high-priority request latency holds steady while background traffic is shed. Concrete latency bounds are set from measurement on that scenario, not pre-committed, so the guarantee holds across deployment sizes without a hard-coded target. The discovery scenario MUST additionally confirm that, under that overload, the load signal (slot-wait / sojourn) actually rises — i.e. slot contention binds before the database saturates silently — so the mechanism sheds rather than admitting into a slow backend. *(The scenario and the measured bounds are defined during implementation — see Assumptions.)*
 - **SC-002**: Under sustained overload, the `high` shed rate is ≈ 0%, `low` is the first class shed, and `normal` sheds only after `low` (an observable shed gradient).
 - **SC-003**: A burst shorter than the congestion interval produces zero sheds.
 - **SC-004**: Every shed is a fast `429 + Retry-After` with no handler work performed.
@@ -159,6 +159,8 @@ An operator inspects the existing `/metrics` endpoint and sees, per priority cla
 - **SC-001 bounds are discovery-measured**: The headline latency bound is quantified from a discovery test scenario during implementation rather than pre-committed here, so it holds across deployment sizes without a hard-coded target.
 - **Existing infrastructure is reused**: The middleware extends the existing API middleware stack, the metrics extend the existing `/metrics` Prometheus stack, and `prometheus_client` is already a dependency. CoDel is implemented in-house (no new dependency).
 - **Per-worker, coordination-free**: Admission state is in-process per worker; there is no shared/global limiter and no replica-aware coordination (Constitution VII — Simplicity).
+- **Slot contention is the binding constraint**: The load signal is the time a request waits for a concurrency slot (sojourn). For shedding to trigger under real overload, the derived per-worker cap must be reached *before* the database saturates — i.e. slot contention must bind before Neo4j does. The derivation assumes roughly one database connection per in-flight request; a headroom factor (default 1.0, tunable below 1.0) is the lever to pull the cap under raw pool size if a deployment saturates the database first. This is validated by the SC-001 discovery scenario, not assumed blindly.
+- **Rollout is kill-switch-guarded and sequenced with the frontend**: The P1 "frontend stays responsive" guarantee is only fully realized once the frontend sends `X-Priority: high` (a separate ticket). Shipping enabled beforehand means interactive traffic is classified `normal` and, under overload, is shed on the same footing as background `normal` traffic (hangs become fast `429`s rather than protected requests). This is a deliberate, operator-reversible choice: an enable/disable switch defaults on but can bypass the layer entirely, so the layer can be validated (and the frontend updated) before relying on it for interactive protection.
 
 ## Out of Scope
 
