@@ -34,9 +34,9 @@ function presetExample(value: string, referenceDate: Date) {
 /** (i) tooltip text for a field's effective value, keyed off its resolved source. */
 function sourceTooltip(resolved: ResolvedPreference, browserValue: string): string {
   switch (resolved.source) {
-    case "user":
+    case "USER":
       return "Your preference.";
-    case "global":
+    case "GLOBAL":
       return `From the organisation default: ${resolved.value}.`;
     default:
       return `From your browser: ${browserValue}.`;
@@ -74,9 +74,9 @@ export function UserPreferencesCard() {
   // Show only the caller's OWN override: an inherited value (source !== "user") is left unset
   // so the field shows its "Automatic (inherited)" placeholder.
   const dateFormatOverride =
-    preferences.dateFormat.source === "user" ? preferences.dateFormat.value : null;
+    preferences.dateFormat.source === "USER" ? preferences.dateFormat.value : null;
   const timezoneOverride =
-    preferences.timezone.source === "user" ? preferences.timezone.value : null;
+    preferences.timezone.source === "USER" ? preferences.timezone.value : null;
 
   return (
     <Card className="w-full">

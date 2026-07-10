@@ -4,12 +4,13 @@ export interface PreferenceValues {
 }
 
 /**
- * Lowercased mirror of the GraphQL `PreferenceSource` enum:
- *   - "user"    → caller set a personal override.
- *   - "global"  → inherited from the org default (no personal override).
- *   - "default" → nothing set anywhere; falls back to the browser.
+ * Where a resolved field's effective value came from (the GraphQL `PreferenceSource` enum, used
+ * as-is):
+ *   - "USER"    → caller set a personal override.
+ *   - "GLOBAL"  → inherited from the org default (no personal override).
+ *   - "DEFAULT" → nothing set anywhere; falls back to the browser.
  */
-export type PreferenceSource = "user" | "global" | "default";
+export type PreferenceSource = "USER" | "GLOBAL" | "DEFAULT";
 
 /** A resolved field: effective value (null when unset everywhere) plus its source. */
 export interface ResolvedPreference {

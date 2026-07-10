@@ -14,8 +14,8 @@ vi.mock("@/entities/preferences/domain/use-cases/upsert-my-user-preference");
 const baseEffective: EffectivePreferences = {
   // No personal override → both fields resolve to the org default (source "global").
   // date_format is a semantic key (see DateFormatKey), not a pattern.
-  dateFormat: { value: "EU_DATETIME", source: "global" },
-  timezone: { value: "Europe/Paris", source: "global" },
+  dateFormat: { value: "EU_DATETIME", source: "GLOBAL" },
+  timezone: { value: "Europe/Paris", source: "GLOBAL" },
 };
 
 describe("UserPreferencesCard", () => {
@@ -174,8 +174,8 @@ describe("UserPreferencesCard", () => {
   test("pre-fills the form from the caller's own override", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "user" },
-      timezone: { value: "UTC", source: "user" },
+      dateFormat: { value: "EU_DATETIME", source: "USER" },
+      timezone: { value: "UTC", source: "USER" },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -235,8 +235,8 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip reflects the user's own preference when an override is set", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "user" },
-      timezone: { value: "UTC", source: "user" },
+      dateFormat: { value: "EU_DATETIME", source: "USER" },
+      timezone: { value: "UTC", source: "USER" },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -255,8 +255,8 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip falls back to the browser source when neither user nor global is set", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: null, source: "default" },
-      timezone: { value: null, source: "default" },
+      dateFormat: { value: null, source: "DEFAULT" },
+      timezone: { value: null, source: "DEFAULT" },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -304,8 +304,8 @@ describe("UserPreferencesCard", () => {
   test("re-selecting the current value clears the override with an explicit-null upsert", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "user" },
-      timezone: { value: "UTC", source: "user" },
+      dateFormat: { value: "EU_DATETIME", source: "USER" },
+      timezone: { value: "UTC", source: "USER" },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -330,8 +330,8 @@ describe("UserPreferencesCard", () => {
   test("no longer renders a separate 'reset to global' button", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: "EU_DATETIME", source: "user" },
-      timezone: { value: "Europe/Paris", source: "global" },
+      dateFormat: { value: "EU_DATETIME", source: "USER" },
+      timezone: { value: "Europe/Paris", source: "GLOBAL" },
     });
 
     const component = await render(<UserPreferencesCard />);
@@ -343,8 +343,8 @@ describe("UserPreferencesCard", () => {
   test("still renders and saves the form when the effective query resolves with no global values", async () => {
     vi.mocked(getEffectivePreferences).mockResolvedValue({
       ...baseEffective,
-      dateFormat: { value: null, source: "default" },
-      timezone: { value: null, source: "default" },
+      dateFormat: { value: null, source: "DEFAULT" },
+      timezone: { value: null, source: "DEFAULT" },
     });
 
     const component = await render(<UserPreferencesCard />);

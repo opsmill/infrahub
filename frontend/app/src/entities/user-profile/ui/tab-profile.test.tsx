@@ -40,8 +40,8 @@ vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
 vi.mock("@/entities/preferences/domain/use-cases/upsert-my-user-preference");
 
 const baseEffective: EffectivePreferences = {
-  dateFormat: { value: "EU_DATETIME", source: "global" },
-  timezone: { value: "Europe/Paris", source: "global" },
+  dateFormat: { value: "EU_DATETIME", source: "GLOBAL" },
+  timezone: { value: "Europe/Paris", source: "GLOBAL" },
 };
 
 describe("TabProfile", () => {
