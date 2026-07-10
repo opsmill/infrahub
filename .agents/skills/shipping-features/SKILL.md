@@ -95,6 +95,7 @@ command the repo lacks; surface ambiguity to the user. Column 1 lists the in-rep
 | Residue cleanup (post-implement) | `pruning-residues` | `code-simplifier` | agent prunes leftover debug logs, dead code, orphaned files/imports, and redundant comments; else skip |
 | Knowledge capture | `capturing-knowledge` | — | skip |
 | Docs audit / consistency | `/audit-docs` → `/add-docs` | — | grep doc layers for drift; else skip |
+| Session retrospective | `speckit-opsmill-retrospect` | — | skip |
 | Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |
 | CI gate / verify | `/pre-ci` | `superpowers:verification-before-completion` | run detected test + lint commands |
 | Commit | `commit`, `/git-commit` | `commit-commands:commit` | `git commit` (conventional message) |
@@ -136,6 +137,7 @@ The lane and depth follow from the classification:
 | Commit | `commit` | same | same |
 | PR | `pr` → split assessment | same | same (usually single PR) |
 | CI watch | `monitoring-pull-requests` | same | same |
+| Retrospective | `speckit-opsmill-retrospect` (conditional) | same | same |
 
 `S` runs its lane straight through (gate + one verify, no parallelism). `M`/`L` light up the
 parallel front-end and, on a risk flag, the stacked verify.
@@ -229,7 +231,16 @@ never invented). Red → loop back to the phase 5 fix pass. **Do not proceed wit
 ### Phase 9 — Post-open CI watch
 Delegate to `monitoring-pull-requests` (or `gh run watch`) to watch the opened PR's CI. On red, surface the
 failure and loop back to phase 5's fix pass. Record final CI status in `ship.md`. Skip cleanly if
-no watch tool resolves. **Terminal checkpoint:** green CI + PR URL(s) → done.
+no watch tool resolves. **Checkpoint:** green CI + PR URL(s).
+
+### Phase 10 — Retrospective (opportunistic)
+Delegate to `speckit-opsmill-retrospect` while the session is still fresh: it surfaces
+context-management gaps (AGENTS.md, skills, commands, guides, templates) that caused avoidable
+friction and routes each to a disposition — `fix-now`, `open-pr`, `github-issue`, or `local-only`.
+It writes `retrospective.md` in the feature dir and stays read-only until you approve per bucket.
+Distinct from phase 6: `capturing-knowledge` records *domain/code* facts; the retrospective improves
+the *process & tooling* surface. Record the report path + chosen dispositions in `ship.md`. Skip
+cleanly if the skill is absent. **Terminal checkpoint:** shipped + retrospective dispositioned → done.
 
 ## Anti-patterns
 
