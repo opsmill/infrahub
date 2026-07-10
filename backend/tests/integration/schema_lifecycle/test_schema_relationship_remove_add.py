@@ -425,13 +425,7 @@ KNOB_KIND = "TestingKnob"
 
 
 class TestSchemaRelationshipRemoveRebase(TestInfrahubApp):
-    """Remove a relationship on the default branch, then rebase a branch that still holds its data.
-
-    During the rebase the branch schema is already aligned with the destination, so the removed
-    relationship is absent from both the previous and new node schema; its identifier cannot be
-    recovered and the migration short-circuits. The rebase must still succeed and the branch data is
-    left untouched (not closed).
-    """
+    """Remove a relationship on the default branch, then rebase a branch that still holds its data."""
 
     @pytest.fixture(scope="class")
     def schema_panel(self) -> dict[str, Any]:
@@ -490,13 +484,12 @@ class TestSchemaRelationshipRemoveRebase(TestInfrahubApp):
         initial_dataset: dict[str, str],
         schema_step_02: dict[str, Any],
     ) -> None:
-        """Removing the relationship on the default branch then rebasing succeeds via the short-circuit."""
+        """Removing the relationship on the default branch then rebasing closes the branch's data."""
         response = await client.schema.load(schemas=[schema_step_02])
         assert not response.errors
         assert "knob" not in registry.schema.get_node_schema(name=PANEL_KIND).relationship_names
 
-        # The rebase runs the relationship-remove migration on the branch. The relationship is absent
-        # from both schemas, so the migration short-circuits instead of crashing the rebase.
+        # The rebase runs the relationship-remove migration on the branch.
         branch = await client.branch.rebase(branch_name=initial_dataset["branch"])
         assert branch
 
@@ -509,7 +502,94 @@ class TestSchemaRelationshipRemoveRebase(TestInfrahubApp):
         with pytest.raises(ValueError, match="knob"):
             panel.get_relationship("knob")
 
-        # The migration short-circuited, so the branch's relationship data is left intact (not closed)
+        # The migration ran during the rebase and closed the branch's relationship data
+        assert await _count_active_is_related(db=db, identifier=initial_dataset["identifier"]) == 0
+        await verify_graph(db=db)
+
+
+BOARD_KIND = "TestingBoard"
+CHIP_KIND = "TestingChip"
+
+
+class TestSchemaRelationshipRemoveOnBothThenRebase(TestInfrahubApp):
+    """Remove the relationship on both the branch and the default branch, then rebase."""
+
+    @pytest.fixture(scope="class")
+    def schema_board(self) -> dict[str, Any]:
+        return {
+            "name": "Board",
+            "namespace": "Testing",
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            "relationships": [{"name": "chip", "peer": CHIP_KIND, "cardinality": "one", "optional": True}],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_chip(self) -> dict[str, Any]:
+        return {
+            "name": "Chip",
+            "namespace": "Testing",
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step_01(self, schema_board: dict[str, Any], schema_chip: dict[str, Any]) -> dict[str, Any]:
+        return {"version": "1.0", "nodes": [schema_board, schema_chip]}
+
+    @pytest.fixture(scope="class")
+    def schema_step_02(self, schema_board: dict[str, Any], schema_chip: dict[str, Any]) -> dict[str, Any]:
+        board = deepcopy(schema_board)
+        board["relationships"][0]["state"] = "absent"
+        return {"version": "1.0", "nodes": [board, schema_chip]}
+
+    @pytest.fixture(scope="class")
+    async def initial_dataset(
+        self, db: InfrahubDatabase, initialize_registry: None, schema_step_01: dict[str, Any]
+    ) -> dict[str, str]:
+        await load_schema(db=db, schema=schema_step_01)
+
+        branch = await create_branch(db=db, branch_name="branch_rel_remove_both")
+
+        chip = await Node.init(schema=CHIP_KIND, db=db, branch=branch)
+        await chip.new(db=db, name="chip-1")
+        await chip.save(db=db)
+
+        board = await Node.init(schema=BOARD_KIND, db=db, branch=branch)
+        await board.new(db=db, name="board-1", chip=chip)
+        await board.save(db=db)
+
+        identifier = registry.schema.get_node_schema(name=BOARD_KIND).get_relationship("chip").get_identifier()
+        return {"branch": branch.name, "board": board.id, "chip": chip.id, "identifier": identifier}
+
+    async def test_step01_baseline(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         assert await _count_active_is_related(db=db, identifier=initial_dataset["identifier"]) == 2
+
+    async def test_step02_remove_on_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_02: dict[str, Any],
+    ) -> None:
+        """Removing the relationship on the branch closes the branch's data."""
+        response = await client.schema.load(schemas=[schema_step_02], branch=initial_dataset["branch"])
+        assert not response.errors
+        assert await _count_active_is_related(db=db, identifier=initial_dataset["identifier"]) == 0
+
+    async def test_step03_remove_on_default_then_rebase(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initial_dataset: dict[str, str],
+        schema_step_02: dict[str, Any],
+    ) -> None:
+        """Removing it on the default branch too and rebasing succeeds; the migration is idempotent."""
+        response = await client.schema.load(schemas=[schema_step_02])
+        assert not response.errors
+        branch = await client.branch.rebase(branch_name=initial_dataset["branch"])
+        assert branch
+
+        branch_board_schema = registry.schema.get_node_schema(name=BOARD_KIND, branch=initial_dataset["branch"])
+        assert "chip" not in branch_board_schema.relationship_names
+        assert await _count_active_is_related(db=db, identifier=initial_dataset["identifier"]) == 0
 
         await verify_graph(db=db)

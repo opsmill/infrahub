@@ -84,36 +84,6 @@ async def test_default_branch_closes_in_place(
     await verify_graph(db=db)
 
 
-async def test_short_circuit_when_relationship_absent_from_schemas(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node
-) -> None:
-    """The migration runs no query when the removed relationship is absent from both node schemas.
-
-    This is the rebase case: the branch schema is already aligned with the destination, so the removed
-    relationship's identifier cannot be recovered and the migration must short-circuit rather than fail.
-    """
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
-    identifier = schema.get(name="TestCar").get_relationship(name="owner").get_identifier()
-
-    # A TestCar schema with 'owner' already removed, used as both the previous and new node schema
-    aligned_car = schema.duplicate().get(name="TestCar")
-    aligned_car.relationships = [rel for rel in aligned_car.relationships if rel.name != "owner"]
-
-    migration = NodeRelationshipRemoveMigration(
-        previous_node_schema=aligned_car,
-        new_node_schema=aligned_car,
-        schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner"),
-    )
-    result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
-    assert not result.errors
-    assert result.nbr_migrations_executed == 0
-
-    # No query ran, so the existing relationship data is left untouched
-    assert await _count_active_is_related(db=db, identifier=identifier, branch=default_branch) == 4
-
-    await verify_graph(db=db)
-
-
 async def test_user_branch_shadows_default_branch(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node
 ) -> None:
