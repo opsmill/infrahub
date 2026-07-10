@@ -1,6 +1,6 @@
-"""Verify that removing a relationship from a schema closes its data on the node and on its
-profile and object-template copies, and that re-adding the same relationship does not resurface the
-closed data.
+"""Verify schema relationship removal closes the underlying data and re-adding does not resurface it.
+
+Covers the relationship data on the node and on its profile and object-template copies.
 
 Flow:
   step01 - load schema with a relationship, create node/profile/template data, verify data is active
