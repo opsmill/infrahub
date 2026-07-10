@@ -776,7 +776,7 @@ relationship_schema = SchemaNode(
             regex=str(NAME_REGEX),
             max_length=DEFAULT_REL_IDENTIFIER_LENGTH,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.NOT_SUPPORTED},
         ),
         SchemaAttribute(
             name="cardinality",
