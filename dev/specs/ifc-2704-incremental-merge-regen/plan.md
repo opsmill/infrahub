@@ -186,6 +186,17 @@ Complete. Artifacts:
 The Spec Kit block in `CLAUDE.md` will be updated (via the `after_plan`
 `speckit.agent-context.update` hook) to reference this plan.
 
+### Revision: design tightening 2026-07-10
+
+- Reason: Decision 1 diff-capture timing tightened. Serialization now runs against the
+  already-loaded in-memory `branch_diff` before the freeze, but the cache write is deferred
+  until after the merge's point of no return (post `MERGED` transition / write-block lift), so a
+  failed or rolled-back merge writes no cache entry at all (previously it could leave a benign
+  orphan that expired on TTL). Both steps are guarded so a capture failure degrades to the
+  full-regeneration fallback and can never roll back a committed merge. Affects research.md D1,
+  contracts/merge-diff-summary.md, contracts/branch-merge-post-process.md, and task T006.
+  Reinforces Constitution II (Branch-Safe by Default).
+
 ## Post-Design Constitution Re-Check
 
 Re-evaluated after design: no new violations. The design introduces no new schema, no new

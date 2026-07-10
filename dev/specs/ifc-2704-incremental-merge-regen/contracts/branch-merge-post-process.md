@@ -6,7 +6,7 @@
 
 | Site | Change |
 |---|---|
-| `BranchMergeOrchestrator.merge` (`core/merge/orchestrator.py`) | After changelog collection, before freeze: build summary, `set_merge_diff_summary_cache`, obtain `merge_diff_cache_key = diff_root_uuid`; pass to `run_follow_ups`. On capture failure → `None`. |
+| `BranchMergeOrchestrator.merge` (`core/merge/orchestrator.py`) | Serialize the in-memory `branch_diff` into `list[NodeDiff]` before the freeze; then, **only after the point of no return** (post `MERGED` transition / write-block lift, just before the follow-up), `set_merge_diff_summary_cache` and obtain `merge_diff_cache_key = diff_root_uuid`; pass to `run_follow_ups`. On any capture/write failure → `None` (never re-raise). A rolled-back merge writes nothing. |
 | `PostMergeDispatcher.run_follow_ups` (`core/merge/post_merge.py:58-104`) | New param `merge_diff_cache_key: str \| None`; include it in the `BRANCH_MERGE_POST_PROCESS` parameters dict (`:100-104`). |
 | `BRANCH_MERGE_POST_PROCESS` params | `{source_branch, target_branch, merge_diff_cache_key}`. |
 | `post_process_branch_merge` (`core/branch/tasks.py:434-478`) | New param `merge_diff_cache_key: str \| None = None`. |

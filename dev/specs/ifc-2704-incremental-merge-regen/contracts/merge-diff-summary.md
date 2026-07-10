@@ -44,11 +44,19 @@ for node in root.nodes:
   `ATTRIBUTE` element named `fingerprint` — `_definition_changed` fires on it with no special
   casing.
 
-**Failure mode (hard requirement, critique E7)**: the capture + `set_merge_diff_summary_cache`
-MUST be wrapped in its own inner try/except. On any failure it logs and yields
-`merge_diff_cache_key = None` (→ full-regeneration fallback) and MUST NOT re-raise — the
-capture sits inside the merge's rollback try-block, so a serialization bug must never roll back
-a committed merge.
+**Capture timing (hard requirement)**: serialization and the cache write are split around the
+merge's point of no return:
+
+- **Serialize** the already-loaded in-memory `branch_diff` (no re-load) into `list[NodeDiff]`
+  before the freeze — the in-memory object is unaffected by `freeze_diffs_for_branch`.
+- **`set_merge_diff_summary_cache` runs only after the merge commits** (after the
+  `BranchStatus.MERGED` transition and write-block lift), immediately before the follow-up is
+  submitted. A merge that rolls back therefore writes nothing — no orphan entry.
+
+**Failure mode (hard requirement, critique E7)**: both the serialization and the cache write
+MUST be wrapped in their own try/except. On any failure they log and yield
+`merge_diff_cache_key = None` (→ full-regeneration fallback) and MUST NOT re-raise — a
+serialization bug must never roll back a committed merge.
 
 ## Cache functions
 

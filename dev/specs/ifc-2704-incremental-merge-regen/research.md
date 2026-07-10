@@ -35,11 +35,32 @@ Both `TRIGGER_*` constants are submitted from **exactly one** production site
 (`post_merge.py:102`). Replacing the merge path touches no other caller — confirmed by grep
 (catalogue defs at `backend/infrahub/workflows/catalogue.py:78-91, 274-281`).
 
-## Decision 1 — Capture the diff in the orchestrator, before the freeze
+## Decision 1 — Capture the diff in the orchestrator, before the freeze; write the cache only after commit
 
-**Decision**: Serialize `branch_diff.nodes` (action != `UNCHANGED`) into the SDK `NodeDiff`
-summary shape inside `BranchMergeOrchestrator.merge`, right after changelog collection
-(`orchestrator.py:~101`) and before `freeze_diffs_for_branch` (`:146-153`).
+**Decision**: Split capture into two steps inside `BranchMergeOrchestrator.merge`:
+
+1. **Serialize before the freeze (in memory).** Reuse the `branch_diff` object already loaded
+   at `orchestrator.py:96` (do not re-load). Convert `branch_diff.nodes` (action !=
+   `UNCHANGED`) into the SDK `NodeDiff` summary shape into a local variable. Serialization reads
+   the in-memory object only, so it is unaffected by `freeze_diffs_for_branch` (`:151`, which
+   mutates DB rows, not the loaded object) and may run any time after `:96`.
+2. **Write the cache only after the point of no return.** Perform the `InfrahubCache` write
+   after the merge has definitively committed — after the `BranchStatus.MERGED` transition
+   (`:155-157`) and write-block lift (`:161`), immediately before `run_follow_ups` (`:163`) —
+   and thread the resulting key into `run_follow_ups`.
+
+**Why the split**: the consumer (`run_follow_ups` → `post_process_branch_merge`) is only reached
+after `:155`; a merge that fails anywhere in the try block (`:81-134`) hits `except
+BaseException` (`:135-144`), rolls back, and re-raises **before** `:163`. Writing the cache only
+past the point of no return means a **failed/rolled-back merge writes nothing** — no orphan
+cache entry to expire, and no possibility of a selective regeneration being driven by a merge
+that did not commit.
+
+**Capture must never fail the merge (critique E7)**: the serialization sits logically in the
+try block's reach; wrap the serialization (and the later cache write) in their own try/except
+that logs and yields `merge_diff_cache_key = None` on any error, never re-raising. A capture
+bug then degrades to the full-regeneration fallback (Decision 6) instead of rolling back an
+otherwise-correct merge.
 
 **Rationale**: Post-merge retrieval is impossible. `get_node_field_summaries`
 (`core/diff/repository/repository.py:588-595`) and its query
@@ -105,10 +126,11 @@ same. `get_modified_kinds` (`branch_diff.py:122-130`, filters `entry["branch"] =
 casing, and the source branch can be deleted (`delete_branch_after_merge`) without affecting
 selection — only its now-merged data, on the default branch, is needed.
 
-**Capture safety (resolves critique E7)**: the capture point sits inside the merge's rollback
-try-block. The capture + `set_merge_diff_summary_cache` MUST be wrapped in its own inner
-try/except that, on any failure, logs and sets `merge_diff_cache_key = None` (→ full-regen
-fallback) and never re-raises — a serialization bug must never roll back a committed merge.
+**Capture safety (resolves critique E7)**: serialization and the cache write are split across
+the point of no return (see Decision 1) and both are wrapped in their own try/except that, on
+any failure, logs and sets `merge_diff_cache_key = None` (→ full-regen fallback) and never
+re-raises — a serialization bug must never roll back a committed merge, and a failed merge must
+never leave an orphan cache entry.
 
 **Alternatives rejected**: a bespoke merge-only summary model (would fork the predicates);
 keying on a fresh UUID (works, but the diff-root uuid is already unique, stable, and
