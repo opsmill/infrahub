@@ -484,7 +484,8 @@ def nats_container(request: pytest.FixtureRequest, load_settings_before_session:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
         return None
 
-    container = DockerContainer(image="nats:alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
+    # Per-message (per-key) TTL in KV buckets requires NATS 2.11 or later; pinned to a recent release.
+    container = DockerContainer(image="nats:2.14.3-alpine").with_command("--jetstream").with_exposed_ports(PORT_NATS)
 
     container.start()
     wait_for_logs(container, "Server is ready")  # wait_container_is_ready does not seem to be enough
