@@ -1,9 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
+import { useRequiredParams } from "@/shared/hooks/use-required-params";
+
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useObjectDetailsOutlet } from "@/entities/nodes/object/ui/routing/use-object-details-outlet";
-import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useGetTaskDetailsTitle } from "@/entities/tasks/ui/queries/get-task-details-title.query";
 import { TaskActions } from "@/entities/tasks/ui/task-actions";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
