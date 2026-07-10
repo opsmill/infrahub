@@ -94,8 +94,9 @@ command the repo lacks; surface ambiguity to the user. Column 1 lists the in-rep
 | Code review | `speckit-review-run` (or per-lens `speckit-review-{code,tests,types,errors,comments}`), `speckit-review-simplify`, `speckit-critique-run` | `coderabbit:code-review`, `code-simplifier`, `superpowers:requesting-code-review` | `general-purpose` reviewers + `/security-review` |
 | Residue cleanup (post-implement) | `pruning-residues` | `code-simplifier` | agent prunes leftover debug logs, dead code, orphaned files/imports, and redundant comments; else skip |
 | Knowledge capture | `capturing-knowledge` | — | skip |
+| Learn from review | `learning-from-review` | — | skip |
 | Docs audit / consistency | `/audit-docs` → `/add-docs` | — | grep doc layers for drift; else skip |
-| Session retrospective | `speckit-opsmill-retrospect` | — | skip |
+| Session retrospective | `speckit-opsmill-retrospect` (or `/speckit.opsmill.retrospect`) | — | skip |
 | Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |
 | CI gate / verify | `/pre-ci` | `superpowers:verification-before-completion` | run detected test + lint commands |
 | Commit | `commit`, `/git-commit` | `commit-commands:commit` | `git commit` (conventional message) |
@@ -132,12 +133,11 @@ The lane and depth follow from the classification:
 | Plan | skip on `S`, else light | `/speckit-plan` + `/speckit-tasks` → `plan.md`, `tasks.md` (`M`/`L`) | skip |
 | Implement | `/bug-tdd` → `/bug-fix` | TDD agents (worktrees on `L`) | direct edit |
 | Review | `speckit-review-run` → `review.md` + verify | same | same (lighter) |
-| Knowledge & docs | `capturing-knowledge` + `/audit-docs` (conditional) | same | same |
+| Knowledge & learning | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `/audit-docs` (conditional) | same | same |
 | CI gate | `/pre-ci` | same | same |
 | Commit | `commit` | same | same |
 | PR | `pr` → split assessment | same | same (usually single PR) |
 | CI watch | `monitoring-pull-requests` | same | same |
-| Retrospective | `speckit-opsmill-retrospect` (conditional) | same | same |
 
 `S` runs its lane straight through (gate + one verify, no parallelism). `M`/`L` light up the
 parallel front-end and, on a risk flag, the stacked verify.
@@ -204,14 +204,26 @@ with `superpowers:requesting-code-review` / `receiving-code-review` when present
 **Gate:** zero unaddressed blockers. **Checkpoint:** ranked list, then fix pass (small parallel
 agents per file group).
 
-### Phase 6 — Knowledge & docs consistency (opportunistic)
-1. **Capture** — delegate to `capturing-knowledge` (no args). Skip silently if nothing genuinely new
-   was learned — empty captures are a feature.
-2. **Audit** — run `/audit-docs` against this branch's changes (it cross-references the 5 doc layers
+### Phase 6 — Knowledge, learning & retrospective (opportunistic)
+1. **Capture domain facts** — delegate to `capturing-knowledge` (no args). Skip silently if nothing
+   genuinely new was learned — empty captures are a feature.
+2. **Learn from the review** — delegate to `learning-from-review` (PR ref, or the current branch's PR;
+   else the phase-5 review threads). It reconstructs proposed → rejected → corrected, distills the
+   durable lesson that would have produced the accepted version first time, and hands it to
+   `capturing-knowledge` to persist. Skip if phase 5 requested no changes — there is nothing to learn.
+3. **Audit docs** — run `/audit-docs` against this branch's changes (it cross-references the doc layers
    and reports gaps/drift, so the docs stay consistent with what was actually built). For each real
    gap, update or create the doc with `/add-docs` (fallback: edit the doc directly).
-Any doc changes join **this** PR (no separate docs PR unless the user asks). **Checkpoint** only if
-capture or the audit proposes doc changes — otherwise skip silently.
+4. **Retrospective** — delegate to `speckit-opsmill-retrospect` (or the `/speckit.opsmill.retrospect`
+   command) while the session is fresh: it surfaces context-management/tooling gaps (AGENTS.md, skills,
+   commands, guides, templates) that caused avoidable friction and routes each to a disposition —
+   `fix-now`, `open-pr`, `github-issue`, or `local-only`. It writes `retrospective.md` in the feature
+   dir and stays read-only until you approve per bucket. Distinct from the steps above:
+   `capturing-knowledge` records *domain/code* facts, `learning-from-review` distills *review* lessons,
+   and the retrospective improves the *process & tooling* surface. Skip cleanly if the skill is absent.
+Any doc changes join **this** PR (no separate docs PR unless the user asks). Record the retrospective
+report path + chosen dispositions in `ship.md`. **Checkpoint** only if any step proposes changes —
+otherwise skip silently.
 
 ### Phase 7 — CI gate (must-pass before PR)
 Run `/pre-ci` (or `superpowers:verification-before-completion`, or detected test+lint commands —
@@ -231,16 +243,7 @@ never invented). Red → loop back to the phase 5 fix pass. **Do not proceed wit
 ### Phase 9 — Post-open CI watch
 Delegate to `monitoring-pull-requests` (or `gh run watch`) to watch the opened PR's CI. On red, surface the
 failure and loop back to phase 5's fix pass. Record final CI status in `ship.md`. Skip cleanly if
-no watch tool resolves. **Checkpoint:** green CI + PR URL(s).
-
-### Phase 10 — Retrospective (opportunistic)
-Delegate to `speckit-opsmill-retrospect` while the session is still fresh: it surfaces
-context-management gaps (AGENTS.md, skills, commands, guides, templates) that caused avoidable
-friction and routes each to a disposition — `fix-now`, `open-pr`, `github-issue`, or `local-only`.
-It writes `retrospective.md` in the feature dir and stays read-only until you approve per bucket.
-Distinct from phase 6: `capturing-knowledge` records *domain/code* facts; the retrospective improves
-the *process & tooling* surface. Record the report path + chosen dispositions in `ship.md`. Skip
-cleanly if the skill is absent. **Terminal checkpoint:** shipped + retrospective dispositioned → done.
+no watch tool resolves. **Terminal checkpoint:** green CI + PR URL(s) → shipped & done.
 
 ## Anti-patterns
 
