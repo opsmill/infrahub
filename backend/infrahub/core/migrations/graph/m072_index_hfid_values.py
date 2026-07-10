@@ -14,12 +14,15 @@ if TYPE_CHECKING:
 
 console = get_migration_console()
 
+# Paginate over the HFID attributes, not the value nodes. The writes move edges and
+# create/delete value nodes, so paging over the values would mutate the set mid-scan
+# and skip rows; the attribute nodes are never touched, so their order stays stable.
 FETCH_HFID_VALUES_QUERY = """
-MATCH (attr:Attribute {name: "human_friendly_id"})-[:HAS_VALUE]->(av:AttributeValue)
+MATCH (attr:Attribute {name: "human_friendly_id"})
+WITH attr ORDER BY elementId(attr) SKIP $offset LIMIT $limit
+OPTIONAL MATCH (attr)-[:HAS_VALUE]->(av:AttributeValue)
 WHERE av.value IS NOT NULL
-RETURN DISTINCT elementId(av) AS element_id, av.value AS value, av:AttributeValueIndexed AS is_indexed
-ORDER BY element_id
-SKIP $offset LIMIT $limit
+RETURN elementId(av) AS element_id, av.value AS value
 """
 
 NORMALIZE_VALUES_QUERY = """
@@ -113,13 +116,13 @@ class Migration072(ArbitraryMigration):
     update_batch_size: int = 1000
 
     async def _normalize_hfid_values(self, db: InfrahubDatabase) -> None:
-        """Normalize HFID values to all-strings, in batches.
+        """Normalize HFID values to all-strings, one batch at a time.
 
-        Creates new AttributeValue nodes and transfers HAS_VALUE edges
-        to avoid corrupting shared AttributeValue nodes.
+        Each batch is written before the next is read. This is safe because the
+        pagination anchors on the HFID attributes, which the writes never touch.
         """
         offset = 0
-        total_normalized = 0
+        total = 0
 
         while True:
             results = await db.execute_query(
@@ -129,20 +132,20 @@ class Migration072(ArbitraryMigration):
             if not results:
                 break
 
-            updates: list[NormalizeUpdate] = []
+            updates: dict[str, NormalizeUpdate] = {}
             for record in results:
                 update = _needs_normalization(record=record)
-                if update:
-                    updates.append(update)
+                if update is not None:
+                    updates[update["element_id"]] = update
 
             if updates:
-                await db.execute_query(query=NORMALIZE_VALUES_QUERY, params={"updates": updates})
-                total_normalized += len(updates)
+                await db.execute_query(query=NORMALIZE_VALUES_QUERY, params={"updates": list(updates.values())})
+                total += len(updates)
 
             offset += self.update_batch_size
 
-        if total_normalized:
-            console.log(f"Normalized {total_normalized} HFID value(s) to all-string format")
+        if total:
+            console.log(f"Normalized {total} HFID value(s) to all-string format")
 
     async def _index_hfid_values(self, db: InfrahubDatabase) -> None:
         """Add AttributeValueIndexed label to HFID values within the index size limit.
