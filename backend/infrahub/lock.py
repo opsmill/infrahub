@@ -90,10 +90,12 @@ class InfrahubMultiLock:
 class NATSLock:
     """Context manager to lock using NATS."""
 
-    def __init__(self, service: InfrahubServices, name: str) -> None:
+    def __init__(self, service: InfrahubServices, name: str, ttl: int | None = None) -> None:
         self.name = name
-        self.token = None
+        self.token: str | None = None
         self.service = service
+        # Maximum lifetime in seconds for the lock.
+        self.ttl = ttl
 
     async def __aenter__(self) -> None:
         await self.acquire()
@@ -106,8 +108,8 @@ class NATSLock:
     ) -> None:
         await self.release()
 
-    async def acquire(self) -> None:
-        token = f"{current_timestamp()}::{WORKER_IDENTITY}"
+    async def acquire(self, token: str | None = None) -> None:
+        token = token or f"{current_timestamp()}::{WORKER_IDENTITY}"
         while True:
             if await self.do_acquire(token):
                 self.token = token
@@ -115,10 +117,16 @@ class NATSLock:
             await sleep(0.1)  # default Redis GlobalLock value
 
     async def do_acquire(self, token: str) -> bool | None:
-        return await self.service.cache.set(key=self.name, value=token, not_exists=True)
+        return await self.service.cache.set(key=self.name, value=token, not_exists=True, expires=self.ttl)
 
     async def release(self) -> None:
+        if self.ttl is not None and await self.service.cache.get(key=self.name) != self.token:
+            # The TTL elapsed and the lock may have been re-acquired by another worker; nothing of ours
+            # to release.
+            self.token = None
+            return
         await self.service.cache.delete(key=self.name)
+        self.token = None
 
     async def locked(self) -> bool:
         return await self.service.cache.get(key=self.name) is not None
@@ -160,7 +168,7 @@ class InfrahubLock:
         elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
             self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}", timeout=ttl)
         else:
-            self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
+            self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}", ttl=ttl)
 
     @property
     def acquire_time(self) -> int:
