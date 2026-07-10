@@ -95,7 +95,7 @@ command the repo lacks; surface ambiguity to the user. Column 1 lists the in-rep
 | Residue cleanup (post-implement) | `pruning-residues` | `code-simplifier` | agent prunes leftover debug logs, dead code, orphaned files/imports, and redundant comments; else skip |
 | Knowledge capture | `capturing-knowledge` | — | skip |
 | Learn from review | `learning-from-review` | — | skip |
-| Docs audit / consistency | `/audit-docs` → `/add-docs` | — | grep doc layers for drift; else skip |
+| Docs audit / consistency | `audit-docs` (or `/audit-docs`) → `add-docs` / `/add-docs` | — | grep doc layers for drift; else skip |
 | Session retrospective | `speckit-opsmill-retrospect` (or `/speckit.opsmill.retrospect`) | — | skip |
 | Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |
 | CI gate / verify | `/pre-ci` | `superpowers:verification-before-completion` | run detected test + lint commands |
@@ -133,7 +133,7 @@ The lane and depth follow from the classification:
 | Plan | skip on `S`, else light | `/speckit-plan` + `/speckit-tasks` → `plan.md`, `tasks.md` (`M`/`L`) | skip |
 | Implement | `/bug-tdd` → `/bug-fix` | TDD agents (worktrees on `L`) | direct edit |
 | Review | `speckit-review-run` → `review.md` + verify | same | same (lighter) |
-| Knowledge & learning | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `/audit-docs` (conditional) | same | same |
+| Knowledge & learning | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `audit-docs` (conditional) | same | same |
 | CI gate | `/pre-ci` | same | same |
 | Commit | `commit` | same | same |
 | PR | `pr` → split assessment | same | same (usually single PR) |
@@ -211,9 +211,10 @@ agents per file group).
    else the phase-5 review threads). It reconstructs proposed → rejected → corrected, distills the
    durable lesson that would have produced the accepted version first time, and hands it to
    `capturing-knowledge` to persist. Skip if phase 5 requested no changes — there is nothing to learn.
-3. **Audit docs** — run `/audit-docs` against this branch's changes (it cross-references the doc layers
-   and reports gaps/drift, so the docs stay consistent with what was actually built). For each real
-   gap, update or create the doc with `/add-docs` (fallback: edit the doc directly).
+3. **Audit docs** — delegate to the `audit-docs` skill (fallback: the `/audit-docs` command) against
+   this branch's changes; it cross-references the doc layers and reports gaps/drift, so the docs stay
+   consistent with what was actually built. For each real gap, update or create the doc with the
+   `add-docs` skill / `/add-docs` command (fallback: edit the doc directly).
 4. **Retrospective** — delegate to `speckit-opsmill-retrospect` (or the `/speckit.opsmill.retrospect`
    command) while the session is fresh: it surfaces context-management/tooling gaps (AGENTS.md, skills,
    commands, guides, templates) that caused avoidable friction and routes each to a disposition —

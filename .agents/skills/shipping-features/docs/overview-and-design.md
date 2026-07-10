@@ -71,7 +71,7 @@ gets better as more tools are installed. These all ship in-repo under `.agents/`
 `speckit-*` suite (including `speckit-review-{code,tests,types,errors,comments,simplify}` and
 `speckit-critique-run`), `pruning-residues` (post-implement cleanup of dead code, debug logs, and
 redundant comments), `capturing-knowledge`, `learning-from-review` (distills review lessons),
-`/audit-docs`·`/add-docs` (docs-consistency audit), `rebase`, `commit`, `pr`,
+`audit-docs`·`add-docs` (docs-consistency audit skills; `/audit-docs`·`/add-docs` commands as fallback), `rebase`, `commit`, `pr`,
 `monitoring-pull-requests` (post-open CI watch), and `speckit-opsmill-retrospect` (retrospective,
 run at the knowledge step).
 
@@ -85,14 +85,14 @@ run at the knowledge step).
 | 3 | Plan | `/speckit-plan`+`/speckit-tasks` | gate + parallel (+ skeptic on risk) |
 | 4 | Implement | `/bug-tdd`+`/bug-fix` / TDD agents · prune residues | gate + adversarial verify |
 | 5 | Review | `speckit-review-run`, `coderabbit`, `/security-review` | gate + parallel + verify |
-| 6 | Knowledge, learning & retrospective | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `/audit-docs`→`/add-docs` | conditional |
+| 6 | Knowledge, learning & retrospective | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `audit-docs`→`add-docs` | conditional |
 | 7 | CI gate | `/pre-ci` | gate |
 | 8 | Commit & PR | `commit`, `pr`, split assessment | parallel (split) |
 | 9 | CI watch | `monitoring-pull-requests` | gate |
 
 Checkpoints sit between phases; the user can pause, redirect, reclassify, or jump at any of them.
 **Two cleanups keep it consistent:** code residues + stale comments at phase 4 (`pruning-residues`),
-docs & knowledge at phase 6 (`capturing-knowledge` + `/audit-docs`).
+docs & knowledge at phase 6 (`capturing-knowledge` + `audit-docs`).
 
 ## Open questions for the team
 
