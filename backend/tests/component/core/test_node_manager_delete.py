@@ -5,7 +5,13 @@ from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipDeleteBehavior
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDeleteBehavior,
+    RelationshipKind,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -641,4 +647,45 @@ async def test_cascade_delete_both_endpoints_on_branch_no_duplicate_edges(
     deleted = await NodeManager.delete(db=db, branch=branch, nodes=[jane_on_branch], at=Timestamp())
     assert {d.id for d in deleted} == {person_jane_main.id, car_camry_main.id}
 
+    await verify_graph(db=db)
+
+
+async def test_cascade_delete_blocked_by_external_mandatory_dependent(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    person_schema = schema_branch.get(name="TestPerson", duplicate=False)
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
+
+    person_schema.relationships.append(
+        RelationshipSchema(
+            name="favorite_car",
+            kind=RelationshipKind.ATTRIBUTE,
+            optional=False,
+            peer="TestCar",
+            cardinality=RelationshipCardinality.ONE,
+            identifier="person__favorite_car",
+            on_delete=RelationshipDeleteBehavior.NO_ACTION,
+            branch=BranchSupportType.AWARE,
+        )
+    )
+
+    # Jane is NOT being deleted and mandatorily references one of John's (cascaded) cars.
+    jane = await NodeManager.get_one(db=db, id=person_jane_main.id)
+    await jane.get_relationship("favorite_car").update(db=db, data=car_accord_main.id)
+    await jane.save(db=db)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
+
+    expected_msg = (
+        f"Cannot delete TestCar '{car_accord_main.id}'. "
+        f"It is linked to mandatory relationship favorite_car on node TestPerson '{person_jane_main.id}' "
+        f"at TestPerson.favorite_car"
+    )
+    assert str(exc.value) == expected_msg
     await verify_graph(db=db)
