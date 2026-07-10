@@ -1466,7 +1466,6 @@ dependencies = [
     { name = "prefect" },
     { name = "prefect-redis" },
     { name = "puremagic" },
-    { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
@@ -1486,6 +1485,9 @@ dependencies = [
 [package.optional-dependencies]
 enterprise = [
     { name = "bonsai" },
+]
+object-transfer = [
+    { name = "pyarrow" },
 ]
 
 [package.dev-dependencies]
@@ -1560,7 +1562,7 @@ requires-dist = [
     { name = "prefect", specifier = "==3.7.5" },
     { name = "prefect-redis", specifier = "==0.2.12" },
     { name = "puremagic", specifier = ">=1.30,<2" },
-    { name = "pyarrow", specifier = ">=14" },
+    { name = "pyarrow", marker = "extra == 'object-transfer'", specifier = ">=14" },
     { name = "pydantic", specifier = ">=2.12,<2.13" },
     { name = "pydantic-settings", specifier = ">=2.10,<3.0" },
     { name = "pyjwt", specifier = "==2.12.1" },
@@ -1577,7 +1579,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32,<0.33" },
     { name = "whenever", specifier = "==0.9.3" },
 ]
-provides-extras = ["enterprise"]
+provides-extras = ["enterprise", "object-transfer"]
 
 [package.metadata.requires-dev]
 dev = [
