@@ -591,3 +591,43 @@ async def test_delete_cascade_artifacts(
     assert artifact.id in {d.id for d in deleted}
     node_map = await NodeManager.get_many(db=db, ids=[c1.id, artifact.id])
     assert node_map == {}
+
+
+async def test_cascade_delete_blocked_by_external_mandatory_dependent(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    person_schema = schema_branch.get(name="TestPerson", duplicate=False)
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
+
+    person_schema.relationships.append(
+        RelationshipSchema(
+            name="favorite_car",
+            kind="Attribute",
+            optional=False,
+            peer="TestCar",
+            cardinality="one",
+            identifier="person__favorite_car",
+            on_delete=RelationshipDeleteBehavior.NO_ACTION,
+            branch=BranchSupportType.AWARE,
+        )
+    )
+
+    # Jane is NOT being deleted and mandatorily references one of John's (cascaded) cars.
+    jane = await NodeManager.get_one(db=db, id=person_jane_main.id)
+    await jane.favorite_car.update(db=db, data=car_accord_main.id)
+    await jane.save(db=db)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
+
+    expected_msg = (
+        f"Cannot delete TestCar '{car_accord_main.id}'. "
+        f"It is linked to mandatory relationship favorite_car on node TestPerson '{person_jane_main.id}' "
+        f"at TestPerson.favorite_car"
+    )
+    assert str(exc.value) == expected_msg
