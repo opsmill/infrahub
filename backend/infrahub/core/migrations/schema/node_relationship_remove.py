@@ -190,21 +190,9 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
         only closed once no schema still uses the identifier for the affected peers. When the node's own
         kind or the peer kind still declares the identifier, every vertex would be skipped, so the
         migration short-circuits and runs no query.
-
-        The removed relationship's definition is read from the previous (or new) node schema to recover
-        its identifier and peer. During a rebase the schema is already aligned with the destination, so
-        the relationship is absent from both; the identifier cannot be recovered and the migration
-        short-circuits.
         """
+        previous_relationship = self.previous_relationship_schema
         node_kind = self.previous_schema.kind
-        relationship_name = self.schema_path.field_name
-        if not relationship_name:
-            return None
-        previous_relationship = self.previous_schema.get_relationship_or_none(name=relationship_name)
-        if previous_relationship is None and self.new_node_schema is not None:
-            previous_relationship = self.new_node_schema.get_relationship_or_none(name=relationship_name)
-        if previous_relationship is None:
-            return None
         identifier = previous_relationship.get_identifier()
 
         # Kinds that still declare the identifier in the (post-update) schema keep the relationship data
