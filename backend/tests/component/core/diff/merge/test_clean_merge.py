@@ -72,6 +72,6 @@ async def test_clean_merge_covers_all_change_types(
     await validate_all_applied(db=db, branch=default_branch, contexts=contexts, merge_at=merge_at)
     await verify_graph(db=db)
 
-    await merger.rollback(at=merge_at)
+    await merger.rollback(merge_started_at=merge_at)
     await validate_all_rolled_back(db=db, branch=default_branch, contexts=contexts)
     await verify_graph(db=db)

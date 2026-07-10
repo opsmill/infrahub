@@ -103,7 +103,7 @@ async def test_sequential_rel_property_updates(
     await verify_graph(db=db)
 
     # Rollback reverts both property changes.
-    await merger.rollback(at=merge_at)
+    await merger.rollback(merge_started_at=merge_at)
     rolled_back_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
     rolled_back_owner = await rolled_back_car.owner.get(db=db)
     assert rolled_back_owner.peer_id == person_john_main.id

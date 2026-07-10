@@ -251,7 +251,7 @@ async def test_diff_and_merge_with_migrated_node_kind_and_migrated_inheritance(
 
     await verify_graph(db=db)
 
-    await diff_merger.rollback(at=merge_at)
+    await diff_merger.rollback(merge_started_at=merge_at)
 
     rolled_back_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=rolled_back_schema_branch)

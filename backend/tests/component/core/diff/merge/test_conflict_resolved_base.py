@@ -100,7 +100,7 @@ async def test_conflict_resolved_base(
 
     # After rollback the added node is gone; base-side values remain (nothing to
     # undo on base since no branch change landed there).
-    await merger.rollback(at=merge_at)
+    await merger.rollback(merge_started_at=merge_at)
     await validate_all_applied_with_conflict_to_base(
         db=db,
         branch=default_branch,
