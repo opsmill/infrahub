@@ -80,17 +80,23 @@ class AdmissionController:
             return Rejected(reason="backstop", retry_after=self._retry_after)
 
         acquisition = await self._slot_pool.acquire(priority=priority)
-        self._sync_gauges(priority=priority)
-        metrics.SOJOURN_SECONDS.labels(priority=priority.label).observe(acquisition.sojourn)
-
-        if self._codel[priority].should_drop(sojourn=acquisition.sojourn):
-            acquisition.release()
+        # Once a slot is held, any exception before returning Admitted would strand it (the
+        # caller only releases what it receives), so guard the whole window and release on error.
+        try:
             self._sync_gauges(priority=priority)
-            metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="codel").inc()
-            return Rejected(reason="codel", retry_after=self._retry_after)
+            metrics.SOJOURN_SECONDS.labels(priority=priority.label).observe(acquisition.sojourn)
 
-        metrics.ADMITTED_TOTAL.labels(priority=priority.label).inc()
-        return Admitted(acquisition=acquisition)
+            if self._codel[priority].should_drop(sojourn=acquisition.sojourn):
+                acquisition.release()
+                self._sync_gauges(priority=priority)
+                metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="codel").inc()
+                return Rejected(reason="codel", retry_after=self._retry_after)
+
+            metrics.ADMITTED_TOTAL.labels(priority=priority.label).inc()
+            return Admitted(acquisition=acquisition)
+        except Exception:
+            acquisition.release()
+            raise
 
     def release(self, *, acquisition: Acquisition) -> None:
         """Return a served request's slot and refresh the live gauges for its class.
@@ -118,6 +124,9 @@ def build_admission_controller() -> AdmissionController:
         pool_size=settings.database.max_connection_pool_size,
         factor=settings.api.backpressure_max_concurrency_factor,
     )
+    # Set the gauge wherever the controller is actually built, so it reflects the derived cap
+    # in use rather than being frozen at some earlier import.
+    metrics.MAX_CONCURRENCY.set(max_concurrency)
     slot_pool = PrioritySlotPool(max_concurrency=max_concurrency)
     return AdmissionController(
         slot_pool=slot_pool,
