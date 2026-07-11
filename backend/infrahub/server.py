@@ -20,6 +20,10 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
+from infrahub.api.admission import metrics as admission_metrics
+from infrahub.api.admission.capacity import derive_max_concurrency
+from infrahub.api.admission.controller import build_admission_controller
+from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
@@ -212,6 +216,24 @@ app.add_middleware(
         "/docs",
         "/api/schema",
     ),
+)
+
+# Registered last so it is the outermost middleware: load is shed before any downstream
+# work runs. Settings are initialized here so the derived cap and kill-switch honour the
+# process environment, mirroring the CORS middleware's own initialization.
+config.SETTINGS.initialize_and_exit()
+admission_controller = build_admission_controller()
+app.state.admission_controller = admission_controller
+admission_metrics.MAX_CONCURRENCY.set(
+    derive_max_concurrency(
+        pool_size=config.SETTINGS.database.max_connection_pool_size,
+        factor=config.SETTINGS.api.backpressure_max_concurrency_factor,
+    )
+)
+app.add_middleware(
+    AdmissionMiddleware,
+    controller=admission_controller,
+    enabled=config.SETTINGS.api.backpressure_enabled,
 )
 
 app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)

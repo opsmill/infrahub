@@ -1,0 +1,164 @@
+from __future__ import annotations
+
+import asyncio
+
+from infrahub.api.admission.priority import Priority
+from infrahub.api.admission.slot_pool import PrioritySlotPool
+
+
+class FakeClock:
+    """Manually advanced monotonic clock so sojourn is deterministic in tests."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+
+
+async def _wait_until_waiting(pool: PrioritySlotPool, *, priority: Priority, count: int) -> None:
+    """Yield to the loop until ``count`` tasks are parked in the priority's waiter queue.
+
+    Raises:
+        AssertionError: If the waiter count is never reached, so a wiring bug surfaces as a
+            failure rather than a hang.
+
+    """
+    for _ in range(1000):
+        if pool.waiters(priority=priority) >= count:
+            return
+        await asyncio.sleep(0)
+    raise AssertionError(f"waiters for {priority} never reached {count}")
+
+
+async def test_freed_slot_goes_to_highest_priority_waiter() -> None:
+    pool = PrioritySlotPool(max_concurrency=1)
+    events: list[str] = []
+
+    holder = await pool.acquire(priority=Priority.NORMAL)
+    assert pool.available == 0
+
+    async def waiter(name: str, priority: Priority) -> None:
+        acquisition = await pool.acquire(priority=priority)
+        events.append(name)
+        acquisition.release()
+
+    low = asyncio.create_task(waiter("low", Priority.LOW))
+    await _wait_until_waiting(pool, priority=Priority.LOW, count=1)
+    high = asyncio.create_task(waiter("high", Priority.HIGH))
+    await _wait_until_waiting(pool, priority=Priority.HIGH, count=1)
+
+    # Both classes are queued behind the single held slot; releasing it once must wake the
+    # HIGH waiter first even though LOW enqueued earlier.
+    holder.release()
+
+    await asyncio.gather(low, high)
+    assert events == ["high", "low"]
+    assert pool.available == 1
+    assert pool.in_flight(priority=Priority.HIGH) == 0
+    assert pool.in_flight(priority=Priority.LOW) == 0
+
+
+async def test_within_class_fifo() -> None:
+    pool = PrioritySlotPool(max_concurrency=1)
+    events: list[str] = []
+
+    holder = await pool.acquire(priority=Priority.NORMAL)
+
+    async def waiter(name: str) -> None:
+        acquisition = await pool.acquire(priority=Priority.NORMAL)
+        events.append(name)
+        acquisition.release()
+
+    tasks = []
+    for name in ("first", "second", "third"):
+        tasks.append(asyncio.create_task(waiter(name)))
+        await _wait_until_waiting(pool, priority=Priority.NORMAL, count=len(tasks))
+
+    holder.release()
+    await asyncio.gather(*tasks)
+
+    assert events == ["first", "second", "third"]
+    assert pool.available == 1
+
+
+async def test_cancelled_waiter_leaks_no_slot() -> None:
+    clock = FakeClock()
+    pool = PrioritySlotPool(max_concurrency=1, clock=clock)
+
+    holder = await pool.acquire(priority=Priority.NORMAL)
+
+    cancelled_started = asyncio.Event()
+
+    async def cancellable() -> None:
+        cancelled_started.set()
+        await pool.acquire(priority=Priority.LOW)
+
+    victim = asyncio.create_task(cancellable())
+    await cancelled_started.wait()
+    await _wait_until_waiting(pool, priority=Priority.LOW, count=1)
+
+    survivor_ran = asyncio.Event()
+
+    async def survivor() -> None:
+        acquisition = await pool.acquire(priority=Priority.NORMAL)
+        survivor_ran.set()
+        acquisition.release()
+
+    runner = asyncio.create_task(survivor())
+    await _wait_until_waiting(pool, priority=Priority.NORMAL, count=1)
+
+    # Cancel the queued LOW waiter, then free the slot. The freed slot must reach the
+    # NORMAL survivor with no leak and no deadlock.
+    victim.cancel()
+    with_result = await asyncio.gather(victim, return_exceptions=True)
+    assert isinstance(with_result[0], asyncio.CancelledError)
+    assert pool.waiters(priority=Priority.LOW) == 0
+
+    holder.release()
+    await asyncio.wait_for(runner, timeout=1)
+    assert survivor_ran.is_set()
+
+    # Accounting invariant: every slot returned, nothing in flight.
+    assert pool.available == pool.max_concurrency
+    assert all(pool.in_flight(priority=priority) == 0 for priority in Priority)
+    assert all(pool.waiters(priority=priority) == 0 for priority in Priority)
+
+
+async def test_cancel_after_handoff_rereleases_slot() -> None:
+    pool = PrioritySlotPool(max_concurrency=1)
+
+    holder = await pool.acquire(priority=Priority.NORMAL)
+
+    async def cancellable() -> None:
+        await pool.acquire(priority=Priority.HIGH)
+
+    victim = asyncio.create_task(cancellable())
+    await _wait_until_waiting(pool, priority=Priority.HIGH, count=1)
+
+    survivor_ran = asyncio.Event()
+
+    async def survivor() -> None:
+        acquisition = await pool.acquire(priority=Priority.NORMAL)
+        survivor_ran.set()
+        acquisition.release()
+
+    runner = asyncio.create_task(survivor())
+    await _wait_until_waiting(pool, priority=Priority.NORMAL, count=1)
+
+    # Freeing the slot hands it to the HIGH victim (highest priority). Cancelling the victim
+    # in the same tick, before it consumes the slot, must re-release it to the NORMAL
+    # survivor rather than leak it.
+    holder.release()
+    victim.cancel()
+
+    results = await asyncio.gather(victim, return_exceptions=True)
+    assert isinstance(results[0], asyncio.CancelledError)
+
+    await asyncio.wait_for(runner, timeout=1)
+    assert survivor_ran.is_set()
+    assert pool.available == pool.max_concurrency
+    assert all(pool.in_flight(priority=priority) == 0 for priority in Priority)
