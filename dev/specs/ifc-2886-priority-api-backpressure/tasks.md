@@ -63,8 +63,8 @@ New code: `backend/infrahub/api/admission/`. Edited files: `backend/infrahub/con
 
 **Independent test**: send `high`/`normal`/`low`/invalid/absent → assert the resolved class and `was_explicit`; a no-header request is `normal`.
 
-- [ ] T011 [US2] Implement `parse_priority(header_value: str | None) -> PriorityHeaderParseResult` (frozen dataclass with `priority` + `was_explicit`) in `backend/infrahub/api/admission/priority.py`: case-insensitive, trimmed; `high/normal/low` → matching class with `was_explicit=True`; missing/empty/invalid → `NORMAL` with `was_explicit=False`; never raises (FR-006; contracts/x-priority-header.md C-1).
-- [ ] T012 [P] [US2] Unit test `backend/tests/unit/api/admission/test_priority.py`: parametrized (`name`-first dataclass cases) over valid/invalid/missing/whitespace/mixed-case headers asserting class + `was_explicit` (FR-006, FR-OBS-7).
+- [X] T011 [US2] Implement `parse_priority(header_value: str | None) -> PriorityHeaderParseResult` (frozen dataclass with `priority` + `was_explicit`) in `backend/infrahub/api/admission/priority.py`: case-insensitive, trimmed; `high/normal/low` → matching class with `was_explicit=True`; missing/empty/invalid → `NORMAL` with `was_explicit=False`; never raises (FR-006; contracts/x-priority-header.md C-1).
+- [X] T012 [P] [US2] Unit test `backend/tests/unit/api/admission/test_priority.py`: parametrized (`name`-first dataclass cases) over valid/invalid/missing/whitespace/mixed-case headers asserting class + `was_explicit` (FR-006, FR-OBS-7).
 
 **Checkpoint**: header classification is correct and covered; US1/US3 can rely on it.
 
