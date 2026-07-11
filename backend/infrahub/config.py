@@ -366,6 +366,11 @@ class DatabaseSettings(BaseSettings):
             "the query is aborted once it is exceeded."
         ),
     )
+    max_connection_pool_size: int = Field(
+        default=100,
+        ge=1,
+        description="Maximum number of connections the driver keeps in its pool per remote address.",
+    )
 
     @property
     def address_members(self) -> list[str]:
@@ -538,6 +543,28 @@ class ApiSettings(BaseSettings):
     )
     cors_allow_credentials: bool = Field(
         default=True, description="If True, cookies will be allowed to be included in cross-site HTTP requests"
+    )
+    backpressure_enabled: bool = Field(
+        default=True,
+        description="Kill-switch for priority-aware API backpressure; when disabled every request passes through.",
+    )
+    backpressure_codel_target_seconds: float = Field(
+        default=0.005, gt=0, description="CoDel target sojourn in seconds before shedding is considered."
+    )
+    backpressure_codel_interval_seconds: float = Field(
+        default=0.1, gt=0, description="CoDel interval in seconds the sojourn must stay above target before dropping."
+    )
+    backpressure_high_target_multiplier: float = Field(
+        default=4.0, ge=1, description="Multiplier applied to the CoDel target for the high-priority class."
+    )
+    backpressure_backstop_max_waiters: int = Field(
+        default=1000, ge=1, description="Per-class hard cap on queued waiters before requests are rejected."
+    )
+    backpressure_retry_after_seconds: int = Field(
+        default=1, ge=0, description="Value returned in the Retry-After header when a request is shed."
+    )
+    backpressure_max_concurrency_factor: float = Field(
+        default=1.0, gt=0, description="Scales the derived maximum admission concurrency."
     )
 
 

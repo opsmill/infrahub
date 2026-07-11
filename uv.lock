@@ -1466,6 +1466,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "prefect" },
     { name = "prefect-redis" },
+    { name = "prometheus-client" },
     { name = "puremagic" },
     { name = "pyarrow" },
     { name = "pydantic" },
@@ -1560,6 +1561,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.60b0" },
     { name = "prefect", specifier = "==3.7.5" },
     { name = "prefect-redis", specifier = "==0.2.12" },
+    { name = "prometheus-client", specifier = ">=0.25,<0.26" },
     { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", specifier = ">=14" },
     { name = "pydantic", specifier = ">=2.12,<2.13" },
@@ -2627,8 +2629,8 @@ name = "pendulum"
 version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "python-dateutil", marker = "python_full_version < '3.13'" },
-    { name = "tzdata", marker = "python_full_version < '3.13'" },
+    { name = "python-dateutil" },
+    { name = "tzdata" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/72/9a51afa0a822b09e286c4cb827ed7b00bc818dac7bd11a5f161e493a217d/pendulum-3.2.0.tar.gz", hash = "sha256:e80feda2d10fa3ff8b1526715f7d33dcb7e08494b3088f2c8a3ac92d4a4331ce", size = 86912, upload-time = "2026-01-30T11:22:24.093Z" }
 wheels = [
