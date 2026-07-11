@@ -33,10 +33,10 @@ New code: `backend/infrahub/api/admission/`. Edited files: `backend/infrahub/con
 
 **Purpose**: Package skeleton, configuration, and dependency declaration.
 
-- [ ] T001 Create the admission package `backend/infrahub/api/admission/__init__.py` (empty package marker; exports added as modules land).
-- [ ] T002 [P] Add `max_connection_pool_size: int = Field(default=100, ge=1, ...)` to `DatabaseSettings` in `backend/infrahub/config.py` (env `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE`) and pass it into the `AsyncGraphDatabase.driver(...)` call in `backend/infrahub/database/__init__.py` (~line 549) as `max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size`. Default 100 preserves current driver behaviour exactly.
-- [ ] T003 [P] Add the backpressure knobs to `ApiSettings` in `backend/infrahub/config.py` (env prefix `INFRAHUB_API_`): `backpressure_enabled: bool = True`, `backpressure_codel_target_seconds: float = 0.005` (gt=0), `backpressure_codel_interval_seconds: float = 0.1` (gt=0), `backpressure_high_target_multiplier: float = 4.0` (ge=1), `backpressure_backstop_max_waiters: int = 1000` (ge=1), `backpressure_retry_after_seconds: int = 1` (ge=0), `backpressure_max_concurrency_factor: float = 1.0` (gt=0). See data-model.md "Configuration additions".
-- [ ] T004 [P] Declare `prometheus-client` as an explicit direct dependency in `pyproject.toml` (it is currently a transitive pin at 0.25.0, already imported directly in-tree; no version change — critique E5).
+- [X] T001 Create the admission package `backend/infrahub/api/admission/__init__.py` (empty package marker; exports added as modules land).
+- [X] T002 [P] Add `max_connection_pool_size: int = Field(default=100, ge=1, ...)` to `DatabaseSettings` in `backend/infrahub/config.py` (env `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE`) and pass it into the `AsyncGraphDatabase.driver(...)` call in `backend/infrahub/database/__init__.py` (~line 549) as `max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size`. Default 100 preserves current driver behaviour exactly.
+- [X] T003 [P] Add the backpressure knobs to `ApiSettings` in `backend/infrahub/config.py` (env prefix `INFRAHUB_API_`): `backpressure_enabled: bool = True`, `backpressure_codel_target_seconds: float = 0.005` (gt=0), `backpressure_codel_interval_seconds: float = 0.1` (gt=0), `backpressure_high_target_multiplier: float = 4.0` (ge=1), `backpressure_backstop_max_waiters: int = 1000` (ge=1), `backpressure_retry_after_seconds: int = 1` (ge=0), `backpressure_max_concurrency_factor: float = 1.0` (gt=0). See data-model.md "Configuration additions".
+- [X] T004 [P] Declare `prometheus-client` as an explicit direct dependency in `pyproject.toml` (it is currently a transitive pin at 0.25.0, already imported directly in-tree; no version change — critique E5).
 
 **Checkpoint**: settings load; driver receives an explicit pool size; `prometheus-client` is a first-class dep.
 
