@@ -96,8 +96,8 @@ New code: `backend/infrahub/api/admission/`. Edited files: `backend/infrahub/con
 
 **Depends on**: Phase 4 (middleware + controller).
 
-- [ ] T018 [US3] In `backend/infrahub/api/admission/middleware.py`, construct the shed response directly as a `JSONResponse(status_code=429)` with a `Retry-After` header (from `backpressure_retry_after_seconds`) and the existing error envelope shape (REST vs GraphQL by path, per `backend/infrahub/api/exception_handlers.py`); short-circuit **before** `self.app` so no handler work runs (FR-007; contracts C-3). Ensure `codel` vs `backstop` reason flows from the `Rejected` decision to `rejected_total{reason}`.
-- [ ] T019 [US3] Component test in `backend/tests/component/api/test_admission_middleware.py`: with the cap forced to 0 (or the backstop tripped), assert the response is `429` + `Retry-After` present, a sentinel handler was **not** executed, and `rejected_total` incremented with the correct `reason` label for both `codel` and `backstop` paths (SC-004, FR-007; contracts C-3, metrics M-4).
+- [X] T018 [US3] In `backend/infrahub/api/admission/middleware.py`, construct the shed response directly as a `JSONResponse(status_code=429)` with a `Retry-After` header (from `backpressure_retry_after_seconds`) and the existing error envelope shape (REST vs GraphQL by path, per `backend/infrahub/api/exception_handlers.py`); short-circuit **before** `self.app` so no handler work runs (FR-007; contracts C-3). Ensure `codel` vs `backstop` reason flows from the `Rejected` decision to `rejected_total{reason}`.
+- [X] T019 [US3] Component test in `backend/tests/component/api/test_admission_middleware.py`: with the cap forced to 0 (or the backstop tripped), assert the response is `429` + `Retry-After` present, a sentinel handler was **not** executed, and `rejected_total` incremented with the correct `reason` label for both `codel` and `backstop` paths (SC-004, FR-007; contracts C-3, metrics M-4).
 
 **Checkpoint**: shed shape and reason-tagging verified.
 
