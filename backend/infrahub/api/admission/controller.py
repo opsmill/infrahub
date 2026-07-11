@@ -92,6 +92,16 @@ class AdmissionController:
         metrics.ADMITTED_TOTAL.labels(priority=priority.label).inc()
         return Admitted(acquisition=acquisition)
 
+    def release(self, *, acquisition: Acquisition) -> None:
+        """Return a served request's slot and refresh the live gauges for its class.
+
+        Releasing through the controller (rather than the acquisition directly) keeps the
+        gauge sync co-located with every slot state change, so ``in_flight`` drops back as
+        soon as a request finishes instead of lingering until the next admit.
+        """
+        acquisition.release()
+        self._sync_gauges(priority=acquisition.priority)
+
     def _sync_gauges(self, *, priority: Priority) -> None:
         metrics.IN_FLIGHT.labels(priority=priority.label).set(self._slot_pool.in_flight(priority=priority))
         metrics.WAITERS.labels(priority=priority.label).set(self._slot_pool.waiters(priority=priority))

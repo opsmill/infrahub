@@ -75,7 +75,7 @@ class AdmissionMiddleware:
             try:
                 await self.app(scope, receive, send)
             finally:
-                decision.acquisition.release()
+                self._controller.release(acquisition=decision.acquisition)
             return
 
         # Short-circuit: the shed response is written directly, so the downstream app and
