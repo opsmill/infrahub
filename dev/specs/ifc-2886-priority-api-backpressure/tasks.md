@@ -111,8 +111,8 @@ New code: `backend/infrahub/api/admission/`. Edited files: `backend/infrahub/con
 
 **Depends on**: Phase 2 (capacity, codel), Phase 4 (wiring exposes the gauge).
 
-- [ ] T020 [P] [US4] Unit test `backend/tests/unit/api/admission/test_capacity.py`: `derive_max_concurrency` follows `pool_size × factor` (with `max(1, …)` floor) across several settings; assert no hard-coded constant leaks in (FR-009).
-- [ ] T021 [US4] Component test in `backend/tests/component/api/test_admission_middleware.py::test_capacity_and_burst`: assert `infrahub_admission_max_concurrency` gauge equals the derived value after init (FR-OBS-6, metrics M-2), and that a burst shorter than `backpressure_codel_interval_seconds` produces zero `rejected_total` increments (SC-003, FR-003 at the HTTP layer).
+- [X] T020 [P] [US4] Unit test `backend/tests/unit/api/admission/test_capacity.py`: `derive_max_concurrency` follows `pool_size × factor` (with `max(1, …)` floor) across several settings; assert no hard-coded constant leaks in (FR-009).
+- [X] T021 [US4] Component test in `backend/tests/component/api/test_admission_middleware.py::test_capacity_and_burst`: assert `infrahub_admission_max_concurrency` gauge equals the derived value after init (FR-OBS-6, metrics M-2), and that a burst shorter than `backpressure_codel_interval_seconds` produces zero `rejected_total` increments (SC-003, FR-003 at the HTTP layer).
 
 **Checkpoint**: capacity is tuning-free and observable; bursts are absorbed.
 

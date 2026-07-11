@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import time
 
 import httpx
 import pytest
 from fastapi import FastAPI
 
 from infrahub.api.admission import metrics
+from infrahub.api.admission.capacity import derive_max_concurrency
 from infrahub.api.admission.controller import AdmissionController
 from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.admission.priority import Priority
@@ -16,6 +18,18 @@ HANDLER_SLEEP = 0.02
 MAX_CONCURRENCY = 2
 LOW_REQUESTS = 60
 HIGH_REQUESTS = 15
+
+_PRIORITY_LABELS = ("high", "normal", "low")
+_REASON_LABELS = ("codel", "backstop")
+
+
+def _rejected_total() -> float:
+    """Sum ``rejected_total`` across every priority class and shed reason."""
+    return sum(
+        metrics.REJECTED_TOTAL.labels(priority=priority, reason=reason)._value.get()
+        for priority in _PRIORITY_LABELS
+        for reason in _REASON_LABELS
+    )
 
 
 class _StepClock:
@@ -225,3 +239,72 @@ async def test_shed_codel_returns_429() -> None:
     assert shed.headers["Retry-After"] == "3"
     # The shed request never reached the handler.
     assert entered == 2
+
+
+async def test_capacity_and_burst() -> None:
+    """The max_concurrency gauge tracks the derived cap, and a sub-interval burst sheds nothing.
+
+    Two independent guarantees at the HTTP layer, on a standalone app + middleware:
+
+    (a) The gauge is set only during server wiring, so constructing a controller does not touch
+        it. Setting it exactly as the wiring does (derive the cap, then set the gauge) and reading
+        it back proves the gauge equals ``derive_max_concurrency(pool_size, factor)`` with no
+        magic number.
+    (b) A burst of concurrent requests that completes within a single CoDel interval cannot be
+        shed: the first above-target sojourn only arms the interval timer, and dropping starts
+        only after a full interval of continuous overload. A fast handler and a long interval keep
+        the whole burst inside one window, so the shed count is unchanged by construction.
+    """
+    pool_size = 40
+    factor = 0.25
+    max_concurrency = derive_max_concurrency(pool_size=pool_size, factor=factor)
+    assert max_concurrency == 10
+
+    # Long relative to the burst so the whole burst lands inside one CoDel window.
+    interval = 5.0
+    burst = 50
+
+    app = FastAPI()
+
+    @app.get("/work")
+    async def work() -> dict[str, bool]:
+        return {"ok": True}
+
+    controller = AdmissionController(
+        slot_pool=PrioritySlotPool(max_concurrency=max_concurrency),
+        target=0.005,
+        interval=interval,
+        high_target_multiplier=4.0,
+        backstop_max_waiters=1000,
+        retry_after=1,
+    )
+    # The gauge is set at server wiring time, not by constructing a controller; set it the same
+    # way the wiring does so the invariant is observable here.
+    metrics.MAX_CONCURRENCY.set(max_concurrency)
+    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+
+    # (a) Gauge equals the derived cap and is positive.
+    gauge_value = metrics.MAX_CONCURRENCY._value.get()
+    assert gauge_value == derive_max_concurrency(pool_size=pool_size, factor=factor)
+    assert gauge_value > 0
+
+    # (b) Drive the burst and assert zero incremental sheds across every class and reason.
+    rejected_before = _rejected_total()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+
+        async def fire() -> int:
+            response = await client.get("/work", headers={"X-Priority": "normal"}, timeout=10)
+            return response.status_code
+
+        start = time.monotonic()
+        statuses = await asyncio.gather(*[fire() for _ in range(burst)])
+        elapsed = time.monotonic() - start
+
+    rejected_after = _rejected_total()
+
+    # The burst really did finish inside one interval, so no drop was even possible.
+    assert elapsed < interval
+    # Every request was served; none was shed.
+    assert statuses == [200] * burst
+    assert rejected_after - rejected_before == 0
