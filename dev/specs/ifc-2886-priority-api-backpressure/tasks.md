@@ -137,10 +137,10 @@ New code: `backend/infrahub/api/admission/`. Edited files: `backend/infrahub/con
 
 **Purpose**: Types, quality gates, docs, and manual validation.
 
-- [ ] T024 [P] Add a Towncrier changelog fragment under `changelog/` (feature type) describing the new `X-Priority` header, `429 + Retry-After` admission behaviour, and `infrahub_admission_*` metrics.
-- [ ] T025 [P] Update reference/config docs if the new settings surface in generated configuration docs; run `uv run invoke docs.generate` and commit any regenerated files (AGENTS.md generated-doc rule) — otherwise note none changed.
-- [ ] T026 Ensure full type hints across `backend/infrahub/api/admission/*` (`str | None` style, frozen dataclasses, keyword-args) and run `uv run invoke format` + `uv run invoke lint` (ruff + mypy) to zero errors (Constitution III, quality gates).
-- [ ] T027 Run the feature test suites green: `uv run pytest backend/tests/unit/api/admission/ backend/tests/component/api/test_admission_middleware.py -q`, then walk quickstart.md §3–§5 (manual smoke: inert under normal load, `/metrics` shows families, overload gradient, kill-switch) and record the SC-001 discovery measurement (critique E1 acceptance gate).
+- [X] T024 [P] Add a Towncrier changelog fragment under `changelog/` (feature type) describing the new `X-Priority` header, `429 + Retry-After` admission behaviour, and `infrahub_admission_*` metrics.
+- [X] T025 [P] Update reference/config docs if the new settings surface in generated configuration docs; run `uv run invoke docs.generate` and commit any regenerated files (AGENTS.md generated-doc rule) — otherwise note none changed.
+- [X] T026 Ensure full type hints across `backend/infrahub/api/admission/*` (`str | None` style, frozen dataclasses, keyword-args) and run `uv run invoke format` + `uv run invoke lint` (ruff + mypy) to zero errors (Constitution III, quality gates).
+- [X] T027 Run the feature test suites green: `uv run pytest backend/tests/unit/api/admission/ backend/tests/component/api/test_admission_middleware.py -q`, then walk quickstart.md §3–§5 (manual smoke: inert under normal load, `/metrics` shows families, overload gradient, kill-switch) and record the SC-001 discovery measurement (critique E1 acceptance gate).
 
 ---
 
