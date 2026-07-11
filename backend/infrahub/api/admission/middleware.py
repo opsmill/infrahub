@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from fastapi.responses import JSONResponse
+from starlette.status import HTTP_429_TOO_MANY_REQUESTS
+
+from ..exception_handlers import GRAPHQL_PATH_PREFIX
 from . import metrics
 from .controller import Admitted
 from .priority import parse_priority
@@ -23,12 +26,7 @@ EXCLUDED_PATHS: tuple[str, ...] = (
 
 _PRIORITY_HEADER = b"x-priority"
 
-_SHED_BODY = json.dumps(
-    {
-        "data": None,
-        "errors": [{"message": "Server is shedding load; retry later.", "extensions": {"code": 429}}],
-    }
-).encode("utf-8")
+_SHED_MESSAGE = "Server is shedding load; retry later."
 
 
 class AdmissionMiddleware:
@@ -38,8 +36,8 @@ class AdmissionMiddleware:
     while the layer is disabled pass straight through. Otherwise the ``X-Priority`` header
     is classified and handed to the admission controller: an admitted request runs the
     downstream app inside its slot and always releases the slot afterwards, while a shed
-    request is answered with a bare ``429`` carrying ``Retry-After`` and never reaches the
-    app.
+    request is answered with a ``429`` error envelope carrying ``Retry-After`` and never
+    reaches the app.
 
     The controller and the enabled flag are injected so the gate is exercisable without
     global settings or a live server.
@@ -80,7 +78,10 @@ class AdmissionMiddleware:
                 decision.acquisition.release()
             return
 
-        await _send_shed_response(send=send, retry_after=decision.retry_after)
+        # Short-circuit: the shed response is written directly, so the downstream app and
+        # every handler dependency (auth, routing, DB query) never runs.
+        response = _build_shed_response(path=path, retry_after=decision.retry_after)
+        await response(scope, receive, send)
 
 
 def _read_priority_header(scope: Scope) -> str | None:
@@ -90,15 +91,34 @@ def _read_priority_header(scope: Scope) -> str | None:
     return None
 
 
-async def _send_shed_response(*, send: Send, retry_after: int) -> None:
-    await send(
-        {
-            "type": "http.response.start",
-            "status": 429,
-            "headers": [
-                (b"content-type", b"application/json"),
-                (b"retry-after", str(retry_after).encode("ascii")),
-            ],
-        }
+def _build_shed_response(*, path: str, retry_after: int) -> JSONResponse:
+    """Build the ``429`` shed response with a ``Retry-After`` header.
+
+    The body is the Infrahub error envelope, selected REST vs GraphQL by request path.
+    Both surfaces use the integer-code envelope: a shed is a transport-level outcome with
+    no exception to map through the error catalogue, so the GraphQL catalogue envelope
+    (string code, ``http_status``, typed ``data``) does not apply.
+    """
+    if path.startswith(GRAPHQL_PATH_PREFIX):
+        content = _graphql_shed_envelope()
+    else:
+        content = _rest_shed_envelope()
+    return JSONResponse(
+        status_code=HTTP_429_TOO_MANY_REQUESTS,
+        content=content,
+        headers={"Retry-After": str(retry_after)},
     )
-    await send({"type": "http.response.body", "body": _SHED_BODY})
+
+
+def _rest_shed_envelope() -> dict[str, Any]:
+    return {
+        "data": None,
+        "errors": [{"message": _SHED_MESSAGE, "extensions": {"code": HTTP_429_TOO_MANY_REQUESTS}}],
+    }
+
+
+def _graphql_shed_envelope() -> dict[str, Any]:
+    return {
+        "data": None,
+        "errors": [{"message": _SHED_MESSAGE, "extensions": {"code": HTTP_429_TOO_MANY_REQUESTS}}],
+    }
