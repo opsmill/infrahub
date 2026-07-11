@@ -32,6 +32,23 @@ def _rejected_total() -> float:
     )
 
 
+def _offered(priority: str) -> float:
+    return metrics.OFFERED_TOTAL.labels(priority=priority)._value.get()
+
+
+def _admitted(priority: str) -> float:
+    return metrics.ADMITTED_TOTAL.labels(priority=priority)._value.get()
+
+
+def _rejected(priority: str, reason: str) -> float:
+    return metrics.REJECTED_TOTAL.labels(priority=priority, reason=reason)._value.get()
+
+
+def _sojourn_count(priority: str) -> float:
+    """Observation count for a class, summed from the histogram's raw per-bucket counters."""
+    return sum(bucket.get() for bucket in metrics.SOJOURN_SECONDS.labels(priority=priority)._buckets)
+
+
 class _StepClock:
     """Deterministic clock that advances by a fixed step on every read.
 
@@ -308,3 +325,156 @@ async def test_capacity_and_burst() -> None:
     # Every request was served; none was shed.
     assert statuses == [200] * burst
     assert rejected_after - rejected_before == 0
+
+
+def _admit_app() -> FastAPI:
+    """Ample-capacity app: every request is admitted and its handler runs."""
+    app = FastAPI()
+
+    @app.get("/work")
+    async def work() -> dict[str, bool]:
+        return {"ok": True}
+
+    controller = AdmissionController(
+        slot_pool=PrioritySlotPool(max_concurrency=10),
+        target=0.005,
+        interval=0.1,
+        high_target_multiplier=4.0,
+        backstop_max_waiters=1000,
+        retry_after=1,
+    )
+    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    return app
+
+
+def _backstop_app() -> FastAPI:
+    """Zero-capacity, zero-waiter-budget app: every request trips the backstop before acquiring."""
+    app = FastAPI()
+
+    @app.get("/work")
+    async def work() -> dict[str, bool]:
+        return {"ok": True}
+
+    controller = AdmissionController(
+        slot_pool=PrioritySlotPool(max_concurrency=0),
+        target=0.005,
+        interval=0.1,
+        high_target_multiplier=4.0,
+        backstop_max_waiters=0,
+        retry_after=1,
+    )
+    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+    return app
+
+
+async def test_metrics() -> None:
+    """Mixed-priority traffic moves all eight metric families and keeps the M-1 accounting exact.
+
+    Three deterministic sub-scenarios drive the shared global registry: an ample-capacity admit
+    stream (including header-less requests), a forced backstop shed, and a forced CoDel shed via
+    injected step clocks. Every outcome is forced by construction (capacity and clocks), so no
+    scenario races the wall clock. Assertions are before/after deltas because the module-level
+    metric singletons persist across tests, making absolute values unreliable.
+    """
+    offered_before = {p: _offered(p) for p in _PRIORITY_LABELS}
+    admitted_before = {p: _admitted(p) for p in _PRIORITY_LABELS}
+    codel_before = {p: _rejected(p, "codel") for p in _PRIORITY_LABELS}
+    backstop_before = {p: _rejected(p, "backstop") for p in _PRIORITY_LABELS}
+    sojourn_before = {p: _sojourn_count(p) for p in _PRIORITY_LABELS}
+    missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
+
+    # The gauge is set at server wiring, not by building a controller; set it the same way.
+    max_concurrency = derive_max_concurrency(pool_size=40, factor=0.25)
+    metrics.MAX_CONCURRENCY.set(max_concurrency)
+
+    # Scenario 1 — admitted stream: one explicit request per class plus two header-less
+    # (missing-priority) requests, all with capacity to spare so each handler runs.
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=_admit_app()), base_url="http://test") as client:
+        for priority in _PRIORITY_LABELS:
+            assert (await client.get("/work", headers={"X-Priority": priority})).status_code == 200
+        # No X-Priority header: classified NORMAL, counted as missing.
+        assert (await client.get("/work")).status_code == 200
+        assert (await client.get("/work")).status_code == 200
+
+    # Scenario 2 — backstop shed: a single LOW request is shed before it ever acquires a slot.
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=_backstop_app()), base_url="http://test") as client:
+        assert (await client.get("/work", headers={"X-Priority": "low"})).status_code == 429
+
+    # Scenario 3 — CoDel shed: a holder occupies the one slot while two followers queue; draining
+    # them under a step clock sheds the second follower. The two acquire attempts that succeed and
+    # the shed one all observe a sojourn; only the never-acquired backstop above is exempt.
+    entered = 0
+    release = asyncio.Event()
+    codel_app = FastAPI()
+
+    @codel_app.get("/work")
+    async def work() -> dict[str, bool]:
+        nonlocal entered
+        entered += 1
+        await release.wait()
+        return {"ok": True}
+
+    slot_pool = PrioritySlotPool(max_concurrency=1, clock=_StepClock(step=1.0))
+    controller = AdmissionController(
+        slot_pool=slot_pool,
+        target=0.005,
+        interval=1.0,
+        high_target_multiplier=4.0,
+        backstop_max_waiters=1000,
+        retry_after=1,
+        clock=_StepClock(step=1.0),
+    )
+    codel_app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=codel_app), base_url="http://test") as client:
+
+        async def fire() -> httpx.Response:
+            return await client.get("/work", headers={"X-Priority": "low"}, timeout=10)
+
+        holder = asyncio.create_task(fire())
+        while slot_pool.in_flight(priority=Priority.LOW) == 0:  # noqa: ASYNC110
+            await asyncio.sleep(0)
+        follower_a = asyncio.create_task(fire())
+        follower_b = asyncio.create_task(fire())
+        while slot_pool.waiters(priority=Priority.LOW) < 2:  # noqa: ASYNC110
+            await asyncio.sleep(0)
+        release.set()
+        responses = await asyncio.gather(holder, follower_a, follower_b)
+
+    assert sorted(response.status_code for response in responses) == [200, 200, 429]
+
+    offered_delta = {p: _offered(p) - offered_before[p] for p in _PRIORITY_LABELS}
+    admitted_delta = {p: _admitted(p) - admitted_before[p] for p in _PRIORITY_LABELS}
+    codel_delta = {p: _rejected(p, "codel") - codel_before[p] for p in _PRIORITY_LABELS}
+    backstop_delta = {p: _rejected(p, "backstop") - backstop_before[p] for p in _PRIORITY_LABELS}
+    sojourn_delta = {p: _sojourn_count(p) - sojourn_before[p] for p in _PRIORITY_LABELS}
+
+    # (1) Known counts: the eight families moved with the expected labels.
+    assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 2
+    assert offered_delta == {"high": 1.0, "normal": 3.0, "low": 5.0}
+    assert admitted_delta == {"high": 1.0, "normal": 3.0, "low": 3.0}
+    assert codel_delta == {"high": 0.0, "normal": 0.0, "low": 1.0}
+    assert backstop_delta == {"high": 0.0, "normal": 0.0, "low": 1.0}
+
+    # (2) M-1 per class: every offered request is admitted or shed exactly once.
+    for priority in _PRIORITY_LABELS:
+        assert offered_delta[priority] == admitted_delta[priority] + codel_delta[priority] + backstop_delta[priority]
+
+    # (5)/M-6: a sojourn is observed for every request that attempted an acquire — that is, every
+    # offered request except the backstop-shed one, which never reached the pool.
+    for priority in _PRIORITY_LABELS:
+        assert sojourn_delta[priority] == offered_delta[priority] - backstop_delta[priority]
+    # Classes that acquired recorded at least one observation.
+    assert all(sojourn_delta[priority] > 0 for priority in _PRIORITY_LABELS)
+
+    # (4) in_flight/waiters are readable gauges; releasing through the controller drains them to
+    # zero once every request completes, so a served slot never leaves the gauge inflated.
+    for priority in _PRIORITY_LABELS:
+        in_flight = metrics.IN_FLIGHT.labels(priority=priority)._value.get()
+        waiters = metrics.WAITERS.labels(priority=priority)._value.get()
+        assert in_flight == 0.0
+        assert waiters == 0.0
+
+    # max_concurrency gauge (FR-OBS-6) is exported and equals the derived cap with no magic number.
+    assert metrics.MAX_CONCURRENCY._value.get() == derive_max_concurrency(pool_size=40, factor=0.25)
+    assert metrics.MAX_CONCURRENCY._value.get() > 0
