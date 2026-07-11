@@ -51,7 +51,7 @@ class TestRollbackBeforeMergeIsNoop:
             exclusion_plan_builder=MergeExclusionPlanBuilder(),
         )
 
-        await diff_merger.rollback(at=at_existing)
+        await diff_merger.rollback(merge_started_at=at_existing)
 
         bystander_after = await NodeManager.get_one(db=db, id=bystander.id, branch=default_branch_scope_class)
         assert bystander_after is not None, "Rollback before any merge must not delete data at the given timestamp"

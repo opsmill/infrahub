@@ -76,13 +76,21 @@ class BranchMergeOrchestrator:
         # Publish the shared write-protection key before any graph write
         await self.merge_write_blocker.set(branch=self.source_branch.name, state=MergeProtectionState.MERGING)
 
-        merge_at = Timestamp()
-        pre_merge_state = PreMergeState(
-            destination_schema=registry.schema.get_schema_branch(name=self.destination_branch.name).duplicate(),
-            destination_schema_changed_at=self.destination_branch.schema_changed_at,
-            destination_schema_hash=self.destination_branch.schema_hash,
-            source_branched_from=self.source_branch.branched_from,
-        )
+        # The merge timestamp is stamped after the write-protection key is set so that a write
+        # slipping in ahead of the block is stamped before merge_at and stays out of the rollback
+        # range. Nothing has been written yet, so a failure here only needs to lift the protection.
+        try:
+            merge_at = Timestamp()
+            pre_merge_state = PreMergeState(
+                destination_schema=registry.schema.get_schema_branch(name=self.destination_branch.name).duplicate(),
+                destination_schema_changed_at=self.destination_branch.schema_changed_at,
+                destination_schema_hash=self.destination_branch.schema_hash,
+                source_branched_from=self.source_branch.branched_from,
+            )
+        except BaseException:
+            await self.merge_write_blocker.delete()
+            raise
+
         schema_diff: SchemaDiff | None = None
         schema_updated_hash: str | None = None
 
