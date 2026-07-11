@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, assert_never
 
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 
+from infrahub import config
+
 from ..exception_handlers import GRAPHQL_PATH_PREFIX
 from . import metrics
-from .controller import Admitted
+from .controller import Admitted, Rejected, build_admission_controller
 from .priority import parse_priority
 
 if TYPE_CHECKING:
@@ -39,21 +41,29 @@ class AdmissionMiddleware:
     request is answered with a ``429`` error envelope carrying ``Retry-After`` and never
     reaches the app.
 
-    The controller and the enabled flag are injected so the gate is exercisable without
-    global settings or a live server.
+    In production the controller and enabled flag are resolved from global settings here,
+    at middleware-stack build time, so runtime environment overrides are honoured (the
+    settings are also loaded here, exiting on bad config, rather than at module import). A
+    controller and enabled flag can instead be injected, making the gate exercisable
+    without global settings or a live server.
     """
 
     def __init__(
         self,
         app: ASGIApp,
         *,
-        controller: AdmissionController,
-        enabled: bool,
+        controller: AdmissionController | None = None,
+        enabled: bool | None = None,
         excluded_paths: tuple[str, ...] = EXCLUDED_PATHS,
     ) -> None:
         self.app = app
-        self._controller = controller
-        self._enabled = enabled
+        if controller is None:
+            config.SETTINGS.initialize_and_exit()
+            self._controller = build_admission_controller()
+            self._enabled = config.SETTINGS.api.backpressure_enabled if enabled is None else enabled
+        else:
+            self._controller = controller
+            self._enabled = True if enabled is None else enabled
         self._excluded_paths = excluded_paths
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -77,11 +87,13 @@ class AdmissionMiddleware:
             finally:
                 self._controller.release(acquisition=decision.acquisition)
             return
-
-        # Short-circuit: the shed response is written directly, so the downstream app and
-        # every handler dependency (auth, routing, DB query) never runs.
-        response = _build_shed_response(path=path, retry_after=decision.retry_after)
-        await response(scope, receive, send)
+        if isinstance(decision, Rejected):
+            # Short-circuit: the shed response is written directly, so the downstream app and
+            # every handler dependency (auth, routing, DB query) never runs.
+            response = _build_shed_response(path=path, retry_after=decision.retry_after)
+            await response(scope, receive, send)
+            return
+        assert_never(decision)
 
 
 def _read_priority_header(scope: Scope) -> str | None:

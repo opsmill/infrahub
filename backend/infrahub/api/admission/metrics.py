@@ -5,12 +5,14 @@ from prometheus_client import Counter, Gauge, Histogram
 METRIC_PREFIX = "infrahub_admission"
 
 # Multiprocess note: admission state (slots, waiters, CoDel controllers) is per worker
-# process by design, and each gunicorn/uvicorn worker serves its own /metrics from its
-# own default registry. The InfrahubUvicorn worker wipes the PROMETHEUS_MULTIPROC_DIR
-# contents on init, so these gauges are read per worker and no cross-worker aggregation
-# is attempted in v1. If the API process ever runs with PROMETHEUS_MULTIPROC_DIR set and
-# aggregation is wanted, IN_FLIGHT/WAITERS would need multiprocess_mode="livesum" and
-# MAX_CONCURRENCY multiprocess_mode="max"; that is intentionally deferred, not overlooked.
+# process by design, so no cross-worker aggregation is attempted. That per-worker,
+# no-aggregation assumption holds ONLY while PROMETHEUS_MULTIPROC_DIR is unset: each worker
+# then serves its own /metrics from its own default registry. If PROMETHEUS_MULTIPROC_DIR is
+# ever set, prometheus_client serves /metrics via a MultiProcessCollector and a plain Gauge
+# defaults to multiprocess_mode="all" (cross-worker), breaking the assumption. To keep
+# meaningful per-class figures in that mode, IN_FLIGHT/WAITERS would need
+# multiprocess_mode="livesum" and MAX_CONCURRENCY multiprocess_mode="max"; that is
+# intentionally deferred, not overlooked.
 
 OFFERED_TOTAL = Counter(
     f"{METRIC_PREFIX}_offered_total",

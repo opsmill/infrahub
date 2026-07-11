@@ -7,9 +7,10 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
+from infrahub import config
 from infrahub.api.admission import metrics
 from infrahub.api.admission.capacity import derive_max_concurrency
-from infrahub.api.admission.controller import AdmissionController
+from infrahub.api.admission.controller import AdmissionController, build_admission_controller
 from infrahub.api.admission.middleware import AdmissionMiddleware
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.slot_pool import PrioritySlotPool
@@ -368,7 +369,7 @@ def _backstop_app() -> FastAPI:
 
 
 async def test_metrics() -> None:
-    """Mixed-priority traffic moves all eight metric families and keeps the M-1 accounting exact.
+    """Mixed-priority traffic moves all eight metric families and keeps the offered accounting exact.
 
     Three deterministic sub-scenarios drive the shared global registry: an ample-capacity admit
     stream (including header-less requests), a forced backstop shed, and a forced CoDel shed via
@@ -456,11 +457,11 @@ async def test_metrics() -> None:
     assert codel_delta == {"high": 0.0, "normal": 0.0, "low": 1.0}
     assert backstop_delta == {"high": 0.0, "normal": 0.0, "low": 1.0}
 
-    # (2) M-1 per class: every offered request is admitted or shed exactly once.
+    # (2) Per class: every offered request is admitted or shed exactly once.
     for priority in _PRIORITY_LABELS:
         assert offered_delta[priority] == admitted_delta[priority] + codel_delta[priority] + backstop_delta[priority]
 
-    # (5)/M-6: a sojourn is observed for every request that attempted an acquire — that is, every
+    # (5) A sojourn is observed for every request that attempted an acquire — that is, every
     # offered request except the backstop-shed one, which never reached the pool.
     for priority in _PRIORITY_LABELS:
         assert sojourn_delta[priority] == offered_delta[priority] - backstop_delta[priority]
@@ -475,6 +476,130 @@ async def test_metrics() -> None:
         assert in_flight == 0.0
         assert waiters == 0.0
 
-    # max_concurrency gauge (FR-OBS-6) is exported and equals the derived cap with no magic number.
+    # max_concurrency gauge is exported and equals the derived cap with no magic number.
     assert metrics.MAX_CONCURRENCY._value.get() == derive_max_concurrency(pool_size=40, factor=0.25)
     assert metrics.MAX_CONCURRENCY._value.get() > 0
+
+
+def _offered_total() -> float:
+    """Sum ``offered_total`` across every priority class."""
+    return sum(_offered(priority) for priority in _PRIORITY_LABELS)
+
+
+def _shed_everything_controller() -> AdmissionController:
+    """Controller with no slots and no waiter budget: every admitted attempt is shed."""
+    return AdmissionController(
+        slot_pool=PrioritySlotPool(max_concurrency=0),
+        target=0.005,
+        interval=0.1,
+        high_target_multiplier=4.0,
+        backstop_max_waiters=0,
+        retry_after=1,
+    )
+
+
+@pytest.mark.parametrize("path", ["/health", "/metrics"])
+async def test_excluded_path_bypasses_admission(path: str) -> None:
+    """An excluded path passes through even behind a shed-everything controller and moves no metric.
+
+    The liveness and scrape endpoints must never be gated: the handler runs (200) and the
+    admission layer is never entered, so neither offered nor missing-priority accounting moves.
+    """
+    app = FastAPI()
+
+    @app.get("/health")
+    async def health() -> dict[str, bool]:
+        return {"ok": True}
+
+    @app.get("/metrics")
+    async def scrape() -> dict[str, bool]:
+        return {"ok": True}
+
+    app.add_middleware(AdmissionMiddleware, controller=_shed_everything_controller(), enabled=True)
+
+    offered_before = _offered_total()
+    missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(path)
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    # The excluded path never reached the admission layer, so no admission metric moved.
+    assert _offered_total() - offered_before == 0
+    assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 0
+
+
+async def test_kill_switch_passes_through() -> None:
+    """With the layer disabled, a request that would be shed instead runs the handler and moves no metric."""
+    app = FastAPI()
+
+    @app.get("/work")
+    async def work() -> dict[str, bool]:
+        return {"ok": True}
+
+    app.add_middleware(AdmissionMiddleware, controller=_shed_everything_controller(), enabled=False)
+
+    offered_before = _offered_total()
+    missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/work", headers={"X-Priority": "low"})
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    # Disabled short-circuits before the controller, so no admission metric moved.
+    assert _offered_total() - offered_before == 0
+    assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 0
+
+
+async def test_handler_exception_releases_slot() -> None:
+    """A handler that raises still returns its slot, so the single-slot pool admits the next request."""
+    app = FastAPI()
+
+    @app.get("/boom")
+    async def boom() -> dict[str, bool]:
+        raise ValueError("handler exploded")
+
+    @app.get("/work")
+    async def work() -> dict[str, bool]:
+        return {"ok": True}
+
+    slot_pool = PrioritySlotPool(max_concurrency=1)
+    controller = AdmissionController(
+        slot_pool=slot_pool,
+        target=0.005,
+        interval=0.1,
+        high_target_multiplier=4.0,
+        backstop_max_waiters=1000,
+        retry_after=1,
+    )
+    app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        with pytest.raises(ValueError, match=r"^handler exploded$"):
+            await client.get("/boom", headers={"X-Priority": "normal"})
+
+        # The finally released the failed request's slot, so the pool is whole again.
+        assert slot_pool.available == 1
+        assert slot_pool.in_flight(priority=Priority.NORMAL) == 0
+
+        # A leak would block here forever; instead the next request is admitted and served.
+        response = await client.get("/work", headers={"X-Priority": "normal"})
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert metrics.IN_FLIGHT.labels(priority="normal")._value.get() == 0.0
+    assert slot_pool.available == 1
+
+
+async def test_build_admission_controller_sets_gauge() -> None:
+    """The real settings-reading factory returns a usable controller and sets the max-concurrency gauge."""
+    controller = build_admission_controller()
+
+    assert isinstance(controller, AdmissionController)
+    expected = derive_max_concurrency(
+        pool_size=config.SETTINGS.database.max_connection_pool_size,
+        factor=config.SETTINGS.api.backpressure_max_concurrency_factor,
+    )
+    assert metrics.MAX_CONCURRENCY._value.get() == expected
