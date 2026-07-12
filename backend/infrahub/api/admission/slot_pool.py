@@ -55,8 +55,7 @@ class PrioritySlotPool:
         self._on_change: Callable[[Priority], None] | None = None
 
     def set_observer(self, on_change: Callable[[Priority], None] | None) -> None:
-        """Register a callback invoked with the affected class whenever its waiter or
-        in-flight count changes.
+        """Register a callback invoked with a class whenever its waiter or in-flight count changes.
 
         This lets an external observer (e.g. metric gauges) track queue depth the moment
         a request enqueues or leaves the queue, rather than only when some other request is
