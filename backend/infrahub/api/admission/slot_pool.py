@@ -52,6 +52,21 @@ class PrioritySlotPool:
         self._clock = clock
         self._waiters: dict[Priority, deque[Future[bool]]] = {priority: deque() for priority in Priority}
         self._in_flight: dict[Priority, int] = dict.fromkeys(Priority, 0)
+        self._on_change: Callable[[Priority], None] | None = None
+
+    def set_observer(self, on_change: Callable[[Priority], None] | None) -> None:
+        """Register a callback invoked with the affected class whenever its waiter or
+        in-flight count changes.
+
+        This lets an external observer (e.g. metric gauges) track queue depth the moment
+        a request enqueues or leaves the queue, rather than only when some other request is
+        admitted or released. The primitive itself stays free of any metrics dependency.
+        """
+        self._on_change = on_change
+
+    def _notify(self, priority: Priority) -> None:
+        if self._on_change is not None:
+            self._on_change(priority)
 
     @property
     def max_concurrency(self) -> int:
@@ -90,6 +105,7 @@ class PrioritySlotPool:
         future: Future[bool] = loop.create_future()
         queue = self._waiters[priority]
         queue.append(future)
+        self._notify(priority)
         enqueue_time = self._clock()
 
         try:
@@ -98,6 +114,7 @@ class PrioritySlotPool:
             finally:
                 if future in queue:
                     queue.remove(future)
+                    self._notify(priority)
         except asyncio.CancelledError:
             if not future.cancelled():
                 # A slot was handed to us in the same tick but we were cancelled before
@@ -123,8 +140,10 @@ class PrioritySlotPool:
 
     def _make_acquisition(self, *, priority: Priority, sojourn: float) -> Acquisition:
         self._in_flight[priority] += 1
+        self._notify(priority)
         return Acquisition(priority=priority, sojourn=sojourn, pool=self)
 
     def _release_acquisition(self, *, priority: Priority) -> None:
         self._in_flight[priority] -= 1
+        self._notify(priority)
         self.release()

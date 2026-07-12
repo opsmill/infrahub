@@ -128,6 +128,53 @@ async def test_cancelled_waiter_leaks_no_slot() -> None:
     assert all(pool.waiters(priority=priority) == 0 for priority in Priority)
 
 
+async def test_observer_reflects_waiters_while_still_queued() -> None:
+    pool = PrioritySlotPool(max_concurrency=1)
+    observed: dict[Priority, int] = dict.fromkeys(Priority, 0)
+    pool.set_observer(lambda priority: observed.__setitem__(priority, pool.waiters(priority=priority)))
+
+    holder = await pool.acquire(priority=Priority.NORMAL)
+
+    async def waiter() -> None:
+        acquisition = await pool.acquire(priority=Priority.LOW)
+        acquisition.release()
+
+    tasks = [asyncio.create_task(waiter()) for _ in range(3)]
+    await _wait_until_waiting(pool, priority=Priority.LOW, count=3)
+
+    # The observer must see the queue depth build up while the tasks are still parked,
+    # before any slot is released — not only once a waiter is later dequeued.
+    assert observed[Priority.LOW] == 3
+
+    holder.release()
+    await asyncio.gather(*tasks)
+    # Draining brings the observed depth back to zero.
+    assert observed[Priority.LOW] == 0
+
+
+async def test_observer_reflects_cancelled_waiter_leaving_queue() -> None:
+    pool = PrioritySlotPool(max_concurrency=1)
+    observed: dict[Priority, int] = dict.fromkeys(Priority, 0)
+    pool.set_observer(lambda priority: observed.__setitem__(priority, pool.waiters(priority=priority)))
+
+    holder = await pool.acquire(priority=Priority.NORMAL)
+
+    async def cancellable() -> None:
+        await pool.acquire(priority=Priority.LOW)
+
+    victim = asyncio.create_task(cancellable())
+    await _wait_until_waiting(pool, priority=Priority.LOW, count=1)
+    assert observed[Priority.LOW] == 1
+
+    victim.cancel()
+    results = await asyncio.gather(victim, return_exceptions=True)
+    assert isinstance(results[0], asyncio.CancelledError)
+
+    # Leaving the queue via cancellation must refresh the observer, not leave it stale at 1.
+    assert observed[Priority.LOW] == 0
+    holder.release()
+
+
 async def test_cancel_after_handoff_rereleases_slot() -> None:
     pool = PrioritySlotPool(max_concurrency=1)
 
