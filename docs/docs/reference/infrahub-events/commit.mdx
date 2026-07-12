@@ -20,6 +20,7 @@ title: Commit events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
+| **meta.origin** | How this event was produced: live (the default), or replayed by a merge or rebase. |
 | **commit** | The commit the repository was updated to |
 | **repository_id** | The ID of the repository |
 | **repository_name** | The name of the repository |

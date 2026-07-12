@@ -18,6 +18,7 @@ from infrahub.core.schema.schema_branch_computed import (  # noqa: TC001
     PythonDefinition,
 )
 from infrahub.events import NodeCreatedEvent, NodeUpdatedEvent
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer  # noqa: TC001
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import (
@@ -167,6 +168,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
             "infrahub.field.name": trigger_node.fields,
@@ -343,7 +345,7 @@ class ComputedAttrJinja2GraphQL(BaseModel):
     attribute_schema: AttributeSchema = Field(..., description="The computed attribute")
     variables: list[str] = Field(..., description="The list of variable names used within the computed attribute")
 
-    def render_graphql_query(self, query_filter: str, filter_id: str) -> str:
+    def render_graphql_query(self, query_filter: str, filter_id: str | list[str]) -> str:
         query_fields = self.query_fields
         query_fields["id"] = None
         query_fields[self.attribute_schema.name] = {"value": None}

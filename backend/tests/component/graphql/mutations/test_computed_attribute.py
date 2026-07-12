@@ -6,6 +6,7 @@ from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import PermissionAction, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
@@ -93,6 +94,9 @@ async def test_update_computed_attribute_sends_node_updated_event(
     assert event.node_id == tshirt.id
     assert event.kind == TSHIRT.kind
     assert "description" in event.fields
+    # The recompute write must emit live origin; a merge/rebase origin would be suppressed by the
+    # coalesced recompute, leaving dependent values stale.
+    assert event.get_resource()[NODE_ORIGIN_LABEL] == NodeMutationOrigin.LIVE.value
     # The display label of the node within the event must include the correct label
     # even if the display label contains a related node
     assert event.changelog.display_label == "Ocean Blue"
