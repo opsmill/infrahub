@@ -27,7 +27,7 @@
 
 | ID | Invariant |
 |----|-----------|
-| M-1 | For each class: `offered_total == admitted_total + rejected_total{codel} + rejected_total{backstop}` (every offered request is admitted or shed exactly once). |
+| M-1 | For each class, for every request the server adjudicates: `offered_total == admitted_total + rejected_total{codel} + rejected_total{backstop}`. A request whose client disconnects while it is still queued is counted in `offered_total` only — it is neither admitted nor shed by the server — so under in-flight cancellation `offered_total` may transiently exceed `admitted + rejected` by the number of abandoned waiters. The `waiters`/`in_flight` gauges stay accurate across that case (they are driven by the pool's own enqueue/dequeue transitions, including cancellation). |
 | M-2 | `max_concurrency` gauge equals `derive_max_concurrency(pool_size, factor)` and is > 0 (no magic number; FR-009/FR-OBS-6). |
 | M-3 | `in_flight{priority}` never exceeds `max_concurrency`; `sum(in_flight)` never exceeds `max_concurrency`. |
 | M-4 | Every shed increments `rejected_total` with a valid `reason` label; no shed is uncounted (M-1 closes the accounting). |

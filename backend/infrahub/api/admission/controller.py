@@ -54,6 +54,10 @@ class AdmissionController:
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._slot_pool = slot_pool
+        # Drive the live gauges from the pool's own state transitions, so a class's waiter
+        # count is reflected the moment a request enqueues — not only once some other
+        # request is admitted or released.
+        self._slot_pool.set_observer(self._sync_gauges)
         self._backstop_max_waiters = backstop_max_waiters
         self._retry_after = retry_after
         # HIGH gets a larger effective target so it sheds last; NORMAL and LOW share the base target.
@@ -83,12 +87,10 @@ class AdmissionController:
         # Once a slot is held, any exception before returning Admitted would strand it (the
         # caller only releases what it receives), so guard the whole window and release on error.
         try:
-            self._sync_gauges(priority=priority)
             metrics.SOJOURN_SECONDS.labels(priority=priority.label).observe(acquisition.sojourn)
 
             if self._codel[priority].should_drop(sojourn=acquisition.sojourn):
                 acquisition.release()
-                self._sync_gauges(priority=priority)
                 metrics.REJECTED_TOTAL.labels(priority=priority.label, reason="codel").inc()
                 return Rejected(reason="codel", retry_after=self._retry_after)
 
@@ -99,16 +101,15 @@ class AdmissionController:
             raise
 
     def release(self, *, acquisition: Acquisition) -> None:
-        """Return a served request's slot and refresh the live gauges for its class.
+        """Return a served request's slot; the pool observer refreshes the live gauges.
 
-        Releasing through the controller (rather than the acquisition directly) keeps the
-        gauge sync co-located with every slot state change, so ``in_flight`` drops back as
-        soon as a request finishes instead of lingering until the next admit.
+        The release flows through the pool, whose observer drives ``in_flight``/``waiters``
+        back down, so a finished request is reflected immediately rather than lingering
+        until the next admit.
         """
         acquisition.release()
-        self._sync_gauges(priority=acquisition.priority)
 
-    def _sync_gauges(self, *, priority: Priority) -> None:
+    def _sync_gauges(self, priority: Priority) -> None:
         metrics.IN_FLIGHT.labels(priority=priority.label).set(self._slot_pool.in_flight(priority=priority))
         metrics.WAITERS.labels(priority=priority.label).set(self._slot_pool.waiters(priority=priority))
 
