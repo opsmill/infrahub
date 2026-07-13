@@ -14,6 +14,3 @@ export const DIRECTION_OPTIONS: { id: SortDirection; label: string }[] = [
   { id: "ASC", label: "Ascending" },
   { id: "DESC", label: "Descending" },
 ];
-
-// "Peer › Attribute" separator. En-spaces (U+2002) around the chevron keep it from looking cramped.
-export const PEER_LABEL_SEPARATOR = " › ";

@@ -10,7 +10,6 @@ import {
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import {
   METADATA_SORTABLE_FIELDS,
-  PEER_LABEL_SEPARATOR,
   type SortableField,
 } from "@/entities/nodes/sort/ui/sort-options";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -21,6 +20,9 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
+
+// "Peer › Attribute" separator. En-spaces (U+2002) around the chevron keep it from looking cramped.
+const PEER_LABEL_SEPARATOR = " › ";
 
 /**
  * Flat list of every field a node can be sorted by: its own attributes,
