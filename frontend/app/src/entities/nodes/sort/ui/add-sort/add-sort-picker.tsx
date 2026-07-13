@@ -189,11 +189,7 @@ export function AddSortPicker({
         variant="picker"
         aria-label="Add sort field"
         className="max-h-72"
-        renderEmptyState={() => (
-          <div className="px-2 py-1 text-sm text-stone-500">
-            {isSearching ? "No fields match" : "All sortable fields are in use"}
-          </div>
-        )}
+        emptyMessage={isSearching ? "No fields match" : "All sortable fields are in use"}
       >
         {isSearching ? (
           <FlatFieldItems schema={schema} activeFields={activeFields} onSelect={onSelect} />
