@@ -143,6 +143,91 @@ window (SC-002, SC-004).
 | SC-004 | Scale run shows a substantial count reduction; flag-off reproduces the baseline count exactly |
 | SC-005 | Scenario 6 dispatches zero |
 
+## Reproduction (turnkey)
+
+Exact commands used for the 2026-07-13 baseline. The retest reruns these on the feature build.
+Container/project names are per-worktree (`docker ps` to find them); below use `$WK` for the
+compose project and `$WORKER` for a task-worker container.
+
+**1. Environment.**
+
+- Baseline (blanket): `uv run invoke demo.start` is fine (it runs the published image, which has
+  the blanket behavior).
+- Retest (selective): the branch code must be in the image. `demo.start` alone runs the
+  *published* image, and a plain `dev.build` can leave stale code, so build the branch image and
+  bring the stack up on it with a **fresh workflow database** (see [[project_infrahub_local_image_testing]]).
+  Then toggle `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE` for the off/on runs.
+- One Infrahub stack per host binds the default ports (DB `6362`). Stop other worktree stacks
+  first: `docker stop $(docker ps -q --filter label=com.docker.compose.project=<other-project>)`.
+
+**2. Dataset.**
+
+```bash
+uv run invoke demo.load-infra-schema
+uv run invoke demo.load-infra-data
+TOKEN="$(docker exec $WORKER printenv INFRAHUB_API_TOKEN)"          # pull into env, never print
+INFRAHUB_ADDRESS=http://localhost:8000 INFRAHUB_API_TOKEN="$TOKEN" \
+  uv run infrahubctl repository add demo-edge \
+  https://github.com/opsmill/infrahub-demo-edge.git --read-only
+```
+
+Yields ~48 devices, 2 artifact definitions (20 artifacts), 4 generator definitions. Confirm
+with a GraphQL count of `CoreArtifactDefinition` / `CoreGeneratorDefinition` / `CoreArtifact`.
+
+**3. Access.**
+
+- GraphQL: `curl -s http://localhost:8000/graphql/main -H "X-INFRAHUB-KEY: $TOKEN"`.
+- Prefect is **not** host-mapped; query it from inside a worker (it has `PREFECT_API_URL`):
+  `docker exec $WORKER python -c "import httpx,os; ..."`. Prefect `flow_runs/filter` caps
+  `limit` at 200, so paginate with `offset`.
+
+**4. Scenario merge (scenario 1).**
+
+```bash
+INFRAHUB_ADDRESS=http://localhost:8000 INFRAHUB_API_TOKEN="$TOKEN" \
+  uv run infrahubctl branch create perf-run-N
+# device id: curl .../graphql/main -d '{"query":"{ InfraDevice(limit:1){edges{node{id}}} }"}'
+# change it on the branch:
+curl -s http://localhost:8000/graphql/perf-run-N -H "X-INFRAHUB-KEY: $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"mutation{ InfraDeviceUpdate(data:{id:\"<DEV_ID>\",description:{value:\"perf test\"}}){ok}}"}'
+WM=$(date -u +%FT%T)     # watermark; append Z when filtering
+INFRAHUB_ADDRESS=http://localhost:8000 INFRAHUB_API_TOKEN="$TOKEN" \
+  uv run infrahubctl branch merge perf-run-N
+```
+
+**5. Counting recipe (the comparable metric).** Run inside a worker. Filter to the regeneration
+families, terminal state, `start_time` in the window; exclude recurring noise. This is the
+number to compare before vs after:
+
+```python
+import httpx, os, re, collections
+from datetime import datetime, timezone
+base = os.environ['PREFECT_API_URL'].rstrip('/'); wm = os.environ['WM']  # e.g. 2026-07-13T13:42:40Z
+flt = {'flow_runs': {'start_time': {'after_': wm}}}
+total = httpx.post(base+'/flow_runs/count', json=flt).json()
+runs=[]; off=0
+while off < total:
+    b = httpx.post(base+'/flow_runs/filter', json={**flt,'limit':200,'offset':off}).json()
+    if not b: break
+    runs += b; off += len(b)
+now = datetime.now(timezone.utc)
+REGEN = re.compile(r'^(Generate artifact |Run generator |Update GraphQLQuery Group|'
+                   r'Run all generators|Generate all artifacts|Trigger Generation of Artifacts|'
+                   r'Execute generator)')
+NOISE = ('Sync Git Repositories', 'Clean up deadlocks')
+def started(r):
+    s = r.get('start_time'); return s and datetime.fromisoformat(s) <= now
+regen = [r for r in runs if started(r) and REGEN.match(r.get('name') or '')
+         and not any(r['name'].startswith(n) for n in NOISE)]
+print('regeneration flows dispatched:', len(regen))
+print(collections.Counter(re.sub(r"'[^']*'", "'X'", r['name']) for r in regen))
+```
+
+**6. Baseline number to beat.** Single-device merge, blanket path = **~80 regeneration flows**
+(40 GraphQL-query-group + 20 artifact + 20 generator-member). Selective (flag on) must reduce
+this to the affected set; flag off must reproduce ~80.
+
 ## Results log
 
 Fill and commit after each run. One row per scenario per dataset.
