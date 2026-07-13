@@ -12,7 +12,10 @@ import {
   buildRelationshipSortField,
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import { useSortableFields } from "@/entities/nodes/sort/ui/hooks/use-sortable-fields";
-import { DIRECTION_OPTIONS, METADATA_SORTABLE_FIELDS } from "@/entities/nodes/sort/ui/sort-options";
+import {
+  DIRECTION_OPTIONS,
+  NODE_METADATA_SORT_OPTIONS,
+} from "@/entities/nodes/sort/ui/sort-options";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -140,7 +143,7 @@ function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) 
     .filter(isSortableAttribute)
     .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
   const sortableRelationships = (schema.relationships ?? []).filter(isSortableRelationship);
-  const metadataFields = METADATA_SORTABLE_FIELDS.filter(({ field }) => !activeFields.has(field));
+  const metadataFields = NODE_METADATA_SORT_OPTIONS.filter(({ field }) => !activeFields.has(field));
 
   return (
     <>

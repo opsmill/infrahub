@@ -9,7 +9,7 @@ import {
   buildRelationshipSortField,
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import {
-  METADATA_SORTABLE_FIELDS,
+  NODE_METADATA_SORT_OPTIONS,
   type SortableField,
 } from "@/entities/nodes/sort/ui/sort-options";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -66,5 +66,5 @@ export function useSortableFields(schema: ModelSchema): SortableField[] {
       });
     });
 
-  return [...attributeFields, ...relationshipFields, ...METADATA_SORTABLE_FIELDS];
+  return [...attributeFields, ...relationshipFields, ...NODE_METADATA_SORT_OPTIONS];
 }

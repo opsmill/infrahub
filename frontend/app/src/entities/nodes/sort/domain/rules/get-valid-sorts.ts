@@ -40,7 +40,7 @@ export function getValidSorts(sorts: Sort[], schema: ModelSchema): Sort[] {
   const sortableFields = new Set<SortField>([
     ...attributeFields,
     ...relationshipFields,
-    ...NODE_METADATA_SORT_FIELDS.map(({ field }) => field),
+    ...NODE_METADATA_SORT_FIELDS,
   ]);
 
   return sorts.filter((sort) => sortableFields.has(sort.field));
