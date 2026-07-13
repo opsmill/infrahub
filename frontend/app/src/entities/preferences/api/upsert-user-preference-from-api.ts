@@ -1,5 +1,6 @@
 import { graphql, type VariablesOf } from "gql.tada";
 
+import type { DateFormat } from "@/shared/api/graphql/generated/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 // `scope: USER` writes the caller's OWN row. Explicit `null` clears the personal override
@@ -16,18 +17,13 @@ const UPSERT_USER_PREFERENCE = graphql(`
 
 export interface UpsertUserPreferenceFromApiParams {
   /** Explicit `null` resets the field to the global default; omitting leaves it unchanged. */
-  dateFormat?: string | null;
+  dateFormat?: DateFormat | null;
   timezone?: string | null;
 }
 
 export async function upsertUserPreferenceFromApi(params: UpsertUserPreferenceFromApiParams) {
-  // date_format is a plain string in the domain; narrow to the generated DateFormat enum type at the GraphQL boundary.
   const variables: VariablesOf<typeof UPSERT_USER_PREFERENCE> = {};
-  if ("dateFormat" in params) {
-    variables.dateFormat = params.dateFormat as VariablesOf<
-      typeof UPSERT_USER_PREFERENCE
-    >["dateFormat"];
-  }
+  if ("dateFormat" in params) variables.dateFormat = params.dateFormat;
   if ("timezone" in params) variables.timezone = params.timezone;
 
   const result = await graphqlClient.mutate({

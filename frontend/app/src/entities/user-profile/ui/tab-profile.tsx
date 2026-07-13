@@ -2,8 +2,10 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DetailsLayout } from "@/shared/components/layout/details-layout";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { useTitle } from "@/shared/hooks/useTitle";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { ObjectProfilesGroupsCard } from "@/entities/nodes/object/ui/object-details/object-profiles-groups-card";
@@ -38,6 +40,9 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     error: permissionError,
     isPending: isPermissionPending,
   } = useGetObjectPermissions(schema.kind!);
+
+  // Composing the cards directly bypasses <ObjectDetails/>, so set the account "details" title here.
+  useTitle(objectData ? `${getNodeLabel(objectData)} details` : "Profile");
 
   if (isObjectPending || isPermissionPending) {
     return <LoadingIndicator className="h-[244px]" />;
