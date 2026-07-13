@@ -12,7 +12,7 @@ import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 
 export const ObjectTable = () => {
   const { filters, selectedSchema, permission } = useObjectTableContext();
-  const { sort } = useSort(selectedSchema);
+  const { customSort } = useSort(selectedSchema);
 
   const { data: count } = useObjectsCount({
     objectKind: selectedSchema.kind!,
@@ -22,7 +22,7 @@ export const ObjectTable = () => {
   const { data, fetchNextPage, error, hasNextPage, isPending, isFetchingNextPage } = useObjects({
     schema: selectedSchema,
     filters,
-    sort,
+    sort: customSort,
   });
 
   if (error) {

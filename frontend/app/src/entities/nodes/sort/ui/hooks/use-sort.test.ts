@@ -25,7 +25,7 @@ describe("useSort", () => {
     const { result } = await renderHook(() => useSort(schema), { wrapper });
 
     // THEN
-    expect(result.current.sort).toEqual([
+    expect(result.current.customSort).toEqual([
       { field: "name__value", direction: "ASC" },
       { field: "priority__value", direction: "DESC" },
     ]);
@@ -41,7 +41,7 @@ describe("useSort", () => {
     const { result } = await renderHook(() => useSort(schema), { wrapper });
 
     // THEN
-    expect(result.current.sort).toEqual([{ field: "name__value", direction: "DESC" }]);
+    expect(result.current.customSort).toEqual([{ field: "name__value", direction: "DESC" }]);
   });
 
   it("returns null when the query param is absent or carries no valid sort", async () => {
@@ -56,11 +56,11 @@ describe("useSort", () => {
     const hostile = await renderHook(() => useSort(schema), { wrapper: withHostileSort });
 
     // THEN
-    expect(absent.result.current.sort).toBeNull();
-    expect(hostile.result.current.sort).toBeNull();
+    expect(absent.result.current.customSort).toBeNull();
+    expect(hostile.result.current.customSort).toBeNull();
   });
 
-  it("setSort writes the serialized sorts to the URL with history push", async () => {
+  it("setCustomSort writes the serialized sorts to the URL with history push", async () => {
     // GIVEN
     const onUrlUpdate = vi.fn<OnUrlUpdateFunction>();
     const wrapper = withNuqsTestingAdapter({ searchParams: "", onUrlUpdate });
@@ -68,7 +68,7 @@ describe("useSort", () => {
 
     // WHEN
     await hook.act(() => {
-      hook.result.current.setSort([
+      hook.result.current.setCustomSort([
         { field: "priority__value", direction: "DESC" },
         { field: "name__value", direction: "ASC" },
       ]);
@@ -80,7 +80,7 @@ describe("useSort", () => {
     expect(event?.options.history).toBe("push");
   });
 
-  it("setSort with an empty list removes the query param", async () => {
+  it("setCustomSort with an empty list removes the query param", async () => {
     // GIVEN
     const onUrlUpdate = vi.fn<OnUrlUpdateFunction>();
     const wrapper = withNuqsTestingAdapter({
@@ -91,7 +91,7 @@ describe("useSort", () => {
 
     // WHEN
     await hook.act(() => {
-      hook.result.current.setSort([]);
+      hook.result.current.setCustomSort([]);
     });
 
     // THEN

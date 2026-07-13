@@ -17,42 +17,39 @@ import type React from "react";
 import { Col, Row } from "@/shared/components/container";
 
 import type { Sort, SortDirection, SortField } from "@/entities/nodes/sort/domain/model/sort";
-import { getSchemaDefaultSort } from "@/entities/nodes/sort/domain/rules/get-schema-default-sort";
 import { AddSortButton } from "@/entities/nodes/sort/ui/add-sort/add-sort-button";
 import { AddSortPicker } from "@/entities/nodes/sort/ui/add-sort/add-sort-picker";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 import { useSortableFields } from "@/entities/nodes/sort/ui/hooks/use-sortable-fields";
-import { DIRECTION_OPTIONS, type SortableField } from "@/entities/nodes/sort/ui/sort-options";
+import { DIRECTION_OPTIONS } from "@/entities/nodes/sort/ui/sort-options";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface SortEditorProps {
   schema: ModelSchema;
 }
 export function SortEditor({ schema }: SortEditorProps) {
-  const { sort, setSort } = useSort(schema);
-
-  const currentSort: Sort[] = sort ?? getSchemaDefaultSort(schema) ?? [];
+  const { appliedSort, setCustomSort } = useSort(schema);
 
   const addSort = (newSort: Sort) => {
-    const withoutField = currentSort.filter((existing) => existing.field !== newSort.field);
-    setSort([...withoutField, newSort]);
+    const withoutField = appliedSort.filter((existing) => existing.field !== newSort.field);
+    setCustomSort([...withoutField, newSort]);
   };
 
-  if (currentSort.length === 0) {
+  if (appliedSort.length === 0) {
     return <AddSortPicker schema={schema} onSelect={addSort} />;
   }
 
   return (
     <Col className="items-start gap-1 p-1">
       <SortListContainer schema={schema}>
-        <SortableList aria-label="Sort keys" items={currentSort} onReorder={setSort}>
+        <SortableList aria-label="Sort keys" items={appliedSort} onReorder={setCustomSort}>
           {(entry) => <SortEditorRow id={entry.field} schema={schema} sort={entry} />}
         </SortableList>
       </SortListContainer>
 
       <AddSortButton
         schema={schema}
-        activeFields={new Set(currentSort.map((sort) => sort.field))}
+        activeFields={new Set(appliedSort.map((sort) => sort.field))}
         onSelect={addSort}
       />
     </Col>
@@ -65,9 +62,9 @@ interface SortListContainerProps {
 }
 
 function SortListContainer({ schema, children }: SortListContainerProps) {
-  const { sort, setSort } = useSort(schema);
+  const { customSort, setCustomSort, defaultSort } = useSort(schema);
 
-  const isDefaultOrder = sort === null;
+  const isDefaultOrder = customSort === null;
 
   if (isDefaultOrder) {
     return (
@@ -86,8 +83,13 @@ function SortListContainer({ schema, children }: SortListContainerProps) {
       <Row className="h-6 pl-2 font-medium text-stone-500 text-xs">
         <SlidersHorizontalIcon className="size-3.5" />
         Custom order
-        <Button variant="ghost" size="xxs" className="ml-auto text-xxs" onPress={() => setSort([])}>
-          {getSchemaDefaultSort(schema) ? (
+        <Button
+          variant="ghost"
+          size="xxs"
+          className="ml-auto text-stone-500"
+          onPress={() => setCustomSort([])}
+        >
+          {defaultSort ? (
             <>
               <RotateCcwIcon />
               Reset to default
@@ -106,12 +108,20 @@ function SortListContainer({ schema, children }: SortListContainerProps) {
 }
 
 interface SortFieldSelectProps {
-  fields: SortableField[];
+  schema: ModelSchema;
   value: SortField;
   onChange: (field: SortField) => void;
 }
 
-function SortFieldSelect({ fields, value, onChange }: SortFieldSelectProps) {
+function SortFieldSelect({ schema, value, onChange }: SortFieldSelectProps) {
+  const { appliedSort } = useSort(schema);
+  const sortableFields = useSortableFields(schema);
+
+  const fieldsUsedByOtherRows = new Set(
+    appliedSort.filter((entry) => entry.field !== value).map((entry) => entry.field)
+  );
+  const fields = sortableFields.filter((field) => !fieldsUsedByOtherRows.has(field.field));
+
   return (
     <Select
       aria-label="Sort field"
@@ -164,17 +174,15 @@ interface RemoveSortButtonProps {
 }
 
 function RemoveSortButton({ schema, sort }: RemoveSortButtonProps) {
-  const { sort: sortInQsp, setSort } = useSort(schema);
-  const currentSort = sortInQsp ?? getSchemaDefaultSort(schema) ?? [];
+  const { customSort, setCustomSort, appliedSort, defaultSort } = useSort(schema);
 
-  const remove = () => setSort(currentSort.filter((entry) => entry.field !== sort.field));
+  const remove = () => setCustomSort(appliedSort.filter((entry) => entry.field !== sort.field));
 
   // Removing the only row while on the schema default is a no-op (it snaps back), so hide it.
-  const canRemove = !(sortInQsp === null && currentSort.length === 1);
+  const canRemove = customSort !== null && appliedSort.length > 0;
 
   // Deleting the last remaining row reverts to the schema default, so frame it as a reset.
-  const removeResetsToDefault =
-    canRemove && currentSort.length === 1 && (getSchemaDefaultSort(schema)?.length ?? 0) > 0;
+  const willResetsToDefault = canRemove && appliedSort.length === 1 && !!defaultSort?.length;
 
   if (!canRemove) {
     return (
@@ -191,7 +199,7 @@ function RemoveSortButton({ schema, sort }: RemoveSortButtonProps) {
     );
   }
 
-  if (removeResetsToDefault) {
+  if (willResetsToDefault) {
     return (
       <Tooltip message="Reset to the default order">
         <Button
@@ -222,26 +230,21 @@ interface SortEditorRowProps {
 }
 
 function SortEditorRow({ id, schema, sort }: SortEditorRowProps) {
-  const { sort: sortInQsp, setSort } = useSort(schema);
-  const sortableFields = useSortableFields(schema);
-  const currentSort = sortInQsp ?? getSchemaDefaultSort(schema) ?? [];
-
-  const fieldsUsedByOtherRows = new Set(
-    currentSort.filter((entry) => entry.field !== sort.field).map((entry) => entry.field)
-  );
-  const availableFields = sortableFields.filter((field) => !fieldsUsedByOtherRows.has(field.field));
+  const { setCustomSort, appliedSort } = useSort(schema);
 
   const replaceField = (field: SortField) =>
-    setSort(currentSort.map((entry) => (entry.field === sort.field ? { ...entry, field } : entry)));
+    setCustomSort(
+      appliedSort.map((entry) => (entry.field === sort.field ? { ...entry, field } : entry))
+    );
 
   const replaceDirection = (direction: SortDirection) =>
-    setSort(
-      currentSort.map((entry) => (entry.field === sort.field ? { ...entry, direction } : entry))
+    setCustomSort(
+      appliedSort.map((entry) => (entry.field === sort.field ? { ...entry, direction } : entry))
     );
 
   return (
     <SortableItem id={id} textValue={id}>
-      <SortFieldSelect fields={availableFields} value={sort.field} onChange={replaceField} />
+      <SortFieldSelect schema={schema} value={sort.field} onChange={replaceField} />
 
       <SortDirectionSelect value={sort.direction} onChange={replaceDirection} />
 

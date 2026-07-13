@@ -12,13 +12,13 @@ interface SortPickerProps {
 }
 
 export function SortPicker({ schema }: SortPickerProps) {
-  const { sort } = useSort(schema);
+  const { customSort } = useSort(schema);
 
   return (
     <PopoverTrigger>
       <Button variant="outline" size="sm" className="rounded-xl">
         <ArrowUpDownIcon /> Sort
-        {sort !== null && sort.length > 0 && <CountBadge count={sort.length} />}
+        {!!customSort?.length && <CountBadge count={customSort.length} />}
       </Button>
 
       <Popover placement="bottom start">
