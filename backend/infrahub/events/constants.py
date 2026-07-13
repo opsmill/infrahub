@@ -14,8 +14,6 @@ class NodeMutationOrigin(StrEnum):
     LIVE = "live"
     MERGE = "merge"
     REBASE = "rebase"
-    # A recompute write carries this so the per-node recompute automations (which match LIVE) skip
-    # it; the next recompute level is dispatched as one coalesced pass instead of per changed node.
     RECOMPUTE = "recompute"
 
 

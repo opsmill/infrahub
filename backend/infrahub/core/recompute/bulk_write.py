@@ -135,8 +135,6 @@ class BulkRecomputeWriter:
         context: EventContext,
         origin: NodeMutationOrigin,
     ) -> None:
-        # The write still emits a node update for consumers that are not recompute (webhooks, groups,
-        # generators); ``origin`` decides whether the per-node recompute automations also act on it.
         meta = EventMeta.from_context(context=context, branch=branch)
         meta.origin = origin
         event = NodeUpdatedEvent(
