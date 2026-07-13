@@ -84,6 +84,26 @@ describe("getValidSorts", () => {
     expect(validSorts).toEqual([{ field: "name__value", direction: "ASC" }]);
   });
 
+  it("keeps only the first occurrence of a duplicated field", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "name", kind: "Text" })],
+      relationships: [],
+    });
+
+    // WHEN
+    const validSorts = getValidSorts(
+      [
+        { field: "name__value", direction: "ASC" },
+        { field: "name__value", direction: "DESC" },
+      ],
+      schema
+    );
+
+    // THEN
+    expect(validSorts).toEqual([{ field: "name__value", direction: "ASC" }]);
+  });
+
   it("returns an empty list untouched without deriving anything", () => {
     // GIVEN
     const schema = generateNodeSchema({ attributes: [], relationships: [] });

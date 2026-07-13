@@ -14,7 +14,7 @@ import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 import { ListBox, ListBoxItem, type ListBoxItemProps } from "../list-box/list-box";
 import { Popover } from "../popover/popover";
 
-const triggerStyles = tv({
+export const selectTriggerVariants = tv({
   base: [
     "flex w-full items-center gap-2 rounded-lg border border-neutral-300 outline-none",
     "bg-white text-sm placeholder:text-neutral-400",
@@ -33,11 +33,14 @@ const triggerStyles = tv({
 });
 
 export interface SelectTriggerProps
-  extends Omit<AriaButtonProps, "children">, VariantProps<typeof triggerStyles> {}
+  extends Omit<AriaButtonProps, "children">, VariantProps<typeof selectTriggerVariants> {}
 
 export function SelectTrigger({ className, size, ...props }: SelectTriggerProps) {
   return (
-    <AriaButton className={composeAriaClassName(className, triggerStyles({ size }))} {...props}>
+    <AriaButton
+      className={composeAriaClassName(className, selectTriggerVariants({ size }))}
+      {...props}
+    >
       <AriaSelectValue className="truncate data-placeholder:text-neutral-400" />
       <ChevronDownIcon className="ml-auto size-4" />
     </AriaButton>

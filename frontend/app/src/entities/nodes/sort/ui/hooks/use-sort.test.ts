@@ -44,6 +44,19 @@ describe("useSort", () => {
     expect(result.current.customSort).toEqual([{ field: "name__value", direction: "DESC" }]);
   });
 
+  it("keeps only the first occurrence of a field duplicated in the query param", async () => {
+    // GIVEN
+    const wrapper = withNuqsTestingAdapter({
+      searchParams: "?sort=name__value__asc,name__value__desc",
+    });
+
+    // WHEN
+    const { result } = await renderHook(() => useSort(schema), { wrapper });
+
+    // THEN
+    expect(result.current.customSort).toEqual([{ field: "name__value", direction: "ASC" }]);
+  });
+
   it("returns null when the query param is absent or carries no valid sort", async () => {
     // GIVEN
     const withoutSort = withNuqsTestingAdapter({ searchParams: "" });
