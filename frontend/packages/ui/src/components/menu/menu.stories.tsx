@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+
 import { CopyIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import React from "react";
 
@@ -20,7 +21,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="font-medium text-neutral-400 text-xxs uppercase tracking-wider">{children}</div>
+  <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
 );
 
 // The menu lives inside a Popover in real usage; this mimics that surface so the  items render against the expected background.
@@ -117,7 +118,7 @@ export const AllVariants: Story = {
             {disabledItems()}
           </Menu>
         </MenuSurface>
-        <p className="text-neutral-400 text-xxs">Hover the disabled item to see the tooltip.</p>
+        <p className="text-xxs text-neutral-400">Hover the disabled item to see the tooltip.</p>
       </div>
       <MenuSurface>
         <Menu aria-label="Picker menu with a disabled item" variant="picker">
@@ -178,7 +179,7 @@ function PickerWithSubmenuRender() {
           </Autocomplete>
         </Popover>
       </MenuTrigger>
-      <p className="text-neutral-500 text-xs">Picked: {picked ?? "—"}</p>
+      <p className="text-xs text-neutral-500">Picked: {picked ?? "—"}</p>
     </div>
   );
 }

@@ -33,8 +33,7 @@ const triggerStyles = tv({
 });
 
 export interface SelectTriggerProps
-  extends Omit<AriaButtonProps, "children">,
-    VariantProps<typeof triggerStyles> {}
+  extends Omit<AriaButtonProps, "children">, VariantProps<typeof triggerStyles> {}
 
 export function SelectTrigger({ className, size, ...props }: SelectTriggerProps) {
   return (
@@ -64,7 +63,7 @@ export function SelectItem<T extends object>({ className, ...props }: ListBoxIte
   return (
     <ListBoxItem
       className={composeAriaClassName(className, ({ isSelected }) =>
-        isSelected ? undefined : "pr-8"
+        isSelected ? undefined : "pr-8",
       )}
       {...props}
     />

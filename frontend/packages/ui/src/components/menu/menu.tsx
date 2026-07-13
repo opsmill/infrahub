@@ -24,9 +24,9 @@ export const SubmenuTrigger = AriaSubmenuTrigger;
 
 const menuItemStyles = tv({
   base: [
-    "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden",
+    "flex min-w-40 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden select-none",
     "data-disabled:pointer-events-none data-disabled:opacity-50",
-    "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
   ],
   variants: {
     variant: {
@@ -63,13 +63,13 @@ export const Menu = <T extends object>({
           className,
           cn(
             "no-scrollbar max-h-[inherit] overflow-auto p-1 outline-hidden",
-            "*:[[role='group']:not(:last-child)]:mb-2"
-          )
+            "*:[[role='group']:not(:last-child)]:mb-2",
+          ),
         )}
         renderEmptyState={
           emptyMessage === undefined
             ? undefined
-            : () => <div className="px-2 py-1 text-neutral-600 text-sm">{emptyMessage}</div>
+            : () => <div className="px-2 py-1 text-sm text-neutral-600">{emptyMessage}</div>
         }
         {...props}
       />
@@ -139,7 +139,7 @@ export const MenuSection = <T extends object>({
 }: MenuSectionProps<T>) => {
   return (
     <AriaMenuSection className={cn("flex flex-col", className)} {...props}>
-      {title && <AriaHeader className="mb-0.5 px-1 text-stone-500 text-xs">{title}</AriaHeader>}
+      {title && <AriaHeader className="mb-0.5 px-1 text-xs text-stone-500">{title}</AriaHeader>}
       <Collection items={props.items}>{children}</Collection>
     </AriaMenuSection>
   );
