@@ -1,4 +1,8 @@
-import type { Sort, SortField } from "@/entities/nodes/sort/domain/model/sort";
+import {
+  NODE_METADATA_SORT_FIELDS,
+  type Sort,
+  type SortField,
+} from "@/entities/nodes/sort/domain/model/sort";
 import { isSortableAttribute } from "@/entities/nodes/sort/domain/rules/is-sortable-attribute";
 import { isSortableRelationship } from "@/entities/nodes/sort/domain/rules/is-sortable-relationship";
 import {
@@ -7,11 +11,6 @@ import {
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
-
-const NODE_METADATA_SORT_FIELDS: SortField[] = [
-  "node_metadata__created_at",
-  "node_metadata__updated_at",
-];
 
 /**
  * Keeps only sorts targeting one of the schema's sortable fields.
@@ -41,7 +40,7 @@ export function getValidSorts(sorts: Sort[], schema: ModelSchema): Sort[] {
   const sortableFields = new Set<SortField>([
     ...attributeFields,
     ...relationshipFields,
-    ...NODE_METADATA_SORT_FIELDS,
+    ...NODE_METADATA_SORT_FIELDS.map(({ field }) => field),
   ]);
 
   return sorts.filter((sort) => sortableFields.has(sort.field));

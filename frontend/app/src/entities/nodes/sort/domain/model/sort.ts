@@ -10,3 +10,8 @@ export interface Sort {
 }
 
 export const SORT_DIRECTION = OrderDirection;
+
+export const NODE_METADATA_SORT_FIELDS: { field: SortField; label: string }[] = [
+  { field: "node_metadata__created_at", label: "Created at" },
+  { field: "node_metadata__updated_at", label: "Updated at" },
+];

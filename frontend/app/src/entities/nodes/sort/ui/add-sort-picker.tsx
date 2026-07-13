@@ -4,7 +4,12 @@ import { useFilter } from "react-aria-components";
 
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import type { Sort, SortDirection, SortField } from "@/entities/nodes/sort/domain/model/sort";
+import {
+  NODE_METADATA_SORT_FIELDS,
+  type Sort,
+  type SortDirection,
+  type SortField,
+} from "@/entities/nodes/sort/domain/model/sort";
 import { isSortableAttribute } from "@/entities/nodes/sort/domain/rules/is-sortable-attribute";
 import { isSortableRelationship } from "@/entities/nodes/sort/domain/rules/is-sortable-relationship";
 import {
@@ -17,16 +22,6 @@ import type {
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-
-interface SortableField {
-  field: SortField;
-  label: string;
-}
-
-const METADATA_SORTABLE_FIELDS: SortableField[] = [
-  { field: "node_metadata__created_at", label: "Created at" },
-  { field: "node_metadata__updated_at", label: "Updated at" },
-];
 
 const DIRECTION_OPTIONS: { id: SortDirection; label: string }[] = [
   { id: "ASC", label: "Ascending" },
@@ -195,7 +190,7 @@ export function AddSortPicker({
     .filter(isSortableAttribute)
     .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
   const sortableRelationships = (schema.relationships ?? []).filter(isSortableRelationship);
-  const metadataFields = METADATA_SORTABLE_FIELDS.filter(({ field }) => !activeFields.has(field));
+  const metadataFields = NODE_METADATA_SORT_FIELDS.filter(({ field }) => !activeFields.has(field));
 
   return (
     <Autocomplete filter={contains} onInputChange={setSearch}>
