@@ -23,8 +23,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-# Built from the source event context so the fixture tracks the real serialization
-# instead of restating it as a literal that can silently drift.
 BRANCH_CREATED_PAYLOAD: dict[str, Any] = {
     "context": EventContext(
         branch=EventBranchContext(name=GLOBAL_BRANCH_NAME, id="182853ef-58a3-b3cc-3e80-c5161f4171c1"),
