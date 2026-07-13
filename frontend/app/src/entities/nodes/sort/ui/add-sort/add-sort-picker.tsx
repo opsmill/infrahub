@@ -116,6 +116,56 @@ function GroupedSortableRelationshipMenuItem({
   );
 }
 
+interface FieldItemsProps {
+  schema: ModelSchema;
+  activeFields: ReadonlySet<SortField>;
+  onSelect: (sort: Sort) => void;
+}
+
+// Flat list of every available field, shown while searching.
+function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
+  const sortableFields = useSortableFields(schema);
+  const availableFields = sortableFields.filter(({ field }) => !activeFields.has(field));
+
+  return availableFields.map(({ field, label }) => (
+    <SortableFieldMenuItem key={field} field={field} onSelect={onSelect}>
+      {label}
+    </SortableFieldMenuItem>
+  ));
+}
+
+// Attributes, then relationships as submenus, then metadata — shown when not searching.
+function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
+  const sortableAttributes = (schema.attributes ?? [])
+    .filter(isSortableAttribute)
+    .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
+  const sortableRelationships = (schema.relationships ?? []).filter(isSortableRelationship);
+  const metadataFields = METADATA_SORTABLE_FIELDS.filter(({ field }) => !activeFields.has(field));
+
+  return (
+    <>
+      {sortableAttributes.map((attribute) => (
+        <SortableAttributeMenuItem key={attribute.name} attribute={attribute} onSelect={onSelect} />
+      ))}
+
+      {sortableRelationships.map((relationship) => (
+        <GroupedSortableRelationshipMenuItem
+          key={relationship.name}
+          relationship={relationship}
+          activeFields={activeFields}
+          onSelect={onSelect}
+        />
+      ))}
+
+      {metadataFields.map((metadata) => (
+        <SortableFieldMenuItem key={metadata.field} field={metadata.field} onSelect={onSelect}>
+          {metadata.label}
+        </SortableFieldMenuItem>
+      ))}
+    </>
+  );
+}
+
 const NO_ACTIVE_FIELDS: ReadonlySet<SortField> = new Set();
 
 export interface AddSortPickerProps {
@@ -133,15 +183,6 @@ export function AddSortPicker({
   const [search, setSearch] = React.useState("");
   const isSearching = search.trim() !== "";
 
-  const sortableFields = useSortableFields(schema);
-  const availableFields = sortableFields.filter(({ field }) => !activeFields.has(field));
-
-  const sortableAttributes = (schema.attributes ?? [])
-    .filter(isSortableAttribute)
-    .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
-  const sortableRelationships = (schema.relationships ?? []).filter(isSortableRelationship);
-  const metadataFields = METADATA_SORTABLE_FIELDS.filter(({ field }) => !activeFields.has(field));
-
   return (
     <Autocomplete filter={contains} onInputChange={setSearch}>
       <Menu
@@ -155,40 +196,9 @@ export function AddSortPicker({
         )}
       >
         {isSearching ? (
-          availableFields.map(({ field, label }) => (
-            <SortableFieldMenuItem key={field} field={field} onSelect={onSelect}>
-              {label}
-            </SortableFieldMenuItem>
-          ))
+          <FlatFieldItems schema={schema} activeFields={activeFields} onSelect={onSelect} />
         ) : (
-          <>
-            {sortableAttributes.map((attribute) => (
-              <SortableAttributeMenuItem
-                key={attribute.name}
-                attribute={attribute}
-                onSelect={onSelect}
-              />
-            ))}
-
-            {sortableRelationships.map((relationship) => (
-              <GroupedSortableRelationshipMenuItem
-                key={relationship.name}
-                relationship={relationship}
-                activeFields={activeFields}
-                onSelect={onSelect}
-              />
-            ))}
-
-            {metadataFields.map((metadata) => (
-              <SortableFieldMenuItem
-                key={metadata.field}
-                field={metadata.field}
-                onSelect={onSelect}
-              >
-                {metadata.label}
-              </SortableFieldMenuItem>
-            ))}
-          </>
+          <GroupedFieldItems schema={schema} activeFields={activeFields} onSelect={onSelect} />
         )}
       </Menu>
     </Autocomplete>
