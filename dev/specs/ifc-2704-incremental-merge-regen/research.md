@@ -104,7 +104,7 @@ TTL mirrors the PC cache (`KVTTL.TWO_HOURS`).
 |---|---|
 | `id` | `node.uuid` |
 | `kind` | `node.kind` |
-| `branch` | the **default/target branch name** (see below), *not* `diff_branch_name` |
+| `branch` | the **target (destination) branch name** (see below), *not* `diff_branch_name` |
 | `display_label` | `node.label` |
 | `action` | `node.action` (`DiffAction`) → **uppercase name** (`"ADDED"/"UPDATED"/"REMOVED"`) |
 | `elements[]` | `node.attributes` (`element_type="ATTRIBUTE"`) + `node.relationships` (`element_type` from `cardinality`) |
@@ -118,13 +118,22 @@ MUST emit uppercase names so a fingerprint/definition change reads identically t
 
 **Branch-tag decision (resolves critique E3, branch coupling)**: the enriched diff's
 `diff_branch_name` is the *source* branch, but post-merge the changed data lives on the
-**default/target** branch, and that is also where the selection must run its live lookups
-(schema, GraphQL params, subscriber and group queries). Tag every `NodeDiff.branch` with the
-**default-branch name** so the summary's branch tag and the live-query branch are one and the
-same. `get_modified_kinds` (`branch_diff.py:122-130`, filters `entry["branch"] == branch`) and
-`_relevant_node_changes` (`tasks.py:779`) then work against the default branch with no special
-casing, and the source branch can be deleted (`delete_branch_after_merge`) without affecting
-selection — only its now-merged data, on the default branch, is needed.
+**target (destination) branch** — the branch the merge lands on, which the orchestrator already
+uses for its own post-merge schema/IPAM work (`self.destination_branch`) and which
+`post_process_branch_merge` receives as its `target_branch` parameter. That is also where the
+selection must run its live lookups (schema, GraphQL params, subscriber and group queries). Tag
+every `NodeDiff.branch` with the **target-branch name** so the summary's branch tag and the
+live-query branch are one and the same. `get_modified_kinds` (`branch_diff.py:122-130`, filters
+`entry["branch"] == branch`) and `_relevant_node_changes` (`tasks.py:779`) then work against the
+target branch with no special casing, and the source branch can be deleted
+(`delete_branch_after_merge`) without affecting selection — only its now-merged data, on the
+target branch, is needed.
+
+Use the threaded `target_branch` value (i.e. `self.destination_branch` in the orchestrator),
+**not** a fresh `registry.default_branch` lookup. In Infrahub today a branch is always merged
+into the default branch (`branch/tasks.py:298` forces `destination = registry.default_branch`),
+so target == default in practice; keying off the `target_branch` parameter keeps the design
+correct if that ever changes.
 
 **Capture safety (resolves critique E7)**: serialization and the cache write are split across
 the point of no return (see Decision 1) and both are wrapped in their own try/except that, on
@@ -180,7 +189,7 @@ into `target_members` (generators) and a new member filter (artifacts).
 **Refactor**: `get_field_level_impacted_subscribers` and the predicate functions currently
 resolve the summary internally via `get_diff_summary_cache(pipeline_id=...)`. Generalize them
 to accept a resolved `diff_summary: list[NodeDiff]` **and an explicit query branch** (the
-default/target branch) so both the PC path and the merge path can call them. This is a
+merge's `target_branch`) so both the PC path and the merge path can call them. This is a
 two-caller extraction, satisfying the "serve ≥2 callers" bar in constitution VII.
 
 ## Decision 4a — Member selection reconciles against the live group (resolves E1, E2, X1)
@@ -197,7 +206,7 @@ member (its subscriber query returns `[]`) nor an existing-object membership-onl
 **Decision**: The merge path MUST NOT derive the member filter from the diff alone. Per
 selected definition it reproduces the proven CHECK-flow reconciliation on the **target branch**:
 
-1. Fetch the definition's **live group members** on the default/target branch (the CHECK flow
+1. Fetch the definition's **live group members** on the target (destination) branch (the CHECK flow
    uses `fetch_artifact_definition_targets` / `group.members`) and build the
    `member.id → existing subscriber_id` map (`artifacts_by_member`, `git/tasks.py:565-568`).
 2. Compute `managed_branch` for the definition = query changed OR definition/fingerprint

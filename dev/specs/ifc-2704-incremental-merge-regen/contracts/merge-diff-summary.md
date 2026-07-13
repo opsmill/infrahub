@@ -17,7 +17,7 @@ for node in root.nodes:
     if node.action == DiffAction.UNCHANGED: skip
     NodeDiff.id            = node.uuid
     NodeDiff.kind          = node.kind
-    NodeDiff.branch        = default_branch_name       # NOT root.diff_branch_name — see below
+    NodeDiff.branch        = target_branch_name        # the merge target_branch — NOT root.diff_branch_name — see below
     NodeDiff.display_label = node.label
     NodeDiff.action        = node.action.name        # UPPERCASE
     NodeDiff.elements       =
@@ -34,10 +34,11 @@ for node in root.nodes:
 
 - `action` is emitted as the **uppercase** GraphQL enum name so `_is_triggering_action`
   (`.lower()` compare) and the predicates read it identically to the PC path.
-- `branch` is tagged with the **default/target branch name**, not the source
-  `diff_branch_name`: post-merge the changed data lives on the default branch, and the
-  selection runs its live lookups there, so the summary tag and the query branch match and the
-  source branch may be deleted without affecting selection (research D2, critique E3).
+- `branch` is tagged with the **target (destination) branch name** — the merge's `target_branch`
+  (i.e. `self.destination_branch`), not the source `diff_branch_name` and not a fresh
+  `registry.default_branch` lookup: post-merge the changed data lives on the target branch, and
+  the selection runs its live lookups there, so the summary tag and the query branch match and
+  the source branch may be deleted without affecting selection (research D2, critique E3).
 - Nodes changed only via a conflict resolved to the base branch are **retained** (the
   changelog narrowing is not applied here).
 - A definition whose `fingerprint` attribute changed appears as an `UPDATED` node with an

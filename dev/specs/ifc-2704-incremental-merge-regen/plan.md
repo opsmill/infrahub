@@ -57,7 +57,7 @@ two workflow message models, and one config flag
 | Principle | Status | Notes |
 |---|---|---|
 | I. Schema-Driven Integrity | ✅ PASS | No new schema; reuses existing `fingerprint` / `dependencies` / `execute_after_merge` fields. No generated schema files edited. |
-| II. Branch-Safe by Default | ✅ PASS | Core of the feature is merge behavior; diff captured on the source branch pre-freeze; selection runs against the default (target) branch. Merge behavior is specified and will be tested (FR-001..FR-011). |
+| II. Branch-Safe by Default | ✅ PASS | Core of the feature is merge behavior; diff captured on the source branch pre-freeze; selection runs against the target (destination) branch via the threaded `target_branch`, not a hardcoded default lookup. Merge behavior is specified and will be tested (FR-001..FR-011). |
 | III. Type Safety & Explicit Contracts | ✅ PASS | New converter and selection routine fully typed; the `NodeDiff` TypedDict and Pydantic message models are the boundary contracts; `str | None` for the threaded key. |
 | IV. Test Discipline | ✅ PASS | Unit (converter, predicates on merge summary, limit-trap filter), functional (selective dispatch end-to-end inline), integration Docker (full stack — this feature is a triggered-action path, so integration coverage is required). |
 | V. Query Performance & Efficiency | ✅ PASS | The definition-level gate adds no Cypher (the diff is already loaded). Member reconciliation performs bounded per-selected-definition group/subscriber fetches — the same fetches the proposed-change CHECK flow already runs, and required for correct new-member coverage (research D4a). Net effect is still far fewer dispatched tasks. |
@@ -98,7 +98,7 @@ backend/infrahub/
 │   │   ├── orchestrator.py        # D1: capture branch_diff → summary → cache; D3: pass key to run_follow_ups
 │   │   ├── post_merge.py          # D3: thread merge_diff_cache_key into BRANCH_MERGE_POST_PROCESS params
 │   │   ├── selective_regen.py     # NEW — D4/D4a: definition gates + live-group member reconciliation on target branch
-│   │   └── diff_summary.py        # NEW — D2: EnrichedDiffNode → NodeDiff converter (default-branch tag) + merge-scoped cache fns
+│   │   └── diff_summary.py        # NEW — D2: EnrichedDiffNode → NodeDiff converter (target-branch tag) + merge-scoped cache fns
 │   └── branch/
 │       └── tasks.py               # D4/D6/D7/D9: post_process_branch_merge — flag gate, selective dispatch, fallbacks, observability
 ├── proposed_change/
@@ -196,6 +196,15 @@ The Spec Kit block in `CLAUDE.md` will be updated (via the `after_plan`
   full-regeneration fallback and can never roll back a committed merge. Affects research.md D1,
   contracts/merge-diff-summary.md, contracts/branch-merge-post-process.md, and task T006.
   Reinforces Constitution II (Branch-Safe by Default).
+
+### Revision: terminology 2026-07-13
+
+- Reason: The branch the summary is tagged with and where selection runs its live lookups is the
+  merge **target (destination) branch** (`self.destination_branch` / the threaded `target_branch`
+  parameter), not a hardcoded `registry.default_branch` lookup. Infrahub merges always target the
+  default branch today (`branch/tasks.py:298`), so target == default in practice; keying off the
+  `target_branch` parameter keeps the design correct if that assumption ever changes. Wording
+  aligned across research.md (D2/D4/D4a), contracts, and tasks (T004/T011). No behavior change.
 
 ## Post-Design Constitution Re-Check
 

@@ -45,7 +45,7 @@ nice-to-have. Deliverable order is Foundational → US1 → US3 → US2 → US4 
 **⚠️ CRITICAL**: No story work begins until this phase is complete. This is the diff-capture,
 cache, threading, and shared-primitive refactor from D1–D5.
 
-- [ ] T004 [P] Implement `EnrichedDiffNode → NodeDiff` converter in NEW `backend/infrahub/core/merge/diff_summary.py` per [contracts/merge-diff-summary.md](./contracts/merge-diff-summary.md): uppercase action names, **default/target branch** tag, `attributes`+`relationships` → `elements[]` (element_type from cardinality, peers from relationship members), retain conflict-resolved-to-base nodes, exclude `UNCHANGED`
+- [ ] T004 [P] Implement `EnrichedDiffNode → NodeDiff` converter in NEW `backend/infrahub/core/merge/diff_summary.py` per [contracts/merge-diff-summary.md](./contracts/merge-diff-summary.md): uppercase action names, **target (destination) branch** tag (the merge `target_branch`), `attributes`+`relationships` → `elements[]` (element_type from cardinality, peers from relationship members), retain conflict-resolved-to-base nodes, exclude `UNCHANGED`
 - [ ] T005 [P] Implement `set_merge_diff_summary_cache` / `get_merge_diff_summary_cache` in `backend/infrahub/core/merge/diff_summary.py` (key `branch_merge:diff_id:{diff_root_uuid}`, `list[NodeDiff]` JSON, `KVTTL.TWO_HOURS`); getter raises `ResourceNotFoundError` on miss
 - [ ] T006 Capture in `BranchMergeOrchestrator.merge` (`backend/infrahub/core/merge/orchestrator.py`), split around the point of no return: (a) serialize the already-loaded in-memory `branch_diff` into `list[NodeDiff]` before `freeze_diffs_for_branch` (:151); (b) call `set_merge_diff_summary_cache` **only after** the `BranchStatus.MERGED` transition (:155-157) and write-block lift (:161), immediately before `run_follow_ups` (:163), yielding `merge_diff_cache_key = diff_root_uuid`. Wrap both (a) and (b) in their own try/except → `None` on failure, never re-raise (critique E7). A rolled-back merge writes nothing. Depends on T004, T005
 - [ ] T007 Thread `merge_diff_cache_key: str | None` through `PostMergeDispatcher.run_follow_ups` (`backend/infrahub/core/merge/post_merge.py`) into the `BRANCH_MERGE_POST_PROCESS` parameters dict (:100-104). Depends on T006
@@ -55,7 +55,7 @@ cache, threading, and shared-primitive refactor from D1–D5.
 
 ### Foundational tests
 
-- [ ] T011 [P] Unit test the converter in `backend/tests/unit/core/merge/test_diff_summary.py`: all element types, action uppercasing, conflict-to-base retained, relationship/membership changes, `UNCHANGED` excluded, default-branch tag
+- [ ] T011 [P] Unit test the converter in `backend/tests/unit/core/merge/test_diff_summary.py`: all element types, action uppercasing, conflict-to-base retained, relationship/membership changes, `UNCHANGED` excluded, target-branch tag
 - [ ] T012 [P] Unit test the cache round-trip (set→get, miss raises) in `backend/tests/unit/core/merge/test_diff_summary.py`
 - [ ] T013 [P] Unit test the `members` filter (limit trap) in `backend/tests/unit/git/`: a group with one existing-artifact member and one artifact-less new member — `members=[both ids]` → both processed; `members=[]` → all processed
 - [ ] T014 [P] Regression test that the PC selection path is unchanged after the T009 refactor (existing PC tests pass; add one asserting a resolved-summary call equals the cached-summary call)
