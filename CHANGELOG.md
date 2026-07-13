@@ -19,7 +19,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ### Fixed
 
-- The `INFRAHUB_DB_DATABASE` name validation now matches Neo4j's naming rules: names may contain dashes, must be 3-63 characters long, and may no longer end with a dot. Database names that contain dashes or dots are now correctly quoted when the database is created, so they no longer fail with a Cypher syntax error. ([#database-name-neo4j-validation](https://github.com/opsmill/infrahub/issues/database-name-neo4j-validation))
+- The `INFRAHUB_DB_DATABASE` name validation now matches Neo4j's naming rules: names may contain dashes, must be 3-63 characters long, and may no longer end with a dot. Database names that contain dashes or dots are now correctly quoted when the database is created, so they no longer fail with a Cypher syntax error.
 - Changing a Git repository's location now re-points the server-side clone and fetches from the new remote, instead of staying stuck on the previous commit. ([#9811](https://github.com/opsmill/infrahub/issues/9811))
 - The `configure-action-rules` background flow no longer crashes when a trigger rule references a group or Generator that does not resolve on the branch being read (a required relationship left dangling by a deleted, orphaned, or branch-missing peer). The offending rule is now skipped with a warning that names it, and the remaining trigger rules are reconciled normally instead of the whole flow aborting. ([#9829](https://github.com/opsmill/infrahub/issues/9829))
 - Outbound webhook payloads now include the `account_id` of the account that triggered the event again, instead of always sending `null`. ([#9881](https://github.com/opsmill/infrahub/issues/9881))
