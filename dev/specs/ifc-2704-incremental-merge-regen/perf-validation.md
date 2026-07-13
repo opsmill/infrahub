@@ -225,8 +225,21 @@ regen = [r for r in runs if started(r) and REGEN.match(r.get('name') or '')
          and not any(r['name'].startswith(n) for n in NOISE)]
 print('regeneration flows dispatched:', len(regen))
 print(collections.Counter(re.sub(r"'[^']*'", "'X'", r['name']) for r in regen))
+# window: measured over the SAME regeneration set (not all in-window flows), so count and
+# time come from one filter. Directional only; compare flag-off vs flag-on on ONE build.
+starts = [datetime.fromisoformat(r['start_time']) for r in regen if r.get('start_time')]
+ends   = [datetime.fromisoformat(r['end_time'])   for r in regen if r.get('end_time')]
+if starts and ends:
+    print('regeneration window seconds:', round((max(ends) - min(starts)).total_seconds(), 1))
+print('non-terminal regen flows still running:',
+      sum(1 for r in regen if r.get('state_type') not in ('COMPLETED','FAILED','CRASHED','CANCELLED')))
 PY
 ```
+
+Measure the window only after `non-terminal regen flows still running` reaches `0` (fully
+drained), otherwise it undercounts. Time is a **directional secondary** signal: it is only
+comparable flag-off vs flag-on on the *same* build, never across builds. The deterministic
+regeneration-flow **count** is the headline metric.
 
 **6. Baseline number to beat.** Single-device merge, blanket path = **~80 regeneration flows**
 (40 GraphQL-query-group + 20 artifact + 20 generator-member). Selective (flag on) must reduce
@@ -245,6 +258,11 @@ Fill and commit after each run. One row per scenario per dataset.
   merged to `main`. The blanket path is scenario-independent: it regenerates every definition
   for every member regardless of what changed, so scenarios 1-6 and 8 produce the same count by
   construction. Only scenario 1 was executed; the others are marked accordingly.
+- The `~78` second windows below are **approximate**: computed over all in-window flows
+  (including orchestration and recurring noise) mid-drain, not cleanly over the regeneration
+  set, and on the published image. Treat them as directional only. A clean regeneration-window
+  comes from the retest same-build A/B using the step-5 recipe (which now measures the window
+  over the same filtered regeneration set as the count).
 
 | # | Dispatched count | Window (s) | Under-execution | Notes |
 |---|---|---|---|---|
