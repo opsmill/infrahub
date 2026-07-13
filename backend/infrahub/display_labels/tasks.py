@@ -85,12 +85,18 @@ async def display_label_jinja2_update_value(
 async def process_display_label(
     branch_name: str,
     node_kind: str,
-    object_id: str,
     target_kind: str,
     context: EventContext,
+    object_id: str | None = None,
+    object_ids: list[str] | None = None,
 ) -> None:
     log = get_run_logger()
     client = get_client()
+
+    filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
+    if not filter_id:
+        log.debug("No object id provided for display label recompute")
+        return
 
     await add_tags(branches=[branch_name])
 
@@ -111,7 +117,7 @@ async def process_display_label(
         node_schema=node_schema, variables=variables, filter_key=display_label_template.filter_key
     )
 
-    query = display_label_graphql.render_graphql_query(filter_id=object_id)
+    query = display_label_graphql.render_graphql_query(filter_id=filter_id)
     response = await client.execute_graphql(query=query, branch_name=branch_name)
     update_candidates = display_label_graphql.parse_response(response=response)
 

@@ -84,12 +84,18 @@ async def hfid_update_value(
 async def process_hfid(
     branch_name: str,
     node_kind: str,
-    object_id: str,
     target_kind: str,
     context: EventContext,
+    object_id: str | None = None,
+    object_ids: list[str] | None = None,
 ) -> None:
     log = get_run_logger()
     client = get_client()
+
+    filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
+    if not filter_id:
+        log.debug("No object id provided for human-friendly id recompute")
+        return
 
     await add_tags(branches=[branch_name])
 
@@ -106,7 +112,7 @@ async def process_hfid(
         node_schema=node_schema, variables=hfid_definition.hfid, filter_key=hfid_definition.filter_key
     )
 
-    query = hfid_graphql.render_graphql_query(filter_id=object_id)
+    query = hfid_graphql.render_graphql_query(filter_id=filter_id)
     response = await client.execute_graphql(query=query, branch_name=branch_name)
     update_candidates = hfid_graphql.parse_response(response=response)
 

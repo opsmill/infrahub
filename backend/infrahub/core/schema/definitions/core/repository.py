@@ -2,6 +2,7 @@ from infrahub.core.constants import (
     AllowOverrideType,
     BranchSupportType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
@@ -267,6 +268,7 @@ core_generic_repository = GenericSchema(
             identifier="repository__transformation",
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=10000,
         ),
         Rel(
@@ -275,6 +277,7 @@ core_generic_repository = GenericSchema(
             identifier="graphql_query__repository",
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=9000,
         ),
         Rel(
@@ -283,6 +286,7 @@ core_generic_repository = GenericSchema(
             identifier="check_definition__repository",
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=11000,
         ),
         Rel(
@@ -291,6 +295,7 @@ core_generic_repository = GenericSchema(
             identifier="generator_definition__repository",
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=12000,
         ),
         Rel(
@@ -298,6 +303,7 @@ core_generic_repository = GenericSchema(
             peer=InfrahubKind.REPOSITORYGROUP,
             optional=True,
             cardinality=Cardinality.MANY,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
             order_weight=13000,
         ),
     ],
