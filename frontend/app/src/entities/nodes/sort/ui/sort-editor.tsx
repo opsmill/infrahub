@@ -179,7 +179,7 @@ function RemoveSortButton({ schema, sort }: RemoveSortButtonProps) {
   const remove = () => setCustomSort(appliedSort.filter((entry) => entry.field !== sort.field));
 
   // Removing the only row while on the schema default is a no-op (it snaps back), so hide it.
-  const canRemove = customSort !== null && appliedSort.length > 0;
+  const canRemove = !(customSort === null && appliedSort.length === 1);
 
   // Deleting the last remaining row reverts to the schema default, so frame it as a reset.
   const willResetsToDefault = canRemove && appliedSort.length === 1 && !!defaultSort?.length;
