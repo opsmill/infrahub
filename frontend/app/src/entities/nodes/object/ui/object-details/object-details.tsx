@@ -1,4 +1,4 @@
-import { DetailsColumns } from "@/shared/components/layout/details-columns";
+import { DetailsLayout } from "@/shared/components/layout/details-layout";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import type {
@@ -25,8 +25,8 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
   useTitle(`${getNodeLabel(objectData)} details`);
 
   return (
-    <DetailsColumns>
-      <DetailsColumns.Main>
+    <DetailsLayout>
+      <DetailsLayout.Main>
         <ObjectDetailsCard
           objectSchema={objectSchema}
           objectData={objectData}
@@ -36,16 +36,16 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
         {isOfKind(FILE_OBJECT_KIND, objectSchema) && (
           <FilePreviewCard objectData={objectData as unknown as NodeFileObject} />
         )}
-      </DetailsColumns.Main>
+      </DetailsLayout.Main>
 
-      <DetailsColumns.Aside>
+      <DetailsLayout.Aside>
         <ObjectProfilesGroupsCard
           objectSchema={objectSchema}
           objectData={objectData}
           permission={permission}
         />
         <ObjectActivitiesCard objectKind={objectData.__typename} objectId={objectData.id} />
-      </DetailsColumns.Aside>
-    </DetailsColumns>
+      </DetailsLayout.Aside>
+    </DetailsLayout>
   );
 }
