@@ -361,8 +361,8 @@ committed or CI fails.
 | Component | Location | Reused for |
 |---|---|---|
 | `RegenerationDefinition` protocol | `proposed_change/tasks.py:1383-1404` | definition-level gate inputs |
-| `DefinitionSelect` / `PredicateOutcome` | `tasks.py:1550-1581`, `:1368-1380` | gate accumulation + logging |
-| `_query_changed` / `_definition_changed` | `tasks.py:1407-1477` | query & definition (+fingerprint) change |
+| `DefinitionSelect` / `PredicateOutcome` | `proposed_change/tasks.py:1550-1581`, `:1368-1380` | gate accumulation + logging |
+| `_query_changed` / `_definition_changed` | `proposed_change/tasks.py:1407-1477` | query & definition (+fingerprint) change |
 | `get_modified_kinds` | `proposed_change/branch_diff.py:122-130` | `MODIFIED_KINDS` intersection |
 | `get_field_level_impacted_subscribers` / `ImpactScope` | `tasks.py:790-847`, `:753-764` | member-level narrowing |
 | `only_has_unique_targets` | `graphql/analyzer.py:385-388` | SPECIFIC vs ALL member scope |

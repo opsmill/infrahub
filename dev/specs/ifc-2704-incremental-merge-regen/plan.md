@@ -96,7 +96,7 @@ backend/infrahub/
 ├── core/
 │   ├── merge/
 │   │   ├── orchestrator.py        # D1: capture branch_diff → summary → cache; D3: pass key to run_follow_ups
-│   │   ├── post_merge.py          # D3: thread merge_diff_cache_key into BRANCH_MERGE_POST_PROCESS params
+│   │   ├── post_merge.py          # D3: thread merge_diff_cache_key + proposed_change_id into BRANCH_MERGE_POST_PROCESS params
 │   │   ├── selective_regen.py     # NEW — D4/D4a: definition gates + live-group member reconciliation on target branch
 │   │   └── diff_summary.py        # NEW — D2: EnrichedDiffNode → NodeDiff converter (target-branch tag) + merge-scoped cache fns
 │   └── branch/
@@ -156,8 +156,10 @@ Complete. Artifacts:
 2. **Diff capture + serialization** (D1, D2) — converter, merge-scoped cache functions,
    capture call in the orchestrator; unit tests for the converter (all element types, action
    uppercasing, conflict-resolved-to-base retained, membership/relationship changes).
-3. **Thread the key** (D3) — extend `run_follow_ups` and `BRANCH_MERGE_POST_PROCESS`
-   parameters and `post_process_branch_merge` signature.
+3. **Thread the key** (D3) — extend `run_follow_ups`, `BRANCH_MERGE_POST_PROCESS`
+   parameters, and the `post_process_branch_merge` signature with both `merge_diff_cache_key`
+   and `proposed_change_id` (the latter distinguishes a proposed-change merge from a direct
+   merge, which the direct-merge generator cascade in D7 depends on).
 4. **Generalize the selection primitives** (D4) — refactor the predicates and
    `get_field_level_impacted_subscribers` to accept a resolved `diff_summary`; keep the PC
    path passing its cached summary. No behavior change to the PC path (regression-tested).

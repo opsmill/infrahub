@@ -69,15 +69,18 @@ set_merge_diff_summary_cache(diff_id: str, diff_summary: list[NodeDiff], cache: 
     value = json.dumps(diff_summary)
     expires = KVTTL.TWO_HOURS
 
-get_merge_diff_summary_cache(diff_id: str) -> list[NodeDiff]      # raises ResourceNotFoundError on miss
+get_merge_diff_summary_cache(diff_id: str) -> list[NodeDiff]      # raises ResourceNotFoundError on miss or unreadable payload
 ```
 
 - `diff_id` = the diff-root uuid (stable across the freeze).
+- The getter normalizes **every** summary-load failure — a cache miss, an unreachable cache, or
+  a malformed/undeserializable payload — into `ResourceNotFoundError`, so the caller has a single
+  fallback branch and no load failure can escape to the merge.
 - On `ResourceNotFoundError`, the caller falls back to full regeneration (never propagates the
   error to the merge).
 
 ## Consumers unchanged
 
 `get_modified_kinds` (`branch_diff.py:122-130`), `_query_changed`, `_definition_changed`
-(`tasks.py:1407-1477`) operate on `list[NodeDiff]` and require no change beyond receiving the
+(`proposed_change/tasks.py:1407-1477`) operate on `list[NodeDiff]` and require no change beyond receiving the
 merge summary instead of the PC summary.
