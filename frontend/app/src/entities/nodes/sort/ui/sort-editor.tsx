@@ -46,11 +46,7 @@ export function SortEditor({ schema }: SortEditorProps) {
     <Col className="items-start gap-1 p-1">
       <SortListContainer schema={schema}>
         <SortableList aria-label="Sort keys" items={currentSort} onReorder={setSort}>
-          {(entry) => (
-            <SortableItem id={entry.field} textValue={entry.field}>
-              <SortableItemContent schema={schema} sort={entry} />
-            </SortableItem>
-          )}
+          {(entry) => <SortEditorRow id={entry.field} schema={schema} sort={entry} />}
         </SortableList>
       </SortListContainer>
 
@@ -218,12 +214,14 @@ function RemoveSortButton({ schema, sort }: RemoveSortButtonProps) {
   );
 }
 
-interface SortableItemContentProps {
+interface SortEditorRowProps {
+  // Required on the wrapper itself: the collection keys rows by the rendered element's `id` prop.
+  id: SortField;
   schema: ModelSchema;
   sort: Sort;
 }
 
-function SortableItemContent({ schema, sort }: SortableItemContentProps) {
+function SortEditorRow({ id, schema, sort }: SortEditorRowProps) {
   const { sort: sortInQsp, setSort } = useSort(schema);
   const sortableFields = useSortableFields(schema);
   const currentSort = sortInQsp ?? getSchemaDefaultSort(schema) ?? [];
@@ -242,12 +240,12 @@ function SortableItemContent({ schema, sort }: SortableItemContentProps) {
     );
 
   return (
-    <>
+    <SortableItem id={id} textValue={id}>
       <SortFieldSelect fields={availableFields} value={sort.field} onChange={replaceField} />
 
       <SortDirectionSelect value={sort.direction} onChange={replaceDirection} />
 
       <RemoveSortButton schema={schema} sort={sort} />
-    </>
+    </SortableItem>
   );
 }
