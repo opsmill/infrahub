@@ -1,4 +1,3 @@
-import type { SortableField, SortField } from "@/entities/nodes/sort/domain/model/sort";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
@@ -13,11 +12,4 @@ const NON_SORTABLE_ATTRIBUTE_KINDS: readonly string[] = [
 
 export function isSortableAttribute(attribute: AttributeSchema): boolean {
   return !NON_SORTABLE_ATTRIBUTE_KINDS.includes(attribute.kind);
-}
-
-export function getSortableAttributes(attributes: AttributeSchema[]): SortableField[] {
-  return attributes.filter(isSortableAttribute).map((attribute) => ({
-    field: `${attribute.name}__value` as SortField,
-    label: attribute.label ?? attribute.name,
-  }));
 }

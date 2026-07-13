@@ -1,0 +1,232 @@
+import { Autocomplete, Menu, MenuItem, Popover, SubmenuTrigger } from "@infrahub/ui";
+import React from "react";
+import { useFilter } from "react-aria-components";
+
+import { sortByOrderWeight } from "@/shared/utils/common";
+
+import {
+  NODE_METADATA_SORT_FIELDS,
+  type Sort,
+  type SortDirection,
+  type SortField,
+} from "@/entities/nodes/sort/domain/model/sort";
+import { isSortableAttribute } from "@/entities/nodes/sort/domain/rules/is-sortable-attribute";
+import { isSortableRelationship } from "@/entities/nodes/sort/domain/rules/is-sortable-relationship";
+import {
+  buildAttributeSortField,
+  buildRelationshipSortField,
+} from "@/entities/nodes/sort/domain/rules/sort-field";
+import type {
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/domain/model/schema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
+const DIRECTION_OPTIONS: { id: SortDirection; label: string }[] = [
+  { id: "ASC", label: "Ascending" },
+  { id: "DESC", label: "Descending" },
+];
+
+// "Peer › Attribute" separator. En-spaces (U+2002) around the chevron keep it from looking cramped.
+const PEER_LABEL_SEPARATOR = " › ";
+
+interface SortDirectionMenuProps {
+  fieldLabel: string;
+  onSelect: (direction: SortDirection) => void;
+}
+
+function SortDirectionMenu({ fieldLabel, onSelect }: SortDirectionMenuProps) {
+  return (
+    <Menu aria-label={`Sort direction for ${fieldLabel}`} items={DIRECTION_OPTIONS}>
+      {(direction) => (
+        <MenuItem onAction={() => onSelect(direction.id)}>{direction.label}</MenuItem>
+      )}
+    </Menu>
+  );
+}
+
+interface SortableFieldMenuItemProps {
+  field: SortField;
+  children: string;
+  onSelect: (sort: Sort) => void;
+}
+
+function SortableFieldMenuItem({ field, children, onSelect }: SortableFieldMenuItemProps) {
+  return (
+    <SubmenuTrigger>
+      <MenuItem>{children}</MenuItem>
+
+      <Popover>
+        <SortDirectionMenu
+          fieldLabel={children}
+          onSelect={(direction) => onSelect({ field, direction })}
+        />
+      </Popover>
+    </SubmenuTrigger>
+  );
+}
+
+interface SortableAttributeMenuItemProps {
+  attribute: AttributeSchema;
+  onSelect: (sort: Sort) => void;
+}
+
+function SortableAttributeMenuItem({ attribute, onSelect }: SortableAttributeMenuItemProps) {
+  return (
+    <SortableFieldMenuItem field={buildAttributeSortField(attribute.name)} onSelect={onSelect}>
+      {attribute.label ?? attribute.name}
+    </SortableFieldMenuItem>
+  );
+}
+
+interface SortableRelationshipMenuItemProps {
+  relationship: RelationshipSchema;
+  activeFields: ReadonlySet<SortField>;
+  onSelect: (sort: Sort) => void;
+}
+
+function getAvailablePeerAttributes(
+  peerSchema: ModelSchema,
+  relationship: RelationshipSchema,
+  activeFields: ReadonlySet<SortField>
+): AttributeSchema[] {
+  return (peerSchema.attributes ?? []).filter(isSortableAttribute).filter((attribute) => {
+    const attributeField = buildAttributeSortField(attribute.name);
+    const relationshipField = buildRelationshipSortField(relationship.name, attributeField);
+    return !activeFields.has(relationshipField);
+  });
+}
+
+function GroupedSortableRelationshipMenuItem({
+  relationship,
+  activeFields,
+  onSelect,
+}: SortableRelationshipMenuItemProps) {
+  const { schema: peerSchema } = useSchema(relationship.peer);
+  if (!peerSchema) return null;
+
+  const sortableAttributes = getAvailablePeerAttributes(peerSchema, relationship, activeFields);
+  if (sortableAttributes.length === 0) return null;
+
+  const relationshipLabel = relationship.label ?? relationship.name;
+
+  return (
+    <SubmenuTrigger>
+      <MenuItem>{relationshipLabel}</MenuItem>
+
+      <Popover>
+        <Menu aria-label={`Sort by ${relationshipLabel}`}>
+          {sortByOrderWeight(sortableAttributes).map((attribute) => (
+            <SortableAttributeMenuItem
+              key={relationship.name + attribute.name}
+              attribute={attribute}
+              onSelect={(sort) => {
+                onSelect({
+                  ...sort,
+                  field: buildRelationshipSortField(relationship.name, sort.field),
+                });
+              }}
+            />
+          ))}
+        </Menu>
+      </Popover>
+    </SubmenuTrigger>
+  );
+}
+
+function FlatSortableRelationshipMenuItems({
+  relationship,
+  activeFields,
+  onSelect,
+}: SortableRelationshipMenuItemProps) {
+  const { schema: peerSchema } = useSchema(relationship.peer);
+  if (!peerSchema) return null;
+
+  const sortableAttributes = getAvailablePeerAttributes(peerSchema, relationship, activeFields);
+  const relationshipLabel = relationship.label ?? relationship.name;
+
+  return (
+    <>
+      {sortByOrderWeight(sortableAttributes).map((attribute) => {
+        const field = buildRelationshipSortField(
+          relationship.name,
+          buildAttributeSortField(attribute.name)
+        );
+        const attributeLabel = attribute.label ?? attribute.name;
+
+        return (
+          <SortableFieldMenuItem key={field} field={field} onSelect={onSelect}>
+            {`${relationshipLabel}${PEER_LABEL_SEPARATOR}${attributeLabel}`}
+          </SortableFieldMenuItem>
+        );
+      })}
+    </>
+  );
+}
+
+const NO_ACTIVE_FIELDS: ReadonlySet<SortField> = new Set();
+
+interface AddSortPickerProps {
+  schema: ModelSchema;
+  activeFields?: ReadonlySet<SortField>;
+  onSelect: (sort: Sort) => void;
+}
+
+export function AddSortPicker({
+  schema,
+  activeFields = NO_ACTIVE_FIELDS,
+  onSelect,
+}: AddSortPickerProps) {
+  const { contains } = useFilter({ sensitivity: "base" });
+  const [search, setSearch] = React.useState("");
+  const isSearching = search.trim() !== "";
+
+  const SortableRelationshipMenuItems = isSearching
+    ? FlatSortableRelationshipMenuItems
+    : GroupedSortableRelationshipMenuItem;
+
+  const sortableAttributes = (schema.attributes ?? [])
+    .filter(isSortableAttribute)
+    .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
+  const sortableRelationships = (schema.relationships ?? []).filter(isSortableRelationship);
+  const metadataFields = NODE_METADATA_SORT_FIELDS.filter(({ field }) => !activeFields.has(field));
+
+  return (
+    <Autocomplete filter={contains} onInputChange={setSearch}>
+      <Menu
+        variant="picker"
+        aria-label="Add sort field"
+        className="max-h-72"
+        renderEmptyState={() => (
+          <div className="px-2 py-1 text-sm text-stone-500">
+            {isSearching ? "No fields match" : "All sortable fields are in use"}
+          </div>
+        )}
+      >
+        {sortableAttributes.map((attribute) => (
+          <SortableAttributeMenuItem
+            key={attribute.name}
+            attribute={attribute}
+            onSelect={onSelect}
+          />
+        ))}
+
+        {sortableRelationships.map((relationship) => (
+          <SortableRelationshipMenuItems
+            key={relationship.name}
+            relationship={relationship}
+            activeFields={activeFields}
+            onSelect={onSelect}
+          />
+        ))}
+
+        {metadataFields.map((metadata) => (
+          <SortableFieldMenuItem key={metadata.field} field={metadata.field} onSelect={onSelect}>
+            {metadata.label}
+          </SortableFieldMenuItem>
+        ))}
+      </Menu>
+    </Autocomplete>
+  );
+}

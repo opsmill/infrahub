@@ -12,7 +12,7 @@ from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
-from infrahub.events.limits import get_prefect_max_related_resources
+from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
@@ -51,10 +51,6 @@ if TYPE_CHECKING:
 
 def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
     return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
-
-
-def _get_submission_chunk_size() -> int:
-    return max(1, get_prefect_max_related_resources() // 2)
 
 
 UPDATE_ATTRIBUTE = """
@@ -236,7 +232,7 @@ async def trigger_update_python_computed_attributes(
     if not object_ids:
         return
 
-    chunk_size = _get_submission_chunk_size()
+    chunk_size = get_submission_chunk_size()
     for chunk in _chunk_ids(object_ids, chunk_size):
         await get_workflow().submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
@@ -300,30 +296,26 @@ async def computed_attribute_jinja2_update_value(
 async def process_jinja2(
     branch_name: str,
     node_kind: str,
-    object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
     context: EventContext,
+    object_id: str | None = None,
     updated_fields: list[str] | None = None,
+    object_ids: list[str] | None = None,
 ) -> None:
     """Recompute a single Jinja2 computed attribute in response to a node mutation.
 
-    Args:
-        branch_name: Branch on which the triggering mutation occurred.
-        node_kind: Schema kind of the node that was modified (the trigger node).
-        object_id: ID of the modified node, used to scope GraphQL queries.
-        computed_attribute_name: Name of the computed attribute to recompute.
-        computed_attribute_kind: Schema kind that owns the computed attribute (may differ from
-                                node_kind when the dependency crosses a relationship).
-        context: Infrahub execution context.
-        updated_fields: Field names that changed on the trigger node.
-
-    Returns:
-        None
-
+    The live trigger passes a single ``object_id``; the coalesced merge/rebase recompute passes
+    the union of changed node ids in ``object_ids``. ``computed_attribute_kind`` differs from
+    ``node_kind`` when the dependency crosses a relationship.
     """
     log = get_run_logger()
     client = get_client()
+
+    filter_id: str | list[str] | None = object_ids if object_ids is not None else object_id
+    if not filter_id:
+        log.debug("No object id provided for computed attribute recompute")
+        return
 
     await add_tags(branches=[branch_name])
     updates: list[str] = updated_fields or []
@@ -353,7 +345,7 @@ async def process_jinja2(
         )
 
         for id_filter in resolved.node_filters:
-            query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=object_id)
+            query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=filter_id)
             try:
                 response = await client.execute_graphql(query=query, branch_name=branch_name)
             except URLNotFoundError:
@@ -654,7 +646,7 @@ async def query_transform_targets(
                 key = (subscriber.kind, computed_attribute.name)
                 batches.setdefault(key, []).append(subscriber.object_id)
 
-    chunk_size = _get_submission_chunk_size()
+    chunk_size = get_submission_chunk_size()
     for (kind, attribute_name), batch_object_ids in batches.items():
         for chunk in _chunk_ids(batch_object_ids, chunk_size):
             await get_workflow().submit_workflow(

@@ -3,7 +3,7 @@ import { createParser, parseAsArrayOf, useQueryState } from "nuqs";
 import { QSP } from "@/shared/config/qsp";
 
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
-import { isValidSort } from "@/entities/nodes/sort/domain/rules/is-valid-sort";
+import { getValidSorts } from "@/entities/nodes/sort/domain/rules/get-valid-sorts";
 import { parseSortToken, serializeSortToken } from "@/entities/nodes/sort/domain/rules/sort-token";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -23,7 +23,7 @@ export const useSort: UseSort = (schema) => {
     parseAsArrayOf(sortParser).withOptions({ history: "push" })
   );
 
-  const validSort = (sortInQsp ?? []).filter((sort) => isValidSort(sort, schema));
+  const validSort = getValidSorts(sortInQsp ?? [], schema);
 
   const sort = validSort.length > 0 ? validSort : null;
   const setSort = (next: Sort[]) => setSortInQsp(next.length > 0 ? next : null);
