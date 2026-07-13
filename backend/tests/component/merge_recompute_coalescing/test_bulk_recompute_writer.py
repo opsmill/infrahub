@@ -221,6 +221,45 @@ async def test_bulk_writer_persists_only_the_changed_nodes_in_a_mixed_batch(
         assert await reloaded.get_display_label(db=db) == expected
 
 
+async def test_bulk_writer_persists_a_changed_field_when_another_on_the_node_is_a_no_op(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A node changed in one field but not another is still saved, and both fields end correct."""
+    await load_profile_schema(db=db)
+    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
+
+    # Seed the display label so re-writing the same value is a no-op for that one field.
+    seed = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
+    await seed.write(
+        branch=default_branch,
+        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="steady")],
+        context=_event_context(),
+    )
+
+    recorder = MemoryInfrahubEvent()
+    writer = BulkRecomputeWriter(db=db, event_service=recorder)
+    written = await writer.write(
+        branch=default_branch,
+        writes=[
+            AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="steady"),
+            AttributeValueWrite(node_id=node.id, field="summary", value="changed"),
+        ],
+        context=_event_context(),
+    )
+
+    # summary changed, so the node is written and gets one event even though display_label held.
+    assert [item.node_id for item in written] == [node.id]
+    assert len(recorder.events) == 1
+    assert recorder.events[0].node_id == node.id
+
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert await reloaded.get_display_label(db=db) == "steady"
+    assert reloaded.summary.value == "changed"
+
+
 async def test_chain_coalesces_the_next_level_into_one_submission(
     db: InfrahubDatabase,
     default_branch: Branch,

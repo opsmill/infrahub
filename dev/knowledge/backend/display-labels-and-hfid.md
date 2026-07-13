@@ -128,8 +128,7 @@ When a schema is updated to add or change a `display_label`, the async Prefect w
 SchemaUpdatedEvent
   -> display_labels_setup_jinja2 (gathers triggers, detects new/changed templates)
   -> trigger_update_display_labels (iterates all nodes of the kind)
-  -> process_display_label (queries node via GraphQL, renders template)
-  -> display_label_jinja2_update_value (compares rendered vs stored, writes if different)
+  -> process_display_label (queries nodes via GraphQL, renders the template, bulk-writes changed values)
 ```
 
 The trigger definitions and gathering logic live in `backend/infrahub/display_labels/`.

@@ -10,19 +10,18 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind, MutationAction
-from infrahub.core.merge.recompute_coalescing import submit_recompute_chain
-from infrahub.core.recompute.bulk_write import AttributeValueWrite, BulkRecomputeWriter
+from infrahub.core.recompute.bulk_write import AttributeValueWrite
+from infrahub.core.recompute.dispatch import persist_and_chain
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
-from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
-from infrahub.workers.dependencies import get_client, get_component, get_database, get_event_service, get_workflow
+from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
@@ -354,27 +353,14 @@ async def process_jinja2(
             if value != node.computed_attribute_value:
                 writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
-    if writes:
-        coalesced = object_ids is not None
-        await add_tags(nodes=sorted({item.node_id for item in writes}), db_change=True)
-        db = await get_database()
-        branch = await registry.get_branch(db=db, branch=branch_name)
-        writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
-        written = await writer.write(
-            branch=branch,
-            writes=writes,
-            context=context,
-            origin=NodeMutationOrigin.RECOMPUTE if coalesced else NodeMutationOrigin.LIVE,
-        )
-        if coalesced:
-            await submit_recompute_chain(
-                written=written,
-                schema_branch=schema_branch,
-                branch=branch_name,
-                workflow=get_workflow(),
-                context=context,
-                depth=recompute_depth,
-            )
+    await persist_and_chain(
+        writes=writes,
+        schema_branch=schema_branch,
+        branch_name=branch_name,
+        context=context,
+        coalesced=object_ids is not None,
+        recompute_depth=recompute_depth,
+    )
 
 
 @flow(
