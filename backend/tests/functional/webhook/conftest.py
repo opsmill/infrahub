@@ -24,19 +24,9 @@ if TYPE_CHECKING:
 
 BRANCH_CREATED_PAYLOAD: dict[str, Any] = {
     "context": {
-        "event": {
-            "id": "24790022-2bc8-42ab-a447-bf3e84675901",
-            "name": "infrahub.branch.created",
-            "ancestors": [],
-            "parent_id": None,
-        },
         "branch": {"id": "182853ef-58a3-b3cc-3e80-c5161f4171c1", "name": "-global-"},
-        "account": {
-            "auth_type": "api",
-            "account_id": "182853f2-3a43-c7f9-3e84-c5152eff4b17",
-            "session_id": None,
-            "authenticated": None,
-        },
+        "account_id": "182853f2-3a43-c7f9-3e84-c5152eff4b17",
+        "parent_event": None,
     }
 }
 
