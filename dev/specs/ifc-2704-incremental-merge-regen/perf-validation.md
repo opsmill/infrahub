@@ -196,11 +196,14 @@ INFRAHUB_ADDRESS=http://localhost:8000 INFRAHUB_API_TOKEN="$TOKEN" \
   uv run infrahubctl branch merge perf-run-N
 ```
 
-**5. Counting recipe (the comparable metric).** Run inside a worker. Filter to the regeneration
-families, terminal state, `start_time` in the window; exclude recurring noise. This is the
-number to compare before vs after:
+**5. Counting recipe (the comparable metric).** Run inside a worker, passing the watermark into
+the container with `-e WM` (`PREFECT_API_URL` is already set there; `WM` is a host variable and
+is *not* inherited by `docker exec` unless passed explicitly). Append the `Z` (UTC) suffix here.
+Filter to the regeneration families, terminal state, `start_time` in the window; exclude
+recurring noise. This is the number to compare before vs after:
 
-```python
+```bash
+docker exec -i -e WM="${WM}Z" "$WORKER" python - <<'PY'
 import httpx, os, re, collections
 from datetime import datetime, timezone
 base = os.environ['PREFECT_API_URL'].rstrip('/'); wm = os.environ['WM']  # e.g. 2026-07-13T13:42:40Z
@@ -222,6 +225,7 @@ regen = [r for r in runs if started(r) and REGEN.match(r.get('name') or '')
          and not any(r['name'].startswith(n) for n in NOISE)]
 print('regeneration flows dispatched:', len(regen))
 print(collections.Counter(re.sub(r"'[^']*'", "'X'", r['name']) for r in regen))
+PY
 ```
 
 **6. Baseline number to beat.** Single-device merge, blanket path = **~80 regeneration flows**
