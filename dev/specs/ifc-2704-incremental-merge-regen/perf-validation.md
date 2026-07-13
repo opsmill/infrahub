@@ -73,6 +73,25 @@ IFC-2889). Reuse it for the scale dataset if available rather than authoring a n
    `updated_at`), and that unrelated outputs are untouched. Any changed-input output left stale
    is an under-execution failure (SC-003).
 
+### Counting caveat (validated 2026-07-13)
+
+A naive "count every flow run started after the merge watermark" is polluted and does not
+converge. Two sources of noise must be excluded:
+
+- **Recurring background deployments** sit perpetually in `SCHEDULED` with a null or future
+  `start_time` (periodic git sync, deadlock cleanup, diff maintenance). The `after_` filter
+  sweeps them in and they never drain, so total appears to grow forever.
+- **Periodic maintenance flows** (`Sync Git Repositories`, `Clean up deadlocks`) occasionally
+  execute inside the measurement window but are unrelated to the merge.
+
+Correct metric: restrict to flow runs in a terminal state with `start_time` inside
+`[watermark, watermark + drain]`, filtered to the regeneration flow-name families:
+`^Generate artifact `, `^Run generator `, `^Update GraphQLQuery Group`, plus the orchestration
+wrappers (`Run all generators`, `Generate all artifacts`, `Trigger Generation of Artifacts`,
+`Execute generator`). The headline count is the regeneration leaf flows (artifact generations
++ generator-member runs + GraphQL-query-group updates). The retest must apply the identical
+name filter so the before/after numbers are comparable.
+
 ## Procedure
 
 ### Baseline (before), executed now
@@ -130,20 +149,26 @@ Fill and commit after each run. One row per scenario per dataset.
 
 ### Baseline (before)
 
-- Build commit: `__________`  Date: `__________`  Dataset: `__________`
+- Build: published demo image (pre-feature blanket path) · Date: 2026-07-13 ·
+  Dataset: `infrahub-demo-edge` (read-only repo) on the base infra demo: ~48 devices,
+  2 artifact definitions (20 artifacts), 4 generator definitions.
+- Scenario run: single-kind change (`InfraDevice.description` on one device, `atl1-edge1`),
+  merged to `main`. The blanket path is scenario-independent: it regenerates every definition
+  for every member regardless of what changed, so scenarios 1-6 and 8 produce the same count by
+  construction. Only scenario 1 was executed; the others are marked accordingly.
 
 | # | Dispatched count | Window (s) | Under-execution | Notes |
 |---|---|---|---|---|
-| 1 | | | | |
-| 2 | | | | |
-| 3 | | | | |
-| 4 | | | | |
-| 5 | | | | |
-| 6 | | | | |
-| 7 | | | | |
-| 8 | | | | |
-| scale-1 | | | | |
-| scale-multi | | | | |
+| 1 | 80 regen (40 query-group + 20 artifact + 20 generator-member) + ~18 merge/orchestration | ~78 | N/A (blanket) | Measured. None needed for a one-device change |
+| 2 | = #1 | ~78 | N/A | Blanket ignores that nothing relevant changed |
+| 3 | = #1 | ~78 | N/A | Blanket path is scenario-independent |
+| 4 | = #1 | ~78 | N/A | Blanket path is scenario-independent |
+| 5 | = #1 | ~78 | N/A | Blanket path is scenario-independent |
+| 6 | = #1 | ~78 | N/A | Blanket regenerates even on a net-zero edit |
+| 7 | n/a | | | Fallback exists only in the feature; no baseline analogue |
+| 8 | = #1 | ~78 | N/A | Blanket already regenerates artifacts after generators |
+| scale-1 | deferred | | | Needs the profiling-harness scale dataset |
+| scale-multi | deferred | | | Needs the profiling-harness scale dataset |
 
 ### Retest (after)
 
