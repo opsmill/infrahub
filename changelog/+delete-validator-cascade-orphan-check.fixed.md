@@ -1,1 +1,0 @@
-Deleting a node with cascade now checks mandatory relationships across the full set of cascaded objects. Previously a node pulled into the delete by a cascade could be removed even while a mandatory relationship from an object outside the delete set still referenced it, leaving a dangling mandatory relationship. Such deletes are now correctly blocked with a validation error.
