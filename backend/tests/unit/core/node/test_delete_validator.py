@@ -47,7 +47,7 @@ REPOSITORY_CASES = [
 
 
 @pytest.mark.parametrize("case", REPOSITORY_CASES, ids=[case.name for case in REPOSITORY_CASES])
-def test_repository_cascade_reaches_all_managed_leaves(case: RepositoryCase) -> None:
+def test_repository_cascade_reaches_exactly_expected_kinds(case: RepositoryCase) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     schema_branch.process()
@@ -60,13 +60,27 @@ def test_repository_cascade_reaches_all_managed_leaves(case: RepositoryCase) -> 
 
     reachable = _cascade_closure(index, case.kind)
 
-    expected_leaves = {
+    expected_cascade = {
         InfrahubKind.ARTIFACT,
+        InfrahubKind.ARTIFACTCHECK,
+        InfrahubKind.ARTIFACTDEFINITION,
         InfrahubKind.ARTIFACTVALIDATOR,
+        InfrahubKind.CHECK,
+        InfrahubKind.CHECKDEFINITION,
+        InfrahubKind.DATACHECK,
+        InfrahubKind.FILECHECK,
+        InfrahubKind.GENERATORCHECK,
+        InfrahubKind.GENERATORDEFINITION,
         InfrahubKind.GENERATORINSTANCE,
         InfrahubKind.GENERATORVALIDATOR,
+        InfrahubKind.GRAPHQLQUERY,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.REPOSITORYGROUP,
+        InfrahubKind.SCHEMACHECK,
+        InfrahubKind.STANDARDCHECK,
+        InfrahubKind.TRANSFORM,
+        InfrahubKind.TRANSFORMJINJA2,
+        InfrahubKind.TRANSFORMPYTHON,
         InfrahubKind.USERVALIDATOR,
     }
-    assert expected_leaves <= reachable
+    assert reachable == expected_cascade

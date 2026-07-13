@@ -746,10 +746,21 @@ async def test_delete_repository_cascades_managed_objects(
     )
     await user_validator.save(db=db)
 
+    # Validators attached only to the proposed change, with no link to any
+    # repository-owned definition, sit outside the repository's ownership tree
+    # and must survive the cascade.
+    data_validator = await Node.init(db=db, schema=InfrahubKind.DATAVALIDATOR)
+    await data_validator.new(db=db, proposed_change=proposed_change)
+    await data_validator.save(db=db)
+
+    schema_validator = await Node.init(db=db, schema=InfrahubKind.SCHEMAVALIDATOR)
+    await schema_validator.new(db=db, proposed_change=proposed_change)
+    await schema_validator.save(db=db)
+
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
 
     deleted_ids = {d.id for d in deleted}
-    assert {
+    assert deleted_ids == {
         r1.id,
         transform.id,
         definition.id,
@@ -760,7 +771,7 @@ async def test_delete_repository_cascades_managed_objects(
         artifact_validator.id,
         generator_validator.id,
         user_validator.id,
-    } <= deleted_ids
+    }
     node_map = await NodeManager.get_many(
         db=db,
         ids=[
@@ -782,6 +793,12 @@ async def test_delete_repository_cascades_managed_objects(
     # repository's ownership tree, so it must survive the cascade.
     surviving_pc = await NodeManager.get_one(db=db, id=proposed_change.id, branch=default_branch)
     assert surviving_pc is not None
+
+    # Validators tied only to the proposed change (not to a repository-owned
+    # definition) fall outside the cascade and must survive it too.
+    for survivor_id in (data_validator.id, schema_validator.id):
+        survivor = await NodeManager.get_one(db=db, id=survivor_id, branch=default_branch)
+        assert survivor is not None
 
 
 async def test_delete_repository_query_group_cascade(
@@ -812,9 +829,7 @@ async def test_delete_repository_query_group_cascade(
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
 
     deleted_ids = {d.id for d in deleted}
-    assert r1.id in deleted_ids
-    assert repo_query.id in deleted_ids
-    assert query_group.id in deleted_ids
+    assert deleted_ids == {r1.id, repo_query.id, query_group.id}
     node_map = await NodeManager.get_many(db=db, ids=[r1.id, repo_query.id, query_group.id])
     assert node_map == {}
 
@@ -834,7 +849,6 @@ async def test_delete_repository_repository_group_cascade(
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
 
     deleted_ids = {d.id for d in deleted}
-    assert r1.id in deleted_ids
-    assert repo_group.id in deleted_ids
+    assert deleted_ids == {r1.id, repo_group.id}
     node_map = await NodeManager.get_many(db=db, ids=[r1.id, repo_group.id])
     assert node_map == {}
