@@ -61,10 +61,15 @@ export const Form = ({
           }
 
           if (onSubmit) {
-            currentForm.handleSubmit(async (data) => {
-              await onSubmit(data);
-              currentForm.reset(data);
-            })(event);
+            // reset() runs only after a successful onSubmit, so a handler that throws keeps the form
+            // dirty. Swallow the re-thrown rejection (the handler surfaces its own error) to avoid an
+            // unhandled `unhandledrejection`.
+            currentForm
+              .handleSubmit(async (data) => {
+                await onSubmit(data);
+                currentForm.reset(data);
+              })(event)
+              .catch(() => {});
           }
         }}
         className={classNames("space-y-4", className)}
