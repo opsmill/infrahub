@@ -6,14 +6,12 @@ from typing import TYPE_CHECKING
 
 import httpx
 import pytest
-import ujson
 
 from infrahub.exceptions import HTTPServerError
 from infrahub.webhook.classifier import WebhookDeliveryError, WebhookFailureClassifier
 from infrahub.webhook.models import CustomWebhook, HeaderKind, Webhook, WebhookHeader
 from infrahub.webhook.tasks import process
 from infrahub.webhook.tasks.process import (
-    PAYLOAD_LOG_LIMIT,
     WEBHOOK_SEND_ATTEMPTS,
     webhook_post,
     webhook_send,
@@ -83,13 +81,12 @@ def webhook_token_env(monkeypatch: pytest.MonkeyPatch) -> str:
     return "super-secret-token"
 
 
-async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(
+async def test_webhook_post_emits_the_formatted_request_at_info_and_the_full_payload_at_debug(
     caplog: pytest.LogCaptureFixture,
     recording_http: _RecordingHTTP,
     webhook_token_env: str,
     resolve_webhook_to: Callable[[Webhook], None],
 ) -> None:
-    # No shared_key: avoids the random webhook-id/timestamp/signature so the logged line is fully fixed.
     webhook = CustomWebhook(
         name="hook",
         url="https://target.example/hook",
@@ -101,15 +98,7 @@ async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(
         ],
     )
     resolve_webhook_to(webhook)
-
     payload = {"event": "branch.created"}
-    payload_json = ujson.dumps(payload)
-    expected_headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "X-Static": "plain",
-        "X-Token": "***",
-    }
 
     with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
         await webhook_post(
@@ -119,78 +108,38 @@ async def test_webhook_post_logs_attempt_with_masked_headers_and_payload(
     info_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.INFO]
     debug_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.DEBUG]
 
+    # The env-sourced header is masked before formatting; the static one and the standard ones are kept.
+    # The exact layout is specified by the formatter's own tests; here we assert the flow emits its output.
+    redacted_headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Static": "plain",
+        "X-Token": "***",
+    }
     assert info_messages == [
-        "Webhook 'hook' attempt 2/4: POST https://target.example/hook "
-        f"with headers {expected_headers} and payload {payload_json}"
-    ]
-    assert debug_messages == [f"Webhook 'hook' attempt 2/4 full payload: {payload_json}"]
-
-
-async def test_webhook_post_truncates_large_payload_inline_and_logs_it_in_full_at_debug(
-    caplog: pytest.LogCaptureFixture,
-    recording_http: _RecordingHTTP,
-    resolve_webhook_to: Callable[[Webhook], None],
-) -> None:
-    webhook = CustomWebhook(
-        name="hook",
-        url="https://target.example/hook",
-        event_type="infrahub.branch.created",
-        validate_certificates=False,
-    )
-    resolve_webhook_to(webhook)
-
-    payload = {"blob": "x" * (PAYLOAD_LOG_LIMIT * 2)}
-    payload_json = ujson.dumps(payload)
-    overflow = len(payload_json) - PAYLOAD_LOG_LIMIT
-    truncated = (
-        payload_json[:PAYLOAD_LOG_LIMIT] + f"… (+{overflow} characters; enable debug logging for the full payload)"
-    )
-    expected_headers = {"Accept": "application/json", "Content-Type": "application/json"}
-
-    with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
-        await webhook_post(
-            webhook_id="id-1", webhook_kind="CustomWebhook", webhook_name="hook", payload=payload, attempt=1
+        process._LOG_FORMATTER.outgoing_request(
+            webhook_name="hook",
+            url="https://target.example/hook",
+            headers=redacted_headers,
+            payload=payload,
+            attempt=2,
         )
-
-    info_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.INFO]
-    debug_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.DEBUG]
-
-    assert info_messages == [
-        "Webhook 'hook' attempt 1/4: POST https://target.example/hook "
-        f"with headers {expected_headers} and payload {truncated}"
     ]
-    assert debug_messages == [f"Webhook 'hook' attempt 1/4 full payload: {payload_json}"]
+    assert debug_messages == [process._LOG_FORMATTER.full_payload(webhook_name="hook", payload=payload, attempt=2)]
 
 
 @dataclass
 class FailureLogCase:
     name: str
     run_count: int | None
-    location: str  # the attempt phrase in the log line
-    retry_note: str  # the trailing retry note, empty when none is expected
 
 
 @pytest.mark.parametrize(
     "case",
     [
-        FailureLogCase(
-            name="mid_run_attempt_announces_next_retry",
-            run_count=1,
-            location="attempt 1/4",
-            retry_note=" Retrying in 120s (attempt 2/4).",
-        ),
-        FailureLogCase(
-            name="last_attempt_reports_no_retries_remaining",
-            run_count=WEBHOOK_SEND_ATTEMPTS,
-            location=f"attempt {WEBHOOK_SEND_ATTEMPTS}/4",
-            retry_note=" No retries remaining.",
-        ),
-        FailureLogCase(
-            name="outside_flow_run_omits_attempt_and_retry_note",
-            run_count=None,
-            location="outside a flow run",
-            retry_note="",
-        ),
+        FailureLogCase(name="mid_run_attempt", run_count=1),
+        FailureLogCase(name="last_attempt", run_count=WEBHOOK_SEND_ATTEMPTS),
+        FailureLogCase(name="outside_flow_run", run_count=None),
     ],
     ids=lambda case: case.name,
 )
@@ -201,9 +150,12 @@ async def test_webhook_send_logs_and_raises_the_classified_failure(
     # Pin the clock so the logged elapsed time is a fixed "0 ms" and the line can be matched exactly.
     monkeypatch.setattr(process.time, "monotonic", lambda: 0.0)
 
+    failure = WebhookFailureClassifier().classify(
+        cause=HTTPServerError(message="Connection to https://target.example failed")
+    )
+
     async def _failing_post(**_kwargs: object) -> httpx.Response:
-        cause = HTTPServerError(message="Connection to https://target.example failed")
-        raise WebhookDeliveryError(WebhookFailureClassifier().classify(cause=cause)) from None
+        raise WebhookDeliveryError(failure) from None
 
     monkeypatch.setattr(process, "webhook_post", _failing_post)
 
@@ -217,7 +169,11 @@ async def test_webhook_send_logs_and_raises_the_classified_failure(
 
     error_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR]
     assert error_messages == [
-        f"Webhook delivery failed [CONNECTION] {case.location} after 0 ms: "
-        "Connection to https://target.example failed. "
-        f"Verify the target endpoint is reachable from Infrahub.{case.retry_note}"
+        process._LOG_FORMATTER.delivery_failed(
+            status_class=failure.status_class,
+            message=failure.message,
+            remediation=failure.remediation,
+            attempt=case.run_count,
+            elapsed_ms=0.0,
+        )
     ]

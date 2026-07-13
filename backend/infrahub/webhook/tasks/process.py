@@ -27,6 +27,7 @@ from ..constants import (
     WEBHOOK_SEND_RETRIES,
     WEBHOOK_SEND_RETRY_DELAY_SECONDS,
 )
+from ..log_formatter import PAYLOAD_LOG_LIMIT, WebhookLogFormatter
 from ..models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, TransformWebhook, Webhook, WebhookHeader
 
 if TYPE_CHECKING:
@@ -41,21 +42,11 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 }
 
 
-PAYLOAD_LOG_LIMIT: int = 2048  # characters shown inline; the full payload is logged at debug level
-
-
-def _truncate_for_log(text: str) -> str:
-    if len(text) <= PAYLOAD_LOG_LIMIT:
-        return text
-    remaining = len(text) - PAYLOAD_LOG_LIMIT
-    return f"{text[:PAYLOAD_LOG_LIMIT]}… (+{remaining} characters; enable debug logging for the full payload)"
-
-
-def _attempt_phrase(attempt: int | None) -> str:
-    """Position this send within its retry sequence, or note that no flow run is driving retries."""
-    if attempt is None:
-        return "outside a flow run"
-    return f"attempt {attempt}/{WEBHOOK_SEND_ATTEMPTS}"
+_LOG_FORMATTER = WebhookLogFormatter(
+    attempts=WEBHOOK_SEND_ATTEMPTS,
+    retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAY_SECONDS,
+    payload_log_limit=PAYLOAD_LOG_LIMIT,
+)
 
 
 async def _cancellation_requested() -> bool:
@@ -71,19 +62,6 @@ async def _cancellation_requested() -> bool:
         return False
     async with get_prefect_client(sync_client=False) as client:
         return await PrefectClientAdapter(client).cancellation_requested(flow_run_id=UUID(flow_run.id))
-
-
-def _log_outgoing_request(
-    *, webhook: Webhook, webhook_name: str, attempt: int | None, headers: dict[str, Any], payload: Any
-) -> None:
-    """Log the outgoing request: a redacted, truncated summary at info and the full payload at debug."""
-    log = get_run_logger()
-    payload_json = ujson.dumps(payload)
-    log.info(
-        f"Webhook '{webhook_name}' {_attempt_phrase(attempt)}: POST {webhook.url} "
-        f"with headers {webhook.redact_headers(headers)} and payload {_truncate_for_log(payload_json)}"
-    )
-    log.debug(f"Webhook '{webhook_name}' {_attempt_phrase(attempt)} full payload: {payload_json}")
 
 
 async def webhook_post(
@@ -102,12 +80,20 @@ async def webhook_post(
 
     """
     http_service = get_http()
+    log = get_run_logger()
     try:
         webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
         headers = webhook.build_headers(payload=payload)
-        _log_outgoing_request(
-            webhook=webhook, webhook_name=webhook_name, attempt=attempt, headers=headers, payload=payload
+        log.info(
+            _LOG_FORMATTER.outgoing_request(
+                webhook_name=webhook_name,
+                url=webhook.url,
+                headers=webhook.redact_headers(headers),
+                payload=payload,
+                attempt=attempt,
+            )
         )
+        log.debug(_LOG_FORMATTER.full_payload(webhook_name=webhook_name, payload=payload, attempt=attempt))
         response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
         response.raise_for_status()
     except EXPECTED_DELIVERY_ERRORS as cause:
@@ -157,23 +143,21 @@ async def webhook_send(
     except WebhookDeliveryError as error:
         elapsed_ms = (time.monotonic() - started) * 1_000
         failure = error.failure
-        # A retry is only scheduled when a flow run is driving the sequence and attempts remain.
-        retry_note = ""
-        if attempt is not None:
-            retry_note = (
-                f" Retrying in {WEBHOOK_SEND_RETRY_DELAY_SECONDS:.0f}s (attempt {attempt + 1}/{WEBHOOK_SEND_ATTEMPTS})."
-                if attempt < WEBHOOK_SEND_ATTEMPTS
-                else " No retries remaining."
-            )
         log.error(
-            f"Webhook delivery failed [{failure.status_class}] {_attempt_phrase(attempt)} "
-            f"after {elapsed_ms:.0f} ms: {failure.message.rstrip('.')}. {failure.remediation}{retry_note}"
+            _LOG_FORMATTER.delivery_failed(
+                status_class=failure.status_class,
+                message=failure.message,
+                remediation=failure.remediation,
+                attempt=attempt,
+                elapsed_ms=elapsed_ms,
+            )
         )
         raise
     elapsed_ms = (time.monotonic() - started) * 1_000
     log.info(
-        f"Webhook delivered to {response.url} {_attempt_phrase(attempt)}, "
-        f"HTTP {response.status_code} in {elapsed_ms:.0f} ms"
+        _LOG_FORMATTER.delivery_succeeded(
+            url=str(response.url), status_code=response.status_code, attempt=attempt, elapsed_ms=elapsed_ms
+        )
     )
     return response
 
