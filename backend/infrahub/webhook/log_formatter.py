@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import ujson
+
+logger = logging.getLogger(__name__)
 
 PAYLOAD_LOG_LIMIT: int = 2048  # characters shown inline; the full payload is logged at debug level
 
@@ -35,7 +38,7 @@ class WebhookLogFormatter:
             f"Webhook '{webhook_name}' {self.attempt_phrase(attempt)}\n"
             f"POST {url}\n"
             f"Headers:\n{self._headers_block(headers)}\n"
-            f"Payload:\n{self._indent(self._truncate(self._to_json(payload)))}"
+            f"Payload:\n{self._truncate(self._indent(self._to_json(payload)))}"
         )
 
     def full_payload(self, *, webhook_name: str, payload: Any, attempt: int | None) -> str:
@@ -79,7 +82,16 @@ class WebhookLogFormatter:
 
     @staticmethod
     def _to_json(payload: Any) -> str:
-        return ujson.dumps(payload, indent=2)
+        try:
+            return ujson.dumps(payload, indent=2)
+        except (TypeError, ValueError) as exc:
+            logger.warning(
+                "Webhook payload of type '%s' could not be serialized to JSON for logging (%s); "
+                "falling back to its plain representation",
+                type(payload).__name__,
+                exc,
+            )
+            return str(payload)
 
     @staticmethod
     def _indent(text: str) -> str:

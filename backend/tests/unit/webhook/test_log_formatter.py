@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import pytest
+import ujson
 
 from infrahub.webhook.log_formatter import WebhookLogFormatter
+
+LOG_FORMATTER_LOGGER = "infrahub.webhook.log_formatter"
 
 ATTEMPTS = 4
 RETRY_DELAY_SECONDS = 120.0
@@ -111,6 +115,48 @@ def test_outgoing_request_does_not_truncate_a_payload_at_the_limit(formatter: We
     )
 
     assert message.endswith('Payload:\n  {\n    "k": "v"\n  }')
+
+
+def test_inline_payload_stays_within_the_limit_including_indentation(formatter: WebhookLogFormatter) -> None:
+    payload = {"blob": "x" * (PAYLOAD_LIMIT * 2)}
+
+    message = formatter.outgoing_request(
+        webhook_name="notify", url="https://example.test/hook", headers={}, payload=payload, attempt=1
+    )
+
+    payload_section = message.split("Payload:\n", 1)[1]
+    inline = payload_section.split("… (+", 1)[0]  # the shown payload, before the overflow marker
+    assert len(inline) <= PAYLOAD_LIMIT
+
+
+class _Unserializable:
+    def __repr__(self) -> str:
+        return "<unserializable>"
+
+
+def test_outgoing_request_falls_back_to_plain_repr_when_payload_is_not_json_serializable(
+    formatter: WebhookLogFormatter, caplog: pytest.LogCaptureFixture
+) -> None:
+    payload = _Unserializable()
+    # The serializer's own error text is library-specific; capture it from the same call so the
+    # rest of the warning can be asserted exactly.
+    with pytest.raises((TypeError, ValueError)) as exc_info:
+        ujson.dumps(payload, indent=2)
+    serialization_error = str(exc_info.value)
+
+    with caplog.at_level(logging.WARNING, logger=LOG_FORMATTER_LOGGER):
+        message = formatter.outgoing_request(
+            webhook_name="notify", url="https://example.test/hook", headers={}, payload=payload, attempt=1
+        )
+
+    assert message == (
+        "Webhook 'notify' attempt 1/4\nPOST https://example.test/hook\nHeaders:\n  (none)\nPayload:\n  <unserializable>"
+    )
+    warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+    assert warnings == [
+        f"Webhook payload of type '_Unserializable' could not be serialized to JSON for logging "
+        f"({serialization_error}); falling back to its plain representation"
+    ]
 
 
 def test_full_payload_is_untruncated_and_indented(formatter: WebhookLogFormatter) -> None:
