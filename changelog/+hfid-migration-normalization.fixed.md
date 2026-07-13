@@ -1,0 +1,1 @@
+Fixed a bug where some human-friendly ID (HFID) values were stored with non-string elements (such as numbers) instead of all strings. Fresh upgrades now normalize all values, and instances that already upgraded are repaired automatically on their next upgrade.
