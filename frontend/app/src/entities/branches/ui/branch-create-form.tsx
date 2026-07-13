@@ -9,6 +9,7 @@ import { isMinLength, isRequired } from "@/shared/components/form/utils/validati
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { QSP } from "@/shared/config/qsp";
 
+import { SYNC_WITH_GIT_DESCRIPTION } from "@/entities/branches/domain/model/branch";
 import { useCreateBranchMutation } from "@/entities/branches/ui/queries/create-branch.mutation";
 
 type BranchFormData = {
@@ -70,7 +71,11 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
 
       <InputField name="description" label="New branch description" />
 
-      <CheckboxField name="sync_with_git" label="Sync with Git" />
+      <CheckboxField
+        name="sync_with_git"
+        label="Sync with Git"
+        description={SYNC_WITH_GIT_DESCRIPTION}
+      />
 
       <Row className="justify-end">
         <Button variant="outline" size="sm" onPress={onCancel}>

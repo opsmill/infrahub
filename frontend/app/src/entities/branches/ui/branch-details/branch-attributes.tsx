@@ -5,15 +5,18 @@ import {
   CircleIcon,
   GitCommitIcon,
   IdCardIcon,
+  InfoIcon,
   RefreshCwIcon,
   XIcon,
 } from "lucide-react";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchDetail } from "@/entities/branches/domain/model/branch";
+import { SYNC_WITH_GIT_DESCRIPTION } from "@/entities/branches/domain/model/branch";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 
 interface BranchAttributesProps {
@@ -42,6 +45,9 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
 
         <BranchAttributeLabel>
           <RefreshCwIcon className="size-3.5" /> Sync with Git
+          <Tooltip enabled content={SYNC_WITH_GIT_DESCRIPTION} className="max-w-xs font-normal">
+            <InfoIcon className="size-3.5 shrink-0 text-neutral-400" tabIndex={0} />
+          </Tooltip>
         </BranchAttributeLabel>
         <BranchAttributeValue>
           {branch.sync_with_git ? <CheckIcon className="size-4" /> : <XIcon className="size-4" />}
