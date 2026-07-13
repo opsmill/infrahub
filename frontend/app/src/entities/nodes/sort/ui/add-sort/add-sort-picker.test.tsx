@@ -4,12 +4,12 @@ import { store } from "@/shared/stores";
 
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { render } from "../../../../../tests/components/render";
+import { render } from "../../../../../../tests/components/render";
 import {
   generateAttributeSchema,
   generateNodeSchema,
   generateRelationshipSchema,
-} from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/schema";
 import { AddSortPicker } from "./add-sort-picker";
 
 const site = generateNodeSchema({

@@ -5,7 +5,8 @@ import {
   type ListBoxProps as AriaListBoxProps,
   SelectValue as AriaSelectValue,
 } from "react-aria-components";
-import { tv } from "tailwind-variants";
+import { tv, type VariantProps } from "tailwind-variants";
+
 export { Select } from "react-aria-components";
 
 import { focusVisibleStyle } from "../../styles/focus-visible";
@@ -15,16 +16,29 @@ import { Popover } from "../popover/popover";
 
 const triggerStyles = tv({
   base: [
-    "flex min-h-10 w-full items-center gap-2 rounded-lg border border-neutral-300 outline-none",
-    "bg-white p-2 text-sm placeholder:text-neutral-400",
+    "flex w-full items-center gap-2 rounded-lg border border-neutral-300 outline-none",
+    "bg-white text-sm placeholder:text-neutral-400",
     "disabled:cursor-not-allowed disabled:bg-neutral-100",
     focusVisibleStyle,
   ],
+  variants: {
+    size: {
+      sm: "h-8 px-2",
+      md: "min-h-10 p-2",
+    },
+  },
+  defaultVariants: {
+    size: "md",
+  },
 });
 
-export function SelectTrigger({ className, ...props }: Omit<AriaButtonProps, "children">) {
+export interface SelectTriggerProps
+  extends Omit<AriaButtonProps, "children">,
+    VariantProps<typeof triggerStyles> {}
+
+export function SelectTrigger({ className, size, ...props }: SelectTriggerProps) {
   return (
-    <AriaButton className={composeAriaClassName(className, triggerStyles())} {...props}>
+    <AriaButton className={composeAriaClassName(className, triggerStyles({ size }))} {...props}>
       <AriaSelectValue className="truncate data-placeholder:text-neutral-400" />
       <ChevronDownIcon className="ml-auto size-4" />
     </AriaButton>
@@ -50,7 +64,7 @@ export function SelectItem<T extends object>({ className, ...props }: ListBoxIte
   return (
     <ListBoxItem
       className={composeAriaClassName(className, ({ isSelected }) =>
-        isSelected ? undefined : "pr-8",
+        isSelected ? undefined : "pr-8"
       )}
       {...props}
     />
