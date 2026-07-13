@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import type { SortField } from "@/entities/nodes/sort/domain/model/sort";
 
 import { render } from "../../../../../../tests/components/render";
+import { initPointerTracking } from "../../../../../../tests/components/utils";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { AddSortButton } from "./add-sort-button";
 
@@ -54,28 +55,20 @@ describe("AddSortButton", () => {
     await expect.element(component.getByRole("menuitem", { name: "Name" })).not.toBeInTheDocument();
   });
 
-  test("stays enabled while some fields remain available", async () => {
-    // GIVEN
-    const component = await render(
-      <AddSortButton schema={schema} activeFields={new Set<SortField>()} onSelect={vi.fn()} />
-    );
-
-    // WHEN
-    await component.getByRole("button", { name: "Add sort" }).click();
-
-    // THEN
-    await expect.element(component.getByRole("menu")).toBeVisible();
-  });
-
-  test("disables the button when every sortable field is in use", async () => {
+  test("disables the button with an explanatory tooltip when every sortable field is in use", async () => {
     // GIVEN
     const component = await render(
       <AddSortButton schema={schema} activeFields={ALL_SORTABLE_FIELDS} onSelect={vi.fn()} />
     );
 
+    // WHEN
+    await initPointerTracking(component.locator);
+    await component.getByRole("button", { name: "Add sort" }).hover();
+
     // THEN
+    await expect.element(component.getByRole("button", { name: "Add sort" })).toBeDisabled();
     await expect
-      .element(component.getByRole("button", { name: "Add sort" }))
-      .toHaveAttribute("aria-disabled", "true");
+      .element(component.getByRole("tooltip", { name: "All fields are already in use." }))
+      .toBeVisible();
   });
 });

@@ -18,7 +18,7 @@ const popoverStyles = tv({
   ],
   variants: {
     isEntering: {
-      true: "animate-in fade-in-0 zoom-in-95",
+      true: "pointer-events-none animate-in fade-in-0 zoom-in-95",
     },
     isExiting: {
       true: "animate-out fade-out-0 zoom-out-95",
