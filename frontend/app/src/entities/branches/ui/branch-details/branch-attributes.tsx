@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@infrahub/ui";
+import { Card, CardContent, Tooltip } from "@infrahub/ui";
 import {
   BoxIcon,
   CheckIcon,
@@ -12,7 +12,6 @@ import {
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { DateDisplay } from "@/shared/components/display/date-display";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchDetail } from "@/entities/branches/domain/model/branch";
@@ -45,8 +44,8 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
 
         <BranchAttributeLabel>
           <RefreshCwIcon className="size-3.5" /> Sync with Git
-          <Tooltip enabled content={SYNC_WITH_GIT_DESCRIPTION} className="max-w-xs font-normal">
-            <InfoIcon className="size-3.5 shrink-0 text-neutral-400" tabIndex={0} />
+          <Tooltip message={SYNC_WITH_GIT_DESCRIPTION} className="max-w-xs" nonInteractiveTrigger>
+            <InfoIcon className="size-3.5 shrink-0 text-neutral-400" />
           </Tooltip>
         </BranchAttributeLabel>
         <BranchAttributeValue>
