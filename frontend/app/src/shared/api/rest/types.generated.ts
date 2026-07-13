@@ -1502,12 +1502,6 @@ export interface components {
              * @default false
              */
             value_db_index: boolean;
-            /**
-             * Recompute Bulk Write
-             * @description Persist recomputed display labels, human-friendly ids and Jinja2 computed attributes with one bulk write per family instead of one update flow per value.
-             * @default false
-             */
-            recompute_bulk_write: boolean;
         };
         /**
          * GenericSchema

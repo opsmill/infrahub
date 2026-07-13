@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub import config
 from infrahub.core.merge.recompute_coalescing import submit_recompute_chain
 from infrahub.core.recompute.bulk_write import HFID_FIELD, AttributeValueWrite, BulkRecomputeWriter
 from infrahub.core.registry import registry
@@ -19,66 +17,7 @@ from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_hfid
 from .graphql_queries import HFIDNodeIDQuery
-from .models import HFIDGraphQL, HFIDGraphQLResponse, HFIDTriggerDefinition
-
-UPDATE_HFID = """
-mutation UpdateHFID(
-    $id: String!,
-    $kind: String!,
-    $value: [String!]!,
-    $context_account_id: String!
-  ) {
-  InfrahubUpdateHFID(
-    context: {account: {id: $context_account_id}},
-    data: {id: $id, value: $value, kind: $kind}
-  ) {
-    ok
-  }
-}
-"""
-
-
-@flow(
-    name="hfid-update-value",
-    flow_run_name="Update value for hfid on {node_kind}",
-)
-async def hfid_update_value(
-    branch_name: str,
-    obj: HFIDGraphQLResponse,
-    node_kind: str,
-    hfid_definition: list[str],
-    context: EventContext,
-) -> None:
-    log = get_run_logger()
-    client = get_client()
-
-    await add_tags(branches=[branch_name], nodes=[obj.node_id], db_change=True)
-
-    rendered_hfid: list[str] = []
-    for hfid_component in hfid_definition:
-        if hfid_component in obj.variables:
-            rendered_hfid.append(obj.variables[hfid_component])
-    # value = await template.render(variables=obj.variables)
-    if rendered_hfid == obj.hfid_value:
-        log.debug(f"Ignoring to update {obj} with existing value on human_friendly_id={obj.hfid_value}")
-        return
-
-    try:
-        await client.execute_graphql(
-            query=UPDATE_HFID,
-            variables={
-                "id": obj.node_id,
-                "kind": node_kind,
-                "value": rendered_hfid,
-                "context_account_id": context.account_id,
-            },
-            branch_name=branch_name,
-        )
-        log.info(f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id})")
-    except URLNotFoundError:
-        log.warning(
-            f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id}) failed for branch {branch_name} (branch not found)"
-        )
+from .models import HFIDGraphQL, HFIDTriggerDefinition
 
 
 @flow(
@@ -125,49 +64,34 @@ async def process_hfid(
         log.debug("No nodes found that requires updates")
         return
 
-    if config.SETTINGS.experimental_features.recompute_bulk_write:
-        writes: list[AttributeValueWrite] = []
-        for node in update_candidates:
-            rendered_hfid = [
-                node.variables[component] for component in hfid_definition.hfid if component in node.variables
-            ]
-            if rendered_hfid != node.hfid_value:
-                writes.append(AttributeValueWrite(node_id=node.node_id, field=HFID_FIELD, value=rendered_hfid))
-        if writes:
-            coalesced = object_ids is not None
-            await add_tags(nodes=sorted({item.node_id for item in writes}), db_change=True)
-            db = await get_database()
-            branch = await registry.get_branch(db=db, branch=branch_name)
-            writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
-            written = await writer.write(
-                branch=branch,
-                writes=writes,
-                context=context,
-                origin=NodeMutationOrigin.RECOMPUTE if coalesced else NodeMutationOrigin.LIVE,
-            )
-            if coalesced:
-                await submit_recompute_chain(
-                    written=written,
-                    schema_branch=schema_branch,
-                    branch=branch_name,
-                    workflow=get_workflow(),
-                    context=context,
-                    depth=recompute_depth,
-                )
+    writes: list[AttributeValueWrite] = []
+    for node in update_candidates:
+        rendered_hfid = [node.variables[component] for component in hfid_definition.hfid if component in node.variables]
+        if rendered_hfid != node.hfid_value:
+            writes.append(AttributeValueWrite(node_id=node.node_id, field=HFID_FIELD, value=rendered_hfid))
+    if not writes:
         return
 
-    batch = await client.create_batch()
-    for node in update_candidates:
-        batch.add(
-            task=hfid_update_value,
-            branch_name=branch_name,
-            obj=node,
-            node_kind=node_schema.kind,
-            hfid_definition=hfid_definition.hfid,
+    coalesced = object_ids is not None
+    await add_tags(nodes=sorted({item.node_id for item in writes}), db_change=True)
+    db = await get_database()
+    branch = await registry.get_branch(db=db, branch=branch_name)
+    writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
+    written = await writer.write(
+        branch=branch,
+        writes=writes,
+        context=context,
+        origin=NodeMutationOrigin.RECOMPUTE if coalesced else NodeMutationOrigin.LIVE,
+    )
+    if coalesced:
+        await submit_recompute_chain(
+            written=written,
+            schema_branch=schema_branch,
+            branch=branch_name,
+            workflow=get_workflow(),
             context=context,
+            depth=recompute_depth,
         )
-
-    _ = [response async for _, response in batch.execute()]
 
 
 @flow(name="hfid-setup", flow_run_name="Setup human friendly ids in task-manager")

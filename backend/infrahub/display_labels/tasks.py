@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub import config
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.merge.recompute_coalescing import submit_recompute_chain
 from infrahub.core.recompute.bulk_write import DISPLAY_LABEL_FIELD, AttributeValueWrite, BulkRecomputeWriter
@@ -22,64 +20,8 @@ from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 from .gather import gather_trigger_display_labels_jinja2
 from .models import (
     DisplayLabelJinja2GraphQL,
-    DisplayLabelJinja2GraphQLResponse,
     DisplayLabelTriggerDefinition,
 )
-
-UPDATE_DISPLAY_LABEL = """
-mutation UpdateDisplayLabel(
-    $id: String!,
-    $kind: String!,
-    $value: String!,
-    $context_account_id: String!
-  ) {
-  InfrahubUpdateDisplayLabel(
-    context: {account: {id: $context_account_id}},
-    data: {id: $id, value: $value, kind: $kind}
-  ) {
-    ok
-  }
-}
-"""
-
-
-@flow(
-    name="display-label-jinja2-update-value",
-    flow_run_name="Update value for display_label on {node_kind}",
-)
-async def display_label_jinja2_update_value(
-    branch_name: str,
-    obj: DisplayLabelJinja2GraphQLResponse,
-    node_kind: str,
-    template: InfrahubJinja2Template,
-    context: EventContext,
-) -> None:
-    log = get_run_logger()
-    client = get_client()
-
-    await add_tags(branches=[branch_name], nodes=[obj.node_id], db_change=True)
-
-    value = await template.render(variables=obj.variables)
-    if value == obj.display_label_value:
-        log.debug(f"Ignoring to update {obj} with existing value on display_label={value}")
-        return
-
-    try:
-        await client.execute_graphql(
-            query=UPDATE_DISPLAY_LABEL,
-            variables={
-                "id": obj.node_id,
-                "kind": node_kind,
-                "value": value,
-                "context_account_id": context.account_id,
-            },
-            branch_name=branch_name,
-        )
-        log.info(f"Updating {node_kind}.display_label='{value}' ({obj.node_id})")
-    except URLNotFoundError:
-        log.warning(
-            f"Updating {node_kind}.display_label='{value}' ({obj.node_id}) failed for branch {branch_name} (branch not found)"
-        )
 
 
 @flow(
@@ -130,47 +72,34 @@ async def process_display_label(
         log.debug("No nodes found that requires updates")
         return
 
-    if config.SETTINGS.experimental_features.recompute_bulk_write:
-        writes: list[AttributeValueWrite] = []
-        for node in update_candidates:
-            value = await jinja_template.render(variables=node.variables)
-            if value != node.display_label_value:
-                writes.append(AttributeValueWrite(node_id=node.node_id, field=DISPLAY_LABEL_FIELD, value=value))
-        if writes:
-            coalesced = object_ids is not None
-            await add_tags(nodes=sorted({item.node_id for item in writes}), db_change=True)
-            db = await get_database()
-            branch = await registry.get_branch(db=db, branch=branch_name)
-            writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
-            written = await writer.write(
-                branch=branch,
-                writes=writes,
-                context=context,
-                origin=NodeMutationOrigin.RECOMPUTE if coalesced else NodeMutationOrigin.LIVE,
-            )
-            if coalesced:
-                await submit_recompute_chain(
-                    written=written,
-                    schema_branch=schema_branch,
-                    branch=branch_name,
-                    workflow=get_workflow(),
-                    context=context,
-                    depth=recompute_depth,
-                )
+    writes: list[AttributeValueWrite] = []
+    for node in update_candidates:
+        value = await jinja_template.render(variables=node.variables)
+        if value != node.display_label_value:
+            writes.append(AttributeValueWrite(node_id=node.node_id, field=DISPLAY_LABEL_FIELD, value=value))
+    if not writes:
         return
 
-    batch = await client.create_batch()
-    for node in update_candidates:
-        batch.add(
-            task=display_label_jinja2_update_value,
-            branch_name=branch_name,
-            obj=node,
-            node_kind=node_schema.kind,
-            template=jinja_template,
+    coalesced = object_ids is not None
+    await add_tags(nodes=sorted({item.node_id for item in writes}), db_change=True)
+    db = await get_database()
+    branch = await registry.get_branch(db=db, branch=branch_name)
+    writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
+    written = await writer.write(
+        branch=branch,
+        writes=writes,
+        context=context,
+        origin=NodeMutationOrigin.RECOMPUTE if coalesced else NodeMutationOrigin.LIVE,
+    )
+    if coalesced:
+        await submit_recompute_chain(
+            written=written,
+            schema_branch=schema_branch,
+            branch=branch_name,
+            workflow=get_workflow(),
             context=context,
+            depth=recompute_depth,
         )
-
-    _ = [response async for _, response in batch.execute()]
 
 
 @flow(name="display-labels-setup-jinja2", flow_run_name="Setup display labels in task-manager")

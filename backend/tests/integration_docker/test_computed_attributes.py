@@ -15,7 +15,7 @@ from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
 from infrahub.workflows.catalogue import (
-    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
+    COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
@@ -252,45 +252,43 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     async def test_update_schema_not_related_to_computed_attribute(
         self, client: InfrahubClient, schema_computed_tshirt: dict
     ) -> None:
-        nbr_task_before = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
-        )
+        # The bulk write persists every recomputed value in one pass, so the per-value update flow no
+        # longer runs. The process flow still runs once per recomputed node, so it is what a scoping
+        # assertion counts, while the stored value is what a correctness assertion checks.
+        process_before = await client.task.count(filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name]))
 
-        # Update schema LocationSite with a change that IS NOT related to the computed attribute
-        # The computed attribute of type Jinja2 should not be updated neither on the sites nor on the continents
+        # A change that does not touch the computed attribute must recompute nothing: no process flow
+        # runs and the rendered slug stays at its current value.
         schema_computed_tshirt["nodes"][4]["description"] = "New Description that will trigger a new schema"
         await load_schema_and_wait(client, schema_computed_tshirt)
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
 
-        nbr_task_after_not_related = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+        process_after_not_related = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name])
         )
-        assert nbr_task_after_not_related == nbr_task_before
+        assert process_after_not_related == process_before
+        assert (await client.get(kind="LocationSite", hfid=["sth"])).slug.value == "Welcome to sth!"
 
-        # Update schema LocationSite with a change that IS related to the computed attribute
-        # The computed attribute of type Jinja2 should be updated
+        # Editing the slug template must recompute it on every site and store the new value there.
         schema_computed_tshirt["nodes"][4]["attributes"][3]["computed_attribute"]["jinja2_template"] = (
             "WELCOME TO {{ name__value }}!"
         )
         await load_schema_and_wait(client, schema_computed_tshirt)
 
-        # Wait for the computed attribute tasks to be created and completed
-        # Tasks may not be created immediately after schema load, so poll for them
-        nbr_task_after_related = nbr_task_after_not_related
+        sth_slug = ""
         deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
         while time.monotonic() < deadline:
             await sleep(1)
             await wait_for_all_tasks_to_be_completed(client)
-            nbr_task_after_related = await client.task.count(
-                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
-            )
-            if nbr_task_after_related >= nbr_task_after_not_related + 2:
+            sth_slug = (await client.get(kind="LocationSite", hfid=["sth"])).slug.value
+            if sth_slug == "WELCOME TO sth!":
                 break
 
-        # The computed attribute of type Jinja2 should be updated on the sites but NOT on the continents
-        assert nbr_task_after_related == nbr_task_after_not_related + 2
+        # Both sites carry the recomputed value: the bulk write did not miss or corrupt any of them.
+        assert sth_slug == "WELCOME TO sth!"
+        assert (await client.get(kind="LocationSite", hfid=["par"])).slug.value == "WELCOME TO par!"
 
     async def test_jinja2_scoped_recompute_on_read_field_change(
         self, client: InfrahubClient, schema_computed_tshirt: dict
@@ -298,12 +296,11 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         """A Jinja2 attribute recomputes when a field it reads across a relationship changes.
 
         TestingTShirt.description reads color__name__value, so a schema change to TestingColor.name
-        recomputes it, while a change to a field no template reads recomputes nothing — the template
-        itself is untouched in both cases (this is the read-field path, not a definition edit).
+        recomputes it, while a change to a field no template reads recomputes nothing. Re-ordering a
+        field does not change the rendered value, so this scopes recompute by counting the process
+        flow that still runs once per recomputed node.
         """
-        jinja2_before = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
-        )
+        process_before = await client.task.count(filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name]))
 
         # Unrelated: re-order a LocationSite field that no template reads -> no recompute.
         bump_order_weight(schema_computed_tshirt["nodes"][4]["attributes"][1])  # LocationSite.address
@@ -311,27 +308,27 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
-        jinja2_after_unrelated = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+        process_after_unrelated = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name])
         )
-        assert jinja2_after_unrelated == jinja2_before
+        assert process_after_unrelated == process_before
 
         # Related: re-order TestingColor.name, which TestingTShirt.description reads via the color relationship.
         bump_order_weight(schema_computed_tshirt["nodes"][0]["attributes"][0])  # TestingColor.name
         await load_schema_and_wait(client, schema_computed_tshirt)
 
-        jinja2_after_related = jinja2_after_unrelated
+        process_after_related = process_after_unrelated
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             await sleep(1)
             await wait_for_all_tasks_to_be_completed(client)
-            jinja2_after_related = await client.task.count(
-                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+            process_after_related = await client.task.count(
+                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name])
             )
-            if jinja2_after_related > jinja2_after_unrelated:
+            if process_after_related > process_after_unrelated:
                 break
 
-        assert jinja2_after_related > jinja2_after_unrelated
+        assert process_after_related > process_after_unrelated
 
     async def test_python_scoped_recompute_on_read_field_change(
         self, client: InfrahubClient, schema_computed_tshirt: dict
@@ -378,19 +375,16 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     ) -> None:
         """A schema change on one branch recomputes only that branch's attributes.
 
-        Changing a Jinja2 template on an isolated branch recomputes that branch's objects but
-        must not recompute anything on the default branch — branch scoping is applied before and
-        independently of changed-element scoping, so a change on one branch never broadens
-        recompute onto another.
+        Changing a Jinja2 template on an isolated branch recomputes that branch's objects but must not
+        recompute anything on the default branch. Branch scoping is applied before and independently of
+        changed-element scoping, so the branch's new template value never leaks onto the default branch.
         """
         branch = await client.branch.create(branch_name="scope-isolation")
 
-        main_before = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
+        main_process_before = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name], branch="main")
         )
-        branch_before = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch=branch.name)
-        )
+        main_slug_before = (await client.get(kind="LocationSite", hfid=["sth"], branch="main")).slug.value
 
         # Change the LocationSite.slug template only on the isolated branch.
         branch_schema = deepcopy(schema_computed_tshirt)
@@ -399,24 +393,25 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         )
         await load_schema_and_wait(client, branch_schema, branch=branch.name)
 
-        branch_after = branch_before
+        branch_slug = ""
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             await sleep(1)
             await wait_for_all_tasks_to_be_completed(client)
-            branch_after = await client.task.count(
-                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch=branch.name)
-            )
-            if branch_after > branch_before:
+            branch_slug = (await client.get(kind="LocationSite", hfid=["sth"], branch=branch.name)).slug.value
+            if branch_slug == "Isolated branch: sth":
                 break
 
-        main_after = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
+        main_process_after = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name], branch="main")
         )
+        main_slug_after = (await client.get(kind="LocationSite", hfid=["sth"], branch="main")).slug.value
 
-        # The changed branch recomputed; the default branch was left untouched.
-        assert branch_after > branch_before
-        assert main_after == main_before
+        # The branch recomputed to its new template; the default branch neither recomputed nor inherited
+        # the branch's value.
+        assert branch_slug == "Isolated branch: sth"
+        assert main_process_after == main_process_before
+        assert main_slug_after == main_slug_before
 
     async def test_merge_triggers_scoped_recompute(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:
         """Merging a branch's computed-attribute template change recomputes the affected attribute on main.
@@ -446,9 +441,6 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         await sleep(1)
         await wait_for_all_tasks_to_be_completed(client)
-        main_before = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
-        )
 
         merged = await client.branch.merge(branch_name=branch.name)
         assert merged
@@ -465,7 +457,3 @@ class TestComputedAttributes(TestInfrahubDockerClient):
                 break
 
         assert description == expected
-        main_after = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
-        )
-        assert main_after > main_before

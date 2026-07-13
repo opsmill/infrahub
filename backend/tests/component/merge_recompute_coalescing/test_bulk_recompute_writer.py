@@ -177,6 +177,50 @@ async def test_bulk_writer_skips_a_no_op_write_so_it_does_not_fan_out(
     assert recorder.events == []
 
 
+async def test_bulk_writer_persists_only_the_changed_nodes_in_a_mixed_batch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """In a batch mixing changed and unchanged values, only the changed nodes are written and announced.
+
+    No-op suppression is per node, so a node whose recomputed value already matches must be skipped
+    without suppressing its neighbours, and every node in the batch must end with the correct value.
+    """
+    await load_profile_schema(db=db)
+    nodes = [await _make_node(db=db, branch=default_branch, name=f"n{i}", peer_name=f"p{i}") for i in range(3)]
+
+    # Give the middle node the value it will be asked to write again, so that one write is a no-op.
+    seed = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
+    await seed.write(
+        branch=default_branch,
+        writes=[AttributeValueWrite(node_id=nodes[1].id, field=DISPLAY_LABEL_FIELD, value="steady")],
+        context=_event_context(),
+    )
+
+    recorder = MemoryInfrahubEvent()
+    writer = BulkRecomputeWriter(db=db, event_service=recorder)
+    written = await writer.write(
+        branch=default_branch,
+        writes=[
+            AttributeValueWrite(node_id=nodes[0].id, field=DISPLAY_LABEL_FIELD, value="changed-0"),
+            AttributeValueWrite(node_id=nodes[1].id, field=DISPLAY_LABEL_FIELD, value="steady"),
+            AttributeValueWrite(node_id=nodes[2].id, field=DISPLAY_LABEL_FIELD, value="changed-2"),
+        ],
+        context=_event_context(),
+    )
+
+    # Only the two nodes whose value actually changed are returned to chain and get an event.
+    assert {node.node_id for node in written} == {nodes[0].id, nodes[2].id}
+    assert {event.node_id for event in recorder.events} == {nodes[0].id, nodes[2].id}
+
+    # Every node holds the correct value, including the one that was left unchanged.
+    for node, expected in ((nodes[0], "changed-0"), (nodes[1], "steady"), (nodes[2], "changed-2")):
+        reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+        assert reloaded is not None
+        assert await reloaded.get_display_label(db=db) == expected
+
+
 async def test_chain_coalesces_the_next_level_into_one_submission(
     db: InfrahubDatabase,
     default_branch: Branch,

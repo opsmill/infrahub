@@ -855,11 +855,6 @@ class ExperimentalFeaturesSettings(BaseSettings):
         default=False,
         deprecated="This setting has no effect and will be removed in a future version.",
     )
-    recompute_bulk_write: bool = Field(
-        default=False,
-        description="Persist recomputed display labels, human-friendly ids and Jinja2 computed "
-        "attributes with one bulk write per family instead of one update flow per value.",
-    )
 
 
 class SecuritySettings(BaseSettings):
