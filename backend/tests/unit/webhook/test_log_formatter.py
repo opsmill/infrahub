@@ -101,7 +101,6 @@ def test_outgoing_request_truncates_the_inline_payload_and_marks_the_overflow(
     )
 
     payload_section = message.split("Payload:\n", 1)[1]
-    # The inline payload is capped at the limit (plus the overflow marker), each line indented by two spaces.
     unindented = "\n".join(line[2:] for line in payload_section.splitlines())
     assert unindented.startswith('{\n  "blob": "' + "x" * 100)
     assert unindented.endswith("characters; enable debug logging for the full payload)")
@@ -125,7 +124,7 @@ def test_inline_payload_stays_within_the_limit_including_indentation(formatter: 
     )
 
     payload_section = message.split("Payload:\n", 1)[1]
-    inline = payload_section.split("… (+", 1)[0]  # the shown payload, before the overflow marker
+    inline = payload_section.split("… (+", 1)[0]
     assert len(inline) <= PAYLOAD_LIMIT
 
 
@@ -138,8 +137,6 @@ def test_outgoing_request_falls_back_to_plain_repr_when_payload_is_not_json_seri
     formatter: WebhookLogFormatter, caplog: pytest.LogCaptureFixture
 ) -> None:
     payload = _Unserializable()
-    # The serializer's own error text is library-specific; capture it from the same call so the
-    # rest of the warning can be asserted exactly.
     with pytest.raises((TypeError, ValueError)) as exc_info:
         ujson.dumps(payload, indent=2)
     serialization_error = str(exc_info.value)

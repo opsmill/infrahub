@@ -108,38 +108,51 @@ async def test_webhook_post_emits_the_formatted_request_at_info_and_the_full_pay
     info_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.INFO]
     debug_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.DEBUG]
 
-    # The env-sourced header is masked before formatting; the static one and the standard ones are kept.
-    # The exact layout is specified by the formatter's own tests; here we assert the flow emits its output.
-    redacted_headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "X-Static": "plain",
-        "X-Token": "***",
-    }
     assert info_messages == [
-        process._LOG_FORMATTER.outgoing_request(
-            webhook_name="hook",
-            url="https://target.example/hook",
-            headers=redacted_headers,
-            payload=payload,
-            attempt=2,
-        )
+        "Webhook 'hook' attempt 2/4\n"
+        "POST https://target.example/hook\n"
+        "Headers:\n"
+        "  Accept: application/json\n"
+        "  Content-Type: application/json\n"
+        "  X-Static: plain\n"
+        "  X-Token: ***\n"
+        "Payload:\n"
+        "  {\n"
+        '    "event": "branch.created"\n'
+        "  }"
     ]
-    assert debug_messages == [process._LOG_FORMATTER.full_payload(webhook_name="hook", payload=payload, attempt=2)]
+    assert debug_messages == ['Webhook \'hook\' attempt 2/4 full payload:\n  {\n    "event": "branch.created"\n  }']
 
 
 @dataclass
 class FailureLogCase:
     name: str
     run_count: int | None
+    location: str
+    retry_note: str
 
 
 @pytest.mark.parametrize(
     "case",
     [
-        FailureLogCase(name="mid_run_attempt", run_count=1),
-        FailureLogCase(name="last_attempt", run_count=WEBHOOK_SEND_ATTEMPTS),
-        FailureLogCase(name="outside_flow_run", run_count=None),
+        FailureLogCase(
+            name="mid_run_attempt",
+            run_count=1,
+            location="attempt 1/4",
+            retry_note=" Retrying in 120s (attempt 2/4).",
+        ),
+        FailureLogCase(
+            name="last_attempt",
+            run_count=WEBHOOK_SEND_ATTEMPTS,
+            location="attempt 4/4",
+            retry_note=" No retries remaining.",
+        ),
+        FailureLogCase(
+            name="outside_flow_run",
+            run_count=None,
+            location="outside a flow run",
+            retry_note="",
+        ),
     ],
     ids=lambda case: case.name,
 )
@@ -147,15 +160,11 @@ async def test_webhook_send_logs_and_raises_the_classified_failure(
     caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch, case: FailureLogCase
 ) -> None:
     monkeypatch.setattr(process.flow_run, "run_count", case.run_count)
-    # Pin the clock so the logged elapsed time is a fixed "0 ms" and the line can be matched exactly.
     monkeypatch.setattr(process.time, "monotonic", lambda: 0.0)
 
-    failure = WebhookFailureClassifier().classify(
-        cause=HTTPServerError(message="Connection to https://target.example failed")
-    )
-
     async def _failing_post(**_kwargs: object) -> httpx.Response:
-        raise WebhookDeliveryError(failure) from None
+        cause = HTTPServerError(message="Connection to https://target.example failed")
+        raise WebhookDeliveryError(WebhookFailureClassifier().classify(cause=cause)) from None
 
     monkeypatch.setattr(process, "webhook_post", _failing_post)
 
@@ -169,11 +178,7 @@ async def test_webhook_send_logs_and_raises_the_classified_failure(
 
     error_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR]
     assert error_messages == [
-        process._LOG_FORMATTER.delivery_failed(
-            status_class=failure.status_class,
-            message=failure.message,
-            remediation=failure.remediation,
-            attempt=case.run_count,
-            elapsed_ms=0.0,
-        )
+        f"Webhook delivery failed [CONNECTION] {case.location} after 0 ms: "
+        "Connection to https://target.example failed. "
+        f"Verify the target endpoint is reachable from Infrahub.{case.retry_note}"
     ]
