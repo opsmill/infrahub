@@ -191,6 +191,12 @@ class SchemaUpdateValidationResult(BaseModel):
             )
 
         for schema_name, schema_diff in self.diff.changed.items():
+            # A node can appear in both `removed` and `changed` of a merged 3-way diff
+            # when it is removed on one side and modified on the other. Its removal is
+            # already handled above, and the post-merge target schema no longer holds it,
+            # so processing it as a changed element would raise SchemaNotFoundError.
+            if schema_name in self.diff.removed:
+                continue
             schema_node = schema.get(name=schema_name, duplicate=False)
             if "inherit_from" in schema_diff.changed:
                 self.migrations.append(

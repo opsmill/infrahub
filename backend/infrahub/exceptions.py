@@ -295,6 +295,12 @@ class SchemaNotFoundError(Error):
         self.message = message or f"Unable to find the schema {identifier} in the database."
         super().__init__(self.message)
 
+    def __reduce__(self) -> tuple[type[SchemaNotFoundError], tuple[str, str, str]]:
+        # The default pickling only preserves `args` (the message), but __init__ requires
+        # branch_name and identifier, so a round-trip through pickle (e.g. Prefect) would
+        # otherwise fail with a missing-argument TypeError.
+        return (self.__class__, (self.branch_name, self.identifier, self.message))
+
     def __str__(self) -> str:
         return f"""
         {self.message}
