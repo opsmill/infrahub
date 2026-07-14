@@ -36,12 +36,14 @@ def telemetry_mocks() -> Iterator[dict[str, Any]]:
     """Combined fixture providing all mocks needed for telemetry workflow tests."""
     repo = create_autospec(TelemetrySnapshotRepository, spec_set=True, instance=True)
     repo.save.return_value = None
+    gatherer = MagicMock()
+    gatherer.gather = AsyncMock(return_value=_build_telemetry_data_mock())
     with (
         patch(
-            "infrahub.telemetry.tasks.gather_anonymous_telemetry_data",
+            "infrahub.telemetry.tasks.build_anonymous_telemetry_gatherer",
             new_callable=AsyncMock,
-            return_value=_build_telemetry_data_mock(),
-        ) as mock_gather,
+            return_value=gatherer,
+        ),
         patch("infrahub.telemetry.tasks.post_telemetry_data", new_callable=AsyncMock) as mock_post,
         patch("infrahub.telemetry.tasks.get_database", new_callable=AsyncMock, return_value=MagicMock()),
         patch("infrahub.telemetry.tasks.TelemetrySnapshotRepository", return_value=repo) as mock_repo_cls,
@@ -49,7 +51,7 @@ def telemetry_mocks() -> Iterator[dict[str, Any]]:
     ):
         mock_registry.id = "dep-123"
         yield {
-            "gather": mock_gather,
+            "gather": gatherer.gather,
             "post": mock_post,
             "repo": repo,
             "repo_cls": mock_repo_cls,

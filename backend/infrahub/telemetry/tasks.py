@@ -2,8 +2,7 @@ import hashlib
 import json
 import platform
 import time
-from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Protocol
 
 from prefect import flow, task
 from prefect.cache_policies import NONE
@@ -16,6 +15,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
+from infrahub.services.component import InfrahubComponent
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import (
@@ -107,61 +107,108 @@ async def count_active_branches() -> int:
     return len([branch for branch in registry.branch.values() if not branch.is_default and not branch.is_global])
 
 
-async def _default_activity_24h_gatherer() -> TelemetryActivity24hData:
-    """Open a Prefect client and assemble the windowed 24h activity metrics."""
-    async with get_prefect_client(sync_client=False) as prefect_client:
-        return await gather_activity_24h(client=prefect_client)
+class AccountGatherer(Protocol):
+    async def gather(self) -> TelemetryAccountData: ...
 
 
-@task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
-async def gather_anonymous_telemetry_data(
-    account_gatherer: Callable[[InfrahubDatabase], Awaitable[TelemetryAccountData]] = gather_account_information,
-    activity_gatherer: Callable[[], Awaitable[TelemetryActivity24hData]] = _default_activity_24h_gatherer,
-    active_branch_counter: Callable[[], Awaitable[int]] = count_active_branches,
-) -> TelemetryData:
-    """Assemble the full telemetry payload, isolating every metric source.
+class ActivityGatherer(Protocol):
+    async def gather(self) -> TelemetryActivity24hData: ...
 
-    Each source is gathered through the degradation helper, so one failing source nulls only
-    its own field(s) while the rest is still built. The ``*_gatherer`` / ``*_counter`` params
-    are injection seams that let the per-source isolation be tested with a real failing
-    collaborator instead of patching.
+
+class ActiveBranchCounter(Protocol):
+    async def count(self) -> int: ...
+
+
+class DefaultAccountGatherer:
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
+
+    async def gather(self) -> TelemetryAccountData:
+        return await gather_account_information(db=self.db)
+
+
+class DefaultActivityGatherer:
+    async def gather(self) -> TelemetryActivity24hData:
+        async with get_prefect_client(sync_client=False) as prefect_client:
+            return await gather_activity_24h(client=prefect_client)
+
+
+class DefaultActiveBranchCounter:
+    async def count(self) -> int:
+        return await count_active_branches()
+
+
+class AnonymousTelemetryGatherer:
+    """Assemble the full telemetry payload from injected, independently-degrading sources.
+
+    The account, activity, and active-branch collaborators are injected so each can be swapped
+    for a failing double in tests. Every one is isolated, so a single failing source nulls only
+    its own field(s) while the rest of the payload is still built.
     """
-    start_time = time.time()
 
-    default_branch = registry.get_branch_from_registry()
+    def __init__(
+        self,
+        *,
+        database: InfrahubDatabase,
+        component: InfrahubComponent,
+        account_gatherer: AccountGatherer,
+        activity_gatherer: ActivityGatherer,
+        active_branch_counter: ActiveBranchCounter,
+    ) -> None:
+        self.database = database
+        self.component = component
+        self.account_gatherer = account_gatherer
+        self.activity_gatherer = activity_gatherer
+        self.active_branch_counter = active_branch_counter
+
+    async def gather(self) -> TelemetryData:
+        start_time = time.time()
+
+        default_branch = registry.get_branch_from_registry()
+        workers = await self.component.list_workers(branch=default_branch.name, schema_hash=False)
+
+        accounts = await safe_metric(self.account_gatherer.gather())
+        activity_24h = await safe_metric(self.activity_gatherer.gather())
+
+        data = TelemetryData(
+            deployment_id=registry.id,
+            execution_time=None,
+            infrahub_version=__version__,
+            infrahub_type=determine_infrahub_type(),
+            python_version=platform.python_version(),
+            platform=platform.machine(),
+            workers=TelemetryWorkerData(
+                total=len(workers),
+                active=len([w for w in workers if w.active]),
+            ),
+            branches=TelemetryBranchData(
+                total=len(registry.branch),
+                active=await safe_metric(self.active_branch_counter.count()),
+            ),
+            accounts=accounts if accounts is not None else TelemetryAccountData.default(),
+            activity_24h=activity_24h if activity_24h is not None else TelemetryActivity24hData.default(),
+            features=await gather_feature_information(),
+            schema_info=await gather_schema_information(branch=default_branch),
+            database=await gather_database_information(db=self.database),
+            prefect=await gather_prefect_information(),
+        )
+
+        data.execution_time = time.time() - start_time
+
+        return data
+
+
+async def build_anonymous_telemetry_gatherer() -> AnonymousTelemetryGatherer:
+    """Wire the telemetry gatherer with its real collaborators."""
     database = await get_database()
     component = await get_component()
-    workers = await component.list_workers(branch=default_branch.name, schema_hash=False)
-
-    accounts = await safe_metric(account_gatherer(database))
-    activity_24h = await safe_metric(activity_gatherer())
-
-    data = TelemetryData(
-        deployment_id=registry.id,
-        execution_time=None,
-        infrahub_version=__version__,
-        infrahub_type=determine_infrahub_type(),
-        python_version=platform.python_version(),
-        platform=platform.machine(),
-        workers=TelemetryWorkerData(
-            total=len(workers),
-            active=len([w for w in workers if w.active]),
-        ),
-        branches=TelemetryBranchData(
-            total=len(registry.branch),
-            active=await safe_metric(active_branch_counter()),
-        ),
-        accounts=accounts if accounts is not None else TelemetryAccountData.default(),
-        activity_24h=activity_24h if activity_24h is not None else TelemetryActivity24hData.default(),
-        features=await gather_feature_information(),
-        schema_info=await gather_schema_information(branch=default_branch),
-        database=await gather_database_information(db=database),
-        prefect=await gather_prefect_information(),
+    return AnonymousTelemetryGatherer(
+        database=database,
+        component=component,
+        account_gatherer=DefaultAccountGatherer(db=database),
+        activity_gatherer=DefaultActivityGatherer(),
+        active_branch_counter=DefaultActiveBranchCounter(),
     )
-
-    data.execution_time = time.time() - start_time
-
-    return data
 
 
 @task(name="telemetry-post-data", task_run_name="Upload data", retries=5, cache_policy=NONE)
@@ -176,7 +223,8 @@ async def send_telemetry_push() -> None:
     log = get_run_logger()
 
     log.info("Gathering anonymous telemetry data...")
-    data = await gather_anonymous_telemetry_data()
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
     data_dict = data.model_dump(mode="json")
     checksum = hashlib.sha256(json.dumps(data_dict).encode()).hexdigest()
     log.info(f"Anonymous usage telemetry gathered in {data.execution_time} seconds.")
