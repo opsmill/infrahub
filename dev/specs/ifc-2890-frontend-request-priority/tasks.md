@@ -80,15 +80,15 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T013 [P] [US2] GraphQL opt-in test in `graphqlClientApollo.test.ts`: operation with `context: { priority: 'low' }` → `X-Priority: low`.
-- [ ] T014 [P] [US2] REST opt-in test in `rest/client.test.ts`: request with `{ priority: 'low' }` option → `X-Priority: low`.
-- [ ] T015 [P] [US2] Raw-fetch opt-in test in `rest/fetch.test.ts`: `fetchUrl(url, payload, { priority: 'low' })` → `X-Priority: low`.
+- [X] T013 [P] [US2] GraphQL opt-in test in `graphqlClientApollo.test.ts`: operation with `context: { priority: 'low' }` → `X-Priority: low`.
+- [X] T014 [P] [US2] REST opt-in test in `rest/client.test.ts`: request with `{ priority: 'low' }` option → `X-Priority: low`.
+- [X] T015 [P] [US2] Raw-fetch opt-in test in `rest/fetch.test.ts`: `fetchUrl(url, payload, { priority: 'low' })` → `X-Priority: low`.
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Confirm/extend the GraphQL priority link (T009) reads `operation.getContext().priority` through `resolvePriority`; document the opt-in convention `context: { priority: 'low' }` in `frontend/app/src/shared/api/priority/index.ts` (JSDoc + a typed helper if it reduces boilerplate). Depends on T009.
-- [ ] T017 [US2] Extend `authMiddleware`/`apiClient` typing in `rest/client.ts` so a per-request `priority?: RequestPriority` option is accepted and read in `onRequest`. Depends on T010.
-- [ ] T018 [US2] Add the optional `priority?: RequestPriority` argument to `fetchUrl` in `rest/fetch.ts` (default via `resolvePriority`). Depends on T011.
+- [X] T016 [US2] Confirm/extend the GraphQL priority link (T009) reads `operation.getContext().priority` through `resolvePriority`; document the opt-in convention `context: { priority: 'low' }` in `frontend/app/src/shared/api/priority/index.ts` (JSDoc + a typed helper if it reduces boilerplate). Depends on T009.
+- [X] T017 [US2] Extend `authMiddleware`/`apiClient` typing in `rest/client.ts` so a per-request `priority?: RequestPriority` option is accepted and read in `onRequest`. Depends on T010.
+- [X] T018 [US2] Add the optional `priority?: RequestPriority` argument to `fetchUrl` in `rest/fetch.ts` (default via `resolvePriority`). Depends on T011.
 
 **Checkpoint**: US1 + US2 work; the `low` path is exercised by synthetic declared-`low` queries in tests (no real background load exists in v1 — see research §open-question-2).
 
