@@ -167,10 +167,10 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T033 [P] Run `pnpm biome:fix` and `pnpm test src/shared/api` in `frontend/app/`; fix any lint/type issues (Constitution quality gates).
-- [ ] T034 [P] Run `uv run invoke format lint` and `uv run invoke backend.test-unit -- -k "cors and priority"` for the backend change.
-- [ ] T035 Run the full [quickstart.md](./quickstart.md) validation checklist end-to-end and check off its "Done when" items.
-- [ ] T036 [P] Update frontend transport knowledge doc under `dev/knowledge/frontend/` noting the `X-Priority` emitter + the `low` opt-in convention (Constitution documentation requirement).
+- [X] T033 [P] Run `pnpm biome:fix` and `pnpm test src/shared/api` in `frontend/app/`; fix any lint/type issues (Constitution quality gates).
+- [X] T034 [P] Run `uv run invoke format lint` and `uv run invoke backend.test-unit -- -k "cors and priority"` for the backend change.
+- [X] T035 Run the full [quickstart.md](./quickstart.md) validation checklist end-to-end and check off its "Done when" items.
+- [X] T036 [P] Update frontend transport knowledge doc under `dev/knowledge/frontend/` noting the `X-Priority` emitter + the `low` opt-in convention (Constitution documentation requirement).
 
 ---
 
