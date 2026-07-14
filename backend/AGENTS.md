@@ -92,14 +92,14 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration)
 - `dev/knowledge/backend/events.md` - Events system
-- `dev/knowledge/backend/async-tasks.md` - How Prefect tasks/flows work. Load when writing or changing any `@task`/`@flow`, including which logger to use and how workflow names are referenced.
+- `dev/knowledge/backend/async-tasks.md` - How Prefect tasks/flows work. Load when writing or changing a `@task`/`@flow`, including logging and workflow-name conventions.
 - `dev/knowledge/backend/message-bus.md` - Message bus system
 - `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation)
 
 ### Guides (How to do X)
 
 - `dev/guides/backend/creating-events.md` - Creating new events
-- `dev/guides/backend/creating-async-tasks.md` - Creating async tasks; its checklist covers Prefect-visible logging and referencing workflow names via `WorkflowDefinition.name`.
+- `dev/guides/backend/creating-async-tasks.md` - How to create an async task, with a pre-submit checklist. Load when adding a `@task`/`@flow`.
 - `dev/guides/backend/creating-messages.md` - Creating message bus messages
 
 ### ADRs (Why we decided)

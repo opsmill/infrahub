@@ -157,6 +157,12 @@ the docs — they are:
       index, not a second copy of the rule; once an entry swells into a paragraph it stops being
       read, reopening the discoverability gap 1A exists to close. If the trigger can't be stated
       briefly, the doc's scope is too broad — that is not a licence for a longer entry.
+      **Name the trigger and topic, not the rule's mechanics.** The entry says *when* to open the doc
+      (the task, symptom, or stable API surface you'd be touching) and roughly what it covers — it must
+      not bake in the specific method/attribute name, the do/don't, or the value the rule turns on.
+      Those live in the doc; copying them into the index is the same "second copy" that rots the moment
+      the symbol is renamed (e.g. write "workflow-name conventions", not "reference names via
+      `SomeClass.name`").
     - **1B — strengthen the rule in place.** Promote it out of any niche section into a prominent home
       and add the carve-out — but leave it in its topically-correct doc.
 
