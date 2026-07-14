@@ -132,6 +132,68 @@ def test_changing_relationship_kind_from_component_recomputes_on_delete() -> Non
     assert updated_rel.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
 
+def test_changing_relationship_kind_preserves_explicit_on_delete_override() -> None:
+    """An on_delete that diverges from the kind default is an explicit override and must survive a kind change."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Gadget",
+                    namespace="Testing",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                ),
+                NodeSchema(
+                    name="Widget",
+                    namespace="Testing",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                    relationships=[
+                        RelationshipSchema(
+                            name="gadgets",
+                            peer="TestingGadget",
+                            kind=RelationshipKind.GENERIC,
+                            cardinality=RelationshipCardinality.MANY,
+                            optional=True,
+                            on_delete=RelationshipDeleteBehavior.CASCADE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    schema.process()
+
+    widget = schema.get(name="TestingWidget", duplicate=False)
+    assert widget.get_relationship(name="gadgets").on_delete == RelationshipDeleteBehavior.CASCADE
+
+    # Change the kind but do not restate on_delete. Because CASCADE diverges from the Generic
+    # default (NO_ACTION), it is a deliberate override and must be kept.
+    schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Widget",
+                    namespace="Testing",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                    relationships=[
+                        RelationshipSchema(
+                            name="gadgets",
+                            peer="TestingGadget",
+                            kind=RelationshipKind.ATTRIBUTE,
+                            cardinality=RelationshipCardinality.MANY,
+                            optional=True,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    schema.process()
+
+    widget = schema.get(name="TestingWidget", duplicate=False)
+    assert widget.get_relationship(name="gadgets").on_delete == RelationshipDeleteBehavior.CASCADE
+
+
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
     """Proves that schema processing produces the peer/hierarchical values in an expected manner."""
 
