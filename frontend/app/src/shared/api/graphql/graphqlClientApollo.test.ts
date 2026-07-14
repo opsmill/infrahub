@@ -1,14 +1,15 @@
-import { Observable } from "@apollo/client";
+import { ApolloLink, execute, gql, Observable } from "@apollo/client";
 import type { GraphQLFormattedError } from "graphql";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ERROR_CODES } from "@/shared/api/errors";
+import { PRIORITY_HEADER } from "@/shared/api/priority";
 import { queryClient } from "@/shared/api/rest/client";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/api/token-storage";
 import { __navigation } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 
-import { handleGraphQLAuthError } from "./graphqlClientApollo";
+import { handleGraphQLAuthError, priorityLink } from "./graphqlClientApollo";
 
 describe("handleGraphQLAuthError — TOKEN_EXPIRED retry-then-bail loop", () => {
   // Minimal stand-in for Apollo's `Operation`. The handler only touches
@@ -157,5 +158,33 @@ describe("handleGraphQLAuthError — TOKEN_EXPIRED retry-then-bail loop", () => 
     expect(assignSpy).toHaveBeenCalledOnce();
     expect(localStorage.getItem(ACCESS_TOKEN_KEY)).toBeNull();
     expect(forward).not.toHaveBeenCalled();
+  });
+});
+
+describe("priorityLink — outbound X-Priority header", () => {
+  // Observe the header at the transport boundary: a terminating link records
+  // the context headers the priority link produced, mirroring the existing
+  // Observable.of forward pattern above.
+  function runThroughPriorityLink(context?: Record<string, unknown>) {
+    let captured: Record<string, unknown> | undefined;
+
+    const captureLink = new ApolloLink((operation) => {
+      captured = operation.getContext().headers as Record<string, unknown>;
+      return Observable.of({ data: null });
+    });
+
+    const link = ApolloLink.from([priorityLink, captureLink]);
+
+    return new Promise<Record<string, unknown> | undefined>((resolve, reject) => {
+      execute(link, { query: gql`{ __typename }`, context }).subscribe({
+        complete: () => resolve(captured),
+        error: (err) => reject(err),
+      });
+    });
+  }
+
+  it("stamps X-Priority: high when the operation has no context.priority", async () => {
+    const headers = await runThroughPriorityLink();
+    expect(headers?.[PRIORITY_HEADER]).toBe("high");
   });
 });
