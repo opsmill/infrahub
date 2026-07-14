@@ -102,7 +102,7 @@ async def count_active_branches() -> int:
     """Count open non-system branches.
 
     Registry members minus the default and global branches (closed branches are evicted from
-    the registry). Async only so it composes with the degradation helper.
+    the registry).
     """
     return len([branch for branch in registry.branch.values() if not branch.is_default and not branch.is_global])
 
