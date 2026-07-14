@@ -122,13 +122,13 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T023 [P] [US4] GraphQL replay test in `graphqlClientApollo.test.ts`: simulate `TOKEN_EXPIRED` → `retryWithRefreshedToken`; assert the replayed operation still carries its original `X-Priority` (relies on `...oldHeaders` spread).
-- [ ] T024 [P] [US4] REST replay test in `rest/client.test.ts`: simulate a 401 → stored-clone replay; assert the clone carries `X-Priority`.
-- [ ] T025 [P] [US4] Upload test in `frontend/app/src/entities/nodes/object/api/create-object-from-api.test.ts` (or colocated): a multipart mutation via the shared upload link carries `X-Priority: high`.
+- [X] T023 [P] [US4] GraphQL replay test in `graphqlClientApollo.test.ts`: simulate `TOKEN_EXPIRED` → `retryWithRefreshedToken`; assert the replayed operation still carries its original `X-Priority` (relies on `...oldHeaders` spread).
+- [X] T024 [P] [US4] REST replay test in `rest/client.test.ts`: simulate a 401 → stored-clone replay; assert the clone carries `X-Priority`.
+- [X] T025 [P] [US4] Upload test in `frontend/app/src/entities/nodes/object/api/create-object-from-api.test.ts` (or colocated): a multipart mutation via the shared upload link carries `X-Priority: high`.
 
 ### Implementation for User Story 4
 
-- [ ] T026 [US4] Verify the injection order guarantees preservation: GraphQL sets the header via `context` (spread on replay); REST sets the header before clone capture. Adjust T009/T010 ordering only if a test reveals a gap. No new module expected.
+- [X] T026 [US4] Verify the injection order guarantees preservation: GraphQL sets the header via `context` (spread on replay); REST sets the header before clone capture. Adjust T009/T010 ordering only if a test reveals a gap. No new module expected.
 
 **Checkpoint**: No interactive request degrades to `normal` after a rebuild (SC-003).
 
