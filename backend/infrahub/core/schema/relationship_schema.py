@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 
 from infrahub import config
-from infrahub.core.constants import RelationshipDirection, RelationshipKind
+from infrahub.core.constants import RelationshipDeleteBehavior, RelationshipDirection, RelationshipKind
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.exceptions import InitializationError
@@ -14,7 +14,10 @@ from infrahub.exceptions import InitializationError
 from .generated.relationship_schema import GeneratedRelationshipSchema
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from infrahub.core.branch import Branch
+    from infrahub.core.models import HashableModel
     from infrahub.core.query import QueryElement
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
@@ -23,6 +26,28 @@ if TYPE_CHECKING:
 class RelationshipSchema(GeneratedRelationshipSchema):
     _exclude_from_hash: list[str] = ["filters"]
     _sort_by: list[str] = ["name"]
+
+    @staticmethod
+    def default_on_delete_for_kind(kind: RelationshipKind) -> RelationshipDeleteBehavior:
+        """The on_delete behavior implied by a relationship kind when none is set explicitly."""
+        if kind == RelationshipKind.COMPONENT:
+            return RelationshipDeleteBehavior.CASCADE
+        return RelationshipDeleteBehavior.NO_ACTION
+
+    def update(self, other: HashableModel) -> Self:
+        # When the kind changes and the incoming schema does not set on_delete explicitly,
+        # drop an on_delete that merely matches the old kind's default so it is re-derived
+        # from the new kind. Otherwise a CASCADE derived from a former Component kind would
+        # survive a change to a non-cascading kind and keep cascading deletes. An on_delete
+        # that diverges from the old kind's default is a deliberate override and is kept.
+        if (
+            isinstance(other, RelationshipSchema)
+            and other.on_delete is None
+            and other.kind != self.kind
+            and self.on_delete == self.default_on_delete_for_kind(self.kind)
+        ):
+            self.on_delete = None
+        return super().update(other)
 
     @property
     def is_attribute(self) -> bool:

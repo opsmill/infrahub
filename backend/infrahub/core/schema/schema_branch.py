@@ -1668,10 +1668,7 @@ class SchemaBranch:
                     schema_to_update = node.duplicate()
 
                 relationship_to_update = schema_to_update.get_relationship(name=relationship.name)
-                if relationship.kind == RelationshipKind.COMPONENT:
-                    relationship_to_update.on_delete = RelationshipDeleteBehavior.CASCADE
-                else:
-                    relationship_to_update.on_delete = RelationshipDeleteBehavior.NO_ACTION
+                relationship_to_update.on_delete = RelationshipSchema.default_on_delete_for_kind(relationship.kind)
 
             if schema_to_update:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
