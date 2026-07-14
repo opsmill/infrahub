@@ -4,6 +4,21 @@
 
 All database access in Infrahub goes through Query classes that encapsulate Cypher queries with proper parameterization, branch-awareness, and temporal versioning. Queries return typed dataclass results for type safety and clear API contracts.
 
+## Accessing schema: prefer `db.schema` over `registry`
+
+Access schema through the `db` proxy, not the `registry`. `db.schema` resolves against the branch and time of the operation, staying temporally correct; `registry.schema` does not.
+
+```python
+# ✅ Good - temporally correct
+schema_branch = db.schema.get_schema_branch(name=branch.name)
+schema = db.schema.get(name="MyNode", branch=branch)
+
+# ❌ Avoid - loses temporal flexibility
+schema = registry.schema.get(name="MyNode")
+```
+
+The `registry` stays correct for in-memory data where the alternative would be a real performance regression — for example, listing open branches from `registry.branch` instead of issuing a database query. This is a preference for new code; do not sweep existing `registry` call sites as part of an unrelated change.
+
 ## Query Lifecycle
 
 ### Initialization
@@ -466,12 +481,7 @@ Specialized base classes for different domains:
 
 **Database Object in Initialization:** The `InfrahubDatabase` object is passed during initialization for:
 
-1. **Schema access via database proxy:** Enables temporal queries using previous schema versions
-
-   ```python
-   schema = db.schema.get(name="MyNode", branch=branch)  # Good
-   schema = registry.schema.get(name="MyNode")  # Avoid: loses temporal flexibility
-   ```
+1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: prefer `db.schema` over `registry`](#accessing-schema-prefer-dbschema-over-registry).
 
 2. **Database type abstraction:** Contains database-specific functions
 
