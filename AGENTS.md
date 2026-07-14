@@ -19,12 +19,12 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 
 - `backend/` – Python backend (FastAPI, GraphQL, core logic) - see [backend/AGENTS.md](backend/AGENTS.md)
 - `frontend/app/` – React frontend - see [frontend/app/AGENTS.md](frontend/app/AGENTS.md)
-- `docs/` – Docusaurus documentation - see [docs/AGENTS.md](docs/AGENTS.md)
+- `docs/` – External customers documentation by Docusaurus, deployed at https://docs.infrahub.app/ - see [docs/AGENTS.md](docs/AGENTS.md)
+- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 - `python_sdk/` – Python SDK (Git submodule)
 - `tasks/` – Invoke task definitions
 - `schema/` – JSON/GraphQL schema definitions
 - `changelog/` – Towncrier changelog fragments
-- `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 
 ## Commands
 
