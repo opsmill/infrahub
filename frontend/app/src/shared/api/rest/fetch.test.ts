@@ -41,6 +41,15 @@ describe("fetchUrl — outbound X-Priority header", () => {
     expect(initHeaders()[PRIORITY_HEADER]).toBe("high");
   });
 
+  it("stamps X-Priority: low when the caller passes { priority: 'low' }", async () => {
+    await fetchUrl("http://localhost:8000/api/search/docs?query=x", undefined, {
+      priority: "low",
+    });
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    expect(initHeaders()[PRIORITY_HEADER]).toBe("low");
+  });
+
   it("does NOT stamp X-Priority on a request to an external host (FR-007)", async () => {
     await fetchUrl("https://example.com/whatever");
 
