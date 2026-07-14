@@ -142,13 +142,13 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T027 [P] [US5] Component test in `backend/tests/component/api/test_cors_priority.py`: FastAPI `TestClient` issues an `OPTIONS` preflight with `Access-Control-Request-Headers: x-priority`; assert `Access-Control-Allow-Headers` includes `x-priority`. Mirror `test_admission_middleware.py` setup.
-- [ ] T028 [P] [US5] Unit test in `backend/tests/unit/config/test_config.py`: `default_cors_allow_headers()` includes `"x-priority"`.
+- [X] T027 [P] [US5] Component test in `backend/tests/component/api/test_cors_priority.py`: FastAPI `TestClient` issues an `OPTIONS` preflight with `Access-Control-Request-Headers: x-priority`; assert `Access-Control-Allow-Headers` includes `x-priority`. Mirror `test_admission_middleware.py` setup.
+- [X] T028 [P] [US5] Unit test in `backend/tests/unit/config/test_config.py`: `default_cors_allow_headers()` includes `"x-priority"`.
 
 ### Implementation for User Story 5
 
-- [ ] T029 [US5] Append `"x-priority"` to `default_cors_allow_headers()` in `backend/infrahub/config.py` (~lines 50-51), preserving lowercase style. (Governance "Ask First" — security-adjacent CORS change; additive only.)
-- [ ] T030 [US5] Verify the admission layer exempts CORS `OPTIONS` preflight (critique E2): inspect `backend/infrahub/api/admission/middleware.py` — if `OPTIONS`/preflight is NOT exempt, add the exemption so preflights are not shed under load; extend `test_cors_priority.py` to assert the preflight succeeds even with a saturated/again-gated admission pool if feasible. Record the finding (exempt-or-fixed) in the PR.
+- [X] T029 [US5] Append `"x-priority"` to `default_cors_allow_headers()` in `backend/infrahub/config.py` (~lines 50-51), preserving lowercase style. (Governance "Ask First" — security-adjacent CORS change; additive only.)
+- [X] T030 [US5] Verify the admission layer exempts CORS `OPTIONS` preflight (critique E2): inspect `backend/infrahub/api/admission/middleware.py` — if `OPTIONS`/preflight is NOT exempt, add the exemption so preflights are not shed under load; extend `test_cors_priority.py` to assert the preflight succeeds even with a saturated/again-gated admission pool if feasible. Record the finding (exempt-or-fixed) in the PR.
 
 **Checkpoint**: Cross-origin (dev/split-host) requests carrying `X-Priority` succeed, under load too.
 
