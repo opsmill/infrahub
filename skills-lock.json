@@ -31,6 +31,24 @@
       "skillPath": "opsmill-dev/skills/monitoring-pull-requests/SKILL.md",
       "computedHash": "b52cf3902ca8a290aa3167ff5e6b0a54068a45187357e342e5967f18fb00d854"
     },
+    "opsmill-dev-analyzing-bugs": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/analyzing-bugs/SKILL.md",
+      "computedHash": "b1280c4b1eeae4dfd6c1b47078ba44586b23842ec27551a64e40217003fd66b2"
+    },
+    "opsmill-dev-fixing-bugs": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/fixing-bugs/SKILL.md",
+      "computedHash": "9b08acdd7fccf8a279a837fd4a6e74bca93802970c7a4d06cfe7fea87ac5b11f"
+    },
+    "opsmill-dev-test-driving-bugs": {
+      "source": "opsmill/opsmill-skills",
+      "sourceType": "github",
+      "skillPath": "opsmill-dev/skills/test-driving-bugs/SKILL.md",
+      "computedHash": "1a9514502876e98d188f00b7aef80efb8621d06813c3485968755a14969284fa"
+    },
     "pr": {
       "source": "opsmill/opsmill-skills",
       "sourceType": "github",
