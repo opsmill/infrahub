@@ -41,8 +41,8 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 **⚠️ CRITICAL**: No transport injection (US1) or opt-in (US2) can begin until this phase is complete.
 
-- [ ] T003 [US-shared] Implement the contract in `frontend/app/src/shared/api/priority/index.ts`: export `type RequestPriority = 'high' | 'low'`, `const DEFAULT_PRIORITY: RequestPriority = 'high'`, `const PRIORITY_HEADER = 'X-Priority'`, and a `resolvePriority(value: unknown): RequestPriority` normalizer that returns `'low'` only for exactly `'low'` and `DEFAULT_PRIORITY` otherwise (data-model normalization rule, critique E1).
-- [ ] T004 [P] [US-shared] Unit-test the contract in `frontend/app/src/shared/api/priority/index.test.ts`: `resolvePriority` maps `'low'→'low'`, `'high'/'normal'/undefined/garbage→'high'`; assert the constant values (`X-Priority`, default `high`).
+- [X] T003 [US-shared] Implement the contract in `frontend/app/src/shared/api/priority/index.ts`: export `type RequestPriority = 'high' | 'low'`, `const DEFAULT_PRIORITY: RequestPriority = 'high'`, `const PRIORITY_HEADER = 'X-Priority'`, and a `resolvePriority(value: unknown): RequestPriority` normalizer that returns `'low'` only for exactly `'low'` and `DEFAULT_PRIORITY` otherwise (data-model normalization rule, critique E1).
+- [X] T004 [P] [US-shared] Unit-test the contract in `frontend/app/src/shared/api/priority/index.test.ts`: `resolvePriority` maps `'low'→'low'`, `'high'/'normal'/undefined/garbage→'high'`; assert the constant values (`X-Priority`, default `high`).
 
 **Checkpoint**: Contract module ready — transport work can begin.
 
