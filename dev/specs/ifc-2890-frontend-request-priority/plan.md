@@ -118,7 +118,9 @@ See [research.md](./research.md). All PRD open questions resolved:
 
 4. **No `normal`, no unheadered (FR-003)** — the only values the frontend can emit are `high` and `low`; the default is applied unconditionally at each transport, so there is no path that omits the header for a frontend-origin request.
 
-5. **Backend CORS (FR-006)** — append `"x-priority"` to `default_cors_allow_headers()` in `backend/infrahub/config.py`. `InfrahubCORSMiddleware` reads `config.SETTINGS.api.cors_allow_headers`. The backend already parses `x-priority` case-insensitively and accepts `high`/`low`, so no parser change is needed. A component test drives an OPTIONS preflight and asserts `x-priority` is allow-listed.
+5. **Backend CORS (FR-006)** — append `"x-priority"` to `default_cors_allow_headers()` in `backend/infrahub/config.py`. `InfrahubCORSMiddleware` reads `config.SETTINGS.api.cors_allow_headers`. The backend already parses `x-priority` case-insensitively and accepts `high`/`low`, so no parser change is needed.
+   - **Preflight must not be admission-gated** (critique E2): a CORS `OPTIONS` preflight never carries custom headers, so it arrives with no `X-Priority`; `AdmissionMiddleware` is registered outermost (`server.py:221`, after CORS at `:205`) and excludes by path, not method — so a preflight would be treated as `normal` and could be shed under saturating load, breaking cross-origin requests (FR-006) exactly when the feature matters. Before implementing, **verify** that admission short-circuits/exempts `OPTIONS` preflight (or safe/non-sheddable methods); if it does not, that exemption is part of this feature. Record the finding either way.
+   - **Test level** (critique E5): a **component test** (FastAPI `TestClient`, `OPTIONS` preflight) placed in the backend test tree mirroring `middleware.py`/`config.py`, discoverable via `-k "cors and priority"`, asserts `x-priority` appears in `Access-Control-Allow-Headers` and that the preflight is not rejected by admission.
 
 ### Constitution re-check (post-design)
 

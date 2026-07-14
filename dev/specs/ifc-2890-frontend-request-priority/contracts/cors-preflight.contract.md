@@ -30,7 +30,14 @@ GIVEN the preflight succeeded
 WHEN the actual cross-origin request carrying `X-Priority: high` is sent
 THEN the browser does not block it
 AND  the request is accepted and processed by the server
+
+GIVEN the admission layer (IFC-2886) is at or beyond capacity
+WHEN a CORS `OPTIONS` preflight (which carries no `X-Priority`) arrives
+THEN it is NOT shed/rejected by admission
+AND  it still receives its CORS response
 ```
+
+> **Preflight vs admission** (critique E2): `AdmissionMiddleware` is registered outermost (`server.py:221`) and excludes by path, not method. A preflight carries no `X-Priority`, so without an `OPTIONS`/safe-method exemption it would be classified `normal` and could be shed under saturating load — breaking cross-origin requests exactly when the feature matters. This contract requires that preflights bypass admission (short-circuit `OPTIONS`, or treat preflight/safe methods as non-sheddable). If admission already exempts `OPTIONS`, record that; otherwise the exemption is part of this feature.
 
 ## Notes
 
