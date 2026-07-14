@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -596,13 +597,22 @@ _ATTRIBUTE_KIND_MEMBER_NAMES = {
 }
 
 
-def _sdk_enum_specs() -> tuple[dict[str, list[tuple[str, str]]], dict[str, str], dict[str, str]]:
-    """Build the dedicated (str, Enum) specs used to type the constrained SDK fields.
+@dataclass(frozen=True)
+class SdkEnumSpecs:
+    """The (str, Enum) specs and discriminator lookups used to type the constrained SDK fields.
 
-    Returns the ordered ``name -> [(member, value)]`` specs (the order sets the class order in the
-    generated enums.py), plus the ``value -> member`` lookups for the attribute-kind and
-    computed-attribute-kind discriminated unions.
+    ``enum_specs`` is the ordered ``name -> [(member, value)]`` mapping (its order sets the class
+    order in the generated enums.py); the two ``*_value_to_member`` lookups map enum values back to
+    member names for the attribute-kind and computed-attribute-kind discriminated unions.
     """
+
+    enum_specs: dict[str, list[tuple[str, str]]]
+    attribute_kind_value_to_member: dict[str, str]
+    computed_kind_value_to_member: dict[str, str]
+
+
+def _sdk_enum_specs() -> SdkEnumSpecs:
+    """Build the dedicated (str, Enum) specs used to type the constrained SDK fields."""
     from enum import Enum
 
     from infrahub.core.constants import (
@@ -634,9 +644,11 @@ def _sdk_enum_specs() -> tuple[dict[str, list[tuple[str, str]]], dict[str, str],
         "ComputedAttributeKind": members(ComputedAttributeKind),
         "AttributeKind": attribute_kind_members,
     }
-    attribute_kind_value_to_member = {value: member for member, value in attribute_kind_members}
-    computed_kind_value_to_member = {value: member for member, value in members(ComputedAttributeKind)}
-    return enum_specs, attribute_kind_value_to_member, computed_kind_value_to_member
+    return SdkEnumSpecs(
+        enum_specs=enum_specs,
+        attribute_kind_value_to_member={value: member for member, value in attribute_kind_members},
+        computed_kind_value_to_member={value: member for member, value in members(ComputedAttributeKind)},
+    )
 
 
 def _sdk_kind_field(
@@ -708,7 +720,7 @@ def _generate_schemas_sdk(context: Context) -> None:
     generated = f"{REPO_BASE}/python_sdk/infrahub_sdk/schema/generated"
     Path(generated).mkdir(parents=True, exist_ok=True)
 
-    enum_specs, attribute_kind_value_to_member, computed_kind_value_to_member = _sdk_enum_specs()
+    sdk_enums = _sdk_enum_specs()
 
     node_stripped = node_schema.without_duplicates(base_node_schema)
     generic_stripped = generic_schema.without_duplicates(base_node_schema)
@@ -790,7 +802,7 @@ def _generate_schemas_sdk(context: Context) -> None:
 
     def _computed_kind_field(value: str) -> dict[str, str]:
         return _sdk_kind_field(
-            computed_kind_description, "ComputedAttributeKind", [value], computed_kind_value_to_member
+            computed_kind_description, "ComputedAttributeKind", [value], sdk_enums.computed_kind_value_to_member
         )
 
     computed_user_fields = [
@@ -842,7 +854,10 @@ def _generate_schemas_sdk(context: Context) -> None:
         families: list[dict[str, Any]] = [{"class_name": base_name, "parent": "BaseModel", "attributes": base_fields}]
         for variant, parameters_name in attribute_variant_specs:
             kind_field = _sdk_kind_field(
-                kind_description, "AttributeKind", kinds_by_parameters[parameters_name], attribute_kind_value_to_member
+                kind_description,
+                "AttributeKind",
+                kinds_by_parameters[parameters_name],
+                sdk_enums.attribute_kind_value_to_member,
             )
             families.append(
                 {
@@ -933,7 +948,7 @@ def _generate_schemas_sdk(context: Context) -> None:
 
     # use_enum_values keeps runtime field values as plain strings even though fields are typed
     # with the dedicated enums, so equality against strings and serialization stay unchanged.
-    enum_names = _render_sdk_enums(enums_template, enum_specs, generated)
+    enum_names = _render_sdk_enums(enums_template, sdk_enums.enum_specs, generated)
 
     # Each variant carries an extra-families builder for the models unique to it: the write
     # variant adds the extension models, the read variant adds the profile/template projections.
