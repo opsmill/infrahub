@@ -60,9 +60,12 @@ WHEN it is sent
 THEN the outbound request carries `X-Priority: low`
 
 GIVEN a request whose target host is NOT the Infrahub API
+      (the request URL's origin differs from INFRAHUB_API_SERVER_URL's origin)
 WHEN it is sent
 THEN it carries NO `X-Priority` header
 ```
+
+> The external-host guard compares **origins** (scheme + host + port), not a URL substring, to avoid both false leaks and false suppression (critique E3).
 
 ### GraphiQL fetcher
 

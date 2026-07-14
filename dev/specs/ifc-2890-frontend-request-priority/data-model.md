@@ -18,8 +18,9 @@ The typed contract for the priority the frontend may emit.
 
 **Validation rules**:
 - The value written to the header MUST be exactly `'high'` or `'low'`.
+- **Normalize at each injection point** (critique E1): the resolved per-request value (e.g. an Apollo `context.priority`, which is untyped at runtime) MUST be coerced through the `RequestPriority` union before it reaches the header — anything not exactly `'low'` resolves to `DEFAULT_PRIORITY` (`'high'`). This makes emitting `'normal'` or an arbitrary string structurally impossible, defending FR-003 even if a stray/legacy context value appears.
 - No frontend-origin request MUST be emitted without the header (no unheadered path) — FR-003.
-- The header MUST NOT be attached to requests whose target host is not the Infrahub API — FR-007.
+- The header MUST NOT be attached to requests whose target host is not the Infrahub API; the guard compares the request URL's **origin** against `INFRAHUB_API_SERVER_URL`'s origin, not a substring — FR-007 (critique E3).
 
 **State**: none — the value is derived per-request from the opt-in (or the default), not stored.
 

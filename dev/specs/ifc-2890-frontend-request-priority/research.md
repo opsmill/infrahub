@@ -18,6 +18,7 @@ This document resolves the two PRD open questions and records the grounding find
 - *A global registry mapping operation names → priority.* Rejected: indirection, must be kept in sync with query definitions, and easy to drift; violates YAGNI.
 - *Per-call-site header setting.* Rejected: the PRD explicitly wants zero changes at the ~89 interactive call sites and a single opt-in at the definition.
 - *A React context / provider.* Rejected: request priority is a property of the request, not the component tree; polls and background loads originate outside render.
+- *Server-side origin inference instead of a client-declared header* (critique P3). Rejected: the server cannot distinguish a watched live-status poll (`high`) from a background preload (`low`) — both are XHR/`fetch` from the same browser origin with the same auth. Only the client knows the *intent* of a request, so a client-declared header is necessary, not merely convenient. Origin tagging (INFP-636) is complementary, not a substitute.
 
 ## Open question 2 — Is the initial `low` set empty in v1?
 

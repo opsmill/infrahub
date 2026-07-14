@@ -153,6 +153,7 @@ An operator inspects `/metrics` and sees frontend traffic showing up as an expli
 - **The `low` opt-in is a single unified developer-facing helper** that covers both a GraphQL operation `context`-based declaration and a REST per-request option, so one convention serves all transports. *(Resolves PRD open question: exact shape of the `low` opt-in — the precise API surface is finalized in the plan step.)*
 - **The three transports are the complete set of frontend request origins**: GraphQL client, REST client, and raw fetch. Any request the frontend emits flows through one of these.
 - **The CORS change is security-adjacent and ships with this feature**: adding `x-priority` to the CORS allowed-headers default is flagged for review per AGENTS.md "Ask First"; it is additive (one header value) and introduces no new endpoint or contract.
+- **SC-001 is validated against a global (unlabeled) counter**: the backend's `infrahub_admission_missing_priority_total` counter has no origin dimension, so "for frontend-origin traffic" cannot be sliced out directly. Adoption is confirmed by (a) the global counter trending toward its non-frontend floor (SDK/other callers) as the frontend stops emitting unheadered/`normal` requests, and (b) the per-transport E2E/unit assertions proving every frontend request carries an explicit `high`/`low`. Adding an origin label to the counter is out of scope for v1 (a backend/IFC-2886 observability concern).
 
 ## Out of Scope
 
