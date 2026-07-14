@@ -4,8 +4,11 @@ from uuid import UUID
 
 import pytest
 
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.timestamp import Timestamp
-from infrahub.webhook.models import CustomWebhook, HeaderKind, StandardWebhook, WebhookHeader
+from infrahub.events.models import EventBranchContext
+from infrahub.events.models import EventContext as SourceEventContext
+from infrahub.webhook.models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, WebhookHeader
 
 
 def test_standard_webhook() -> None:
@@ -193,3 +196,42 @@ def test_webhook_signature_with_payload() -> None:
         "webhook-timestamp": "1740656629",
         "webhook-signature": "v1,5JQxZW3lMNdaSnofcSV0Y3krxQ7aZI7EyThUqHVDGc4=",
     }
+
+
+def _event_payload(source_context: SourceEventContext) -> dict:
+    """Wrap a serialized event context the way it reaches the webhook processor."""
+    return {"data": {}, "context": source_context.to_event()}
+
+
+def test_event_context_from_event_extracts_account_id() -> None:
+    account_id = "d3f1c0a2-7b3f-4ee3-9351-1065a393b80c"
+    source_context = SourceEventContext(
+        branch=EventBranchContext(name="test4", id="18c0f7a2-7b3f-7ee3-1351-1065a393b80c"),
+        account_id=account_id,
+    )
+
+    context = EventContext.from_event(
+        event_id="673a2d93-a9e0-464a-a635-aba2b42ff2b0",
+        event_type="infrahub.branch.created",
+        event_occured_at="2026-07-10 15:35:29.674921+00:00",
+        event_payload=_event_payload(source_context),
+    )
+
+    assert context.account_id == account_id
+    assert context.branch == "test4"
+
+
+def test_event_context_from_event_global_branch_is_none() -> None:
+    source_context = SourceEventContext(
+        branch=EventBranchContext(name=GLOBAL_BRANCH_NAME),
+        account_id="d3f1c0a2-7b3f-4ee3-9351-1065a393b80c",
+    )
+
+    context = EventContext.from_event(
+        event_id="673a2d93-a9e0-464a-a635-aba2b42ff2b0",
+        event_type="infrahub.branch.created",
+        event_occured_at="2026-07-10 15:35:29.674921+00:00",
+        event_payload=_event_payload(source_context),
+    )
+
+    assert context.branch is None
