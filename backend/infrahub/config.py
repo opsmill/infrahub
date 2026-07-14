@@ -48,7 +48,7 @@ def default_cors_allow_methods() -> list[str]:
 
 
 def default_cors_allow_headers() -> list[str]:
-    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
+    return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with", "x-priority"]
 
 
 def default_append_git_suffix_domains() -> list[str]:
