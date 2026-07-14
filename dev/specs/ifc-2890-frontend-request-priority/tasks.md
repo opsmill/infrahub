@@ -30,8 +30,8 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 **Purpose**: Create the location for the new contract module; no dependencies.
 
-- [ ] T001 Create the `frontend/app/src/shared/api/priority/` directory for the new `RequestPriority` contract module (per plan Project Structure).
-- [ ] T002 [P] Add a Towncrier changelog fragment under `changelog/` describing the frontend `X-Priority` emitter + CORS allow-header addition (Constitution: user-facing change).
+- [X] T001 Create the `frontend/app/src/shared/api/priority/` directory for the new `RequestPriority` contract module (per plan Project Structure).
+- [X] T002 [P] Add a Towncrier changelog fragment under `changelog/` describing the frontend `X-Priority` emitter + CORS allow-header addition (Constitution: user-facing change).
 
 ---
 
