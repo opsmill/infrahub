@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub.core.constants import RelationshipCardinality, RelationshipDeleteBehavior, RelationshipKind
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 
@@ -66,6 +67,69 @@ def test_validate_names_rejects_double_underscore_in_relationship_name() -> None
         match=r"TestingUnderscore: 'peer__link' cannot be used as a relationship name",
     ):
         schema.validate_names()
+
+
+def test_changing_relationship_kind_from_component_recomputes_on_delete() -> None:
+    """Changing a relationship's kind away from Component must recompute on_delete to NO_ACTION."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Gadget",
+                    namespace="Testing",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                ),
+                NodeSchema(
+                    name="Widget",
+                    namespace="Testing",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                    relationships=[
+                        RelationshipSchema(
+                            name="gadgets",
+                            peer="TestingGadget",
+                            kind=RelationshipKind.COMPONENT,
+                            cardinality=RelationshipCardinality.MANY,
+                            optional=True,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    schema.process()
+
+    widget = schema.get(name="TestingWidget", duplicate=False)
+    assert widget.get_relationship(name="gadgets").on_delete == RelationshipDeleteBehavior.CASCADE
+
+    # Change the relationship kind from Component to Attribute, mirroring an in-place schema
+    # update. on_delete is intentionally left unset — it is a derived field users do not set.
+    schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Widget",
+                    namespace="Testing",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                    relationships=[
+                        RelationshipSchema(
+                            name="gadgets",
+                            peer="TestingGadget",
+                            kind=RelationshipKind.ATTRIBUTE,
+                            cardinality=RelationshipCardinality.MANY,
+                            optional=True,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    schema.process()
+
+    widget = schema.get(name="TestingWidget", duplicate=False)
+    updated_rel = widget.get_relationship(name="gadgets")
+    assert updated_rel.kind == RelationshipKind.ATTRIBUTE
+    assert updated_rel.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
 
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
