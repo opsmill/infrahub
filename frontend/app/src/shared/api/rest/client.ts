@@ -26,9 +26,17 @@ const requestClones = new WeakMap<Request, Request>();
 export const authMiddleware: Middleware = {
   async onRequest({ request }) {
     // Stamp X-Priority before the 401-replay clone is captured below, so the
-    // replayed request inherits it. A later chunk opts a request down to `low`
-    // by pre-setting the header; resolvePriority normalizes whatever is present
-    // and defaults to `high` when absent — no frontend request is unheadered.
+    // replayed request inherits it. resolvePriority normalizes whatever is
+    // present and defaults to `high` when absent — no frontend request is
+    // unheadered.
+    //
+    // REST `low` opt-in: callers pre-set the header via openapi-fetch's
+    // `params: { header: { 'X-Priority': 'low' } }` — see the convention doc in
+    // `@/shared/api/priority`. A bespoke per-request `priority` option is NOT
+    // viable: openapi-fetch's `Middleware.onRequest` `options` object is
+    // read-only and exposes no custom field, so the header is the opt-in
+    // surface. This line normalizes-and-preserves a pre-set `low` rather than
+    // clobbering it to the default.
     request.headers.set(PRIORITY_HEADER, resolvePriority(request.headers.get(PRIORITY_HEADER)));
 
     const hadAuth = request.headers.has("Authorization");

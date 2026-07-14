@@ -187,4 +187,9 @@ describe("priorityLink — outbound X-Priority header", () => {
     const headers = await runThroughPriorityLink();
     expect(headers?.[PRIORITY_HEADER]).toBe("high");
   });
+
+  it("stamps X-Priority: low when the operation declares context.priority = low", async () => {
+    const headers = await runThroughPriorityLink({ priority: "low" });
+    expect(headers?.[PRIORITY_HEADER]).toBe("low");
+  });
 });

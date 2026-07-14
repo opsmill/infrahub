@@ -30,4 +30,18 @@ describe("authMiddleware.onRequest — outbound X-Priority header", () => {
 
     expect(request.headers.get(PRIORITY_HEADER)).toBe("high");
   });
+
+  it("preserves X-Priority: low when the caller pre-set it (openapi-fetch params.header opt-in)", async () => {
+    // The REST `low` opt-in idiom is `params: { header: { 'X-Priority': 'low' } }`,
+    // which openapi-fetch materializes on the outgoing Request's headers before
+    // the middleware runs. `onRequest` must normalize-and-preserve that value,
+    // not clobber it back to the `high` default.
+    const request = new Request("http://localhost:8000/api/test", {
+      headers: { [PRIORITY_HEADER]: "low" },
+    });
+
+    await authMiddleware.onRequest?.({ request } as never);
+
+    expect(request.headers.get(PRIORITY_HEADER)).toBe("low");
+  });
 });
