@@ -56,17 +56,17 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 ### Tests for User Story 1 ⚠️ (write first, ensure they FAIL)
 
-- [ ] T005 [P] [US1] GraphQL default test in `frontend/app/src/shared/api/graphql/graphqlClientApollo.test.ts`: an operation with no `context.priority` produces an outbound request with `X-Priority: high` (mirror existing `makeOperation`/`setContext`/`Observable.of` patterns).
-- [ ] T006 [P] [US1] REST default test in `frontend/app/src/shared/api/rest/client.test.ts`: a request with no priority option carries `X-Priority: high` after `authMiddleware.onRequest`.
-- [ ] T007 [P] [US1] Raw-fetch default test in `frontend/app/src/shared/api/rest/fetch.test.ts`: `fetchUrl` to an Infrahub-API URL carries `X-Priority: high`.
-- [ ] T008 [P] [US1] GraphiQL fetcher test in `frontend/app/src/shared/libs/graphiql/use-graphiql-fetcher.test.ts`: the sandbox fetch carries `X-Priority: high`.
+- [X] T005 [P] [US1] GraphQL default test in `frontend/app/src/shared/api/graphql/graphqlClientApollo.test.ts`: an operation with no `context.priority` produces an outbound request with `X-Priority: high` (mirror existing `makeOperation`/`setContext`/`Observable.of` patterns).
+- [X] T006 [P] [US1] REST default test in `frontend/app/src/shared/api/rest/client.test.ts`: a request with no priority option carries `X-Priority: high` after `authMiddleware.onRequest`.
+- [X] T007 [P] [US1] Raw-fetch default test in `frontend/app/src/shared/api/rest/fetch.test.ts`: `fetchUrl` to an Infrahub-API URL carries `X-Priority: high`.
+- [X] T008 [P] [US1] GraphiQL fetcher test in `frontend/app/src/shared/libs/graphiql/use-graphiql-fetcher.test.ts`: the sandbox fetch carries `X-Priority: high`.
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Add a `setContext` priority link in `frontend/app/src/shared/api/graphql/graphqlClientApollo.tsx` and insert it into `from([errorLink, authLink, priorityLink, httpLink])`; set `headers[PRIORITY_HEADER] = resolvePriority(context.priority)`. (Uploads ride the shared `createUploadLink`, so they inherit it — verifies part of US4.)
-- [ ] T010 [US1] In `frontend/app/src/shared/api/rest/client.ts` `authMiddleware.onRequest`, `request.headers.set(PRIORITY_HEADER, resolvePriority(options?.priority))` — set BEFORE the `requestClones` clone is captured so the replay inherits it (part of US4).
-- [ ] T011 [US1] In `frontend/app/src/shared/api/rest/fetch.ts` `fetchUrl`, set `PRIORITY_HEADER` to `resolvePriority(...)` ONLY when the URL's origin matches `INFRAHUB_API_SERVER_URL`'s origin (origin comparison, critique E3 / FR-007).
-- [ ] T012 [US1] In `frontend/app/src/shared/libs/graphiql/use-graphiql-fetcher.ts`, add `PRIORITY_HEADER: 'high'` to the fetch headers so no frontend request is unheadered (FR-003).
+- [X] T009 [US1] Add a `setContext` priority link in `frontend/app/src/shared/api/graphql/graphqlClientApollo.tsx` and insert it into `from([errorLink, authLink, priorityLink, httpLink])`; set `headers[PRIORITY_HEADER] = resolvePriority(context.priority)`. (Uploads ride the shared `createUploadLink`, so they inherit it — verifies part of US4.)
+- [X] T010 [US1] In `frontend/app/src/shared/api/rest/client.ts` `authMiddleware.onRequest`, `request.headers.set(PRIORITY_HEADER, resolvePriority(options?.priority))` — set BEFORE the `requestClones` clone is captured so the replay inherits it (part of US4).
+- [X] T011 [US1] In `frontend/app/src/shared/api/rest/fetch.ts` `fetchUrl`, set `PRIORITY_HEADER` to `resolvePriority(...)` ONLY when the URL's origin matches `INFRAHUB_API_SERVER_URL`'s origin (origin comparison, critique E3 / FR-007).
+- [X] T012 [US1] In `frontend/app/src/shared/libs/graphiql/use-graphiql-fetcher.ts`, add `PRIORITY_HEADER: 'high'` to the fetch headers so no frontend request is unheadered (FR-003).
 
 **Checkpoint**: MVP — every transport emits `high` by default; T005–T008 pass. Deliverable on its own.
 
