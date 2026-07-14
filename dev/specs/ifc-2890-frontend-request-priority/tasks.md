@@ -102,13 +102,13 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T019 [P] [US3] Test in `frontend/app/src/entities/tasks/ui/task-display.test.tsx` (or a colocated test) that the task-list poll (`get-task-list.query.ts`) and task-status poll (`is-task-running-on-branch.query.ts`) emit `X-Priority: high`.
-- [ ] T020 [P] [US3] Test in `frontend/app/src/entities/proposed-changes/` that proposed-change details (`get-proposed-change-details.query.ts`) and events (`get-events.query.ts`) polls emit `X-Priority: high`.
-- [ ] T021 [P] [US3] Test in `frontend/app/src/entities/branches/` that the branch-action-state poll (`get-branch-action-state.query.ts`) emits `X-Priority: high`.
+- [X] T019 [P] [US3] Test in `frontend/app/src/entities/tasks/ui/task-display.test.tsx` (or a colocated test) that the task-list poll (`get-task-list.query.ts`) and task-status poll (`is-task-running-on-branch.query.ts`) emit `X-Priority: high`.
+- [X] T020 [P] [US3] Test in `frontend/app/src/entities/proposed-changes/` that proposed-change details (`get-proposed-change-details.query.ts`) and events (`get-events.query.ts`) polls emit `X-Priority: high`.
+- [X] T021 [P] [US3] Test in `frontend/app/src/entities/branches/` that the branch-action-state poll (`get-branch-action-state.query.ts`) emits `X-Priority: high`.
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Audit the watched-status query definitions (task list/count/details, PC details/events, branch action state) and confirm NONE declares `priority: 'low'` — they inherit the `high` default. No code change expected; record the audit result inline in the PR description. (Guards SC-002 / FR-005.)
+- [X] T022 [US3] Audit the watched-status query definitions (task list/count/details, PC details/events, branch action state) and confirm NONE declares `priority: 'low'` — they inherit the `high` default. No code change expected; record the audit result inline in the PR description. (Guards SC-002 / FR-005.)
 
 **Checkpoint**: Watched data provably stays `high` despite polling.
 
