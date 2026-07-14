@@ -14,7 +14,7 @@ minute) gathers the payload, stores it as a `TelemetrySnapshot`, then conditiona
 
 ```text
 anonymous_telemetry_send (daily)
-  └─ gather_anonymous_telemetry_data()   → TelemetryData
+  └─ build_anonymous_telemetry_gatherer() → AnonymousTelemetryGatherer.gather() → TelemetryData
        └─ TelemetrySnapshot.save()        ← ALWAYS stored locally first
             └─ opted out?  → mark "skipped"
                opted in?   → POST to endpoint → mark "sent" / "failed"

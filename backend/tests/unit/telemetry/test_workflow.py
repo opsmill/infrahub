@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 import pytest
 
 from infrahub.telemetry.repository import TelemetrySnapshotRepository
-from infrahub.telemetry.tasks import send_telemetry_push
+from infrahub.telemetry.tasks import AnonymousTelemetryGatherer, send_telemetry_push
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -36,8 +36,8 @@ def telemetry_mocks() -> Iterator[dict[str, Any]]:
     """Combined fixture providing all mocks needed for telemetry workflow tests."""
     repo = create_autospec(TelemetrySnapshotRepository, spec_set=True, instance=True)
     repo.save.return_value = None
-    gatherer = MagicMock()
-    gatherer.gather = AsyncMock(return_value=_build_telemetry_data_mock())
+    gatherer = create_autospec(AnonymousTelemetryGatherer, spec_set=True, instance=True)
+    gatherer.gather.return_value = _build_telemetry_data_mock()
     with (
         patch(
             "infrahub.telemetry.tasks.build_anonymous_telemetry_gatherer",
