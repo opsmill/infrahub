@@ -208,6 +208,17 @@ uv run invoke docs.lint
 ### Scope
 <!-- PR, branch, how many threads read (resolved + unresolved) -->
 
+### Existing coverage to strengthen (Covered but still flagged)
+
+The rule already exists, yet a reviewer had to raise it — so the coverage is not landing. **This is the
+highest-value output of the harvest, so it leads the report; when it is empty, open with "New rules to
+add" instead.** For each:
+- **Lesson** + **Source** (reviewer + quoted comment)
+- **Already at**: the exact existing file/section that supposedly covers it
+- **Why it didn't land**: too abstract / not discoverable / mis-homed / missing from checklist / stale
+- **Proposed edit**: how to make the *existing* coverage more accurate — the concrete example to add,
+  the relocation/cross-link, or the checklist line. Not a duplicate rule.
+
 ### New rules to add (Missing)
 
 For each:
@@ -217,16 +228,6 @@ For each:
   (b) reviewer intent, (c) scope + the over-scoped reading ruled out
 - **Home**: exact file (+ section) to create
 - **Proposed edit**: the concrete text to add
-
-### Existing coverage to strengthen (Covered but still flagged)
-
-The rule already exists, yet a reviewer had to raise it — so the coverage is not landing. **Lead the
-report with this section; it is the highest-value output.** For each:
-- **Lesson** + **Source** (reviewer + quoted comment)
-- **Already at**: the exact existing file/section that supposedly covers it
-- **Why it didn't land**: too abstract / not discoverable / mis-homed / missing from checklist / stale
-- **Proposed edit**: how to make the *existing* coverage more accurate — the concrete example to add,
-  the relocation/cross-link, or the checklist line. Not a duplicate rule.
 
 ### Not Lessons (PR-local or demoted after investigation)
 <!-- One-off fixes, bugs, and design calls that do NOT generalize — and candidates the investigation
