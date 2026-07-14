@@ -27,6 +27,7 @@ EXCLUDED_PATHS: tuple[str, ...] = (
 )
 
 _PRIORITY_HEADER = b"x-priority"
+_CORS_REQUEST_METHOD_HEADER = b"access-control-request-method"
 
 _SHED_MESSAGE = "Server is shedding load; retry later."
 
@@ -76,6 +77,13 @@ class AdmissionMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # A CORS preflight carries no X-Priority and would be classified NORMAL. Shedding it under
+        # load would strip the CORS response and break every cross-origin request precisely when the
+        # backend is busy, so preflights bypass the gate and reach the downstream CORS middleware.
+        if _is_cors_preflight(scope):
+            await self.app(scope, receive, send)
+            return
+
         parsed = parse_priority(_read_priority_header(scope))
         if not parsed.was_explicit:
             metrics.MISSING_PRIORITY_TOTAL.inc()
@@ -94,6 +102,13 @@ class AdmissionMiddleware:
             await response(scope, receive, send)
             return
         assert_never(decision)
+
+
+def _is_cors_preflight(scope: Scope) -> bool:
+    """Return whether the request is a CORS preflight (OPTIONS advertising a requested method)."""
+    if scope.get("method") != "OPTIONS":
+        return False
+    return any(name == _CORS_REQUEST_METHOD_HEADER for name, _ in scope["headers"])
 
 
 def _read_priority_header(scope: Scope) -> str | None:
