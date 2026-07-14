@@ -160,8 +160,8 @@ description: "Task list for Frontend Request Prioritization (X-Priority) — IFC
 
 **Independent Test**: Drive representative flows → `infrahub_admission_missing_priority_total` stays ~0 for frontend-origin traffic (validated per spec Assumption on the unlabeled counter).
 
-- [ ] T031 [US6] Add the E2E scenario `frontend/app/tests/e2e/` asserting: interactive flow → all captured outbound requests carry `X-Priority: high`; a background-tagged (synthetic `low`) flow → `low`; none `normal`. (Contracts: request-priority.contract.md; SC-001/SC-002.)
-- [ ] T032 [US6] Document the metric check in the PR / quickstart follow-up: with a running stack, `curl /metrics | grep infrahub_admission_missing_priority_total` trends to its non-frontend floor (spec Assumption, SC-001). No code change.
+- [X] T031 [US6] Add the E2E scenario `frontend/app/tests/e2e/` asserting: interactive flow → all captured outbound requests carry `X-Priority: high`; a background-tagged (synthetic `low`) flow → `low`; none `normal`. (Contracts: request-priority.contract.md; SC-001/SC-002.)
+- [X] T032 [US6] Document the metric check in the PR / quickstart follow-up: with a running stack, `curl /metrics | grep infrahub_admission_missing_priority_total` trends to its non-frontend floor (spec Assumption, SC-001). No code change.
 
 ---
 
