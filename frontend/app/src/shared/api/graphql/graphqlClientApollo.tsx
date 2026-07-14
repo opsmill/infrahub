@@ -12,6 +12,7 @@ import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 import { toast } from "react-toastify";
 
 import { ERROR_CODES, parseCatalogueError } from "@/shared/api/errors";
+import { PRIORITY_HEADER, resolvePriority } from "@/shared/api/priority";
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
@@ -57,6 +58,23 @@ export const authLink = setContext((_, previousContext) => {
     headers: {
       ...headers,
       authorization: `Bearer ${accessToken}`,
+    },
+  };
+});
+
+// Priority link: stamp every outbound operation with X-Priority. Reads the
+// per-request value from the Apollo operation context (`context: { priority }`)
+// which a later chunk populates to opt a query down to `low`; resolvePriority
+// defaults to `high` when absent, so no frontend request is ever unheadered.
+// Placed before the terminating httpLink (which is the shared createUploadLink),
+// so file-upload mutations inherit the header for free.
+export const priorityLink = setContext((_, previousContext) => {
+  const { headers, priority } = previousContext;
+
+  return {
+    headers: {
+      ...headers,
+      [PRIORITY_HEADER]: resolvePriority(priority),
     },
   };
 });
@@ -229,7 +247,7 @@ function notifyUser(
 }
 
 const graphqlClient = new ApolloClient({
-  link: from([errorLink, authLink, httpLink]),
+  link: from([errorLink, authLink, priorityLink, httpLink]),
   cache: new InMemoryCache(),
   defaultOptions,
   // Apollo is a transport-only layer here: queries run imperatively via
