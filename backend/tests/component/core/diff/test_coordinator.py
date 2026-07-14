@@ -220,6 +220,34 @@ class TestDiffCoordinator:
         assert diff_property.previous_value == str(original_height)
         assert diff_property.new_value == "3"
 
+    async def test_tracking_diff_not_duplicated_after_rebase(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
+        branch = await create_branch(db=db, branch_name="branch")
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        person_john_branch.height.value = 1
+        await person_john_branch.save(db=db)
+
+        # tracked diff calculated before the rebase, using the original branched_from time
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        # a rebase advances branched_from, so the pre-rebase root now sits before the branch's
+        # from_time and is invisible to the time-bounded aggregation query
+        await branch.rebase(db=db)
+
+        # recalculating the tracked diff must not leave the pre-rebase root behind, otherwise two
+        # roots share the branch tracking_id and a single-diff lookup by tracking_id fails
+        full_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        tracking_diff = await diff_repository.get_one(
+            diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
+        )
+        assert tracking_diff.uuid == full_diff.uuid
+
     async def test_no_changes_skips_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
     ) -> None:

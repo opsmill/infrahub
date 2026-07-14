@@ -477,20 +477,19 @@ class DiffCoordinator:
             ),
             partial_enriched_diffs=diff_pairs_metadata if not force_branch_refresh else None,
         )
-        diff_uuids_to_delete: list[str] = []
-        for diff_pair in diff_pairs_metadata:
-            if (
-                diff_pair.base_branch_diff.tracking_id == tracking_id
-                and diff_pair.base_branch_diff.uuid != aggregated_enriched_diffs.base_branch_diff.uuid
-                and diff_pair.base_branch_diff.exists_on_database
-            ):
-                diff_uuids_to_delete.append(diff_pair.base_branch_diff.uuid)
-            if (
-                diff_pair.diff_branch_diff.tracking_id == tracking_id
-                and diff_pair.diff_branch_diff.uuid != aggregated_enriched_diffs.diff_branch_diff.uuid
-                and diff_pair.diff_branch_diff.exists_on_database
-            ):
-                diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
+        # A tracking_id identifies a single diff pair, so every other root carrying it is stale and
+        # must be deleted. Query by tracking_id alone rather than reusing the time-bounded aggregation
+        # results above: a rebase advances the branch's branched_from time, leaving the pre-rebase root
+        # with an earlier from_time that the time filter excludes. Left behind, it would accumulate
+        # under the tracking_id and break any single-diff lookup by tracking_id.
+        uuids_to_keep = {
+            aggregated_enriched_diffs.base_branch_diff.uuid,
+            aggregated_enriched_diffs.diff_branch_diff.uuid,
+        }
+        stale_tracked_roots = await self.diff_repo.get_roots_metadata(tracking_id=tracking_id)
+        diff_uuids_to_delete = [
+            root.uuid for root in stale_tracked_roots if root.uuid not in uuids_to_keep and root.exists_on_database
+        ]
 
         if diff_uuids_to_delete:
             await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
