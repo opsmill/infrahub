@@ -761,7 +761,7 @@ attribute_schema = SchemaNode(
             "or JSON-array attribute is not a merge/rebase conflict.",
             default_value=True,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="default_value",

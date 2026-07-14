@@ -4488,6 +4488,12 @@
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
                     },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
                     "default_value": {
                         "anyOf": [
                             {},
@@ -4757,6 +4763,12 @@
                         ],
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
                     },
                     "default_value": {
                         "anyOf": [
@@ -5631,6 +5643,12 @@
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
                     },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
                     "default_value": {
                         "anyOf": [
                             {},
@@ -5882,6 +5900,12 @@
                         ],
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
                     },
                     "default_value": {
                         "anyOf": [
@@ -6835,6 +6859,12 @@
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
                     },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
                     "default_value": {
                         "anyOf": [
                             {},
@@ -7087,6 +7117,12 @@
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
                     },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
                     "default_value": {
                         "anyOf": [
                             {},
@@ -7333,6 +7369,12 @@
                         ],
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
                     },
                     "default_value": {
                         "anyOf": [
@@ -7585,6 +7627,12 @@
                         ],
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
                     },
                     "default_value": {
                         "anyOf": [
@@ -9003,6 +9051,12 @@
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
                     },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
                     "default_value": {
                         "anyOf": [
                             {},
@@ -9257,6 +9311,12 @@
                         ],
                         "title": "Order Weight",
                         "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
                     },
                     "default_value": {
                         "anyOf": [
