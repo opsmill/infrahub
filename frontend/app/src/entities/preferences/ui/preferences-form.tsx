@@ -19,12 +19,8 @@ import { TimezoneField } from "@/entities/preferences/ui/timezone.field";
 
 export interface PreferencesFormProps {
   values: PreferenceValues;
-  /** Tooltip body explaining where the date-format field's effective value comes from. */
   dateFormatSourceTooltip?: React.ReactNode;
-  /** Tooltip body explaining where the timezone field's effective value comes from. */
   timezoneSourceTooltip?: React.ReactNode;
-  /** Placeholder for an unset field. Defaults to the user-scope wording; the org-defaults form
-   * (which edits the raw defaults, not a child scope) passes its own copy. */
   emptyValueLabel?: string;
   onSubmit: (values: PreferenceValues) => void;
   isSubmitDisabled?: boolean;
@@ -79,7 +75,6 @@ export function PreferencesForm({
   onSubmit,
   isSubmitDisabled,
 }: PreferencesFormProps) {
-  // The stored value is the preset key, not the human label.
   const items = buildDateFormatPresets().map(({ key, label }) => ({ value: key, label }));
   const now = new Date();
 

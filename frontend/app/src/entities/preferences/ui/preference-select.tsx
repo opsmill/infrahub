@@ -10,7 +10,6 @@ import { FormField, FormInput, FormLabel, FormMessage } from "@/shared/component
 import { classNames } from "@/shared/utils/common";
 
 export interface PreferenceSelectItem {
-  /** Stored value written back into the form's `{ source, value }` attribute. */
   value: string;
   label: string;
 }
@@ -24,15 +23,9 @@ export interface PreferenceSelectProps {
   labelClassName?: string;
   "aria-describedby"?: string;
   defaultValue?: FormAttributeValue;
-  /** Large lists (e.g. timezones) render faster when the ListBox is virtualized. */
   virtualized?: boolean;
 }
 
-/**
- * Searchable, presets-only single-select over a fixed `items` list, composed directly from the
- * design-system `Autocomplete` + `ListBox`. The type-to-filter is a convenience over the list, never
- * a free-text value. Re-selecting the current value clears it (stores `null`).
- */
 export function PreferenceSelect({
   name,
   label,
@@ -57,8 +50,7 @@ export function PreferenceSelect({
           items.find((item) => item.value === currentValue)?.label ?? currentValue;
 
         const handleSelectionChange = (keys: Selection) => {
-          // Single-select with empty selection allowed: clicking the current value deselects it
-          // (react-aria yields an empty set), which we map to `null` to clear the override.
+          // Re-selecting the current value deselects it (empty set) → null clears the override.
           const [first] = keys === "all" ? [] : Array.from(keys);
           const newValue = first === undefined ? null : String(first);
           field.onChange(updateFormFieldValue(newValue, defaultValue));
