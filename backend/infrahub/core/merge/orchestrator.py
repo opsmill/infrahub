@@ -15,9 +15,12 @@ from infrahub.log import get_logger
 from .write_blocker import MergeProtectionState
 
 if TYPE_CHECKING:
+    from infrahub_sdk.diff import NodeDiff
+
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
+    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.models import SchemaDiff
     from infrahub.core.schema.manager import SchemaManager
@@ -25,6 +28,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.log import InfrahubLogger
 
+    from .diff_serializer import MergeDiffSerializer
+    from .diff_summary_cache import MergeDiffSummaryCache
     from .graph_merger import GraphMerger
     from .post_merge import PostMergeDispatcher
     from .rollback_handler import MergeRollbackHandler
@@ -49,6 +54,8 @@ class BranchMergeOrchestrator:
         merge_write_blocker: MergeWriteBlocker,
         ipam_diff_parser: IpamDiffParser,
         diff_repository: DiffRepository,
+        diff_serializer: MergeDiffSerializer,
+        merge_diff_summary_cache: MergeDiffSummaryCache,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.db = db
@@ -63,6 +70,8 @@ class BranchMergeOrchestrator:
         self.merge_write_blocker = merge_write_blocker
         self.ipam_diff_parser = ipam_diff_parser
         self.diff_repository = diff_repository
+        self.diff_serializer = diff_serializer
+        self.merge_diff_summary_cache = merge_diff_summary_cache
         self.log = logger or get_logger()
 
     async def merge(self, *, context: InfrahubContext, proposed_change_id: str | None = None) -> None:
@@ -99,6 +108,8 @@ class BranchMergeOrchestrator:
             )
             changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=self.source_branch, db=self.db)
             node_events = changelog_collector.collect_changelogs()
+
+            serialized_diff_summary = self._serialize_diff_summary(branch_diff=branch_diff)
 
             if await self.schema_analyzer.has_schema_changes():
                 self.log.info("Applying schema migrations after merge")
@@ -160,11 +171,17 @@ class BranchMergeOrchestrator:
         # Lift the write protection now that the merge has fully succeeded.
         await self.merge_write_blocker.delete()
 
+        # Persisted only past the point of no return, so a rolled-back merge leaves no entry behind.
+        merge_diff_cache_key = await self._write_diff_summary_cache(
+            diff_id=branch_diff.uuid, diff_summary=serialized_diff_summary
+        )
+
         await self.post_merge_dispatcher.run_follow_ups(
             branch=self.source_branch,
             context=context,
             proposed_change_id=proposed_change_id,
             ipam_node_details=ipam_node_details,
+            merge_diff_cache_key=merge_diff_cache_key,
         )
 
         await self.post_merge_dispatcher.dispatch_events(
@@ -175,3 +192,20 @@ class BranchMergeOrchestrator:
             schema_diff=schema_diff,
             schema_hash=schema_updated_hash,
         )
+
+    def _serialize_diff_summary(self, branch_diff: EnrichedDiffRoot) -> list[NodeDiff] | None:
+        try:
+            return self.diff_serializer.serialize(root=branch_diff, target_branch_name=self.destination_branch.name)
+        except Exception:
+            self.log.exception("Failed to serialize merge diff summary; falling back to full regeneration")
+            return None
+
+    async def _write_diff_summary_cache(self, diff_id: str, diff_summary: list[NodeDiff] | None) -> str | None:
+        if diff_summary is None:
+            return None
+        try:
+            await self.merge_diff_summary_cache.set(diff_id=diff_id, diff_summary=diff_summary)
+            return diff_id
+        except Exception:
+            self.log.exception("Failed to cache merge diff summary; falling back to full regeneration")
+            return None

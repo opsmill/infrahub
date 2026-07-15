@@ -13,6 +13,8 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
 
 from .constraints import MergeConstraintValidator
+from .diff_serializer import MergeDiffSerializer
+from .diff_summary_cache import MergeDiffSummaryCache
 from .graph_merger import GraphMerger
 from .orchestrator import BranchMergeOrchestrator
 from .post_merge import PostMergeDispatcher
@@ -42,7 +44,8 @@ async def build_branch_merge_orchestrator(
     component_registry = get_component_registry()
     workflow = get_workflow()
     event_service = await get_event_service()
-    merge_write_blocker = MergeWriteBlocker(cache=await get_cache())
+    cache = await get_cache()
+    merge_write_blocker = MergeWriteBlocker(cache=cache)
 
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
@@ -106,5 +109,7 @@ async def build_branch_merge_orchestrator(
         merge_write_blocker=merge_write_blocker,
         ipam_diff_parser=ipam_diff_parser,
         diff_repository=diff_repository,
+        diff_serializer=MergeDiffSerializer(),
+        merge_diff_summary_cache=MergeDiffSummaryCache(cache=cache),
         logger=logger,
     )
