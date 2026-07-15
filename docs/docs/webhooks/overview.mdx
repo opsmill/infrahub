@@ -283,12 +283,35 @@ When a webhook fires, headers are merged in this order:
 For environment-variable-based headers, the value is resolved from `os.environ` on the Prefect worker at send time:
 
 - If the environment variable exists, its value is used as the header value.
-- If the environment variable is **not found**, the header is skipped, a warning is logged, and all remaining headers are still sent.
+- If the environment variable is **not found**, the delivery fails with a configuration error that names the webhook and the header, rather than sending the request without that header.
 
 :::note
 Authentication header values must include the full value including any type prefix. For example, for Bearer token authentication, set the value to `Bearer eyJhbGci...` (not only the token).
 :::
 
+### Header and payload logging
+
+Every delivery attempt is logged with the target URL, the request headers, and the payload, so you can see what was sent from the delivery's task logs. Secret-bearing header values are masked as `***` in that log: environment-sourced values, the `webhook-signature`, and well-known credential headers (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`) — matched case-insensitively, regardless of whether the header was configured as static or environment-sourced. The payload is truncated in the log, with the full body available only at debug level.
+
+:::warning
+A static header value is logged verbatim unless its name is one of the well-known credential headers listed above. To keep a secret out of the delivery logs when it is not sent under one of those names, store it as an **Environment Variable Key-Value** header — environment-sourced values are always masked.
+:::
+
+### When a delivery fails
+
+A failed delivery reports a short classified reason with a remediation hint in its task logs — a connection problem, a TLS problem, a timeout, a client-side 4xx, a server-side 5xx, or a configuration error — instead of a raw Python traceback. While retries remain, the log also records when the next attempt will run, so you can tell whether to wait for an automatic retry or step in. An unexpected error that is not a delivery failure still surfaces with its full traceback, so a genuine crash remains distinguishable from an expected failure.
+
 ## Custom webhook transformation
 
 The `data` object from the payloads above is passed to the `transform` method of your custom Transformation. For the full setup walkthrough, see [Webhook with custom Transformation](./custom-transformation.mdx).
+
+## Retrying and cancelling deliveries
+
+Each webhook delivery runs as a task. Open a webhook and select a delivery from its related tasks to act on it from the task detail page.
+
+| Action | When it is available | What it does |
+|--------|----------------------|--------------|
+| Retry | The delivery has finished | Re-sends the original payload as a new delivery and leaves the original record unchanged. Useful when a delivery failed because the target was temporarily unavailable or misconfigured. |
+| Cancel | The delivery has not finished | Stops the delivery, including one waiting to be retried, so no further attempts are made. A request already in flight to the target cannot be recalled. |
+
+The Retry and Cancel actions appear only when they apply to the delivery's current state.

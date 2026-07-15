@@ -293,6 +293,16 @@ class DisplayLabelNodeIDQuery(NodeIDQuery):
 
 Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
 
+## Recovery actions
+
+A task run can expose recovery actions through the GraphQL `Task` type's `available_actions` field, gated by the run's current state. `TaskActionGenerator` derives the action set per workflow, and `InfrahubTaskRetry` and `InfrahubTaskCancel` carry the actions out. Only `WEBHOOK_SEND` runs expose actions today; see [Webhooks](webhooks.md) for the delivery-specific behavior.
+
+## Liveness and zombie detection
+
+A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events: it keeps a per-run countdown that every expected event restarts, and marks a run `CRASHED` once the countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
+
+A run waiting out a retry backoff emits nothing while it waits. The retry-wait transition is therefore registered as an expected event, anchoring the countdown at the start of that silence, and the detection window is sized above the longest configured retry backoff so a run waiting between attempts is not mistaken for a dead process. The window is derived from the webhook send retry delay plus a margin rather than hardcoded, so the relationship holds if the backoff changes. A run whose process genuinely died still lapses the window and is crashed, at the cost of the widened detection latency.
+
 ## Key Locations
 
 | Component | Location |
@@ -304,6 +314,7 @@ Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttrib
 | Branch tasks | `backend/infrahub/core/branch/tasks.py` |
 | Git tasks | `backend/infrahub/git/tasks.py` |
 | Schema tasks | `backend/infrahub/core/migrations/schema/tasks.py` |
+| System automations | `backend/infrahub/trigger/system.py` |
 
 ## See Also
 

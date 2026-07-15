@@ -50,8 +50,15 @@ Application Event (e.g. node.created) ──► │ Prefect Automation   │
                                           └────────┬────────┘
                                                    │
                                           ┌────────┴────────┐
-                                          │ Prepare payload  │
-                                          │ + HMAC headers   │
+                                          │ Compute payload  │
+                                          └────────┬────────┘
+                                                   │
+                                                   ▼
+                                          webhook_send subflow
+                                                   │
+                                          ┌────────┴────────┐
+                                          │ Build headers    │
+                                          │ + HMAC signing   │
                                           └────────┬────────┘
                                                    │
                                                    ▼
@@ -89,7 +96,7 @@ Normalized representation of the event extracted from Prefect's raw event payloa
 
 ### `WebhookHeader`
 
-Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up the environment variable and raises `WebhookHeaderResolutionError` if the variable is missing (the caller catches this and skips the header with a warning log).
+Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Literal `"static"` | `"environment"`). The `resolve()` method returns the header value — for `"static"` it returns the value directly, for `"environment"` it looks up the environment variable and raises `WebhookHeaderResolutionError` if the variable is missing, which fails the delivery with a configuration error rather than sending the request without that header.
 
 ### `Webhook` class hierarchy
 
@@ -97,12 +104,13 @@ Pydantic model for a custom HTTP header: `key` (str), `value` (str), `kind` (Lit
 
 The base class handles:
 
-- Payload preparation (`_prepare_payload`)
-- Header assignment with custom headers and optional HMAC signing (`_assign_headers`)
-- HTTP delivery via `send()`
+- Payload computation (`compute_payload`)
+- Header construction with custom headers and optional HMAC signing (`build_headers`)
+- Redaction of secret-bearing header values for logging (`redact_headers`)
+- HTTP delivery of a precomputed payload via `send_payload()`, which builds the headers itself unless a caller passes a set already built for logging
 - Cache serialization (`to_cache` / `from_cache`)
 
-The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `_assign_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time (missing vars are skipped with a warning log).
+The `custom_headers: list[WebhookHeader]` field on the base `Webhook` class holds headers loaded from the `CoreWebhook.headers` relationship. During `build_headers()`, custom headers are applied after system defaults (Accept, Content-Type) but before HMAC signature headers. Static headers use the value directly; environment headers resolve from `os.environ` at send time. A missing variable fails the delivery with a configuration error (the `CONFIG` failure class) rather than being skipped.
 
 ## Schema (GraphQL)
 
@@ -174,9 +182,49 @@ When a matched event fires, Prefect runs the `webhook_process` flow:
 2. On cache miss, fetches the webhook node from the database and caches it
 3. Deserializes the webhook using the `WEBHOOK_MAP` type registry
 4. Builds `EventContext` from the raw event
-5. Calls `webhook.send()` which prepares the payload, assigns headers (with optional HMAC), and POSTs to the target URL
+5. Calls `webhook.compute_payload()` to build the payload
+6. Hands the payload to the `webhook_send` subflow, which resolves the webhook config, builds the headers (with optional HMAC), and POSTs to the target URL
 
-The `webhook_send` task has 3 retries configured and calls `response.raise_for_status()`.
+The `webhook_send` subflow has 3 retries configured and calls `response.raise_for_status()`. `webhook_process` invokes it directly as a subflow, and it is also registered in the workflow catalogue as `WEBHOOK_SEND` so a settled delivery can be re-submitted as an independent run when retried.
+
+## Failure handling
+
+When a delivery fails, `WebhookFailureClassifier.classify()` maps the cause (and any HTTP response) to a stable `StatusClass`, so the run surfaces a clean reason instead of a raw stacktrace:
+
+| Class | Cause | Transient |
+|-------|-------|-----------|
+| `CONFIG` | A configured header value cannot be resolved (for example an unset environment variable) | No |
+| `CONNECTION` | The target endpoint is unreachable | Yes |
+| `TLS` | The target's certificate cannot be validated | No |
+| `TIMEOUT` | The target did not respond within the configured timeout | Yes |
+| `HTTP_CLIENT_ERROR` | The target returned a 4xx status | No |
+| `HTTP_SERVER_ERROR` | The target returned a 5xx status | Yes |
+| `UNKNOWN` | Any unexpected error | No |
+
+Each class carries a clean message and a remediation hint. `webhook_send` classifies the failure, logs the outcome, and raises a `WebhookDeliveryError`; `webhook_process` settles a classified failure into a failed run state whose message is the classified reason. `WebhookDeliveryError` is registered with `@suppress_traceback_in_logs`, and `TracebackSuppressionFilter` (installed on the `prefect.flow_runs` and `prefect.task_runs` loggers in `backend/infrahub/log.py`) drops the traceback record Prefect's engine would otherwise log for a registered type, so the run logs carry only the classified reason. Matching is by exact type identity against the shared registry, so an unrelated exception cannot be silenced by accident. An `UNKNOWN` error is re-raised unregistered, so it keeps its traceback and surfaces as a genuine crash.
+
+A `TLS` failure reaches this layer wrapped by httpx as a generic transport error, so the HTTP adapter's `SSLErrorExtractor` walks the exception chain to recognize the certificate problem and raise a TLS-specific error rather than a generic connection error.
+
+The `transient` flag on `ClassifiedFailure` records whether a class could plausibly succeed on a retry. `webhook_send` currently retries every failure (three retries, four attempts in total, with a fixed 120s delay); the flag is reserved for a future transient-only retry policy. The run is silent for the duration of each retry wait, so the zombie-detection window is sized above this backoff to avoid crashing a waiting delivery; see [Liveness and zombie detection](async-tasks.md#liveness-and-zombie-detection).
+
+## Delivery operability
+
+A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskActionGenerator` derives the actions from the run's workflow name and current state. Only `WEBHOOK_SEND` runs expose actions today; any other task type exposes none.
+
+| Action | Available when | Effect |
+|--------|----------------|--------|
+| `RETRY` | The delivery has settled (a terminal state) | Submits `WEBHOOK_SEND` again with the original run's frozen parameters, as a new independent run. The original run is left unchanged as a record. |
+| `CANCEL` | The delivery has not settled | Requests the `CANCELLING` state without forcing it. A running delivery is torn down by its worker. A delivery waiting between attempts keeps its in-process wait, which nothing interrupts, so each attempt re-checks for a recorded cancellation before sending and stops the sequence once one is present. An in-flight HTTP request is not recalled, but no further attempts run. |
+
+The `available_actions` field on the task query reports each action with whether it currently applies and, when it does not, the reason. Selecting `available_actions` forces resolution of the run's workflow name, since the field is derived from it.
+
+`InfrahubTaskRetry` and `InfrahubTaskCancel` carry out the actions. Each loads the delivery through a query-only Prefect client (`DeliveryReader`), then authorizes it (`DeliveryActionAuthorizer`): the action must apply to the run's current state, and the caller must hold the `UPDATE` permission on the webhook's node kind. Loading is kept separate from authorization so the read uses the narrowest client capability it needs.
+
+### Delivery logging
+
+Each send attempt logs one line before the request is sent: the attempt number (`n/N`), the target URL, the request headers, and the payload. The payload is truncated inline (2048 characters) with the full body emitted only at debug level. Secret-bearing header values are masked in this log — see [Log redaction](#log-redaction) for the rule.
+
+When an attempt fails, `webhook_send` logs one error line carrying the failure class, the attempt number (`n/N`), the elapsed time, the reason, and its remediation. While the flow run has attempts left it also states when the next one fires (`Retrying in 120s (attempt n+1/N).`); on the final attempt it states `No retries remaining.`. Outside a flow run, where no retry sequence drives the send, the line reads `outside a flow run` in place of the attempt number and carries no retry note.
 
 ## Security
 
@@ -196,6 +244,10 @@ Three headers are added to signed requests:
 | `webhook-timestamp` | Unix timestamp |
 | `webhook-signature` | `v1,<base64_signature>` |
 
+### Log redaction
+
+When a delivery request is logged, secret-bearing header values are masked as `***`. A header value is masked when the header is environment-sourced, is the signature header, or matches a well-known credential header name (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`). Matching is case-insensitive, since HTTP header names are, so a secret cannot slip through under a different casing. Standard and statically configured non-credential headers are logged verbatim so the record stays useful; the payload is logged in full only at debug level. A static header value is not treated as a secret unless its name is well-known, so a secret that must stay out of the logs should be supplied as an environment-sourced header, which is always masked, rather than as a static value.
+
 ## Caching
 
 - **Key format**: `webhook:<webhook_id>`
@@ -211,7 +263,8 @@ Three headers are added to signed requests:
 
 | Workflow | Type | Cron | Purpose |
 |----------|------|------|---------|
-| `WEBHOOK_PROCESS` | USER | — | Delivers webhook payload on event match |
+| `WEBHOOK_PROCESS` | INTERNAL | — | Resolves the webhook, computes the payload, and invokes the `webhook_send` subflow on event match |
+| `WEBHOOK_SEND` | CORE | — | Resolves the webhook config, builds headers (with optional HMAC), and POSTs the payload; invoked as a subflow and re-submitted on retry |
 | `WEBHOOK_CONFIGURE` | INTERNAL | daily at 3 AM (random minute) | Unified webhook automation configuration (configure, delete, reconcile) |
 | `WEBHOOK_INVALIDATE_HEADERS` | INTERNAL | — | Invalidates cached webhook data when a referenced KeyValue header changes |
 
@@ -228,6 +281,9 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 | Component | Path |
 |-----------|------|
 | Models | `backend/infrahub/webhook/models.py` |
+| Failure classifier | `backend/infrahub/webhook/classifier.py` |
+| Traceback suppression filter | `backend/infrahub/log.py` |
+| HTTP adapter (TLS handling) | `backend/infrahub/services/adapters/http/httpx.py` |
 | Tasks/Workflows (configure) | `backend/infrahub/webhook/tasks/configure.py` |
 | Tasks/Workflows (process) | `backend/infrahub/webhook/tasks/process.py` |
 | Tasks/Workflows (invalidate) | `backend/infrahub/webhook/tasks/invalidate.py` |
@@ -237,12 +293,17 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 | Gathering | `backend/infrahub/webhook/gather.py` |
 | Schema definitions | `backend/infrahub/core/schema/definitions/core/webhook.py` |
 | GraphQL mutations | `backend/infrahub/graphql/mutations/webhook.py` |
+| Delivery action generator | `backend/infrahub/graphql/queries/task_actions.py` |
+| Delivery retry/cancel mutations | `backend/infrahub/graphql/mutations/task.py` |
 | Workflow catalogue | `backend/infrahub/workflows/catalogue.py` |
 | KeyValue schema | `backend/infrahub/core/schema/definitions/core/key_value.py` |
 | Unit tests (models) | `backend/tests/unit/webhook/test_models.py` |
+| Unit tests (classifier) | `backend/tests/unit/webhook/test_classifier.py` |
 | Unit tests (triggers) | `backend/tests/unit/webhook/test_triggers.py` |
 | Functional tests (configure) | `backend/tests/functional/webhook/test_configure.py` |
 | Functional tests (process) | `backend/tests/functional/webhook/test_process.py` |
+| Functional tests (retry) | `backend/tests/functional/webhook/test_retry.py` |
+| Functional tests (cancel) | `backend/tests/functional/webhook/test_cancel.py` |
 | Mutation tests | `backend/tests/component/graphql/mutations/test_webhook.py` |
 
 ## See Also

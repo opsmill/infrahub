@@ -75,6 +75,7 @@ from .types.branch import InfrahubBranchEdge
 from .types.context import ContextInput
 from .types.event import EVENT_TYPES
 from .types.node import InfrahubObjectWithoutMeta
+from .types.task import TASK_TYPES
 
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
@@ -132,6 +133,7 @@ class GraphQLSchemaManager:
 
         self._load_attribute_types()
         self._load_event_types()
+        self._load_task_types()
         if config.SETTINGS.experimental_features.graphql_enums:
             self._load_all_enum_types(node_schemas=self.schema.get_all().values())
         self._load_node_interface()
@@ -245,6 +247,10 @@ class GraphQLSchemaManager:
     def _load_event_types(self) -> None:
         for event in EVENT_TYPES.values():
             self.set_type(name=event._meta.name, graphql_type=event)
+
+    def _load_task_types(self) -> None:
+        for task_type in TASK_TYPES.values():
+            self.set_type(name=task_type._meta.name, graphql_type=task_type)
 
     def _load_node_interface(self) -> None:
         """Load the base CoreNode interface. Edged/paginated objects are created later in generate_object_types."""

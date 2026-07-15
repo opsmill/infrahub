@@ -2,6 +2,10 @@ from enum import StrEnum
 
 CACHE_KEY_PREFIX = "webhook"
 
+WEBHOOK_SEND_RETRIES: int = 3
+WEBHOOK_SEND_RETRY_DELAY_SECONDS: float = 120  # fixed 2m delay between attempts
+WEBHOOK_SEND_ATTEMPTS: int = WEBHOOK_SEND_RETRIES + 1  # the initial try plus its retries
+
 
 class WebhookAction(StrEnum):
     CONFIGURE = "configure"
