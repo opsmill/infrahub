@@ -25,7 +25,7 @@ schema = db.schema.get(name="MyNode", branch=branch)
 schema = registry.schema.get(name="MyNode")
 ```
 
-Components already accept `schema_manager`; entry points still pass `registry.schema`, concentrating the access at the boundary on the way to a `get_schema_manager()` accessor and retiring `registry` imports.
+Components already accept `schema_manager` (the merge orchestrator, diff calculator, schema update coordinator, …); entry points still pass `registry.schema`, concentrating the access at the boundary. The next step is an accessor like the existing `get_database()` / `get_component()` so entry points can drop `registry` entirely.
 
 Exception: `registry` stays for hot (per-request) in-memory reads where a DB round-trip is a real regression (e.g. `registry.branch`); cold paths (daily tasks) use the DB. New-code preference — don't sweep existing call sites.
 
