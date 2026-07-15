@@ -28,8 +28,8 @@ dependencies = [
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
     "click>=8.3,<9",
-    "prefect==3.7.5",
-    "prefect-redis==0.2.14",
+    "prefect",
+    "prefect-redis",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3.1.50,<4",
@@ -85,6 +85,10 @@ Documentation = "https://docs.infrahub.app/"
 infrahub-server = { workspace = true }
 infrahub-sdk = { path = "python_sdk", editable = true }
 infrahub-testcontainers = { path = "python_testcontainers", editable = true }
+# Redis Sentinel support for prefect-redis (messaging + RedisDatabase block), from
+# PrefectHQ/prefect#22377 until it is released.
+prefect = { git = "https://github.com/fatih-acar/prefect.git", branch = "feat/redis-sentinel-on-22211" }
+prefect-redis = { git = "https://github.com/fatih-acar/prefect.git", branch = "feat/redis-sentinel-on-22211", subdirectory = "src/integrations/prefect-redis" }
 
 [dependency-groups]
 dev = [

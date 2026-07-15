@@ -152,27 +152,27 @@ class ConnectionStringCase:
         ),
         pytest.param(
             ConnectionStringCase(
-                name="url_single_node_tls_insecure_native_params",
+                name="url_single_node_passed_through_verbatim",
                 cache_kwargs={"url": "rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false"},
-                expected_url="rediss://cache:6379/0?ssl_cert_reqs=none&ssl_check_hostname=False",
+                expected_url="rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false",
             ),
-            id="url_single_node_tls_insecure_native_params",
+            id="url_single_node_passed_through_verbatim",
         ),
         pytest.param(
             ConnectionStringCase(
-                name="url_sentinel_best_effort_first_member_data_port",
+                name="url_sentinel_passed_through",
                 cache_kwargs={"url": "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1"},
-                expected_url="redis://sentinel-a:6379/1",
+                expected_url="redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1",
             ),
-            id="url_sentinel_best_effort_first_member_data_port",
+            id="url_sentinel_passed_through",
         ),
         pytest.param(
             ConnectionStringCase(
-                name="url_sentinel_tls_and_auth_best_effort",
+                name="url_sentinel_tls_and_auth_passed_through",
                 cache_kwargs={"url": "rediss+sentinel://user:secret@sentinel-a:26379/mymaster"},
-                expected_url="rediss://user:secret@sentinel-a:6379/0",
+                expected_url="rediss+sentinel://user:secret@sentinel-a:26379/mymaster",
             ),
-            id="url_sentinel_tls_and_auth_best_effort",
+            id="url_sentinel_tls_and_auth_passed_through",
         ),
     ],
 )
