@@ -744,12 +744,9 @@ class SchemaBranch:
         self.manage_profile_relationships()
         self.add_hierarchy_generic()
         self.add_hierarchy_node()
-        # Re-run attribute-level resolution: the profile and template management steps above can
-        # introduce schemas (or pull in base generics such as the core profile) after the earlier
-        # passes ran, leaving their attributes unresolved — legacy parameters unsynced with the
-        # nested parameters object, and branch-support left at None (the inherit-from-node
-        # sentinel). Without this a subsequent schema load diffs those unresolved attributes as
-        # changed and rejects the load on update-not_supported fields.
+
+        # profile and template management can add schemas (such as CoreProfile)
+        # leaving some of their attributes unresolved
         self._reconcile_legacy_attribute_parameters()
         self.process_branch_support()
 
