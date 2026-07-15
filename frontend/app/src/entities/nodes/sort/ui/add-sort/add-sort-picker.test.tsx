@@ -4,12 +4,12 @@ import { store } from "@/shared/stores";
 
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { render } from "../../../../../tests/components/render";
+import { render } from "../../../../../../tests/components/render";
 import {
   generateAttributeSchema,
   generateNodeSchema,
   generateRelationshipSchema,
-} from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/schema";
 import { AddSortPicker } from "./add-sort-picker";
 
 const site = generateNodeSchema({
@@ -75,6 +75,108 @@ describe("AddSortPicker", () => {
     await expect
       .element(component.getByRole("menuitem", { name: "Vault" }))
       .not.toBeInTheDocument();
+    await expect
+      .element(component.getByRole("menuitem", { name: "Relationship test" }))
+      .not.toBeInTheDocument();
+  });
+
+  test("orders attributes and relationships by order weight, not declaration order", async () => {
+    // GIVEN
+    const weighted = generateNodeSchema({
+      attributes: [
+        generateAttributeSchema({
+          name: "priority",
+          label: "Priority",
+          kind: "Number",
+          order_weight: 3000,
+        }),
+        generateAttributeSchema({ name: "name", label: "Name", kind: "Text", order_weight: 1000 }),
+        generateAttributeSchema({
+          name: "status",
+          label: "Status",
+          kind: "Text",
+          order_weight: 2000,
+        }),
+      ],
+      relationships: [
+        generateRelationshipSchema({
+          name: "site",
+          label: "Site",
+          peer: "LocationSite",
+          cardinality: "one",
+          order_weight: 2000,
+        }),
+        generateRelationshipSchema({
+          name: "building",
+          label: "Building",
+          peer: "LocationSite",
+          cardinality: "one",
+          order_weight: 1000,
+        }),
+      ],
+    });
+    const component = await render(<AddSortPicker schema={weighted} onSelect={vi.fn()} />);
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
+    const labels = component
+      .getByRole("menuitem")
+      .elements()
+      .map((item) => item.textContent);
+    expect(labels).toEqual([
+      "Name",
+      "Status",
+      "Priority",
+      "Building",
+      "Site",
+      "Created at",
+      "Updated at",
+    ]);
+  });
+
+  test("orders peer attributes by order weight in the search results", async () => {
+    // GIVEN
+    const building = generateNodeSchema({
+      kind: "LocationBuilding",
+      attributes: [
+        generateAttributeSchema({ name: "rack", label: "Rack", kind: "Text", order_weight: 3000 }),
+        generateAttributeSchema({ name: "name", label: "Name", kind: "Text", order_weight: 2000 }),
+        generateAttributeSchema({
+          name: "description",
+          label: "Description",
+          kind: "Text",
+          order_weight: 1000,
+        }),
+      ],
+      relationships: [],
+    });
+    store.set(nodeSchemasAtom, [building]);
+    const weighted = generateNodeSchema({
+      attributes: [],
+      relationships: [
+        generateRelationshipSchema({
+          name: "building",
+          label: "Building",
+          peer: "LocationBuilding",
+          cardinality: "one",
+        }),
+      ],
+    });
+    const component = await render(<AddSortPicker schema={weighted} onSelect={vi.fn()} />);
+
+    // WHEN
+    await component.getByRole("searchbox").fill("building");
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Building › Description" }))
+      .toBeVisible();
+    // The flat labels join segments with en-spaces around the chevron.
+    const labels = component
+      .getByRole("menuitem")
+      .elements()
+      .map((item) => item.textContent?.replaceAll(" ", " "));
+    expect(labels).toEqual(["Building › Description", "Building › Name", "Building › Rack"]);
   });
 
   test("selects a relationship field with a direction through the submenu cascade", async () => {
@@ -125,8 +227,7 @@ describe("AddSortPicker", () => {
 
   test("flattens fields with peer-prefixed labels when searching", async () => {
     // GIVEN
-    const onSelect = vi.fn();
-    const component = await render(<AddSortPicker schema={schema} onSelect={onSelect} />);
+    const component = await render(<AddSortPicker schema={schema} onSelect={vi.fn()} />);
 
     // WHEN
     await component.getByRole("searchbox").fill("des");
@@ -138,8 +239,15 @@ describe("AddSortPicker", () => {
     await expect
       .element(component.getByRole("menuitem", { name: "Site", exact: true }))
       .not.toBeInTheDocument();
+  });
+
+  test("selects a flattened field from the search results", async () => {
+    // GIVEN
+    const onSelect = vi.fn();
+    const component = await render(<AddSortPicker schema={schema} onSelect={onSelect} />);
 
     // WHEN
+    await component.getByRole("searchbox").fill("des");
     await component.getByRole("menuitem", { name: "Site › Description" }).click();
     await component.getByRole("menuitem", { name: "Descending" }).click();
 
@@ -161,6 +269,23 @@ describe("AddSortPicker", () => {
     await expect.element(component.getByRole("menuitem", { name: "Site › rack" })).toBeVisible();
   });
 
+  test("restores the grouped layout when the search is cleared", async () => {
+    // GIVEN
+    const component = await render(<AddSortPicker schema={schema} onSelect={vi.fn()} />);
+    await component.getByRole("searchbox").fill("des");
+
+    // WHEN
+    await component.getByRole("searchbox").fill("");
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Site", exact: true }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("menuitem", { name: "Site › Description" }))
+      .not.toBeInTheDocument();
+  });
+
   test("hides an attribute that is already active", async () => {
     // GIVEN
     const component = await render(
@@ -170,6 +295,19 @@ describe("AddSortPicker", () => {
     // THEN
     await expect.element(component.getByRole("menuitem", { name: "Site" })).toBeVisible();
     await expect.element(component.getByRole("menuitem", { name: "Name" })).not.toBeInTheDocument();
+  });
+
+  test("keeps a peer attribute visible when a same-named top-level attribute is active", async () => {
+    // GIVEN
+    const component = await render(
+      <AddSortPicker schema={schema} activeFields={new Set(["name__value"])} onSelect={vi.fn()} />
+    );
+
+    // WHEN
+    await component.getByRole("menuitem", { name: "Site" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
   });
 
   test("hides a metadata field that is already active", async () => {
@@ -189,19 +327,6 @@ describe("AddSortPicker", () => {
       .not.toBeInTheDocument();
   });
 
-  test("keeps a peer attribute visible when a same-named top-level attribute is active", async () => {
-    // GIVEN
-    const component = await render(
-      <AddSortPicker schema={schema} activeFields={new Set(["name__value"])} onSelect={vi.fn()} />
-    );
-
-    // WHEN
-    await component.getByRole("menuitem", { name: "Site" }).click();
-
-    // THEN
-    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
-  });
-
   test("hides only the peer attribute when a relationship field is active", async () => {
     // GIVEN
     const component = await render(
@@ -212,13 +337,11 @@ describe("AddSortPicker", () => {
       />
     );
 
-    // THEN
-    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
-
     // WHEN
     await component.getByRole("menuitem", { name: "Site" }).click();
 
     // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Name" }).first()).toBeVisible();
     await expect.element(component.getByRole("menuitem", { name: "Description" })).toBeVisible();
     await expect
       .element(component.getByRole("menuitem", { name: "Name" }).nth(1))
@@ -282,18 +405,58 @@ describe("AddSortPicker", () => {
     await expect.element(component.getByText("All sortable fields are in use")).toBeVisible();
   });
 
-  test("restores the grouped layout when the search is cleared", async () => {
+  test("hides many-cardinality relationships", async () => {
     // GIVEN
     const component = await render(<AddSortPicker schema={schema} onSelect={vi.fn()} />);
-
-    // WHEN
-    await component.getByRole("searchbox").fill("des");
-    await component.getByRole("searchbox").fill("");
 
     // THEN
     await expect.element(component.getByRole("menuitem", { name: "Site" })).toBeVisible();
     await expect
-      .element(component.getByRole("menuitem", { name: "Site › Description" }))
+      .element(component.getByRole("menuitem", { name: "Relationship test" }))
       .not.toBeInTheDocument();
+  });
+
+  test("hides a relationship whose peer schema is unknown", async () => {
+    // GIVEN
+    const orphaned = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "name", label: "Name", kind: "Text" })],
+      relationships: [
+        generateRelationshipSchema({
+          name: "owner",
+          label: "Owner",
+          peer: "UnknownKind",
+          cardinality: "one",
+        }),
+      ],
+    });
+    const component = await render(<AddSortPicker schema={orphaned} onSelect={vi.fn()} />);
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
+    await expect
+      .element(component.getByRole("menuitem", { name: "Owner" }))
+      .not.toBeInTheDocument();
+  });
+
+  test("omits unknown-peer fields from the search results", async () => {
+    // GIVEN
+    const orphaned = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "name", label: "Name", kind: "Text" })],
+      relationships: [
+        generateRelationshipSchema({
+          name: "owner",
+          label: "Owner",
+          peer: "UnknownKind",
+          cardinality: "one",
+        }),
+      ],
+    });
+    const component = await render(<AddSortPicker schema={orphaned} onSelect={vi.fn()} />);
+
+    // WHEN
+    await component.getByRole("searchbox").fill("owner");
+
+    // THEN
+    await expect.element(component.getByText("No fields match")).toBeVisible();
   });
 });

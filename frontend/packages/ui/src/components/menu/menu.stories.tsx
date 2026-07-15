@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { CopyIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
-import React, { useState } from "react";
-import { Popover as AriaPopover } from "react-aria-components";
+import React from "react";
 
 import { Autocomplete } from "../autocomplete/autocomplete";
 import { Button } from "../button/button";
+import { Popover } from "../popover/popover";
 import { Menu, MenuItem, MenuSection, MenuTrigger, SubmenuTrigger } from "./menu";
 
 const meta: Meta<typeof Menu> = {
@@ -21,9 +21,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-[10px] font-medium tracking-wider text-neutral-400 uppercase">
-    {children}
-  </div>
+  <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
 );
 
 // The menu lives inside a Popover in real usage; this mimics that surface so the  items render against the expected background.
@@ -120,7 +118,7 @@ export const AllVariants: Story = {
             {disabledItems()}
           </Menu>
         </MenuSurface>
-        <p className="text-[10px] text-neutral-400">Hover the disabled item to see the tooltip.</p>
+        <p className="text-xxs text-neutral-400">Hover the disabled item to see the tooltip.</p>
       </div>
       <MenuSurface>
         <Menu aria-label="Picker menu with a disabled item" variant="picker">
@@ -145,23 +143,25 @@ const DIRECTIONS = [
 ];
 
 function PickerWithSubmenuRender() {
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPicked] = React.useState<string | null>(null);
   return (
     <div className="flex flex-col items-start gap-3">
       <MenuTrigger>
         <Button variant="outline" size="sm">
           Add sort
         </Button>
-        <AriaPopover
-          placement="bottom start"
-          className="w-56 rounded-lg border border-neutral-300 bg-white shadow-md"
-        >
+        <Popover placement="bottom start" className="w-56">
           <Autocomplete>
-            <Menu variant="picker" aria-label="Sort field" className="max-h-72">
+            <Menu
+              variant="picker"
+              aria-label="Sort field"
+              className="max-h-72"
+              emptyMessage="No fields match"
+            >
               {SORT_FIELDS.map((field) => (
                 <SubmenuTrigger key={field}>
                   <MenuItem textValue={field}>{field}</MenuItem>
-                  <AriaPopover className="rounded-lg border border-neutral-300 bg-white shadow-md">
+                  <Popover>
                     <Menu
                       aria-label={`Direction for ${field}`}
                       onAction={(key) => setPicked(`${field} · ${key}`)}
@@ -172,12 +172,12 @@ function PickerWithSubmenuRender() {
                         </MenuItem>
                       ))}
                     </Menu>
-                  </AriaPopover>
+                  </Popover>
                 </SubmenuTrigger>
               ))}
             </Menu>
           </Autocomplete>
-        </AriaPopover>
+        </Popover>
       </MenuTrigger>
       <p className="text-xs text-neutral-500">Picked: {picked ?? "—"}</p>
     </div>

@@ -1,3 +1,5 @@
+import * as R from "remeda";
+
 import {
   NODE_METADATA_SORT_FIELDS,
   type Sort,
@@ -13,9 +15,9 @@ import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 /**
- * Keeps only sorts targeting one of the schema's sortable fields.
- * Sort fields come straight from the URL, so this allowlist is what keeps
- * arbitrary user input out of GraphQL order arguments.
+ * Keeps only sorts targeting one of the schema's sortable fields, one sort
+ * per field. Sort fields come straight from the URL, so this allowlist is
+ * what keeps arbitrary user input out of GraphQL order arguments.
  */
 export function getValidSorts(sorts: Sort[], schema: ModelSchema): Sort[] {
   if (sorts.length === 0) return sorts;
@@ -40,8 +42,12 @@ export function getValidSorts(sorts: Sort[], schema: ModelSchema): Sort[] {
   const sortableFields = new Set<SortField>([
     ...attributeFields,
     ...relationshipFields,
-    ...NODE_METADATA_SORT_FIELDS.map(({ field }) => field),
+    ...NODE_METADATA_SORT_FIELDS,
   ]);
 
-  return sorts.filter((sort) => sortableFields.has(sort.field));
+  return R.pipe(
+    sorts,
+    R.filter((sort) => sortableFields.has(sort.field)),
+    R.uniqueBy((sort) => sort.field)
+  );
 }
