@@ -19,13 +19,15 @@ class RedisCache(InfrahubCache):
 
     async def get(self, key: str) -> str | None:
         value = await self.connection.get(name=key)
-        if value is not None:
+        # redis-py types a response as bytes or str because a connection can decode responses
+        # itself; this one does not, so the values come back as bytes.
+        if isinstance(value, bytes):
             return value.decode()
-        return None
+        return value
 
     async def get_values(self, keys: list[str]) -> list[str | None]:
         values = await self.connection.mget(keys=keys)
-        return [value.decode() if value is not None else value for value in values]
+        return [value.decode() if isinstance(value, bytes) else value for value in values]
 
     async def list_keys(self, filter_pattern: str) -> list[str]:
         cursor = 0
@@ -37,14 +39,17 @@ class RedisCache(InfrahubCache):
             if cursor == 0:
                 has_remaining_keys = False
 
-        return [key.decode() for key in keys]
+        return [key.decode() if isinstance(key, bytes) else key for key in keys]
 
     async def set(
         self, key: str, value: str, expires: KVTTL | int | None = None, not_exists: bool = False
     ) -> bool | None:
         # redis-py cannot encode an IntEnum (e.g. KVTTL) directly, so coerce the TTL to a plain int.
         ex = int(expires) if expires else None
-        return await self.connection.set(name=key, value=value, ex=ex, nx=not_exists)
+        result = await self.connection.set(name=key, value=value, ex=ex, nx=not_exists)
+        # redis-py also types the response of the `get=` option (the previous value); this call never
+        # asks for it, so the response is True on success and None when `nx` finds the key set.
+        return bool(result) if result is not None else None
 
     @classmethod
     async def new(cls) -> RedisCache:
