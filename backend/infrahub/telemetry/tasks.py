@@ -99,9 +99,8 @@ async def gather_account_information(db: InfrahubDatabase) -> TelemetryAccountDa
 
 
 async def count_active_branches(db: InfrahubDatabase) -> int:
-    """Count open non-system branches, excluding the default and global branches."""
-    branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True)
-    return len(branches)
+    """Count open non-system branches (excludes the default, global, and terminal branches)."""
+    return await Branch.get_list_count(db=db, exclude_default=True, exclude_terminal=True)
 
 
 class AccountGatherer(Protocol):
