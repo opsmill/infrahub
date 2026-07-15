@@ -1,18 +1,17 @@
 import { Card, CardHeader } from "@infrahub/ui";
-import { useMemo } from "react";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import type { ResolvedPreference } from "@/entities/preferences/domain/model/preference";
+import type { Preference } from "@/entities/preferences/domain/model/preference";
 import {
   dateFormatLabel,
   formatDateFormatExample,
 } from "@/entities/preferences/domain/rules/date-format";
 import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
-import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
+import { useGetEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 import { useUpsertUserPreferences } from "@/entities/preferences/ui/queries/upsert-user-preferences.mutation";
 
 function browserDateExample(referenceDate: Date): string {
@@ -28,7 +27,7 @@ function presetExample(value: string, referenceDate: Date) {
   return `${formatDateFormatExample(value, referenceDate)} (${dateFormatLabel(value)})`;
 }
 
-function sourceTooltip(resolved: ResolvedPreference, browserValue: string): string {
+function sourceTooltip(resolved: Preference, browserValue: string): string {
   switch (resolved.source) {
     case "USER":
       return "Your preference.";
@@ -40,27 +39,25 @@ function sourceTooltip(resolved: ResolvedPreference, browserValue: string): stri
 }
 
 export function UserPreferencesCard() {
-  const effectiveQuery = useEffectivePreferences();
+  const { isPending, error, data: preferences } = useGetEffectivePreferences();
   const updatePreferences = useUpsertUserPreferences();
-  const now = useMemo(() => new Date(), []);
+  const now = new Date();
 
-  if (effectiveQuery.error) {
-    return <ErrorScreen message="Something went wrong when fetching your preferences" />;
-  }
-
-  if (effectiveQuery.isPending) {
+  if (isPending) {
     return <LoadingIndicator className="h-32" />;
   }
 
-  const preferences = effectiveQuery.data;
+  if (error) {
+    return <ErrorScreen message="Something went wrong when fetching your preferences" />;
+  }
 
-  const dateFormatResolved: ResolvedPreference = {
+  const dateFormatPreference: Preference = {
     source: preferences.dateFormat.source,
     value: preferences.dateFormat.value
       ? presetExample(preferences.dateFormat.value, now)
       : preferences.dateFormat.value,
   };
-  const dateFormatSourceTooltip = sourceTooltip(dateFormatResolved, browserDateExample(now));
+  const dateFormatSourceTooltip = sourceTooltip(dateFormatPreference, browserDateExample(now));
   const timezoneSourceTooltip = sourceTooltip(preferences.timezone, browserTimezone());
 
   // Show only the caller's OWN override; inherited values stay unset so the field shows its placeholder.
@@ -70,7 +67,7 @@ export function UserPreferencesCard() {
     preferences.timezone.source === "USER" ? preferences.timezone.value : null;
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader>Preferences</CardHeader>
       <p className="px-3 py-2 text-gray-600 text-sm">
         Personal overrides of the organisation defaults. A field with no personal override inherits

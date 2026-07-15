@@ -10,6 +10,6 @@ export function getEffectivePreferencesQueryOptions() {
   });
 }
 
-export function useEffectivePreferences() {
+export function useGetEffectivePreferences() {
   return useQuery(getEffectivePreferencesQueryOptions());
 }

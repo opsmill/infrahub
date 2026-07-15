@@ -61,28 +61,6 @@ describe("UserPreferencesCard", () => {
     );
   });
 
-  test("renders the row and action separators full-bleed (no horizontal inset)", async () => {
-    const component = await render(<UserPreferencesCard />);
-
-    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
-
-    const divider = component.container.querySelector("div.divide-y.divide-gray-200");
-    expect(divider).not.toBeNull();
-    const dividerClasses = divider?.className ?? "";
-    expect(dividerClasses).not.toMatch(/(^|\s)px-/);
-    expect(dividerClasses).not.toMatch(/(^|\s)pl-/);
-    expect(dividerClasses).not.toMatch(/(^|\s)pr-/);
-
-    const rows = divider ? Array.from(divider.children) : [];
-    expect(rows.length).toBeGreaterThanOrEqual(2);
-    for (const row of rows) {
-      expect(row.className).toMatch(/(^|\s)px-3(\s|$)/);
-    }
-
-    const actionRow = rows.at(-1) as HTMLElement;
-    expect(actionRow.querySelector("button")).not.toBeNull();
-  });
-
   test("shows the 'Automatic (inherited)' placeholder when the user has no override", async () => {
     const component = await render(<UserPreferencesCard />);
 

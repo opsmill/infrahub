@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
-import type React from "react";
-import { useId } from "react";
+import React from "react";
 import { useFormState, useWatch } from "react-hook-form";
 
+import { Row } from "@/shared/components/container";
 import { DetailRow } from "@/shared/components/display/detail-row";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
@@ -83,11 +83,9 @@ export function PreferencesForm({
   const items = buildDateFormatPresets().map(({ key, label }) => ({ value: key, label }));
   const now = new Date();
 
-  const dateFormatLabelId = useId();
-  const timezoneLabelId = useId();
-  const dateFormatExampleId = useId();
-
-  const dateFormatDescribedBy = dateFormatExampleId;
+  const dateFormatLabelId = React.useId();
+  const timezoneLabelId = React.useId();
+  const dateFormatExampleId = React.useId();
 
   return (
     <Form
@@ -101,50 +99,49 @@ export function PreferencesForm({
           timezone: (formData.timezone?.value as string | null) ?? null,
         });
       }}
+      className="space-y-0 divide-y divide-gray-200"
     >
-      <div className="divide-y divide-gray-200">
-        <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
-          <div className="flex items-center gap-2">
-            <div className="w-64 shrink-0">
-              <PreferenceSelect
-                name="date_format"
-                label="Date format"
-                labelClassName="sr-only"
-                items={items}
-                placeholder={emptyValueLabel}
-                emptyMessage="No date format found."
-                aria-describedby={dateFormatDescribedBy}
-              />
-            </div>
-            <div className="min-w-0 flex-1 truncate">
-              <DateFormatExample id={dateFormatExampleId} now={now} />
-            </div>
-            <SourceInfo message={dateFormatSourceTooltip} />
+      <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
+        <Row>
+          <div className="w-64 shrink-0">
+            <PreferenceSelect
+              name="date_format"
+              label="Date format"
+              labelClassName="sr-only"
+              items={items}
+              placeholder={emptyValueLabel}
+              emptyMessage="No date format found."
+              aria-describedby={dateFormatExampleId}
+            />
           </div>
-        </DetailRow>
-
-        <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>
-          <div className="flex items-center gap-2">
-            <div className="w-64 shrink-0">
-              <PreferenceSelect
-                name="timezone"
-                label="Timezone"
-                labelClassName="sr-only"
-                items={TIMEZONE_ITEMS}
-                placeholder={emptyValueLabel}
-                emptyMessage="No timezone found."
-                virtualized
-              />
-            </div>
-            <div className="flex-1" />
-            <SourceInfo message={timezoneSourceTooltip} />
+          <div className="min-w-0 flex-1 truncate">
+            <DateFormatExample id={dateFormatExampleId} now={now} />
           </div>
-        </DetailRow>
+          <SourceInfo message={dateFormatSourceTooltip} />
+        </Row>
+      </DetailRow>
 
-        <div className="flex items-center justify-end gap-2 px-3 py-2">
-          <SaveButton isDisabled={isSubmitDisabled} />
-        </div>
-      </div>
+      <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>
+        <Row>
+          <div className="w-64 shrink-0">
+            <PreferenceSelect
+              name="timezone"
+              label="Timezone"
+              labelClassName="sr-only"
+              items={TIMEZONE_ITEMS}
+              placeholder={emptyValueLabel}
+              emptyMessage="No timezone found."
+              virtualized
+            />
+          </div>
+          <div className="flex-1" />
+          <SourceInfo message={timezoneSourceTooltip} />
+        </Row>
+      </DetailRow>
+
+      <Row className="justify-end p-2">
+        <SaveButton isDisabled={isSubmitDisabled} />
+      </Row>
     </Form>
   );
 }

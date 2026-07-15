@@ -21,6 +21,5 @@ const GET_EFFECTIVE_PREFERENCES = graphql(`
 export const getEffectivePreferencesFromApi = async () => {
   return graphqlClient.query({
     query: GET_EFFECTIVE_PREFERENCES,
-    fetchPolicy: "network-only",
   });
 };

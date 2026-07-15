@@ -9,13 +9,12 @@ export interface PreferenceValues {
   timezone: string | null;
 }
 
-export interface ResolvedPreference<T = string> {
+export interface Preference<T = string> {
   value: T | null;
   source: PreferenceSource;
 }
 
-// Raw org defaults are NOT here — read those via `useGlobalPreferences()`.
 export interface EffectivePreferences {
-  dateFormat: ResolvedPreference<DateFormatKey>;
-  timezone: ResolvedPreference;
+  dateFormat: Preference<DateFormatKey>;
+  timezone: Preference;
 }
