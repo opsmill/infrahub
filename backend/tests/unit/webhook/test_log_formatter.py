@@ -153,7 +153,7 @@ def test_outgoing_request_falls_back_to_plain_repr_when_payload_is_not_json_seri
     formatter: WebhookLogFormatter, caplog: pytest.LogCaptureFixture
 ) -> None:
     payload = _Unserializable()
-    with pytest.raises((TypeError, ValueError)) as exc_info:
+    with pytest.raises(TypeError, match="is not JSON serializable") as exc_info:
         ujson.dumps(payload, indent=2)
     serialization_error = str(exc_info.value)
 
