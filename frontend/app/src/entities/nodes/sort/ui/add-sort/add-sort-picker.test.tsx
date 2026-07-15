@@ -80,6 +80,105 @@ describe("AddSortPicker", () => {
       .not.toBeInTheDocument();
   });
 
+  test("orders attributes and relationships by order weight, not declaration order", async () => {
+    // GIVEN
+    const weighted = generateNodeSchema({
+      attributes: [
+        generateAttributeSchema({
+          name: "priority",
+          label: "Priority",
+          kind: "Number",
+          order_weight: 3000,
+        }),
+        generateAttributeSchema({ name: "name", label: "Name", kind: "Text", order_weight: 1000 }),
+        generateAttributeSchema({
+          name: "status",
+          label: "Status",
+          kind: "Text",
+          order_weight: 2000,
+        }),
+      ],
+      relationships: [
+        generateRelationshipSchema({
+          name: "site",
+          label: "Site",
+          peer: "LocationSite",
+          cardinality: "one",
+          order_weight: 2000,
+        }),
+        generateRelationshipSchema({
+          name: "building",
+          label: "Building",
+          peer: "LocationSite",
+          cardinality: "one",
+          order_weight: 1000,
+        }),
+      ],
+    });
+    const component = await render(<AddSortPicker schema={weighted} onSelect={vi.fn()} />);
+
+    // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
+    const labels = component
+      .getByRole("menuitem")
+      .elements()
+      .map((item) => item.textContent);
+    expect(labels).toEqual([
+      "Name",
+      "Status",
+      "Priority",
+      "Building",
+      "Site",
+      "Created at",
+      "Updated at",
+    ]);
+  });
+
+  test("orders peer attributes by order weight in the search results", async () => {
+    // GIVEN
+    const building = generateNodeSchema({
+      kind: "LocationBuilding",
+      attributes: [
+        generateAttributeSchema({ name: "rack", label: "Rack", kind: "Text", order_weight: 3000 }),
+        generateAttributeSchema({ name: "name", label: "Name", kind: "Text", order_weight: 2000 }),
+        generateAttributeSchema({
+          name: "description",
+          label: "Description",
+          kind: "Text",
+          order_weight: 1000,
+        }),
+      ],
+      relationships: [],
+    });
+    store.set(nodeSchemasAtom, [building]);
+    const weighted = generateNodeSchema({
+      attributes: [],
+      relationships: [
+        generateRelationshipSchema({
+          name: "building",
+          label: "Building",
+          peer: "LocationBuilding",
+          cardinality: "one",
+        }),
+      ],
+    });
+    const component = await render(<AddSortPicker schema={weighted} onSelect={vi.fn()} />);
+
+    // WHEN
+    await component.getByRole("searchbox").fill("building");
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "Building › Description" }))
+      .toBeVisible();
+    // The flat labels join segments with en-spaces around the chevron.
+    const labels = component
+      .getByRole("menuitem")
+      .elements()
+      .map((item) => item.textContent?.replaceAll(" ", " "));
+    expect(labels).toEqual(["Building › Description", "Building › Name", "Building › Rack"]);
+  });
+
   test("selects a relationship field with a direction through the submenu cascade", async () => {
     // GIVEN
     const onSelect = vi.fn();
