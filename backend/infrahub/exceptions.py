@@ -259,6 +259,14 @@ class ResourceNotFoundError(Error):
         super().__init__(self.message)
 
 
+class ResourceMultipleFoundError(Error):
+    HTTP_CODE: int = 500
+
+    def __init__(self, message: str | None = None) -> None:
+        self.message = message or "Multiple matching resources were found"
+        super().__init__(self.message)
+
+
 class AuthorizationError(Error):
     HTTP_CODE: int = 401
     message: str = "Access to the requested resource was denied"
