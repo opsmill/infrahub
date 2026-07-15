@@ -28,11 +28,24 @@ from infrahub.telemetry.task_manager import (
     count_windowed_unique_resources,
 )
 from infrahub.telemetry.tasks import (
+    AccountGatherer,
+    ActiveBranchCounter,
+    ActivityGatherer,
+    AnonymousTelemetryGatherer,
+    DefaultAccountGatherer,
+    DefaultActiveBranchCounter,
+    DefaultActivityGatherer,
+    build_anonymous_telemetry_gatherer,
     count_active_branches,
     gather_account_information,
-    gather_anonymous_telemetry_data,
 )
-from infrahub.workers.dependencies import build_component, clear_singletons, set_component_type
+from infrahub.workers.dependencies import (
+    build_component,
+    clear_singletons,
+    get_component,
+    get_database,
+    set_component_type,
+)
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 
@@ -115,7 +128,7 @@ async def test_active_branches_excludes_default_and_global(
     assert any(branch.is_default for branch in registry.branch.values())
     assert any(branch.is_global for branch in registry.branch.values())
 
-    assert await count_active_branches() == 2
+    assert await count_active_branches(db=db) == 2
 
 
 @pytest.fixture
@@ -147,9 +160,27 @@ async def telemetry_environment(
         clear_singletons()
 
 
+async def _build_gatherer(
+    account_gatherer: AccountGatherer | None = None,
+    activity_gatherer: ActivityGatherer | None = None,
+    active_branch_counter: ActiveBranchCounter | None = None,
+) -> AnonymousTelemetryGatherer:
+    """Build the gatherer with real collaborators, overriding any one with an injected double."""
+    database = await get_database()
+    component = await get_component()
+    return AnonymousTelemetryGatherer(
+        database=database,
+        component=component,
+        account_gatherer=account_gatherer or DefaultAccountGatherer(db=database),
+        activity_gatherer=activity_gatherer or DefaultActivityGatherer(),
+        active_branch_counter=active_branch_counter or DefaultActiveBranchCounter(db=database),
+    )
+
+
 async def test_gather_full_payload_fields_present(telemetry_environment: InfrahubDatabase) -> None:
     """A healthy gather populates every new field on the payload (presence, not exact values)."""
-    data = await gather_anonymous_telemetry_data.fn()
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
 
     assert isinstance(data, TelemetryData)
 
@@ -169,47 +200,50 @@ async def test_gather_full_payload_fields_present(telemetry_environment: Infrahu
         assert getattr(data.activity_24h, field) is not None, field
 
 
-async def _empty_window_activity_gatherer() -> TelemetryActivity24hData:
+class EmptyWindowActivityGatherer:
     """Assemble activity_24h over a far-past window no test seeds, via the real counters.
 
     The sources succeed but legitimately count nothing, isolating the empty -> 0 case from the
     session-shared event store other modules populate around the live window.
     """
-    async with get_client(sync_client=False) as client:
-        logins = await count_windowed_event.fn(
-            client=client,
-            event_name=AccountLoggedInEvent.event_name,
-            window_start=_EMPTY_WINDOW_START,
-            window_end=_EMPTY_WINDOW_END,
+
+    async def gather(self) -> TelemetryActivity24hData:
+        async with get_client(sync_client=False) as client:
+            logins = await count_windowed_event.fn(
+                client=client,
+                event_name=AccountLoggedInEvent.event_name,
+                window_start=_EMPTY_WINDOW_START,
+                window_end=_EMPTY_WINDOW_END,
+            )
+            unique_logins = await count_windowed_unique_resources.fn(
+                client=client,
+                event_name=AccountLoggedInEvent.event_name,
+                window_start=_EMPTY_WINDOW_START,
+                window_end=_EMPTY_WINDOW_END,
+            )
+            webhook_success, webhook_failure = await count_webhook_runs.fn(
+                client=client, window_start=_EMPTY_WINDOW_START, window_end=_EMPTY_WINDOW_END
+            )
+        return TelemetryActivity24hData(
+            logins=logins,
+            unique_logins=unique_logins,
+            checks_started=0,
+            checks_passed=0,
+            checks_failed=0,
+            artifacts_created=0,
+            artifacts_updated=0,
+            branches_created=0,
+            branches_merged=0,
+            branches_deleted=0,
+            webhooks_fired_success=webhook_success,
+            webhooks_fired_failure=webhook_failure,
         )
-        unique_logins = await count_windowed_unique_resources.fn(
-            client=client,
-            event_name=AccountLoggedInEvent.event_name,
-            window_start=_EMPTY_WINDOW_START,
-            window_end=_EMPTY_WINDOW_END,
-        )
-        webhook_success, webhook_failure = await count_webhook_runs.fn(
-            client=client, window_start=_EMPTY_WINDOW_START, window_end=_EMPTY_WINDOW_END
-        )
-    return TelemetryActivity24hData(
-        logins=logins,
-        unique_logins=unique_logins,
-        checks_started=0,
-        checks_passed=0,
-        checks_failed=0,
-        artifacts_created=0,
-        artifacts_updated=0,
-        branches_created=0,
-        branches_merged=0,
-        branches_deleted=0,
-        webhooks_fired_success=webhook_success,
-        webhooks_fired_failure=webhook_failure,
-    )
 
 
 async def test_gather_genuine_empty_activity_is_zero(telemetry_environment: InfrahubDatabase) -> None:
     """An empty window yields 0 on the activity counts, never null (a succeeded-but-empty source)."""
-    data = await gather_anonymous_telemetry_data.fn(activity_gatherer=_empty_window_activity_gatherer)
+    gatherer = await _build_gatherer(activity_gatherer=EmptyWindowActivityGatherer())
+    data = await gatherer.gather()
 
     assert data.activity_24h.logins == 0
     assert data.activity_24h.unique_logins == 0
@@ -217,16 +251,19 @@ async def test_gather_genuine_empty_activity_is_zero(telemetry_environment: Infr
     assert data.activity_24h.webhooks_fired_failure == 0
 
 
-async def _boom_accounts(_db: InfrahubDatabase) -> TelemetryAccountData:
-    raise RuntimeError("accounts source unavailable")
+class BoomAccountGatherer:
+    async def gather(self) -> TelemetryAccountData:
+        raise RuntimeError("accounts source unavailable")
 
 
-async def _boom_activity() -> TelemetryActivity24hData:
-    raise RuntimeError("activity source unavailable")
+class BoomActivityGatherer:
+    async def gather(self) -> TelemetryActivity24hData:
+        raise RuntimeError("activity source unavailable")
 
 
-async def _boom_active_branches() -> int:
-    raise RuntimeError("branch source unavailable")
+class BoomActiveBranchCounter:
+    async def count(self) -> int:
+        raise RuntimeError("branch source unavailable")
 
 
 async def test_gather_one_source_fails_others_populated_and_stored(
@@ -235,7 +272,8 @@ async def test_gather_one_source_fails_others_populated_and_stored(
     """One failing source nulls only its own fields; the rest is populated and still storable."""
     db = telemetry_environment
 
-    data = await gather_anonymous_telemetry_data.fn(account_gatherer=_boom_accounts)
+    gatherer = await _build_gatherer(account_gatherer=BoomAccountGatherer())
+    data = await gatherer.gather()
 
     assert data.accounts.active is None
     assert data.accounts.groups is None
@@ -257,7 +295,8 @@ async def test_gather_activity_source_fails_only_activity_null(
     telemetry_environment: InfrahubDatabase,
 ) -> None:
     """A failing activity source nulls the whole activity_24h object, leaving the rest intact."""
-    data = await gather_anonymous_telemetry_data.fn(activity_gatherer=_boom_activity)
+    gatherer = await _build_gatherer(activity_gatherer=BoomActivityGatherer())
+    data = await gatherer.gather()
 
     for field in _ACTIVITY_FIELDS:
         assert getattr(data.activity_24h, field) is None, field
@@ -272,7 +311,8 @@ async def test_gather_branch_source_fails_only_branch_active_null(
     telemetry_environment: InfrahubDatabase,
 ) -> None:
     """A failing active-branch counter nulls only branches.active; branches.total is intact."""
-    data = await gather_anonymous_telemetry_data.fn(active_branch_counter=_boom_active_branches)
+    gatherer = await _build_gatherer(active_branch_counter=BoomActiveBranchCounter())
+    data = await gatherer.gather()
 
     assert data.branches.active is None
     # branches.total is computed directly from the registry and is never nullable.

@@ -89,7 +89,7 @@ async def count_windowed_event(
     """Count events of one name that occurred within ``[window_start, window_end)``."""
     payload = _windowed_event_filter(event_name=event_name, window_start=window_start, window_end=window_end)
     buckets = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
-    return sum(bucket["count"] for bucket in buckets)
+    return sum(bucket.get("count", 0) for bucket in buckets)
 
 
 @task(name="telemetry-gather-windowed-unique", task_run_name="Gather Windowed Unique Count", cache_policy=NONE)
@@ -123,7 +123,8 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
             state=FlowRunFilterState(type=FlowRunFilterStateType(any_=states)),
         )
 
-    # Count server-side: read_flow_runs caps at the API page size and would undercount a busy day.
+    # count_flow_runs returns a server-side count. read_flow_runs is deliberately not used here:
+    # it pages at the API limit and would undercount a busy day.
     success = await client.count_flow_runs(
         flow_filter=flow_filter, flow_run_filter=runs_in_states([StateType.COMPLETED])
     )

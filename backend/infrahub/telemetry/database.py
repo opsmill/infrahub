@@ -52,7 +52,11 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
 
 
 async def count_corenode(db: InfrahubDatabase) -> int:
-    """Count managed nodes via the branch/temporal-correct path, not a raw label tally."""
+    """Count managed nodes visible on the default branch at gather time.
+
+    Uses the branch-safe count path so the total matches what the product reports for the
+    default branch, rather than a raw vertex/label tally.
+    """
     return await NodeManager.count(db=db, schema=InfrahubKind.NODE, branch=registry.get_branch_from_registry())
 
 
@@ -63,7 +67,7 @@ async def count_user_nodes(db: InfrahubDatabase) -> int:
     would otherwise let ``user`` exceed ``corenode``.
     """
     default_branch = registry.get_branch_from_registry()
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = db.schema.get_schema_branch(name=default_branch.name)
     user_namespaces = [namespace.name for namespace in schema_branch.get_namespaces() if namespace.user_editable]
     total = 0
     for node_schema in schema_branch.get_schemas_for_namespaces(namespaces=user_namespaces):
