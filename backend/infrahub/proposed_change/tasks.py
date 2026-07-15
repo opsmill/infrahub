@@ -904,8 +904,8 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         client=client, branch=model.source_branch, definition=artifact_definition
     )
 
-    artifacts_by_member = _map_artifacts_by_member(
-        existing_artifacts=existing_artifacts,
+    artifacts_by_member = _map_subscriber_ids_by_member(
+        existing_subscribers=existing_artifacts,
         definition_name=model.artifact_definition.definition_name,
         log=log,
     )
@@ -1005,27 +1005,26 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     )
 
 
-def _map_artifacts_by_member(
-    existing_artifacts: list[InfrahubNode],
+def _map_subscriber_ids_by_member(
+    existing_subscribers: list[InfrahubNode],
     definition_name: str,
     log: logging.Logger | logging.LoggerAdapter,
 ) -> dict[str, str]:
-    """Map each member id to its existing artifact id, skipping artifacts whose.
+    """Map each member id to its existing subscriber id, skipping subscribers whose object peer cannot be resolved.
 
-    `object` peer cannot be resolved. Such orphan rows can appear when a target
-    node has been removed via a path that does not cascade-delete artifacts.
-
+    Such orphan rows can appear when a target node has been removed via a path that does not
+    cascade-delete the subscriber.
     """
-    artifacts_by_member: dict[str, str] = {}
-    for artifact in existing_artifacts:
-        object_id = artifact.object.id
+    subscriber_by_member: dict[str, str] = {}
+    for subscriber in existing_subscribers:
+        object_id = subscriber.object.id
         if object_id is None:
             log.warning(
-                f"Skipping orphan artifact {artifact.id} for definition {definition_name}: object peer unresolvable"
+                f"Skipping orphan subscriber {subscriber.id} for definition {definition_name}: object peer unresolvable"
             )
             continue
-        artifacts_by_member[object_id] = artifact.id
-    return artifacts_by_member
+        subscriber_by_member[object_id] = subscriber.id
+    return subscriber_by_member
 
 
 def _should_render_artifact(
@@ -1763,17 +1762,10 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
                 log.info(transform_outcome.reason)
 
         for changed_model in modified_kinds:
-            condition = False
-            if (changed_model in artifact_definition.query_models) or (
-                changed_model.startswith("Profile")
-                and changed_model.replace("Profile", "", 1) in artifact_definition.query_models
-            ):
-                condition = True
-
             select = select.add_flag(
                 current=select,
                 flag=DefinitionSelect.MODIFIED_KINDS,
-                condition=condition,
+                condition=artifact_definition.reads_kind(changed_model),
             )
 
         if select:
@@ -1808,6 +1800,11 @@ query GatherArtifactDefinitions {
         }
         content_type {
             value
+        }
+        targets {
+          node {
+            id
+          }
         }
         transformation {
           node {
