@@ -207,7 +207,7 @@ class Branch(StandardNode):
         partial_match: bool = False,
         branch_filters: BranchListFilters | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-        exclude_global: bool = True,
+        exclude_global: bool = False,
         exclude_default: bool = False,
         exclude_terminal: bool = False,
         **_kwargs: Any,
