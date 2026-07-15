@@ -13,8 +13,16 @@ The `registry` is a legitimate in-memory cache (schemas, branches, node classes)
 3. **`registry.schema`** — avoid.
 
 ```python
+# ✅ Best - inject SchemaManager, constructed at the entry point
 class MyComponent:
-    def __init__(self, schema_manager: SchemaManager) -> None: ...
+    def __init__(self, schema_manager: SchemaManager) -> None:
+        self.schema_manager = schema_manager
+
+# ✅ OK - db.schema when injection isn't practical (temporally correct)
+schema = db.schema.get(name="MyNode", branch=branch)
+
+# ❌ Avoid - global singleton, loses temporal flexibility
+schema = registry.schema.get(name="MyNode")
 ```
 
 Components already accept `schema_manager`; entry points still pass `registry.schema`, concentrating the access at the boundary on the way to a `get_schema_manager()` accessor and retiring `registry` imports.
