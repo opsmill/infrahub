@@ -145,51 +145,49 @@ In both cases the driver tries the members in turn until one answers, so the ini
 
 ## Connecting to Redis over TLS
 
-The cache connection URL enables TLS through its scheme: `rediss://` for a single node and `rediss+sentinel://` for a Sentinel topology. TLS behavior and Sentinel authentication are then tuned with URL query parameters.
+The cache connection URL enables TLS through its scheme: `rediss://` for a single node and `rediss+sentinel://` for a Sentinel topology. TLS is then tuned with the standard redis-py query parameters.
 
-| Query parameter | Applies to | Description |
-|-----------------|------------|-------------|
-| `tls_insecure` | Data nodes (master and replicas) | Skip TLS certificate verification. Test and development only; never enable in production. |
-| `tls_ca_file` | Data nodes | Path to a CA certificate or bundle in PEM format used to verify the server certificate. |
-| `sentinel_ssl` | Sentinel daemons | Force TLS on (`true`) or off (`false`) for the Sentinel-daemon connections, overriding the scheme default. |
-| `sentinel_tls_insecure` | Sentinel daemons | Skip TLS certificate verification for the Sentinel-daemon connections. |
-| `sentinel_tls_ca_file` | Sentinel daemons | Path to a CA certificate or bundle in PEM format used to verify the Sentinel-daemon certificates. |
-| `sentinel_username` | Sentinel daemons | Username to authenticate to the Sentinel daemons, independent of the data-node credentials. |
-| `sentinel_password` | Sentinel daemons | Password to authenticate to the Sentinel daemons, independent of the data-node credentials. |
+| Query parameter | Description |
+|-----------------|-------------|
+| `ssl_cert_reqs` | Certificate verification mode: `required` (default), `optional`, or `none` to skip verification. |
+| `ssl_check_hostname` | Whether to verify the certificate hostname (`true`/`false`). |
+| `ssl_ca_certs` | Path to a CA certificate or bundle in PEM format used to verify the server certificate. |
+| `sentinel_username` | Username to authenticate to the Sentinel daemons, independent of the data-node credentials. |
+| `sentinel_password` | Password to authenticate to the Sentinel daemons, independent of the data-node credentials. |
 
 Any other query parameter is passed through to the Redis client as a standard connection option (for example `max_connections`, `socket_timeout`, `health_check_interval`).
 
-The `tls_*` parameters configure the connection to the data nodes, and the `sentinel_*` parameters configure the connections to the Sentinel daemons. The two are independent: a Sentinel deployment whose data nodes **and** Sentinel daemons both present a self-signed certificate must relax verification on both, otherwise master discovery fails when the Sentinel connection cannot verify the certificate:
+On a `rediss+sentinel://` URL the `ssl_*` parameters are shared with the Sentinel daemon connections, so a single setting covers both the data nodes and the daemons. Verify against a private certificate authority by supplying a CA bundle:
 
 ```yaml
-INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?tls_insecure=true&sentinel_tls_insecure=true
+INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?ssl_ca_certs=/etc/ssl/redis-ca.pem
 ```
 
 :::warning
 
-`tls_insecure` and `sentinel_tls_insecure` disable certificate verification entirely and expose the connection to interception. Restrict them to test and development environments. In production, verify against a private certificate authority by supplying a CA bundle instead:
+For a self-signed certificate, disable verification with `ssl_cert_reqs=none` and `ssl_check_hostname=false`. This exposes the connection to interception, so restrict it to test and development environments:
 
 ```yaml
-INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?tls_ca_file=/etc/ssl/redis-ca.pem&sentinel_tls_ca_file=/etc/ssl/redis-ca.pem
+INFRAHUB_CACHE_URL: rediss+sentinel://cache-redis:26379/mymaster?ssl_cert_reqs=none&ssl_check_hostname=false
 ```
 
 :::
 
 :::note
 
-When verification is enabled (a CA bundle rather than the insecure flags), the client also verifies the hostname. Sentinel returns the promoted master by IP address by default, so verification fails with an `IP address mismatch` unless the data-node certificates list those IP addresses in their subject alternative names, or Sentinel is configured to announce hostnames that match the certificates. For Sentinel-managed Redis where master IP addresses are dynamic, this constraint often makes `tls_insecure` and `sentinel_tls_insecure` the only practical option even with a private CA.
+When verifying against a CA bundle, the client also verifies the hostname. Sentinel returns the promoted master by IP address by default, so verification fails with an `IP address mismatch` unless the data-node certificates list those IP addresses in their subject alternative names, or Sentinel is configured to announce hostnames that match the certificates. For Sentinel-managed Redis where master IP addresses are dynamic, disabling verification with `ssl_cert_reqs=none&ssl_check_hostname=false` is often the only practical option.
 
 :::
 
 ### Prefect messaging over TLS
 
-Infrahub's `INFRAHUB_CACHE_URL` configures only the cache and distributed-lock connections. Prefect's messaging Redis is configured separately and its client has no Sentinel support, so it is pointed at a Redis data node directly through the `PREFECT_REDIS_MESSAGING_URL` environment variable:
+Infrahub's `INFRAHUB_CACHE_URL` configures only the cache and distributed-lock connections. Prefect's messaging Redis is configured separately through the `PREFECT_REDIS_MESSAGING_URL` environment variable, which accepts the same URL grammar (including `redis+sentinel://` and the `ssl_*` query parameters):
 
 ```bash
 PREFECT_REDIS_MESSAGING_URL=rediss://:mypassword@cache-redis:6379/0?ssl_cert_reqs=none&ssl_check_hostname=false
 ```
 
-This URL is passed straight to the Redis client, which does not accept the `tls_insecure` shorthand. To disable verification for a self-signed certificate, set **both** `ssl_cert_reqs=none` and `ssl_check_hostname=false`: with a `rediss://` URL the client enables hostname checking by default, and disabling certificate verification without also disabling hostname checking is rejected. To verify against a private CA instead, use `?ssl_ca_certs=/etc/ssl/redis-ca.pem`.
+For a self-signed certificate, set **both** `ssl_cert_reqs=none` and `ssl_check_hostname=false`: with a `rediss://` URL the client enables hostname checking by default, and disabling certificate verification without also disabling hostname checking is rejected. To verify against a private CA instead, use `?ssl_ca_certs=/etc/ssl/redis-ca.pem`.
 
 ## Validating Redis Sentinel failover
 
