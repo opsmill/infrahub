@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -42,11 +43,14 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 }
 
 
-_LOG_FORMATTER = WebhookLogFormatter(
-    attempts=WEBHOOK_SEND_ATTEMPTS,
-    retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAY_SECONDS,
-    payload_log_limit=PAYLOAD_LOG_LIMIT,
-)
+@lru_cache(maxsize=1)
+def get_webhook_log_formatter() -> WebhookLogFormatter:
+    """Return the shared webhook log formatter, building it on first use."""
+    return WebhookLogFormatter(
+        attempts=WEBHOOK_SEND_ATTEMPTS,
+        retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAY_SECONDS,
+        payload_log_limit=PAYLOAD_LOG_LIMIT,
+    )
 
 
 async def _cancellation_requested() -> bool:
@@ -85,7 +89,7 @@ async def webhook_post(
         webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
         headers = webhook.build_headers(payload=payload)
         log.info(
-            _LOG_FORMATTER.outgoing_request(
+            get_webhook_log_formatter().outgoing_request(
                 webhook_name=webhook_name,
                 url=webhook.url,
                 headers=webhook.redact_headers(headers),
@@ -93,7 +97,7 @@ async def webhook_post(
                 attempt=attempt,
             )
         )
-        log.debug(_LOG_FORMATTER.full_payload(webhook_name=webhook_name, payload=payload, attempt=attempt))
+        log.debug(get_webhook_log_formatter().full_payload(webhook_name=webhook_name, payload=payload, attempt=attempt))
         response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
         response.raise_for_status()
     except EXPECTED_DELIVERY_ERRORS as cause:
@@ -144,7 +148,7 @@ async def webhook_send(
         elapsed_ms = (time.monotonic() - started) * 1_000
         failure = error.failure
         log.error(
-            _LOG_FORMATTER.delivery_failed(
+            get_webhook_log_formatter().delivery_failed(
                 status_class=failure.status_class,
                 message=failure.message,
                 remediation=failure.remediation,
@@ -155,7 +159,7 @@ async def webhook_send(
         raise
     elapsed_ms = (time.monotonic() - started) * 1_000
     log.info(
-        _LOG_FORMATTER.delivery_succeeded(
+        get_webhook_log_formatter().delivery_succeeded(
             url=str(response.url), status_code=response.status_code, attempt=attempt, elapsed_ms=elapsed_ms
         )
     )
