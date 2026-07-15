@@ -20,10 +20,9 @@ def determine_infrahub_type() -> InfrahubType:
 
 
 async def safe_metric[T](coro: Awaitable[T]) -> T | None:
-    """Run one metric coroutine in isolation, degrading a failure to ``None``.
+    """Await ``coro`` and return its result, or ``None`` if it raises (the error is logged).
 
-    A falsy result like ``0`` is preserved (measured, nothing to count); only an exception
-    yields ``None`` (logged), so one broken source nulls its own field, not the whole payload.
+    A falsy result such as ``0`` is returned as-is; only an exception maps to ``None``.
     """
     try:
         return await coro
@@ -39,11 +38,7 @@ def floor_to_midnight_utc(moment: datetime) -> datetime:
 
 
 def get_activity_window(now: datetime | None = None) -> tuple[datetime, datetime]:
-    """Return the half-open ``[window_start, window_end)`` for the previous full UTC day.
-
-    Anchored to the midnight-UTC boundary, not the raw ``now`` instant, so consecutive daily
-    runs tile exactly — no overlaps or gaps — whatever time the (jittered) cron fires.
-    """
+    """Return the half-open ``[window_start, window_end)`` for the previous full UTC day."""
     reference = now if now is not None else datetime.now(tz=UTC)
     window_end = floor_to_midnight_utc(reference)
     window_start = window_end - WINDOW_LENGTH
@@ -51,10 +46,5 @@ def get_activity_window(now: datetime | None = None) -> tuple[datetime, datetime
 
 
 def inclusive_end(window_end: datetime) -> datetime:
-    """The last instant inside the half-open ``[window_start, window_end)`` window.
-
-    ``window_end`` itself is excluded; at microsecond resolution the last included instant is one
-    microsecond earlier. Query APIs whose upper bound is inclusive ("at or before") need this so
-    a record on the boundary lands in exactly one day's window, never two.
-    """
+    """Return the last instant inside the half-open window: ``window_end`` minus one microsecond."""
     return window_end - timedelta(microseconds=1)

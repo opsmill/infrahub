@@ -52,20 +52,12 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
 
 
 async def count_corenode(db: InfrahubDatabase) -> int:
-    """Count managed nodes visible on the default branch at gather time.
-
-    Uses the branch-safe count path so the total matches what the product reports for the
-    default branch, rather than a raw vertex/label tally.
-    """
-    return await NodeManager.count(db=db, schema=InfrahubKind.NODE, branch=registry.get_branch_from_registry())
+    """Count managed (CoreNode) nodes on the default branch."""
+    return await NodeManager.count(db=db, schema=InfrahubKind.NODE)
 
 
 async def count_user_nodes(db: InfrahubDatabase) -> int:
-    """Count concrete nodes in user-editable namespaces.
-
-    Group-generic kinds are excluded because they do not carry the ``CoreNode`` label, which
-    would otherwise let ``user`` exceed ``corenode``.
-    """
+    """Count concrete nodes in user-editable namespaces, excluding group-generic kinds."""
     default_branch = registry.get_branch_from_registry()
     schema_branch = db.schema.get_schema_branch(name=default_branch.name)
     user_namespaces = [namespace.name for namespace in schema_branch.get_namespaces() if namespace.user_editable]
@@ -78,12 +70,7 @@ async def count_user_nodes(db: InfrahubDatabase) -> int:
 
 @task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
 async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabaseData:
-    """Gather node/relationship counts and database server/system info.
-
-    ``node_count`` holds three strictly nesting metrics, ``user`` ⊆ ``corenode`` ⊆ ``total``;
-    ``corenode`` and ``user`` degrade to ``None`` independently, leaving ``total`` and the
-    per-graph-label counts intact.
-    """
+    """Gather node/relationship counts and database server/system info."""
     async with db.start_session(read_only=True) as dbs:
         server_info = []
         system_info = None

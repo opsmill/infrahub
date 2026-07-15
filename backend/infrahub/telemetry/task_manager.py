@@ -67,7 +67,7 @@ async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
     for event in infrahub_events:
         payload = {"filter": {"event": {"name": [event.event_name]}}}
         buckets = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
-        events[event.event_name] = buckets[0]["count"] if buckets else 0
+        events[event.event_name] = sum(bucket.get("count", 0) for bucket in buckets)
 
     return events
 
@@ -96,11 +96,7 @@ async def count_windowed_event(
 async def count_windowed_unique_resources(
     client: PrefectClient, event_name: str, window_start: datetime, window_end: datetime
 ) -> int:
-    """Count distinct resources emitting one event within ``[window_start, window_end)``.
-
-    Count-by-resource returns one bucket per distinct resource id, so the bucket count is the
-    distinct total.
-    """
+    """Count distinct resources emitting one event within ``[window_start, window_end)``."""
     payload = _windowed_event_filter(event_name=event_name, window_start=window_start, window_end=window_end)
     buckets = await _post_count_by(client=client, path="/events/count-by/resource", payload=payload)
     return len(buckets)
@@ -136,10 +132,7 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
 
 @task(name="telemetry-gather-activity-24h", task_run_name="Gather 24h Activity", cache_policy=NONE)
 async def gather_activity_24h(client: PrefectClient) -> TelemetryActivity24hData:
-    """Assemble the 24h activity metrics over the previous full UTC calendar day.
-
-    Each source is isolated so one failing source nulls only its own field.
-    """
+    """Assemble the 24h activity metrics over the previous full UTC calendar day."""
     window_start, window_end = get_activity_window()
 
     async def windowed_count(event_name: str) -> int | None:

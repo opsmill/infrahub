@@ -72,11 +72,7 @@ async def gather_feature_information() -> dict[str, int]:
 
 @task(name="telemetry-account-information", task_run_name="Gather Account Information", cache_policy=NONE)
 async def gather_account_information(db: InfrahubDatabase) -> TelemetryAccountData:
-    """Gather account adoption counts on the default branch.
-
-    Counted through the branch/temporal-correct path so they match the GraphQL resolvers; each
-    field degrades to ``null`` independently on failure.
-    """
+    """Gather active-account and account-group counts on the default branch."""
     default_branch = registry.get_branch_from_registry()
 
     active = await safe_metric(
@@ -138,12 +134,7 @@ class DefaultActiveBranchCounter:
 
 
 class AnonymousTelemetryGatherer:
-    """Assemble the full telemetry payload from injected, independently-degrading sources.
-
-    The account, activity, and active-branch collaborators are injected so each can be swapped
-    for a failing double in tests. Every one is isolated, so a single failing source nulls only
-    its own field(s) while the rest of the payload is still built.
-    """
+    """Assemble the full telemetry payload from its injected metric sources."""
 
     def __init__(
         self,
