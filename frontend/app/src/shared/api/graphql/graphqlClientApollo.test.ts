@@ -162,9 +162,7 @@ describe("handleGraphQLAuthError — TOKEN_EXPIRED retry-then-bail loop", () => 
 });
 
 describe("priorityLink — outbound X-Priority header", () => {
-  // Observe the header at the transport boundary: a terminating link records
-  // the context headers the priority link produced, mirroring the existing
-  // Observable.of forward pattern above.
+  // A terminating capture link records the headers priorityLink produced.
   function runThroughPriorityLink(context?: Record<string, unknown>) {
     let captured: Record<string, unknown> | undefined;
 
@@ -195,10 +193,8 @@ describe("priorityLink — outbound X-Priority header", () => {
 });
 
 describe("retryWithRefreshedToken (via handleGraphQLAuthError) — X-Priority survives 401 replay", () => {
-  // Node-mode: exercise the REAL exported handler. The happy replay path never
-  // reaches redirectToLogin, but getAccessToken/token clearing read
-  // localStorage, so provide a minimal in-memory stub (no token needed here —
-  // the refresh is driven through the fetchQuery spy).
+  // Drive the real handler. It reads localStorage via getAccessToken, so stub
+  // it in node mode; the refresh itself is driven through the fetchQuery spy.
   const tokenExpiredError = {
     message: "Token expired",
     extensions: { code: ERROR_CODES.TOKEN_EXPIRED, http_status: 401, data: {} },
@@ -221,9 +217,8 @@ describe("retryWithRefreshedToken (via handleGraphQLAuthError) — X-Priority su
     vi.unstubAllGlobals();
   });
 
-  // Operation whose context already carries the X-Priority the priorityLink
-  // stamped on the first pass, alongside the now-expired auth header — exactly
-  // the state `retryWithRefreshedToken` reads via `operation.getContext()`.
+  // Mirrors the first-pass state the retry reads: the stamped X-Priority plus
+  // the now-expired auth header.
   function makeOperationWithPriority() {
     let ctx: Record<string, unknown> = {
       headers: { [PRIORITY_HEADER]: "high", authorization: "Bearer old-token" },
@@ -236,13 +231,13 @@ describe("retryWithRefreshedToken (via handleGraphQLAuthError) — X-Priority su
     };
   }
 
-  it("re-carries the original X-Priority after the refresh+replay (relies on the ...oldHeaders spread)", async () => {
-    // GIVEN a refresh that returns a fresh token
+  it("re-carries the original X-Priority after the refresh+replay", async () => {
+    // GIVEN
     fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
     const operation = makeOperationWithPriority();
     const forward = vi.fn(() => Observable.of({ data: null }));
 
-    // WHEN the real handler runs the TOKEN_EXPIRED retry path
+    // WHEN
     const result = handleGraphQLAuthError({
       graphQLErrors: [tokenExpiredError],
       operation,
@@ -256,8 +251,7 @@ describe("retryWithRefreshedToken (via handleGraphQLAuthError) — X-Priority su
       });
     });
 
-    // THEN the replayed operation's context still carries X-Priority (preserved
-    // by `{ ...oldHeaders, authorization }`) alongside the refreshed Bearer.
+    // THEN
     const headers = (operation.getContext() as { headers?: Record<string, string> }).headers;
     expect(headers?.[PRIORITY_HEADER]).toBe("high");
     expect(headers?.authorization).toBe("Bearer new-token");

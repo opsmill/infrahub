@@ -1,4 +1,4 @@
-import { PRIORITY_HEADER, type RequestPriority, resolvePriority } from "@/shared/api/priority";
+import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { QSP } from "@/shared/config/qsp";
 
@@ -32,17 +32,10 @@ export class FetchError extends Error {
   }
 }
 
-export const fetchUrl = async (
-  url: string,
-  payload?: RequestInit,
-  options?: { priority?: RequestPriority }
-) => {
+export const fetchUrl = async (url: string, payload?: RequestInit) => {
   const localToken = getAccessToken();
 
-  // Only stamp X-Priority when the target is the Infrahub API. Compare ORIGINS
-  // (scheme + host + port), not substrings, so the header never leaks to an
-  // external host (FR-007) and is never wrongly suppressed. `priority` is a
-  // per-request opt-in a later chunk populates; it defaults to `high`.
+  // Only stamp X-Priority for the Infrahub API. Compare URL origins so the header can never leak to an external host.
   const isInfrahubApiOrigin =
     new URL(url, INFRAHUB_API_SERVER_URL).origin === new URL(INFRAHUB_API_SERVER_URL).origin;
 
@@ -51,7 +44,7 @@ export const fetchUrl = async (
       Accept: "application/json",
       "Content-Type": "application/json",
       ...(localToken ? { authorization: `Bearer ${localToken}` } : {}),
-      ...(isInfrahubApiOrigin ? { [PRIORITY_HEADER]: resolvePriority(options?.priority) } : {}),
+      ...(isInfrahubApiOrigin ? { [PRIORITY_HEADER]: DEFAULT_PRIORITY } : {}),
       ...payload?.headers,
     },
     method: payload?.method ?? "GET",

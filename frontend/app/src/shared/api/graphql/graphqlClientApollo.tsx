@@ -62,12 +62,9 @@ export const authLink = setContext((_, previousContext) => {
   };
 });
 
-// Priority link: stamp every outbound operation with X-Priority. Reads the
-// per-request value from the Apollo operation context (`context: { priority }`)
-// which a later chunk populates to opt a query down to `low`; resolvePriority
-// defaults to `high` when absent, so no frontend request is ever unheadered.
-// Placed before the terminating httpLink (which is the shared createUploadLink),
-// so file-upload mutations inherit the header for free.
+// The backend prioritizes requests by X-Priority under load, so stamp it
+// on every operation — otherwise the frontend's traffic falls back to the
+// server default and can't be told apart from other clients when it matters.
 export const priorityLink = setContext((_, previousContext) => {
   const { headers, priority } = previousContext;
 
