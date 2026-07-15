@@ -1,12 +1,12 @@
 from urllib.parse import quote, urlencode
 
 from prefect import flow, task
-from prefect.blocks.redis import RedisStorageContainer
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.exceptions import ObjectAlreadyExists
 from prefect.logging import get_run_logger
+from prefect_redis import RedisDatabase
 from pydantic import SecretStr
 
 from infrahub import config
@@ -20,8 +20,6 @@ from infrahub.trigger.setup import setup_triggers
 from .catalogue import WORKER_POOLS, get_workflows
 from .constants import WorkflowPriority
 from .models import TASK_RESULT_STORAGE_NAME
-
-REDIS_DATA_PORT = 6379
 
 
 def _redis_url(*, scheme: str, host: str, port: int, db: int, conn: dict[str, object]) -> str:
@@ -48,33 +46,20 @@ def _redis_url(*, scheme: str, host: str, port: int, db: int, conn: dict[str, ob
 
 
 def build_cache_connection_string(cache: CacheSettings) -> str:
-    """Build a redis:// or rediss:// URL for Prefect's Redis result storage from cache settings.
+    """Build the Redis connection URL for Prefect's result-storage block from cache settings.
 
-    Prefect's Redis client has no Sentinel support, so a redis+sentinel:// cache URL is reduced to a
-    best-effort direct connection to the first member on the standard data port (6379); making
-    Prefect's result storage highly available is tracked as a separate follow-up. A single-node
-    redis://|rediss:// cache URL is rebuilt with redis-py-native ssl_* query params, and when no URL
-    is set the scalar connection settings are used. All TLS knobs propagate through
-    redis.Redis.from_url: the scheme selects SSLConnection and ssl_cert_reqs / ssl_check_hostname /
-    ssl_ca_certs are passed through to the connection.
+    The result-storage block understands the full redis://, rediss://, redis+sentinel:// and
+    rediss+sentinel:// grammar, so a configured ``cache.url`` (single-node or Sentinel, with any TLS
+    query parameters) is passed through unchanged and follows master failover just like the cache and
+    lock connections. When no URL is set the scalar connection settings are assembled into a
+    single-node redis://|rediss:// URL.
 
     Raises:
         ValueError: When ``INFRAHUB_CACHE_USERNAME`` is set without ``INFRAHUB_CACHE_PASSWORD``.
 
     """
     if cache.url is not None:
-        # Imported lazily to avoid pulling the redis connection builder at module import time.
-        from infrahub.services.adapters.cache.connection import parse_redis_url
-
-        parsed = parse_redis_url(cache.url.get_secret_value())
-        scheme = "rediss" if parsed.connection_kwargs.get("ssl") else "redis"
-        if parsed.is_sentinel:
-            host, port = parsed.sentinels[0][0], REDIS_DATA_PORT
-        else:
-            assert parsed.host is not None
-            assert parsed.port is not None
-            host, port = parsed.host, parsed.port
-        return _redis_url(scheme=scheme, host=host, port=port, db=parsed.db, conn=parsed.connection_kwargs)
+        return cache.url.get_secret_value()
 
     if cache.username and not cache.password:
         raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
@@ -142,13 +127,11 @@ async def setup_blocks() -> None:
     log = get_run_logger()
 
     try:
-        await RedisStorageContainer.aregister_type_and_schema()
+        await RedisDatabase.aregister_type_and_schema()
     except ObjectAlreadyExists:
         log.warning(f"Redis Storage {TASK_RESULT_STORAGE_NAME} already registered ")
 
-    redis_block = RedisStorageContainer(
-        connection_string=SecretStr(build_cache_connection_string(config.SETTINGS.cache))
-    )
+    redis_block = RedisDatabase(connection_url=SecretStr(build_cache_connection_string(config.SETTINGS.cache)))
     try:
         await redis_block.asave(name=TASK_RESULT_STORAGE_NAME, overwrite=True)
     except ObjectAlreadyExists:
