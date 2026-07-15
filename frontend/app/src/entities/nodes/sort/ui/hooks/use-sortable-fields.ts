@@ -34,14 +34,14 @@ export function useSortableFields(schema: ModelSchema): SortableField[] {
   const profileSchemas = useAtomValue(profileSchemasAtom);
   const templateSchemas = useAtomValue(templateSchemasAtom);
 
-  const attributeFields: SortableField[] = (schema.attributes ?? [])
+  const attributeFields: SortableField[] = sortByOrderWeight(schema.attributes ?? [])
     .filter(isSortableAttribute)
     .map((attribute) => ({
       field: buildAttributeSortField(attribute.name),
       label: attribute.label ?? attribute.name,
     }));
 
-  const relationshipFields: SortableField[] = (schema.relationships ?? [])
+  const relationshipFields: SortableField[] = sortByOrderWeight(schema.relationships ?? [])
     .filter(isSortableRelationship)
     .flatMap((relationship) => {
       const { schema: peerSchema } = resolveSchema(relationship.peer, {

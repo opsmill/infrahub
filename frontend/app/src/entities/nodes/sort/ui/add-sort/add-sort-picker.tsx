@@ -139,19 +139,21 @@ function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
 
 // Attributes, then relationships as submenus, then metadata — shown when not searching.
 function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
-  const sortableAttributes = (schema.attributes ?? [])
+  const sortableAttributes = sortByOrderWeight(schema.attributes ?? [])
     .filter(isSortableAttribute)
     .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
-  const sortableRelationships = (schema.relationships ?? []).filter(isSortableRelationship);
+  const sortableRelationships = sortByOrderWeight(schema.relationships ?? []).filter(
+    isSortableRelationship
+  );
   const metadataFields = NODE_METADATA_SORT_OPTIONS.filter(({ field }) => !activeFields.has(field));
 
   return (
     <>
-      {sortByOrderWeight(sortableAttributes).map((attribute) => (
+      {sortableAttributes.map((attribute) => (
         <SortableAttributeMenuItem key={attribute.name} attribute={attribute} onSelect={onSelect} />
       ))}
 
-      {sortByOrderWeight(sortableRelationships).map((relationship) => (
+      {sortableRelationships.map((relationship) => (
         <GroupedSortableRelationshipMenuItem
           key={relationship.name}
           relationship={relationship}
