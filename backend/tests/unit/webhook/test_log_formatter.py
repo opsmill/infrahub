@@ -38,8 +38,14 @@ class AttemptPhraseCase:
     ],
     ids=lambda case: case.name,
 )
-def test_attempt_phrase(formatter: WebhookLogFormatter, case: AttemptPhraseCase) -> None:
-    assert formatter.attempt_phrase(case.attempt) == case.expected
+def test_message_positions_the_send_within_its_retry_sequence(
+    formatter: WebhookLogFormatter, case: AttemptPhraseCase
+) -> None:
+    message = formatter.outgoing_request(
+        webhook_name="notify", url="https://example.test/hook", headers={}, payload={}, attempt=case.attempt
+    )
+
+    assert message.startswith(f"Webhook 'notify' {case.expected}\n")
 
 
 def test_outgoing_request_lays_out_target_headers_and_payload_over_labeled_lines(

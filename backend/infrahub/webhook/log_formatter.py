@@ -24,7 +24,7 @@ class WebhookLogFormatter:
         self._retry_delay_seconds = retry_delay_seconds
         self._payload_log_limit = payload_log_limit
 
-    def attempt_phrase(self, attempt: int | None) -> str:
+    def _attempt_phrase(self, attempt: int | None) -> str:
         """Position a send within its retry sequence, or note that no flow run is driving retries."""
         if attempt is None:
             return "outside a flow run"
@@ -35,7 +35,7 @@ class WebhookLogFormatter:
     ) -> str:
         """Summarize the outgoing request: target, headers one per line, and the truncated payload."""
         return (
-            f"Webhook '{webhook_name}' {self.attempt_phrase(attempt)}\n"
+            f"Webhook '{webhook_name}' {self._attempt_phrase(attempt)}\n"
             f"POST {url}\n"
             f"Headers:\n{self._headers_block(headers)}\n"
             f"Payload:\n{self._truncate(self._indent(self._to_json(payload)))}"
@@ -44,18 +44,18 @@ class WebhookLogFormatter:
     def full_payload(self, *, webhook_name: str, payload: Any, attempt: int | None) -> str:
         """Render the full, untruncated payload for the debug-level line."""
         return (
-            f"Webhook '{webhook_name}' {self.attempt_phrase(attempt)} full payload:\n"
+            f"Webhook '{webhook_name}' {self._attempt_phrase(attempt)} full payload:\n"
             f"{self._indent(self._to_json(payload))}"
         )
 
     def delivery_succeeded(self, *, url: str, status_code: int, attempt: int | None, elapsed_ms: float) -> str:
-        return f"Webhook delivered to {url} {self.attempt_phrase(attempt)}, HTTP {status_code} in {elapsed_ms:.0f} ms"
+        return f"Webhook delivered to {url} {self._attempt_phrase(attempt)}, HTTP {status_code} in {elapsed_ms:.0f} ms"
 
     def delivery_failed(
         self, *, status_class: str, message: str, remediation: str, attempt: int | None, elapsed_ms: float
     ) -> str:
         return (
-            f"Webhook delivery failed [{status_class}] {self.attempt_phrase(attempt)} "
+            f"Webhook delivery failed [{status_class}] {self._attempt_phrase(attempt)} "
             f"after {elapsed_ms:.0f} ms: {message.rstrip('.')}. {remediation}{self._retry_note(attempt)}"
         )
 
