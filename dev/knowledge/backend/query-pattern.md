@@ -4,20 +4,22 @@
 
 All database access in Infrahub goes through Query classes that encapsulate Cypher queries with proper parameterization, branch-awareness, and temporal versioning. Queries return typed dataclass results for type safety and clear API contracts.
 
-## Accessing schema: prefer `db.schema` over `registry`
+## Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`
 
-Access schema through the `db` proxy, not the `registry`. `db.schema` resolves against the branch and time of the operation, staying temporally correct; `registry.schema` does not.
+The `registry` is a legitimate in-memory cache (schemas, branches, node classes) but a global singleton imported across ~150 modules — a source of circular imports and coupling. Encapsulate and inject it instead. Preference order:
+
+1. **Inject `SchemaManager`** into the constructor, built at the entry point (task/flow/API/CLI) — never import `registry` inside a component.
+2. **`db.schema`** when injection isn't practical — temporally correct against the operation's branch/time; `registry.schema` is not.
+3. **`registry.schema`** — avoid.
 
 ```python
-# ✅ Good - temporally correct
-schema_branch = db.schema.get_schema_branch(name=branch.name)
-schema = db.schema.get(name="MyNode", branch=branch)
-
-# ❌ Avoid - loses temporal flexibility
-schema = registry.schema.get(name="MyNode")
+class MyComponent:
+    def __init__(self, schema_manager: SchemaManager) -> None: ...
 ```
 
-The `registry` stays correct for in-memory data where the alternative would be a real performance regression — for example, listing open branches from `registry.branch` instead of issuing a database query. This is a preference for new code; do not sweep existing `registry` call sites as part of an unrelated change.
+Components already accept `schema_manager`; entry points still pass `registry.schema`, concentrating the access at the boundary on the way to a `get_schema_manager()` accessor and retiring `registry` imports.
+
+Exception: `registry` stays for hot (per-request) in-memory reads where a DB round-trip is a real regression (e.g. `registry.branch`); cold paths (daily tasks) use the DB. New-code preference — don't sweep existing call sites.
 
 ## Query Lifecycle
 
@@ -481,7 +483,7 @@ Specialized base classes for different domains:
 
 **Database Object in Initialization:** The `InfrahubDatabase` object is passed during initialization for:
 
-1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: prefer `db.schema` over `registry`](#accessing-schema-prefer-dbschema-over-registry).
+1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`](#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 2. **Database type abstraction:** Contains database-specific functions
 
