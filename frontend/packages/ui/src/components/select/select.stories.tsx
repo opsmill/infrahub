@@ -32,7 +32,7 @@ const items = [
   { key: "blue", label: "Blue" },
 ];
 
-const SizeLabel = ({ children }: { children: string }) => (
+const SizeLabel = ({ children }: { children?: string }) => (
   <div className="text-xxs font-medium tracking-wider text-neutral-400 uppercase">{children}</div>
 );
 
@@ -59,7 +59,7 @@ export const AllVariants: Story = {
     <div className="flex flex-col gap-4">
       {SIZES.map((size) => (
         <div key={size} className="flex flex-col gap-1">
-          <SizeLabel>{size ?? "md"}</SizeLabel>
+          <SizeLabel>{size}</SizeLabel>
           <ColorSelect size={size} isDisabled={isDisabled} />
         </div>
       ))}

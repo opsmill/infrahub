@@ -192,6 +192,7 @@ function RemoveSortButton({ schema, sort }: RemoveSortButtonProps) {
           size="sm"
           shape="square"
           aria-label="Why this sort can't be removed"
+          isDisabledAndFocusable
         >
           <InfoIcon />
         </Button>
