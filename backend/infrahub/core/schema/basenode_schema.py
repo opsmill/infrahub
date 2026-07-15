@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import keyword
-import os
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -267,11 +266,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         # Process element b
         for name in sorted(present_both):
-            # If the element doesn't have an ID on either side
-            # this most likely means it was added recently from the internal schema.
-            if os.environ.get("PYTEST_RUNNING", "") != "true" and local_map[name] is None and other_map[name] is None:
-                elements_diff.added[name] = None
-                continue
             local_element: obj_type = get_func(self, name=name)
             other_element: obj_type = get_func(other, name=name)
             element_diff = local_element.diff(other_element)
@@ -726,12 +720,18 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if isinstance(other, BaseNodeSchema):
             self.handle_field_renames_and_deletes(other=other)
 
+        # capture the values before they are overwritten for empty-string handling
+        local_text_values = {field_name: getattr(self, field_name, None) for field_name in OPTIONAL_TEXT_FIELDS}
+
         super().update(other=other)
 
-        # Allow to specify empty string to remove existing fields values
+        # An empty string means clearing the existing field value
         for field_name in OPTIONAL_TEXT_FIELDS:
-            if getattr(other, field_name, None) == "":  # noqa: PLC1901
-                setattr(self, field_name, None)
+            if getattr(other, field_name, None) != "":  # noqa: PLC1901
+                continue
+            local_value = local_text_values[field_name]
+            # keep current local value if it's already None or ""
+            setattr(self, field_name, local_value if local_value in (None, "") else None)
 
         return self
 

@@ -26,11 +26,6 @@ from tests.helpers.constants import (
 from tests.helpers.file_repo import FileRepo
 
 
-@pytest.fixture(scope="session", autouse=True)
-def add_tracker() -> None:
-    os.environ["PYTEST_RUNNING"] = "true"
-
-
 @pytest.fixture(scope="session")
 def event_loop() -> Generator:
     """Overrides pytest default function scoped event loop."""

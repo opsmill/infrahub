@@ -120,11 +120,6 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def add_tracker() -> None:
-    os.environ["PYTEST_RUNNING"] = "true"
-
-
-@pytest.fixture(scope="session", autouse=True)
 def _install_redis_loop_diagnostics() -> None:
     # This fixture should be deleted once the flakiness is gone
     install_redis_loop_diagnostics()

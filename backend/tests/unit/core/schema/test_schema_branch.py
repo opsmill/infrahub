@@ -1,6 +1,14 @@
 import pytest
 
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import (
+    AttributeSchema,
+    GenericSchema,
+    NodeSchema,
+    RelationshipSchema,
+    SchemaRoot,
+    core_models,
+    internal_schema,
+)
 from infrahub.core.schema.schema_branch import SchemaBranch
 
 
@@ -66,6 +74,70 @@ def test_validate_names_rejects_double_underscore_in_relationship_name() -> None
         match=r"TestingUnderscore: 'peer__link' cannot be used as a relationship name",
     ):
         schema.validate_names()
+
+
+def _load_processed_branch(schema_root: SchemaRoot) -> SchemaBranch:
+    branch = SchemaBranch(cache={}, name="test")
+    branch.load_schema(schema=SchemaRoot(**internal_schema))
+    branch.load_schema(schema=SchemaRoot(**core_models))
+    branch.load_schema(schema=schema_root)
+    branch.process()
+    return branch
+
+
+class TestDiffIdenticalBranches:
+    """A merge candidate built from two identical processed branches must produce an empty diff.
+
+    This mirrors how a proposed change without schema modifications assembles its candidate
+    schema; any reported diff there triggers pointless constraint validation across the branch.
+    """
+
+    def test_identical_branches_diff_empty(self, car_person_schema_root: SchemaRoot) -> None:
+        dest_schema = _load_processed_branch(schema_root=car_person_schema_root)
+        source_schema = dest_schema.duplicate()
+
+        candidate_schema = dest_schema.duplicate()
+        candidate_schema.update(schema=source_schema)
+
+        assert dest_schema.diff(other=candidate_schema).all == []
+
+    def test_identical_hierarchical_branches_diff_empty(self) -> None:
+        schema_root = SchemaRoot(
+            generics=[
+                GenericSchema(
+                    name="Location",
+                    namespace="Testing",
+                    hierarchical=True,
+                    default_filter="name__value",
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", unique=True),
+                    ],
+                ),
+            ],
+            nodes=[
+                NodeSchema(
+                    name="Country",
+                    namespace="Testing",
+                    inherit_from=["TestingLocation"],
+                    parent="",
+                    children="TestingSite",
+                ),
+                NodeSchema(
+                    name="Site",
+                    namespace="Testing",
+                    inherit_from=["TestingLocation"],
+                    parent="TestingCountry",
+                    children="",
+                ),
+            ],
+        )
+        dest_schema = _load_processed_branch(schema_root=schema_root)
+        source_schema = dest_schema.duplicate()
+
+        candidate_schema = dest_schema.duplicate()
+        candidate_schema.update(schema=source_schema)
+
+        assert dest_schema.diff(other=candidate_schema).all == []
 
 
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
