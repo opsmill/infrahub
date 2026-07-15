@@ -1,12 +1,18 @@
 ---
 paths:
-  - "backend/**/*.py"
-  - "python_testcontainers/**/*.py"
+  - "**/*"
 ---
 
 # Code documentation style
 
-Applies to docstrings, comments, and any inline documentation in Python source files.
+Applies to every file in the repo — docstrings, comments, and any inline documentation, plus prose docs including `AGENTS.md` and `CLAUDE.md`.
+
+## Comment sparingly
+
+Prefer clear code over explanation. Add a comment only when it conveys intent the code cannot — a non-obvious tradeoff, a gotcha, or a *why*.
+
+- Keep comments as short as possible — one line where you can.
+- Do not restate what the code plainly does.
 
 ## No references to other code
 
