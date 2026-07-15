@@ -1,6 +1,6 @@
 # Display Labels and Human-Friendly IDs
 
-> Part of: `dev/knowledge/backend/` | Related: [mutations.md](mutations.md), [architecture.md](architecture.md)
+> Part of: `dev/knowledge/backend/` | Related: [mutations.md](mutations.md), [architecture.md](architecture.md), [merge-recompute.md](merge-recompute.md)
 
 Display labels and HFIDs are computed node properties. Display labels use Jinja2 templates; HFIDs use schema path lists.
 ## Schema Definition
@@ -132,6 +132,8 @@ SchemaUpdatedEvent
 ```
 
 The trigger definitions and gathering logic live in `backend/infrahub/display_labels/`.
+
+A branch merge or rebase refreshes display labels and human-friendly ids through the coalesced recompute rather than this per-node chain. See [merge-recompute.md](merge-recompute.md).
 
 ### Manual Override
 
