@@ -96,17 +96,23 @@ class BulkRecomputeWriter:
         ``origin`` stamps the update event: keep the default live origin so the per-node recompute
         automations chain the next level, or pass the recompute origin when the caller drives that
         next level itself as one coalesced pass.
+
+        Each transaction chunk commits and emits its events before the next runs, so this is not
+        atomic across chunks: a mid-run failure can leave earlier chunks written and evented while
+        the caller's chain never fires. Recovery relies on the flow re-running and re-detecting no-ops.
         """
         writes_by_node: dict[str, list[AttributeValueWrite]] = {}
         for item in writes:
             writes_by_node.setdefault(item.node_id, []).append(item)
 
-        fields_to_load = {item.field: None for item in writes}
         user_id = context.account_id or SYSTEM_USER_ID
         written: list[WrittenNode] = []
         async with self.db.start_session() as session:
             for chunk in _chunks(list(writes_by_node), self.transaction_chunk_size):
-                nodes = await NodeManager.get_many(db=session, ids=chunk, fields=fields_to_load, branch=branch)
+                # Load the whole node, not just the written fields: the save recomputes same-node
+                # derived values (display label, hfid, computed siblings) that read a written value,
+                # and it can only do that when they are loaded.
+                nodes = await NodeManager.get_many(db=session, ids=chunk, branch=branch)
                 saved: list[tuple[Node, list[str]]] = []
                 async with session.start_transaction() as dbt:
                     for node_id in chunk:
@@ -120,7 +126,9 @@ class BulkRecomputeWriter:
                         # A recompute can render a value identical to the stored one; skip the event and
                         # the chained write for a no-op save so it does not fan out.
                         if node.node_changelog.has_changes:
-                            saved.append((node, fields))
+                            # A save cascades to same-node derived values; report every field it changed
+                            # so their cross-node readers chain too, not only the requested ones.
+                            saved.append((node, sorted(set(node.node_changelog.updated_fields))))
                 for node, fields in saved:
                     await self._emit(node=node, fields=fields, branch=branch, context=context, origin=origin)
                     written.append(WrittenNode(node_id=node.get_id(), kind=node.get_kind(), fields=tuple(fields)))

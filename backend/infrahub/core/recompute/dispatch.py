@@ -8,6 +8,7 @@ from infrahub.core.merge.recompute_coalescing import submit_recompute_chain
 from infrahub.core.recompute.bulk_write import BulkRecomputeWriter
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
+from infrahub.exceptions import BranchNotFoundError
 from infrahub.workers.dependencies import get_database, get_event_service, get_workflow
 from infrahub.workflows.utils import add_tags
 
@@ -36,7 +37,11 @@ async def persist_and_chain(
 
     await add_tags(nodes=sorted({item.node_id for item in writes}), db_change=True)
     db = await get_database()
-    branch = await registry.get_branch(db=db, branch=branch_name)
+    try:
+        branch = await registry.get_branch(db=db, branch=branch_name)
+    except BranchNotFoundError:
+        # The branch can be deleted between the reader query and here; nothing to persist then.
+        return
     writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
     written = await writer.write(
         branch=branch,

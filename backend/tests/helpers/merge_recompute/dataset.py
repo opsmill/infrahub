@@ -121,6 +121,43 @@ def build_profile_schema_dict() -> dict:
     }
 
 
+CASCADE_NODE_KIND = "TestingCascadeNode"
+
+
+def build_cascade_schema() -> SchemaRoot:
+    """A node whose display label reads a computed attribute.
+
+    Writing ``code`` re-renders the display label (which reads it) inside the same save, exercising
+    the same-node cascade the bulk writer must report so cross-node readers of the display label chain.
+    """
+    node = NodeSchema(
+        name="CascadeNode",
+        namespace=PROFILE_NAMESPACE,
+        label="Cascade Node",
+        default_filter="name__value",
+        display_label="{{ code__value }}",
+        human_friendly_id=["name__value"],
+        uniqueness_constraints=[["name__value"]],
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=False, unique=True),
+            AttributeSchema(
+                name="code",
+                kind="Text",
+                optional=True,
+                read_only=True,
+                computed_attribute=ComputedAttribute(
+                    kind=ComputedAttributeKind.JINJA2, jinja2_template="{{ name__value }}"
+                ),
+            ),
+        ],
+    )
+    return SchemaRoot(nodes=[node])
+
+
+async def load_cascade_schema(db: InfrahubDatabase, branch_name: str | None = None) -> None:
+    await load_schema(db=db, schema=build_cascade_schema(), branch_name=branch_name, update_db=True)
+
+
 CHAIN_NAMESPACE = "Testing"
 
 

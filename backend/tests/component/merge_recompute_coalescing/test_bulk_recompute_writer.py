@@ -26,9 +26,11 @@ from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import (
+    CASCADE_NODE_KIND,
     PROFILE_NODE_KIND,
     PROFILE_PEER_KIND,
     chain_kind,
+    load_cascade_schema,
     load_chain_schema,
     load_profile_schema,
 )
@@ -258,6 +260,41 @@ async def test_bulk_writer_persists_a_changed_field_when_another_on_the_node_is_
     assert reloaded is not None
     assert await reloaded.get_display_label(db=db) == "steady"
     assert reloaded.summary.value == "changed"
+
+
+async def test_bulk_writer_reports_fields_cascaded_by_the_save(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A write that cascades a same-node derived value reports the cascaded field, so it can chain.
+
+    Writing ``code`` re-renders the display label (which reads it) in the same save. If the writer
+    reported only the requested field, a cross-node reader of the display label would never chain on
+    the coalesced pass.
+    """
+    await load_cascade_schema(db=db)
+    node = await Node.init(db=db, schema=CASCADE_NODE_KIND, branch=default_branch)
+    await node.new(db=db, name="n1")
+    await node.save(db=db)
+
+    recorder = MemoryInfrahubEvent()
+    writer = BulkRecomputeWriter(db=db, event_service=recorder)
+    written = await writer.write(
+        branch=default_branch,
+        writes=[AttributeValueWrite(node_id=node.id, field="code", value="override")],
+        context=_event_context(),
+    )
+
+    # Both the written record and the event carry the cascaded field, not only the requested one.
+    assert len(written) == 1
+    assert set(written[0].fields) == {"code", "display_label"}
+    assert set(recorder.events[0].fields) == {"code", "display_label"}
+
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert reloaded.code.value == "override"
+    assert await reloaded.get_display_label(db=db) == "override"
 
 
 async def test_chain_coalesces_the_next_level_into_one_submission(

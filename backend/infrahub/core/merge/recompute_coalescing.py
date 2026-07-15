@@ -450,9 +450,11 @@ async def submit_recompute_chain(
     next_depth = depth + 1
     if next_depth > max_depth:
         log.warning(
-            "Recompute chain reached its depth bound (%s) on branch %s; not dispatching a further level",
+            "Recompute chain reached its depth bound (%s) on branch %s; leaving %s node(s) unrecomputed: %s",
             max_depth,
             branch,
+            len(written),
+            sorted({f"{node.kind}:{node.node_id}" for node in written}),
         )
         return []
     changes = [
