@@ -26,7 +26,7 @@ export interface PreferencesFormProps {
   /** Placeholder for an unset field. Defaults to the user-scope wording; the org-defaults form
    * (which edits the raw defaults, not a child scope) passes its own copy. */
   emptyValueLabel?: string;
-  onSubmit: (values: PreferenceValues) => Promise<void>;
+  onSubmit: (values: PreferenceValues) => void;
   isSubmitDisabled?: boolean;
 }
 

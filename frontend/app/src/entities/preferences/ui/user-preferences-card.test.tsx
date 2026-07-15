@@ -344,7 +344,7 @@ describe("UserPreferencesCard", () => {
       .toBeVisible();
   });
 
-  test("toasts the error and keeps the form dirty when the save fails", async () => {
+  test("toasts the error when the save fails", async () => {
     vi.mocked(upsertUserPreferences).mockRejectedValue(new Error("save failed"));
 
     const component = await render(<UserPreferencesCard />);
@@ -352,9 +352,6 @@ describe("UserPreferencesCard", () => {
     await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
     await component.getByRole("button", { name: "Save" }).click();
 
-    // The catch block surfaces the error as a toast...
     await expect.element(component.getByText("save failed")).toBeVisible();
-    // ...and re-throws so the form stays dirty (Save stays enabled, not reset to pristine).
-    await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 });

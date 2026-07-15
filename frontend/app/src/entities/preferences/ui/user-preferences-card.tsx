@@ -90,9 +90,8 @@ export function UserPreferencesCard() {
         }}
         dateFormatSourceTooltip={dateFormatSourceTooltip}
         timezoneSourceTooltip={timezoneSourceTooltip}
-        onSubmit={async (values) => {
-          // mutateAsync still rejects on error, so the shared Form skips its reset() and stays dirty.
-          await updatePreferences.mutateAsync(values, {
+        onSubmit={(values) => {
+          updatePreferences.mutate(values, {
             onSuccess: () => {
               toast(<Alert type={ALERT_TYPES.SUCCESS} message="Preferences updated" />);
             },
