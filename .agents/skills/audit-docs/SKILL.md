@@ -30,7 +30,7 @@ Treat `$ARGUMENTS` as what to audit. It will be one of:
 - A **commit range or branch name** — audit all changes in that range. Run `git log <range> --oneline --stat` to understand every change. The input in order of importance is:
   - PR description (if the branch corresponds to a PR or if a PR is provided)
   - Pull Request review comments, resolved and unresolved. Usually this is GOLD information to be included in the internal docs (if the branch corresponds to a PR or if a PR is provided)
-  - Any a changelog fragment and spec link. If missing, flag it as a gap.
+  - Any changelog fragment and spec link. If missing, flag it as a gap.
   - The source code diffs themselves.
 - A **subject** (e.g. "webhooks", "computed attributes", "IPAM") — audit documentation for that topic across the codebase, regardless of branch. Use Grep/Glob to find all related code and docs, then assess coverage against `dev/knowledge/`, `docs/docs/`, `dev/specs/`, `backend/AGENTS.md`, `frontend/app/AGENTS.md`, and the code itself.
 - A **set of doc paths** (e.g. `docs/docs/guides/installation.mdx dev/knowledge/backend/templates.md`) — audit only those files. Read each one, identify the feature/topic it covers, then search the codebase for the corresponding implementation to confirm the doc is current and complete, and check whether the code has drifted from what the doc describes.
