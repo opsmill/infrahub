@@ -585,7 +585,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             from_time=Timestamp("2024-06-15T10:00:00Z"),
             to_time=Timestamp("2024-06-15T11:00:00Z"),
             nodes=self._build_nodes(num_nodes=1, num_sub_fields=1),
-            tracking_id=None,
+            tracking_id=NameTrackingId(name="diff-one"),
         )
         await self._save_single_diff(diff_repository=diff_repository, enriched_diff=first_diff, do_summary_counts=False)
         second_diff = EnrichedRootFactory.build(
@@ -594,7 +594,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             from_time=Timestamp("2024-06-15T12:00:00Z"),
             to_time=Timestamp("2024-06-15T13:00:00Z"),
             nodes=self._build_nodes(num_nodes=1, num_sub_fields=1),
-            tracking_id=None,
+            tracking_id=NameTrackingId(name="diff-two"),
         )
         await self._save_single_diff(
             diff_repository=diff_repository, enriched_diff=second_diff, do_summary_counts=False
