@@ -62,7 +62,7 @@ class BranchMerger:
 
         self._source_schema: SchemaBranch | None = None
         self._destination_schema: SchemaBranch | None = None
-        self._initial_source_schema: SchemaBranch | None = None
+        self._common_ancestor_schema: SchemaBranch | None = None
         self._has_schema_changes: bool | None = None
 
         self._workflow = workflow
@@ -82,10 +82,10 @@ class BranchMerger:
         return self._destination_schema
 
     @property
-    def initial_source_schema(self) -> SchemaBranch:
-        if self._initial_source_schema:
-            return self._initial_source_schema
-        raise ValueError("_initial_source_schema hasn't been initialized")
+    def common_ancestor_schema(self) -> SchemaBranch:
+        if self._common_ancestor_schema:
+            return self._common_ancestor_schema
+        raise ValueError("__common_ancestor_schema hasn't been initialized")
 
     @property
     def workflow(self) -> InfrahubWorkflow:
@@ -93,23 +93,26 @@ class BranchMerger:
             raise ValueError("BranchMerger hasn't been initialized with a workflow object")
         return self._workflow
 
-    async def get_initial_source_branch(self) -> SchemaBranch:
-        """Retrieve the schema of the source branch when the branch was created.
+    async def get_common_ancestor_schema(self) -> SchemaBranch:
+        """Retrieve the schema baseline the source branch diverged from.
+
+        Using the destination schema at ``branched_from`` ensures that changes on the destination
+        branch that have been added to the source branch via rebases are properly reflected.
 
         For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
          - having a faster way to pull a previous version of the schema
          - using the diff generated from the data.
         """
-        if self._initial_source_schema:
-            return self._initial_source_schema
+        if self._common_ancestor_schema:
+            return self._common_ancestor_schema
 
-        self._initial_source_schema = await registry.schema.load_schema_from_db(
+        self._common_ancestor_schema = await registry.schema.load_schema_from_db(
             db=self.db,
-            branch=self.source_branch,
-            at=Timestamp(self.source_branch.created_at),
+            branch=self.destination_branch,
+            at=Timestamp(self.source_branch.branched_from),
         )
 
-        return self._initial_source_schema
+        return self._common_ancestor_schema
 
     async def has_schema_changes(self) -> bool:
         if self._has_schema_changes is not None:
@@ -140,10 +143,10 @@ class BranchMerger:
         # and we need to calculate a 3 ways comparison between
         # - The initial schema and the current schema in the source branch
         # - The initial schema and the current schema in the destination branch
-        initial_source_schema = await self.get_initial_source_branch()
+        common_ancestor_schema = await self.get_common_ancestor_schema()
 
-        diff_source = initial_source_schema.diff(other=self.source_schema)
-        diff_destination = initial_source_schema.diff(other=self.destination_schema)
+        diff_source = common_ancestor_schema.diff(other=self.source_schema)
+        diff_destination = common_ancestor_schema.diff(other=self.destination_schema)
         return diff_source + diff_destination
 
     async def calculate_migrations(self, target_schema: SchemaBranch) -> list[SchemaUpdateMigrationInfo]:
