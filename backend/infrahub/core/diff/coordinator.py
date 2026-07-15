@@ -318,7 +318,7 @@ class DiffCoordinator:
         base_branch: Branch,
         diff_branch: Branch,
         diff_id: str,
-    ) -> EnrichedDiffRoot:
+    ) -> EnrichedDiffRoot | None:
         lock_request_time = Timestamp()
         async with self.diff_locker.acquire_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=False
@@ -326,7 +326,17 @@ class DiffCoordinator:
             lock_acquired_time = Timestamp()
             with trace.get_tracer(__name__).start_as_current_span("recalculate") as span:
                 self.logger.info(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
-                current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
+                try:
+                    current_branch_diff = await self.diff_repo.get_one(
+                        diff_branch_name=diff_branch.name, diff_id=diff_id
+                    )
+                except ResourceNotFoundError:
+                    # a concurrent diff update can delete a stale root before its queued recalculation
+                    # runs; the root that replaced it is already up to date, so there is nothing to do
+                    self.logger.info(
+                        f"Diff {diff_id} for branch {diff_branch.name} no longer exists, skipping recalculation"
+                    )
+                    return None
                 current_base_diff = await self.diff_repo.get_one(
                     diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
                 )
@@ -477,18 +487,22 @@ class DiffCoordinator:
             ),
             partial_enriched_diffs=diff_pairs_metadata if not force_branch_refresh else None,
         )
-        # A tracking_id identifies a single diff pair, so every other root carrying it is stale and
-        # must be deleted. Query by tracking_id alone rather than reusing the time-bounded aggregation
-        # results above: a rebase advances the branch's branched_from time, leaving the pre-rebase root
-        # with an earlier from_time that the time filter excludes. Left behind, it would accumulate
-        # under the tracking_id and break any single-diff lookup by tracking_id.
+        # A tracking_id identifies a single diff pair per branch, so every other root carrying it is
+        # stale and must be deleted
         uuids_to_keep = {
             aggregated_enriched_diffs.base_branch_diff.uuid,
             aggregated_enriched_diffs.diff_branch_diff.uuid,
         }
-        stale_tracked_roots = await self.diff_repo.get_roots_metadata(tracking_id=tracking_id)
+        tracked_diff_pairs = await self.diff_repo.get_diff_pairs_metadata(
+            base_branch_names=[base_branch.name],
+            diff_branch_names=[diff_branch.name],
+            tracking_id=tracking_id,
+        )
         diff_uuids_to_delete = [
-            root.uuid for root in stale_tracked_roots if root.uuid not in uuids_to_keep and root.exists_on_database
+            root.uuid
+            for pair in tracked_diff_pairs
+            for root in (pair.base_branch_diff, pair.diff_branch_diff)
+            if root.uuid not in uuids_to_keep and root.exists_on_database
         ]
 
         if diff_uuids_to_delete:
