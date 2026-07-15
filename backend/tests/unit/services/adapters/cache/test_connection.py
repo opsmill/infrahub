@@ -21,16 +21,12 @@ PARSE_CASES = [
     ParseCase(
         name="single_node_minimal",
         url="redis://localhost:6379/0",
-        expected=RedisConnectionConfig(
-            db=0, is_sentinel=False, host="localhost", port=6379, connection_kwargs={"ssl": False}
-        ),
+        expected=RedisConnectionConfig(db=0, is_sentinel=False, host="localhost", port=6379, connection_kwargs={}),
     ),
     ParseCase(
         name="single_node_default_port_and_db",
         url="redis://cache",
-        expected=RedisConnectionConfig(
-            db=0, is_sentinel=False, host="cache", port=6379, connection_kwargs={"ssl": False}
-        ),
+        expected=RedisConnectionConfig(db=0, is_sentinel=False, host="cache", port=6379, connection_kwargs={}),
     ),
     ParseCase(
         name="single_node_tls_with_auth_and_encoded_password",
@@ -40,14 +36,7 @@ PARSE_CASES = [
             is_sentinel=False,
             host="cache",
             port=6380,
-            connection_kwargs={
-                "username": "user",
-                "password": "pa@ss",
-                "ssl": True,
-                "ssl_cert_reqs": "optional",
-                "ssl_check_hostname": True,
-                "ssl_ca_certs": None,
-            },
+            connection_kwargs={"username": "user", "password": "pa@ss", "ssl": True},
         ),
     ),
     ParseCase(
@@ -58,12 +47,12 @@ PARSE_CASES = [
             is_sentinel=False,
             host="cache",
             port=6379,
-            connection_kwargs={"username": "user", "ssl": False},
+            connection_kwargs={"username": "user"},
         ),
     ),
     ParseCase(
-        name="single_node_tls_insecure_and_ca_file",
-        url="rediss://cache:6379?tls_insecure=true&tls_ca_file=/etc/ca.pem",
+        name="single_node_tls_native_ssl_options",
+        url="rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false&ssl_ca_certs=/etc/ca.pem",
         expected=RedisConnectionConfig(
             db=0,
             is_sentinel=False,
@@ -86,47 +75,32 @@ PARSE_CASES = [
             is_sentinel=True,
             service_name="mymaster",
             sentinels=(("s1", 26379), ("s2", 26379), ("s3", 26379)),
-            connection_kwargs={"username": "app", "password": "secret", "ssl": False},
-            sentinel_kwargs={"username": "su", "password": "sp", "ssl": False},
+            connection_kwargs={"username": "app", "password": "secret"},
+            sentinel_kwargs={"username": "su", "password": "sp"},
         ),
     ),
     ParseCase(
-        name="sentinel_tls_data_nodes_follows_scheme",
+        name="sentinel_tls_data_nodes_follow_scheme",
         url="rediss+sentinel://s1:26379/svc",
         expected=RedisConnectionConfig(
             db=0,
             is_sentinel=True,
             service_name="svc",
             sentinels=(("s1", 26379),),
-            connection_kwargs={
-                "ssl": True,
-                "ssl_cert_reqs": "optional",
-                "ssl_check_hostname": True,
-                "ssl_ca_certs": None,
-            },
-            sentinel_kwargs={
-                "ssl": True,
-                "ssl_cert_reqs": "optional",
-                "ssl_check_hostname": True,
-                "ssl_ca_certs": None,
-            },
+            connection_kwargs={"ssl": True},
+            sentinel_kwargs={"ssl": True},
         ),
     ),
     ParseCase(
-        name="sentinel_ssl_override_disables_daemon_tls",
-        url="rediss+sentinel://s1:26379/svc?tls_insecure=true&sentinel_ssl=false",
+        name="sentinel_tls_ssl_options_shared_with_daemons",
+        url="rediss+sentinel://s1:26379/svc?ssl_cert_reqs=none&ssl_check_hostname=false",
         expected=RedisConnectionConfig(
             db=0,
             is_sentinel=True,
             service_name="svc",
             sentinels=(("s1", 26379),),
-            connection_kwargs={
-                "ssl": True,
-                "ssl_cert_reqs": "none",
-                "ssl_check_hostname": False,
-                "ssl_ca_certs": None,
-            },
-            sentinel_kwargs={"ssl": False},
+            connection_kwargs={"ssl": True, "ssl_cert_reqs": "none", "ssl_check_hostname": False},
+            sentinel_kwargs={"ssl": True, "ssl_cert_reqs": "none", "ssl_check_hostname": False},
         ),
     ),
     ParseCase(
@@ -137,8 +111,8 @@ PARSE_CASES = [
             is_sentinel=True,
             service_name="svc",
             sentinels=(("s1", 26379), ("s2", 26379)),
-            connection_kwargs={"ssl": False},
-            sentinel_kwargs={"ssl": False},
+            connection_kwargs={},
+            sentinel_kwargs={},
         ),
     ),
     ParseCase(
@@ -149,8 +123,8 @@ PARSE_CASES = [
             is_sentinel=True,
             service_name="svc",
             sentinels=(("2001:db8::1", 26379), ("2001:db8::2", 26380)),
-            connection_kwargs={"ssl": False},
-            sentinel_kwargs={"ssl": False},
+            connection_kwargs={},
+            sentinel_kwargs={},
         ),
     ),
     ParseCase(
@@ -161,7 +135,7 @@ PARSE_CASES = [
             is_sentinel=False,
             host="cache",
             port=6379,
-            connection_kwargs={"ssl": False, "max_connections": 50, "socket_timeout": 5.0},
+            connection_kwargs={"max_connections": 50, "socket_timeout": 5.0},
         ),
     ),
     ParseCase(
@@ -172,8 +146,8 @@ PARSE_CASES = [
             is_sentinel=True,
             service_name="svc",
             sentinels=(("s1", 26379),),
-            connection_kwargs={"ssl": False, "max_connections": 10},
-            sentinel_kwargs={"username": "su", "ssl": False},
+            connection_kwargs={"max_connections": 10},
+            sentinel_kwargs={"username": "su"},
         ),
     ),
 ]
@@ -199,7 +173,6 @@ ERROR_CASES = [
     ErrorCase(name="db_out_of_range", url="redis://cache:6379/99", match="out of range"),
     ErrorCase(name="invalid_db", url="redis://cache:6379/abc", match="Invalid database index"),
     ErrorCase(name="no_host", url="redis://", match="No host found"),
-    ErrorCase(name="invalid_bool", url="rediss://cache:6379?tls_insecure=maybe", match="Invalid boolean"),
     ErrorCase(
         name="invalid_pool_option",
         url="redis://cache:6379?socket_timeout=abc",
@@ -256,7 +229,7 @@ class NoLeakCase:
 NO_LEAK_CASES = [
     NoLeakCase(name="sentinel_no_service", url="redis+sentinel://u:topsecret@s1:26379", secret="topsecret"),
     NoLeakCase(name="bad_port", url="redis://u:topsecret@cache:nope", secret="topsecret"),
-    NoLeakCase(name="bad_bool", url="rediss://u:topsecret@cache:6379?tls_insecure=maybe", secret="topsecret"),
+    NoLeakCase(name="bad_pool_option", url="rediss://u:topsecret@cache:6379?socket_timeout=abc", secret="topsecret"),
 ]
 
 
