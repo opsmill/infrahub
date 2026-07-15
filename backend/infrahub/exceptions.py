@@ -9,11 +9,26 @@ if TYPE_CHECKING:
     from infrahub.core.validators.model import SchemaViolation
 
 
+def _rebuild_error(cls: type[Error], args: tuple[Any, ...], state: dict[str, Any]) -> Error:
+    obj = cls.__new__(cls)
+    obj.args = args
+    obj.__dict__.update(state)
+    return obj
+
+
 class Error(Exception):
     HTTP_CODE: int = 500
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
     errors: list | None = None
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        # BaseException.__reduce__ rebuilds via cls(*self.args), replaying only the message and
+        # dropping any additional required constructor arguments, so subclasses with extra
+        # parameters fail to unpickle. Rebuild via __new__ + instance state instead so every
+        # subclass round-trips regardless of its __init__ signature (errors are pickled when they
+        # cross the workflow engine).
+        return (_rebuild_error, (self.__class__, self.args, self.__dict__))
 
     def api_response(self) -> dict[str, Any]:
         """Return error response."""

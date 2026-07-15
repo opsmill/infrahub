@@ -745,6 +745,11 @@ class SchemaBranch:
         self.add_hierarchy_generic()
         self.add_hierarchy_node()
 
+        # profile and template management can add schemas (such as CoreProfile)
+        # leaving some of their attributes unresolved
+        self._reconcile_legacy_attribute_parameters()
+        self.process_branch_support()
+
     def process_validate(self) -> None:
         for validator in self.validators:
             validator.check(schema_branch=self)
