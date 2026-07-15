@@ -15,7 +15,12 @@ import {
   formatDateFormatExample,
 } from "@/entities/preferences/domain/rules/date-format";
 import { PreferenceSelect } from "@/entities/preferences/ui/preference-select";
-import { TimezoneField } from "@/entities/preferences/ui/timezone.field";
+
+const RUNTIME_TIMEZONES = Intl.supportedValuesOf("timeZone");
+// V8/Chrome exposes "Etc/UTC" rather than plain "UTC", so ensure "UTC" is always selectable.
+const TIMEZONE_ITEMS = (
+  RUNTIME_TIMEZONES.includes("UTC") ? RUNTIME_TIMEZONES : ["UTC", ...RUNTIME_TIMEZONES]
+).map((timezone) => ({ value: timezone, label: timezone }));
 
 export interface PreferencesFormProps {
   values: PreferenceValues;
@@ -121,11 +126,14 @@ export function PreferencesForm({
         <DetailRow icon="mdi:earth" label="Timezone" labelId={timezoneLabelId}>
           <div className="flex items-center gap-2">
             <div className="w-64 shrink-0">
-              <TimezoneField
+              <PreferenceSelect
                 name="timezone"
                 label="Timezone"
                 labelClassName="sr-only"
+                items={TIMEZONE_ITEMS}
                 placeholder={emptyValueLabel}
+                emptyMessage="No timezone found."
+                virtualized
               />
             </div>
             <div className="flex-1" />
