@@ -17,6 +17,23 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+async def assert_no_changes_at_or_after(db: InfrahubDatabase, branch: Branch, at_or_after: Timestamp) -> None:
+    """Assert that no edges exist on the branch at or after the given timestamp."""
+    query = """
+    MATCH ()-[r {branch: $branch}]->()
+    WHERE r.from >= $at
+    OR r.to >= $at
+    RETURN collect(elementId(r)) AS edge_ids
+    """
+    result = await db.execute_query(
+        query=query,
+        params={"at": at_or_after.to_string(), "branch": branch.name},
+    )
+    assert result
+    illegal_edge_ids = result[0].get("edge_ids")
+    assert illegal_edge_ids == [], f"Edges updated after {at_or_after} on branch {branch.name}: {illegal_edge_ids}"
+
+
 def test_restore_metadata_rejected_on_non_default_branch() -> None:
     """A metadata restore is rejected outside the default and global branches.
 
@@ -244,8 +261,7 @@ class TestRollbackSinceTimestamp:
         loaded_created_in_window = await NodeManager.get_one(db=db, id=dataset.created_main.id, branch=default_branch)
         assert loaded_created_in_window is None, "Node created inside the window must be removed"
 
-        edges_after = await _count_branch_edges_since(db=db, branch=default_branch, at=dataset.window_start)
-        assert edges_after == 0, "Rollback should delete every branch edge created at or after the window start"
+        await assert_no_changes_at_or_after(db=db, branch=default_branch, at_or_after=dataset.window_start)
 
         metadata = await _get_node_vertex_metadata(db=db, node_uuid=dataset.updated_main.id)
         assert metadata["updated_at"] == dataset.updated_main_created_at.to_string(), (
@@ -275,6 +291,45 @@ class TestRollbackSinceTimestamp:
 
         created = await NodeManager.get_one(db=db, id=dataset.created_on_branch.id, branch=dataset.branch2)
         assert created is not None, "The node created on the user branch must survive a default-branch rollback"
+
+    async def _assert_user_branch_rolled_back(self, db: InfrahubDatabase, dataset: TwoBranchDataset) -> None:
+        # The user branch's window is reverted: its view falls back to the default-branch state.
+        updated = await NodeManager.get_one(db=db, id=dataset.updated_on_branch.id, branch=dataset.branch2)
+        assert updated is not None
+        assert updated.get_attribute("name").value == "Xena", "The branch attribute update must be reverted"
+
+        deleted = await NodeManager.get_one(db=db, id=dataset.deleted_on_branch.id, branch=dataset.branch2)
+        assert deleted is not None, "The node deleted on the branch must be restored"
+        assert deleted.get_attribute("name").value == "Yara"
+
+        created = await NodeManager.get_one(db=db, id=dataset.created_on_branch.id, branch=dataset.branch2)
+        assert created is None, "The node created on the branch must be removed"
+
+        await assert_no_changes_at_or_after(db=db, branch=dataset.branch2, at_or_after=dataset.window_start)
+
+    async def _assert_default_branch_changes_intact(
+        self, db: InfrahubDatabase, default_branch: Branch, dataset: TwoBranchDataset
+    ) -> None:
+        alice = await NodeManager.get_one(db=db, id=dataset.updated_main.id, branch=default_branch)
+        assert alice.get_attribute("name").value == "Alicia", (
+            "The default branch's attribute update must survive a user-branch rollback"
+        )
+
+        bob = await NodeManager.get_one(db=db, id=dataset.deleted_main.id, branch=default_branch)
+        assert bob is None, "The default branch's node delete must survive a user-branch rollback"
+
+        carol = await NodeManager.get_one(db=db, id=dataset.created_main.id, branch=default_branch)
+        assert carol is not None, "The node created on the default branch must survive a user-branch rollback"
+
+        default_edges = await _count_branch_edges_since(db=db, branch=default_branch, at=dataset.window_start)
+        assert default_edges > 0, "The default branch's in-window edges must survive a user-branch rollback"
+
+        # No metadata was restored: the default-branch snapshots are still in place.
+        metadata = await _get_node_vertex_metadata(db=db, node_uuid=dataset.updated_main.id)
+        assert metadata["previous_updated_at"] == dataset.updated_main_created_at.to_string(), (
+            "A user-branch rollback must not consume default-branch metadata snapshots"
+        )
+        assert metadata["previous_updated_by"] == "original-user"
 
     async def test_default_branch_rollback_restores_metadata_and_leaves_user_branch_untouched(
         self,
@@ -322,39 +377,18 @@ class TestRollbackSinceTimestamp:
         )
         await rollback_query.execute(db=db)
 
-        # The user branch's window is reverted: its view falls back to the default-branch state.
-        updated = await NodeManager.get_one(db=db, id=dataset.updated_on_branch.id, branch=dataset.branch2)
-        assert updated is not None
-        assert updated.get_attribute("name").value == "Xena", "The branch attribute update must be reverted"
+        await self._assert_user_branch_rolled_back(db=db, dataset=dataset)
+        await self._assert_default_branch_changes_intact(db=db, default_branch=default_branch, dataset=dataset)
 
-        deleted = await NodeManager.get_one(db=db, id=dataset.deleted_on_branch.id, branch=dataset.branch2)
-        assert deleted is not None, "The node deleted on the branch must be restored"
-        assert deleted.get_attribute("name").value == "Yara"
-
-        created = await NodeManager.get_one(db=db, id=dataset.created_on_branch.id, branch=dataset.branch2)
-        assert created is None, "The node created on the branch must be removed"
-
-        edges_after = await _count_branch_edges_since(db=db, branch=dataset.branch2, at=dataset.window_start)
-        assert edges_after == 0, "Rollback should delete every user-branch edge created in the window"
-
-        # The default branch's in-window changes are untouched.
-        alice = await NodeManager.get_one(db=db, id=dataset.updated_main.id, branch=default_branch)
-        assert alice.get_attribute("name").value == "Alicia", (
-            "The default branch's attribute update must survive a user-branch rollback"
+        # Idempotent: a second run finds nothing in the window and leaves the restored state alone.
+        rerun_query = await RollbackQuery.init(
+            db=db,
+            target_branch=dataset.branch2,
+            at=dataset.window_start,
+            scope=RollbackScope.SINCE_TIMESTAMP,
+            restore_metadata=False,
         )
+        await rerun_query.execute(db=db)
 
-        bob = await NodeManager.get_one(db=db, id=dataset.deleted_main.id, branch=default_branch)
-        assert bob is None, "The default branch's node delete must survive a user-branch rollback"
-
-        carol = await NodeManager.get_one(db=db, id=dataset.created_main.id, branch=default_branch)
-        assert carol is not None, "The node created on the default branch must survive a user-branch rollback"
-
-        default_edges = await _count_branch_edges_since(db=db, branch=default_branch, at=dataset.window_start)
-        assert default_edges > 0, "The default branch's in-window edges must survive a user-branch rollback"
-
-        # No metadata was restored: the default-branch snapshots are still in place.
-        metadata = await _get_node_vertex_metadata(db=db, node_uuid=dataset.updated_main.id)
-        assert metadata["previous_updated_at"] == dataset.updated_main_created_at.to_string(), (
-            "A user-branch rollback must not consume default-branch metadata snapshots"
-        )
-        assert metadata["previous_updated_by"] == "original-user"
+        await self._assert_user_branch_rolled_back(db=db, dataset=dataset)
+        await self._assert_default_branch_changes_intact(db=db, default_branch=default_branch, dataset=dataset)
