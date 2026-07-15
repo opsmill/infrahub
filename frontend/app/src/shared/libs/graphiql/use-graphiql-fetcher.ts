@@ -25,8 +25,7 @@ export const createBaseFetcher =
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        // The sandbox is a frontend-origin transport, so it must not be
-        // unheadered (FR-003). GraphiQL requests are always interactive → high.
+        // Sandbox bypasses our graphql client, so it must set priority here too → high.
         [PRIORITY_HEADER]: DEFAULT_PRIORITY,
         ...(accessToken && {
           authorization: `Bearer ${accessToken}`,

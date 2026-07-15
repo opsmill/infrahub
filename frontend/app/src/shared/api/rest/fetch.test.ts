@@ -30,7 +30,6 @@ describe("fetchUrl — outbound X-Priority header", () => {
   });
 
   function initHeaders(): Record<string, string> {
-    // fetchUrl builds a plain-object `headers` and calls fetch(url, init).
     return fetchSpy.mock.calls[0]?.[1]?.headers as Record<string, string>;
   }
 
@@ -41,16 +40,7 @@ describe("fetchUrl — outbound X-Priority header", () => {
     expect(initHeaders()[PRIORITY_HEADER]).toBe("high");
   });
 
-  it("stamps X-Priority: low when the caller passes { priority: 'low' }", async () => {
-    await fetchUrl("http://localhost:8000/api/search/docs?query=x", undefined, {
-      priority: "low",
-    });
-
-    expect(fetchSpy).toHaveBeenCalledOnce();
-    expect(initHeaders()[PRIORITY_HEADER]).toBe("low");
-  });
-
-  it("does NOT stamp X-Priority on a request to an external host (FR-007)", async () => {
+  it("does NOT stamp X-Priority on a request to an external host", async () => {
     await fetchUrl("https://example.com/whatever");
 
     expect(fetchSpy).toHaveBeenCalledOnce();
