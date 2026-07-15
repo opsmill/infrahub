@@ -6,9 +6,9 @@ description: >-
   review" — or mid-session after the user rejects a proposal and you want to
   distill the durable takeaway. Reconstructs proposed -> rejected -> corrected,
   diagnoses why an agent would have proposed the rejected version, and delegates
-  the lesson to capturing-knowledge. Focused on one PR's review->correction
-  delta with cited evidence, not a broad sweep. Do not use to write docs directly
-  (that is capturing-knowledge), to introspect the current session for doc gaps
+  the lesson to the project's knowledge-capture skill. Focused on one PR's
+  review->correction delta with cited evidence, not a broad sweep. Do not use to
+  write docs directly (that is the knowledge-capture skill), to introspect the current session for doc gaps
   (that is /feedback), to run a whole-session retrospective across config, docs,
   and architecture findings (that is a retrospective tool), or to review code
   that has not yet been reviewed.
@@ -23,7 +23,9 @@ $ARGUMENTS
 ```
 
 Treat `$ARGUMENTS` as a PR reference (number, URL, or "current branch"). If empty,
-fall back to the conversation path (see below).
+fall back to the conversation path (see below) — but only when the session holds a
+real proposal → rejection → correction; otherwise ask for a PR reference or the
+missing dialogue rather than inventing context.
 
 ## What this does
 
@@ -33,15 +35,16 @@ agent proposes the same rejected shape again. This skill reconstructs
 **proposed → rejected → corrected** for one PR, diagnoses *why an agent would
 have proposed the rejected version*, and distills the smallest durable lesson
 that would have produced the accepted version first time. It then hands that
-lesson to `capturing-knowledge` to persist. It writes no docs itself.
+lesson to the project's knowledge-capture skill to persist (see the Reuse map).
+It writes no docs itself.
 
 ## When to use
 
 - The user points at a reviewed PR and asks what went wrong / what to learn.
 - Mid-session, after the user rejects a proposal and you want the durable lesson.
 
-Do **not** use this to write docs directly (that is `capturing-knowledge`), to
-introspect the current session for doc gaps (that is `/feedback`), or on a PR
+Do **not** use this to write docs directly (that is the knowledge-capture skill),
+to introspect the current session for doc gaps (that is `/feedback`), or on a PR
 that has not yet received change-requesting review (there is nothing to learn).
 
 ## Workflow
@@ -58,27 +61,38 @@ nothing to learn from and stop.
 
 Useful `gh` calls:
 - `gh pr view <n> --json commits,reviews,files,title,url`
-- `gh api repos/{owner}/{repo}/pulls/<n>/comments` (inline review threads)
+- `gh api --paginate repos/{owner}/{repo}/pulls/<n>/comments` (inline review
+  threads). `--paginate` is required: without it a PR with many comments returns
+  only the first page and pivot feedback is silently dropped. Aggregate every page
+  (or use an equivalent paginated tool) before segmenting.
 
 ### 2. Segment
 
-- **Before (rejected proposal):** the diff state the reviewer saw at the pivot.
-- **Feedback:** the change-requesting threads and review body at the pivot.
-- **After (correction):** commits pushed *after* the pivot.
+Work **one round per change-requesting submission**, and bound each round at the
+*next* change-requesting submission (PR head for the final round) so a later
+round's corrections are never attributed to earlier feedback:
+
+- **Before (rejected proposal):** the diff state the reviewer saw at that round's pivot.
+- **Feedback:** the change-requesting threads and review body at that pivot.
+- **After (correction):** commits pushed after that pivot and *before the next
+  change-requesting submission* (PR head for the final round).
 - **Link** each feedback thread to the correction hunks touching the same
   file / lines / symbols. A thread with no later change is unresolved or a
-  no-op — flag it, do not invent a link. If there are multiple
-  change-requested rounds, run one pass per round.
+  no-op — flag it, do not invent a link.
 
 ### 3. Diagnose
 
 For each linked (feedback → correction) pair, **verify first, then diagnose** —
 never derive a rule from a comment you have not checked in the code:
 
-- **Verify the claim against the code.** Read the touched code and the reviewer's
-  suggested alternative; grep for existing usages to confirm it is a real drop-in
-  (same type / behaviour), not just plausible. A lesson built on an unverified
-  claim is worse than no lesson — if it doesn't hold up, demote it and record why.
+- **Verify the claim against the code.** Read the touched code. *When the reviewer
+  suggested an alternative,* check it against the repository — grep for existing
+  usages, and confirm it satisfies the requirements and tests. A same-behaviour
+  drop-in is one valid outcome, but many corrections *intentionally* change
+  behaviour, and some feedback ("handle the missing key", "this is wrong") offers
+  no alternative at all — those are still valid lessons. Demote only when
+  verification shows the reviewer was mistaken or the point doesn't generalize; a
+  lesson built on an unverified claim is worse than no lesson.
 - **Size the naive reading.** If acting on the *literal* comment would imply a
   sweeping refactor, a deprecation, or a migration across many call sites, that is
   a signal you have **mis-read it** — the durable rule is almost always the smaller
@@ -95,7 +109,11 @@ Then build one **lesson unit**:
 - **Preventive takeaway** — the smallest durable rule or fact, scoped exactly as
   the verification showed (including any carve-out), that would have yielded the
   accepted version first time.
-- **Bucket** — knowledge / guideline / guide / **strengthen-existing** / **drop**.
+- **Bucket** — knowledge / guideline / guide / **drop**.
+- **Strengthen-existing?** — a flag (with the doc that already covers the rule),
+  set when the takeaway is *already documented* but a reviewer still had to raise
+  it. It is metadata on the lesson, **not** a bucket — the lesson keeps its
+  content bucket above.
 
 ### 4. Filter (skeptic pass)
 
@@ -111,14 +129,16 @@ Two judgement calls the skeptic pass must get right:
   without checking whether the idiom recurs elsewhere.
 - **"Already documented" is a finding, not a reason to drop.** If a reviewer had
   to raise a rule the docs already state, the coverage isn't landing — keep the
-  lesson, set its bucket to **strengthen-existing**, and cite the doc that failed
-  to land, so `capturing-knowledge` can make that coverage more discoverable
-  rather than add a duplicate. Likewise, "out of scope" / "too much for this PR" /
-  existing-code carve-outs govern whether to change *code* now — they never
-  exempt a guideline from teaching the pattern.
+  lesson in its content bucket, set the **strengthen-existing** flag, and cite the
+  doc that failed to land, so the capture skill can make that coverage more
+  discoverable rather than add a duplicate. Likewise, "out of scope" / "too much
+  for this PR" / existing-code carve-outs govern whether to change *code* now —
+  they never exempt a guideline from teaching the pattern.
 
-Every survivor MUST cite its evidence — **PR#, the review comment, and the
-before/after hunk** — so lessons are verifiable, never invented.
+Every survivor MUST cite its evidence so lessons are verifiable, never invented:
+for a PR, the **PR#, the review comment, and the before/after hunk**; for the
+conversation path, the **quoted proposal, the user's rejection, and the accepted
+correction** from the dialogue.
 
 ### 5. Checkpoint
 
@@ -127,23 +147,30 @@ link). The user keeps / edits / drops each. **No writes happen before this gate.
 
 ### 6. Delegate the write
 
-For each kept lesson, invoke `capturing-knowledge` with the distilled lesson as
-its input — e.g. `capturing-knowledge: <bucket>: <one-line takeaway> (from PR
-#<n>, <file>)`. For a **strengthen-existing** lesson, also pass the doc that
-failed to land and *why* (too abstract / not discoverable / mis-homed) so it
-strengthens that coverage instead of duplicating it. `capturing-knowledge`
-discovers where docs live, routes to the right bucket, and confirms the write.
-This skill performs no doc writes of its own.
+For each kept lesson, invoke the project's knowledge-capture skill (see the Reuse
+map) with the distilled lesson as its input — e.g.
+`<capture-skill>: <bucket>: <one-line takeaway> (from PR #<n>, <file>)`, where
+`<bucket>` is the content bucket (knowledge / guideline / guide). For a lesson
+with the **strengthen-existing** flag, also pass the doc that failed to land and
+*why* (too abstract / not discoverable / mis-homed) as metadata, so the capture
+skill strengthens that coverage instead of duplicating it. The capture skill
+discovers where docs live, routes to the right bucket, and confirms the write;
+this skill performs no doc writes of its own. If no capture skill is installed,
+present the lessons for the user to file by hand rather than dropping them.
 
 ## The conversation path
 
-Invoked with no PR, or mid-session after the user rejects a proposal. Skip
-*Gather* and *Segment* (no `gh`, no diff archaeology). Reconstruct the lesson
-unit from the dialogue:
+Invoked with no PR, mid-session after the user rejects a proposal. This path
+requires a real **proposal → rejection → correction** in the current session; if
+there is none (and no PR reference), stop and ask for a PR reference or the
+missing dialogue — never reconstruct a lesson from empty or invented context.
+Otherwise skip *Gather* and *Segment* (no `gh`, no diff archaeology) and
+reconstruct the lesson unit from the dialogue:
 - what you proposed,
 - the user's rejection and its stated reasoning,
 - the corrected approach that was accepted.
-Then run steps 3 → 6 unchanged (diagnose → filter → checkpoint → delegate).
+Then run steps 3 → 6 unchanged (diagnose → filter → checkpoint → delegate),
+citing the dialogue excerpts as evidence.
 
 ## Guardrails
 
@@ -161,9 +188,14 @@ Reimplement nothing. Each capability resolves through a priority chain:
 
 | Capability | Resolves to |
 |---|---|
-| Fetch PR data | in-repo/marketplace GitHub tool → `gh` fallback |
-| Persist a lesson | **`capturing-knowledge`** (sibling skill) |
-| Locate project docs | delegated to `capturing-knowledge`'s discovery |
+| Fetch PR data | in-repo/marketplace GitHub tool → `gh --paginate` fallback |
+| Persist a lesson | `capturing-knowledge` where installed, else the in-repo `capture-knowledge` |
+| Locate project docs | delegated to the capture skill's own discovery |
+
+`capture-knowledge` is **frontend-scoped** (`dev/**/frontend/`), so it can only
+home frontend lessons; backend or repo-wide lessons need `capturing-knowledge`.
+If only the frontend skill is installed, file the frontend lessons through it and
+report the rest for manual filing rather than dropping them.
 
 ## What NOT to capture
 
@@ -173,4 +205,5 @@ Reimplement nothing. Each capability resolves through a priority chain:
 - One-off, PR-specific facts whose underlying idiom does not recur.
 
 Note: a lesson the docs *already* state is **not** dropped here — if a reviewer
-still had to raise it, keep it as a **strengthen-existing** lesson (step 4).
+still had to raise it, keep it (in its content bucket) with the
+**strengthen-existing** flag set (step 4).
