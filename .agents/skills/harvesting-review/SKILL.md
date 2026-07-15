@@ -1,7 +1,7 @@
 ---
 name: harvesting-review
 description: >-
-  Mines a pull request's review threads for lessons that generalize beyond that PR, reconstructs each one against the actual code — the before the reviewer saw and the correction that landed — before deciding anything, checks whether it is already codified, and routes the genuinely-new, durable ones into Infrahub's internal documentation — `dev/knowledge/`, `dev/guides/`, `dev/guidelines/`, the `AGENTS.md` files, and `.agents/rules/` — proposing edits first and applying only with the user's approval. TRIGGER when: the user wants to turn PR review feedback into durable conventions, guidelines, or rules; capture recurring reviewer comments as internal documentation; or check whether review lessons are reflected in the knowledge/guides/guidelines/AGENTS.md/rules layer. DO NOT TRIGGER when: sweeping a feature's changes for documentation coverage across all layers → use `audit-docs`; extracting knowledge from completed spec directories → `speckit-opsmill-extract`; distilling the current chat session rather than a PR into docs → `feedback`; only replying to or resolving review threads → normal git/gh flow.
+  Mines a pull request's review threads for lessons that generalize beyond that PR, reconstructs each against the actual code before deciding, checks whether it is already codified, and routes the genuinely-new, durable ones into Infrahub's internal documentation — `dev/knowledge/`, `dev/guides/`, `dev/guidelines/`, the `AGENTS.md` files, and `.agents/rules/` — proposing edits first and applying only with the user's approval. TRIGGER when: the user wants to turn PR review feedback into durable conventions, guidelines, or rules; capture recurring reviewer comments as internal documentation; or check whether review lessons are reflected in the knowledge/guides/guidelines/AGENTS.md/rules layer. DO NOT TRIGGER when: sweeping a feature's changes for documentation coverage across all layers → use `audit-docs`; extracting knowledge from completed spec directories → `speckit-opsmill-extract`; distilling the current chat session rather than a PR into docs → `feedback`; only replying to or resolving review threads → normal git/gh flow.
 argument-hint: <PR number (#1234), branch name, or empty for the current branch's PR>
 compatibility: Requires the Infrahub repository checked out and the `gh` CLI authenticated for PR/review access.
 metadata:
@@ -21,14 +21,9 @@ $ARGUMENTS
 
 Reviewers repeat themselves — the same idiom, naming, and layering nits recur PR after PR because
 each lesson lived in a thread and died there. This skill reads a PR's review comments, keeps the ones
-that **generalize into a rule a future author should follow**, **investigates each against the actual
-code before deciding**, checks whether it is **already documented**, and proposes the smallest edit to
-the right internal-doc file. It reports first; it edits only after you approve.
-
-**Investigate before you decide.** A comment is a symptom, not an instruction. Read literally, a terse
-"avoid X, use Y" can look like a sweeping refactor when the durable rule is small and local — you tell
-them apart by reading the code, and by reading the correction that actually landed. No verdict, no
-home, no edit until a candidate has cleared step 3.
+that **generalize into a rule a future author should follow**, investigates each against the actual
+code before deciding, checks whether it is **already documented**, and proposes the smallest edit to
+the right internal-doc file.
 
 Counterpart to `audit-docs`: that sweeps a feature's *changes* for coverage; this starts from the
 *review threads*.
@@ -75,9 +70,9 @@ lesson survives, flag its origin and hold its promotion to a lower-confidence ba
 
 ### 2. Extract & abstract candidate lessons
 
-For each comment, abstract it to the underlying rule. The line the reviewer touched is the symptom;
-the rule is the disease — a comment fixing one call site usually points at a convention that spans
-many. Keep a candidate only if it passes all three:
+For each comment, abstract it to the underlying rule — **promote the rule, not the reviewer's
+wording**. The line the reviewer touched is the symptom; the rule is the disease — a comment fixing one
+call site usually points at a convention that spans many. Keep a candidate only if it passes all three:
 
 1. **Generalizes** — applies beyond these lines (a convention, idiom, or architectural principle).
 2. **Actionable as an imperative** — you can phrase it as "do X / don't do Y" an author follows next time.
@@ -91,19 +86,21 @@ it aside like any other non-lesson.
 Everything obviously PR-local — a real bug, a typo — is set aside now. Borderline cases are *not*
 judged yet; they go through the investigation, which is what tells you whether they generalize.
 
-### 3. Investigate each candidate — the trail of thinking (do this BEFORE any decision)
+### 3. Investigate each candidate — the trail (do this BEFORE any decision)
 
-This is the heart of the skill and the step most easily skipped. For **every** surviving candidate,
-work the trail and write it down. Do not shortcut to a verdict.
+For **every** surviving candidate, work the trail and write it down before reaching any verdict — **no
+verdict, no home, no edit until it clears this step**; it is the one most easily skipped. A comment is a
+symptom, not an instruction: read literally, a terse
+"avoid X, use Y" can look like a sweeping refactor when the durable rule is small and local. You tell
+them apart by reading the code, and by reading the correction that actually landed.
 
 **a. Reconstruct before → after, then verify the claim.** Read the code the reviewer saw (the
 *before*) **and** the correction that actually landed — the commit(s) pushed after the comment (the
-*after*). The correction is the ground truth of what the lesson is; the comment is only what prompted
-it, and a thread with no landed change is unresolved or a no-op — flag it, do not invent a fix. Then
-verify: is the reviewer technically right, and is the suggested alternative a real drop-in? Find real
-usages of the alternative elsewhere in the repo (grep for the method/pattern) and confirm it behaves
-the same. A lesson built on an unverified claim — or on a correction that never landed — is worse than
-no lesson.
+*after*). The correction is the ground truth of the lesson; the comment only prompted it. A thread with
+no landed change is unresolved or a no-op — flag it, do not invent a fix. Then verify: is the reviewer
+technically right, and is the suggested alternative a real drop-in? Grep for real usages of the
+alternative elsewhere in the repo (the method/pattern) and confirm it behaves the same. A lesson built
+on an unverified claim — or on a correction that never landed — is worse than no lesson.
 
 **b. Interpret the intent — what is the reviewer actually asking?** Separate:
 - a **local code-style preference for new code** ("reach for the injected accessor here") from a
@@ -111,39 +108,38 @@ no lesson.
 - **directional** guidance ("we'll delete this someday") from an **actionable request for this PR**;
 - the **precise boundary** — which exact calls the rule covers and which it does not.
 
-**c. Size the scope of the naive reading.** Ask what acting on the *literal* comment would cost. If
-it implies a sweeping refactor (hundreds of call sites), a deprecation, or a migration, that is a
-strong signal you have **mis-read it** — the durable rule is almost always the smaller "in new code,
-prefer X" form. Name the over-scoped reading you are ruling out; that record is what stops the next
-person from over-scoping too.
+**c. Size the scope of the naive reading.** Ask what acting on the *literal* comment would cost. If it
+implies a sweeping refactor (hundreds of call sites), a deprecation, or a migration, that is a strong
+signal you have **mis-read it** — the durable rule is almost always the smaller "in new code, prefer X"
+form. Name the over-scoped reading you are ruling out; that record is what stops the next person from
+over-scoping too.
 
 **d. Derive the precise rule — and its root cause.** Only now write the one-sentence imperative, scoped
 exactly as the investigation showed, including any explicit carve-outs. Then name the **root cause**:
 *why would an agent have proposed the rejected shape in the first place?* — a missing or violated
 convention, a reflexive idiom (`or ""`, `default=str`), a copied legacy template, a misread
 requirement. The root cause is what tells you whether writing the rule down would actually prevent the
-repeat, and it is the more instructive half of the lesson.
+repeat.
 
 The investigation can also **demote** a candidate: if verifying shows the suggestion doesn't
-generalize, is already the universal pattern, or was reviewer error, it becomes a "not a lesson"
-with the reason recorded. But judge "generalizes" by whether the *underlying idiom or preference*
-recurs across the codebase, **not by the size of the local fix**. A one-line defensive or idiomatic
-change — `.get(key, default)` when reading untyped/external data, a naming or import convention, a
-preferred accessor — is still a durable styleguide rule; "the fix was only one line here" is not
-grounds to demote it.
+generalize, is already the universal pattern, or was reviewer error, it becomes a "not a lesson" with
+the reason recorded. Judge "generalizes" by whether the *underlying idiom or preference* recurs across
+the codebase, **not by the size of the local fix** — a one-line defensive or idiomatic change
+(`.get(key, default)` when reading untyped/external data, a naming or import convention, a preferred
+accessor) is still a durable styleguide rule.
 
 **Never demote a lesson on the assumption a linter or type-checker already enforces it — and do not run
-those tools to check.** A human reviewer having to raise it is itself evidence the tool did *not* catch
-it. Typing and type-annotation corrections in particular (a missing `| None`, an over-narrow or
-over-wide hint, an annotation a reviewer had to fix) are durable style rules: route them to
-`dev/guidelines/backend/python.md` (the *Type Hints* section), never drop them as "standard Python".
+those tools to decide.** A human reviewer having to raise it is itself evidence the tool did *not*
+catch it. Typing and annotation corrections in particular (a missing `| None`, an over-narrow or
+over-wide hint) are durable style rules: route them to `dev/guidelines/backend/python.md` (the *Type
+Hints* section), never drop them as "standard Python".
 
-The trail, generically, on a terse "avoid X, use Y":
-- *Before → after:* read the code at the pivot and the commit that landed the fix; if nothing landed, flag it and stop.
-- *Verify:* open the type behind `Y`, confirm it exposes the same method/return as `X`, and grep for existing `Y` usages to prove it is an established drop-in.
-- *Intent:* a style preference for *new* code, or a request to migrate everything? Directional ("we'll drop `X` someday") or actionable now?
-- *Scope:* count `X`'s call sites — if the literal reading means touching hundreds, that is a mis-read; name it and rule it out, and note any spot where `X` legitimately stays.
-- *Rule + root cause:* the smallest scoped imperative, with the carve-out, and why an agent would have written `X` in the first place.
+Worked shape — the trail on the commonest case, a terse "avoid `X`, use `Y`":
+- *Before → after:* read the code at the comment and the commit that landed the fix; if nothing landed, flag it and stop.
+- *Verify:* open `Y`, confirm it exposes the same method/return as `X`, and grep for existing `Y` usages to prove it is an established drop-in.
+- *Intent:* a style preference for new code, or migrate everything? Directional ("we'll drop `X` someday") or actionable now?
+- *Scope:* count `X`'s call sites — a literal reading that means touching hundreds is a mis-read; name it, and note any spot where `X` legitimately stays.
+- *Rule + root cause:* the smallest scoped imperative with its carve-out, and why an agent would have reached for `X` in the first place.
 
 ### 4. Check existing coverage, then route (dedup)
 
@@ -160,78 +156,77 @@ matched file at that line, confirm it states *this* rule and not an adjacent one
 `file:line`. A keyword that merely co-occurs (an enum-default rule is *not* covered by a
 dependency-injection rule that happens to mention enums) is a coincidental match, not coverage.
 
-Now remember **why you are here**: a reviewer flagged this. So the verdicts are not a pass/fail of
-the docs — they are:
+A reviewer flagged this, so the verdicts are not a pass/fail of the docs — they are:
 
 - **Missing** — the rule is written nowhere → propose the smallest addition in the most-specific home.
-- **Covered but ineffective** — the rule *is* written, yet a reviewer still had to flag it. **This is
-  a finding, not a relief.** Report it prominently, never as "the layer works": if the docs had truly
-  covered it, the comment would not exist. The existing doc failed to prevent the violation, so
-  diagnose *why it didn't land* and propose how to make the **existing** doc land — do not add a
-  duplicate rule. Pick the diagnosis:
+- **Covered but ineffective** — the rule *is* written, yet a reviewer still had to flag it. **This is a
+  finding, not a relief** — there is deliberately no "covered and fine" verdict, because a documented
+  rule a reviewer still had to raise is evidence the coverage is too weak, not proof it works. Report it
+  prominently, never as "the layer works". Diagnose *why it didn't land* and propose how to make the
+  **existing** doc land — do not add a duplicate rule. Pick the diagnosis:
   - **too abstract / no worked example** — states the principle but not the concrete case the author
-    needed. **The clearest signal: the reviewer had to describe the shape themselves** (spelling out
-    the class to build, the collaborators to inject, the method to call). If a reviewer has to draw
-    the construction, the section is too abstract → add the ✅/❌ worked example that turns the flagged
-    anti-pattern into the pattern;
+    needed. The clearest signal: the reviewer had to describe the shape themselves (the class to build,
+    the collaborators to inject, the method to call). If a reviewer has to draw the construction, the
+    section is too abstract → add the ✅/❌ worked example that turns the flagged anti-pattern into the
+    pattern.
   - **not discoverable** — the rule is in the *right* topical doc, but nothing pulled that doc into
     context when the author needed it. The fix is almost always **two coordinated edits, not a move**
-    (call it the 1A+1B fix):
+    (the 1A+1B fix):
     - **1A — fix the load-trigger.** Add or upgrade the doc's entry in the router/index (the relevant
       `AGENTS.md` "Knowledge/Guides" list) so it says *when* to load it — the triggering task or
-      symptom — not just *what* it covers. A `dev/knowledge`/`dev/guidelines` doc absent from that
-      list, or listed with a topic-only description ("Query patterns"), never gets loaded. Most
-      "covered but ignored" rules fail here: the trigger, not the rule, is missing.
-      **Keep the entry to one or two sentences, and rewrite rather than append** — fold the *when*
-      into the existing line, never bolt on another clause each harvest. The router is a scannable
-      index, not a second copy of the rule; once an entry swells into a paragraph it stops being
-      read, reopening the discoverability gap 1A exists to close. If the trigger can't be stated
-      briefly, the doc's scope is too broad — that is not a licence for a longer entry.
-      **Name the trigger and topic, not the rule's mechanics.** The entry says *when* to open the doc
-      (the task, symptom, or stable API surface you'd be touching) and roughly what it covers — it must
-      not bake in the specific method/attribute name, the do/don't, or the value the rule turns on.
-      Those live in the doc; copying them into the index is the same "second copy" that rots the moment
-      the symbol is renamed (e.g. write "workflow-name conventions", not "reference names via
-      `SomeClass.name`").
+      symptom — not just *what* it covers. A `dev/knowledge`/`dev/guidelines` doc absent from that list,
+      or listed with a topic-only description ("Query patterns"), never gets loaded; most "covered but
+      ignored" rules fail here. **Keep the entry to one or two sentences, and rewrite rather than
+      append** — the router is a scannable index, not a second copy of the rule; once an entry swells
+      into a paragraph it stops being read, reopening the gap 1A exists to close. If the trigger can't
+      be stated briefly the doc's scope is too broad — that is not a licence for a longer entry. **Name
+      the trigger and
+      topic, not the rule's mechanics**: the entry says *when* to open the doc and roughly what it
+      covers, never the specific method/attribute name or the value the rule turns on — those live in
+      the doc, and copying them into the index rots the moment the symbol is renamed (write
+      "workflow-name conventions", not "reference names via `SomeClass.name`").
     - **1B — strengthen the rule in place.** Promote it out of any niche section into a prominent home
       and add the carve-out — but leave it in its topically-correct doc.
 
     Do **not** relocate a domain rule (schema, DB, events, async-tasks…) into a general style/guide doc
     because that doc is read more often: a rule in the topically-wrong home is *less* trustworthy, not
     more discoverable. `.agents/rules/*` auto-injects every turn; guidelines/knowledge load only when
-    the router points an agent at them, so the router entry *is* the discoverability mechanism;
+    the router points an agent at them, so the router entry *is* the discoverability mechanism. If your
+    proposed home is a doc whose subject doesn't match the rule (a schema/DB rule in a Python *style*
+    guide), you have mis-diagnosed "not discoverable" as "mis-homed" — fix the load-trigger, not the
+    location.
   - **mis-homed** — the rule genuinely sits in the wrong topical doc, or belongs in a task's pre-submit
     checklist → move it to the most-specific correct home (or add the checklist line), then apply 1A so
-    that home is actually loadable;
+    that home is actually loadable.
   - **stale / contradicted** — the doc no longer matches the code, so authors discount it → correct it.
 
-  **Scope is not an alibi for the docs.** "Too much for this PR", "out of scope", or an
-  "existing-code, don't-refactor" carve-out are reasons not to change *code now* — they never exempt
-  the *documentation* from being made more concrete. Before you lean on such a carve-out, check it
-  actually applies: an existing-code exemption protects *pre-existing* code, not new code written in
-  the old style (verify in the diff whether the flagged code is new). Concluding "covered, correctly
-  scoped, no edit" is the rationalization this step exists to prevent — reach for it only when the
-  existing section already contains the concrete example the reviewer was forced to supply.
+  **Scope is not an alibi for the docs.** "Too much for this PR", "out of scope", or an existing-code
+  carve-out are reasons not to change *code now* — they never exempt the *documentation* from being made
+  more concrete. Before you lean on such a carve-out, check it applies: an existing-code exemption
+  protects *pre-existing* code, not new code written in the old style (verify in the diff). Concluding
+  "covered, correctly scoped, no edit" is the rationalization this step exists to prevent — reach for it
+  only when the existing section already contains the concrete example the reviewer was forced to
+  supply.
 - **Not applicable** — the grep match was coincidental, or the comment was not actually a violation of
   the rule (a question, a one-off) → demote to Not a lesson, with the reason.
 
-There is deliberately no "covered and fine" verdict: in a review harvest, a documented rule that a
-reviewer still had to raise is evidence the coverage is too weak, not proof it works.
-
 Routing rule of thumb: **most-specific existing home wins; edit before create; strengthen before
-duplicate; fix the load-trigger before relocating; `.agents/rules` only for a true `always/never`
-that must fire while coding.** Confirm the target file exists (`ls`/grep it, match sibling naming)
-before you route a lesson there — never invent a plausible-looking path.
+duplicate; fix the load-trigger before relocating; `.agents/rules` only for a true `always/never` that
+must fire while coding.** Confirm the target file exists (`ls`/grep it, match sibling naming) before you
+route a lesson there — never invent a plausible-looking path (e.g. `dev/guidelines/backend/changelog.md`
+when the real home is `dev/guidelines/changelog.md`).
 
 ### 5. Report
 
-Present the findings (format below) and stop. Do not edit yet.
+Present the findings (format below) and stop. **Do not edit yet** — internal-doc files shape every
+teammate's agent, so the blast radius is the whole team.
 
 ### 6. Apply (opt-in)
 
-Ask which to apply: **all / cherry-pick / none**. Only then edit. Prefer editing an existing section
-over adding one; keep `.agents/rules` lean; match any example code to `.agents/rules/code-doc-style.md`
-(no ticket IDs, no naming of specific callers). After applying, run:
+Ask which to apply: **all / cherry-pick / none**. Only then edit, following the §4 routing (edit an
+existing section before adding one; keep `.agents/rules` lean). Match any example code to
+`.agents/rules/code-doc-style.md` (no ticket/issue IDs, no naming specific callers). **Never resolve
+review threads** — reply if useful, but resolution is the human reviewer's call. After applying, run:
 
 ```bash
 uv run invoke docs.lint
@@ -251,11 +246,10 @@ The rule already exists, yet a reviewer had to raise it — so the coverage is n
 highest-value output of the harvest, so it leads the report; when it is empty, open with "New rules to
 add" instead.** For each:
 - **Lesson** + **Source** (reviewer + quoted comment)
-- **Already at**: the exact existing `file:line` that supposedly covers it — read it and confirm it is
-  the same rule, not a keyword co-occurrence
+- **Already at**: the exact existing `file:line`, confirmed to be the same rule, not a keyword co-occurrence
 - **Why it didn't land**: too abstract / not discoverable / mis-homed / missing from checklist / stale
-- **Proposed edit**: how to make the *existing* coverage more accurate — the concrete example to add,
-  the relocation/cross-link, or the checklist line. Not a duplicate rule.
+- **Proposed edit**: how to make the *existing* coverage land — the concrete example to add, the
+  load-trigger/relocation edit, or the checklist line. Not a duplicate rule.
 
 ### New rules to add (Missing)
 
@@ -272,57 +266,6 @@ For each:
 ### Not Lessons (PR-local or demoted after investigation)
 <!-- One-off fixes, bugs, and design calls that do NOT generalize — and candidates the investigation
      demoted (unverified claim, coincidental grep match, reviewer error, a question, or universal advice
-     with no Infrahub-specific edge). Say why, briefly. Honesty here is the point: a harvest that
-     promotes every comment to a rule is as useless as one that misses the real ones. -->
+     with no Infrahub-specific edge). Say why, briefly. Every lesson is grounded in a real comment; none
+     is invented, and promoting every comment to a rule is as useless as missing the real ones. -->
 ```
-
-## Guardrails & red flags
-
-- **Investigate before you decide.** No verdict, no home, no proposed edit until a candidate has been
-  through step 3. If you are about to write a rule from a comment you have not verified in code, stop.
-- **Read the correction, not only the comment.** The landed fix (before → after) is the ground truth of
-  the lesson and the source of its root cause; a thread with no landed change is unresolved — flag it,
-  don't invent the fix.
-- **A literal reading that implies a big refactor is a mis-read.** Deprecation / migration / "touch
-  hundreds of call sites" is almost never what a line-level review comment is asking. Find the small
-  directional rule instead, and record the over-scoped reading you ruled out.
-- **Report before editing.** Internal-doc files shape every teammate's agent — the blast radius is the
-  whole team. Never edit before the user approves specific lessons.
-- **"Already covered" is a finding, not a relief.** A reviewer flagging a rule that already exists is
-  evidence the coverage isn't landing. Never report it as "the layer works"; lead with it, diagnose
-  why it failed, and propose how to make the *existing* doc more accurate. Never add a duplicate rule.
-- **Cite before you claim coverage.** "Already covered" — as a strengthen finding *or* a demotion —
-  requires the exact `file:line` and a check that it is the *same* rule, not a neighbouring topic that
-  shares a keyword.
-- **Scope comments don't exempt the docs.** "Out of scope", "too much for this PR", and existing-code
-  carve-outs govern whether to change *code now* — never whether a guideline should teach the pattern.
-  If a reviewer had to describe the concrete shape, the section is too abstract: add the worked
-  example. Do not use scope, or a carve-out you haven't confirmed applies, to conclude "no edit".
-- **Edit before create; specific before general.** A new `.agents/rules` file clears the highest bar
-  and needs a recurring, high-value `always/never` with no existing home.
-- **Verify the doc path exists before proposing it.** `ls`/grep the target file and its directory (and
-  match sibling naming) before routing a lesson there, especially a new file — don't invent a
-  plausible-looking path like `dev/guidelines/backend/changelog.md` when the real home is
-  `dev/guidelines/changelog.md`.
-- **A rule landing in a topically-wrong doc is a red flag — reconsider.** If your proposed home is a
-  doc whose subject doesn't match the rule (a schema/DB rule going into a Python *style* guide), you
-  have mis-diagnosed "not discoverable" as "mis-homed". Keep the rule in its correct home and fix the
-  *load-trigger* instead — the 1A+1B fix in step 4.
-- **"Too local to generalize" is a red flag — reconsider.** Before demoting a comment as one-off, ask
-  whether the underlying idiom recurs elsewhere. Size of the diff ≠ scope of the rule; a one-line fix
-  often encodes a general preference worth codifying.
-- **"Universal good advice" is the opposite red flag — also reconsider.** A lesson that isn't specific
-  to Infrahub's stack, conventions, or a non-obvious gotcha ("keep comments near the code") costs tokens
-  and teaches nothing new — demote it. Watch both ends: don't drop a real local idiom as "too specific",
-  don't promote generic hygiene as "a rule".
-- **Don't filter feedback by author.** A bot comment gets the same step-3 investigation as a human one;
-  keep it when the code confirms a durable rule (flag the bot origin, hold it to a lower-confidence bar).
-  Sweeping every bot comment into "PR-local" loses real conventions.
-- **A human raising it means the tool missed it.** Never demote a comment as "the linter/type-checker
-  enforces this" — and never run those tools to decide. If it were enforced, the reviewer wouldn't have
-  had to say it. Typing/annotation corrections are durable rules → `dev/guidelines/backend/python.md`,
-  *Type Hints*.
-- **Quote the reviewer, but promote the rule, not the wording.** Every lesson is grounded in a real
-  comment; none is invented.
-- **Respect `code-doc-style`** in any example code you add (no ticket/issue IDs, no naming callers).
-- **Never resolve review threads** — reply if useful, but resolution is the human reviewer's call.
