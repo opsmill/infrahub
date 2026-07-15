@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { getEffectivePreferences } from "@/entities/preferences/domain/use-cases/get-effective-preferences";
-import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences-query.keys";
+import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences.query-keys";
 
 export function getEffectivePreferencesQueryOptions() {
   return queryOptions({

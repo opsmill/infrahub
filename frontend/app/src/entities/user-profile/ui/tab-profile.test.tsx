@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
 import { getEffectivePreferences } from "@/entities/preferences/domain/use-cases/get-effective-preferences";
-import { upsertMyUserPreference } from "@/entities/preferences/domain/use-cases/upsert-my-user-preference";
+import { upsertUserPreferences } from "@/entities/preferences/domain/use-cases/upsert-user-preferences";
 
 import { render } from "../../../../tests/components/render";
 import TabProfile from "./tab-profile";
@@ -30,7 +30,7 @@ vi.mock("@/entities/permission/ui/queries/get-object-permissions.query", () => (
 }));
 
 vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
-vi.mock("@/entities/preferences/domain/use-cases/upsert-my-user-preference");
+vi.mock("@/entities/preferences/domain/use-cases/upsert-user-preferences");
 
 const baseEffective: EffectivePreferences = {
   dateFormat: { value: "EU_DATETIME", source: "GLOBAL" },
@@ -43,7 +43,7 @@ describe("TabProfile", () => {
     vi.setSystemTime(new Date("2026-06-30T14:30:00"));
     vi.clearAllMocks();
     vi.mocked(getEffectivePreferences).mockResolvedValue(baseEffective);
-    vi.mocked(upsertMyUserPreference).mockResolvedValue();
+    vi.mocked(upsertUserPreferences).mockResolvedValue();
   });
 
   afterEach(() => {

@@ -12,8 +12,8 @@ const UPSERT_USER_PREFERENCE = graphql(`
   }
 `);
 
-export type UpsertUserPreferenceVariables = VariablesOf<typeof UPSERT_USER_PREFERENCE>;
+export type UpsertUserPreferencesVariables = VariablesOf<typeof UPSERT_USER_PREFERENCE>;
 
-export function upsertUserPreferenceFromApi(variables: UpsertUserPreferenceVariables) {
+export function upsertUserPreferencesFromApi(variables: UpsertUserPreferencesVariables) {
   return graphqlClient.mutate({ mutation: UPSERT_USER_PREFERENCE, variables });
 }

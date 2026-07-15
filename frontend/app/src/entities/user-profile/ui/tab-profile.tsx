@@ -41,7 +41,6 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     isPending: isPermissionPending,
   } = useGetObjectPermissions(schema.kind!);
 
-  // Composing the cards directly bypasses <ObjectDetails/>, so set the account "details" title here.
   useTitle(objectData ? `${getNodeLabel(objectData)} details` : "Profile");
 
   if (isObjectPending || isPermissionPending) {
@@ -52,7 +51,6 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
     return <ErrorScreen message={objectError?.message || permissionError?.message} />;
   }
 
-  // Profile tab owns its layout: user preferences aren't part of the account node, so the card sits beside account details via the shared DetailsLayout primitive.
   return (
     <DetailsLayout>
       <DetailsLayout.Main>
