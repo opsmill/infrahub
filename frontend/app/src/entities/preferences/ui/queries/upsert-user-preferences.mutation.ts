@@ -6,7 +6,7 @@ import {
 } from "@/entities/preferences/domain/use-cases/upsert-user-preferences";
 import { preferencesQueryKeys } from "@/entities/preferences/ui/queries/preferences.query-keys";
 
-export function useUpdateUserPreferences() {
+export function useUpsertUserPreferences() {
   const queryClient = useQueryClient();
 
   return useMutation({

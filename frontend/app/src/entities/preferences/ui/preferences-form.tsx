@@ -1,11 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import type React from "react";
-import { useId, useMemo } from "react";
+import { useId } from "react";
 import { useFormState, useWatch } from "react-hook-form";
 
 import { DetailRow } from "@/shared/components/display/detail-row";
-import { ComboboxField } from "@/shared/components/form/fields/combobox.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
@@ -15,6 +14,7 @@ import {
   buildDateFormatPresets,
   formatDateFormatExample,
 } from "@/entities/preferences/domain/rules/date-format";
+import { PreferenceSelect } from "@/entities/preferences/ui/preference-select";
 import { TimezoneField } from "@/entities/preferences/ui/timezone.field";
 
 export interface PreferencesFormProps {
@@ -28,15 +28,12 @@ export interface PreferencesFormProps {
   emptyValueLabel?: string;
   onSubmit: (values: PreferenceValues) => Promise<void>;
   isSubmitDisabled?: boolean;
-  children?: React.ReactNode;
 }
 
 function SourceInfo({ message }: { message: React.ReactNode }) {
   if (!message) return null;
   return (
     <Tooltip message={<div className="max-w-60">{message}</div>}>
-      {/* Must be a react-aria Button, not a plain <button>: TooltipTrigger only wires up
-          hover/focus + aria on the former, and it needs to be a keyboard tab stop. */}
       <Button
         variant="ghost"
         shape="square"
@@ -81,14 +78,10 @@ export function PreferencesForm({
   emptyValueLabel = "Automatic (inherited)",
   onSubmit,
   isSubmitDisabled,
-  children,
 }: PreferencesFormProps) {
   // The stored value is the preset key, not the human label.
-  const items = useMemo(
-    () => buildDateFormatPresets().map(({ key, label }) => ({ value: key, label })),
-    []
-  );
-  const now = useMemo(() => new Date(), []);
+  const items = buildDateFormatPresets().map(({ key, label }) => ({ value: key, label }));
+  const now = new Date();
 
   const dateFormatLabelId = useId();
   const timezoneLabelId = useId();
@@ -109,19 +102,16 @@ export function PreferencesForm({
         });
       }}
     >
-      {/* No horizontal padding on the divide-y container so dividers reach both card edges; each child pads itself. */}
       <div className="divide-y divide-gray-200">
         <DetailRow icon="mdi:calendar-text" label="Date format" labelId={dateFormatLabelId}>
-          {/* Fixed w-64 + always-present flex-1 example slot (mirrored by the timezone spacer) keeps the (i) icons aligned across rows. */}
           <div className="flex items-center gap-2">
             <div className="w-64 shrink-0">
-              <ComboboxField
+              <PreferenceSelect
                 name="date_format"
                 label="Date format"
                 labelClassName="sr-only"
                 items={items}
                 placeholder={emptyValueLabel}
-                searchPlaceholder="Filter date formats..."
                 emptyMessage="No date format found."
                 aria-describedby={dateFormatDescribedBy}
               />
@@ -143,14 +133,12 @@ export function PreferencesForm({
                 placeholder={emptyValueLabel}
               />
             </div>
-            {/* Spacer mirroring the date-format example slot, so the (i) icons align. */}
             <div className="flex-1" />
             <SourceInfo message={timezoneSourceTooltip} />
           </div>
         </DetailRow>
 
         <div className="flex items-center justify-end gap-2 px-3 py-2">
-          {children}
           <SaveButton isDisabled={isSubmitDisabled} />
         </div>
       </div>

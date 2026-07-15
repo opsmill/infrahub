@@ -58,8 +58,8 @@ describe("TabProfile", () => {
 
     const preferencesTitle = component.getByText("Preferences");
     await expect.element(preferencesTitle).toBeVisible();
-    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
-    await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
 
     // The preferences card sits in the SAME (main) column as the account details, not the aside:
     // assert they share the column container rather than just checking DOM order.

@@ -1,8 +1,7 @@
-import { useMemo } from "react";
-
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { ComboboxField } from "@/shared/components/form/fields/combobox.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
+
+import { PreferenceSelect } from "@/entities/preferences/ui/preference-select";
 
 const RUNTIME_TIMEZONES = Intl.supportedValuesOf("timeZone");
 // V8/Chrome omits plain "UTC" (exposes "Etc/UTC" instead), so ensure it is always selectable
@@ -10,6 +9,8 @@ const RUNTIME_TIMEZONES = Intl.supportedValuesOf("timeZone");
 const TIMEZONES = RUNTIME_TIMEZONES.includes("UTC")
   ? RUNTIME_TIMEZONES
   : ["UTC", ...RUNTIME_TIMEZONES];
+
+const TIMEZONE_ITEMS = TIMEZONES.map((timezone) => ({ value: timezone, label: timezone }));
 
 export interface TimezoneFieldProps {
   name: string;
@@ -28,22 +29,17 @@ export function TimezoneField({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
   placeholder = "Select timezone",
 }: TimezoneFieldProps) {
-  const items = useMemo(
-    () => TIMEZONES.map((timezone) => ({ value: timezone, label: timezone })),
-    []
-  );
-
   return (
-    <ComboboxField
+    <PreferenceSelect
       name={name}
       label={label}
-      items={items}
+      items={TIMEZONE_ITEMS}
       placeholder={placeholder}
-      searchPlaceholder="Search timezone..."
       emptyMessage="No timezone found."
       labelClassName={labelClassName}
       aria-describedby={ariaDescribedBy}
       defaultValue={defaultValue}
+      virtualized
     />
   );
 }

@@ -13,7 +13,7 @@ import {
 } from "@/entities/preferences/domain/rules/date-format";
 import { PreferencesForm } from "@/entities/preferences/ui/preferences-form";
 import { useEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
-import { useUpdateUserPreferences } from "@/entities/preferences/ui/queries/upsert-user-preferences.mutation";
+import { useUpsertUserPreferences } from "@/entities/preferences/ui/queries/upsert-user-preferences.mutation";
 
 function browserDateExample(referenceDate: Date): string {
   return referenceDate.toLocaleString();
@@ -46,7 +46,7 @@ function sourceTooltip(resolved: ResolvedPreference, browserValue: string): stri
 
 export function UserPreferencesCard() {
   const effectiveQuery = useEffectivePreferences();
-  const updatePreferences = useUpdateUserPreferences();
+  const updatePreferences = useUpsertUserPreferences();
   const now = useMemo(() => new Date(), []);
 
   if (effectiveQuery.error) {

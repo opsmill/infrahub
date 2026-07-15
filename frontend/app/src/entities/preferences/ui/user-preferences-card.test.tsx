@@ -33,8 +33,8 @@ describe("UserPreferencesCard", () => {
   test("renders preset selects, not free-text inputs", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
-    await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
     expect(component.getByRole("textbox").elements()).toHaveLength(0);
   });
 
@@ -47,8 +47,8 @@ describe("UserPreferencesCard", () => {
   test("lays the fields out as detail rows with a visible label and an accessible control", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
-    await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
 
     const terms = Array.from(component.container.querySelectorAll("dt")).map((dt) =>
       dt.textContent?.trim()
@@ -64,7 +64,7 @@ describe("UserPreferencesCard", () => {
   test("renders the row and action separators full-bleed (no horizontal inset)", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
 
     const divider = component.container.querySelector("div.divide-y.divide-gray-200");
     expect(divider).not.toBeNull();
@@ -87,17 +87,17 @@ describe("UserPreferencesCard", () => {
     const component = await render(<UserPreferencesCard />);
 
     await expect
-      .element(component.getByRole("combobox", { name: /date format/i }))
+      .element(component.getByRole("button", { name: /date format/i }))
       .toHaveTextContent("Automatic (inherited)");
     await expect
-      .element(component.getByRole("combobox", { name: /timezone/i }))
+      .element(component.getByRole("button", { name: /timezone/i }))
       .toHaveTextContent("Automatic (inherited)");
   });
 
   test("date-format options are labelled by the pattern itself", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await component.getByRole("combobox", { name: /date format/i }).click();
+    await component.getByRole("button", { name: /date format/i }).click();
 
     // exact: true — otherwise "yyyy-MM-dd HH:mm" also matches the "yyyy-MM-dd HH:mm:ss" preset.
     await expect
@@ -123,7 +123,7 @@ describe("UserPreferencesCard", () => {
 
     await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
 
-    const combobox = component.getByRole("combobox", { name: /date format/i }).element();
+    const combobox = component.getByRole("button", { name: /date format/i }).element();
     const example = component.getByText("Example: 30/06/2026 14:30").element();
 
     const row = combobox.closest("div.flex.items-center") as HTMLElement;
@@ -157,17 +157,17 @@ describe("UserPreferencesCard", () => {
     const component = await render(<UserPreferencesCard />);
 
     await expect
-      .element(component.getByRole("combobox", { name: /timezone/i }))
+      .element(component.getByRole("button", { name: /timezone/i }))
       .toHaveTextContent("UTC");
     await expect
-      .element(component.getByRole("combobox", { name: /date format/i }))
+      .element(component.getByRole("button", { name: /date format/i }))
       .toHaveTextContent("dd/MM/yyyy HH:mm");
   });
 
   test("does not render the below-input source/inheritance sentence", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
 
     expect(component.getByText(/inherited from organisation defaults/i).elements()).toHaveLength(0);
     expect(component.getByText(/browser default:/i).elements()).toHaveLength(0);
@@ -176,7 +176,7 @@ describe("UserPreferencesCard", () => {
   test("provides one accessible, focusable (i) source tooltip trigger per field", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
 
     const triggers = component.getByRole("button", { name: "Where this value comes from" });
     expect(triggers.elements()).toHaveLength(2);
@@ -188,7 +188,7 @@ describe("UserPreferencesCard", () => {
   test("the (i) tooltip resolves to the organisation default when no override is set", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
 
     const triggers = component.getByRole("button", { name: "Where this value comes from" });
     await initPointerTracking(component.locator);
@@ -212,7 +212,7 @@ describe("UserPreferencesCard", () => {
 
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("combobox", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
 
     const triggers = component.getByRole("button", { name: "Where this value comes from" });
     await initPointerTracking(component.locator);
@@ -232,7 +232,7 @@ describe("UserPreferencesCard", () => {
 
     const component = await render(<UserPreferencesCard />);
 
-    await expect.element(component.getByRole("combobox", { name: /timezone/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
 
     const expectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -281,7 +281,7 @@ describe("UserPreferencesCard", () => {
     const component = await render(<UserPreferencesCard />);
 
     await expect
-      .element(component.getByRole("combobox", { name: /date format/i }))
+      .element(component.getByRole("button", { name: /date format/i }))
       .toHaveTextContent("dd/MM/yyyy HH:mm");
 
     // Re-selecting the currently-selected value clears the override (maps to null).

@@ -5,27 +5,32 @@ export async function initPointerTracking(locator: {
   await locator.click({ position: { x: 0, y: 0 } });
 }
 
+interface Locator {
+  click(): Promise<void>;
+  fill(value: string): Promise<void>;
+}
+
+interface QueryableComponent {
+  getByRole: (role: string, options?: { name?: string | RegExp; exact?: boolean }) => Locator;
+}
+
 /**
- * Open the shared Combobox (`triggerName` = field label) and click the option whose exact visible
- * text is `optionName` (exact so "yyyy-MM-dd" can't match "yyyy-MM-dd HH:mm"). For long lists (e.g.
- * timezones), pass `filter` — typed into cmdk's auto-focused search box — to narrow first.
+ * Open the design-system searchable select (`triggerName` = field label) and click the option whose
+ * exact visible text is `optionName` (exact so "yyyy-MM-dd" can't match "yyyy-MM-dd HH:mm"). The
+ * trigger is a react-aria `Button` (`role="button"`, accessible name = the field label); the
+ * `Autocomplete` renders a `searchbox`; `ListBox` items are `role="option"`. For long lists (e.g.
+ * timezones), pass `filter` to narrow the list first (also required so a virtualized option is
+ * rendered before clicking).
  */
 export async function selectComboboxOption(
-  component: {
-    getByRole: (
-      role: string,
-      options?: { name?: string | RegExp; exact?: boolean }
-    ) => { click(): Promise<void> };
-  },
+  component: QueryableComponent,
   triggerName: string | RegExp,
   optionName: string,
   filter?: string
 ) {
-  await component.getByRole("combobox", { name: triggerName }).click();
+  await component.getByRole("button", { name: triggerName }).click();
   if (filter !== undefined) {
-    // The cmdk search box auto-focuses on open; type into the focused element.
-    const { userEvent } = await import("vitest/browser");
-    await userEvent.keyboard(filter);
+    await component.getByRole("searchbox").fill(filter);
   }
   await component.getByRole("option", { name: optionName, exact: true }).click();
 }
