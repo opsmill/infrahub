@@ -12,7 +12,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.rollback import RollbackQuery
+from infrahub.core.query.rollback import RollbackQuery, RollbackScope
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
@@ -167,6 +167,8 @@ class TestSchemaUpdateAndRollback:
             db=db,
             target_branch=default_branch,
             at=schema_update_at,
+            scope=RollbackScope.AT_TIMESTAMP,
+            restore_metadata=False,
         )
         await rollback_query.execute(db=db)
 

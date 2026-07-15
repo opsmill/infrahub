@@ -357,7 +357,7 @@ async def test_base_delete_with_added_branch_attribute(
     assert before_main_delete < john_rels_to_car[0].updated_at < after_main_delete
 
     # Rollback and re-verify — car stays deleted, no resurrection
-    await diff_merger.rollback(at=merge_at)
+    await diff_merger.rollback(merge_started_at=merge_at)
     rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
     assert rolled_back_car is None
 

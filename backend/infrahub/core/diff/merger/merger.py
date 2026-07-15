@@ -13,7 +13,7 @@ from infrahub.core.diff.query.bulk_merge import (
 )
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.query.merge import DiffMergeMetadataQuery
-from infrahub.core.query.rollback import RollbackQuery
+from infrahub.core.query.rollback import RollbackQuery, RollbackScope
 from infrahub.database import retry_db_transaction
 from infrahub.log import get_logger
 
@@ -55,7 +55,6 @@ class DiffMerger:
         self.db = db
         self.diff_repository = diff_repository
         self.exclusion_plan_builder = exclusion_plan_builder
-        self._affected_node_uuids: list[str] = []
         self._merge_started = False
 
     async def merge_graph(self, at: Timestamp) -> None:
@@ -94,7 +93,6 @@ class DiffMerger:
             at=at,
             tracking_id=tracking_id,
         )
-        self._affected_node_uuids = affected_node_uuids
         self._merge_started = True
 
         log.info("Running bulk node existence merge")
@@ -200,14 +198,23 @@ class DiffMerger:
         )
         await query.execute(db=self.db)
 
-    async def rollback(self, at: Timestamp) -> None:
+    async def rollback(self, merge_started_at: Timestamp) -> None:
+        """Reverse every destination-branch write stamped at or after the merge start.
+
+        Safe because of the merge write-block: while the merge window is open the merge flow is the
+        only writer on the destination branch, so everything stamped in the window is the merge's
+        own work (graph merge and schema migrations alike). Also restores the updated_at/updated_by
+        snapshots taken when the merge bumped them. Idempotent, and a no-op when this instance
+        never began writing the merge.
+        """
         if not self._merge_started:
             return
         rollback_query = await RollbackQuery.init(
             db=self.db,
             branch=self.source_branch,
             target_branch=self.destination_branch,
-            at=at,
-            node_uuids=self._affected_node_uuids,
+            at=merge_started_at,
+            scope=RollbackScope.SINCE_TIMESTAMP,
+            restore_metadata=True,
         )
         await rollback_query.execute(db=self.db)

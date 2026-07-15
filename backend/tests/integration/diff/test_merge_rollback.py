@@ -10,7 +10,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.graph_merger import GraphMerger
-from infrahub.core.merge.rollback_handler import MergeRollbackHandler
+from infrahub.core.merge.rollback_handler import MergeRollbackHandler, PreMergeState
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -25,7 +25,6 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.diff.merger.exclusion_plan import MergeExclusionPlan
-    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
@@ -69,20 +68,12 @@ class BrokenGraphMerger:
         self.real_merge_graph = self.real_merger.diff_merger.merge_graph
         self.real_merger.diff_merger.merge_graph = self.merge_graph  # type: ignore
 
-    @property
-    def destination_branch(self) -> Branch:
-        # Forwarded so the merge task's rollback path can restore the destination branch's schema.
-        return self.real_merger.destination_branch
-
     async def merge(self, at: Timestamp) -> None:
         await self.real_merger.merge(at=at)
 
     async def merge_graph(self, at: Timestamp) -> Never:
         await self.real_merge_graph(at=at)
         raise ValueError("This is broken on purpose")
-
-    async def rollback(self, at: Timestamp) -> None:
-        await self.real_merger.rollback(at=at)
 
 
 class MidMergeFailureGraphMerger:
@@ -92,19 +83,11 @@ class MidMergeFailureGraphMerger:
         self.real_merger = GraphMerger(*args, **kwargs)
         self.real_merger.diff_merger._bulk_merge_relationship_property_edges = self._fail_bulk_merge  # type: ignore
 
-    @property
-    def destination_branch(self) -> Branch:
-        # Forwarded so the merge task's rollback path can restore the destination branch's schema.
-        return self.real_merger.destination_branch
-
     async def merge(self, at: Timestamp) -> None:
         await self.real_merger.merge(at=at)
 
     async def _fail_bulk_merge(self, at: Timestamp, plan: MergeExclusionPlan) -> Never:
         raise ValueError("This is broken on purpose")
-
-    async def rollback(self, at: Timestamp) -> None:
-        await self.real_merger.rollback(at=at)
 
 
 class EdgeCountingRollbackHandler(MergeRollbackHandler):
@@ -119,20 +102,16 @@ class EdgeCountingRollbackHandler(MergeRollbackHandler):
     async def rollback(
         self,
         *,
-        branch: Branch,
-        at: Timestamp,
-        pre_merge_schema: SchemaBranch,
-        pre_merge_branched_from: str | None,
+        merge_started_at: Timestamp,
+        pre_merge_state: PreMergeState,
         user_id: str,
     ) -> bool:
         type(self).edge_count_before_rollback = await _count_branch_edges_at(
-            db=self.db, branch_name=self.graph_merger.destination_branch.name, at=at.to_string()
+            db=self.db, branch_name=self.destination_branch.name, at=merge_started_at.to_string()
         )
         return await super().rollback(
-            branch=branch,
-            at=at,
-            pre_merge_schema=pre_merge_schema,
-            pre_merge_branched_from=pre_merge_branched_from,
+            merge_started_at=merge_started_at,
+            pre_merge_state=pre_merge_state,
             user_id=user_id,
         )
 
