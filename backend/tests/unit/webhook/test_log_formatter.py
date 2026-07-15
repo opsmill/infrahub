@@ -114,12 +114,22 @@ def test_outgoing_request_truncates_the_inline_payload_and_marks_the_overflow(
 
 
 def test_outgoing_request_does_not_truncate_a_payload_at_the_limit(formatter: WebhookLogFormatter) -> None:
-    small = WebhookLogFormatter(attempts=ATTEMPTS, retry_delay_seconds=RETRY_DELAY_SECONDS, payload_log_limit=100)
-    message = small.outgoing_request(
-        webhook_name="notify", url="https://example.test/hook", headers={}, payload={"k": "v"}, attempt=1
+    payload = {"event": "created", "data": {"name": "device-01"}}
+
+    rendered = formatter.outgoing_request(
+        webhook_name="notify", url="https://example.test/hook", headers={}, payload=payload, attempt=1
+    )
+    payload_block = rendered.split("Payload:\n", 1)[1]
+
+    at_limit = WebhookLogFormatter(
+        attempts=ATTEMPTS, retry_delay_seconds=RETRY_DELAY_SECONDS, payload_log_limit=len(payload_block)
+    )
+    message = at_limit.outgoing_request(
+        webhook_name="notify", url="https://example.test/hook", headers={}, payload=payload, attempt=1
     )
 
-    assert message.endswith('Payload:\n  {\n    "k": "v"\n  }')
+    assert message.endswith(f"Payload:\n{payload_block}")
+    assert "… (+" not in message
 
 
 def test_inline_payload_stays_within_the_limit_including_indentation(formatter: WebhookLogFormatter) -> None:
