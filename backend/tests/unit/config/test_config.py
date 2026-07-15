@@ -391,6 +391,15 @@ def test_cache_url_coexists_with_redis_driver() -> None:
     assert settings.url is not None
 
 
+def test_cache_url_ignored_for_non_redis_driver() -> None:
+    # The URL is only consulted by the Redis driver, so a non-Redis driver neither enforces
+    # exclusivity with the scalar fields nor parses the URL as a Redis URL: this combines a scalar
+    # field with a URL whose scheme is not a valid Redis scheme, and neither should raise.
+    settings = CacheSettings(url=SecretStr("nats://nats:4222"), address="nats", driver=CacheDriver.NATS)
+    assert settings.driver is CacheDriver.NATS
+    assert settings.url is not None
+
+
 def test_cache_url_rejects_invalid_url() -> None:
     with pytest.raises(ValidationError, match="requires a service name"):
         CacheSettings(url=SecretStr("redis+sentinel://sentinel-a:26379"))
