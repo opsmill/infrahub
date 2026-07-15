@@ -359,9 +359,11 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
 
     if settings.url is None:
         credential_provider: UsernamePasswordCredentialProvider | None = None
-        if settings.username and settings.password:
+        if settings.password:
+            # Username is optional: a password-only configuration authenticates as the Redis
+            # default user (the common requirepass case), which a username-and-password guard drops.
             credential_provider = UsernamePasswordCredentialProvider(
-                username=settings.username, password=settings.password
+                username=settings.username or None, password=settings.password
             )
         return redis.Redis(
             host=settings.address,
