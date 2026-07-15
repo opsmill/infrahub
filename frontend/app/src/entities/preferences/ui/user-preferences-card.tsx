@@ -34,12 +34,7 @@ function sourceTooltip(resolved: ResolvedPreference, browserValue: string): stri
       return "Your preference.";
     case "GLOBAL":
       return `From the organisation default: ${resolved.value}.`;
-    case "DEFAULT":
-      return `From your browser: ${browserValue}.`;
-    default:
-      // An unrecognised source shouldn't reach the client; surface it rather than silently
-      // presenting it as a browser default (per IFC-2720).
-      console.warn(`Unexpected preference source: ${String(resolved.source)}`);
+    default: // DEFAULT — browser locale fallback
       return `From your browser: ${browserValue}.`;
   }
 }
