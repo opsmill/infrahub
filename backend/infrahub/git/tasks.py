@@ -594,6 +594,8 @@ async def generate_request_artifact_definition(
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
+        if model.members and member.id not in model.members:
+            continue
         if model.limit and artifact_id not in model.limit:
             continue
 
