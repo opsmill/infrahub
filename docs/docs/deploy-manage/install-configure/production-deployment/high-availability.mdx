@@ -71,7 +71,7 @@ These examples are for reference purposes and may require customization for your
 
   :::note
 
-  Prefect's messaging Redis (`prefect-server.backgroundServices.messaging.redis`) does not support Sentinel, so it connects to the Redis service directly and does not follow master failover. Making Prefect's messaging Redis highly available is tracked as a separate follow-up. To secure that connection with TLS, see [Prefect messaging over TLS](#prefect-messaging-over-tls) below.
+  Prefect's messaging Redis (`prefect-server.backgroundServices.messaging.redis`) follows master failover when it is pointed at the Sentinel nodes through a `redis+sentinel://` URL, the same as the cache. See [Prefect messaging over TLS](#prefect-messaging-over-tls) below for how to configure it (including TLS).
 
   :::
 
@@ -181,10 +181,10 @@ When verifying against a CA bundle, the client also verifies the hostname. Senti
 
 ### Prefect messaging over TLS
 
-Infrahub's `INFRAHUB_CACHE_URL` configures only the cache and distributed-lock connections. Prefect's messaging Redis is configured separately through the `PREFECT_REDIS_MESSAGING_URL` environment variable, which accepts the same URL grammar (including `redis+sentinel://` and the `ssl_*` query parameters):
+Infrahub's `INFRAHUB_CACHE_URL` configures only the cache and distributed-lock connections. Prefect's messaging Redis is configured separately through the `PREFECT_REDIS_MESSAGING_URL` environment variable, which accepts the same URL grammar — use a `redis+sentinel://` URL so messaging discovers the master through the Sentinel nodes and follows failover, plus the `ssl_*` query parameters for TLS:
 
 ```bash
-PREFECT_REDIS_MESSAGING_URL=rediss://:mypassword@cache-redis:6379/0?ssl_cert_reqs=none&ssl_check_hostname=false
+PREFECT_REDIS_MESSAGING_URL=rediss+sentinel://:mypassword@cache-redis:26379/mymaster?ssl_cert_reqs=none&ssl_check_hostname=false
 ```
 
 For a self-signed certificate, set **both** `ssl_cert_reqs=none` and `ssl_check_hostname=false`: with a `rediss://` URL the client enables hostname checking by default, and disabling certificate verification without also disabling hostname checking is rejected. To verify against a private CA instead, use `?ssl_ca_certs=/etc/ssl/redis-ca.pem`.
