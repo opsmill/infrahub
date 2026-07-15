@@ -147,11 +147,11 @@ function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) 
 
   return (
     <>
-      {sortableAttributes.map((attribute) => (
+      {sortByOrderWeight(sortableAttributes).map((attribute) => (
         <SortableAttributeMenuItem key={attribute.name} attribute={attribute} onSelect={onSelect} />
       ))}
 
-      {sortableRelationships.map((relationship) => (
+      {sortByOrderWeight(sortableRelationships).map((relationship) => (
         <GroupedSortableRelationshipMenuItem
           key={relationship.name}
           relationship={relationship}
