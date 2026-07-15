@@ -545,7 +545,9 @@ class CacheSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_url_exclusivity(self) -> Self:
-        if self.url is None:
+        # The URL is only consulted by the Redis driver, so it is neither exclusive with the scalar
+        # fields nor parsed as a Redis URL for any other driver.
+        if self.url is None or self.driver != CacheDriver.Redis:
             return self
         explicit = self.model_fields_set & CACHE_URL_EXCLUSIVE_FIELDS
         if explicit:
