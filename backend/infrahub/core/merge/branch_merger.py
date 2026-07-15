@@ -94,7 +94,12 @@ class BranchMerger:
         return self._workflow
 
     async def get_initial_source_branch(self) -> SchemaBranch:
-        """Retrieve the schema of the source branch when the branch was created.
+        """Retrieve the schema baseline the source branch diverged from.
+
+        This is the merge base for the 3-way schema diff, so it must reflect the destination
+        schema at the divergence point (``branched_from``). Using the destination schema at
+        ``branched_from`` ensures that changes on the destination branch that have been added
+        to the source branch via rebases are properly reflected.
 
         For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
          - having a faster way to pull a previous version of the schema
@@ -105,8 +110,8 @@ class BranchMerger:
 
         self._initial_source_schema = await registry.schema.load_schema_from_db(
             db=self.db,
-            branch=self.source_branch,
-            at=Timestamp(self.source_branch.created_at),
+            branch=self.destination_branch,
+            at=Timestamp(self.source_branch.branched_from),
         )
 
         return self._initial_source_schema
