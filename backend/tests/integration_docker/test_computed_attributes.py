@@ -252,9 +252,8 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     async def test_update_schema_not_related_to_computed_attribute(
         self, client: InfrahubClient, schema_computed_tshirt: dict
     ) -> None:
-        # The bulk write persists every recomputed value in one pass, so the per-value update flow no
-        # longer runs. The process flow still runs once per recomputed node, so it is what a scoping
-        # assertion counts, while the stored value is what a correctness assertion checks.
+        # The process flow runs once per recomputed node, so counting it scopes recompute; the stored
+        # value is what confirms correctness.
         process_before = await client.task.count(filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name]))
 
         # A change that does not touch the computed attribute must recompute nothing: no process flow
@@ -286,7 +285,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             if sth_slug == "WELCOME TO sth!":
                 break
 
-        # Both sites carry the recomputed value: the bulk write did not miss or corrupt any of them.
+        # Every site, not only the one polled above, carries the recomputed value.
         assert sth_slug == "WELCOME TO sth!"
         assert (await client.get(kind="LocationSite", hfid=["par"])).slug.value == "WELCOME TO par!"
 
@@ -298,7 +297,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         TestingTShirt.description reads color__name__value, so a schema change to TestingColor.name
         recomputes it, while a change to a field no template reads recomputes nothing. Re-ordering a
         field does not change the rendered value, so this scopes recompute by counting the process
-        flow that still runs once per recomputed node.
+        flow that runs once per recomputed node.
         """
         process_before = await client.task.count(filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_PROCESS_JINJA2.name]))
 

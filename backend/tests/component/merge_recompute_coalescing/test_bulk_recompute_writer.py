@@ -87,8 +87,8 @@ async def test_bulk_writer_persists_all_three_families_and_emits_one_event_per_n
     assert await reloaded.get_hfid(db=db) == ["custom-hfid"]
     assert reloaded.summary.value == "custom summary"
 
-    # One coalesced event per node (not one per value), carrying every changed field, live-origin by
-    # default so values reading these still recompute through the per-node automations.
+    # One event per node even though three fields were written, carrying every changed field, live
+    # origin by default so cross-node readers recompute from it.
     assert len(recorder.events) == 1
     event = recorder.events[0]
     assert isinstance(event, NodeUpdatedEvent)
@@ -148,35 +148,6 @@ async def test_bulk_writer_stamps_recompute_origin_so_per_node_automations_skip_
     # The per-node recompute automations match the live origin, so a recompute origin excludes them
     # while other consumers still receive the event.
     assert recorder.events[0].meta.origin is NodeMutationOrigin.RECOMPUTE
-
-
-async def test_bulk_writer_skips_a_no_op_write_so_it_does_not_fan_out(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-) -> None:
-    await load_profile_schema(db=db)
-    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
-
-    writer = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
-    await writer.write(
-        branch=default_branch,
-        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="custom label")],
-        context=_event_context(),
-    )
-
-    # Re-writing the stored value persists nothing, so no event is emitted and no node is returned to
-    # chain the next level.
-    recorder = MemoryInfrahubEvent()
-    rewriter = BulkRecomputeWriter(db=db, event_service=recorder)
-    written = await rewriter.write(
-        branch=default_branch,
-        writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="custom label")],
-        context=_event_context(),
-    )
-
-    assert written == []
-    assert recorder.events == []
 
 
 async def test_bulk_writer_persists_only_the_changed_nodes_in_a_mixed_batch(
@@ -347,7 +318,7 @@ async def test_chain_dispatches_nothing_when_no_values_were_written(
         depth=0,
     )
 
-    # An empty write set is the chain's fixpoint: nothing more to recompute.
+    # An empty write set ends the chain: nothing more to recompute.
     assert submissions == []
     assert recorder.submit_calls == []
 

@@ -91,8 +91,8 @@ class TestDisplayLabelBackfillOnSchemaChange(TestInfrahubDockerClient):
     ) -> None:
         """After the async backfill completes, all nodes should have correct display_labels.
 
-        The backfill now persists through one bulk write per family instead of a per-node update flow,
-        so this polls the stored display_label directly rather than waiting on that flow.
+        The backfill is asynchronous, so poll the stored display_label until the pre-existing node
+        converges rather than assuming it is set right after the schema load.
         """
         labels: dict[str, str] = {}
         async with timeout(120):
