@@ -98,13 +98,10 @@ async def gather_account_information(db: InfrahubDatabase) -> TelemetryAccountDa
     return TelemetryAccountData(active=active, groups=groups)
 
 
-async def count_active_branches() -> int:
-    """Count open non-system branches.
-
-    Registry members minus the default and global branches (closed branches are evicted from
-    the registry).
-    """
-    return len([branch for branch in registry.branch.values() if not branch.is_default and not branch.is_global])
+async def count_active_branches(db: InfrahubDatabase) -> int:
+    """Count open non-system branches, excluding the default and global branches."""
+    branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True)
+    return len(branches)
 
 
 class AccountGatherer(Protocol):
@@ -134,8 +131,11 @@ class DefaultActivityGatherer:
 
 
 class DefaultActiveBranchCounter:
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
+
     async def count(self) -> int:
-        return await count_active_branches()
+        return await count_active_branches(db=self.db)
 
 
 class AnonymousTelemetryGatherer:
@@ -207,7 +207,7 @@ async def build_anonymous_telemetry_gatherer() -> AnonymousTelemetryGatherer:
         component=component,
         account_gatherer=DefaultAccountGatherer(db=database),
         activity_gatherer=DefaultActivityGatherer(),
-        active_branch_counter=DefaultActiveBranchCounter(),
+        active_branch_counter=DefaultActiveBranchCounter(db=database),
     )
 
 

@@ -128,7 +128,7 @@ async def test_active_branches_excludes_default_and_global(
     assert any(branch.is_default for branch in registry.branch.values())
     assert any(branch.is_global for branch in registry.branch.values())
 
-    assert await count_active_branches() == 2
+    assert await count_active_branches(db=db) == 2
 
 
 @pytest.fixture
@@ -173,7 +173,7 @@ async def _build_gatherer(
         component=component,
         account_gatherer=account_gatherer or DefaultAccountGatherer(db=database),
         activity_gatherer=activity_gatherer or DefaultActivityGatherer(),
-        active_branch_counter=active_branch_counter or DefaultActiveBranchCounter(),
+        active_branch_counter=active_branch_counter or DefaultActiveBranchCounter(db=database),
     )
 
 
