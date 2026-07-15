@@ -510,13 +510,12 @@ class CacheSettings(BaseSettings):
             "Full Redis connection URL, authoritative over the scalar connection settings when set. "
             "Supports the redis://, rediss://, redis+sentinel:// and rediss+sentinel:// schemes; the "
             "Sentinel schemes accept a comma-separated list of members and a master group name, e.g. "
-            "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. TLS and Sentinel options are "
-            "passed as URL query parameters: tls_insecure and tls_ca_file configure the rediss data-node "
-            "connection, while sentinel_ssl, sentinel_tls_insecure, sentinel_tls_ca_file, sentinel_username "
-            "and sentinel_password configure the connections to the Sentinel daemons independently. Because "
-            "the two are separate, a self-signed rediss+sentinel deployment must relax both, e.g. "
-            "?tls_insecure=true&sentinel_tls_insecure=true. See the high availability guide for the full "
-            "list of parameters. Ignored when driver is not redis."
+            "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. TLS is tuned with the redis-py "
+            "query parameters ssl_cert_reqs, ssl_check_hostname and ssl_ca_certs; on a Sentinel URL these "
+            "ssl_* options are shared with the Sentinel daemon connections, so ?ssl_cert_reqs=none (or "
+            "?ssl_ca_certs=/path/ca.pem for a private CA) covers the whole topology. The Sentinel daemons "
+            "can be authenticated separately with the sentinel_username and sentinel_password query "
+            "parameters. See the high availability guide for details. Ignored when driver is not redis."
         ),
     )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")

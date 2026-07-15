@@ -153,7 +153,7 @@ class ConnectionStringCase:
         pytest.param(
             ConnectionStringCase(
                 name="url_single_node_tls_insecure_native_params",
-                cache_kwargs={"url": "rediss://cache:6379?tls_insecure=true"},
+                cache_kwargs={"url": "rediss://cache:6379?ssl_cert_reqs=none&ssl_check_hostname=false"},
                 expected_url="rediss://cache:6379/0?ssl_cert_reqs=none&ssl_check_hostname=False",
             ),
             id="url_single_node_tls_insecure_native_params",
