@@ -103,6 +103,28 @@ cd frontend/app && pnpm build         # Build frontend
 cd docs && npm run build              # Build documentation
 ```
 
+## Submodules
+
+- `python_sdk/` → [opsmill/infrahub-sdk-python](https://github.com/opsmill/infrahub-sdk-python)
+- `frontend/packages/schema-visualizer/` → [opsmill/infrahub-schema-visualizer](https://github.com/opsmill/infrahub-schema-visualizer)
+
+The `python_sdk` submodule tracks the SDK branch **named after** the current
+Infrahub branch, not the SDK's own same-named branch:
+
+- Infrahub `develop` → SDK `infrahub-develop`
+- Infrahub `stable` → SDK `stable`
+
+The SDK repo also has its own `develop` branch. It is **not** the counterpart of
+Infrahub `develop` — do not use it to update the submodule. When updating
+`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`.
+
+You can modify code inside a submodule, but the changes live in a separate
+repository. Before opening a PR on this repository, push the submodule commit
+upstream and open a separate PR on the submodule repo first. Only once that is
+merged (or the commit is otherwise available upstream) should the submodule
+pointer bump land here — a pointer to an unpushed commit breaks every other
+checkout.
+
 ## Coding Standards
 
 - Backend: `dev/guidelines/backend/python.md`
