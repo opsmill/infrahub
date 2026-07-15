@@ -5,7 +5,7 @@ import { getEffectivePreferences } from "@/entities/preferences/domain/use-cases
 import { upsertUserPreferences } from "@/entities/preferences/domain/use-cases/upsert-user-preferences";
 
 import { render } from "../../../../tests/components/render";
-import { initPointerTracking, selectComboboxOption } from "../../../../tests/components/utils";
+import { initPointerTracking } from "../../../../tests/components/utils";
 import { UserPreferencesCard } from "./user-preferences-card";
 
 vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
@@ -111,17 +111,23 @@ describe("UserPreferencesCard", () => {
 
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
 
-    await selectComboboxOption(component, /date format/i, "yyyy-MM-dd HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
     await expect.element(component.getByText("Example: 2026-06-30 14:30")).toBeVisible();
 
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
     await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
   });
 
   test("renders the live example inline, on the same row as the date-format control", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
 
     const combobox = component.getByRole("button", { name: /date format/i }).element();
     const example = component.getByText("Example: 30/06/2026 14:30").element();
@@ -140,10 +146,14 @@ describe("UserPreferencesCard", () => {
   test("hides the example again when the override is cleared by re-selecting it", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
     await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
 
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
     expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
   });
 
@@ -252,7 +262,8 @@ describe("UserPreferencesCard", () => {
     await expect.element(component.getByRole("button", { name: "Save" })).toBeDisabled();
 
     // Select by the stable preset label, not a date-dependent example.
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
 
     await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
   });
@@ -260,7 +271,9 @@ describe("UserPreferencesCard", () => {
   test("saving triggers the upsert with the selected values", async () => {
     const component = await render(<UserPreferencesCard />);
 
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
@@ -285,7 +298,8 @@ describe("UserPreferencesCard", () => {
       .toHaveTextContent("dd/MM/yyyy HH:mm");
 
     // Re-selecting the currently-selected value clears the override (maps to null).
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
@@ -323,7 +337,9 @@ describe("UserPreferencesCard", () => {
       component.getByText(/something went wrong when fetching your preferences/i).elements()
     ).toHaveLength(0);
 
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
     await component.getByRole("button", { name: "Save" }).click();
 
     await vi.waitFor(() => {
@@ -349,7 +365,9 @@ describe("UserPreferencesCard", () => {
 
     const component = await render(<UserPreferencesCard />);
 
-    await selectComboboxOption(component, /date format/i, "dd/MM/yyyy HH:mm");
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
     await component.getByRole("button", { name: "Save" }).click();
 
     await expect.element(component.getByText("save failed")).toBeVisible();
