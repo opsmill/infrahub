@@ -5,12 +5,9 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import first_time_initialization, get_root_node, reset_deployment_id
-<<<<<<< HEAD
 from infrahub.core.preferences.repository import PreferenceRepository
-=======
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
->>>>>>> stable
 from infrahub.database import InfrahubDatabase
 
 
@@ -19,7 +16,6 @@ async def test_first_time_initialization(db: InfrahubDatabase, default_branch: B
     assert True
 
 
-<<<<<<< HEAD
 async def test_first_time_initialization_does_not_seed_preferences(
     db: InfrahubDatabase, delete_all_nodes_in_db: None
 ) -> None:
@@ -33,7 +29,8 @@ async def test_first_time_initialization_does_not_seed_preferences(
     await first_time_initialization(db=db)
 
     assert await PreferenceRepository(db=db).get_all() == []
-=======
+
+
 async def test_first_time_initialization_converges_core_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     """A fresh installation must persist the schema shape the upgrade flow builds as its candidate.
 
@@ -49,7 +46,6 @@ async def test_first_time_initialization_converges_core_schema(db: InfrahubDatab
     candidate_schema.process()
 
     assert branch_schema.diff(other=candidate_schema).all == []
->>>>>>> stable
 
 
 async def test_reset_deployment_id_generates_new_uuid(db: InfrahubDatabase, default_branch: Branch) -> None:
