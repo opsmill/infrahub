@@ -4,8 +4,8 @@ description: >-
   Use when the user says "ship this feature", "run shipping-features", names a
   ticket/feature/bug and asks to drive it end to end, or asks "where am I / what's
   next" on in-progress work. Do not use for a single isolated step (just a spec,
-  just a review, just a PR) — invoke that step's tool directly. Orchestrates a
-  classified, manifest-driven, resumable pipeline that reuses existing tools.
+  just a review, just a PR) — invoke that step's tool directly. Orchestrates the
+  OpsMill 5-stage delivery framework with classification, gates, and human checkpoints.
 argument-hint: "<ticket-id or short description> (empty resumes in-progress work)"
 ---
 
@@ -23,238 +23,168 @@ unfinished `ship.md` means the user is asking "where am I / what's next."
 
 ## What this does
 
-End-to-end **conductor** for one unit of work — feature, bug, or chore — from idea
-to merged-ready PR (and post-open CI watch). It **composes existing tools**: the
-repo's own `.agents/skills/` and `.agents/commands/`, marketplace plugins
-(superpowers, coderabbit, commit-commands) when present, and built-in agents as the
-always-works fallback. It reimplements **nothing**.
+**Single entry point** for delivering one unit of work — feature, bug, or chore — across the
+**OpsMill 5-stage framework**: **Intake → Prep → Implement → Delivery → Extract**. It is a
+**conductor**, not a new pipeline: the five stages and their tools already exist; this skill adds
+the **orchestration layer** on top so you never have to ask *"where am I, which command runs next?"*
 
-Its only original contributions are four orchestration primitives:
+It reimplements **nothing**. The orchestration layer contributes exactly five things:
 
-1. **Classification** — every run opens by classifying the work (type × size + risk),
-   which selects the lane and the depth. See [phases/classification.md](phases/classification.md).
-2. **A durable manifest** (`ship.md`) — the single source of truth for "where am I",
-   living in the speckit feature dir. See [phases/manifest.md](phases/manifest.md).
-3. **A reliability model** — gates everywhere, parallel divergence at design forks,
-   adversarial verification at correctness claims, stacked only on risk. See
-   [phases/reliability.md](phases/reliability.md).
-4. **Human checkpoints** between phases, so you can pause, redirect, and resume.
+1. **Classification** — every run opens by classifying `type × size × risk`, which picks the *lane*
+   and the *depth* (how many steps, how many checkpoints). See [phases/classification.md](phases/classification.md).
+2. **Reliability at the seams** — **gate** (every stage), **parallel** (design forks), **verify**
+   (correctness claims), stacked only on risk. See [phases/reliability.md](phases/reliability.md).
+3. **Human checkpoints** — you **verify and accept** each meaningful decision. It never runs a whole
+   stage unattended unless you opt into the hands-off fast-path.
+4. **External single source of truth** — inputs and outputs live in their **natural homes** (Jira,
+   `specs/`, the implement report, `dev/` docs, the PR), not inside the skill. `ship.md` is a thin
+   **index** pointing at them. See [phases/manifest.md](phases/manifest.md).
+5. **Next-step help** — at each checkpoint it tells you (and offers to run) the next stage's command.
 
 ## Core principles
 
-- **Reuse over reimplementation.** Every phase delegates to an existing tool. Reinvent nothing.
+- **Reuse over reimplementation.** Every stage delegates to an existing skill/command. Reinvent nothing.
 - **Classify first, then adapt.** An `S` bug and an `L` feature must not walk the same path.
-- **The manifest is the source of truth.** No phase runs, completes, or resumes without
-  reading and updating `ship.md`. The user should never have to ask "which step am I on."
-- **Gate every phase.** A phase is `done` only when its exit-criteria pass — deterministically.
-- **Reliability is layered, not just parallel.** Parallelism improves *quality* at forks;
-  gates and adversarial verification produce *correctness*. Stack all three only on risk.
-- **Stop at checkpoints.** The user approves between phases. Never chain phases unattended.
+- **Single source of truth is external.** Each artifact has one canonical home; `ship.md` only points.
+  No phase runs, completes, or resumes without reading/updating that index.
+- **Checkpoints mean verify & accept.** Stop between stages so the user approves decisions. Never
+  chain a whole stage unattended — except the size-`S` hands-off fast-path, chosen explicitly.
+- **Gate every stage.** A stage is `done` only when its exit-criteria pass — deterministically.
+- **Reliability is layered, not just parallel.** Parallelism improves *quality* at forks; gates and
+  adversarial verification produce *correctness*. Stack all three only on a risk flag.
 - **Degrade, never block.** A missing optional tool lowers quality; it never stops the flow.
 
-## Recommended companion plugins (optional)
+## The five stages
 
-Most capabilities ship **in this repo** under `.agents/skills/` and `.agents/commands/` — they're
-always available here. The plugins below only *add* to the built-in fallbacks. Install from the
-official marketplace with `claude plugin install <name>` (or the `/plugin` menu).
+Framework vocabulary on top; canonical tools do the work; the orchestration column is what this
+skill adds **at the seam** between stages.
 
-| Plugin | Powers | Tier |
-|---|---|---|
-| `superpowers` | planning, TDD, worktrees, parallel agents, review wrappers, verification | **Recommended** |
-| `coderabbit` | AI correctness/security code review | **Recommended** |
-| `commit-commands` | conventional commit, push, PR | Nice-to-have |
-| `code-simplifier` | simplification pass on the diff | Nice-to-have |
+| # | Stage | Canonical tools (do the work) | Output → external home | Orchestration added at the seam |
+|---|---|---|---|---|
+| 1 | **Intake** | `creating-issues`/`/create-issue` · `grilling-ideas`/`/grill-idea` · `creating-prd`/`/create-prd` | issue + PRD → **GitHub / Jira (JPD)** | **classify** type×size×risk; open `ship.md` index; **gate:** issue w/ clear scope; **checkpoint:** scope accepted → propose Jira *In design* |
+| 2 | **Prep** | `/speckit-opsmill-prep` = specify → plan → critique-run → tasks + alignment check *(or the granular skills on M/L)* | spec · plan · tasks → **`specs/<feature>/`** | **parallel** framings into specify/plan on `L`; **gate:** `tasks.md` exists, alignment clean, no `[NEEDS CLARIFICATION]`; **checkpoint** after each design decision |
+| 3 | **Implement** | `/speckit-opsmill-implement` = preflight → implement (↻ clean-context subagents) → review-run → report *(bug lane: `/bug-tdd` → `/bug-fix`)* | code + `opsmill-implement-report.md` → **`specs/<feature>/`** + git | **verify:** adversarial skeptic on the report + high-sev findings; **gate:** report clean + tests green; **checkpoint:** findings & fixes accepted |
+| 4 | **Delivery** | `/pre-ci` · `/pr` · `/pr-monitor` · review (spec & code) · `/qa` | PR + CI → **GitHub PR** | **gate:** CI green before PR; **parallel** split assessment ([phases/pr-split.md](phases/pr-split.md)); **checkpoint:** PR plan accepted → propose Jira *In review*; monitor loops back on red |
+| 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` (+ `capturing-knowledge`, `learning-from-review`¹, `speckit-opsmill-retrospect`) | knowledge · guidelines · ADR → **`dev/…`**; archive spec | **manual gate:** you review the report first; **checkpoint** on doc changes → propose Jira *Done* |
 
-## Preflight: check companions once (non-blocking)
+¹ `learning-from-review` ships separately (PR #9910); use it when present, skip cleanly when absent.
 
-Before phase 2, probe for the plugins above **once**. If any are missing, print a single
-consolidated note naming what's absent and the install command, then **proceed immediately** with
-the in-repo skills and built-in fallbacks. Do not prompt, wait, re-suggest, or auto-install.
+## Orchestration layer
 
-## Discover available context (probe → reuse → fall back)
+### Classification (opens every run)
+Follow [phases/classification.md](phases/classification.md): propose `type` (bug / feature / chore),
+`size` (S / M / L), and any `risk` flags; the user confirms at a checkpoint. Written to `ship.md`.
+**Never re-ask on resume.** Classification picks both the **lane** and the **depth**:
 
-For each capability, use the first available source in priority order. Probe; never invent a
-command the repo lacks; surface ambiguity to the user. Column 1 lists the in-repo skill/command
-(what actually ships here today); reconcile against `.agents/` if names drift.
+| | Intake | Prep | Implement | Delivery | Extract |
+|---|---|---|---|---|---|
+| **bug** *(light lane)* | issue | `/bug-analyze` → ✓ root cause | `/bug-tdd` → `/bug-fix` (gate red→green + verify) | CI → `/pr` → `/pr-monitor` | usually skip |
+| **S** | quick | `/speckit-opsmill-prep` hands-off → 1 ✓ | `/speckit-opsmill-implement` hands-off → verify report | CI → PR | manual, light |
+| **M** | issue + scope ✓ | specify ✓ · plan + tasks ✓ | implement → review + verify ✓ | CI ✓ · PR ✓ | extract ✓ |
+| **L** | issue + PRD ✓ | specify ✓ · plan ✓ · **parallel** critique · tasks ✓ | chunked implement (clean-context) · verify ✓ | CI ✓ · **split** assess ✓ · PR · monitor | extract + retrospect ✓ |
 
-| Capability | 1. In-repo skill/command | 2. Marketplace plugin | 3. Built-in fallback |
-|---|---|---|---|
-| Ticket/issue | `creating-issues`, `/create-jira-tickets` | — | skip |
-| Ticket→branch (Jira/JPD) | `/speckit-git-feature` | — | `git checkout -b` |
-| PRD / idea hardening | `grilling-ideas`, `creating-prd` | `superpowers:brainstorming` | ask 2–3 questions inline |
-| Bug root-cause | `/bug-analyze` | — | `Explore` agents on the failing surface |
-| Spec (divergent) | — | — | `Explore` agents |
-| Spec (formalize) | `/speckit-specify`, `/speckit-clarify` | — | keep the synthesized brief |
-| Plan (divergent) | — | — | `Plan` agents |
-| Plan (formalize) | `/speckit-plan`, `/speckit-tasks` | `superpowers:writing-plans` | inline ordered task list |
-| Implement (bug, TDD) | `/bug-tdd` → `/bug-fix` | `superpowers:test-driven-development` | `general-purpose` agent, test-first |
-| Implement (feature, TDD) | — | `superpowers:test-driven-development` | `general-purpose` agents, test-first |
-| Worktree isolation | — | `superpowers:using-git-worktrees` | `isolation: "worktree"` on Agent calls |
-| Parallel execution | — | `superpowers:subagent-driven-development` / `dispatching-parallel-agents` | parallel Agent calls in one message |
-| Code review | `speckit-review-run` (or per-lens `speckit-review-{code,tests,types,errors,comments}`), `speckit-review-simplify`, `speckit-critique-run` | `coderabbit:code-review`, `code-simplifier`, `superpowers:requesting-code-review` | `general-purpose` reviewers + `/security-review` |
-| Residue cleanup (post-implement) | `pruning-residues` | `code-simplifier` | agent prunes leftover debug logs, dead code, orphaned files/imports, and redundant comments; else skip |
-| Knowledge capture | `capturing-knowledge` | — | skip |
-| Learn from review | `learning-from-review` | — | skip |
-| Docs audit / consistency | `audit-docs` (or `/audit-docs`) → `add-docs` / `/add-docs` | — | grep doc layers for drift; else skip |
-| Session retrospective | `speckit-opsmill-retrospect` (or `/speckit.opsmill.retrospect`) | — | skip |
-| Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |
-| CI gate / verify | `/pre-ci` | `superpowers:verification-before-completion` | run detected test + lint commands |
-| Commit | `commit`, `/git-commit` | `commit-commands:commit` | `git commit` (conventional message) |
-| PR | `pr`, `/git-pr` | `commit-commands:commit-push-pr`, `superpowers:finishing-a-development-branch` | `gh pr create` |
-| Post-open CI watch | `monitoring-pull-requests` | — | `gh run watch` / skip |
+✓ = human checkpoint. **The meta-commands run hands-off internally** — use them whole on `S` (or when
+the user says "just run it"); on `M`/`L` drive the **granular** skills so the user checkpoints each
+decision. Bugs take the lightest lane; `L` gets the most stops plus parallel/verify.
 
-## Reliability model (read before phase 2)
+### Reliability (gate · parallel · verify)
+Per [phases/reliability.md](phases/reliability.md), applied per stage, scaled by size, stacked only on risk:
+- **Gate (always):** exit-criteria checked *before* the checkpoint. No green → not `done` in `ship.md`.
+- **Parallel (design forks):** specify/plan on `M`/`L` — multiple framings, one synthesizer. Never on
+  deterministic steps; never N copies of one prompt.
+- **Verify (correctness claims):** after implement & review, a skeptic tries to *refute* the result.
+- **Stack all three** on a stage only under a **risk flag** (`irreversible | security | cross-team |
+  crux-algorithm`) — the user confirms it; the model never guesses it.
 
-Three layers, applied per phase, scaled by size, stacked only on risk. Full rules and the
-risk-triggered stacking table are in [phases/reliability.md](phases/reliability.md). In brief:
+### Jira / progress (propose-on-accept)
+When a Jira/JPD ticket is linked and Atlassian tools are available, at each stage checkpoint **propose**
+the status transition (and a PR/artifact link comment) and **apply it only when the user accepts** —
+never auto-transition. If Jira is absent, record status in the `ship.md` index only.
 
-- **Gate (always):** every phase declares exit-criteria checked *before* its checkpoint. No
-  green criteria → not `done` in `ship.md`.
-- **Parallel divergence (design forks):** spec & plan on `M`/`L`. Multiple *framings*, then one
-  synthesizer. Never on deterministic phases; never as N copies of the same prompt.
-- **Adversarial verify (correctness claims):** after implement & review, a skeptic agent tries
-  to *refute* the claim ("this doesn't fix it", "this finding is a false positive").
-- **Stack all three** on a phase only when a **risk flag** (`irreversible | security | cross-team
-  | crux-algorithm`) is set at classification — the user confirms it, the model does not guess it.
+## Per-stage detail
 
-## Classification (phase 1 — opens every run)
+### Stage 1 — Intake
+Restate the ask in one sentence; classify (checkpoint). If no ticket and the project tracks work,
+offer `creating-issues` / `/create-issue`; harden a fuzzy idea with `grilling-ideas` / `creating-prd`.
+Cut the branch via `/speckit-git-feature` (validates Jira/JPD ref) or `git checkout -b`. Open the
+`ship.md` index (feature id, issue, branch). **Gate:** issue with clear scope, on a named branch.
+**Checkpoint:** scope accepted → propose Jira *In design*.
 
-Follow [phases/classification.md](phases/classification.md): propose `type` (bug / feature /
-chore), `size` (S / M / L), and any `risk` flags from the ticket text and diff surface; the user
-confirms or overrides at a checkpoint. Write the confirmed values to `ship.md`. **Never re-ask on
-resume** — the manifest already holds them.
+### Stage 2 — Prep
+- **S (or opt-in):** `/speckit-opsmill-prep` hands-off → one checkpoint on the resulting `tasks.md`.
+- **M/L:** drive the granular skills with a checkpoint after each decision — `/speckit-specify` → ✓,
+  `/speckit-plan` → ✓ (on `L`, **parallel** framings feed it), `speckit-critique-run` (gate),
+  `/speckit-tasks` → ✓. Outputs land in `specs/<feature>/`.
+**Gate:** `tasks.md` exists, alignment check clean, no unresolved `[NEEDS CLARIFICATION]`.
 
-The lane and depth follow from the classification:
+### Stage 3 — Implement
+- **bug:** `/bug-tdd` (failing test) → `/bug-fix`.
+- **feature/chore:** `/speckit-opsmill-implement` — preflight, then the tasks loop in **clean-context
+  subagents**, then `review-run`, then the final report. (Clean-context subagents + residue-free diffs
+  are built into this command; do not re-run a separate prune/review pipeline.)
+Verify the real diff, never the self-report. **Gate + verify:** tests that were red are green *and* a
+skeptic fails to refute "this implements the spec / fixes the bug"; the `opsmill-implement-report.md`
+has no unaddressed high-severity findings. **Checkpoint:** findings & fixes accepted (on `L`, per milestone).
 
-| Phase | `bug` | `feature` | `chore` |
-|---|---|---|---|
-| Ticket/branch | `creating-issues` → `/speckit-git-feature` | same | same |
-| Understand | `/bug-analyze` → `analysis.md` | `grilling-ideas` → `/speckit-specify` → `spec.md` | short inline brief |
-| Plan | skip on `S`, else light | `/speckit-plan` + `/speckit-tasks` → `plan.md`, `tasks.md` (`M`/`L`) | skip |
-| Implement | `/bug-tdd` → `/bug-fix` | TDD agents (worktrees on `L`) | direct edit |
-| Review | `speckit-review-run` → `review.md` + verify | same | same (lighter) |
-| Knowledge & learning | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `audit-docs` (conditional) | same | same |
-| CI gate | `/pre-ci` | same | same |
-| Commit | `commit` | same | same |
-| PR | `pr` → split assessment | same | same (usually single PR) |
-| CI watch | `monitoring-pull-requests` | same | same |
+### Stage 4 — Delivery
+1. **CI gate:** `/pre-ci` (or detected test+lint). Red → loop back to the Stage 3 fix pass. **Never
+   proceed with a red gate.**
+2. **Split assessment** (bias toward single PR) per [phases/pr-split.md](phases/pr-split.md).
+   **Checkpoint:** user picks single / accepts split. Never force a split.
+3. **Open** the PR with `pr` → `/git-pr` → `gh pr create`. Record PR URL in `ship.md`; propose Jira
+   *In review*. Then `/pr-monitor` (or `gh run watch`) follows CI; red loops back to the Stage 3 fix pass.
+Optional `/qa` and spec-&-code review where the project defines them.
 
-`S` runs its lane straight through (gate + one verify, no parallelism). `M`/`L` light up the
-parallel front-end and, on a risk flag, the stacked verify.
+### Stage 5 — Extract *(manual)*
+**Manual gate:** the user reviews `opsmill-implement-report.md` first. Then `/speckit-opsmill-extract`
+distils durable knowledge into `dev/knowledge` · `dev/guidelines` · `dev/adr` and archives the spec.
+Also run `capturing-knowledge`, `learning-from-review` (when present), and `speckit-opsmill-retrospect`
+for process/tooling gaps. Doc changes join **this** PR unless the user asks otherwise. **Checkpoint**
+only if a step proposes changes → propose Jira *Done*.
 
 ## Manifest & resume
 
-`ship.md` lives in the speckit feature dir (`specs/NNN-slug/`, located via `.specify/feature.json`).
-It records classification, the selected phase list, per-phase status, and links to every artifact.
-Follow [phases/manifest.md](phases/manifest.md) for its schema, the update contract, and the
-**resume + reconcile** logic (re-invoking the skill scans for an unfinished `ship.md`, prints a
-status board, reconciles claimed-`done` phases against reality, and continues at the first
-unfinished phase).
+`ship.md` lives in the feature dir (`specs/<feature>/`, located via `.specify/feature.json`) and is a
+thin **index**, not a store: feature id · issue/JPD · branch · spec dir · report path · PR url ·
+per-stage checkpoint status + pointers. The real content lives in the external homes above.
+Follow [phases/manifest.md](phases/manifest.md) for the schema and the **resume + reconcile** logic:
+re-invoking the skill reads the index, prints a status board, **reconciles claimed-`done` stages
+against the live sources** (Jira status, PR state, files on disk — the sources always win), and
+continues at the first unfinished stage.
 
-## Phases
+## Discover available context (probe → reuse → fall back)
 
-Each phase below: **delegates to** a discovered tool, **reads** the upstream artifacts named in
-`ship.md`, **writes** its own artifact back, runs its **gate**, then **checkpoints**. Update
-`ship.md` at every transition.
+Use the first available source per capability. Probe; never invent a command the repo lacks.
 
-### Phase 1 — Classify
-Per [phases/classification.md](phases/classification.md). Create `ship.md` (or resume an existing
-one). **Checkpoint:** user confirms type / size / risk before any work.
-
-### Phase 2 — Ticket & branch
-If no ticket and the project tracks issues, offer `creating-issues` (or `/create-jira-tickets`).
-Create the feature branch via `/speckit-git-feature` (validates Jira/JPD ref, names the branch) or
-`git checkout -b` fallback. Record ticket + branch in `ship.md`. **Gate:** on a named branch, not the base branch.
-
-### Phase 3 — Understand
-- **bug:** `/bug-analyze` → `analysis.md` (root cause + repro). **Gate:** a concrete repro exists.
-- **feature:** harden with `grilling-ideas` (or `creating-prd`) if fuzzy; **diverge** (3 `Explore` framings: existing
-  patterns / related entities & APIs / test-coverage gaps) → **synthesize** 1 brief; formalize
-  with `/speckit-specify` (+`/speckit-clarify`) → `spec.md`. **Gate:** no unresolved
-  `[NEEDS CLARIFICATION]`.
-- **chore:** short inline brief. **Gate:** scope stated in one paragraph.
-**Checkpoint:** show the artifact + open questions.
-
-### Phase 4 — Plan (feature `M`/`L`; skipped otherwise)
-**Diverge** (3 `Plan` framings: minimal / refactor-friendly / test-first) → **synthesize** one
-ordered task list; formalize with `/speckit-plan` + `/speckit-tasks` → `plan.md`, `tasks.md`.
-On a risk flag, add a skeptic pass on the synthesis (see reliability). **Gate:** every task
-references files that exist; plan cites the spec. **Checkpoint:** merged plan + tradeoffs.
-
-### Phase 5 — Implement
-- **bug:** `/bug-tdd` (failing test) → `/bug-fix`.
-- **feature/chore:** group `tasks.md` into independent units; run TDD agents (worktree isolation
-  on `L`); independent units in parallel (one message), dependent units sequentially.
-- **Prune residues** before the gate: run `pruning-residues` (fallback `code-simplifier`, or an
-  agent instructed to strip leftover debug logs, dead code, commented-out blocks, orphaned
-  files/imports, and redundant/obvious comments the implementation introduced). This tightens the
-  diff *before* review sees it — re-run the gate test after pruning so cleanup can't silently break anything.
-Verify the real diff, never the self-report. **Gate + adversarial verify:** a test that was red is
-now green (on the pruned diff) *and* a skeptic agent fails to refute "this actually implements the
-spec/fixes the bug." **Checkpoint** only if a blocker surfaces or on `L`.
-
-### Phase 6 — Review (pre-PR)
-The in-repo `speckit-review-*` suite already **is** the divergence — its lenses (`speckit-review-code`,
-`-tests`, `-types`, `-errors`, `-comments`) map onto the parallel framings. Prefer `speckit-review-run`
-(runs the suite) or the individual lenses in parallel, plus `speckit-review-simplify` and
-`speckit-critique-run`; add `coderabbit:code-review` / `code-simplifier` / `/security-review` when
-present. Fallback: 2–3 framed `general-purpose` reviewers. → **synthesize** a severity-ranked fix
-list (blocker / nit / suggestion) → **adversarial verify** each finding is real before acting. Wrap
-with `superpowers:requesting-code-review` / `receiving-code-review` when present. Write `review.md`.
-**Gate:** zero unaddressed blockers. **Checkpoint:** ranked list, then fix pass (small parallel
-agents per file group).
-
-### Phase 7 — Knowledge, learning & retrospective (opportunistic)
-1. **Capture domain facts** — delegate to `capturing-knowledge` (no args). Skip silently if nothing
-   genuinely new was learned — empty captures are a feature.
-2. **Learn from the review** — delegate to `learning-from-review` (PR ref, or the current branch's PR;
-   else the phase-6 review threads). It reconstructs proposed → rejected → corrected, distills the
-   durable lesson that would have produced the accepted version first time, and hands it to
-   `capturing-knowledge` to persist. Skip if phase 6 requested no changes — there is nothing to learn.
-3. **Audit docs** — delegate to the `audit-docs` skill (fallback: the `/audit-docs` command) against
-   this branch's changes; it cross-references the doc layers and reports gaps/drift, so the docs stay
-   consistent with what was actually built. For each real gap, update or create the doc with the
-   `add-docs` skill / `/add-docs` command (fallback: edit the doc directly).
-4. **Retrospective** — delegate to `speckit-opsmill-retrospect` (or the `/speckit.opsmill.retrospect`
-   command) while the session is fresh: it surfaces context-management/tooling gaps (AGENTS.md, skills,
-   commands, guides, templates) that caused avoidable friction and routes each to a disposition —
-   `fix-now`, `open-pr`, `github-issue`, or `local-only`. It writes `retrospective.md` in the feature
-   dir and stays read-only until you approve per bucket. Distinct from the steps above:
-   `capturing-knowledge` records *domain/code* facts, `learning-from-review` distills *review* lessons,
-   and the retrospective improves the *process & tooling* surface. Skip cleanly if the skill is absent.
-Any doc changes join **this** PR (no separate docs PR unless the user asks). Record the retrospective
-report path + chosen dispositions in `ship.md`. **Checkpoint** only if any step proposes changes —
-otherwise skip silently.
-
-### Phase 8 — CI gate (must-pass before PR)
-Run `/pre-ci` (or `superpowers:verification-before-completion`, or detected test+lint commands —
-never invented). Red → loop back to the phase 6 fix pass. **Do not proceed with a red gate.**
-**Checkpoint:** results.
-
-### Phase 9 — Commit & PR
-1. **Commit** any final drift with `commit` → `/git-commit` → `commit-commands:commit` →
-   `git commit`. By now work was committed iteratively in phase 5; do not auto-commit to satisfy a
-   command — surface a dirty-tree refusal instead.
-2. **Split assessment** (bias toward single PR) per [phases/pr-split.md](phases/pr-split.md).
-   **Checkpoint:** user picks single / accepts split / proposes another. Never force a split.
-3. **Open** each approved PR with `pr` → `/git-pr` → `commit-commands:commit-push-pr` →
-   `superpowers:finishing-a-development-branch` → `gh pr create`. For split PRs prepend
-   `Depends on #<sibling>` and open in dependency order. Record PR URL(s) in `ship.md`.
-
-### Phase 10 — Post-open CI watch
-Delegate to `monitoring-pull-requests` (or `gh run watch`) to watch the opened PR's CI. On red, surface the
-failure and loop back to phase 6's fix pass. Record final CI status in `ship.md`. Skip cleanly if
-no watch tool resolves. **Terminal checkpoint:** green CI + PR URL(s) → shipped & done.
+| Capability | 1. In-repo skill/command | 2. Marketplace plugin | 3. Built-in fallback |
+|---|---|---|---|
+| Ticket / issue | `creating-issues`, `/create-jira-tickets` | — | skip |
+| Ticket → branch | `/speckit-git-feature` | — | `git checkout -b` |
+| Idea / PRD | `grilling-ideas`, `creating-prd` | `superpowers:brainstorming` | ask 2–3 questions inline |
+| Prep (design→tasks) | `/speckit-opsmill-prep`, or `/speckit-specify`·`/speckit-plan`·`speckit-critique-run`·`/speckit-tasks` | `superpowers:writing-plans` | `Explore`/`Plan` agents + inline task list |
+| Bug root-cause | `/bug-analyze` | — | `Explore` agents on the failing surface |
+| Implement (feature) | `/speckit-opsmill-implement` | `superpowers:subagent-driven-development` + `test-driven-development` | `general-purpose` agents, test-first, clean-context |
+| Implement (bug) | `/bug-tdd` → `/bug-fix` | `superpowers:test-driven-development` | `general-purpose` agent, test-first |
+| Review (in-command) | (inside `/speckit-opsmill-implement`) `speckit-review-run` | `coderabbit:code-review`, `code-simplifier` | `general-purpose` reviewers + `/security-review` |
+| CI gate | `/pre-ci` | `superpowers:verification-before-completion` | detected test + lint commands |
+| Commit | `commit`, `/git-commit` | `commit-commands:commit` | `git commit` (conventional) |
+| PR | `pr`, `/git-pr` | `commit-commands:commit-push-pr`, `superpowers:finishing-a-development-branch` | `gh pr create` |
+| Post-open CI watch | `monitoring-pull-requests` | — | `gh run watch` / skip |
+| Extract knowledge | `/speckit-opsmill-extract`, `capturing-knowledge`, `audit-docs`/`/audit-docs` → `add-docs` | — | edit `dev/` docs directly |
+| Learn from review | `learning-from-review` *(PR #9910)* | — | skip |
+| Retrospective | `speckit-opsmill-retrospect` (`/speckit.opsmill.retrospect`) | — | skip |
+| Jira progress | Atlassian MCP (`transitionJiraIssue`, `addCommentToJiraIssue`) | — | record status in `ship.md` only |
+| Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |
 
 ## Anti-patterns
 
 - ❌ Asking "what should I build?" when `$ARGUMENTS` is empty — run the resume scan first.
-- ❌ Running or completing a phase without reading/updating `ship.md`.
-- ❌ Marking a phase `done` without its exit-criteria gate passing.
-- ❌ Trusting a claimed-`done` phase on resume without reconciling it against the branch.
-- ❌ Running the same lane for a bug and an L feature.
-- ❌ Skipping the synthesizer between parallel agents; or feeding N framings into N implementers.
-- ❌ Stacking all three reliability layers on a phase with no risk flag.
-- ❌ Reimplementing anything in the discovery table, or inventing a command the project lacks.
-- ❌ Blocking on a missing optional plugin, re-suggesting it every phase, or auto-installing it.
+- ❌ Treating `ship.md` as the store of record — it only indexes the external homes; reconcile against them.
+- ❌ Running a whole stage unattended on `M`/`L` — checkpoints exist so the user verifies & accepts.
+- ❌ Auto-transitioning Jira — always propose at the checkpoint, apply on accept.
+- ❌ Re-running a separate prune/review pipeline after `/speckit-opsmill-implement` — it already does clean-context + review-run.
+- ❌ Running the same lane for a bug and an `L` feature.
+- ❌ Marking a stage `done` without its gate passing, or trusting a claimed-`done` stage on resume without reconciling.
+- ❌ Stacking all three reliability layers on a stage with no risk flag.
+- ❌ Reimplementing anything in the discovery table, or inventing a command the repo lacks.
 - ❌ Opening a PR with a red CI gate; forcing a PR split when the changes are coupled.

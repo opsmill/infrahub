@@ -1,6 +1,6 @@
-# Phase 9 — PR split assessment (bias toward single PR)
+# Stage 4 (Delivery) — PR split assessment (bias toward single PR)
 
-Reference for the split-assessment step of `shipping-features` (phase 9, before opening the PR).
+Reference for the split-assessment step of `shipping-features` (Stage 4 · Delivery, before opening the PR).
 Apply the **parallel divergence + synthesize** layer to the split decision.
 
 ## Diverge

@@ -1,29 +1,28 @@
-# The `ship.md` manifest & resume logic
+# The `ship.md` index & resume logic
 
-`ship.md` is the **single source of truth** for a unit of work in flight. It answers the three
-questions this skill exists to eliminate: *where am I, what's done, what's next.* Every phase reads
-it and updates it; resume relies on it entirely.
+`ship.md` is a thin **index**, not a store. It answers *where am I, what's done, what's next* by
+**pointing at the external homes** where each stage's real artifact lives (Jira, `specs/`, the
+implement report, `dev/` docs, the PR). The content of record is always external; `ship.md` just
+ties it together so the run is resumable and glanceable.
 
 ## Location
 
-Inside the speckit feature dir, alongside the artifacts it indexes:
+Inside the feature dir, next to the artifacts it points at:
 
 ```
-specs/NNN-slug/
-  ship.md          ← this manifest
-  spec.md          (feature)
-  analysis.md      (bug)
-  plan.md tasks.md (feature M/L)
-  review.md
+specs/<feature>/
+  ship.md                    ← this index (pointers + status only)
+  spec.md · plan.md · tasks.md          (Prep, external content)
+  opsmill-implement-report.md           (Implement, external content)
 ```
 
-Locate the dir via `.specify/feature.json` (`{"feature_directory": "specs/NNN-slug"}`). If speckit
-isn't initialized yet (bug/chore that skips speckit), create `specs/NNN-slug/ship.md` directly using
-the branch slug, and still write `feature.json` so downstream speckit calls agree on the dir.
+Locate the dir via `.specify/feature.json` (`{"feature_directory": "specs/<feature>"}`). For a
+bug/chore that skips speckit, create `specs/<feature>/ship.md` from the branch slug and still write
+`feature.json` so downstream speckit calls agree on the dir.
 
 ## Schema
 
-Human-readable and glanceable on purpose — the user opens it to orient, and the model parses it to resume.
+Glanceable on purpose — the user opens it to orient, the model parses it to resume. **Pointers, not copies.**
 
 ```markdown
 # Ship: <one-line title>
@@ -31,71 +30,60 @@ Human-readable and glanceable on purpose — the user opens it to orient, and th
 type: feature        # bug | feature | chore
 size: L              # S | M | L
 risk: [security]     # subset of: irreversible security cross-team crux-algorithm  (or none)
-ticket: INFP-460     # or none
+issue: INFP-460      # Jira/JPD or GitHub issue — the progress lives THERE
 branch: user-auth-infp-460
 base: develop
-updated: 2026-07-06
+updated: 2026-07-15
 
-## Phases
-- [x] classify              → (this file)
-- [x] ticket-branch         → branch user-auth-infp-460
-- [x] understand            → spec.md
-- [x] plan                  → plan.md, tasks.md
-- [>] implement             → 3/5 tasks; worktrees wt-a, wt-b
-- [ ] review                →
-- [ ] knowledge             →
-- [ ] ci                    →
-- [ ] commit-pr             →
-- [ ] ci-watch              →
-
-## Artifacts
-- spec.md, plan.md, tasks.md
-- pr: <url once open>
+## Stages
+- [x] intake       → issue INFP-460 · branch user-auth-infp-460
+- [x] prep         → specs/007-user-auth/ (spec·plan·tasks)
+- [>] implement    → specs/007-user-auth/opsmill-implement-report.md (3/5 chunks)
+- [ ] delivery     → pr: <url once open>
+- [ ] extract      → dev/knowledge, dev/adr
 
 ## Notes
-- 2026-07-06 reclassified M→L after auth surface turned out cross-cutting.
+- 2026-07-15 reclassified M→L after auth surface turned out cross-cutting.
 ```
 
-Status markers: `[ ]` todo · `[>]` in-progress · `[x]` done · `[-]` skipped (with a reason in Notes).
-The phase list is **derived from the classification** — only list phases the lane actually runs.
+Markers: `[ ]` todo · `[>]` in-progress · `[x]` done · `[-]` skipped (reason in Notes).
+Only list the stages the lane actually runs (a bug's light lane has fewer).
 
 ## Update contract
 
-- **On entering a phase:** flip it to `[>]`, bump `updated`.
-- **On finishing a phase:** flip to `[x]` **only after its exit-criteria gate passes**; record the
-  artifact it produced on the same line.
-- **On skipping a phase:** `[-]` with a one-line reason in Notes (e.g. knowledge capture found nothing).
-- **On reclassification:** update the axes, add/remove phases, append a dated Note.
-- Never mark a phase `[x]` speculatively. The manifest must reflect reality, not intent.
+- **On entering a stage:** flip to `[>]`, bump `updated`.
+- **On finishing a stage:** flip to `[x]` **only after its gate passes**; record the **pointer** to
+  where the output landed (spec dir, report path, PR url) — not a copy of the content.
+- **On skipping:** `[-]` with a one-line reason in Notes.
+- **On a Jira transition:** record it here only after the user accepts it at the checkpoint.
+- Never mark a stage `[x]` speculatively — the index must reflect reality, not intent.
 
 ## Resume + reconcile
 
 When the skill is invoked with empty `$ARGUMENTS`, or on any re-entry:
 
-1. **Scan** for an unfinished `ship.md` (search `specs/*/ship.md` with an incomplete phase list;
-   prefer one whose `branch` matches the current git branch).
-2. **None found** → this is new work; ask what to ship and start at phase 1.
-3. **Found** → print a **status board**: the phase list with markers, the classification line, and
-   the next action. This is the "where am I" answer.
-4. **Reconcile before trusting** — the manifest can drift from reality (a branch was reset, a
-   worktree removed, tests now fail). For each `[x]` phase, cheaply verify its claim still holds:
+1. **Scan** `specs/*/ship.md` for an unfinished index; prefer one whose `branch` matches the current git branch.
+2. **None found** → new work; ask what to ship and start at Intake.
+3. **Found** → print a **status board**: stages with markers, classification line, next action.
+4. **Reconcile against the live sources before trusting** — the index can drift; the external homes
+   always win:
 
-   | Phase | Reconcile check |
+   | Stage | Reconcile check (source of truth) |
    |---|---|
-   | ticket-branch | branch exists and is checked out |
-   | understand/plan | the named artifact file exists and is non-empty |
-   | implement | branch is ahead of base; the phase-5 gate test is still green |
-   | ci | re-run is fast? if not, trust the recorded result but flag its age |
-   | commit-pr | the PR URL still resolves and is open |
+   | intake | branch exists & checked out; issue resolves (Jira/GitHub) |
+   | prep | `spec.md`/`plan.md`/`tasks.md` exist and are non-empty in the spec dir |
+   | implement | branch ahead of base; gate tests green; report has no open high-sev findings |
+   | delivery | PR url resolves and is open; CI status on GitHub |
+   | extract | referenced `dev/` docs exist |
 
-   A failed check **re-opens** that phase (`[x]`→`[>]`) and everything downstream of it. Say so
-   explicitly: *"implement was marked done but the gate test is red — re-opening implement + review."*
-5. **Continue** at the first non-`[x]`/`[-]` phase, honoring the between-phase checkpoints.
+   A failed check **re-opens** that stage (`[x]`→`[>]`) and everything downstream. Say so explicitly:
+   *"implement was marked done but the gate test is red — re-opening implement + delivery."*
+5. **Continue** at the first non-`[x]`/`[-]` stage, honoring the between-stage checkpoints.
 
 ## Rules
 
-- The manifest is authoritative for *bookkeeping*, the repo is authoritative for *truth* — reconcile
-  reconciles the two, and the repo always wins.
+- The index is authoritative for *bookkeeping*; the external homes are authoritative for *truth* —
+  reconcile bridges them, and the source always wins.
 - One `ship.md` per unit of work (per feature dir / branch). Don't share one across branches.
-- User overrides are first-class: "redo review", "skip knowledge", "jump to PR" just edit the markers
-  (with reconciliation for anything they jump past) — no separate command needed.
+- User overrides are first-class: "redo prep", "skip extract", "jump to delivery" just edit the
+  markers (with reconciliation for anything jumped past) — no separate command needed.

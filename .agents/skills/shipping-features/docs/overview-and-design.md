@@ -5,107 +5,72 @@
 
 ## The problem it solves
 
-Shipping a change end to end means touching many tools — Jira, spec, plan, code, tests,
-review, CI, PR — and today that means the developer (and the agent) constantly asks:
+Shipping a change end to end means touching many tools — Jira, spec, plan, code, review, CI, PR —
+and today the developer (and the agent) constantly asks:
 
-> *"Where am I? Which step is done? Which skill do I run next?"*
+> *"Where am I? Which step is done? Which command do I run next?"*
 
-`shipping-features` exists to make that question disappear. It is a **conductor**: it doesn't
-re-implement spec/plan/review/PR logic, it **orchestrates the tools we already have** and keeps a
-durable record of where the work stands so anyone — or any session — can pick it up.
+`shipping-features` makes that question disappear. It is a **conductor**: it does not reimplement the
+delivery pipeline, it **orchestrates the OpsMill 5-stage framework we already have** and keeps the
+state in the artifacts' natural homes so anyone — or any session — can pick it up.
 
-## Three ideas, in one paragraph each
+## The five stages (framework) + the orchestration layer (this skill)
 
-**1. Classify first.** Every run opens by classifying the work along three axes — **type**
-(bug / feature / chore), **size** (S / M / L), and optional **risk flags** (irreversible,
-security, cross-team, crux-algorithm). The agent proposes a classification; the user confirms it
-at a checkpoint. This picks the *lane* (a bug goes `bug-analyze → bug-tdd → bug-fix`; a feature
-goes `grilling-ideas → spec → plan → implement`) and the *depth* (an S fix skips specs entirely; an L
-feature gets the full treatment). One workflow, shaped to the work.
+The stages and their tools already exist. This skill adds a thin **orchestration layer** on top.
 
-**2. A durable manifest (`ship.md`).** Each unit of work gets a `ship.md` inside its speckit
-feature dir (`specs/NNN-slug/`) — the single source of truth. It records the classification, the
-selected phase list with per-phase status (`todo / in-progress / done / skipped`), and links to
-every artifact (`spec.md`, `plan.md`, `review.md`, the PR URL). Re-running the skill scans for an
-unfinished `ship.md`, prints a **status board**, and resumes at the first unfinished phase — so
-pause/resume/redirect is free, and survives across sessions and machines. Before trusting a
-`done` phase on resume it **reconciles** the manifest against the repo (branch state, artifacts,
-tests) so it never ships stale state.
+| # | Stage | Canonical tools | Output → home | Orchestration at the seam |
+|---|---|---|---|---|
+| 1 | **Intake** | `creating-issues` · `grilling-ideas` · `creating-prd` | issue + PRD → **GitHub / Jira** | classify type×size×risk; open `ship.md` index; gate: clear scope; checkpoint → propose Jira *In design* |
+| 2 | **Prep** | `/speckit-opsmill-prep` (specify→plan→critique→tasks) *or granular on M/L* | spec·plan·tasks → **`specs/<feature>/`** | parallel framings on `L`; gate: tasks + alignment clean; checkpoint per decision |
+| 3 | **Implement** | `/speckit-opsmill-implement` (preflight→clean-context subagents→review-run→report) *· bug: `/bug-tdd`→`/bug-fix`* | code + `opsmill-implement-report.md` | verify: adversarial skeptic on the report; gate: tests green; checkpoint: fixes accepted |
+| 4 | **Delivery** | `/pre-ci` · `/pr` · `/pr-monitor` · `/qa` | PR + CI → **GitHub PR** | gate: CI green before PR; parallel split assessment; checkpoint → propose Jira *In review* |
+| 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` (+ `capturing-knowledge`, `retrospect`) | knowledge·guidelines·ADR → **`dev/…`** | manual gate: review report first; checkpoint on doc changes → propose Jira *Done* |
 
-**3. A layered reliability model.** Parallelism alone doesn't make results *reliable* — it makes
-them *better at design forks*. Reliability comes from three independent layers:
-- **Gate** — every phase has deterministic exit-criteria; it can't be marked `done` until they pass.
-- **Parallel divergence** — multiple framings + a synthesizer, but only at genuine design forks
-  (spec, plan) and only on M/L.
-- **Adversarial verify** — a skeptic agent tries to *refute* a correctness claim (implement, review).
+## Five orchestration ideas
 
-These sit at opposite ends of the pipeline (divergence before work exists; verification after a
-claim exists), so they rarely stack on one phase. All three stack **only** when a risk flag makes
-the extra cost worth it — because parallel agents share priors and can share a blind spot, and a
-skeptic breaks that correlated error. The user confirms the risk flag; the model doesn't guess it.
+**1. Single entry point.** One skill to run. It classifies the work, tells you where you are, and
+offers the next command — so you never juggle which tool comes next.
 
-## Artifacts as the interface between steps
+**2. Classify first, adapt depth.** Every run opens by classifying `type × size × risk`. Type picks
+the lane (a **bug takes a lighter lane** — `bug-analyze → bug-tdd → bug-fix`, skipping heavy Prep); size
+picks the depth. **The `speckit-opsmill-*` meta-commands run hands-off internally**, so we use them
+whole on size `S` (fast path) but drive the **granular** speckit skills on `M`/`L` so the user
+checkpoints each decision.
 
-Every phase **reads** the upstream artifacts named in `ship.md` and **writes** its own artifact
-back. Nothing is re-derived from scratch. This makes the flow inspectable (open the feature dir and
-read the story), shareable (hand someone the dir), and resumable (the artifacts + `ship.md` are the
-whole state).
+**3. Checkpoints = verify & accept.** The point of the seams is that *you* approve each meaningful
+decision before the next stage. It never runs a whole stage unattended unless you pick the `S` fast-path.
 
-```
-specs/001-user-auth/
-  ship.md        ← manifest: classification, phase status, artifact links
-  spec.md        ← phase 3 (feature)  |  analysis.md ← phase 3 (bug)
-  plan.md
-  tasks.md
-  review.md      ← phase 6
-  retrospective.md ← phase 7
-  → PR URL recorded in ship.md (phase 9), CI status (phase 10)
-```
+**4. Reliability is layered, not just parallel.**
+- **gate** — deterministic exit-criteria on every stage; can't be `done` until they pass.
+- **parallel** — several framings + a synthesizer, only at design forks (specify/plan) on `M`/`L`.
+- **verify** — a skeptic tries to *refute* a correctness claim (after implement & review).
+All three stack on one stage **only** under a risk flag (security, irreversible, …) — the user confirms it.
 
-## Reuse over reimplementation
+**5. External single source of truth.** Inputs/outputs live in their **natural homes** — progress in
+**Jira**, design in **`specs/`**, the build in the **implement report**, knowledge in **`dev/` docs**,
+delivery in the **PR**. `ship.md` is a thin **index** of pointers + per-stage status, not a copy.
+Resume reads the index and **reconciles against the live sources** (Jira status, PR state, files) —
+the source always wins. Jira transitions are **proposed at the checkpoint and applied only on accept**,
+never automatically.
 
-The skill's core rule. Each capability resolves through a priority chain
-(**in-repo skill/command → marketplace plugin → built-in fallback**), so it works in any repo and
-gets better as more tools are installed. These all ship in-repo under `.agents/`:
-`creating-issues`, `creating-prd`, `grilling-ideas`, `/bug-analyze`·`/bug-tdd`·`/bug-fix`, the
-`speckit-*` suite (including `speckit-review-{code,tests,types,errors,comments,simplify}` and
-`speckit-critique-run`), `pruning-residues` (post-implement cleanup of dead code, debug logs, and
-redundant comments), `capturing-knowledge`, `learning-from-review` (distills review lessons),
-`audit-docs`·`add-docs` (docs-consistency audit skills; `/audit-docs`·`/add-docs` commands as fallback), `rebase`, `commit`, `pr`,
-`monitoring-pull-requests` (post-open CI watch), and `speckit-opsmill-retrospect` (retrospective,
-run at the knowledge step).
+## What this replaces
 
-## The pipeline at a glance
-
-| # | Phase | Delegates to | Reliability layers |
-|---|---|---|---|
-| 1 | Classify | (this skill) | checkpoint |
-| 2 | Ticket & branch | `creating-issues`, `/speckit-git-feature` | gate |
-| 3 | Understand | `/bug-analyze` / `grilling-ideas`+`/speckit-specify` | gate (+ parallel on feature M/L) |
-| 4 | Plan | `/speckit-plan`+`/speckit-tasks` | gate + parallel (+ skeptic on risk) |
-| 5 | Implement | `/bug-tdd`+`/bug-fix` / TDD agents · prune residues | gate + adversarial verify |
-| 6 | Review | `speckit-review-run`, `coderabbit`, `/security-review` | gate + parallel + verify |
-| 7 | Knowledge, learning & retrospective | `capturing-knowledge` + `learning-from-review` + `speckit-opsmill-retrospect` + `audit-docs`→`add-docs` | conditional |
-| 8 | CI gate | `/pre-ci` | gate |
-| 9 | Commit & PR | `commit`, `pr`, split assessment | parallel (split) |
-| 10 | CI watch | `monitoring-pull-requests` | gate |
-
-Checkpoints sit between phases; the user can pause, redirect, reclassify, or jump at any of them.
-**Two cleanups keep it consistent:** code residues + stale comments at phase 5 (`pruning-residues`),
-docs & knowledge at phase 7 (`capturing-knowledge` + `audit-docs`).
+The earlier draft had its own 10-phase pipeline that partly re-derived what the framework already
+consolidated. This version **collapses onto the 5 framework stages** and delegates the heavy lifting to
+the `speckit-opsmill-*` meta-commands, keeping only the orchestration (classify · gate · parallel ·
+verify · checkpoints · index) as its own contribution.
 
 ## Open questions for the team
 
-- Is `specs/NNN-slug/` the right home for `ship.md`, or should bug/chore work (which may skip
-  speckit) use a lighter location?
-- Which risk flags actually earn stacked verification in our codebase? Are four too many/few?
-- Should phase 10 (CI watch) block the "done" state, or just report?
-- What's the right default size→depth mapping — is `L` too eager to spin up worktrees + 3–4 agents?
+- Is `specs/<feature>/` the right home for the `ship.md` index, or should bug/chore work use a lighter spot?
+- Which risk flags actually earn stacked verification in our codebase?
+- How far should Jira automation go — propose-on-accept only, or auto-transition on trusted stages?
+- Is the size→depth split right — is `S` too eager to go hands-off via the meta-commands?
 
 ## Status
 
-Draft skill on branch `ple-test-shipping-features-skill`, rebased onto latest `develop` so every
-in-repo tool it delegates to resolves today. A first **pressure-test pass** held: fresh agents kept
-the rules — resume-scan on empty input, classify-don't-over-engineer under time pressure, refuse a
-red CI gate, and never mark a phase done without its gate — under "we're late, skip it" pressure.
-A fuller RED→GREEN→REFACTOR pass is still worthwhile before heavy use.
+Draft skill on branch `ple-test-shipping-features-skill` (PR #9873), rebased onto latest `develop` so
+the framework tools it delegates to resolve today. `learning-from-review` ships **separately** in PR
+#9910; this skill references it as an optional Extract-stage step and degrades cleanly when it's absent.
+A first pressure-test pass held (resume on empty input, classify-don't-over-engineer under time
+pressure, refuse a red CI gate); a fuller RED→GREEN→REFACTOR pass is still worthwhile before heavy use.
