@@ -91,19 +91,20 @@ export function UserPreferencesCard() {
         dateFormatSourceTooltip={dateFormatSourceTooltip}
         timezoneSourceTooltip={timezoneSourceTooltip}
         onSubmit={async (values) => {
-          try {
-            await updatePreferences.mutateAsync(values);
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Preferences updated" />);
-          } catch (error) {
-            toast(
-              <Alert
-                type={ALERT_TYPES.ERROR}
-                message={error instanceof Error ? error.message : "Failed to update preferences"}
-              />
-            );
-            // Re-throw so the shared Form skips its post-submit reset() and stays dirty.
-            throw error;
-          }
+          // mutateAsync still rejects on error, so the shared Form skips its reset() and stays dirty.
+          await updatePreferences.mutateAsync(values, {
+            onSuccess: () => {
+              toast(<Alert type={ALERT_TYPES.SUCCESS} message="Preferences updated" />);
+            },
+            onError: (error) => {
+              toast(
+                <Alert
+                  type={ALERT_TYPES.ERROR}
+                  message={error instanceof Error ? error.message : "Failed to update preferences"}
+                />
+              );
+            },
+          });
         }}
         isSubmitDisabled={updatePreferences.isPending}
       />
