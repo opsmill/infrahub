@@ -11,6 +11,16 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.5) - 2026-07-15
+
+### Fixed
+
+- Fix a race condition for recalculating a diff following a rebase. After a branch is rebased, an asynchronous job is queued to recalculate the diff for that branch. If a user tried to update the diff for that branch or merge the branch before the recalculation completed then they would receive an error like `ResourceNotFoundError: Multiple diffs for branch ... with tracking_id ...`. The diff update logic is now updated to handle post-rebase recalculation correctly if it is reached before the recalculation job. ([#9898](https://github.com/opsmill/infrahub/issues/9898))
+- Removing a node from the schema on a branch and merging that branch no longer fails with a `SchemaNotFoundError`. Schema elements without a persisted id (such as the virtual `profiles` relationship) are now compared by value instead of being reported as spurious additions in the schema diff. ([#9899](https://github.com/opsmill/infrahub/issues/9899))
+- Fresh installations now persist the deprecated-model markers, so the core-schema diff computed by `infrahub upgrade` starts out empty instead of always reporting `LineageSource` and `LineageOwner` as changed on an up-to-date installation.
+- Merging a rebased branch now computes schema migrations against the rebase point, so schema changes the rebase already incorporated from the destination branch are no longer counted a second time.
+- Schema errors raised during background operations (such as `SchemaNotFoundError`) now surface the actual error instead of an unrelated serialization `TypeError`.
+
 ## [Infrahub - v1.10.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.4) - 2026-07-13
 
 ### Added
