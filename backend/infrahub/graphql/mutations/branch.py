@@ -7,7 +7,7 @@ from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
-from infrahub.branch.status_checker import BranchStatusChecker
+from infrahub.branch.status_checker import MERGE_RECOVERY_REQUIRED_MESSAGE, BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
@@ -17,7 +17,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import retry_db_transaction
-from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, MergeRecoveryRequiredError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.context import ContextInput
@@ -153,6 +153,13 @@ class BranchDelete(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+
+        # A branch left in MERGE_FAILED by a died merge must not be deleted until an administrator has
+        # recovered it.
+        if obj.status == BranchStatus.MERGE_FAILED:
+            raise MergeRecoveryRequiredError(
+                identifier=obj.name, message=MERGE_RECOVERY_REQUIRED_MESSAGE, merging_branch=obj.name
+            )
 
         # Branch deletes are exempt from the merge write gate, but must verify that the branch being deleted is
         # not the one being merged
