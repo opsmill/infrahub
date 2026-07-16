@@ -11,7 +11,7 @@ import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from infrahub_sdk.exceptions import Error as InfrahubSdkError
-from infrahub_sdk.exceptions import ValidationError
+from infrahub_sdk.exceptions import GraphQLError, ValidationError
 from infrahub_sdk.graphql.query_renderer import render_query
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
@@ -362,6 +362,24 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
         )
 
+    async def _delete_object_removed_from_repository(self, node: InfrahubNode, object_label: str, name: str) -> None:
+        """Delete a repository-managed object that is no longer defined in the repository config.
+
+        The delete can be rejected when a historical node still holds the object through a
+        mandatory relationship (for example a validator that evaluated a check definition and
+        pins it after the check is renamed or removed). Such a blocked cleanup must not abort
+        the whole import: log a warning and leave the object in place so the rest of the import
+        completes and the commit advances.
+        """
+        log = get_run_logger()
+        try:
+            await node.delete()
+        except GraphQLError as exc:
+            log.warning(
+                f"Unable to delete {object_label} {name!r} because it is still referenced by another node; "
+                f"leaving it in place. ({exc})"
+            )
+
     @task(name="import-jinja2-transforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)
     async def import_jinja2_transforms(
         self,
@@ -466,7 +484,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for transform_name in only_graph:
             log.info(f"Jinja2 Transform '{transform_name}' not found locally in branch {branch_name}, deleting")
-            await transforms_in_graph[transform_name].delete()
+            await self._delete_object_removed_from_repository(
+                node=transforms_in_graph[transform_name], object_label="Jinja2 Transform", name=transform_name
+            )
 
     async def create_jinja2_transform(self, branch_name: str, data: InfrahubRepositoryJinja2) -> CoreTransformJinja2:
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
@@ -854,7 +874,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         for query_name in only_graph:
             graph_query = queries_in_graph[query_name]
             log.info(f"Graphql Query {query_name!r} not found locally, deleting")
-            await graph_query.delete()
+            await self._delete_object_removed_from_repository(
+                node=graph_query, object_label="Graphql Query", name=query_name
+            )
 
     async def create_graphql_query(self, branch_name: str, name: str, query_string: str) -> CoreGraphQLQuery:
         data = {"name": name, "query": query_string, "repository": self.id}
@@ -974,7 +996,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for check_name in only_graph:
             log.info(f"CheckDefinition '{check_name!r}' not found locally, deleting")
-            await check_definition_in_graph[check_name].delete()
+            await self._delete_object_removed_from_repository(
+                node=check_definition_in_graph[check_name], object_label="CheckDefinition", name=check_name
+            )
 
     @task(name="import-generator-definitions", task_run_name="Import Generator Definitions", cache_policy=NONE)
     async def import_generator_definitions(
@@ -1056,7 +1080,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for generator_name in only_graph:
             log.info(f"GeneratorDefinition '{generator_name!r}' not found locally, deleting")
-            await generator_definition_in_graph[generator_name].delete()
+            await self._delete_object_removed_from_repository(
+                node=generator_definition_in_graph[generator_name],
+                object_label="GeneratorDefinition",
+                name=generator_name,
+            )
 
     async def _generator_requires_update(
         self,
@@ -1204,7 +1232,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for transform_name in only_graph:
             log.info(f"TransformPython {transform_name!r} not found locally, deleting")
-            await transform_definition_in_graph[transform_name].delete()
+            await self._delete_object_removed_from_repository(
+                node=transform_definition_in_graph[transform_name], object_label="TransformPython", name=transform_name
+            )
 
     async def _load_yamlfile_from_disk(self, paths: list[Path], file_type: type[YamlFileVar]) -> list[YamlFileVar]:
         data_files = file_type.load_from_disk(paths=paths)
