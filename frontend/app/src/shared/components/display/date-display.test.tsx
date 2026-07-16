@@ -42,10 +42,22 @@ describe("DateDisplay", () => {
     await expect.element(component.getByText("2 days ago")).toBeVisible();
   });
 
-  test("compact branch: old date shows compact 'd MMM' style, not full datetime", async () => {
+  test("compact branch: old date renders the preferred date (honouring format + timezone)", async () => {
+    // > 7 days old, so the compact branch fires. It must use the preferred date pattern in the
+    // preferred zone — 2026-01-15 14:30 UTC is still 2026-01-15 in Paris — not a fixed browser-zone
+    // "d MMM" string.
     const old = new Date("2026-01-15T14:30:00Z");
     const component = await render(withPrefs(<DateDisplay date={old} />));
-    await expect.element(component.getByText("15 Jan")).toBeVisible();
+    await expect.element(component.getByText("2026-01-15")).toBeVisible();
+  });
+
+  test("compact branch: falls back to the browser-locale date when no preference is set", async () => {
+    const old = new Date("2026-01-15T14:30:00Z");
+    const component = await render(
+      withPrefs(<DateDisplay date={old} />, { pattern: null, timezone: null })
+    );
+    // No preferred pattern → locale medium date; not the old fixed "d MMM" and not a full datetime.
+    await expect.element(component.getByText(/Jan.*2026|2026.*Jan|1\/15\/2026/)).toBeVisible();
   });
 
   test('variant="datetime" renders the preferred pattern + timezone inline', async () => {
@@ -70,7 +82,7 @@ describe("DateDisplay", () => {
     // Compact inline text (old date) is the trigger; the tooltip carries the full preferred
     // datetime. The trigger is a React Aria non-interactive (span) trigger — the browser harness
     // can't reliably emulate the pointer `useHover` needs, but focus opens the tooltip just as well.
-    (component.getByText("15 Jan").element() as HTMLElement).focus();
+    (component.getByText("2026-01-15").element() as HTMLElement).focus();
 
     // Paris wall clock for 2026-01-15 09:30 UTC (CET, UTC+1) is 10:30.
     await expect

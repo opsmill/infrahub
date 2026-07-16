@@ -4,7 +4,7 @@ import type React from "react";
 
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDateWithTz, isInPreviousYear } from "@/shared/utils/date";
+import { formatFullDateWithTz } from "@/shared/utils/date";
 
 type DateDisplayProps = {
   date?: number | string | Date | null;
@@ -62,12 +62,16 @@ export const DateDisplay = ({
     return wrap(formatDate(dateData, "datetime"));
   }
 
+  // Explicit pattern escape hatch: render exactly this pattern inline (no heuristic, no preference).
+  if (dateFormat) {
+    return wrap(format(dateData, dateFormat));
+  }
+
   const distanceFromNow = differenceInDays(new Date(), dateData);
 
-  // Compact branch: > 7 days old, or an explicit dateFormat escape hatch was provided.
-  if (distanceFromNow > 7 || dateFormat) {
-    const newDateFormat = dateFormat ?? (isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM");
-    return wrap(format(dateData, newDateFormat));
+  // Compact branch: > 7 days old → the user's preferred date, honouring their format + timezone.
+  if (distanceFromNow > 7) {
+    return wrap(formatDate(dateData, "date"));
   }
 
   // Relative branch: recent dates with no override.

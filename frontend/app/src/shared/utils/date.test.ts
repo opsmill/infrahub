@@ -14,7 +14,7 @@ describe("formatDate (pure)", () => {
   });
 
   test("renders the same instant differently in another timezone", () => {
-    // America/New_York is UTC-4 in June (EDT) → 10:30 wall clock, previous handling of the day.
+    // America/New_York is UTC-4 in June (EDT) → 10:30 wall clock, same calendar day.
     expect(
       formatDate(FIXED_INSTANT, { pattern: "yyyy-MM-dd HH:mm", timezone: "America/New_York" })
     ).toBe("2026-06-11 10:30");
