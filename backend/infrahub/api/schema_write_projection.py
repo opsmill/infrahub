@@ -46,7 +46,8 @@ def _project_model(data: Any, model: type[BaseModel]) -> Any:
         key = name if name in data else (info.alias if info.alias in data else None)
         if key is None:
             continue
-        projected[key] = _project_value(data[key], hints.get(name, info.annotation), info.discriminator)
+        discriminator = info.discriminator if isinstance(info.discriminator, str) else None
+        projected[key] = _project_value(data[key], hints.get(name, info.annotation), discriminator)
     return projected
 
 
@@ -54,7 +55,11 @@ def _project_value(value: Any, annotation: Any, discriminator: str | None = None
     # Annotated[...] (used for the discriminated unions): unwrap to the base + its discriminator.
     if hasattr(annotation, "__metadata__"):
         nested = next(
-            (m.discriminator for m in annotation.__metadata__ if isinstance(m, FieldInfo) and m.discriminator),
+            (
+                m.discriminator
+                for m in annotation.__metadata__
+                if isinstance(m, FieldInfo) and isinstance(m.discriminator, str)
+            ),
             None,
         )
         return _project_value(value, annotation.__origin__, nested or discriminator)
