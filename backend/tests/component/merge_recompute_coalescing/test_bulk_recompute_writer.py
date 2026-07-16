@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
-    MAX_RECOMPUTE_CHAIN_DEPTH,
+    RECOMPUTE_CHAIN_DEPTH_FLOOR,
+    max_recompute_chain_depth,
     submit_recompute_chain,
 )
 from infrahub.core.node import Node
@@ -334,15 +335,43 @@ async def test_chain_stops_at_the_depth_bound(
     recorder = WorkflowRecorder()
     written = [WrittenNode(node_id="l2-node", kind=chain_kind(2), fields=("summary",))]
 
-    # At the bound the next level would exceed it, so a cyclic schema cannot chain without end.
+    # Starting at the bound, the next level would exceed it, so a cyclic schema cannot chain without end.
+    bound = max_recompute_chain_depth(schema_branch)
     submissions = await submit_recompute_chain(
         written=written,
         schema_branch=schema_branch,
         branch=default_branch.name,
         workflow=recorder,
         context=_event_context(),
-        depth=MAX_RECOMPUTE_CHAIN_DEPTH,
+        depth=bound,
     )
 
     assert submissions == []
     assert recorder.submit_calls == []
+
+
+async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncated(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A schema with more targets than the floor raises the bound, so a deep chain is not truncated."""
+    await load_chain_schema(db=db, levels=12)
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    assert max_recompute_chain_depth(schema_branch) > RECOMPUTE_CHAIN_DEPTH_FLOOR
+
+    recorder = WorkflowRecorder()
+    written = [WrittenNode(node_id="l2-node", kind=chain_kind(2), fields=("summary",))]
+    # Level 3 reads level 2's summary; at the floor depth the derived bound still dispatches it.
+    submissions = await submit_recompute_chain(
+        written=written,
+        schema_branch=schema_branch,
+        branch=default_branch.name,
+        workflow=recorder,
+        context=_event_context(),
+        depth=RECOMPUTE_CHAIN_DEPTH_FLOOR,
+    )
+
+    assert submissions
+    assert all(submission.family == COMPUTED_ATTRIBUTE for submission in submissions)

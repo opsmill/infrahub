@@ -61,7 +61,7 @@ Writes commit per chunk and emit before the next chunk runs, so the write is not
 
 A recompute write can feed a value that reads it on another node. On a coalesced pass, after the bulk write, `submit_recompute_chain` treats the writes as a new change set and dispatches the next coalesced level for their readers. Each level carries an incremented `recompute_depth`.
 
-An empty write set dispatches nothing, which is the normal stop: an acyclic dependency graph settles on its own because each level only writes the values that actually changed. `MAX_RECOMPUTE_CHAIN_DEPTH` (`recompute_coalescing.py`) is the backstop that stops a cyclic or self-referential schema from chaining without end. Reaching it logs a warning naming the nodes left unrecomputed.
+An empty write set dispatches nothing, which is the normal stop: an acyclic dependency graph settles on its own because each level only writes the values that actually changed. The depth bound only guards a cyclic or self-referential schema, which never settles. It is derived from the schema (`max_recompute_chain_depth` in `recompute_coalescing.py`): a chain cannot recompute more derived values than the schema defines, so the bound is the derived-value target count, with a floor. That never truncates a real acyclic chain, however deep, and still stops a cyclic one. Reaching it logs a warning that the graph is likely cyclic and names the nodes left unrecomputed.
 
 ## Live path vs coalesced path
 
@@ -76,7 +76,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 
 | File | What |
 |------|------|
-| `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `submit_recompute_chain`, `MAX_RECOMPUTE_CHAIN_DEPTH` |
+| `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `submit_recompute_chain`, `max_recompute_chain_depth` |
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |
 | `core/recompute/dispatch.py` | `persist_and_chain` (bulk write, then chain on a coalesced pass) |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |

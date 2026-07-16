@@ -38,10 +38,8 @@ DELETED = "deleted"
 
 _SELF_FILTER = "ids"
 
-# A recompute write can feed a value that reads it, so each coalesced pass can dispatch another. The
-# per-level value-change filter settles an acyclic dependency graph on its own; this bound is the
-# backstop that stops a cyclic or self-referential schema from chaining without end.
-MAX_RECOMPUTE_CHAIN_DEPTH = 10
+# Floor for the schema-derived chain bound; the bound only guards a cyclic schema.
+RECOMPUTE_CHAIN_DEPTH_FLOOR = 10
 
 
 @dataclass(frozen=True)
@@ -428,6 +426,20 @@ class MergeRecomputeCoordinator:
         return await self.submitter.submit(coalesced=coalesced, context=context)
 
 
+def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
+    """Chain-depth bound from the schema's derived-value target count (floored).
+
+    A chain can't recompute more targets than the schema has, so this never truncates a real chain
+    while still stopping a cyclic schema.
+    """
+    target_count = (
+        len(schema_branch.computed_attributes.get_jinja2_target_map())
+        + len(schema_branch.display_labels.get_template_nodes())
+        + len(schema_branch.hfids.get_template_nodes())
+    )
+    return max(RECOMPUTE_CHAIN_DEPTH_FLOOR, target_count)
+
+
 async def submit_recompute_chain(
     *,
     written: list[WrittenNode],
@@ -436,21 +448,23 @@ async def submit_recompute_chain(
     workflow: InfrahubWorkflow,
     context: EventContext,
     depth: int,
-    max_depth: int = MAX_RECOMPUTE_CHAIN_DEPTH,
+    max_depth: int | None = None,
 ) -> list[CoalescedSubmission]:
     """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass.
 
-    The writes are treated as a change set and coalesced the same way a merge or rebase change set
-    is, so values that read them recompute without one per-node event triggering one flow per node.
-    An empty set of writes dispatches nothing, which is what stops the chain at its fixpoint;
-    ``max_depth`` is the backstop that stops a cyclic schema from chaining without end.
+    The writes are coalesced like a merge or rebase change set, so their readers recompute without a
+    per-node event per node. An empty write set stops the chain; the schema-derived depth bound is the
+    backstop for a cyclic schema.
     """
     if not written:
         return []
+    if max_depth is None:
+        max_depth = max_recompute_chain_depth(schema_branch)
     next_depth = depth + 1
     if next_depth > max_depth:
         log.warning(
-            "Recompute chain reached its depth bound (%s) on branch %s; leaving %s node(s) unrecomputed: %s",
+            "Recompute chain exceeded its bound (%s) on branch %s; the derived-value dependency graph "
+            "is likely cyclic. Leaving %s node(s) unrecomputed: %s",
             max_depth,
             branch,
             len(written),
