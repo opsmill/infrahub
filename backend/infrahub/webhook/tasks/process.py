@@ -72,20 +72,23 @@ async def _cancellation_requested() -> bool:
 
 
 async def _record_http_capture(capture: CapturedHttp) -> None:
-    """Persist the delivery's captured request/response/error as an artifact on this run.
+    """Record the delivery capture as an artifact on this run.
 
-    Written on every attempt under a fixed key; the reader keeps the most recent, so the surfaced
-    capture reflects the last attempt. Outside a flow run there is nothing to attach the artifact to.
+    Best-effort telemetry: a write failure is logged and swallowed, never raised, so it cannot turn a
+    successful delivery into a failure or mask a classified one.
     """
     if flow_run.id is None:
         return
-    async with get_prefect_client(sync_client=False) as client:
-        await PrefectClientAdapter(client).create_artifact(
-            key=WEBHOOK_HTTP_ARTIFACT_KEY,
-            artifact_type=WEBHOOK_HTTP_ARTIFACT_TYPE,
-            data=capture.to_artifact_data(),
-            flow_run_id=UUID(flow_run.id),
-        )
+    try:
+        async with get_prefect_client(sync_client=False) as client:
+            await PrefectClientAdapter(client).create_artifact(
+                key=WEBHOOK_HTTP_ARTIFACT_KEY,
+                artifact_type=WEBHOOK_HTTP_ARTIFACT_TYPE,
+                data=capture.to_artifact_data(),
+                flow_run_id=UUID(flow_run.id),
+            )
+    except Exception as exc:
+        get_run_logger().warning(f"Could not record the delivery capture: {exc}")
 
 
 async def webhook_post(
