@@ -7,7 +7,7 @@ on:
     paths-ignore:
       - "**/*.md"
   bots:
-    - "infrahub-bug-pipeline[bot]"
+    - "opsmill-bug-pipeline[bot]"
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
@@ -56,7 +56,7 @@ steps:
       fi
 
       COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-        --jq "[.[] | select((.user.login == \"infrahub-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
+        --jq "[.[] | select((.user.login == \"opsmill-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
           and (.body | contains(\"$MARKER\")))] | length")
 
       if [ "$COUNT" -gt 0 ]; then
