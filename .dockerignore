@@ -3,6 +3,7 @@
 script.py
 node_modules
 .venv
+**/.venv
 .ruff_cache
 **/.ruff_cache
 .mypy_cache
@@ -15,6 +16,10 @@ node_modules
 coverage.xml
 # Exclude git dotfiles but NOT .git/ itself — the Dockerfile bind-mounts .git/ at build time so
 # hatch-vcs can resolve the version. .git/ is kept out of the image by COPY --exclude=.git.
+# .python-version pins 3.12 for local dev; keep it out of the build so uv does not rebuild the
+# venv against a different interpreter than the base image (see UV_PYTHON_* in development/Dockerfile).
+.python-version
+
 .gitignore
 .gitmodules
 .gitattributes

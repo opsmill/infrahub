@@ -12,6 +12,13 @@ ENV PYTHONUNBUFFERED=1
 # uv installs to /root/.local/bin
 ENV PATH="${PATH}:/root/.local/bin"
 
+# Force uv to build the virtualenv against this image's own system Python and never download a
+# managed interpreter. A managed CPython would live under /root/.local/share/uv/python — a path the
+# runtime `backend` stage does not copy — leaving /.venv's interpreter dangling and every console
+# script (uvicorn, gunicorn, prefect, ...) failing to exec.
+ENV UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON_PREFERENCE=only-system
+
 # Build toolchain only: build-essential/pkg-config compile any dependency that has no wheel,
 # uv installs the dependencies. None of this is needed at runtime — the final `backend` stage
 # copies only the built virtualenv, so this bloat stays out of the shipped image.
