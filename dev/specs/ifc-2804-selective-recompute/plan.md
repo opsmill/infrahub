@@ -24,6 +24,24 @@ untouched. No database schema is added (fingerprint already exists). The governi
 invariant is inherited: **over-regenerate, never under-regenerate** - null fingerprints,
 no-watch transforms, and any indeterminate state all lead to recompute.
 
+The lifecycle flow has a **second, non-negotiable duty**. Besides the recompute fan-out,
+it must reconcile the **data-path (node-input) automations** -
+`ComputedAttrPythonTriggerDefinition` / `ComputedAttrPythonQueryTriggerDefinition`
+(`computed_attribute/models.py:213,277`) - that recompute an attribute when a node feeding
+the transform's query changes. Today `computed_attribute_setup_python`
+(`tasks.py:519-612`) does this reconciliation as a side effect on every commit via
+`setup_triggers(..., TriggerType.COMPUTED_ATTR_PYTHON)` and
+`setup_triggers(..., TriggerType.COMPUTED_ATTR_PYTHON_QUERY)` (`tasks.py:597-612`, using
+`gather_trigger_computed_attribute_python` at `tasks.py:538`). The schema trigger
+(`TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA`) fires only on a real schema diff, so it does
+**not** cover a transform-only import. If the commit trigger is removed without moving this
+reconciliation, a transform-only import leaves the data-path automations unbuilt and a
+later node-input change silently fails to recompute -> permanently stale values, a direct
+violation of the invariant. So the new lifecycle flow runs the same two `setup_triggers`
+calls on **every** create / update / delete event. This is more precise than the old
+commit sweep (it runs on transform events only, not on every commit). The schema path is
+unchanged and still reconciles + scoped-recomputes on schema change.
+
 ## Technical Context
 
 **Language/Version**: Python 3.14 (backend only). No SDK change; no frontend change.
@@ -82,7 +100,7 @@ Evaluated against `.agents/rules/backend-component-design.md`,
 
 One correctness note surfaced during Phase 0 and folded into the design (not a violation):
 the epic assumes a `RECOMPUTE` node-mutation origin that does not exist in the code
-(`events/constants.py` has only LIVE/MERGE/REBASE). Loop safety (FR-011) is provided by
+(`events/constants.py` has only LIVE/MERGE/REBASE). Loop safety (FR-013) is provided by
 the kind+field match, not by origin. See research Decision 3.
 
 *Re-check after Phase 1 design: still PASS. The design adds no schema, no migration, no
@@ -110,13 +128,26 @@ backend/infrahub/computed_attribute/
 ├── triggers.py          # REMOVE TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT;
 │                        #   ADD three BuiltinTriggerDefinition (create/update/delete)
 │                        #   on CoreTransformPython lifecycle. Keep TRIGGER_..._ALL_SCHEMA.
-├── tasks.py             # ADD process_transform_lifecycle flow: resolve transform ->
-│                        #   attributes, submit TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
-│                        #   per PythonDefinition. Reuse existing trigger_update_python_*.
-├── recompute_resolution.py   # NEW small pure component: (branch, transform name) ->
+├── tasks.py             # ADD process_transform_lifecycle flow, TWO duties:
+│                        #   (1) recompute (create + update-of-fingerprint): resolve
+│                        #       transform -> attributes, submit
+│                        #       TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES per
+│                        #       PythonDefinition (reuse trigger_update_python_*).
+│                        #   (2) reconcile data-path automations on EVERY event
+│                        #       (create/update/delete): run
+│                        #       setup_triggers(COMPUTED_ATTR_PYTHON) and
+│                        #       setup_triggers(COMPUTED_ATTR_PYTHON_QUERY) via
+│                        #       gather_trigger_computed_attribute_python. Delete relies on
+│                        #       setup_triggers' to_delete = existing - desired diff to drop
+│                        #       the gone transform's automation. NOT a no-op.
+├── recompute_resolution.py   # NEW small pure component: (branch, transform name-or-id) ->
 │                             #   list[PythonDefinition] via python_attributes_by_transform.
+│                             #   Look up by BOTH name and id (mapping.get(name) or
+│                             #   mapping.get(id)); empty -> return before any node fetch.
 │                             #   (Or inline in tasks.py if trivial; keep it unit-testable.)
-└── gather.py, models.py, scoping.py   # UNCHANGED (data-path + schema-path stay as-is)
+└── gather.py, models.py, scoping.py   # UNCHANGED as modules; gather.py's
+                             #   gather_trigger_computed_attribute_python is now ALSO called
+                             #   from the lifecycle flow (schema path still calls it too).
 
 backend/infrahub/trigger/catalogue.py   # REMOVE TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT
                                         #   from builtin_triggers; ADD the three new ones.
@@ -138,8 +169,11 @@ changelog/+ifc-2804.changed.md   # NEW changelog fragment (behaviour change + ro
 `computed_attribute` package and the trigger catalogue. The recompute fan-out
 (`trigger_update_python_computed_attributes`) and per-node compute
 (`process_transform_for_node`) are reused unchanged; only the entry point that decides
-*which* attributes to recompute is replaced. A new pure resolver keeps the decision
-unit-testable without a stack, per `backend-component-design`.
+*which* attributes to recompute is replaced. The lifecycle flow also assumes the data-path
+reconciliation duty (`setup_triggers` for `COMPUTED_ATTR_PYTHON` /
+`COMPUTED_ATTR_PYTHON_QUERY`) that the removed commit trigger did as a side effect, so no
+reconciliation is lost. A new pure resolver keeps the recompute decision unit-testable
+without a stack, per `backend-component-design`.
 
 ## Phase 0: Research (see research.md)
 
@@ -150,13 +184,21 @@ Resolved decisions, each grounded in file:line evidence:
    already react to (circular). Static triggers resolve transform->attributes at task time
    from live schema; nothing per-transform to create or delete.
 2. **Reuse `trigger_update_python_computed_attributes` for fan-out; add a new lifecycle
-   flow rather than parameterize `computed_attribute_setup_python`** (which also reconciles
-   automations and must stay on the schema path).
-3. **origin=LIVE excludes merge/rebase (FR-010); kind+field excludes the recompute loop
-   (FR-011).** Correcting the epic: there is no RECOMPUTE origin.
-4. **Create trigger does the first computation; update trigger does selective recompute;
-   delete trigger is a no-op under the static model** (no per-transform automation exists).
-5. **Null-fingerprint self-heal is automatic** - a null->value write is an ordinary
+   flow rather than parameterize `computed_attribute_setup_python`.** The schema flow keeps
+   its `changed_elements` scoping and stays on the schema path. But the lifecycle flow must
+   still run the data-path `setup_triggers` reconciliation that the removed commit trigger
+   did as a side effect (`tasks.py:597-612`), so a transform-only import does not leave the
+   node-input automations unbuilt. See research Decision 5.
+3. **origin=LIVE excludes merge/rebase (FR-012); kind+field excludes the recompute loop
+   (FR-013).** Correcting the epic: there is no RECOMPUTE origin.
+4. **Create trigger does first compute + reconcile; update trigger does selective recompute
+   + reconcile; delete trigger reconciles (drops the gone transform's data-path
+   automation).** Delete is NOT a no-op: `setup_triggers`' `to_delete = existing - desired`
+   diff removes the removed transform's node-input automation (research Decision 5).
+5. **Resolve transform -> attributes by name OR id** (FR-010): a computed attribute may
+   wire its transform either way; look up by both. Empty resolution returns before any node
+   fetch. On an empty lookup where recompute might be needed, default toward recompute.
+6. **Null-fingerprint self-heal is automatic** - a null->value write is an ordinary
    attribute change the update trigger matches; no null-specific code.
 
 ## Phase 1: Design & Contracts (see data-model.md, contracts/)
@@ -169,15 +211,25 @@ Resolved decisions, each grounded in file:line evidence:
   fan-out to `TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES`, and a table contrasting the new
   path with the removed commit path.
 
-### Removal impact (FR-009), grep-confirmed
+### Removal impact (FR-011), grep-confirmed
 
 - `TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT` is referenced only in
   `computed_attribute/triggers.py` (definition) and `trigger/catalogue.py:19`
   (registration). No test references it. Removing both leaves no dangling import.
+- **Reconciliation is NOT dropped by the removal.** `computed_attribute_setup_python`
+  (`tasks.py:519-612`) did two jobs on every commit: the recompute fan-out (`tasks.py:586-595`)
+  AND the data-path automation reconciliation via `setup_triggers(..., COMPUTED_ATTR_PYTHON)`
+  and `setup_triggers(..., COMPUTED_ATTR_PYTHON_QUERY)` (`tasks.py:597-612`, gathered by
+  `gather_trigger_computed_attribute_python` at `tasks.py:538`). Removing the commit trigger
+  drops the per-commit recompute sweep, but the lifecycle flow now runs the same two
+  `setup_triggers` calls on every create / update / delete. So the node-input automations are
+  still reconciled - more precisely, on transform events only, not on every commit. Without
+  this move a transform-only import (no schema diff) would leave them unbuilt. See research
+  Decision 5.
 - `TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA` (`triggers.py:29`, `SchemaUpdatedEvent` +
   `BranchDeletedEvent`) is independent and stays. It still drives
   `computed_attribute_setup_python` with `changed_elements` forwarded, so schema-scoped
-  Python recompute keeps working.
+  Python recompute and its reconciliation keep working on schema change.
 - The coalesced merge/rebase recompute (`core/merge/recompute_coalescing`, invoked from
   `post_merge.py`, `branch/tasks.py`) is independent and stays.
 - `CommitUpdatedEvent` (`git/integrator.py:399`) is still emitted; only the
@@ -199,7 +251,10 @@ Per `.agents/rules/testing-python.md` (no mocks; adapter/protocol; mirror source
 
 - `test_recompute_resolution.py` (new): the pure resolver. Given a schema branch with a
   transform feeding one, many, and zero attributes, assert the resolved
-  `list[PythonDefinition]` is exactly the tied attributes and nothing else. No stack.
+  `list[PythonDefinition]` is exactly the tied attributes and nothing else. Include a case
+  where the computed attribute wires its transform by **UUID** (not name) and assert it
+  resolves to the same attribute(s) (SC-011, FR-010): the lookup checks both name and id.
+  The zero case returns `[]` before any node fetch (SC-010 cheap empty path). No stack.
 - `test_triggers.py` (extend): assert the three new `BuiltinTriggerDefinition` objects
   have the expected `events`, `match` (kind + origin=LIVE), and `match_related`
   (role + `field.name == ["fingerprint"]` on update). Assert
@@ -222,12 +277,28 @@ workflows through the workflow adapter (no mocks).
   recompute on the revert import.
 - **US4 no-watch -> per-commit but scoped**: no-watch transform A + watch-declared B;
   unrelated commit; assert A recomputed, B not.
-- **US5 delete -> no further recompute**: import (attribute populated); delete the
-  transform; import; assert subsequent commits produce zero recompute for that attribute
-  and no lifecycle recompute fires (resolution yields `[]`).
+- **US5 delete -> no further recompute + data-path teardown**: import (attribute populated,
+  node-input automation built); delete the transform; import; assert (a) subsequent node/data
+  changes and commits produce zero recompute for that attribute, and (b) the data-path
+  (node-input) automation for the removed transform no longer exists after the delete-event
+  `setup_triggers` run (SC-007). The delete event is not a no-op.
 - **US6 null-fingerprint first import -> exactly one recompute**: start from a transform
   with null fingerprint (pre-feature state); import once; assert fingerprint stamped and
   one recompute; import again (no change) -> zero further recompute.
+- **Data-path axis after a transform-only import (the test that would have caught the
+  CRITICAL)**: import a NEW transform (no schema diff), then change a NODE that feeds the
+  transform's query, and assert the attribute recomputes (SC-010). This proves the lifecycle
+  flow built the node-input automation even though the schema path never ran. Without the
+  `setup_triggers` reconciliation on the create/update event, this recompute would silently
+  never happen.
+- **UUID-configured transform resolves correctly (SC-011, FR-010)**: a computed attribute
+  wires its transform by UUID (not name); change the transform; assert the attribute
+  recomputes exactly as it would for a name-wired attribute.
+- **First import produces exactly one recompute per transform (SC-012, FR-015)**: on a
+  transform's first import, assert exactly one recompute fires for it - guard against a
+  create AND a separate update in the same import double-firing. (Open item: trace the
+  importer's create-vs-update branch to confirm a single write per import; if both can
+  occur, the flow must dedupe.)
 - **Origin / merge-rebase no-double-fire**: create the attribute on a branch, merge (or
   rebase) into main; assert the coalesced path handles recompute and the lifecycle trigger
   does **not** double-fire (fingerprint replay carries MERGE/REBASE origin). Assert a
@@ -250,13 +321,30 @@ workflows through the workflow adapter (no mocks).
   `fingerprint` is in the create changelog. This is intentional (first compute must not
   depend on fingerprint presence) but means a create with an unusual (null) fingerprint
   still triggers one recompute - acceptable over-regeneration, aligned with the invariant.
-- **R3 - Delete-trigger scope.** Under the static model the delete trigger removes nothing
-  per-transform. If a reviewer expects a per-transform automation to be enumerated and
-  deleted (the epic's "per-attribute automation" wording), that expectation is met
-  vacuously (none exists). Documented in research Decision 5; the US5 test proves absence
-  of further recompute rather than absence of a specific automation.
-- **R4 - Resolution keyed by name while event carries id.** The workflow must resolve id
-  -> name before the `python_attributes_by_transform` lookup. A stale schema branch could
-  in theory resolve to `[]` and under-regenerate; mitigated because
-  `trigger_update_python_computed_attributes` and `process_transform` already resolve
-  transforms against the same live schema, and the fan-out re-reads nodes at run time.
+- **R3 - Delete does real teardown, not a no-op.** The delete trigger runs the data-path
+  `setup_triggers` reconciliation; its `to_delete = existing - desired` diff drops the gone
+  transform's node-input automation. The risk is the reverse of the old framing: if the
+  delete event did NOT run `setup_triggers`, a node-input automation for a removed transform
+  would leak and keep firing (or fail). Mitigation: the US5 test asserts the automation is
+  gone after the delete import and that no further recompute fires.
+- **R4 - Resolution must handle name OR id.** A computed attribute may wire its transform by
+  either name or UUID (`core/schema/computed_attribute.py:12`), and
+  `python_attributes_by_transform` is keyed by that raw value
+  (`core/schema/schema_branch_computed/python_transform.py:96-99`). The event carries the
+  transform id. The resolver looks up by both (`mapping.get(name) or mapping.get(id)`). On an
+  empty lookup where recompute might be needed, it defaults toward recompute and logs loudly,
+  never silently skipping (FR-010, the over-regenerate invariant). The unit test covers the
+  UUID-wired case.
+- **R5 - Import-context permission for the recompute write.** The import write builds an
+  `AnonymousSession` context (`git/integrator.py`), while the recompute write goes through a
+  permission gate (`graphql/mutations/computed_attribute.py`). If the node-event context on
+  the import write does not carry an account id sufficient for the recompute permission
+  check, the fan-out could be rejected and the feature would silently under-regenerate on
+  import. Mitigation: verify the import write's context carries a sufficient account id, and
+  the US2/US6/data-path integration tests assert recompute actually happens on import.
+- **R6 - Create AND update in the same first import (double-fire).** The importer must write
+  a transform exactly once per import (create XOR update). If the importer's branch can both
+  create a transform and then separately update its fingerprint in one import, the first
+  import could fire two recomputes. Open item: trace the importer's create-vs-update branch
+  to confirm a single write per import; if both can occur, the lifecycle flow must dedupe.
+  The SC-012 test asserts exactly one recompute per transform on first import.

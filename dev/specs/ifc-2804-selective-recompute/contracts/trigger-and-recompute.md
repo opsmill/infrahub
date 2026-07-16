@@ -67,17 +67,18 @@ EventTrigger(
 )
 ```
 
-Fires when a `CoreTransformPython` node is deleted by a live edit. Under the static-trigger
-model there is no per-transform automation to remove, so this trigger's workflow is a
-no-op/log (research Decision 5). Registered for symmetry and testability.
+Fires when a `CoreTransformPython` node is deleted by a live edit. The delete workflow is
+NOT a no-op: it runs the data-path (node-input) automation reconciliation (section 3.5), so
+the removed transform's node-input automation is dropped by `setup_triggers`' `to_delete`
+diff (research Decision 5). It does not fan out a recompute (the transform is gone).
 
 ### 1.4 Match semantics (why each clause is load-bearing)
 
 | Clause                                   | Requirement it satisfies | Mechanism |
 |------------------------------------------|--------------------------|-----------|
-| `infrahub.node.kind == CoreTransformPython` | FR-016 (scope), FR-011 (loop) | A recompute write targets the attribute's own node kind, never the transform kind, so it cannot match. |
-| `NODE_ORIGIN_LABEL == live`              | FR-010 (no merge/rebase double-fire) | Merge stamps MERGE, rebase stamps REBASE; neither matches `live`. |
-| `field.name == fingerprint` (update)     | FR-007 (fingerprint-only) | Other attribute edits on the transform emit a different `field.name` and do not match. |
+| `infrahub.node.kind == CoreTransformPython` | FR-018 (scope), FR-013 (loop) | A recompute write targets the attribute's own node kind, never the transform kind, so it cannot match. |
+| `NODE_ORIGIN_LABEL == live`              | FR-012 (no merge/rebase double-fire) | Merge stamps MERGE, rebase stamps REBASE; neither matches `live`. |
+| `field.name == fingerprint` (update)     | FR-008 (fingerprint-only) | Other attribute edits on the transform emit a different `field.name` and do not match. |
 
 **Correction to the epic's assumption.** The epic states loop safety comes from a
 `RECOMPUTE` origin. There is no `RECOMPUTE` value in `NodeMutationOrigin`
@@ -112,25 +113,66 @@ Input: `(branch_name, transform_id)`. Output: `list[PythonDefinition]`.
 
 2. schema_branch = registry.schema.get_schema_branch(name=branch_name)
    mapping = schema_branch.computed_attributes.python_attributes_by_transform   # facade.py:56
-   definitions = mapping.get(transform_name, [])
+   # A computed attribute may wire its transform by NAME or by UUID
+   # (core/schema/computed_attribute.py:12 documents "name or ID"; the mapping is keyed by
+   # that raw value at python_transform.py:96-99). Look up by BOTH:
+   definitions = mapping.get(transform_name) or mapping.get(transform_id) or []
 
 3. definitions is [] when the transform feeds no computed attribute
-   (edge case "Transform feeding no computed attribute" -> inert, no recompute).
+   (edge case "Transform feeding no computed attribute"). This empty path returns HERE,
+   before any client.all node fetch (section 4) -> inert, no recompute, no node read.
+
+4. If the lookup is empty but a recompute might still be needed (an unexpected mapping
+   state), default toward recompute and log loudly; never silently skip (FR-010, the
+   over-regenerate invariant).
 ```
 
 Guarantees:
 
-- **Scoping (FR-008):** `mapping[transform_name]` contains only the attributes fed by that
-  one transform. No other transform's attributes are reachable from this key.
+- **Name-or-id (FR-010, SC-011):** the lookup checks both the transform's name and its id,
+  so a computed attribute that wires its transform by UUID resolves to the same attribute(s)
+  as one that wires it by name.
+- **Cheap empty path (D7, SC-010):** a transform feeding no computed attribute resolves to
+  `[]` from the id/name + dict lookup alone and returns before any `client.all` node fetch.
+- **Scoping (FR-009):** the mapping entry contains only the attributes fed by that one
+  transform. No other transform's attributes are reachable from this key.
 - **Multiplicity (US2 sc.4):** a transform feeding N attributes yields N `PythonDefinition`
   entries; all are recomputed, none outside the set.
 - **Determinism:** the mapping is derived from current schema state, so a deleted or
   renamed transform resolves to `[]` (US5 safety).
 
+## 3.5 Data-path (node-input) reconciliation contract
+
+On **every** lifecycle event (create / update / delete), the workflow reconciles the
+data-path automations that recompute an attribute when a node feeding the transform's query
+changes. This is the duty the removed commit trigger performed as a side effect
+(`tasks.py:597-612`); the lifecycle flow now owns it (research Decision 5). It runs the same
+two `setup_triggers` calls the schema path runs:
+
+```python
+computed_attribute_triggers = await gather_trigger_computed_attribute_python(...)   # tasks.py:538
+await setup_triggers(triggers=computed_attribute_triggers, trigger_type=TriggerType.COMPUTED_ATTR_PYTHON)
+await setup_triggers(triggers=computed_attribute_query_triggers, trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY)
+```
+
+- **On create / update:** builds or refreshes the node-input automation for the transform,
+  so a transform-only import (no schema diff, so the schema path never runs) never leaves it
+  unbuilt.
+- **On delete:** the gathered desired set no longer contains the removed transform, so
+  `setup_triggers`' `to_delete = set(existing) - set(desired)` diff (`trigger/setup.py:107`)
+  drops its automation.
+
+This is more precise than the removed commit sweep: it runs on transform events only, not on
+every commit. The schema path (`computed_attribute_setup_python`) is unchanged and still runs
+the same reconciliation on schema change.
+
 ## 4. Recompute fan-out contract
 
-For each `PythonDefinition` in the resolution result, submit the **existing**
-`TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES` workflow (unchanged):
+For each `PythonDefinition` in the resolution result (create and update-of-fingerprint only),
+submit the **existing** `TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES` workflow (unchanged). The
+`context` (`EventContext`) MUST be passed in BOTH `submit_workflow(context=...)` and in
+`parameters`, because the fan-out flow requires a `context` parameter (`tasks.py:221-226`) and
+fails at runtime without it (existing callers pass it both ways):
 
 ```python
 await get_workflow().submit_workflow(
@@ -140,6 +182,7 @@ await get_workflow().submit_workflow(
         "branch_name": branch_name,
         "computed_attribute_name": definition.attribute.name,
         "computed_attribute_kind": definition.kind,
+        "context": context,   # required by trigger_update_python_computed_attributes (tasks.py:221-226)
     },
 )
 ```
@@ -159,7 +202,7 @@ Guarantees:
   attribute's kind on the branch; each is recomputed.
 - **Reuse (spec Assumption "per-node recompute reused unchanged"):** the per-node compute
   (`process_transform_for_node`, `tasks.py:94`) is untouched.
-- **No loop (FR-011):** the per-node write goes to `definition.kind` (e.g. `TestingCar`),
+- **No loop (FR-013):** the per-node write goes to `definition.kind` (e.g. `TestingCar`),
   emitting a `NodeUpdatedEvent` with `kind=TestingCar`, which does not match the
   transform-scoped trigger.
 
@@ -170,9 +213,12 @@ Guarantees:
 | Trigger event     | `CommitUpdatedEvent` (any repo commit)        | `NodeCreated/Updated/DeletedEvent` on transform |
 | Scope decision    | `computed_attribute_setup_python`, `changed_elements=None` -> `fallback_full_recompute=True` selects ALL (`scoping.py:132`) | resolution yields ONLY the changed transform's attributes |
 | Fan-out breadth   | every transform-based attribute on the branch | only the attributes fed by one transform    |
-| Also does         | reconciles data-path automations via `setup_triggers` | recompute only; no automation reconciliation |
-| Fires on          | every commit, related or not                  | only when a fingerprint actually changes    |
+| Also does         | reconciles data-path automations via `setup_triggers` on every commit | reconciles data-path automations via `setup_triggers` on every transform create/update/delete (same coverage, fewer runs) |
+| Recompute fires on | every commit, related or not                  | create, and update when a fingerprint actually changes |
+| Reconcile fires on | every commit                                  | every transform create / update / delete    |
 
 The schema-driven `computed_attribute_setup_python` (via
 `TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA`) keeps its `changed_elements` scoping and its
-`setup_triggers` reconciliation. Only the commit-event entry point into it is removed.
+`setup_triggers` reconciliation. Only the commit-event entry point into it is removed; the
+reconciliation it did as a side effect is now owned by the lifecycle flow (section 3.5), so
+removing the commit trigger does NOT drop the data-path reconciliation.
