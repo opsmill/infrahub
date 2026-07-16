@@ -65,9 +65,9 @@ skill adds **at the seam** between stages.
 | 2 | **Prep** | `/speckit-opsmill-prep` = specify → plan → critique-run → tasks + alignment check *(or the granular skills on M/L)* | spec · plan · tasks → **`specs/<feature>/`** | **parallel** framings into specify/plan on `L`; **gate:** `tasks.md` exists, alignment clean, no `[NEEDS CLARIFICATION]`; **checkpoint** after each design decision |
 | 3 | **Implement** | `/speckit-opsmill-implement` = preflight → implement (↻ clean-context subagents) → review-run → report *(bug lane: `/bug-tdd` → `/bug-fix`)* | code + `opsmill-implement-report.md` → **`specs/<feature>/`** + git | **verify:** adversarial skeptic on the report + high-sev findings; **gate:** report clean + tests green; **checkpoint:** findings & fixes accepted |
 | 4 | **Delivery** | `/pre-ci` · `/pr` · `/pr-monitor` · review (spec & code) · `/qa` | PR + CI → **GitHub PR** | **gate:** CI green before PR; **parallel** split assessment ([phases/pr-split.md](phases/pr-split.md)); **checkpoint:** PR plan accepted → propose Jira *In review*; monitor loops back on red |
-| 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` (+ `capturing-knowledge`, `learning-from-review`¹, `speckit-opsmill-retrospect`) | knowledge · guidelines · ADR → **`dev/…`**; archive spec | **manual gate:** you review the report first; **checkpoint** on doc changes → propose Jira *Done* |
+| 5 | **Extract** *(manual)* | `/speckit-opsmill-extract` (+ `capturing-knowledge`, `harvesting-review`¹, `speckit-opsmill-retrospect`) | knowledge · guidelines · ADR → **`dev/…`**; archive spec | **manual gate:** you review the report first; **checkpoint** on doc changes → propose Jira *Done* |
 
-¹ `learning-from-review` ships separately (PR #9910); use it when present, skip cleanly when absent.
+¹ `harvesting-review` is merged in `stable` (PR #9922); use it when present, skip cleanly when absent.
 
 ## Orchestration layer
 
@@ -138,7 +138,7 @@ Optional `/qa` and spec-&-code review where the project defines them.
 ### Stage 5 — Extract *(manual)*
 **Manual gate:** the user reviews `opsmill-implement-report.md` first. Then `/speckit-opsmill-extract`
 distils durable knowledge into `dev/knowledge` · `dev/guidelines` · `dev/adr` and archives the spec.
-Also run `capturing-knowledge`, `learning-from-review` (when present), and `speckit-opsmill-retrospect`
+Also run `capturing-knowledge`, `harvesting-review` (when present), and `speckit-opsmill-retrospect`
 for process/tooling gaps. Doc changes join **this** PR unless the user asks otherwise. **Checkpoint**
 only if a step proposes changes → propose Jira *Done*.
 
@@ -171,7 +171,7 @@ Use the first available source per capability. Probe; never invent a command the
 | PR | `pr`, `/git-pr` | `commit-commands:commit-push-pr`, `superpowers:finishing-a-development-branch` | `gh pr create` |
 | Post-open CI watch | `monitoring-pull-requests` | — | `gh run watch` / skip |
 | Extract knowledge | `/speckit-opsmill-extract`, `capturing-knowledge`, `audit-docs`/`/audit-docs` → `add-docs` | — | edit `dev/` docs directly |
-| Learn from review | `learning-from-review` *(PR #9910)* | — | skip |
+| Learn from review | `harvesting-review` *(PR #9922, in `stable`)* | — | skip |
 | Retrospective | `speckit-opsmill-retrospect` (`/speckit.opsmill.retrospect`) | — | skip |
 | Jira progress | Atlassian MCP (`transitionJiraIssue`, `addCommentToJiraIssue`) | — | record status in `ship.md` only |
 | Branch update / rebase | `rebase`, `/rebase-current-branch` | — | `git rebase`/`git merge` base |

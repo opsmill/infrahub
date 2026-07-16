@@ -70,7 +70,7 @@ verify · checkpoints · index) as its own contribution.
 ## Status
 
 Draft skill on branch `ple-test-shipping-features-skill` (PR #9873), rebased onto latest `develop` so
-the framework tools it delegates to resolve today. `learning-from-review` ships **separately** in PR
-#9910; this skill references it as an optional Extract-stage step and degrades cleanly when it's absent.
+the framework tools it delegates to resolve today. `harvesting-review` is **merged in `stable`** in PR
+#9922; this skill references it as an optional Extract-stage step and degrades cleanly when it's absent.
 A first pressure-test pass held (resume on empty input, classify-don't-over-engineer under time
 pressure, refuse a red CI gate); a fuller RED→GREEN→REFACTOR pass is still worthwhile before heavy use.
