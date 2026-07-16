@@ -12,17 +12,23 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.enum import ConstraintIdentifier
 
+RELATIONSHIP_PROPERTIES = ("peer", "cardinality", "optional", "min_count", "max_count")
 
-def node_uniqueness_constraint(kind: str) -> SchemaUpdateConstraintInfo:
+
+def node_constraint(kind: str, property_name: str) -> SchemaUpdateConstraintInfo:
     return SchemaUpdateConstraintInfo(
-        constraint_name="node.uniqueness_constraints.update",
+        constraint_name=f"node.{property_name}.update",
         path=SchemaPath(
             path_type=SchemaPathType.NODE,
             schema_kind=kind,
-            field_name="uniqueness_constraints",
-            property_name="uniqueness_constraints",
+            field_name=property_name,
+            property_name=property_name,
         ),
     )
+
+
+def node_uniqueness_constraint(kind: str) -> SchemaUpdateConstraintInfo:
+    return node_constraint(kind, "uniqueness_constraints")
 
 
 def attribute_constraint(kind: str, field_name: str, property_name: str) -> SchemaUpdateConstraintInfo:
@@ -30,6 +36,18 @@ def attribute_constraint(kind: str, field_name: str, property_name: str) -> Sche
         constraint_name=f"attribute.{property_name}.update",
         path=SchemaPath(
             path_type=SchemaPathType.ATTRIBUTE,
+            schema_kind=kind,
+            field_name=field_name,
+            property_name=property_name,
+        ),
+    )
+
+
+def relationship_constraint(kind: str, field_name: str, property_name: str) -> SchemaUpdateConstraintInfo:
+    return SchemaUpdateConstraintInfo(
+        constraint_name=f"relationship.{property_name}.update",
+        path=SchemaPath(
+            path_type=SchemaPathType.RELATIONSHIP,
             schema_kind=kind,
             field_name=field_name,
             property_name=property_name,
@@ -298,3 +316,32 @@ class TestConstraintDeterminer:
         for kind in internal_kinds:
             assert node_uniqueness_constraint(kind) in set(constraints)
         assert {c.path.schema_kind for c in constraints} == {"TestPerson", *internal_kinds}
+
+    async def test_hierarchy_constraints_selected_for_both_endpoint_kinds(
+        self,
+        hierarchical_location_schema_simple: SchemaRoot,
+        default_branch: Branch,
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        # A hierarchy edge change surfaces on both endpoints: the child (LocationRack) records its
+        # `parent` change and the parent (LocationSite) records its `children` change.
+        node_diffs = [
+            NodeDiffFieldSummary(kind="LocationRack", relationship_names={"parent"}),
+            NodeDiffFieldSummary(kind="LocationSite", relationship_names={"children"}),
+        ]
+        expected = {
+            node_constraint("LocationRack", "parent"),
+            node_constraint("LocationRack", "children"),
+            node_uniqueness_constraint("LocationRack"),
+            node_constraint("LocationSite", "parent"),
+            node_constraint("LocationSite", "children"),
+            node_uniqueness_constraint("LocationSite"),
+            node_uniqueness_constraint("LocationGeneric"),
+            *(relationship_constraint("LocationRack", "parent", p) for p in RELATIONSHIP_PROPERTIES),
+            *(relationship_constraint("LocationSite", "children", p) for p in RELATIONSHIP_PROPERTIES),
+        }
+
+        constraints = await determiner.get_constraints(node_diffs=node_diffs)
+
+        assert set(constraints) == expected
