@@ -1,4 +1,4 @@
-from datetime import UTC
+from datetime import UTC, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -7,6 +7,7 @@ from prefect.client.schemas.objects import Artifact, Flow, FlowRun, Log
 from prefect.client.schemas.sorting import FlowRunSort
 from prefect.types import DateTime
 
+from infrahub.task_manager.flow_run.constants import WEBHOOK_HTTP_ARTIFACT_KEY
 from infrahub.task_manager.flow_run.reader import NB_LOGS_LIMIT, PREFECT_MAX_LOGS_PER_CALL, FlowRunReader
 
 
@@ -57,6 +58,17 @@ def make_log(flow_run_id: UUID | None, message: str = "log line") -> Log:
 
 def make_artifact(flow_run_id: UUID, data: object) -> Artifact:
     return Artifact(type="progress", flow_run_id=flow_run_id, data=data)
+
+
+def make_http_artifact(flow_run_id: UUID, data: object, created: DateTime | None = None) -> Artifact:
+    return Artifact(key=WEBHOOK_HTTP_ARTIFACT_KEY, type="result", flow_run_id=flow_run_id, data=data, created=created)
+
+
+SAMPLE_CAPTURE = {
+    "request": {"url": "http://target/hook", "headers": {"webhook-signature": "***"}},
+    "response": {"status_code": 200, "body": "{}", "latency_ms": 4.0},
+    "error": None,
+}
 
 
 class TestReadLogs:
@@ -137,6 +149,42 @@ class TestReadProgress:
         client = FakeReaderClient(artifacts=[make_artifact(uuid4(), 0.5)])
 
         result = await FlowRunReader(client=client).read_progress(flow_ids=[])
+
+        assert result.data == {}
+        assert client.read_artifacts_calls == []
+
+
+class TestReadHttp:
+    async def test_maps_flow_run_to_capture(self) -> None:
+        flow_id = uuid4()
+        client = FakeReaderClient(artifacts=[make_http_artifact(flow_id, SAMPLE_CAPTURE)])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=[flow_id])
+
+        assert result.data == {flow_id: SAMPLE_CAPTURE}
+
+    async def test_ignores_non_dict_data(self) -> None:
+        flow_id = uuid4()
+        client = FakeReaderClient(artifacts=[make_http_artifact(flow_id, "not-a-capture")])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=[flow_id])
+
+        assert result.data == {}
+
+    async def test_keeps_latest_capture_on_duplicate(self) -> None:
+        flow_id = uuid4()
+        older = make_http_artifact(flow_id, {"attempt": 1}, created=DateTime.now(tz=UTC))
+        newer = make_http_artifact(flow_id, {"attempt": 2}, created=DateTime.now(tz=UTC) + timedelta(seconds=120))
+        client = FakeReaderClient(artifacts=[newer, older])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=[flow_id])
+
+        assert result.data == {flow_id: {"attempt": 2}}
+
+    async def test_no_flow_ids_returns_empty_without_remote_call(self) -> None:
+        client = FakeReaderClient(artifacts=[make_http_artifact(uuid4(), SAMPLE_CAPTURE)])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=[])
 
         assert result.data == {}
         assert client.read_artifacts_calls == []

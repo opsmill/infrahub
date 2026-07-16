@@ -9,6 +9,7 @@ from prefect.types import DateTime
 
 from infrahub.task_manager.flow_run.filters import FlowRunFilterBuilder
 from infrahub.task_manager.flow_run.models import (
+    FlowHttpCaptures,
     FlowLogs,
     FlowProgress,
     FlowRunFetchOptions,
@@ -26,15 +27,18 @@ class InMemoryFlowRunReader:
         flow_runs: list[FlowRun] | None = None,
         logs: FlowLogs | None = None,
         progress: FlowProgress | None = None,
+        http: FlowHttpCaptures | None = None,
         flows: list[Flow] | None = None,
     ) -> None:
         self._flow_runs = flow_runs or []
         self._logs = logs or FlowLogs()
         self._progress = progress or FlowProgress()
+        self._http = http or FlowHttpCaptures()
         self._flows = flows or []
         self.read_flow_runs_calls: list[dict[str, Any]] = []
         self.read_logs_calls: list[dict[str, Any]] = []
         self.read_progress_calls: list[dict[str, Any]] = []
+        self.read_http_calls: list[dict[str, Any]] = []
         self.read_flows_calls: list[dict[str, Any]] = []
 
     async def read_flow_runs(
@@ -61,6 +65,10 @@ class InMemoryFlowRunReader:
     async def read_progress(self, flow_ids: list[UUID]) -> FlowProgress:
         self.read_progress_calls.append({"flow_ids": flow_ids})
         return self._progress
+
+    async def read_http(self, flow_ids: list[UUID]) -> FlowHttpCaptures:
+        self.read_http_calls.append({"flow_ids": flow_ids})
+        return self._http
 
     async def read_flows(self, ids: list[UUID] | None = None, names: list[str] | None = None) -> list[Flow]:
         self.read_flows_calls.append({"ids": ids, "names": names})
@@ -150,6 +158,7 @@ class TestPrefectTaskService:
         assert reader.read_flow_runs_calls[0]["offset"] == 2
         assert reader.read_logs_calls == []
         assert reader.read_progress_calls == []
+        assert reader.read_http_calls == []
         assert reader.read_flows_calls == []
         assert enricher.enrich_calls == []
 
@@ -191,6 +200,22 @@ class TestPrefectTaskService:
 
         assert result.runs[0].progress == 0.42
         assert reader.read_progress_calls[0]["flow_ids"] == [flow_run.id]
+
+    async def test_http_is_attached_when_requested(self) -> None:
+        flow_run = make_flow_run()
+        http = FlowHttpCaptures()
+        capture = {"request": {"url": "http://target/hook"}, "response": None, "error": None}
+        http.data[flow_run.id] = capture
+        reader = InMemoryFlowRunReader(flow_runs=[flow_run], http=http)
+        service = build_service(reader=reader)
+
+        result = await service.query(
+            criteria=FlowRunQueryCriteria(),
+            options=FlowRunFetchOptions(include_runs=True, include_http=True),
+        )
+
+        assert result.runs[0].http == capture
+        assert reader.read_http_calls[0]["flow_ids"] == [flow_run.id]
 
     async def test_related_nodes_are_attached_when_requested(self) -> None:
         flow_run = make_flow_run()
