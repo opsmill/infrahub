@@ -1017,13 +1017,18 @@ def _map_subscriber_ids_by_member(
     """
     subscriber_by_member: dict[str, str] = {}
     for subscriber in existing_subscribers:
-        object_id = subscriber.object.id
-        if object_id is None:
+        try:
+            # Resolve through the peer rather than subscriber.object.id: for some subscriber kinds the
+            # member id is only reachable through the client store, where subscriber.object.id stays None.
+            member_id = subscriber.object.peer.id
+        except (ValueError, NodeNotFoundError):
             log.warning(
                 f"Skipping orphan subscriber {subscriber.id} for definition {definition_name}: object peer unresolvable"
             )
             continue
-        subscriber_by_member[object_id] = subscriber.id
+        if member_id is None:
+            continue
+        subscriber_by_member[member_id] = subscriber.id
     return subscriber_by_member
 
 
