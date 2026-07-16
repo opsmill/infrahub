@@ -212,7 +212,7 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
 
         assert self._submitted_attribute_names(workflow_recorder) == {"computed_by_id"}
 
-    async def test_created_recomputes_only_changed_transform_attribute(
+    async def test_created_recomputes_only_created_transform_attribute(
         self,
         transform_dataset: dict[str, str],
         workflow_recorder: WorkflowRecorder,
