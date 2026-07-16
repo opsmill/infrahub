@@ -92,9 +92,9 @@
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T018 [P] Add Towncrier changelog fragment `changelog/+header-sort-menu.changed.md` (naming per existing `changelog/+*.{changed,fixed}.md` fragments): user-facing description of column-header sorting and the changed filter interaction (header click now opens a menu; filtering is under "Filter…") — critique E8/P4.
-- [ ] T019 Run `cd frontend/app && pnpm biome:fix`, the full unit/component suite (`pnpm test`), and the affected E2E specs (`object-header-sort.spec.ts`, `object-sort.spec.ts`, `object-filters.spec.ts`, `ip-prefix-list-sort.spec.ts`); walk the quickstart manual scenarios 1–7 against the dev stack; confirm no console errors from overlay/focus management in the menu → filter-popover sequence.
-- [ ] T020 Draft the PR description noting the accepted migration debt: `TableColumnHeader` remains under `entities/nodes/object/` while imported by `entities/ipam/` (critique E2), and referencing the softened FR-001b of `specs/ifc-2428-filters` (spec Assumptions).
+- [X] T018 [P] Add Towncrier changelog fragment `changelog/+header-sort-menu.changed.md` (naming per existing `changelog/+*.{changed,fixed}.md` fragments): user-facing description of column-header sorting and the changed filter interaction (header click now opens a menu; filtering is under "Filter…") — critique E8/P4.
+- [X] T019 Run `cd frontend/app && pnpm biome:fix`, the full unit/component suite (`pnpm test`), and the affected E2E specs (`object-header-sort.spec.ts`, `object-sort.spec.ts`, `object-filters.spec.ts`, `ip-prefix-list-sort.spec.ts`); walk the quickstart manual scenarios 1–7 against the dev stack; confirm no console errors from overlay/focus management in the menu → filter-popover sequence.
+- [X] T020 Draft the PR description noting the accepted migration debt: `TableColumnHeader` remains under `entities/nodes/object/` while imported by `entities/ipam/` (critique E2), and referencing the softened FR-001b of `specs/ifc-2428-filters` (spec Assumptions).
 
 ---
 
