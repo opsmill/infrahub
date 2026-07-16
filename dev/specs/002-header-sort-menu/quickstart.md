@@ -20,7 +20,7 @@ Load demo data if the stack is empty (`uv run invoke demo.load-infra-schema demo
 4. **Relationship sort (Story 2)** — click the *Site* column header on the device list → *Sort by ▸* lists the site's sortable attributes; pick *Name → ascending*: devices order by site name, `?sort=site__name__value__asc`.
 5. **Cardinality-many (Story 2)** — a to-many relationship column's menu has no sort entries, only *Filter…*.
 6. **Filter parity (Story 3)** — from the *Status* header menu pick *Filter…*, apply a value: active-filter tag appears under the toolbar identical to a toolbar-applied filter; remove it from the tag → header filter indication clears.
-7. **IPAM** — on the IPAM prefix list, header-sort the *Prefix* column and verify rows reorder and `?sort=` updates.
+7. **IPAM** — on the IPAM prefix list, header-sort the *Description* column and verify rows reorder and `?sort=` updates. (The *Prefix* value renders in the identifier column, which has no menu — `prefix` is excluded from list columns by design.)
 
 ## Automated validation
 
