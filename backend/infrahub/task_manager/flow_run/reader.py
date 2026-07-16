@@ -27,6 +27,7 @@ log = get_logger()
 
 NB_LOGS_LIMIT = 10_000
 PREFECT_MAX_LOGS_PER_CALL = 200
+PREFECT_MAX_ARTIFACTS_PER_CALL = 200
 
 
 class FlowRunReaderProtocol(Protocol):
@@ -140,22 +141,28 @@ class FlowRunReader:
         if not flow_ids:
             return captures
 
-        artifacts = await self.client.read_artifacts(
-            artifact_filter=ArtifactFilter(key=ArtifactFilterKey(any_=[WEBHOOK_HTTP_ARTIFACT_KEY])),
-            flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=flow_ids)),
-        )
-
-        # Every attempt of a run writes under the same key; keep the most recent so the capture
-        # reflects the last attempt.
+        # One artifact per attempt, so page through all matches and keep the most recent per run,
+        # or a busy run's last attempt could fall past a single page.
         newest: dict[UUID, datetime] = {}
-        for artifact in artifacts:
-            if not artifact.flow_run_id or not isinstance(artifact.data, dict):
-                continue
-            created = artifact.created or datetime.min.replace(tzinfo=UTC)
-            if artifact.flow_run_id in newest and created < newest[artifact.flow_run_id]:
-                continue
-            captures.data[artifact.flow_run_id] = artifact.data
-            newest[artifact.flow_run_id] = created
+        offset = 0
+        while True:
+            artifacts = await self.client.read_artifacts(
+                artifact_filter=ArtifactFilter(key=ArtifactFilterKey(any_=[WEBHOOK_HTTP_ARTIFACT_KEY])),
+                flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=flow_ids)),
+                limit=PREFECT_MAX_ARTIFACTS_PER_CALL,
+                offset=offset,
+            )
+            for artifact in artifacts:
+                if not artifact.flow_run_id or not isinstance(artifact.data, dict):
+                    continue
+                created = artifact.created or datetime.min.replace(tzinfo=UTC)
+                if artifact.flow_run_id in newest and created < newest[artifact.flow_run_id]:
+                    continue
+                captures.data[artifact.flow_run_id] = artifact.data
+                newest[artifact.flow_run_id] = created
+            if len(artifacts) < PREFECT_MAX_ARTIFACTS_PER_CALL:
+                break
+            offset += len(artifacts)
 
         return captures
 

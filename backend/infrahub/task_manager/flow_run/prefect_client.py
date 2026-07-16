@@ -26,7 +26,11 @@ class FlowRunDataReading(Protocol):
     async def read_logs(self, log_filter: LogFilter, offset: int, limit: int) -> list[Log]: ...
 
     async def read_artifacts(
-        self, artifact_filter: ArtifactFilter, flow_run_filter: FlowRunFilter
+        self,
+        artifact_filter: ArtifactFilter,
+        flow_run_filter: FlowRunFilter,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[Artifact]: ...
 
     async def read_flows(self, flow_filter: FlowFilter | None = None) -> list[Flow]: ...
@@ -89,8 +93,16 @@ class PrefectClientAdapter:
     async def read_logs(self, log_filter: LogFilter, offset: int, limit: int) -> list[Log]:
         return await self.client.read_logs(log_filter=log_filter, offset=offset, limit=limit)
 
-    async def read_artifacts(self, artifact_filter: ArtifactFilter, flow_run_filter: FlowRunFilter) -> list[Artifact]:
-        return await self.client.read_artifacts(artifact_filter=artifact_filter, flow_run_filter=flow_run_filter)
+    async def read_artifacts(
+        self,
+        artifact_filter: ArtifactFilter,
+        flow_run_filter: FlowRunFilter,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[Artifact]:
+        return await self.client.read_artifacts(
+            artifact_filter=artifact_filter, flow_run_filter=flow_run_filter, limit=limit, offset=offset
+        )
 
     async def create_artifact(self, key: str, artifact_type: str, data: Any, flow_run_id: UUID) -> None:
         await self.client.create_artifact(
