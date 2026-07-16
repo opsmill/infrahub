@@ -1,17 +1,25 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from infrahub.core.constants import DiffAction, RelationshipCardinality
-from infrahub.core.diff.model.path import (
-    BranchTrackingId,
-    EnrichedDiffAttribute,
-    EnrichedDiffNode,
-    EnrichedDiffRelationship,
-    EnrichedDiffRoot,
-    EnrichedDiffSingleRelationship,
-    NodeIdentifier,
-)
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-from infrahub.core.timestamp import Timestamp
+from tests.helpers.diff_factories import (
+    EnrichedAttributeFactory,
+    EnrichedNodeFactory,
+    EnrichedRelationshipElementFactory,
+    EnrichedRelationshipGroupFactory,
+    EnrichedRootFactory,
+)
+
+if TYPE_CHECKING:
+    from infrahub.core.diff.model.path import (
+        EnrichedDiffAttribute,
+        EnrichedDiffNode,
+        EnrichedDiffRelationship,
+        EnrichedDiffRoot,
+        EnrichedDiffSingleRelationship,
+    )
 
 SOURCE_BRANCH = "feature"
 TARGET_BRANCH = "main"
@@ -25,8 +33,9 @@ def _node(
     attributes: set[EnrichedDiffAttribute] | None = None,
     relationships: set[EnrichedDiffRelationship] | None = None,
 ) -> EnrichedDiffNode:
-    return EnrichedDiffNode(
-        identifier=NodeIdentifier(uuid=uuid, kind=kind, db_id=f"db-{uuid}"),
+    return EnrichedNodeFactory.build(
+        uuid=uuid,
+        kind=kind,
         label="node-label",
         action=action,
         attributes=attributes or set(),
@@ -37,8 +46,8 @@ def _node(
 def _attribute(
     *, name: str, action: DiffAction, added: int = 0, updated: int = 0, removed: int = 0
 ) -> EnrichedDiffAttribute:
-    return EnrichedDiffAttribute(
-        name=name, changed_at=Timestamp(), action=action, num_added=added, num_updated=updated, num_removed=removed
+    return EnrichedAttributeFactory.build(
+        name=name, action=action, num_added=added, num_updated=updated, num_removed=removed
     )
 
 
@@ -50,40 +59,21 @@ def _relationship(
     peers: set[EnrichedDiffSingleRelationship] | None = None,
     added: int = 0,
 ) -> EnrichedDiffRelationship:
-    return EnrichedDiffRelationship(
-        name=name,
-        identifier=f"rel-{name}",
-        label=name,
-        cardinality=cardinality,
-        action=action,
-        relationships=peers or set(),
-        num_added=added,
+    return EnrichedRelationshipGroupFactory.build(
+        name=name, action=action, cardinality=cardinality, relationships=peers or set(), num_added=added
     )
 
 
 def _peer(
     *, peer_id: str, action: DiffAction, added: int = 0, updated: int = 0, removed: int = 0
 ) -> EnrichedDiffSingleRelationship:
-    return EnrichedDiffSingleRelationship(
-        changed_at=Timestamp(),
-        action=action,
-        peer_id=peer_id,
-        num_added=added,
-        num_updated=updated,
-        num_removed=removed,
+    return EnrichedRelationshipElementFactory.build(
+        peer_id=peer_id, action=action, num_added=added, num_updated=updated, num_removed=removed
     )
 
 
 def _root(nodes: set[EnrichedDiffNode]) -> EnrichedDiffRoot:
-    return EnrichedDiffRoot(
-        base_branch_name=TARGET_BRANCH,
-        diff_branch_name=SOURCE_BRANCH,
-        from_time=Timestamp(),
-        to_time=Timestamp(),
-        uuid="diff-root-uuid",
-        tracking_id=BranchTrackingId(name=SOURCE_BRANCH),
-        nodes=nodes,
-    )
+    return EnrichedRootFactory.build(base_branch_name=TARGET_BRANCH, diff_branch_name=SOURCE_BRANCH, nodes=nodes)
 
 
 def _serialize(root: EnrichedDiffRoot) -> list:
