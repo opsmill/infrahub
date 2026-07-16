@@ -8,7 +8,7 @@ from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
+from infrahub.core.constants import ComputedAttributeKind, InfrahubKind, MutationAction
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
@@ -34,8 +34,11 @@ from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
     ComputedAttrJinja2TriggerDefinition,
+    ComputedAttrPythonQueryTriggerDefinition,
+    ComputedAttrPythonTriggerDefinition,
     PythonTransformTarget,
 )
+from .recompute_resolution import RecomputeResolver
 from .scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
@@ -51,6 +54,34 @@ if TYPE_CHECKING:
 
 def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
     return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
+
+
+async def _reconcile_python_computed_attribute_automations(
+    triggers_python: list[ComputedAttrPythonTriggerDefinition],
+    triggers_python_query: list[ComputedAttrPythonQueryTriggerDefinition],
+) -> None:
+    """Reconcile the node-input (data-path) automations against the gathered set.
+
+    These automations recompute an attribute when a node feeding its transform's query
+    changes. Reconciling drops the automations of transforms that no longer exist and
+    builds those of transforms that just appeared, keeping the set in step with the schema.
+    """
+    log = get_run_logger()
+
+    async with get_prefect_client(sync_client=False) as prefect_client:
+        await setup_triggers(
+            client=prefect_client,
+            triggers=triggers_python,
+            trigger_type=TriggerType.COMPUTED_ATTR_PYTHON,
+        )
+        log.info(f"{len(triggers_python)} Computed Attribute for Python automation configuration completed")
+
+        await setup_triggers(
+            client=prefect_client,
+            triggers=triggers_python_query,
+            trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
+        )
+        log.info(f"{len(triggers_python_query)} Computed Attribute for Python Query automation configuration completed")
 
 
 UPDATE_ATTRIBUTE = """
@@ -594,22 +625,69 @@ async def computed_attribute_setup_python(
                 },
             )
 
-        async with get_prefect_client(sync_client=False) as prefect_client:
-            await setup_triggers(
-                client=prefect_client,
-                triggers=triggers_python,
-                trigger_type=TriggerType.COMPUTED_ATTR_PYTHON,
-            )
-            log.info(f"{len(triggers_python)} Computed Attribute for Python automation configuration completed")
+        await _reconcile_python_computed_attribute_automations(
+            triggers_python=triggers_python,
+            triggers_python_query=triggers_python_query,
+        )
 
-            await setup_triggers(
-                client=prefect_client,
-                triggers=triggers_python_query,
-                trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
+
+@flow(
+    name="computed-attribute-process-transform-lifecycle",
+    flow_run_name="Process computed attributes for transform {transform_id} lifecycle ({action})",
+)
+async def process_transform_lifecycle(
+    branch_name: str,
+    transform_id: str,
+    action: str,
+    context: EventContext,
+    event_name: str | None = None,  # noqa: ARG001
+) -> None:
+    """React to a Python transform's own lifecycle event.
+
+    A create or a fingerprint change recomputes only the attributes that transform feeds,
+    across every node of each attribute's kind. Every event also reconciles the node-input
+    automations so a transform-only import never leaves them unbuilt and a delete drops the
+    gone transform's automation.
+    """
+    log = get_run_logger()
+    await add_tags(branches=[branch_name], nodes=[transform_id])
+
+    if action in {MutationAction.CREATED.value, MutationAction.UPDATED.value}:
+        client = get_client()
+        transform = await client.get(kind=InfrahubKind.TRANSFORMPYTHON, id=transform_id, branch=branch_name)
+        transform_name = transform.name.value
+
+        schema_branch = registry.schema.get_schema_branch(name=branch_name)
+        resolver = RecomputeResolver(
+            attributes_by_transform=schema_branch.computed_attributes.python_attributes_by_transform
+        )
+        definitions = resolver.resolve(transform_name=transform_name, transform_id=transform_id)
+
+        log.info(
+            f"Transform {transform_name} ({transform_id}) {action} on {branch_name}: recomputing "
+            f"{len(definitions)} computed attribute(s)"
+        )
+        for definition in definitions:
+            await get_workflow().submit_workflow(
+                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "computed_attribute_name": definition.attribute.name,
+                    "computed_attribute_kind": definition.kind,
+                    "context": context,
+                },
             )
-            log.info(
-                f"{len(triggers_python_query)} Computed Attribute for Python Query automation configuration completed"
-            )
+
+    # Reconcile on every event so a transform-only import builds the node-input automations
+    # and a delete drops the removed transform's automation.
+    database = await get_database()
+    async with database.start_session() as db:
+        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
+        await _reconcile_python_computed_attribute_automations(
+            triggers_python=triggers_python,
+            triggers_python_query=triggers_python_query,
+        )
 
 
 @flow(

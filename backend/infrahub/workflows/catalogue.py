@@ -441,6 +441,13 @@ COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
     default_priority=WorkflowPriority.LOW,
 )
 
+COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM_LIFECYCLE = WorkflowDefinition(
+    name="computed-attribute-process-transform-lifecycle",
+    type=WorkflowType.CORE,
+    module="infrahub.computed_attribute.tasks",
+    function="process_transform_lifecycle",
+)
+
 DISPLAY_LABELS_SETUP_JINJA2 = WorkflowDefinition(
     name="display-labels-setup-jinja2",
     type=WorkflowType.CORE,
@@ -715,6 +722,7 @@ WORKFLOWS = [
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM_LIFECYCLE,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     CONFIGURE_ACTION_RULES,
