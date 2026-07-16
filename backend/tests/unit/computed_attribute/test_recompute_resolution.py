@@ -87,24 +87,10 @@ def test_transform_wired_by_name_and_id_returns_both() -> None:
     }
 
 
-class _RecordingMapping:
-    """A mapping that records every key looked up, proving the empty path only reads the mapping."""
-
-    def __init__(self) -> None:
-        self.lookups: list[str] = []
-
-    def get(self, key: str, /) -> list[PythonDefinition] | None:
-        self.lookups.append(key)
-        return None
-
-
-def test_empty_path_only_reads_the_mapping() -> None:
-    # An empty resolution must not reach past the mapping lookup into any node fetch. The recording
-    # mapping proves resolution touches only the in-memory mapping and stops at an empty result.
-    mapping = _RecordingMapping()
-    resolver = RecomputeResolver(attributes_by_transform=mapping)
+def test_transform_feeding_nothing_returns_empty() -> None:
+    # An empty mapping (no transform feeds any attribute) resolves to nothing from the lookup alone.
+    resolver = RecomputeResolver(attributes_by_transform={})
 
     resolved = resolver.resolve(transform_name=TRANSFORM_NAME, transform_id=TRANSFORM_ID)
 
     assert resolved == []
-    assert mapping.lookups == [TRANSFORM_NAME, TRANSFORM_ID]

@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub.core.schema.schema_branch_computed import PythonDefinition
-
-
-class TransformAttributeMap(Protocol):
-    """The transform -> computed-attributes lookup the resolver reads, keyed by name or id."""
-
-    def get(self, key: str, /) -> list[PythonDefinition] | None: ...
 
 
 class RecomputeResolver:
@@ -21,7 +17,7 @@ class RecomputeResolver:
     alone, without touching the database or the client.
     """
 
-    def __init__(self, attributes_by_transform: TransformAttributeMap) -> None:
+    def __init__(self, attributes_by_transform: Mapping[str, list[PythonDefinition]]) -> None:
         self._attributes_by_transform = attributes_by_transform
 
     def resolve(self, transform_name: str, transform_id: str) -> list[PythonDefinition]:
