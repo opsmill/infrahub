@@ -30,8 +30,7 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
         edges = definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
         # A definition with no target group cannot be reconciled against members; skip it rather than
         # crash the whole selection (which would fall the entire merge back to blanket regeneration).
-        group_id_by_definition: dict[str, str] = {}
-        selectable_edges = []
+        loaded: list[LoadedDefinition[ProposedChangeArtifactDefinition]] = []
         for edge in edges:
             targets = edge["node"]["targets"]
             target_node = targets["node"] if targets else None
@@ -41,12 +40,11 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
                     "excluding it from selective regeneration"
                 )
                 continue
-            group_id_by_definition[edge["node"]["id"]] = target_node["id"]
-            selectable_edges.append(edge)
-        return [
-            LoadedDefinition(definition=definition, group_id=group_id_by_definition[definition.definition_id])
-            for definition in _parse_artifact_definitions(definitions=selectable_edges)
-        ]
+            loaded.extend(
+                LoadedDefinition(definition=definition, group_id=target_node["id"])
+                for definition in _parse_artifact_definitions(definitions=[edge])
+            )
+        return loaded
 
     async def _fetch_member_ids(self, *, definition: ProposedChangeArtifactDefinition, target_branch: str) -> list[str]:
         definition_node = await self.client.get(

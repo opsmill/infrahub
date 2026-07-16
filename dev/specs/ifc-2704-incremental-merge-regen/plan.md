@@ -116,10 +116,13 @@ docker-compose.yml                 # D9: regenerated (release.gen-config-env)
 docs/docs/reference/configuration.mdx  # D9: regenerated (docs.generate)
 
 backend/tests/
-├── unit/core/merge/              # converter, cache round-trip, limit-trap filter, selection gates on a merge summary
-├── functional/                   # selective merge dispatch end-to-end (inline async tasks)
-└── integration_docker/           # full-stack: single-kind change, new target, conflict-to-base, repo-code change, fallbacks, baseline count
+├── unit/core/merge/              # dispatcher branch matrix, gate, selector, cache round-trip, summary converter
+├── component/                    # real-graph selection driving the dispatcher via a recording workflow backend
+└── api/                          # real regenerated-output assertions (T039, T044)
 ```
+
+The planned `integration_docker/` full live-stack matrix is not used for this path; see the
+implementation-sync revision below.
 
 **Structure Decision**: Single backend project. The merge-specific new code lives under
 `backend/infrahub/core/merge/` (converter + cache in `diff_summary.py`, selection in
