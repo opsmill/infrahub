@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
     from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
+    from infrahub.core.diff.summary_cache import DiffSummaryCache
     from infrahub.core.diff.summary_serializer import DiffSummarySerializer
     from infrahub.core.models import SchemaDiff
     from infrahub.core.schema.manager import SchemaManager
@@ -29,7 +30,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.log import InfrahubLogger
 
-    from .diff_summary_cache import MergeDiffSummaryCache
     from .graph_merger import GraphMerger
     from .post_merge import PostMergeDispatcher
     from .rollback_handler import MergeRollbackHandler
@@ -55,7 +55,7 @@ class BranchMergeOrchestrator:
         ipam_diff_parser: IpamDiffParser,
         diff_repository: DiffRepository,
         diff_serializer: DiffSummarySerializer,
-        merge_diff_summary_cache: MergeDiffSummaryCache,
+        diff_summary_cache: DiffSummaryCache,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.db = db
@@ -71,7 +71,7 @@ class BranchMergeOrchestrator:
         self.ipam_diff_parser = ipam_diff_parser
         self.diff_repository = diff_repository
         self.diff_serializer = diff_serializer
-        self.merge_diff_summary_cache = merge_diff_summary_cache
+        self.diff_summary_cache = diff_summary_cache
         self.log = logger or get_logger()
 
     async def merge(self, *, context: InfrahubContext, proposed_change_id: str | None = None) -> None:
@@ -204,7 +204,7 @@ class BranchMergeOrchestrator:
         if diff_summary is None:
             return None
         try:
-            await self.merge_diff_summary_cache.set(diff_id=diff_id, diff_summary=diff_summary)
+            await self.diff_summary_cache.set(diff_id=diff_id, diff_summary=diff_summary)
             return diff_id
         except Exception:
             self.log.exception("Failed to cache merge diff summary; falling back to full regeneration")

@@ -17,9 +17,9 @@ if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
     from infrahub.context import InfrahubContext
+    from infrahub.core.diff.summary_cache import DiffSummaryCache
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
-    from .diff_summary_cache import MergeDiffSummaryCache
     from .selective_regen.orchestrator import RegenerationSelector
 
 
@@ -45,7 +45,7 @@ class PostMergeRegenerationDispatcher:
         self,
         workflow: InfrahubWorkflow,
         selector: RegenerationSelector,
-        summary_cache: MergeDiffSummaryCache,
+        summary_cache: DiffSummaryCache,
         log: Logger | LoggerAdapter[Logger],
     ) -> None:
         self.workflow = workflow

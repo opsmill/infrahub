@@ -11,8 +11,9 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.summary_cache import DiffSummaryCache
+from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.initialization import create_branch
-from infrahub.core.merge.diff_summary_cache import MergeDiffSummaryCache
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.node import Node
@@ -231,14 +232,18 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
         selects every live member (an empty members filter). The selective requests fire, not the
         blanket triggers.
         """
-        await MergeDiffSummaryCache(cache=memory_cache).set(
+        await DiffSummaryCache(
+            cache=memory_cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge"
+        ).set(
             diff_id=DIFF_CACHE_KEY,
             diff_summary=[make_node_diff(dataset["device1_id"], "TestNetworkDevice", default_branch.name, ["name"])],
         )
         dispatcher = PostMergeRegenerationDispatcher(
             workflow=workflow_recorder,
             selector=build_merge_selective_regeneration(client=client, log=logging.getLogger("test")),
-            summary_cache=MergeDiffSummaryCache(cache=memory_cache),
+            summary_cache=DiffSummaryCache(
+                cache=memory_cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge"
+            ),
             log=logging.getLogger("test"),
         )
         await dispatcher.dispatch(

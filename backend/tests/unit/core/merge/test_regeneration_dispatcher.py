@@ -9,7 +9,8 @@ from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.merge.diff_summary_cache import MergeDiffSummaryCache
+from infrahub.core.diff.summary_cache import DiffSummaryCache
+from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
 from infrahub.core.merge.selective_regen.models import SelectiveRegenerationPlan
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
@@ -28,6 +29,10 @@ if TYPE_CHECKING:
 
 DIFF_ID = "diff-1"
 TARGET_BRANCH = "main"
+
+
+def _summary_cache(cache: MemoryCache) -> DiffSummaryCache:
+    return DiffSummaryCache(cache=cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge")
 
 
 class _FakeSelector:
@@ -84,7 +89,7 @@ def _plan_with_one_of_each() -> SelectiveRegenerationPlan:
 
 
 def _dispatcher(
-    selector: _FakeSelector, cache: MergeDiffSummaryCache, recorder: WorkflowRecorder
+    selector: _FakeSelector, cache: DiffSummaryCache, recorder: WorkflowRecorder
 ) -> PostMergeRegenerationDispatcher:
     return PostMergeRegenerationDispatcher(
         workflow=recorder, selector=selector, summary_cache=cache, log=logging.getLogger("test")
@@ -117,7 +122,7 @@ def _full_regen_submitted(recorder: WorkflowRecorder) -> bool:
 async def test_flag_off_submits_full_regeneration(disable_selective: None) -> None:
     recorder = WorkflowRecorder()
     selector = _FakeSelector(plan=_plan_with_one_of_each())
-    cache = MergeDiffSummaryCache(cache=MemoryCache())
+    cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
     await _dispatcher(selector, cache, recorder).dispatch(
@@ -132,7 +137,7 @@ async def test_flag_off_submits_full_regeneration(disable_selective: None) -> No
 async def test_missing_key_submits_full_regeneration() -> None:
     recorder = WorkflowRecorder()
     selector = _FakeSelector(plan=_plan_with_one_of_each())
-    cache = MergeDiffSummaryCache(cache=MemoryCache())
+    cache = _summary_cache(MemoryCache())
 
     await _dispatcher(selector, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=None
@@ -145,7 +150,7 @@ async def test_missing_key_submits_full_regeneration() -> None:
 async def test_cache_miss_submits_full_regeneration() -> None:
     recorder = WorkflowRecorder()
     selector = _FakeSelector(plan=_plan_with_one_of_each())
-    cache = MergeDiffSummaryCache(cache=MemoryCache())  # never seeded
+    cache = _summary_cache(MemoryCache())  # never seeded
 
     await _dispatcher(selector, cache, recorder).dispatch(
         context=_context(), target_branch=TARGET_BRANCH, merge_diff_cache_key=DIFF_ID
@@ -158,7 +163,7 @@ async def test_cache_miss_submits_full_regeneration() -> None:
 async def test_selected_definitions_are_dispatched() -> None:
     recorder = WorkflowRecorder()
     selector = _FakeSelector(plan=_plan_with_one_of_each())
-    cache = MergeDiffSummaryCache(cache=MemoryCache())
+    cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
     await _dispatcher(selector, cache, recorder).dispatch(
@@ -174,7 +179,7 @@ async def test_selected_definitions_are_dispatched() -> None:
 async def test_empty_plan_dispatches_nothing() -> None:
     recorder = WorkflowRecorder()
     selector = _FakeSelector(plan=SelectiveRegenerationPlan(generator_runs=[], artifact_generates=[]))
-    cache = MergeDiffSummaryCache(cache=MemoryCache())
+    cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
     await _dispatcher(selector, cache, recorder).dispatch(
@@ -187,7 +192,7 @@ async def test_empty_plan_dispatches_nothing() -> None:
 async def test_selection_failure_falls_back_to_full_regeneration() -> None:
     recorder = WorkflowRecorder()
     selector = _FakeSelector(error=RuntimeError("boom"))
-    cache = MergeDiffSummaryCache(cache=MemoryCache())
+    cache = _summary_cache(MemoryCache())
     await cache.set(diff_id=DIFF_ID, diff_summary=[])
 
     await _dispatcher(selector, cache, recorder).dispatch(

@@ -3,10 +3,16 @@ from __future__ import annotations
 import pytest
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffPeer, NodeDiffSummary
 
+from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-from infrahub.core.merge.diff_summary_cache import MergeDiffSummaryCache
 from infrahub.exceptions import ResourceNotFoundError
 from tests.adapters.cache import MemoryCache
+
+KEY_NAMESPACE = "branch_merge"
+
+
+def _cache(cache: MemoryCache) -> DiffSummaryCache:
+    return DiffSummaryCache(cache=cache, serializer=DiffSummarySerializer(), key_namespace=KEY_NAMESPACE)
 
 
 def _summary() -> list[NodeDiff]:
@@ -33,25 +39,23 @@ def _summary() -> list[NodeDiff]:
 
 
 async def test_round_trip() -> None:
-    cache = MergeDiffSummaryCache(cache=MemoryCache(), serializer=DiffSummarySerializer())
+    cache = _cache(MemoryCache())
     summary = _summary()
     await cache.set(diff_id="diff-1", diff_summary=summary)
     assert await cache.get(diff_id="diff-1") == summary
 
 
 async def test_miss_raises() -> None:
-    cache = MergeDiffSummaryCache(cache=MemoryCache(), serializer=DiffSummarySerializer())
-    with pytest.raises(ResourceNotFoundError, match=r"^Merge diff summary for diff absent was not found in the cache$"):
+    cache = _cache(MemoryCache())
+    with pytest.raises(ResourceNotFoundError, match=r"^Diff summary for absent was not found in the cache$"):
         await cache.get(diff_id="absent")
 
 
 async def test_malformed_payload_raises() -> None:
     memory = MemoryCache()
     memory.storage["branch_merge:diff_id:corrupt:diff_summary"] = "{not-valid-json"
-    with pytest.raises(
-        ResourceNotFoundError, match=r"^Merge diff summary for diff corrupt could not be loaded from the cache$"
-    ):
-        await MergeDiffSummaryCache(cache=memory, serializer=DiffSummarySerializer()).get(diff_id="corrupt")
+    with pytest.raises(ResourceNotFoundError, match=r"^Diff summary for corrupt could not be loaded from the cache$"):
+        await _cache(memory).get(diff_id="corrupt")
 
 
 async def test_wrong_shape_raises() -> None:
@@ -59,7 +63,5 @@ async def test_wrong_shape_raises() -> None:
     # not pass the cast and raise deep inside the selection predicates.
     memory = MemoryCache()
     memory.storage["branch_merge:diff_id:wrong:diff_summary"] = '[{"unexpected": "shape"}]'
-    with pytest.raises(
-        ResourceNotFoundError, match=r"^Merge diff summary for diff wrong could not be loaded from the cache$"
-    ):
-        await MergeDiffSummaryCache(cache=memory, serializer=DiffSummarySerializer()).get(diff_id="wrong")
+    with pytest.raises(ResourceNotFoundError, match=r"^Diff summary for wrong could not be loaded from the cache$"):
+        await _cache(memory).get(diff_id="wrong")

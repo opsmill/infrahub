@@ -472,15 +472,17 @@ async def _build_post_merge_regeneration_dispatcher(
 ) -> PostMergeRegenerationDispatcher:
     # Imported lazily: the selection module depends on the proposed-change tasks, which import this
     # module, so a top-level import would be circular.
+    from infrahub.core.diff.summary_cache import DiffSummaryCache
     from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-    from infrahub.core.merge.diff_summary_cache import MergeDiffSummaryCache
     from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
     from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
         selector=build_merge_selective_regeneration(client=get_client(), log=log),
-        summary_cache=MergeDiffSummaryCache(cache=await get_cache(), serializer=DiffSummarySerializer()),
+        summary_cache=DiffSummaryCache(
+            cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
+        ),
         log=log,
     )
 
