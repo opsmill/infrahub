@@ -125,10 +125,11 @@ CASCADE_NODE_KIND = "TestingCascadeNode"
 
 
 def build_cascade_schema() -> SchemaRoot:
-    """A node whose display label reads a computed attribute.
+    """A node whose display label and human-friendly id both read a computed attribute.
 
-    Writing ``code`` re-renders the display label (which reads it) inside the same save, exercising
-    the same-node cascade the bulk writer must report so cross-node readers of the display label chain.
+    Writing ``code`` re-renders the display label and the hfid (both read it) inside the same save,
+    exercising both sides of the same-node cascade the bulk writer must report so cross-node readers
+    of those fields chain.
     """
     node = NodeSchema(
         name="CascadeNode",
@@ -136,7 +137,7 @@ def build_cascade_schema() -> SchemaRoot:
         label="Cascade Node",
         default_filter="name__value",
         display_label="{{ code__value }}",
-        human_friendly_id=["name__value"],
+        human_friendly_id=["code__value"],
         uniqueness_constraints=[["name__value"]],
         attributes=[
             AttributeSchema(name="name", kind="Text", optional=False, unique=True),
@@ -156,6 +157,81 @@ def build_cascade_schema() -> SchemaRoot:
 
 async def load_cascade_schema(db: InfrahubDatabase, branch_name: str | None = None) -> None:
     await load_schema(db=db, schema=build_cascade_schema(), branch_name=branch_name, update_db=True)
+
+
+CYCLE_NAMESPACE = "Testing"
+CYCLE_A_KIND = "TestingCycleA"
+CYCLE_B_KIND = "TestingCycleB"
+
+
+def build_cycle_schema() -> SchemaRoot:
+    """Two kinds whose computed summaries read each other across a relationship: a genuine cycle.
+
+    ``CycleA.summary`` reads ``CycleB.summary`` and ``CycleB.summary`` reads ``CycleA.summary``, so a
+    recompute of one always yields the other as the next level. Nothing but the chain-depth bound stops
+    it, which is exactly what the bound is there to guard.
+    """
+    node_a = NodeSchema(
+        name="CycleA",
+        namespace=CYCLE_NAMESPACE,
+        label="Cycle A",
+        default_filter="name__value",
+        display_label="{{ name__value }}",
+        uniqueness_constraints=[["name__value"]],
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=False, unique=True),
+            AttributeSchema(
+                name="summary",
+                kind="Text",
+                optional=True,
+                read_only=True,
+                computed_attribute=ComputedAttribute(
+                    kind=ComputedAttributeKind.JINJA2, jinja2_template="{{ peer__summary__value }}"
+                ),
+            ),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="peer",
+                optional=True,
+                peer=CYCLE_B_KIND,
+                cardinality=RelationshipCardinality.ONE,
+            ),
+        ],
+    )
+    node_b = NodeSchema(
+        name="CycleB",
+        namespace=CYCLE_NAMESPACE,
+        label="Cycle B",
+        default_filter="name__value",
+        display_label="{{ name__value }}",
+        uniqueness_constraints=[["name__value"]],
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=False, unique=True),
+            AttributeSchema(
+                name="summary",
+                kind="Text",
+                optional=True,
+                read_only=True,
+                computed_attribute=ComputedAttribute(
+                    kind=ComputedAttributeKind.JINJA2, jinja2_template="{{ peer__summary__value }}"
+                ),
+            ),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="peer",
+                optional=True,
+                peer=CYCLE_A_KIND,
+                cardinality=RelationshipCardinality.ONE,
+            ),
+        ],
+    )
+    return SchemaRoot(nodes=[node_a, node_b])
+
+
+async def load_cycle_schema(db: InfrahubDatabase, branch_name: str | None = None) -> None:
+    await load_schema(db=db, schema=build_cycle_schema(), branch_name=branch_name, update_db=True)
 
 
 CHAIN_NAMESPACE = "Testing"

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from prefect import flow
+
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
@@ -19,24 +21,31 @@ from infrahub.core.recompute.bulk_write import (
     BulkRecomputeWriter,
     WrittenNode,
 )
+from infrahub.core.recompute.dispatch import persist_and_chain
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
+from infrahub.workers.dependencies import build_database, build_event_service, build_workflow
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import (
     CASCADE_NODE_KIND,
+    CYCLE_A_KIND,
+    CYCLE_B_KIND,
     PROFILE_NODE_KIND,
     PROFILE_PEER_KIND,
     chain_kind,
     load_cascade_schema,
     load_chain_schema,
+    load_cycle_schema,
     load_profile_schema,
 )
 
 if TYPE_CHECKING:
+    from fast_depends import Provider
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -239,11 +248,11 @@ async def test_bulk_writer_reports_fields_cascaded_by_the_save(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
 ) -> None:
-    """A write that cascades a same-node derived value reports the cascaded field, so it can chain.
+    """A write that cascades same-node derived values reports them too, so they can chain.
 
-    Writing ``code`` re-renders the display label (which reads it) in the same save. If the writer
-    reported only the requested field, a cross-node reader of the display label would never chain on
-    the coalesced pass.
+    Writing ``code`` re-renders both the display label and the hfid (each reads it) in the same save.
+    If the writer reported only the requested field, a cross-node reader of either would never chain
+    on the coalesced pass. Covers both branches of the writer's field apply (display/hfid and generic).
     """
     await load_cascade_schema(db=db)
     node = await Node.init(db=db, schema=CASCADE_NODE_KIND, branch=default_branch)
@@ -258,15 +267,163 @@ async def test_bulk_writer_reports_fields_cascaded_by_the_save(
         context=_event_context(),
     )
 
-    # Both the written record and the event carry the cascaded field, not only the requested one.
+    # Both the written record and the event carry every cascaded field, not only the requested one.
     assert len(written) == 1
-    assert set(written[0].fields) == {"code", "display_label"}
-    assert set(recorder.events[0].fields) == {"code", "display_label"}
+    assert set(written[0].fields) == {"code", DISPLAY_LABEL_FIELD, HFID_FIELD}
+    assert set(recorder.events[0].fields) == {"code", DISPLAY_LABEL_FIELD, HFID_FIELD}
 
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
     assert reloaded is not None
     assert reloaded.code.value == "override"
     assert await reloaded.get_display_label(db=db) == "override"
+    assert await reloaded.get_hfid(db=db) == ["override"]
+
+
+async def test_persist_and_chain_returns_without_writing_when_branch_is_gone(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    dependency_provider: Provider,
+) -> None:
+    """A branch deleted between the reader query and the write leaves nothing persisted or dispatched.
+
+    ``persist_and_chain`` resolves the branch after tagging the run; a missing branch is the grace
+    path, and it must return before any write, event, or chained workflow.
+    """
+    await load_profile_schema(db=db)
+    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
+
+    event_recorder = MemoryInfrahubEvent()
+    workflow_recorder = WorkflowRecorder()
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    @flow(name="test-persist-and-chain-branch-gone")
+    async def _run() -> None:
+        await persist_and_chain(
+            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="ignored")],
+            schema_branch=schema_branch,
+            branch_name="branch-that-was-deleted",
+            context=_event_context(),
+            coalesced=True,
+            recompute_depth=0,
+        )
+
+    with (
+        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
+        dependency_provider.scope(build_event_service, lambda: event_recorder),
+        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+    ):
+        await _run()
+
+    # The grace path is reached after tagging but before any write, so nothing is persisted.
+    assert event_recorder.events == []
+    assert workflow_recorder.submit_calls == []
+
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert await reloaded.get_display_label(db=db) != "ignored"
+
+
+async def test_persist_and_chain_live_path_stamps_live_and_does_not_chain(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    dependency_provider: Provider,
+) -> None:
+    """The live path persists the value, stamps the event live, and never drives the chain.
+
+    A live pass lets the per-node recompute automations carry the next level, so
+    ``persist_and_chain`` must not submit the coalesced chain when ``coalesced`` is False.
+    """
+    await load_profile_schema(db=db)
+    node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
+
+    event_recorder = MemoryInfrahubEvent()
+    workflow_recorder = WorkflowRecorder()
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    @flow(name="test-persist-and-chain-live")
+    async def _run() -> None:
+        await persist_and_chain(
+            writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="live label")],
+            schema_branch=schema_branch,
+            branch_name=default_branch.name,
+            context=_event_context(),
+            coalesced=False,
+            recompute_depth=0,
+        )
+
+    with (
+        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
+        dependency_provider.scope(build_event_service, lambda: event_recorder),
+        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
+    ):
+        await _run()
+
+    # The value is persisted.
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert await reloaded.get_display_label(db=db) == "live label"
+
+    # The event carries the live origin so cross-node readers still recompute from it.
+    assert len(event_recorder.events) == 1
+    assert event_recorder.events[0].meta.origin is NodeMutationOrigin.LIVE
+
+    # A live pass never drives the coalesced chain; that guards against an inverted ``if coalesced``.
+    assert workflow_recorder.submit_calls == []
+
+
+async def test_chain_self_terminates_on_a_cyclic_schema(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """A cyclic schema keeps yielding its peer level by level, but the depth bound stops it.
+
+    Feeding each level's submissions forward as the next level's writes, the cycle alternates between
+    the two kinds forever. The bound is the only thing that ends it: below it the peer is always
+    dispatched, and at the bound the same input yields nothing.
+    """
+    await load_cycle_schema(db=db)
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    bound = max_recompute_chain_depth(schema_branch)
+
+    # Walk the cycle level by level, manufacturing the next level's writes from what was submitted.
+    written = [WrittenNode(node_id="a-node", kind=CYCLE_A_KIND, fields=("summary",))]
+    kinds_seen: list[str] = []
+    depth = 0
+    while depth < bound:
+        recorder = WorkflowRecorder()
+        submissions = await submit_recompute_chain(
+            written=written,
+            schema_branch=schema_branch,
+            branch=default_branch.name,
+            workflow=recorder,
+            context=_event_context(),
+            depth=depth,
+        )
+        # Below the bound the cyclic peer is always dispatched: the cycle never runs dry on its own.
+        assert submissions
+        target_kind = submissions[0].target_kind
+        kinds_seen.append(target_kind)
+        written = [WrittenNode(node_id="next", kind=target_kind, fields=("summary",))]
+        depth += 1
+
+    # The cycle really did alternate between the two peers, so termination is the bound's doing.
+    assert set(kinds_seen) == {CYCLE_A_KIND, CYCLE_B_KIND}
+
+    # At the bound the next level would exceed it, so the same cyclic input now yields nothing.
+    recorder = WorkflowRecorder()
+    submissions = await submit_recompute_chain(
+        written=written,
+        schema_branch=schema_branch,
+        branch=default_branch.name,
+        workflow=recorder,
+        context=_event_context(),
+        depth=bound,
+    )
+    assert submissions == []
+    assert recorder.submit_calls == []
 
 
 async def test_chain_coalesces_the_next_level_into_one_submission(
