@@ -7,6 +7,7 @@ import pytest
 from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
+from pytest_httpx import HTTPXMock
 
 from infrahub import config
 from infrahub.core.registry import registry
@@ -204,6 +205,124 @@ async def test_init_repoints_origin_after_location_change(
 
     assert relocated.get_git_repo_main().remotes.origin.url == str(source_b)
     assert relocated.get_branches_from_remote()["main"].commit == commit_b
+
+
+def _build_source_with_working_branch(source_dir: Path) -> None:
+    """Initialize a git source repo with `main` and a `branch01` that adds a commit on top of it."""
+    source = Repo.init(source_dir, initial_branch="main")
+    with source.config_writer() as cfg:
+        cfg.set_value("user", "name", "Test")
+        cfg.set_value("user", "email", "test@test.local")
+
+    target = source_dir / "data.txt"
+    target.write_text("line 1\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("initial commit on main")
+
+    source.git.checkout("-b", "branch01")
+    target.write_text("line 1\nline 2\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("commit on branch01")
+
+    source.git.checkout("main")
+
+
+@pytest.mark.httpx_mock(assert_all_responses_were_requested=False)
+async def test_collect_pending_imports_skips_merged_read_only_branch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    httpx_mock: HTTPXMock,
+) -> None:
+    """A remote git branch mapping to an already-merged (read-only) Infrahub branch must be skipped.
+
+    A git branch present on the remote but absent from the worker's local clone is classified as a
+    new branch. When the matching Infrahub branch already exists and has been merged, it is
+    read-only, so recording a commit against it is rejected server-side with a GraphQLError. That
+    rejection must not abort the collection: the merged branch should be skipped -- neither queued
+    for import nor recorded as a permanent per-cycle failure -- so the remaining branches and
+    repositories keep syncing.
+    """
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+
+    source_dir = tmp_path / "source-repo"
+    source_dir.mkdir()
+    _build_source_with_working_branch(source_dir)
+
+    client = InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
+    repository = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name="merged-read-only-repo",
+        location=str(source_dir),
+        default_branch_name="main",
+        client=client,
+        update_commit_value=False,
+    )
+
+    # Precondition: branch01 lives on the remote but not in the local clone, so it is collected as a
+    # "new" branch -- the exact path that breaks when the Infrahub branch is already merged.
+    new_branches, updated_branches = await repository.compare_local_remote()
+    assert new_branches == ["branch01"]
+    assert updated_branches == []
+
+    # fetch() reports the repository as online at the start of collection.
+    httpx_mock.add_response(
+        method="POST",
+        json={"data": {"CoreGenericRepositoryUpdate": {"ok": True}}},
+        match_headers={"X-Infrahub-Tracker": "mutation-repository-update-operational-status"},
+    )
+
+    # create_branch_in_graph: the Infrahub branch already exists, so BranchCreate is rejected with an
+    # "already exist" error, sending collection down the branch.get() lookup path.
+    httpx_mock.add_response(
+        method="POST",
+        json={"errors": [{"message": "An error occurred while creating the branch 'branch01', already exist"}]},
+        match_headers={"X-Infrahub-Tracker": "mutation-branch-create"},
+    )
+
+    # branch.get: the existing Infrahub branch has been merged and is therefore read-only.
+    httpx_mock.add_response(
+        method="POST",
+        json={
+            "data": {
+                "Branch": [
+                    {
+                        "id": "8927425e-fd89-482a-bcec-aad267eb2c66",
+                        "name": "branch01",
+                        "description": "",
+                        "origin_branch": "main",
+                        "branched_from": "2023-02-17T09:30:17.811719Z",
+                        "is_default": False,
+                        "sync_with_git": True,
+                        "has_schema_changes": False,
+                        "graph_version": 1,
+                        "status": "MERGED",
+                    }
+                ]
+            }
+        },
+        match_headers={"X-Infrahub-Tracker": "query-branch"},
+    )
+
+    # update_commit_value: recording a commit on the read-only branch is rejected by the server. A
+    # correct implementation skips the branch before reaching this call, so this response may be
+    # left unused (assert_all_responses_were_requested=False above).
+    httpx_mock.add_response(
+        method="POST",
+        json={
+            "errors": [{"message": "Branch 'branch01' has been merged and is read-only. No modifications are allowed."}]
+        },
+        match_headers={"X-Infrahub-Tracker": "mutation-repository-update-commit"},
+    )
+
+    result = await repository.collect_pending_imports()
+
+    # The merged/read-only branch is skipped: it is neither queued for import nor recorded as a
+    # permanent per-cycle failure (which would tag the repository with a sync error every minute).
+    assert [pending.infrahub_branch_name for pending in result.imports] == []
+    assert result.failed_imports == []
 
 
 def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
