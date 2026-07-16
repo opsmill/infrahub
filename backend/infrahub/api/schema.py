@@ -19,11 +19,13 @@ from pydantic import (
     create_model,
     model_validator,
 )
+from pydantic import ValidationError as PydanticValidationError
 from starlette.responses import JSONResponse
 
 from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
+from infrahub.api.schema_write_projection import project_to_write_contract
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
@@ -123,11 +125,21 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
     @model_validator(mode="before")
     @classmethod
     def validate_write_contract(cls, data: Any) -> Any:
-        # The user-facing "write" contract lives in the SDK; each submitted node/generic is
-        # validated against it so that fields the user may not set (read-level, internal, or
-        # unknown) and out-of-range constrained values are rejected at the boundary with a
-        # field-level message, before the payload is coerced into the richer internal models.
+        # A submitted schema may legitimately carry read-only/internal fields — a schema read back
+        # from Infrahub, or a full internal dump. The internal schema accepts those but still
+        # rejects fields that are unknown or invalid for their context (a typo, or a node-only
+        # field on an extension), drawing the tolerate/reject line a uniform extra="forbid" cannot.
         if isinstance(data, dict):
+            try:
+                SchemaRoot.model_validate(data)
+            except PydanticValidationError as exc:
+                messages = [f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}" for err in exc.errors()]
+                raise ValueError("; ".join(messages)) from exc
+
+            # Drop the read-only/internal fields so the strict write models accept the payload; the
+            # forbidden-field check above has already run, so nothing is hidden. What remains is the
+            # user-facing write contract, validated for out-of-range constrained values.
+            data = project_to_write_contract(data)
             result = validate_write_schema(schema=data)
             if not result.valid:
                 raise ValueError("; ".join(result.messages))
