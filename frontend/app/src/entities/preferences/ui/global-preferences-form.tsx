@@ -18,10 +18,14 @@ import { useUpdateGlobalPreferences } from "@/entities/preferences/ui/queries/up
 
 const GLOBAL_EMPTY_VALUE_LABEL = "Automatic (browser default)";
 
-function SaveButton({ isDisabled }: { isDisabled?: boolean }) {
+function SaveButton({ isPending }: { isPending?: boolean }) {
   const { isDirty } = useFormState();
 
-  return <FormSubmit isDisabled={isDisabled || !isDirty}>Save</FormSubmit>;
+  return (
+    <FormSubmit isPending={isPending} isDisabled={!isDirty}>
+      Save
+    </FormSubmit>
+  );
 }
 
 export function GlobalPreferencesForm() {
@@ -73,7 +77,7 @@ export function GlobalPreferencesForm() {
       <TimezoneField emptyValueLabel={GLOBAL_EMPTY_VALUE_LABEL} />
 
       <Row className="justify-end p-2">
-        <SaveButton isDisabled={updatePreferences.isPending} />
+        <SaveButton isPending={updatePreferences.isPending} />
       </Row>
     </Form>
   );
