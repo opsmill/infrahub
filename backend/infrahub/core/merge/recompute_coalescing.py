@@ -440,42 +440,47 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
     return max(RECOMPUTE_CHAIN_DEPTH_FLOOR, target_count)
 
 
-async def submit_recompute_chain(
-    *,
-    written: list[WrittenNode],
-    schema_branch: SchemaBranch,
-    branch: str,
-    workflow: InfrahubWorkflow,
-    context: EventContext,
-    depth: int,
-    max_depth: int | None = None,
-) -> list[CoalescedSubmission]:
-    """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass.
+class RecomputeChainSubmitter:
+    """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass."""
 
-    The writes are coalesced like a merge or rebase change set, so their readers recompute without a
-    per-node event per node. An empty write set stops the chain; the schema-derived depth bound is the
-    backstop for a cyclic schema.
-    """
-    if not written:
-        return []
-    if max_depth is None:
-        max_depth = max_recompute_chain_depth(schema_branch)
-    next_depth = depth + 1
-    if next_depth > max_depth:
-        log.warning(
-            "Recompute chain exceeded its bound (%s) on branch %s; the derived-value dependency graph "
-            "is likely cyclic. Leaving %s node(s) unrecomputed: %s",
-            max_depth,
-            branch,
-            len(written),
-            sorted({f"{node.kind}:{node.node_id}" for node in written}),
+    def __init__(self, schema_branch: SchemaBranch, workflow: InfrahubWorkflow) -> None:
+        self.schema_branch = schema_branch
+        self.workflow = workflow
+
+    async def submit(
+        self,
+        *,
+        written: list[WrittenNode],
+        branch: str,
+        context: EventContext,
+        depth: int,
+        max_depth: int | None = None,
+    ) -> list[CoalescedSubmission]:
+        """Build and submit the next coalesced level, or stop the chain.
+
+        The writes are treated like a merge or rebase change set. An empty write set stops the chain;
+        the schema-derived depth bound is the backstop for a cyclic schema.
+        """
+        if not written:
+            return []
+        if max_depth is None:
+            max_depth = max_recompute_chain_depth(self.schema_branch)
+        next_depth = depth + 1
+        if next_depth > max_depth:
+            log.warning(
+                "Recompute chain exceeded its bound (%s) on branch %s; the derived-value dependency graph "
+                "is likely cyclic. Leaving %s node(s) unrecomputed: %s",
+                max_depth,
+                branch,
+                len(written),
+                sorted({f"{node.kind}:{node.node_id}" for node in written}),
+            )
+            return []
+        changes = [
+            MergeChange(node_id=node.node_id, kind=node.kind, action=UPDATED, changed_fields=frozenset(node.fields))
+            for node in written
+        ]
+        coalesced = CoalescedRecomputeBuilder(schema_branch=self.schema_branch).build(changes=changes, branch=branch)
+        return await CoalescedRecomputeSubmitter(workflow=self.workflow).submit(
+            coalesced=coalesced, context=context, recompute_depth=next_depth
         )
-        return []
-    changes = [
-        MergeChange(node_id=node.node_id, kind=node.kind, action=UPDATED, changed_fields=frozenset(node.fields))
-        for node in written
-    ]
-    coalesced = CoalescedRecomputeBuilder(schema_branch=schema_branch).build(changes=changes, branch=branch)
-    return await CoalescedRecomputeSubmitter(workflow=workflow).submit(
-        coalesced=coalesced, context=context, recompute_depth=next_depth
-    )

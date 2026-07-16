@@ -5,7 +5,7 @@ from prefect.logging import get_run_logger
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.recompute.bulk_write import DISPLAY_LABEL_FIELD, AttributeValueWrite
-from infrahub.core.recompute.dispatch import persist_and_chain
+from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 from infrahub.events import BranchDeletedEvent
@@ -77,9 +77,9 @@ async def process_display_label(
         if value != node.display_label_value:
             writes.append(AttributeValueWrite(node_id=node.node_id, field=DISPLAY_LABEL_FIELD, value=value))
 
-    await persist_and_chain(
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    await dispatcher.dispatch(
         writes=writes,
-        schema_branch=schema_branch,
         branch_name=branch_name,
         context=context,
         coalesced=object_ids is not None,

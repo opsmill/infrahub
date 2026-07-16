@@ -11,7 +11,7 @@ from prefect.logging import get_run_logger
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind, MutationAction
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
-from infrahub.core.recompute.dispatch import persist_and_chain
+from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
@@ -353,9 +353,9 @@ async def process_jinja2(
             if value != node.computed_attribute_value:
                 writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
-    await persist_and_chain(
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    await dispatcher.dispatch(
         writes=writes,
-        schema_branch=schema_branch,
         branch_name=branch_name,
         context=context,
         coalesced=object_ids is not None,

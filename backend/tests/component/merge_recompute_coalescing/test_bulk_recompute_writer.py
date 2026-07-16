@@ -10,8 +10,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
     RECOMPUTE_CHAIN_DEPTH_FLOOR,
+    RecomputeChainSubmitter,
     max_recompute_chain_depth,
-    submit_recompute_chain,
 )
 from infrahub.core.node import Node
 from infrahub.core.recompute.bulk_write import (
@@ -21,12 +21,11 @@ from infrahub.core.recompute.bulk_write import (
     BulkRecomputeWriter,
     WrittenNode,
 )
-from infrahub.core.recompute.dispatch import persist_and_chain
+from infrahub.core.recompute.dispatch import BulkRecomputeDispatcher
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
-from infrahub.workers.dependencies import build_database, build_event_service, build_workflow
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
@@ -40,8 +39,6 @@ from tests.helpers.merge_recompute.dataset import (
 from tests.helpers.schema import CASCADE_NODE, CASCADE_SCHEMA, CYCLE_A, CYCLE_B, CYCLE_SCHEMA, load_schema
 
 if TYPE_CHECKING:
-    from fast_depends import Provider
-
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -279,12 +276,11 @@ async def test_persist_and_chain_returns_without_writing_when_branch_is_gone(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    dependency_provider: Provider,
 ) -> None:
     """A branch deleted between the reader query and the write leaves nothing persisted or dispatched.
 
-    ``persist_and_chain`` resolves the branch after tagging the run; a missing branch is the grace
-    path, and it must return before any write, event, or chained workflow.
+    The dispatcher resolves the branch after tagging the run; a missing branch is the grace path, and
+    it must return before any write, event, or chained workflow.
     """
     await load_profile_schema(db=db)
     node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
@@ -293,23 +289,21 @@ async def test_persist_and_chain_returns_without_writing_when_branch_is_gone(
     workflow_recorder = WorkflowRecorder()
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
+    dispatcher = BulkRecomputeDispatcher(
+        db=db, event_service=event_recorder, workflow=workflow_recorder, schema_branch=schema_branch
+    )
+
     @flow(name="test-persist-and-chain-branch-gone")
     async def _run() -> None:
-        await persist_and_chain(
+        await dispatcher.dispatch(
             writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="ignored")],
-            schema_branch=schema_branch,
             branch_name="branch-that-was-deleted",
             context=_event_context(),
             coalesced=True,
             recompute_depth=0,
         )
 
-    with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
-    ):
-        await _run()
+    await _run()
 
     # The grace path is reached after tagging but before any write, so nothing is persisted.
     assert event_recorder.events == []
@@ -324,12 +318,11 @@ async def test_persist_and_chain_live_path_stamps_live_and_does_not_chain(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    dependency_provider: Provider,
 ) -> None:
     """The live path persists the value, stamps the event live, and never drives the chain.
 
-    A live pass lets the per-node recompute automations carry the next level, so
-    ``persist_and_chain`` must not submit the coalesced chain when ``coalesced`` is False.
+    A live pass lets the per-node recompute automations carry the next level, so the dispatcher must
+    not submit the coalesced chain when ``coalesced`` is False.
     """
     await load_profile_schema(db=db)
     node = await _make_node(db=db, branch=default_branch, name="n1", peer_name="p1")
@@ -338,23 +331,21 @@ async def test_persist_and_chain_live_path_stamps_live_and_does_not_chain(
     workflow_recorder = WorkflowRecorder()
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
+    dispatcher = BulkRecomputeDispatcher(
+        db=db, event_service=event_recorder, workflow=workflow_recorder, schema_branch=schema_branch
+    )
+
     @flow(name="test-persist-and-chain-live")
     async def _run() -> None:
-        await persist_and_chain(
+        await dispatcher.dispatch(
             writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="live label")],
-            schema_branch=schema_branch,
             branch_name=default_branch.name,
             context=_event_context(),
             coalesced=False,
             recompute_depth=0,
         )
 
-    with (
-        dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-        dependency_provider.scope(build_event_service, lambda: event_recorder),
-        dependency_provider.scope(build_workflow, lambda: workflow_recorder),
-    ):
-        await _run()
+    await _run()
 
     # The value is persisted.
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
@@ -390,11 +381,9 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
     depth = 0
     while depth < bound:
         recorder = WorkflowRecorder()
-        submissions = await submit_recompute_chain(
+        submissions = await RecomputeChainSubmitter(schema_branch=schema_branch, workflow=recorder).submit(
             written=written,
-            schema_branch=schema_branch,
             branch=default_branch.name,
-            workflow=recorder,
             context=_event_context(),
             depth=depth,
         )
@@ -410,11 +399,9 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
 
     # At the bound the next level would exceed it, so the same cyclic input now yields nothing.
     recorder = WorkflowRecorder()
-    submissions = await submit_recompute_chain(
+    submissions = await RecomputeChainSubmitter(schema_branch=schema_branch, workflow=recorder).submit(
         written=written,
-        schema_branch=schema_branch,
         branch=default_branch.name,
-        workflow=recorder,
         context=_event_context(),
         depth=bound,
     )
@@ -434,11 +421,9 @@ async def test_chain_coalesces_the_next_level_into_one_submission(
     recorder = WorkflowRecorder()
     written = [WrittenNode(node_id="l2-node", kind=chain_kind(2), fields=("summary",))]
 
-    submissions = await submit_recompute_chain(
+    submissions = await RecomputeChainSubmitter(schema_branch=schema_branch, workflow=recorder).submit(
         written=written,
-        schema_branch=schema_branch,
         branch=default_branch.name,
-        workflow=recorder,
         context=_event_context(),
         depth=0,
     )
@@ -463,11 +448,9 @@ async def test_chain_dispatches_nothing_when_no_values_were_written(
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
     recorder = WorkflowRecorder()
-    submissions = await submit_recompute_chain(
+    submissions = await RecomputeChainSubmitter(schema_branch=schema_branch, workflow=recorder).submit(
         written=[],
-        schema_branch=schema_branch,
         branch=default_branch.name,
-        workflow=recorder,
         context=_event_context(),
         depth=0,
     )
@@ -490,11 +473,9 @@ async def test_chain_stops_at_the_depth_bound(
 
     # Starting at the bound, the next level would exceed it, so a cyclic schema cannot chain without end.
     bound = max_recompute_chain_depth(schema_branch)
-    submissions = await submit_recompute_chain(
+    submissions = await RecomputeChainSubmitter(schema_branch=schema_branch, workflow=recorder).submit(
         written=written,
-        schema_branch=schema_branch,
         branch=default_branch.name,
-        workflow=recorder,
         context=_event_context(),
         depth=bound,
     )
@@ -517,11 +498,9 @@ async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncat
     recorder = WorkflowRecorder()
     written = [WrittenNode(node_id="l2-node", kind=chain_kind(2), fields=("summary",))]
     # Level 3 reads level 2's summary; at the floor depth the derived bound still dispatches it.
-    submissions = await submit_recompute_chain(
+    submissions = await RecomputeChainSubmitter(schema_branch=schema_branch, workflow=recorder).submit(
         written=written,
-        schema_branch=schema_branch,
         branch=default_branch.name,
-        workflow=recorder,
         context=_event_context(),
         depth=RECOMPUTE_CHAIN_DEPTH_FLOOR,
     )

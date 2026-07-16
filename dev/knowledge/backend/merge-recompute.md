@@ -19,9 +19,9 @@ merge / rebase
   -> CoalescedRecomputeSubmitter.submit(...)           (one process flow per target and source kind)
        -> computed_attribute_process_jinja2 / display-label-process-jinja2 / hfid-process
             -> render values, keep only the ones that changed
-            -> persist_and_chain(writes, coalesced=True, recompute_depth)
-                 -> BulkRecomputeWriter.write(...)     (bulk write, origin = recompute)
-                 -> submit_recompute_chain(...)        (dispatch the next level for readers of the writes)
+            -> BulkRecomputeDispatcher.dispatch(writes, coalesced=True, recompute_depth)
+                 -> BulkRecomputeWriter.write(...)         (bulk write, origin = recompute)
+                 -> RecomputeChainSubmitter.submit(...)    (dispatch the next level for readers of the writes)
 ```
 
 The builder, submitter, and coordinator live in `core/merge/recompute_coalescing.py`. The build step is pure, so it is unit and component testable without a database or a worker. A merge recomputes on the destination branch; a rebase recomputes on the user branch.
@@ -43,9 +43,9 @@ The three families' cross-node triggers match only `live`, so `merge`, `rebase`,
 
 ## The bulk writer
 
-**Location:** `core/recompute/bulk_write.py` (`BulkRecomputeWriter`), driven through `core/recompute/dispatch.py` (`persist_and_chain`)
+**Location:** `core/recompute/bulk_write.py` (`BulkRecomputeWriter`), driven through `core/recompute/dispatch.py` (`BulkRecomputeDispatcher`)
 
-The process flows render the new values, keep only the ones that differ from the stored value, and hand them to `persist_and_chain`. This is the single write path for all three families, on both the live and the coalesced side. The `coalesced` flag is the difference: a live single-node recompute passes `coalesced=False` (stamp `live`, let the emitted events carry any further readers), a merge, rebase, or chained level passes `coalesced=True` (stamp `recompute`, drive the next level here).
+The process flows render the new values, keep only the ones that differ from the stored value, and hand them to a `BulkRecomputeDispatcher` (wired by `build_bulk_recompute_dispatcher`). This is the single write path for all three families, on both the live and the coalesced side. The `coalesced` flag is the difference: a live single-node recompute passes `coalesced=False` (stamp `live`, let the emitted events carry any further readers), a merge, rebase, or chained level passes `coalesced=True` (stamp `recompute`, drive the next level here).
 
 The writer:
 
@@ -59,7 +59,7 @@ Writes commit per chunk and emit before the next chunk runs, so the write is not
 
 ## Chaining and the depth bound
 
-A recompute write can feed a value that reads it on another node. On a coalesced pass, after the bulk write, `submit_recompute_chain` treats the writes as a new change set and dispatches the next coalesced level for their readers. Each level carries an incremented `recompute_depth`.
+A recompute write can feed a value that reads it on another node. On a coalesced pass, after the bulk write, `RecomputeChainSubmitter` treats the writes as a new change set and dispatches the next coalesced level for their readers. Each level carries an incremented `recompute_depth`.
 
 An empty write set dispatches nothing, which is the normal stop: an acyclic dependency graph settles on its own because each level only writes the values that actually changed. The depth bound only guards a cyclic or self-referential schema, which never settles. It is derived from the schema (`max_recompute_chain_depth` in `recompute_coalescing.py`): a chain cannot recompute more derived values than the schema defines, so the bound is the derived-value target count, with a floor. That never truncates a real acyclic chain, however deep, and still stops a cyclic one. Reaching it logs a warning that the graph is likely cyclic and names the nodes left unrecomputed.
 
@@ -69,20 +69,20 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 |---------|------|--------|------------|
 | Direct edit, same node | inline during `Node._update()` | n/a | inline, in dependency order |
 | Direct edit, reader on another node | per-node async process flow, `coalesced=False` | `live` | the emitted `live` events and their per-node triggers |
-| Merge or rebase | coalesced pass, `coalesced=True` | `recompute` | `submit_recompute_chain` |
-| A recompute write feeding a reader | chained coalesced pass, `coalesced=True` | `recompute` | `submit_recompute_chain`, depth-bounded |
+| Merge or rebase | coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
+| A recompute write feeding a reader | chained coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter`, depth-bounded |
 
 ## Key Files
 
 | File | What |
 |------|------|
-| `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `submit_recompute_chain`, `max_recompute_chain_depth` |
+| `core/merge/recompute_coalescing.py` | `CoalescedRecomputeBuilder`, `CoalescedRecomputeSubmitter`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter`, `max_recompute_chain_depth` |
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |
-| `core/recompute/dispatch.py` | `persist_and_chain` (bulk write, then chain on a coalesced pass) |
+| `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass) |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |
 | `events/constants.py` | `NodeMutationOrigin`, `NODE_ORIGIN_LABEL` |
-| `computed_attribute/tasks.py`, `display_labels/tasks.py`, `hfid/tasks.py` | The three process flows that render values and call `persist_and_chain` |
+| `computed_attribute/tasks.py`, `display_labels/tasks.py`, `hfid/tasks.py` | The three process flows that render values and call `BulkRecomputeDispatcher.dispatch` |
 
 ## See Also
 
