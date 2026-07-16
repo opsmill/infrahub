@@ -10,12 +10,9 @@ type DateDisplayProps = {
   hideDefault?: boolean;
   className?: string;
   containerClassName?: string;
-  /** Explicit date-fns pattern escape hatch: renders exactly this pattern inline (no heuristic). */
+  /** Explicit date-fns pattern escape hatch: rendered inline verbatim, bypassing preferences. */
   dateFormat?: string;
-  /**
-   * `"datetime"` renders the user's full preferred datetime + timezone inline. Omitted (default)
-   * keeps the historic relative/compact heuristic below.
-   */
+  /** `"datetime"` forces the full preferred datetime inline; omitted keeps the compact heuristic. */
   variant?: "datetime";
 };
 
@@ -27,8 +24,6 @@ export const DateDisplay = ({
   dateFormat,
   variant,
 }: DateDisplayProps) => {
-  // Reads the shared date-preferences context; falls back to browser-locale formatting when no
-  // provider is mounted, so DateDisplay never crashes outside the provider.
   const { formatDate } = useFormatDate();
 
   if (!date && hideDefault) {
@@ -36,8 +31,6 @@ export const DateDisplay = ({
   }
 
   const dateData = date ? new Date(date) : new Date();
-
-  // The tooltip always shows the user's full preferred datetime + timezone.
   const tooltipMessage = formatDate(dateData, "datetime");
 
   const wrap = (content: React.ReactNode) => (
@@ -48,23 +41,18 @@ export const DateDisplay = ({
     </span>
   );
 
-  // Explicit full-timestamp variant: render the user's preferred datetime inline.
   if (variant === "datetime") {
     return wrap(formatDate(dateData, "datetime"));
   }
 
-  // Explicit pattern escape hatch: render exactly this pattern inline (no heuristic, no preference).
   if (dateFormat) {
     return wrap(format(dateData, dateFormat));
   }
 
-  const distanceFromNow = differenceInDays(new Date(), dateData);
-
-  // Compact branch: > 7 days old → the user's preferred date, honouring their format + timezone.
-  if (distanceFromNow > 7) {
+  // > 7 days old → preferred date; recent → "x ago".
+  if (differenceInDays(new Date(), dateData) > 7) {
     return wrap(formatDate(dateData, "date"));
   }
 
-  // Relative branch: recent dates with no override.
   return wrap(formatDistanceToNow(dateData, { addSuffix: true }));
 };
