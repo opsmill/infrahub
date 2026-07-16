@@ -102,44 +102,6 @@ function DateFormatExample({ id, now }: { id: string; now: Date }) {
   );
 }
 
-function PreferenceComboboxField({
-  name,
-  label,
-  items,
-  emptyMessage,
-  virtualized,
-  ariaDescribedBy,
-}: {
-  name: string;
-  label: string;
-  items: ReadonlyArray<ComboboxItem>;
-  emptyMessage: string;
-  virtualized?: boolean;
-  ariaDescribedBy?: string;
-}) {
-  return (
-    <FormField
-      name={name}
-      defaultValue={DEFAULT_FORM_FIELD_VALUE}
-      render={({ field }) => {
-        const fieldData: FormAttributeValue = field.value;
-        return (
-          <Combobox
-            value={(fieldData?.value as string | null) ?? null}
-            onChange={(newValue) => field.onChange(toFieldValue(newValue))}
-            items={items}
-            label={label}
-            placeholder={EMPTY_VALUE_LABEL}
-            emptyMessage={emptyMessage}
-            virtualized={virtualized}
-            aria-describedby={ariaDescribedBy}
-          />
-        );
-      }}
-    />
-  );
-}
-
 export function PreferencesForm() {
   const { isPending, error, data: preferences } = useGetEffectivePreferences();
   const updatePreferences = useUpsertUserPreferences();
@@ -190,12 +152,20 @@ export function PreferencesForm() {
       <DetailRow icon="mdi:calendar-text" label="Date format">
         <Row>
           <div className="w-64 shrink-0">
-            <PreferenceComboboxField
+            <FormField
               name="date_format"
-              label="Date format"
-              items={dateFormatItems}
-              emptyMessage="No date format found."
-              ariaDescribedBy={dateFormatExampleId}
+              defaultValue={DEFAULT_FORM_FIELD_VALUE}
+              render={({ field }) => (
+                <Combobox
+                  value={(field.value?.value as string | null) ?? null}
+                  onChange={(newValue) => field.onChange(toFieldValue(newValue))}
+                  items={dateFormatItems}
+                  label="Date format"
+                  placeholder={EMPTY_VALUE_LABEL}
+                  emptyMessage="No date format found."
+                  aria-describedby={dateFormatExampleId}
+                />
+              )}
             />
           </div>
           <div className="min-w-0 flex-1 truncate">
@@ -214,12 +184,20 @@ export function PreferencesForm() {
       <DetailRow icon="mdi:earth" label="Timezone">
         <Row>
           <div className="w-64 shrink-0">
-            <PreferenceComboboxField
+            <FormField
               name="timezone"
-              label="Timezone"
-              items={TIMEZONE_ITEMS}
-              emptyMessage="No timezone found."
-              virtualized
+              defaultValue={DEFAULT_FORM_FIELD_VALUE}
+              render={({ field }) => (
+                <Combobox
+                  value={(field.value?.value as string | null) ?? null}
+                  onChange={(newValue) => field.onChange(toFieldValue(newValue))}
+                  items={TIMEZONE_ITEMS}
+                  label="Timezone"
+                  placeholder={EMPTY_VALUE_LABEL}
+                  emptyMessage="No timezone found."
+                  virtualized
+                />
+              )}
             />
           </div>
           <div className="flex-1" />
