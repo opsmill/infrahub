@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.merge.recompute_coalescing import RecomputeChainSubmitter
+from infrahub.core.merge.recompute_coalescing import (
+    CoalescedRecomputeBuilder,
+    CoalescedRecomputeSubmitter,
+    RecomputeChainSubmitter,
+)
 from infrahub.core.recompute.bulk_write import BulkRecomputeWriter
 from infrahub.core.registry import registry
 from infrahub.events.constants import NodeMutationOrigin
@@ -17,8 +21,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
-    from infrahub.services.adapters.event import InfrahubEventService
-    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 class BulkRecomputeDispatcher:
@@ -32,13 +34,12 @@ class BulkRecomputeDispatcher:
         self,
         *,
         db: InfrahubDatabase,
-        event_service: InfrahubEventService,
-        workflow: InfrahubWorkflow,
-        schema_branch: SchemaBranch,
+        writer: BulkRecomputeWriter,
+        chain: RecomputeChainSubmitter,
     ) -> None:
         self._db = db
-        self._writer = BulkRecomputeWriter(db=db, event_service=event_service)
-        self._chain = RecomputeChainSubmitter(schema_branch=schema_branch, workflow=workflow)
+        self._writer = writer
+        self._chain = chain
 
     async def dispatch(
         self,
@@ -70,9 +71,10 @@ class BulkRecomputeDispatcher:
 
 async def build_bulk_recompute_dispatcher(schema_branch: SchemaBranch) -> BulkRecomputeDispatcher:
     """Wire a bulk recompute dispatcher from the flow-level dependencies."""
-    return BulkRecomputeDispatcher(
-        db=await get_database(),
-        event_service=await get_event_service(),
-        workflow=get_workflow(),
-        schema_branch=schema_branch,
+    db = await get_database()
+    writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
+    chain = RecomputeChainSubmitter(
+        builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+        submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
     )
+    return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain)

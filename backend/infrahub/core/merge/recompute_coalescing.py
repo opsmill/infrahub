@@ -443,9 +443,9 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
 class RecomputeChainSubmitter:
     """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass."""
 
-    def __init__(self, schema_branch: SchemaBranch, workflow: InfrahubWorkflow) -> None:
-        self.schema_branch = schema_branch
-        self.workflow = workflow
+    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+        self.builder = builder
+        self.submitter = submitter
 
     async def submit(
         self,
@@ -464,7 +464,7 @@ class RecomputeChainSubmitter:
         if not written:
             return []
         if max_depth is None:
-            max_depth = max_recompute_chain_depth(self.schema_branch)
+            max_depth = max_recompute_chain_depth(self.builder.schema_branch)
         next_depth = depth + 1
         if next_depth > max_depth:
             log.warning(
@@ -480,7 +480,5 @@ class RecomputeChainSubmitter:
             MergeChange(node_id=node.node_id, kind=node.kind, action=UPDATED, changed_fields=frozenset(node.fields))
             for node in written
         ]
-        coalesced = CoalescedRecomputeBuilder(schema_branch=self.schema_branch).build(changes=changes, branch=branch)
-        return await CoalescedRecomputeSubmitter(workflow=self.workflow).submit(
-            coalesced=coalesced, context=context, recompute_depth=next_depth
-        )
+        coalesced = self.builder.build(changes=changes, branch=branch)
+        return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=next_depth)
