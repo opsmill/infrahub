@@ -25,6 +25,15 @@ class RecomputeResolver:
         self._attributes_by_transform = attributes_by_transform
 
     def resolve(self, transform_name: str, transform_id: str) -> list[PythonDefinition]:
-        return (
-            self._attributes_by_transform.get(transform_name) or self._attributes_by_transform.get(transform_id) or []
-        )
+        # A transform can be wired by name for one attribute and by id for another, so both
+        # lookups are unioned rather than short-circuited; deduplicate by (kind, attribute name)
+        # so a definition reachable under both keys is never recomputed twice.
+        resolved: list[PythonDefinition] = []
+        seen: set[tuple[str, str]] = set()
+        for key in (transform_name, transform_id):
+            for definition in self._attributes_by_transform.get(key) or []:
+                identity = (definition.kind, definition.attribute.name)
+                if identity not in seen:
+                    seen.add(identity)
+                    resolved.append(definition)
+        return resolved

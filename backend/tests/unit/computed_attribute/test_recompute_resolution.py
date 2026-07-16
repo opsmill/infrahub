@@ -72,6 +72,21 @@ def test_transform_wired_by_id() -> None:
     assert [(definition.kind, definition.attribute.name) for definition in resolved] == [("TestingCar", "description")]
 
 
+def test_transform_wired_by_name_and_id_returns_both() -> None:
+    car = NodeSchema(name="Car", namespace="Testing")
+    person = NodeSchema(name="Person", namespace="Testing")
+    by_name = _attribute(name="description", transform=TRANSFORM_NAME)
+    by_id = _attribute(name="summary", transform=TRANSFORM_ID)
+    resolver = RecomputeResolver(attributes_by_transform=_mapping((car, by_name), (person, by_id)))
+
+    resolved = resolver.resolve(transform_name=TRANSFORM_NAME, transform_id=TRANSFORM_ID)
+
+    assert {(definition.kind, definition.attribute.name) for definition in resolved} == {
+        ("TestingCar", "description"),
+        ("TestingPerson", "summary"),
+    }
+
+
 class _RecordingMapping:
     """A mapping that records every key looked up, proving the empty path only reads the mapping."""
 

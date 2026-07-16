@@ -19,7 +19,7 @@ a Python transform, and computed attributes, plus `FileRepo`
 `test_fingerprint_transformation.py`. Run integration tests with testcontainers:
 
 ```bash
-INFRAHUB_USE_TEST_CONTAINERS=1 uv run pytest backend/tests/integration/computed_attribute/test_selective_recompute.py --neo4j
+INFRAHUB_USE_TEST_CONTAINERS=1 uv run pytest backend/tests/integration/git/test_selective_recompute.py --neo4j
 ```
 
 Unset any dev-shell `INFRAHUB_*` vars first (esp. `INFRAHUB_USE_TEST_CONTAINERS=false`
@@ -142,9 +142,10 @@ To assert "recompute happened / did not happen", prefer one of:
 ## Test placement
 
 - Unit (`backend/tests/unit/computed_attribute/`): resolution and trigger shapes.
-- Integration (`backend/tests/integration/computed_attribute/`): US1-US6 plus the
-  origin/merge-rebase no-double-fire scenario, over the `car-dealership` fixture with
-  testcontainers.
+- Integration (`backend/tests/integration/git/test_selective_recompute.py`): US3/US4/US6
+  and the import-to-event linkage, over the `car-dealership` fixture with testcontainers.
+  (The fingerprint-driven recompute scoping for US1/US2/US5 is covered by the component
+  suite `backend/tests/component/computed_attribute/test_transform_lifecycle_recompute.py`.)
 
 Per repo convention, no Jira/spec/FR IDs appear in test names, docstrings, or source
 comments - those belong in the commit message, PR description, and changelog fragment.

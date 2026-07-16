@@ -100,7 +100,7 @@ No branch dimension (builtin triggers are not branch-specific,
 |----------------|-----------------------|----------------------|-------------------------|-----------------------------------------|
 | create         | `NodeCreatedEvent`    | kind, origin=LIVE    | (none / role-only)      | resolve + fan-out (first computation)   |
 | update         | `NodeUpdatedEvent`    | kind, origin=LIVE    | role, field=fingerprint | resolve + fan-out (selective recompute) |
-| delete         | `NodeDeletedEvent`    | kind (+origin=LIVE)  | (none)                  | no-op / log (see research Decision 5)   |
+| delete         | `NodeDeletedEvent`    | kind (+origin=LIVE)  | (none)                  | reconcile node-input automations, dropping the removed transform's (see research Decision 5) |
 
 `generate_name()` for a `BuiltinTriggerDefinition` is `f"builtin::{name}"`
 (`trigger/models.py:285`, `:302`), reconciled in the `builtin_triggers` set.

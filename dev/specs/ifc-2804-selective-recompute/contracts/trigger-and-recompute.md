@@ -107,24 +107,24 @@ context object, exactly as the existing triggers do (`triggers.py:19-26`,
 Input: `(branch_name, transform_id)`. Output: `list[PythonDefinition]`.
 
 ```text
-1. Resolve transform_id -> transform name on branch_name.
-   Reuse ComputedAttributeTransformQuery-style lookup by id (tasks.py:182 fetches a
-   transform by id today). id -> name is a single GraphQL read.
+1. Resolve transform_id -> the transform node on branch_name, via client.get with
+   raise_when_missing=False. If the node is not found (a branch race, or a delete that has
+   already landed), log and SKIP the recompute leg, but still reconcile (section 3.5). This
+   is the over-regenerate-never-under-regenerate fallback: an unresolved transform never
+   silently drops the reconciliation.
 
 2. schema_branch = registry.schema.get_schema_branch(name=branch_name)
    mapping = schema_branch.computed_attributes.python_attributes_by_transform   # facade.py:56
    # A computed attribute may wire its transform by NAME or by UUID
-   # (core/schema/computed_attribute.py:12 documents "name or ID"; the mapping is keyed by
-   # that raw value at python_transform.py:96-99). Look up by BOTH:
-   definitions = mapping.get(transform_name) or mapping.get(transform_id) or []
+   # (core/schema/computed_attribute.py documents "name or ID"; the mapping is keyed by that
+   # raw value at python_transform.py). UNION both keys and dedupe by (kind, attribute name),
+   # so a transform wired by name for one attribute and by id for another recomputes both:
+   definitions = dedupe(mapping.get(transform_name, []) + mapping.get(transform_id, []))
 
-3. definitions is [] when the transform feeds no computed attribute
-   (edge case "Transform feeding no computed attribute"). This empty path returns HERE,
-   before any client.all node fetch (section 4) -> inert, no recompute, no node read.
-
-4. If the lookup is empty but a recompute might still be needed (an unexpected mapping
-   state), default toward recompute and log loudly; never silently skip (FR-010, the
-   over-regenerate invariant).
+3. definitions is [] only when the transform feeds no computed attribute
+   (edge case "Transform feeding no computed attribute"). The empty result returns before any
+   client.all node fetch (section 4): inert, no recompute, no node read. Reconciliation
+   (section 3.5) still runs regardless.
 ```
 
 Guarantees:
@@ -145,26 +145,32 @@ Guarantees:
 
 On **every** lifecycle event (create / update / delete), the workflow reconciles the
 data-path automations that recompute an attribute when a node feeding the transform's query
-changes. This is the duty the removed commit trigger performed as a side effect
-(`tasks.py:597-612`); the lifecycle flow now owns it (research Decision 5). It runs the same
-two `setup_triggers` calls the schema path runs:
+changes. This is the duty the removed commit trigger performed as a side effect; the
+lifecycle flow now owns it (research Decision 5). Each trigger type is gathered and applied
+under its trigger-registry lock via `setup_triggers_specific`, which gathers the desired set
+*inside* the lock so a concurrent reconcile cannot apply a stale set and delete an automation
+another run just created:
 
 ```python
-computed_attribute_triggers = await gather_trigger_computed_attribute_python(...)   # tasks.py:538
-await setup_triggers(triggers=computed_attribute_triggers, trigger_type=TriggerType.COMPUTED_ATTR_PYTHON)
-await setup_triggers(triggers=computed_attribute_query_triggers, trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY)
+await setup_triggers_specific(gatherer=_gather_computed_attr_python_triggers,
+                              trigger_type=TriggerType.COMPUTED_ATTR_PYTHON, db=db)
+await setup_triggers_specific(gatherer=_gather_computed_attr_python_query_triggers,
+                              trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY, db=db)
 ```
 
 - **On create / update:** builds or refreshes the node-input automation for the transform,
   so a transform-only import (no schema diff, so the schema path never runs) never leaves it
   unbuilt.
 - **On delete:** the gathered desired set no longer contains the removed transform, so
-  `setup_triggers`' `to_delete = set(existing) - set(desired)` diff (`trigger/setup.py:107`)
+  `setup_triggers`' `to_delete = set(existing) - set(desired)` diff (`trigger/setup.py`)
   drops its automation.
+- **Concurrency:** the gather-and-apply runs inside the per-type lock (namespace
+  `trigger-rules`), so overlapping lifecycle and schema-path reconciles serialize instead of
+  racing on the same automation set.
 
 This is more precise than the removed commit sweep: it runs on transform events only, not on
-every commit. The schema path (`computed_attribute_setup_python`) is unchanged and still runs
-the same reconciliation on schema change.
+every commit. The schema path (`computed_attribute_setup_python`) shares the same locked
+reconciliation on schema change.
 
 ## 4. Recompute fan-out contract
 
