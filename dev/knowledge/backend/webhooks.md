@@ -220,6 +220,12 @@ The `available_actions` field on the task query reports each action with whether
 
 `InfrahubTaskRetry` and `InfrahubTaskCancel` carry out the actions. Each loads the delivery through a query-only Prefect client (`DeliveryReader`), then authorizes it (`DeliveryActionAuthorizer`): the action must apply to the run's current state, and the caller must hold the `UPDATE` permission on the webhook's node kind. Loading is kept separate from authorization so the read uses the narrowest client capability it needs.
 
+### Delivery capture
+
+Each send attempt records what it exchanged as a single Prefect artifact on the run (key `WEBHOOK_HTTP_ARTIFACT_KEY`, `infrahub-webhook-http`), written on both success and failure through `PrefectClientAdapter.create_artifact` behind the `FlowRunArtifactWriting` protocol. The payload is a `CapturedHttp` (`backend/infrahub/webhook/capture.py`): the request (URL and redacted headers), the response (status, body, latency) when the target answered, and the classified error (class, message, remediation) when the attempt failed. `capture.py` builds the model with no I/O; the write happens in `webhook_send`, so no raw secret is persisted because headers are redacted before the artifact is built (see [Log redaction](#log-redaction)).
+
+The task query reads it back with `read_http`, which filters by key and keeps the most recent artifact per run, so the surfaced capture reflects the last attempt. The serializer projects it onto the `WebhookDeliveryTask` fields `http_request`, `http_response`, and `error`, gated on the GraphQL selection (`include_http`); the payload continues to come from the run parameters. The key and type are owned by `task_manager/flow_run/constants.py`, the layer that reads and writes the artifact, so `webhook` depends on it in the same direction as the client adapter.
+
 ### Delivery logging
 
 Each send attempt logs one line before the request is sent: the attempt number (`n/N`), the target URL, the request headers, and the payload. The payload is truncated inline (2048 characters) with the full body emitted only at debug level. Secret-bearing header values are masked in this log — see [Log redaction](#log-redaction) for the rule.
