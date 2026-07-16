@@ -168,11 +168,18 @@ Depends on the T003 spike outcome.
 
 - [ ] T037 Observability (E8): emit a per-merge log/metric recording the selective-vs-fallback path and dispatched generator/artifact counts, in `post_process_branch_merge`
 - [ ] T038 No-double-trigger regression (D8): a transform-file-change merge triggers regeneration exactly once despite the default-branch re-import (quickstart #12)
-- [ ] T039 Integration Docker test in `backend/tests/integration_docker/`: full testing-focus matrix (single-kind, new target, conflict-to-base, repo-code change, fallbacks) on the live stack
-- [ ] T040 Baseline scale test (SC-004): record dispatched-task count before/after with the flag on vs off on a representative dataset (quickstart #14 scale half)
+- [ ] T039 Selection-decision coverage for the merge follow-up: dispatcher branch matrix + gate + selector at the unit tier (`backend/tests/unit/core/merge/`), plus a real-graph selection test driving the dispatcher against a live graph through a recording workflow backend (`backend/tests/component/proposed_change/`). Full live-stack execution of the dispatched regeneration is not exercised at this tier — the testcontainer harness does not serve the render flow's worker→server callback — so real regenerated-output coverage moves to the API tier (T044)
+- [ ] T040 Perf A/B on the representative dataset (SC-001/SC-004/SC-005): same-build flag-off vs flag-on dispatched-count comparison recorded in `perf-validation.md` (flag off reproduces the blanket baseline; selective scales with the affected set). The scale run (SC-002 multi-minute-window) is deferred to T045 pending the profiling-harness scale dataset
 - [ ] T041 [P] Run `quickstart.md` end to end and check off each scenario
 - [ ] T042 [P] Add a towncrier changelog fragment under `changelog/` (performance/bugfix, referencing IFC-2704 / IFC-2306)
 - [ ] T043 Run `/pre-ci` (format, ruff, ty, unit tests, generated-file + generated-doc validation) and fix any drift before pushing
+
+---
+
+## Phase 9: Remediation — Gap Report
+
+- [ ] T044 [P] [Sync: Gap Report] Add an API-tier real-regeneration test asserting a merge-selected artifact definition actually re-renders its `CoreArtifact` for the affected member (and unrelated members stay untouched), driving generation through the ASGI test client in `backend/tests/component/api/test_merge_selective_regen_render.py` — the integration testcontainer harness cannot execute the render flow (worker→server callback unavailable), so real-output coverage lives here
+- [ ] T045 [P] [Sync: Gap Report] Run the scale same-build A/B (SC-002) once the profiling-harness scale dataset (IFC-2761/IFC-2889) is available and record the count reduction and drained-window in `dev/specs/ifc-2704-incremental-merge-regen/perf-validation.md`
 
 ---
 

@@ -213,3 +213,14 @@ The Spec Kit block in `CLAUDE.md` will be updated (via the `after_plan`
 Re-evaluated after design: no new violations. The design introduces no new schema, no new
 dependency, and no new query on the hot path; it adds two typed module files and one message
 field, and extracts one shared helper serving two callers. **PASS.**
+
+### Revision: Implementation Sync 2026-07-16
+
+- Reason: reconciled the testing strategy to the tiers that shipped. Selective-dispatch
+  selection is covered at the unit tier (dispatcher branch matrix, gate, selector) and by a
+  real-graph selection test at the component tier driving the dispatcher through a recording
+  workflow backend. The planned `integration_docker/` full live-stack matrix is not used for this
+  path: the testcontainer harness cannot execute the render flow's worker→server callback, so
+  real regenerated-output assertions move to the API tier (tasks T039, T044). The representative
+  perf A/B (SC-001/SC-004/SC-005) is recorded in `perf-validation.md`; the scale run (SC-002)
+  remains deferred pending the profiling-harness dataset (tasks T040, T045).
