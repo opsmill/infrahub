@@ -1,0 +1,1 @@
+Artifact and generator regeneration during a proposed change no longer fails when a definition references a repository that has no changes in the branch diff; the missing repository is now skipped instead of aborting the task.
