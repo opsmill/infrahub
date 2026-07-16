@@ -60,10 +60,10 @@ class AdmissionController:
         self._slot_pool.set_observer(self._sync_gauges)
         self._backstop_max_waiters = backstop_max_waiters
         self._retry_after = retry_after
-        # HIGH gets a larger effective target so it sheds last; NORMAL and LOW share the base target.
+        # HIGH gets a larger effective target so it sheds last; MEDIUM and LOW share the base target.
         self._codel: dict[Priority, CoDelController] = {
             Priority.HIGH: CoDelController(target=target * high_target_multiplier, interval=interval, clock=clock),
-            Priority.NORMAL: CoDelController(target=target, interval=interval, clock=clock),
+            Priority.MEDIUM: CoDelController(target=target, interval=interval, clock=clock),
             Priority.LOW: CoDelController(target=target, interval=interval, clock=clock),
         }
 

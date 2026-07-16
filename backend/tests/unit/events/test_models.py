@@ -16,7 +16,7 @@ class MappingCase:
 
 MAPPING_CASES = [
     MappingCase(name="high", workflow_priority=WorkflowPriority.HIGH, expected=Priority.HIGH),
-    MappingCase(name="medium-maps-to-normal", workflow_priority=WorkflowPriority.MEDIUM, expected=Priority.NORMAL),
+    MappingCase(name="medium", workflow_priority=WorkflowPriority.MEDIUM, expected=Priority.MEDIUM),
     MappingCase(name="low", workflow_priority=WorkflowPriority.LOW, expected=Priority.LOW),
     MappingCase(name="none", workflow_priority=None, expected=None),
 ]
@@ -54,4 +54,4 @@ def test_event_context_to_request_context_maps_priority() -> None:
 
     assert request_context.account is not None
     assert request_context.account.id == "account-a"
-    assert request_context.priority is Priority.NORMAL
+    assert request_context.priority is Priority.MEDIUM

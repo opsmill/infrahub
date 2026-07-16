@@ -11,8 +11,8 @@ describe("resolvePriority", () => {
     expect(resolvePriority("high")).toBe("high");
   });
 
-  it("maps the backend fallback 'normal' to 'high'", () => {
-    expect(resolvePriority("normal")).toBe("high");
+  it("maps the backend fallback 'medium' to 'high'", () => {
+    expect(resolvePriority("medium")).toBe("high");
   });
 
   it("maps undefined (absent context) to 'high'", () => {

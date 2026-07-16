@@ -20,7 +20,7 @@ MAX_CONCURRENCY = 2
 LOW_REQUESTS = 60
 HIGH_REQUESTS = 15
 
-_PRIORITY_LABELS = ("high", "normal", "low")
+_PRIORITY_LABELS = ("high", "medium", "low")
 _REASON_LABELS = ("codel", "backstop")
 
 
@@ -126,7 +126,7 @@ async def test_gradient() -> None:
     assert set(low_statuses) <= {200, 429}
 
 
-@pytest.mark.parametrize("priority", ["high", "normal", "low"])
+@pytest.mark.parametrize("priority", ["high", "medium", "low"])
 async def test_all_admitted_when_capacity_available(priority: str) -> None:
     """With ample capacity every class is admitted and the handler runs (no behaviour change)."""
     app = FastAPI()
@@ -312,7 +312,7 @@ async def test_capacity_and_burst() -> None:
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
 
         async def fire() -> int:
-            response = await client.get("/work", headers={"X-Priority": "normal"}, timeout=10)
+            response = await client.get("/work", headers={"X-Priority": "medium"}, timeout=10)
             return response.status_code
 
         start = time.monotonic()
@@ -393,7 +393,7 @@ async def test_metrics() -> None:
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=_admit_app()), base_url="http://test") as client:
         for priority in _PRIORITY_LABELS:
             assert (await client.get("/work", headers={"X-Priority": priority})).status_code == 200
-        # No X-Priority header: classified NORMAL, counted as missing.
+        # No X-Priority header: classified MEDIUM, counted as missing.
         assert (await client.get("/work")).status_code == 200
         assert (await client.get("/work")).status_code == 200
 
@@ -452,10 +452,10 @@ async def test_metrics() -> None:
 
     # (1) Known counts: the eight families moved with the expected labels.
     assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 2
-    assert offered_delta == {"high": 1.0, "normal": 3.0, "low": 5.0}
-    assert admitted_delta == {"high": 1.0, "normal": 3.0, "low": 3.0}
-    assert codel_delta == {"high": 0.0, "normal": 0.0, "low": 1.0}
-    assert backstop_delta == {"high": 0.0, "normal": 0.0, "low": 1.0}
+    assert offered_delta == {"high": 1.0, "medium": 3.0, "low": 5.0}
+    assert admitted_delta == {"high": 1.0, "medium": 3.0, "low": 3.0}
+    assert codel_delta == {"high": 0.0, "medium": 0.0, "low": 1.0}
+    assert backstop_delta == {"high": 0.0, "medium": 0.0, "low": 1.0}
 
     # (2) Per class: every offered request is admitted or shed exactly once.
     for priority in _PRIORITY_LABELS:
@@ -578,18 +578,18 @@ async def test_handler_exception_releases_slot() -> None:
 
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         with pytest.raises(ValueError, match=r"^handler exploded$"):
-            await client.get("/boom", headers={"X-Priority": "normal"})
+            await client.get("/boom", headers={"X-Priority": "medium"})
 
         # The finally released the failed request's slot, so the pool is whole again.
         assert slot_pool.available == 1
-        assert slot_pool.in_flight(priority=Priority.NORMAL) == 0
+        assert slot_pool.in_flight(priority=Priority.MEDIUM) == 0
 
         # A leak would block here forever; instead the next request is admitted and served.
-        response = await client.get("/work", headers={"X-Priority": "normal"})
+        response = await client.get("/work", headers={"X-Priority": "medium"})
 
     assert response.status_code == 200
     assert response.json() == {"ok": True}
-    assert metrics.IN_FLIGHT.labels(priority="normal")._value.get() == 0.0
+    assert metrics.IN_FLIGHT.labels(priority="medium")._value.get() == 0.0
     assert slot_pool.available == 1
 
 

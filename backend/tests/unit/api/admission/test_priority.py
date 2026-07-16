@@ -15,7 +15,7 @@ class ParseCase:
 
 PARSE_CASES = [
     ParseCase(name="high", header_value="high", expected_priority=Priority.HIGH, expected_explicit=True),
-    ParseCase(name="normal", header_value="normal", expected_priority=Priority.NORMAL, expected_explicit=True),
+    ParseCase(name="medium", header_value="medium", expected_priority=Priority.MEDIUM, expected_explicit=True),
     ParseCase(name="low", header_value="low", expected_priority=Priority.LOW, expected_explicit=True),
     ParseCase(name="mixed-case-high", header_value="HIGH", expected_priority=Priority.HIGH, expected_explicit=True),
     ParseCase(name="mixed-case-low", header_value="Low", expected_priority=Priority.LOW, expected_explicit=True),
@@ -25,11 +25,11 @@ PARSE_CASES = [
         expected_priority=Priority.HIGH,
         expected_explicit=True,
     ),
-    ParseCase(name="empty", header_value="", expected_priority=Priority.NORMAL, expected_explicit=False),
-    ParseCase(name="whitespace-only", header_value="   ", expected_priority=Priority.NORMAL, expected_explicit=False),
-    ParseCase(name="none", header_value=None, expected_priority=Priority.NORMAL, expected_explicit=False),
-    ParseCase(name="invalid-urgent", header_value="urgent", expected_priority=Priority.NORMAL, expected_explicit=False),
-    ParseCase(name="invalid-garbage", header_value="!@#$", expected_priority=Priority.NORMAL, expected_explicit=False),
+    ParseCase(name="empty", header_value="", expected_priority=Priority.MEDIUM, expected_explicit=False),
+    ParseCase(name="whitespace-only", header_value="   ", expected_priority=Priority.MEDIUM, expected_explicit=False),
+    ParseCase(name="none", header_value=None, expected_priority=Priority.MEDIUM, expected_explicit=False),
+    ParseCase(name="invalid-urgent", header_value="urgent", expected_priority=Priority.MEDIUM, expected_explicit=False),
+    ParseCase(name="invalid-garbage", header_value="!@#$", expected_priority=Priority.MEDIUM, expected_explicit=False),
 ]
 
 
@@ -41,10 +41,10 @@ def test_parse_priority(case: ParseCase) -> None:
 
 
 def test_priority_ordering() -> None:
-    assert Priority.HIGH < Priority.NORMAL < Priority.LOW
+    assert Priority.HIGH < Priority.MEDIUM < Priority.LOW
 
 
 def test_priority_labels() -> None:
     assert Priority.HIGH.label == "high"
-    assert Priority.NORMAL.label == "normal"
+    assert Priority.MEDIUM.label == "medium"
     assert Priority.LOW.label == "low"

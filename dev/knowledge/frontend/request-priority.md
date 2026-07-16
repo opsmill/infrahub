@@ -10,12 +10,12 @@ Contract module: `frontend/app/src/shared/api/priority/index.ts`. Spec:
 ## The contract
 
 - `type RequestPriority = 'high' | 'low'` — the only two values the frontend may emit.
-  `'normal'` is the backend's fallback and is deliberately unrepresentable here.
+  `'medium'` is the backend's fallback and is deliberately unrepresentable here.
 - `DEFAULT_PRIORITY = 'high'` — every transport applies this unconditionally, so no
-  frontend-origin request is ever emitted `normal` or unheadered.
+  frontend-origin request is ever emitted `medium` or unheadered.
 - `PRIORITY_HEADER = 'X-Priority'`.
 - `resolvePriority(value)` — normalizes an untyped per-request value: returns `'low'`
-  only for exactly `'low'`, everything else (`'normal'`, `undefined`, garbage) → `'high'`.
+  only for exactly `'low'`, everything else (`'medium'`, `undefined`, garbage) → `'high'`.
   Each transport runs its value through this before writing the header, so a stray or
   legacy value cannot leak an out-of-contract priority.
 
@@ -67,5 +67,5 @@ Two additive backend changes let cross-origin frontends (dev/split-host) send th
   default, so the CORS preflight allow-lists it.
 - `backend/infrahub/api/admission/middleware.py` exempts CORS `OPTIONS` preflight from
   admission. A preflight never carries a custom header, so without the exemption it would
-  arrive as `normal` and could be shed under load — breaking cross-origin requests exactly
+  arrive as `medium` and could be shed under load — breaking cross-origin requests exactly
   when the feature matters.

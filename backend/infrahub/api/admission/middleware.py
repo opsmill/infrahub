@@ -77,7 +77,7 @@ class AdmissionMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # A CORS preflight carries no X-Priority and would be classified NORMAL. Shedding it under
+        # A CORS preflight carries no X-Priority and would be classified MEDIUM. Shedding it under
         # load would strip the CORS response and break every cross-origin request precisely when the
         # backend is busy, so preflights bypass the gate and reach the downstream CORS middleware.
         if _is_cors_preflight(scope):

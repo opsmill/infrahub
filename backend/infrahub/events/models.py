@@ -12,22 +12,21 @@ from infrahub import __version__
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.constants import WorkflowPriority
+from infrahub.workflows.constants import (
+    WorkflowPriority,  # noqa: TC001  (pydantic needs it at runtime for the EventContext field)
+)
 
 from .constants import EVENT_NAMESPACE, NodeMutationOrigin
 
-_WORKFLOW_PRIORITY_TO_REQUEST_PRIORITY: dict[WorkflowPriority, Priority] = {
-    WorkflowPriority.HIGH: Priority.HIGH,
-    WorkflowPriority.MEDIUM: Priority.NORMAL,
-    WorkflowPriority.LOW: Priority.LOW,
-}
-
 
 def workflow_priority_to_request_priority(priority: WorkflowPriority | None) -> Priority | None:
-    """Map a workflow priority onto the SDK request priority emitted as the X-Priority header."""
+    """Convert a workflow priority to the SDK request priority emitted as the X-Priority header.
+
+    Both enums share the same values (high/medium/low), so this is a direct value cast.
+    """
     if priority is None:
         return None
-    return _WORKFLOW_PRIORITY_TO_REQUEST_PRIORITY[priority]
+    return Priority(priority.value)
 
 
 class EventNode(BaseModel):

@@ -38,7 +38,7 @@ async def test_freed_slot_goes_to_highest_priority_waiter() -> None:
     pool = PrioritySlotPool(max_concurrency=1)
     events: list[str] = []
 
-    holder = await pool.acquire(priority=Priority.NORMAL)
+    holder = await pool.acquire(priority=Priority.MEDIUM)
     assert pool.available == 0
 
     async def waiter(name: str, priority: Priority) -> None:
@@ -66,17 +66,17 @@ async def test_within_class_fifo() -> None:
     pool = PrioritySlotPool(max_concurrency=1)
     events: list[str] = []
 
-    holder = await pool.acquire(priority=Priority.NORMAL)
+    holder = await pool.acquire(priority=Priority.MEDIUM)
 
     async def waiter(name: str) -> None:
-        acquisition = await pool.acquire(priority=Priority.NORMAL)
+        acquisition = await pool.acquire(priority=Priority.MEDIUM)
         events.append(name)
         acquisition.release()
 
     tasks = []
     for name in ("first", "second", "third"):
         tasks.append(asyncio.create_task(waiter(name)))
-        await _wait_until_waiting(pool, priority=Priority.NORMAL, count=len(tasks))
+        await _wait_until_waiting(pool, priority=Priority.MEDIUM, count=len(tasks))
 
     holder.release()
     await asyncio.gather(*tasks)
@@ -89,7 +89,7 @@ async def test_cancelled_waiter_leaks_no_slot() -> None:
     clock = FakeClock()
     pool = PrioritySlotPool(max_concurrency=1, clock=clock)
 
-    holder = await pool.acquire(priority=Priority.NORMAL)
+    holder = await pool.acquire(priority=Priority.MEDIUM)
 
     cancelled_started = asyncio.Event()
 
@@ -104,15 +104,15 @@ async def test_cancelled_waiter_leaks_no_slot() -> None:
     survivor_ran = asyncio.Event()
 
     async def survivor() -> None:
-        acquisition = await pool.acquire(priority=Priority.NORMAL)
+        acquisition = await pool.acquire(priority=Priority.MEDIUM)
         survivor_ran.set()
         acquisition.release()
 
     runner = asyncio.create_task(survivor())
-    await _wait_until_waiting(pool, priority=Priority.NORMAL, count=1)
+    await _wait_until_waiting(pool, priority=Priority.MEDIUM, count=1)
 
     # Cancel the queued LOW waiter, then free the slot. The freed slot must reach the
-    # NORMAL survivor with no leak and no deadlock.
+    # MEDIUM survivor with no leak and no deadlock.
     victim.cancel()
     with_result = await asyncio.gather(victim, return_exceptions=True)
     assert isinstance(with_result[0], asyncio.CancelledError)
@@ -133,7 +133,7 @@ async def test_observer_reflects_waiters_while_still_queued() -> None:
     observed: dict[Priority, int] = dict.fromkeys(Priority, 0)
     pool.set_observer(lambda priority: observed.__setitem__(priority, pool.waiters(priority=priority)))
 
-    holder = await pool.acquire(priority=Priority.NORMAL)
+    holder = await pool.acquire(priority=Priority.MEDIUM)
 
     async def waiter() -> None:
         acquisition = await pool.acquire(priority=Priority.LOW)
@@ -157,7 +157,7 @@ async def test_observer_reflects_cancelled_waiter_leaving_queue() -> None:
     observed: dict[Priority, int] = dict.fromkeys(Priority, 0)
     pool.set_observer(lambda priority: observed.__setitem__(priority, pool.waiters(priority=priority)))
 
-    holder = await pool.acquire(priority=Priority.NORMAL)
+    holder = await pool.acquire(priority=Priority.MEDIUM)
 
     async def cancellable() -> None:
         await pool.acquire(priority=Priority.LOW)
@@ -178,7 +178,7 @@ async def test_observer_reflects_cancelled_waiter_leaving_queue() -> None:
 async def test_cancel_after_handoff_rereleases_slot() -> None:
     pool = PrioritySlotPool(max_concurrency=1)
 
-    holder = await pool.acquire(priority=Priority.NORMAL)
+    holder = await pool.acquire(priority=Priority.MEDIUM)
 
     async def cancellable() -> None:
         await pool.acquire(priority=Priority.HIGH)
@@ -189,15 +189,15 @@ async def test_cancel_after_handoff_rereleases_slot() -> None:
     survivor_ran = asyncio.Event()
 
     async def survivor() -> None:
-        acquisition = await pool.acquire(priority=Priority.NORMAL)
+        acquisition = await pool.acquire(priority=Priority.MEDIUM)
         survivor_ran.set()
         acquisition.release()
 
     runner = asyncio.create_task(survivor())
-    await _wait_until_waiting(pool, priority=Priority.NORMAL, count=1)
+    await _wait_until_waiting(pool, priority=Priority.MEDIUM, count=1)
 
     # Freeing the slot hands it to the HIGH victim (highest priority). Cancelling the victim
-    # in the same tick, before it consumes the slot, must re-release it to the NORMAL
+    # in the same tick, before it consumes the slot, must re-release it to the MEDIUM
     # survivor rather than leak it.
     holder.release()
     victim.cancel()

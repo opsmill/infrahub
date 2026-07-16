@@ -74,23 +74,23 @@ def test_single_below_target_sample_exits_dropping() -> None:
 
 def test_high_priority_target_protects_from_shedding() -> None:
     clock = FakeClock()
-    normal = CoDelController(target=TARGET, interval=INTERVAL, clock=clock)
+    medium = CoDelController(target=TARGET, interval=INTERVAL, clock=clock)
     high = CoDelController(target=TARGET * HIGH_MULTIPLIER, interval=INTERVAL, clock=clock)
 
-    # A sojourn between the two targets: above NORMAL's target, below HIGH's.
+    # A sojourn between the two targets: above MEDIUM's target, below HIGH's.
     sojourn = TARGET * 2
     assert TARGET < sojourn < TARGET * HIGH_MULTIPLIER
 
-    normal_dropped = False
+    medium_dropped = False
     high_dropped = False
     for _ in range(10):
-        if normal.should_drop(sojourn=sojourn):
-            normal_dropped = True
+        if medium.should_drop(sojourn=sojourn):
+            medium_dropped = True
         if high.should_drop(sojourn=sojourn):
             high_dropped = True
         clock.advance(INTERVAL / 2)
 
-    # Same sojourn, same clock: NORMAL sheds once the interval elapses while HIGH, with its
+    # Same sojourn, same clock: MEDIUM sheds once the interval elapses while HIGH, with its
     # larger target, treats the sojourn as acceptable and never sheds.
-    assert normal_dropped is True
+    assert medium_dropped is True
     assert high_dropped is False

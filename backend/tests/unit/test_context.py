@@ -69,10 +69,10 @@ def test_event_context_priority_none_when_unset() -> None:
     assert event_context.priority is None
 
 
-def test_request_context_maps_medium_priority_to_normal() -> None:
+def test_request_context_maps_medium_priority() -> None:
     request_context = build_context(priority=WorkflowPriority.MEDIUM).to_request_context()
 
-    assert request_context.priority is Priority.NORMAL
+    assert request_context.priority is Priority.MEDIUM
 
 
 def test_request_context_priority_none_when_unset() -> None:

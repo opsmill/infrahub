@@ -28,7 +28,7 @@ def _build_app() -> FastAPI:
     """App wired like the server: CORS from the shipped defaults, admission outermost.
 
     A shed-everything controller proves the preflight is not gated by admission: were it not
-    exempt it would be classified NORMAL and shed with a 429 that carries no CORS headers.
+    exempt it would be classified MEDIUM and shed with a 429 that carries no CORS headers.
     """
     app = FastAPI()
 
