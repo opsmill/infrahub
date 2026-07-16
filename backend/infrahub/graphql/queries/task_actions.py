@@ -9,6 +9,7 @@ from infrahub.workflows.catalogue import WEBHOOK_SEND
 
 RETRY_UNAVAILABLE_REASON = "Delivery still in progress"
 CANCEL_UNAVAILABLE_REASON = "Delivery already settled"
+CANCEL_IN_PROGRESS_REASON = "Delivery is already being cancelled"
 
 
 @dataclass(frozen=True)
@@ -32,15 +33,24 @@ class TaskActionGenerator:
             return []
 
         is_terminal = state_type in TERMINAL_STATES
+        is_cancelling = state_type == StateType.CANCELLING
+        can_retry = is_terminal or is_cancelling
+        can_cancel = not is_terminal and not is_cancelling
+        if can_cancel:
+            cancel_reason = None
+        elif is_cancelling:
+            cancel_reason = CANCEL_IN_PROGRESS_REASON
+        else:
+            cancel_reason = CANCEL_UNAVAILABLE_REASON
         return [
             AvailableAction(
                 action=TaskActionType.RETRY,
-                available=is_terminal,
-                unavailability_reason=None if is_terminal else RETRY_UNAVAILABLE_REASON,
+                available=can_retry,
+                unavailability_reason=None if can_retry else RETRY_UNAVAILABLE_REASON,
             ),
             AvailableAction(
                 action=TaskActionType.CANCEL,
-                available=not is_terminal,
-                unavailability_reason=None if not is_terminal else CANCEL_UNAVAILABLE_REASON,
+                available=can_cancel,
+                unavailability_reason=cancel_reason,
             ),
         ]
