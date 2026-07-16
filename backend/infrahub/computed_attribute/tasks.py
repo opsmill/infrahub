@@ -640,7 +640,7 @@ async def process_transform_lifecycle(
     transform_id: str,
     action: str,
     context: EventContext,
-    event_name: str | None = None,  # noqa: ARG001
+    event_name: str | None = None,
 ) -> None:
     """React to a Python transform's own lifecycle event.
 
@@ -652,42 +652,53 @@ async def process_transform_lifecycle(
     log = get_run_logger()
     await add_tags(branches=[branch_name], nodes=[transform_id])
 
-    if action in {MutationAction.CREATED.value, MutationAction.UPDATED.value}:
-        client = get_client()
-        transform = await client.get(kind=InfrahubKind.TRANSFORMPYTHON, id=transform_id, branch=branch_name)
-        transform_name = transform.name.value
-
-        schema_branch = registry.schema.get_schema_branch(name=branch_name)
-        resolver = RecomputeResolver(
-            attributes_by_transform=schema_branch.computed_attributes.python_attributes_by_transform
-        )
-        definitions = resolver.resolve(transform_name=transform_name, transform_id=transform_id)
-
-        log.info(
-            f"Transform {transform_name} ({transform_id}) {action} on {branch_name}: recomputing "
-            f"{len(definitions)} computed attribute(s)"
-        )
-        for definition in definitions:
-            await get_workflow().submit_workflow(
-                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "computed_attribute_name": definition.attribute.name,
-                    "computed_attribute_kind": definition.kind,
-                    "context": context,
-                },
-            )
-
-    # Reconcile on every event so a transform-only import builds the node-input automations
-    # and a delete drops the removed transform's automation.
     database = await get_database()
     async with database.start_session() as db:
-        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
-        await _reconcile_python_computed_attribute_automations(
-            triggers_python=triggers_python,
-            triggers_python_query=triggers_python_query,
-        )
+        try:
+            if action in {MutationAction.CREATED.value, MutationAction.UPDATED.value}:
+                # The transform -> attribute wiring lives in the schema, which a worker other than
+                # the importer may not have caught up on yet; wait so the map is not read empty.
+                component = await get_component()
+                await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
+
+                client = get_client()
+                transform = await client.get(
+                    kind=InfrahubKind.TRANSFORMPYTHON, id=transform_id, branch=branch_name, raise_when_missing=False
+                )
+                if transform is None:
+                    log.warning(
+                        f"Transform {transform_id} not found on {branch_name} for {event_name or action}; "
+                        "skipping recompute, still reconciling automations"
+                    )
+                else:
+                    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+                    resolver = RecomputeResolver(
+                        attributes_by_transform=schema_branch.computed_attributes.python_attributes_by_transform
+                    )
+                    definitions = resolver.resolve(transform_name=transform.name.value, transform_id=transform_id)
+
+                    log.info(
+                        f"Transform {transform.name.value} ({transform_id}) {action} on {branch_name}: recomputing "
+                        f"{len(definitions)} computed attribute(s)"
+                    )
+                    for definition in definitions:
+                        await get_workflow().submit_workflow(
+                            workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                            context=context,
+                            parameters={
+                                "branch_name": branch_name,
+                                "computed_attribute_name": definition.attribute.name,
+                                "computed_attribute_kind": definition.kind,
+                            },
+                        )
+        finally:
+            # Reconcile on every event, even when the recompute leg above failed, so a transform-only
+            # import builds the node-input automations and a delete drops the removed transform's one.
+            triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
+            await _reconcile_python_computed_attribute_automations(
+                triggers_python=triggers_python,
+                triggers_python_query=triggers_python_query,
+            )
 
 
 @flow(

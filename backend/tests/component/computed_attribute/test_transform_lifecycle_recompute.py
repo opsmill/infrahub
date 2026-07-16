@@ -7,9 +7,11 @@ from prefect.client.orchestration import get_client as get_prefect_client
 
 from infrahub.computed_attribute.tasks import process_transform_lifecycle
 from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
+from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import gather_all_automations
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
@@ -226,7 +228,16 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
 
         assert self._submitted_attribute_names(workflow_recorder) == {"computed_b"}
 
-    async def test_delete_submits_no_recompute_but_reconciles(
+    async def _python_automation_names(self) -> set[str]:
+        async with get_prefect_client(sync_client=False) as prefect_client:
+            automations = await gather_all_automations(client=prefect_client)
+        return {
+            automation.name
+            for automation in automations
+            if automation.name.startswith(f"{TriggerType.COMPUTED_ATTR_PYTHON.value}{NAME_SEPARATOR}")
+        }
+
+    async def test_updated_with_missing_transform_does_not_raise_and_still_reconciles(
         self,
         transform_dataset: dict[str, str],
         workflow_recorder: WorkflowRecorder,
@@ -235,18 +246,74 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
     ) -> None:
         await process_transform_lifecycle(
             branch_name=default_branch.name,
+            transform_id="00000000-0000-0000-0000-000000000000",
+            action=MutationAction.UPDATED.value,
+            context=self._context(admin_account, default_branch),
+        )
+
+        assert self._submitted_attribute_names(workflow_recorder) == set()
+        assert await self._python_automation_names(), "a missing transform must still reconcile the automations"
+
+    async def test_delete_drops_removed_transform_automation_but_keeps_others(
+        self,
+        transform_dataset: dict[str, str],
+        workflow_recorder: WorkflowRecorder,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        # Automation names are ``computed_attr_python::<branch>::<kind>_<attribute>``, one per
+        # (transform -> attribute) wiring gathered from the schema and the transform nodes.
+        automation_a = f"{TriggerType.COMPUTED_ATTR_PYTHON.value}{NAME_SEPARATOR}{default_branch.name}{NAME_SEPARATOR}TestCar_computed_a"
+        automation_b = f"{TriggerType.COMPUTED_ATTR_PYTHON.value}{NAME_SEPARATOR}{default_branch.name}{NAME_SEPARATOR}TestCar_computed_b"
+
+        # Reconcile once with the full wiring so both automations exist to begin with; without
+        # this baseline the assertion that A is dropped could pass on a set that never had A.
+        await process_transform_lifecycle(
+            branch_name=default_branch.name,
+            transform_id=transform_dataset["transform_b"],
+            action=MutationAction.UPDATED.value,
+            context=self._context(admin_account, default_branch),
+        )
+        automations_before = await self._python_automation_names()
+        assert {automation_a, automation_b} <= automations_before
+
+        # Remove transform A's wiring the way a real transform delete does: drop the node and the
+        # computed-attribute definition that referenced it, so the gathered set no longer yields A.
+        schema = CAR_PERSON_LIFECYCLE_SCHEMA.duplicate()
+        car = next(node for node in schema.nodes if node.name == "Car")
+        car.attributes = [attribute for attribute in car.attributes if attribute.name != "computed_a"]
+        car.attributes.append(
+            AttributeSchema(
+                name="computed_by_id",
+                kind="Text",
+                read_only=True,
+                optional=True,
+                computed_attribute=ComputedAttribute(
+                    kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                    transform=transform_dataset["transform_by_id"],
+                ),
+            )
+        )
+        await load_schema(db=db, schema=schema, update_db=True)
+
+        transform_a = await NodeManager.get_one(id=transform_dataset["transform_a"], db=db, branch=default_branch)
+        assert transform_a is not None
+        await transform_a.delete(db=db)
+
+        workflow_recorder.execute_calls.clear()
+        workflow_recorder.submit_calls.clear()
+
+        await process_transform_lifecycle(
+            branch_name=default_branch.name,
             transform_id=transform_dataset["transform_a"],
             action=MutationAction.DELETED.value,
             context=self._context(admin_account, default_branch),
         )
 
+        # The delete leg never recomputes; the whole point is that reconciliation prunes A.
         assert self._submitted_attribute_names(workflow_recorder) == set()
 
-        async with get_prefect_client(sync_client=False) as prefect_client:
-            automations = await gather_all_automations(client=prefect_client)
-        node_input_automations = [
-            automation
-            for automation in automations
-            if automation.name.startswith(f"{TriggerType.COMPUTED_ATTR_PYTHON.value}::")
-        ]
-        assert node_input_automations, "delete should still reconcile the node-input automations"
+        automations_after = await self._python_automation_names()
+        assert automation_a not in automations_after, "delete should drop the removed transform's automation"
+        assert automation_b in automations_after, "delete must keep automations of transforms that still exist"
