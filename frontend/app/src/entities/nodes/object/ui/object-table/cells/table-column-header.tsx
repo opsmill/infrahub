@@ -1,12 +1,20 @@
 import { Icon } from "@iconify-icon/react";
-import { Menu, MenuItem, MenuSection, MenuSeparator, MenuTrigger, Popover } from "@infrahub/ui";
+import {
+  Menu,
+  MenuItem,
+  MenuSection,
+  MenuSeparator,
+  MenuTrigger,
+  Popover,
+  SubmenuTrigger,
+} from "@infrahub/ui";
 import { CheckIcon } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
 import { Button } from "react-aria-components";
 
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
-import { classNames } from "@/shared/utils/common";
+import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
 import { isFieldFiltered } from "@/entities/nodes/filters/domain/rules/is-field-filtered";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
@@ -20,7 +28,11 @@ import {
 } from "@/entities/nodes/sort/domain/model/sort";
 import { getColumnActiveSort } from "@/entities/nodes/sort/domain/rules/get-column-active-sort";
 import { isSortableAttribute } from "@/entities/nodes/sort/domain/rules/is-sortable-attribute";
-import { buildAttributeSortField } from "@/entities/nodes/sort/domain/rules/sort-field";
+import { isSortableRelationship } from "@/entities/nodes/sort/domain/rules/is-sortable-relationship";
+import {
+  buildAttributeSortField,
+  buildRelationshipSortField,
+} from "@/entities/nodes/sort/domain/rules/sort-field";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 import type {
   AttributeSchema,
@@ -28,6 +40,7 @@ import type {
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface TableColumnHeaderProps {
   columnSchema: AttributeSchema | RelationshipSchema;
@@ -50,6 +63,16 @@ export function TableColumnHeader({
   if (schema && !("peer" in columnSchema) && isSortableAttribute(columnSchema)) {
     return (
       <SortableColumnHeader schema={schema} attributeSchema={columnSchema} className={className} />
+    );
+  }
+
+  if (schema && "peer" in columnSchema && isSortableRelationship(columnSchema)) {
+    return (
+      <SortableRelationshipColumnHeader
+        schema={schema}
+        relationshipSchema={columnSchema}
+        className={className}
+      />
     );
   }
 
@@ -90,6 +113,123 @@ function SortableColumnHeader({ schema, attributeSchema, className }: SortableCo
         </MenuSection>
       }
     />
+  );
+}
+
+interface SortableRelationshipColumnHeaderProps {
+  schema: ModelSchema;
+  relationshipSchema: RelationshipSchema;
+  className?: string;
+}
+
+function SortableRelationshipColumnHeader({
+  schema,
+  relationshipSchema,
+  className,
+}: SortableRelationshipColumnHeaderProps) {
+  const { customSort, setCustomSort } = useSort(schema);
+  const { schema: peerSchema } = useSchema(relationshipSchema.peer);
+  const activeSort = getColumnActiveSort(customSort, relationshipSchema);
+  const sortableAttributes = sortByOrderWeight(
+    (peerSchema?.attributes ?? []).filter(isSortableAttribute)
+  );
+
+  if (sortableAttributes.length === 0) {
+    return <ColumnHeaderMenu columnSchema={relationshipSchema} className={className} />;
+  }
+
+  const selectSort = (sort: Sort) => {
+    if (activeSort?.field === sort.field && activeSort.direction === sort.direction) {
+      setCustomSort(null);
+      return;
+    }
+    setCustomSort([sort]);
+  };
+
+  const label = relationshipSchema.label ?? relationshipSchema.name;
+
+  return (
+    <ColumnHeaderMenu
+      columnSchema={relationshipSchema}
+      className={className}
+      activeSort={activeSort}
+      sortItems={
+        <SubmenuTrigger>
+          <MenuItem>Sort by</MenuItem>
+
+          <Popover>
+            <Menu aria-label={`Sort by ${label}`}>
+              {sortableAttributes.map((attribute) => (
+                <PeerAttributeSortMenuItem
+                  key={attribute.name}
+                  relationshipName={relationshipSchema.name}
+                  attribute={attribute}
+                  activeSort={activeSort}
+                  onSelect={selectSort}
+                />
+              ))}
+            </Menu>
+          </Popover>
+        </SubmenuTrigger>
+      }
+    />
+  );
+}
+
+interface PeerAttributeSortMenuItemProps {
+  relationshipName: string;
+  attribute: AttributeSchema;
+  activeSort: Sort | null;
+  onSelect: (sort: Sort) => void;
+}
+
+function PeerAttributeSortMenuItem({
+  relationshipName,
+  attribute,
+  activeSort,
+  onSelect,
+}: PeerAttributeSortMenuItemProps) {
+  const field = buildRelationshipSortField(
+    relationshipName,
+    buildAttributeSortField(attribute.name)
+  );
+  const label = attribute.label ?? attribute.name;
+  const isActive = activeSort?.field === field;
+
+  return (
+    <SubmenuTrigger>
+      <MenuItem id={field} textValue={label}>
+        {label}
+        {isActive && (
+          <>
+            <CheckIcon className="ml-auto" />
+            <span className="sr-only">active sort field</span>
+          </>
+        )}
+      </MenuItem>
+
+      <Popover>
+        <Menu aria-label={`Sort direction for ${label}`}>
+          <MenuSection
+            selectionMode="single"
+            selectedKeys={activeSort?.field === field ? [activeSort.direction] : []}
+          >
+            <SortDirectionMenuItem
+              direction={SORT_DIRECTION.ASC}
+              onSelect={(direction) => onSelect({ field, direction })}
+            >
+              Ascending
+            </SortDirectionMenuItem>
+            <SortDirectionMenuItem
+              direction={SORT_DIRECTION.DESC}
+              onSelect={(direction) => onSelect({ field, direction })}
+            >
+              Descending
+            </SortDirectionMenuItem>
+          </MenuSection>
+        </Menu>
+      </Popover>
+    </SubmenuTrigger>
   );
 }
 
@@ -167,7 +307,7 @@ function ColumnHeaderMenu({
         </Button>
 
         <Popover placement="bottom start">
-          <Menu aria-label={`${label} column options`}>
+          <Menu aria-label={`${label} column options`} variant="picker">
             {sortItems}
             {sortItems ? <MenuSeparator /> : null}
             <MenuItem onAction={() => setShowFilterForm(true)}>Filter…</MenuItem>

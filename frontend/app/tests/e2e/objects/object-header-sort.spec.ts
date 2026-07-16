@@ -86,4 +86,57 @@ test.describe("Object header sort", () => {
       await expect(page.getByRole("button", { name: /Sort direction/ })).toContainText("Ascending");
     });
   });
+
+  test("should sort by a related attribute from the Site header", async ({ page }) => {
+    const firstRowLink = page.getByTestId("data-table-row").first().getByRole("link").first();
+    const siteHeader = page.getByTestId("object-items").getByRole("button", { name: "Site" });
+
+    await test.step("navigate and verify the schema default order", async () => {
+      await page.goto("/objects/InfraDevice");
+      await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
+      await expect(firstRowLink).toHaveText("atl1-core1");
+    });
+
+    await test.step("sort ascending by the site name through the Sort by submenu", async () => {
+      await siteHeader.click();
+      await page.getByRole("menuitem", { name: "Sort by" }).click();
+      await page.getByRole("menuitem", { name: "Name", exact: true }).click();
+      await page.getByRole("menuitemradio", { name: "Ascending" }).click();
+
+      await expect(page).toHaveURL(/sort=site__name__value__asc/);
+      await expect(firstRowLink).toHaveText("atl1-leaf1");
+      await expect(page.getByRole("button", { name: "Site sorted ascending" })).toBeVisible();
+    });
+  });
+
+  test("should sort by a related attribute using only the keyboard", async ({ page }) => {
+    const firstRowLink = page.getByTestId("data-table-row").first().getByRole("link").first();
+    const siteHeader = page.getByTestId("object-items").getByRole("button", { name: "Site" });
+
+    await test.step("navigate and verify the schema default order", async () => {
+      await page.goto("/objects/InfraDevice");
+      await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
+      await expect(firstRowLink).toHaveText("atl1-core1");
+    });
+
+    await test.step("walk the menu and submenus with the keyboard", async () => {
+      await siteHeader.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("menuitem", { name: "Sort by" })).toBeFocused();
+
+      await page.keyboard.press("ArrowRight");
+      await expect(page.getByRole("menuitem", { name: "City" })).toBeFocused();
+
+      await page.keyboard.press("ArrowDown");
+      await expect(page.getByRole("menuitem", { name: "Name", exact: true })).toBeFocused();
+
+      await page.keyboard.press("ArrowRight");
+      await expect(page.getByRole("menuitemradio", { name: "Ascending" })).toBeFocused();
+
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/sort=site__name__value__asc/);
+      await expect(firstRowLink).toHaveText("atl1-leaf1");
+      await expect(page.getByRole("button", { name: "Site sorted ascending" })).toBeVisible();
+    });
+  });
 });
