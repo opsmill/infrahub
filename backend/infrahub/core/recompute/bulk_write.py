@@ -28,9 +28,7 @@ HFID_FIELD = "human_friendly_id"
 class AttributeValueWrite:
     """One recomputed derived value to persist on one node.
 
-    ``field`` is the attribute to set: the display-label attribute, the human-friendly-id
-    attribute, or a computed attribute's own name. ``value`` is a list of parts for the
-    human-friendly id and a string for the others.
+    ``value`` is a list of parts for a human-friendly id and a string otherwise.
     """
 
     node_id: str
@@ -40,11 +38,7 @@ class AttributeValueWrite:
 
 @dataclass(frozen=True)
 class WrittenNode:
-    """A node whose derived values were persisted, and the fields that were written.
-
-    Returned so the caller can chain: these writes become the change set of the next coalesced
-    recompute level, reaching values that read them.
-    """
+    """A node whose derived values were persisted, and the fields that were written."""
 
     node_id: str
     kind: str
