@@ -70,7 +70,7 @@
 
 **Independent Test**: Quickstart scenario 6 — filter from Status header menu → identical tag/URL as toolbar path; removing from the tag clears the header indication.
 
-- [ ] T012 [US3] Extend `frontend/app/tests/e2e/objects/object-filters.spec.ts` with explicit parity assertions: apply a filter via header menu "Filter…" and capture `?filters=` + active-filter tag; remove it via the tag and assert the header's active-filter icon clears; apply the same filter via the toolbar FilterPicker and assert the identical `?filters=` value; re-open the header "Filter…" on an actively-filtered column and assert the form is pre-filled (contract B4/B5, spec Story 3 scenarios).
+- [X] T012 [US3] Extend `frontend/app/tests/e2e/objects/object-filters.spec.ts` with explicit parity assertions: apply a filter via header menu "Filter…" and capture `?filters=` + active-filter tag; remove it via the tag and assert the header's active-filter icon clears; apply the same filter via the toolbar FilterPicker and assert the identical `?filters=` value; re-open the header "Filter…" on an actively-filtered column and assert the form is pre-filled (contract B4/B5, spec Story 3 scenarios).
 
 **Checkpoint**: All three user stories complete on object lists.
 
