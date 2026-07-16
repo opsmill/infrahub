@@ -213,8 +213,8 @@ A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskAc
 
 | Action | Available when | Effect |
 |--------|----------------|--------|
-| `RETRY` | The delivery has settled (a terminal state) | Submits `WEBHOOK_SEND` again with the original run's frozen parameters, as a new independent run. The original run is left unchanged as a record. |
-| `CANCEL` | The delivery has not settled | Requests the `CANCELLING` state without forcing it. A running delivery is torn down by its worker. A delivery waiting between attempts keeps its in-process wait, which nothing interrupts, so each attempt re-checks for a recorded cancellation before sending and stops the sequence once one is present. An in-flight HTTP request is not recalled, but no further attempts run. |
+| `RETRY` | The delivery has settled, or is being cancelled (`CANCELLING`) | Submits `WEBHOOK_SEND` again with the original run's frozen parameters, as a new independent run. The original run is left unchanged as a record. |
+| `CANCEL` | The delivery has not settled and is not already `CANCELLING` | Requests the `CANCELLING` state without forcing it. A running delivery is torn down by its worker. A delivery waiting between attempts keeps its in-process wait, which nothing interrupts, so each attempt re-checks for a recorded cancellation before sending and stops the sequence once one is present. An in-flight HTTP request is not recalled, but no further attempts run. |
 
 The `available_actions` field on the task query reports each action with whether it currently applies and, when it does not, the reason. Selecting `available_actions` forces resolution of the run's workflow name, since the field is derived from it.
 

@@ -88,6 +88,19 @@ Annotated screenshots of each step are in the [UI Walkthrough section of PR #975
 | Cancel | Button on the task detail page, confirmation pop-up, notification once done |
 | Task tab | The same controls when a delivery is opened from the webhook's Tasks tab |
 
+## Documentation review
+
+Check the user-facing webhook documentation against the observed behaviour.
+
+| Doc | Verify |
+|-----|--------|
+| `docs/docs/webhooks/overview.mdx`, "Retrying and cancelling deliveries" | The action table matches the UI: Retry is offered when a delivery has finished or is being cancelled; Cancel while it is still running or waiting to retry. |
+| `docs/docs/webhooks/overview.mdx`, delivery logging and "When a delivery fails" | The described log contents (target URL, masked headers, truncated payload) and the classified failure reason with its remediation match what the delivery logs show. |
+
+The structured request, response, and error capture is not rendered in the UI yet, so the user docs
+deliberately do not describe a request/response panel. Confirm the docs do not claim a UI surface
+that is not there.
+
 ## Notes
 
 - Secret masking applies to the request signature, environment-sourced header values, and well-known
