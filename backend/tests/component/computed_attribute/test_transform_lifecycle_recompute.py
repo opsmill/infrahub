@@ -263,12 +263,20 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
         admin_account: CoreAccount,
     ) -> None:
         # Automation names are ``computed_attr_python::<branch>::<kind>_<attribute>``, one per
-        # (transform -> attribute) wiring gathered from the schema and the transform nodes.
-        automation_a = f"{TriggerType.COMPUTED_ATTR_PYTHON.value}{NAME_SEPARATOR}{default_branch.name}{NAME_SEPARATOR}TestCar_computed_a"
-        automation_b = f"{TriggerType.COMPUTED_ATTR_PYTHON.value}{NAME_SEPARATOR}{default_branch.name}{NAME_SEPARATOR}TestCar_computed_b"
+        # (transform -> attribute) wiring the gather resolves from the schema and the transform nodes.
+        def automation(attribute: str) -> str:
+            return f"{TriggerType.COMPUTED_ATTR_PYTHON.value}{NAME_SEPARATOR}{default_branch.name}{NAME_SEPARATOR}TestCar_{attribute}"
 
-        # Reconcile once with the full wiring so both automations exist to begin with; without
-        # this baseline the assertion that A is dropped could pass on a set that never had A.
+        automation_a = automation("computed_a")
+        automation_b = automation("computed_b")
+        # ``computed_a`` and ``computed_b`` wire their transform by name, so the gather (which looks
+        # transforms up by name) resolves both. ``computed_by_id`` wires its transform by UUID, which
+        # the name lookup never finds, and ``transform_orphan`` feeds nothing; neither yields an
+        # automation. So the full node-input set is exactly A and B.
+        automations_full = {automation_a, automation_b}
+
+        # Reconcile once with the full wiring so every automation exists to begin with; without this
+        # baseline the assertion that A is dropped could pass on a set that never had A.
         await process_transform_lifecycle(
             branch_name=default_branch.name,
             transform_id=transform_dataset["transform_b"],
@@ -276,7 +284,7 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
             context=self._context(admin_account, default_branch),
         )
         automations_before = await self._python_automation_names()
-        assert {automation_a, automation_b} <= automations_before
+        assert automations_before == automations_full
 
         # Remove transform A's wiring the way a real transform delete does: drop the node and the
         # computed-attribute definition that referenced it, so the gathered set no longer yields A.
@@ -314,6 +322,6 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
         # The delete leg never recomputes; the whole point is that reconciliation prunes A.
         assert self._submitted_attribute_names(workflow_recorder) == set()
 
+        # Only A's automation is gone; the exact remaining set is B alone.
         automations_after = await self._python_automation_names()
-        assert automation_a not in automations_after, "delete should drop the removed transform's automation"
-        assert automation_b in automations_after, "delete must keep automations of transforms that still exist"
+        assert automations_after == {automation_b}
