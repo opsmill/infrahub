@@ -33,9 +33,10 @@ class SelectiveRegenerationPlan:
 class GateResult:
     """The outcome of the definition-level selection gate.
 
-    ``managed_branch`` is the wide signal (query or definition/fingerprint change) that forces
-    every member to regenerate. ``selected`` is whether the definition is dispatched at all.
+    ``regenerate_all_members`` is the wide signal (a query or definition/fingerprint change) that
+    forces every member to regenerate rather than only the impacted subset. ``selected`` is whether
+    the definition is dispatched at all.
     """
 
-    managed_branch: bool
+    regenerate_all_members: bool
     selected: bool

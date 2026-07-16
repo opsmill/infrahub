@@ -44,29 +44,33 @@ def test_build_request_carries_definition_identity_and_members(artifact_selector
 class RenderCase:
     name: str
     subscriber_id: str | None
-    managed_branch: bool
+    regenerate_all_members: bool
     impacted: list[str]
     expected: bool
 
 
 RENDER_CASES = [
     RenderCase(
-        name="new_artifact_always_renders", subscriber_id=None, managed_branch=False, impacted=[], expected=True
+        name="new_artifact_always_renders", subscriber_id=None, regenerate_all_members=False, impacted=[], expected=True
     ),
     RenderCase(
-        name="managed_branch_always_renders", subscriber_id="a1", managed_branch=True, impacted=[], expected=True
+        name="regenerate_all_members_always_renders",
+        subscriber_id="a1",
+        regenerate_all_members=True,
+        impacted=[],
+        expected=True,
     ),
     RenderCase(
         name="existing_artifact_renders_when_impacted",
         subscriber_id="a1",
-        managed_branch=False,
+        regenerate_all_members=False,
         impacted=["a1"],
         expected=True,
     ),
     RenderCase(
         name="existing_artifact_skipped_when_not_impacted",
         subscriber_id="a1",
-        managed_branch=False,
+        regenerate_all_members=False,
         impacted=["a2"],
         expected=False,
     ),
@@ -76,7 +80,7 @@ RENDER_CASES = [
 @pytest.mark.parametrize("case", RENDER_CASES, ids=lambda case: case.name)
 def test_should_render_artifact_contract(case: RenderCase, artifact_selector: ArtifactSelector) -> None:
     rendered = artifact_selector._should_render(
-        subscriber_id=case.subscriber_id, managed_branch=case.managed_branch, impacted=case.impacted
+        subscriber_id=case.subscriber_id, regenerate_all_members=case.regenerate_all_members, impacted=case.impacted
     )
 
     assert rendered is case.expected

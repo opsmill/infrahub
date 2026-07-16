@@ -48,29 +48,33 @@ def test_build_request_threads_branch_definition_and_members(generator_selector:
 class RenderCase:
     name: str
     subscriber_id: str | None
-    managed_branch: bool
+    regenerate_all_members: bool
     impacted: list[str]
     expected: bool
 
 
 RENDER_CASES = [
     RenderCase(
-        name="new_instance_always_renders", subscriber_id=None, managed_branch=False, impacted=[], expected=True
+        name="new_instance_always_renders", subscriber_id=None, regenerate_all_members=False, impacted=[], expected=True
     ),
     RenderCase(
-        name="managed_branch_always_renders", subscriber_id="i1", managed_branch=True, impacted=[], expected=True
+        name="regenerate_all_members_always_renders",
+        subscriber_id="i1",
+        regenerate_all_members=True,
+        impacted=[],
+        expected=True,
     ),
     RenderCase(
         name="existing_instance_renders_when_impacted",
         subscriber_id="i1",
-        managed_branch=False,
+        regenerate_all_members=False,
         impacted=["i1"],
         expected=True,
     ),
     RenderCase(
         name="existing_instance_skipped_when_not_impacted",
         subscriber_id="i1",
-        managed_branch=False,
+        regenerate_all_members=False,
         impacted=["i2"],
         expected=False,
     ),
@@ -80,7 +84,7 @@ RENDER_CASES = [
 @pytest.mark.parametrize("case", RENDER_CASES, ids=lambda case: case.name)
 def test_should_render_instance_contract(case: RenderCase, generator_selector: GeneratorSelector) -> None:
     rendered = generator_selector._should_render(
-        subscriber_id=case.subscriber_id, managed_branch=case.managed_branch, impacted=case.impacted
+        subscriber_id=case.subscriber_id, regenerate_all_members=case.regenerate_all_members, impacted=case.impacted
     )
 
     assert rendered is case.expected

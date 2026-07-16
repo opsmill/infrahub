@@ -107,8 +107,8 @@ class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, Re
     ) -> list[str]:
         return self._member_ids
 
-    def _should_render(self, *, subscriber_id: str | None, managed_branch: bool, impacted: list[str]) -> bool:
-        return not subscriber_id or managed_branch or subscriber_id in impacted
+    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+        return not subscriber_id or regenerate_all_members or subscriber_id in impacted
 
     def _build_request(
         self, *, definition: ProposedChangeGeneratorDefinition, target_branch: str, members: list[str]
@@ -122,7 +122,7 @@ class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, Re
 class SelectCase:
     name: str
     selected: bool
-    managed_branch: bool
+    regenerate_all_members: bool
     member_ids: list[str]
     subscriber_by_member: dict[str, str]
     impacted: list[str]
@@ -133,16 +133,16 @@ SELECT_CASES = [
     SelectCase(
         name="gate_rejects_yields_no_request",
         selected=False,
-        managed_branch=False,
+        regenerate_all_members=False,
         member_ids=["m1", "m2"],
         subscriber_by_member={},
         impacted=[],
         expected_target_members=[],
     ),
     SelectCase(
-        name="managed_branch_renders_all_as_empty_filter",
+        name="regenerate_all_members_renders_all_as_empty_filter",
         selected=True,
-        managed_branch=True,
+        regenerate_all_members=True,
         member_ids=["m1", "m2"],
         subscriber_by_member={"m1": "s1", "m2": "s2"},
         impacted=[],
@@ -151,7 +151,7 @@ SELECT_CASES = [
     SelectCase(
         name="new_members_without_subscribers_render_all",
         selected=True,
-        managed_branch=False,
+        regenerate_all_members=False,
         member_ids=["m1", "m2"],
         subscriber_by_member={},
         impacted=[],
@@ -160,7 +160,7 @@ SELECT_CASES = [
     SelectCase(
         name="only_impacted_subscribers_narrow_the_filter",
         selected=True,
-        managed_branch=False,
+        regenerate_all_members=False,
         member_ids=["m1", "m2"],
         subscriber_by_member={"m1": "s1", "m2": "s2"},
         impacted=["s1"],
@@ -169,7 +169,7 @@ SELECT_CASES = [
     SelectCase(
         name="no_member_renders_drops_the_definition",
         selected=True,
-        managed_branch=False,
+        regenerate_all_members=False,
         member_ids=["m1", "m2"],
         subscriber_by_member={"m1": "s1", "m2": "s2"},
         impacted=[],
@@ -183,7 +183,11 @@ async def test_select_narrows_and_drops(case: SelectCase) -> None:
     definition = _generator_definition()
     selector = _StubSelector(
         gate=_StubGate(
-            {definition.definition_name: GateResult(managed_branch=case.managed_branch, selected=case.selected)}
+            {
+                definition.definition_name: GateResult(
+                    regenerate_all_members=case.regenerate_all_members, selected=case.selected
+                )
+            }
         ),
         impacted_resolver=_StubImpactedResolver(case.impacted),
         definitions=[definition],
@@ -202,8 +206,8 @@ async def test_select_processes_each_definition_independently() -> None:
     selector = _StubSelector(
         gate=_StubGate(
             {
-                selected.definition_name: GateResult(managed_branch=True, selected=True),
-                rejected.definition_name: GateResult(managed_branch=False, selected=False),
+                selected.definition_name: GateResult(regenerate_all_members=True, selected=True),
+                rejected.definition_name: GateResult(regenerate_all_members=False, selected=False),
             }
         ),
         impacted_resolver=_StubImpactedResolver([]),

@@ -71,44 +71,44 @@ class GateCase:
 GATE_CASES = [
     GateCase(
         name="no_signal_is_not_selected",
-        expected=GateResult(managed_branch=False, selected=False),
+        expected=GateResult(regenerate_all_members=False, selected=False),
     ),
     GateCase(
         name="query_change_manages_whole_branch",
         diff_node_ids=[QUERY_ID],
-        expected=GateResult(managed_branch=True, selected=True),
+        expected=GateResult(regenerate_all_members=True, selected=True),
     ),
     GateCase(
         name="definition_change_manages_whole_branch",
         diff_node_ids=[DEFINITION_ID],
-        expected=GateResult(managed_branch=True, selected=True),
+        expected=GateResult(regenerate_all_members=True, selected=True),
     ),
     GateCase(
         name="modified_kind_selects_without_managing_branch",
         modified_kinds=["TestDevice"],
-        expected=GateResult(managed_branch=False, selected=True),
+        expected=GateResult(regenerate_all_members=False, selected=True),
     ),
     GateCase(
         name="group_membership_selects_without_managing_branch",
         diff_node_ids=[GROUP_ID],
-        expected=GateResult(managed_branch=False, selected=True),
+        expected=GateResult(regenerate_all_members=False, selected=True),
     ),
     GateCase(
         name="unrelated_node_in_diff_is_not_selected",
         diff_node_ids=["unrelated-node"],
-        expected=GateResult(managed_branch=False, selected=False),
+        expected=GateResult(regenerate_all_members=False, selected=False),
     ),
     GateCase(
         name="artifact_matches_profile_stripped_kind",
         is_artifact=True,
         modified_kinds=["ProfileTestDevice"],
-        expected=GateResult(managed_branch=False, selected=True),
+        expected=GateResult(regenerate_all_members=False, selected=True),
     ),
     GateCase(
         name="generator_ignores_profile_stripped_kind",
         is_artifact=False,
         modified_kinds=["ProfileTestDevice"],
-        expected=GateResult(managed_branch=False, selected=False),
+        expected=GateResult(regenerate_all_members=False, selected=False),
     ),
 ]
 

@@ -37,7 +37,7 @@ class DefinitionGate:
         for outcome in (query_outcome, definition_outcome):
             if outcome.reason is not None:
                 self.log.info(outcome.reason)
-        managed_branch = query_outcome.matched or definition_outcome.matched
+        regenerate_all_members = query_outcome.matched or definition_outcome.matched
 
         matches_modified_kind = any(definition.reads_kind(changed_model) for changed_model in modified_kinds)
 
@@ -53,4 +53,4 @@ class DefinitionGate:
         selected = bool(select) or group_membership
         if selected:
             self.log.info(f"Selecting {definition.definition_name} for regeneration: {select.log_line}")
-        return GateResult(managed_branch=managed_branch, selected=selected)
+        return GateResult(regenerate_all_members=regenerate_all_members, selected=selected)

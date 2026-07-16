@@ -57,9 +57,9 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
         )
         return [relationship.peer.id for relationship in group.members.peers]
 
-    def _should_render(self, *, subscriber_id: str | None, managed_branch: bool, impacted: list[str]) -> bool:
+    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
         return _should_render_artifact(
-            artifact_id=subscriber_id, managed_branch=managed_branch, impacted_artifacts=impacted
+            artifact_id=subscriber_id, managed_branch=regenerate_all_members, impacted_artifacts=impacted
         )
 
     def _build_request(

@@ -56,8 +56,10 @@ class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition
         )
         return [relationship.peer.id for relationship in group.members.peers]
 
-    def _should_render(self, *, subscriber_id: str | None, managed_branch: bool, impacted: list[str]) -> bool:
-        return _run_generator(instance_id=subscriber_id, managed_branch=managed_branch, impacted_instances=impacted)
+    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+        return _run_generator(
+            instance_id=subscriber_id, managed_branch=regenerate_all_members, impacted_instances=impacted
+        )
 
     def _build_request(
         self, *, definition: ProposedChangeGeneratorDefinition, target_branch: str, members: list[str]

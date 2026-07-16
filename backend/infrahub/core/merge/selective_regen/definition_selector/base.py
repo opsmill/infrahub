@@ -91,7 +91,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
                 for member_id in member_ids
                 if self._should_render(
                     subscriber_id=subscriber_by_member.get(member_id),
-                    managed_branch=gate_result.managed_branch,
+                    regenerate_all_members=gate_result.regenerate_all_members,
                     impacted=impacted,
                 )
             ]
@@ -128,7 +128,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
         """Return the ids of the members of the definition's live target group on the merge target branch."""
 
     @abstractmethod
-    def _should_render(self, *, subscriber_id: str | None, managed_branch: bool, impacted: list[str]) -> bool:
+    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
         """Whether a single member's subscriber must be regenerated."""
 
     @abstractmethod
