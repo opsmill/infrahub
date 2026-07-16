@@ -5,8 +5,10 @@ from typing import TYPE_CHECKING
 from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow, task
 from prefect.cache_policies import NONE
+from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
+from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind, MutationAction
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
@@ -16,7 +18,7 @@ from infrahub.events.models import EventContext  # noqa: TC001  needed for prefe
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
-from infrahub.trigger.setup import setup_triggers_specific
+from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
@@ -33,8 +35,6 @@ from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
     ComputedAttrJinja2TriggerDefinition,
-    ComputedAttrPythonQueryTriggerDefinition,
-    ComputedAttrPythonTriggerDefinition,
     PythonTransformTarget,
 )
 from .recompute_resolution import RecomputeResolver
@@ -56,43 +56,31 @@ def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
     return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
 
 
-async def _gather_computed_attr_python_triggers(
-    db: InfrahubDatabase | None,
-) -> list[ComputedAttrPythonTriggerDefinition]:
-    if db is None:
-        raise ValueError("A database session is required to gather Python computed-attribute triggers")
-    triggers_python, _ = await gather_trigger_computed_attribute_python(db=db)
-    return triggers_python
-
-
-async def _gather_computed_attr_python_query_triggers(
-    db: InfrahubDatabase | None,
-) -> list[ComputedAttrPythonQueryTriggerDefinition]:
-    if db is None:
-        raise ValueError("A database session is required to gather Python computed-attribute query triggers")
-    _, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
-    return triggers_python_query
-
-
 async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase) -> None:
     """Reconcile the node-input (data-path) automations against the current schema.
 
     These automations recompute an attribute when a node feeding its transform's query
-    changes. Each trigger type is gathered and applied while holding its trigger-registry
-    lock, so a concurrent reconcile cannot delete an automation another run just created by
-    applying a stale desired set. Reconciling drops the automations of transforms that no
-    longer exist and builds those of transforms that just appeared.
+    changes. Both trigger types share one gather (which builds both lists at once) and are
+    applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an
+    automation another run just created by applying a stale desired set. Reconciling drops the
+    automations of transforms that no longer exist and builds those of transforms that just
+    appeared.
     """
-    await setup_triggers_specific(
-        gatherer=_gather_computed_attr_python_triggers,
-        trigger_type=TriggerType.COMPUTED_ATTR_PYTHON,
-        db=db,
-    )
-    await setup_triggers_specific(
-        gatherer=_gather_computed_attr_python_query_triggers,
-        trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
-        db=db,
-    )
+    log = get_run_logger()
+    async with lock.registry.get(
+        name="configure-action-rules-computed-attr-python", namespace="trigger-rules", local=False
+    ):
+        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
+        async with get_prefect_client(sync_client=False) as prefect_client:
+            await setup_triggers(
+                client=prefect_client, triggers=triggers_python, trigger_type=TriggerType.COMPUTED_ATTR_PYTHON
+            )
+            await setup_triggers(
+                client=prefect_client,
+                triggers=triggers_python_query,
+                trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
+            )
+    log.debug("Reconciled Python computed-attribute node-input automations")
 
 
 UPDATE_ATTRIBUTE = """

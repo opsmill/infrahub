@@ -146,27 +146,38 @@ Guarantees:
 On **every** lifecycle event (create / update / delete), the workflow reconciles the
 data-path automations that recompute an attribute when a node feeding the transform's query
 changes. This is the duty the removed commit trigger performed as a side effect; the
-lifecycle flow now owns it (research Decision 5). Each trigger type is gathered and applied
-under its trigger-registry lock via `setup_triggers_specific`, which gathers the desired set
-*inside* the lock so a concurrent reconcile cannot apply a stale set and delete an automation
-another run just created:
+lifecycle flow now owns it (research Decision 5). Both trigger types share a single gather
+(which returns both lists at once) and are applied under a **single** trigger-registry lock,
+so the whole reconcile is one gather plus one atomic apply. Gathering inside the lock means a
+concurrent reconcile cannot apply a stale set and delete an automation another run just
+created:
 
 ```python
-await setup_triggers_specific(gatherer=_gather_computed_attr_python_triggers,
-                              trigger_type=TriggerType.COMPUTED_ATTR_PYTHON, db=db)
-await setup_triggers_specific(gatherer=_gather_computed_attr_python_query_triggers,
-                              trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY, db=db)
+async with lock.registry.get(
+    name="configure-action-rules-computed-attr-python", namespace="trigger-rules", local=False
+):
+    triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
+    async with get_prefect_client(sync_client=False) as prefect_client:
+        await setup_triggers(client=prefect_client, triggers=triggers_python,
+                             trigger_type=TriggerType.COMPUTED_ATTR_PYTHON)
+        await setup_triggers(client=prefect_client, triggers=triggers_python_query,
+                             trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY)
 ```
 
+- **Single gather:** `gather_trigger_computed_attribute_python` builds both the node-input and
+  the query-input trigger lists in one pass, so the reconcile no longer gathers twice (once
+  per type, discarding the other half each time).
 - **On create / update:** builds or refreshes the node-input automation for the transform,
   so a transform-only import (no schema diff, so the schema path never runs) never leaves it
   unbuilt.
 - **On delete:** the gathered desired set no longer contains the removed transform, so
   `setup_triggers`' `to_delete = set(existing) - set(desired)` diff (`trigger/setup.py`)
   drops its automation.
-- **Concurrency:** the gather-and-apply runs inside the per-type lock (namespace
-  `trigger-rules`), so overlapping lifecycle and schema-path reconciles serialize instead of
-  racing on the same automation set.
+- **Concurrency:** the gather-and-apply of both types runs inside one dedicated lock (name
+  `configure-action-rules-computed-attr-python`, namespace `trigger-rules`). Nothing else
+  reconciles these two trigger types, so a single lock keeps both applies atomic together, and
+  overlapping lifecycle and schema-path reconciles serialize instead of racing on the same
+  automation set.
 
 This is more precise than the removed commit sweep: it runs on transform events only, not on
 every commit. The schema path (`computed_attribute_setup_python`) shares the same locked
