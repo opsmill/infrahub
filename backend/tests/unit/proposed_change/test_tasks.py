@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytest
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffSummary
 
-from infrahub.proposed_change.tasks import _relevant_node_changes
+from infrahub.core.regeneration.predicates import relevant_node_changes
 
 BRANCH = "feature/test"
 
@@ -114,7 +114,7 @@ RELEVANT_CHANGE_CASES = [
 
 @pytest.mark.parametrize("case", RELEVANT_CHANGE_CASES, ids=lambda case: case.name)
 def test_relevant_node_changes(case: RelevantChangeCase) -> None:
-    result = _relevant_node_changes(
+    result = relevant_node_changes(
         diff_summary=case.diff_summary,
         query_branch=case.source_branch,
         readable_fields_by_kind=case.readable_fields_by_kind,

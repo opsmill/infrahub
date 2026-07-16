@@ -5,9 +5,10 @@ from dataclasses import dataclass, field
 import pytest
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement
 
+from infrahub.core.regeneration.members import run_generator
+from infrahub.core.regeneration.predicates import definition_changed, query_changed, transform_changed
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus.types import ProposedChangeRepository
-from infrahub.proposed_change.tasks import _definition_changed, _query_changed, _run_generator, _transform_changed
 
 QUERY_ID = "11111111-1111-1111-1111-111111111111"
 DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
@@ -114,7 +115,7 @@ def test_query_changed_generator_variant(case: QueryChangedCase) -> None:
     the other signals still cover it, so the never-under-run invariant is preserved by composition.
     """
     definition = _build_definition()
-    assert _query_changed(definition=definition, diff_summary=case.diff).matched is case.expected
+    assert query_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -155,7 +156,7 @@ def test_definition_changed_generator_variant(case: DefinitionChangedCase) -> No
     definition's own node id, so a single id-based check covers every shape of definition-level change.
     """
     definition = _build_definition()
-    assert _definition_changed(definition=definition, diff_summary=case.diff).matched is case.expected
+    assert definition_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -238,7 +239,7 @@ def test_transform_changed_generator_variant(case: TransformChangedCase) -> None
         files_changed=case.files_changed,
         files_removed=case.files_removed,
     )
-    assert _transform_changed(definition=definition, repo_diff=repo_diff).matched is case.expected
+    assert transform_changed(definition=definition, repo_diff=repo_diff).matched is case.expected
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -291,7 +292,7 @@ def test_run_generator_never_under_runs(case: RunGeneratorCase) -> None:
     runs every existing instance; only an existing instance with nothing relevant changed is skipped.
     """
     assert (
-        _run_generator(
+        run_generator(
             instance_id=case.instance_id,
             regenerate_all_members=case.managed_branch,
             impacted_instances=case.impacted_instances,
@@ -310,9 +311,9 @@ def test_legacy_generator_forces_managed_branch_on_any_file_change() -> None:
     repo_diff = _build_repo_diff(files_changed=["generators/a/a.py"])
 
     managed_branch = (
-        _query_changed(definition=definition, diff_summary=[]).matched
-        or _definition_changed(definition=definition, diff_summary=[]).matched
-        or _transform_changed(definition=definition, repo_diff=repo_diff).matched
+        query_changed(definition=definition, diff_summary=[]).matched
+        or definition_changed(definition=definition, diff_summary=[]).matched
+        or transform_changed(definition=definition, repo_diff=repo_diff).matched
     )
 
     assert managed_branch is True

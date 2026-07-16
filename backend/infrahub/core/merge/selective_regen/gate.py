@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.proposed_change.tasks import DefinitionSelect, _definition_changed, _query_changed
+from infrahub.core.regeneration.models import DefinitionSelect
+from infrahub.core.regeneration.predicates import definition_changed, query_changed
 
 from .models import GateResult
 
@@ -32,8 +33,8 @@ class DefinitionGate:
         modified_kinds: list[str],
         group_id: str,
     ) -> GateResult:
-        query_outcome = _query_changed(definition=definition, diff_summary=diff_summary)
-        definition_outcome = _definition_changed(definition=definition, diff_summary=diff_summary)
+        query_outcome = query_changed(definition=definition, diff_summary=diff_summary)
+        definition_outcome = definition_changed(definition=definition, diff_summary=diff_summary)
         for outcome in (query_outcome, definition_outcome):
             if outcome.reason is not None:
                 self.log.info(outcome.reason)

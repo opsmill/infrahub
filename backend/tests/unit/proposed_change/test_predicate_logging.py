@@ -3,8 +3,8 @@ from __future__ import annotations
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffSummary
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.regeneration.predicates import definition_changed, query_changed, transform_changed
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition, ProposedChangeRepository
-from infrahub.proposed_change.tasks import _definition_changed, _query_changed, _transform_changed
 
 QUERY_ID = "11111111-1111-1111-1111-111111111111"
 DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
@@ -70,7 +70,7 @@ def test_query_changed_reason_names_the_query() -> None:
     The reason is the user-facing answer to "why did these artifacts regenerate?";
     it identifies the query by name and id without forcing a diff lookup.
     """
-    outcome = _query_changed(
+    outcome = query_changed(
         definition=_build_definition(),
         diff_summary=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery")],
     )
@@ -84,7 +84,7 @@ def test_query_changed_reason_names_the_query() -> None:
 
 def test_query_changed_carries_no_reason_when_it_does_not_fire() -> None:
     """A predicate that does not match carries no reason so the gate emits nothing for it."""
-    outcome = _query_changed(definition=_build_definition(), diff_summary=[])
+    outcome = query_changed(definition=_build_definition(), diff_summary=[])
 
     assert outcome.matched is False
     assert outcome.reason is None
@@ -97,7 +97,7 @@ def test_definition_changed_reason_names_the_changed_fields() -> None:
     reader can see exactly which definition-level edit (e.g. a ``targets`` repoint)
     drove the regeneration.
     """
-    outcome = _definition_changed(
+    outcome = definition_changed(
         definition=_build_definition(),
         diff_summary=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", element_names=["targets"])],
     )
@@ -111,7 +111,7 @@ def test_definition_changed_reason_names_the_changed_fields() -> None:
 
 def test_definition_changed_reason_falls_back_to_generic_detail_without_field_detail() -> None:
     """When the matching entry carries no per-field detail, the reason still records the definition-level change."""
-    outcome = _definition_changed(
+    outcome = definition_changed(
         definition=_build_definition(),
         diff_summary=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition")],
     )
@@ -125,7 +125,7 @@ def test_definition_changed_reason_falls_back_to_generic_detail_without_field_de
 
 def test_transform_changed_reason_names_the_intersecting_file() -> None:
     """The precise-closure path names the file whose change is inside the transform's dependency closure."""
-    outcome = _transform_changed(
+    outcome = transform_changed(
         definition=_build_definition(dependencies=["templates/device.j2"], dependencies_complete=True),
         repo_diff=_build_repo_diff(files_changed=["templates/device.j2"]),
     )
@@ -143,7 +143,7 @@ def test_transform_changed_reason_explains_the_legacy_fallback() -> None:
     This is the upgrade-safety message: it tells an operator the transform is on the
     legacy gate by necessity, not by mistake, and how it leaves that state.
     """
-    outcome = _transform_changed(
+    outcome = transform_changed(
         definition=_build_definition(dependencies=None, dependencies_complete=None),
         repo_diff=_build_repo_diff(files_changed=["any/path.txt"]),
     )
@@ -158,7 +158,7 @@ def test_transform_changed_reason_explains_the_legacy_fallback() -> None:
 
 def test_transform_changed_reason_explains_the_incomplete_closure_fallback() -> None:
     """An incomplete closure (dependencies_complete=False) explains the safety fallback to regenerate-on-any-change."""
-    outcome = _transform_changed(
+    outcome = transform_changed(
         definition=_build_definition(dependencies=["templates/device.j2"], dependencies_complete=False),
         repo_diff=_build_repo_diff(files_changed=["unrelated/file.md"]),
     )
@@ -172,7 +172,7 @@ def test_transform_changed_reason_explains_the_incomplete_closure_fallback() -> 
 
 def test_transform_changed_carries_no_reason_on_a_no_op_complete_closure() -> None:
     """A complete closure that no file change intersects carries no reason and does not match."""
-    outcome = _transform_changed(
+    outcome = transform_changed(
         definition=_build_definition(dependencies=["templates/device.j2"], dependencies_complete=True),
         repo_diff=_build_repo_diff(files_changed=["transforms/other/main.py"]),
     )
