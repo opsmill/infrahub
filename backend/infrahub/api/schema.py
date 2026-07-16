@@ -118,6 +118,28 @@ class SchemaReadAPI(BaseModel):
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
+def _format_schema_errors(exc: PydanticValidationError) -> list[str]:
+    """Render internal-schema validation errors as field-level messages.
+
+    The dotted path indexes list elements with ``[i]`` (``nodes[0].relationships[0].cardinality``)
+    and appends the offending scalar value so the message names both the field and what was received.
+    """
+    messages: list[str] = []
+    for error in exc.errors():
+        parts: list[str] = []
+        for element in error["loc"]:
+            if isinstance(element, int) and parts:
+                parts[-1] = f"{parts[-1]}[{element}]"
+            else:
+                parts.append(str(element))
+        message = f"{'.'.join(parts)}: {error['msg']}"
+        received = error.get("input")
+        if isinstance(received, (str, int, float, bool)) or received is None:
+            message += f" (received: {received!r})"
+        messages.append(message)
+    return messages
+
+
 class SchemaLoadAPI(InfrahubSchemaWrite):
     version: str
     _internal_schema: SchemaRoot = PrivateAttr()
@@ -133,8 +155,7 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
             try:
                 SchemaRoot.model_validate(data)
             except PydanticValidationError as exc:
-                messages = [f"{'.'.join(str(part) for part in err['loc'])}: {err['msg']}" for err in exc.errors()]
-                raise ValueError("; ".join(messages)) from exc
+                raise ValueError("; ".join(_format_schema_errors(exc))) from exc
 
             # Drop the read-only/internal fields so the strict write models accept the payload; the
             # forbidden-field check above has already run, so nothing is hidden. What remains is the

@@ -677,18 +677,17 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert "kind" in body
         assert "NotARealKind" in body
 
-    async def test_schema_load_rejects_non_write_fields_in_extensions(
+    async def test_schema_load_tolerates_read_level_rejects_unknown_fields_in_extensions(
         self,
         initial_dataset: str,
         test_client: InfrahubTestClient,
         api_admin_token: str,
     ) -> None:
-        """Reject non-write fields nested under `extensions.nodes`, naming each with its location.
+        """An extension attribute's read-level field is tolerated; an unknown field is rejected.
 
-        An extension node's attribute carrying a read-level field (`inherited`) and an unknown
-        field must both be rejected, each located under `extensions.nodes[*]`. (An out-of-enum
-        `kind` is covered separately: it fails the attribute discriminator, which short-circuits
-        the per-variant field checks, so it cannot be reported alongside co-located fields.)
+        A read-level field (`inherited`) may accompany a schema read back from Infrahub or a full
+        model dump, so it is stripped rather than rejected. A genuinely unknown field has no such
+        justification and is still rejected, located under `extensions.nodes[*]`.
         """
         payload = {
             "schemas": [
@@ -722,11 +721,11 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert response.status_code == 422
         messages = [item["msg"] for item in response.json()["detail"]]
         joined = " ".join(messages)
-        # Both non-write fields are reported, located under the extension attribute (the matched
-        # variant tag, e.g. `.Text.`, is part of the discriminated-union error path).
+        # The unknown field is rejected and located under the extension attribute.
         assert "extensions.nodes[0].attributes[0]" in joined, messages
-        assert "inherited" in joined, messages
         assert "not_a_real_field" in joined, messages
+        # `inherited` is a read-level field: it is stripped and tolerated, never reported.
+        assert "inherited" not in joined, messages
 
     async def test_schema_load_rejects_out_of_enum_relationship_cardinality(
         self,
