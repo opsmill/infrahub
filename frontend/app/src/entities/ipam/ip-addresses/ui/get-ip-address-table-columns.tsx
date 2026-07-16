@@ -1,4 +1,3 @@
-import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import { cellMutedStyle } from "@/shared/components/table/style";
@@ -18,7 +17,10 @@ import type {
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
-import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
+import {
+  TableColumnHeader,
+  type TableColumnHeaderProps,
+} from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
@@ -30,7 +32,7 @@ const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();
 
 export const getIpAddressTableColumns = (
   schema: ModelSchema,
-  headerProps?: PopoverTriggerProps
+  headerProps?: Pick<TableColumnHeaderProps, "disabled">
 ): ColumnDef<NodeObject>[] => {
   const attributes = getIpAddressAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getIpAddressRelationshipsVisibleInListView(schema.relationships ?? []);
@@ -84,7 +86,9 @@ export const getIpAddressTableColumns = (
     ...getObjectGenericColumns(schema),
     ...attributes.map((attribute) => {
       return columnHelper.accessor(attribute.name, {
-        header: () => <TableColumnHeader columnSchema={attribute} {...headerProps} />,
+        header: () => (
+          <TableColumnHeader schema={schema} columnSchema={attribute} {...headerProps} />
+        ),
         cell: ({ cell, row }) => {
           const attributeData = cell.getValue() as NodeAttribute | undefined;
           if (!attributeData) return null;
@@ -100,7 +104,9 @@ export const getIpAddressTableColumns = (
     }),
     ...relationships.map((relationship) => {
       return columnHelper.accessor(relationship.name, {
-        header: () => <TableColumnHeader columnSchema={relationship} {...headerProps} />,
+        header: () => (
+          <TableColumnHeader schema={schema} columnSchema={relationship} {...headerProps} />
+        ),
         cell: ({ cell, row }) => {
           const relationshipData = cell.getValue() as NodeRelationship | undefined;
           if (!relationshipData) return null;

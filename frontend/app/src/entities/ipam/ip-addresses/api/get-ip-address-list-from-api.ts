@@ -5,6 +5,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
+  addOrderByToRequest,
   addRelationshipsToRequest,
   dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
@@ -15,10 +16,12 @@ import {
   IP_ADDRESS_GENERIC,
 } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GetIpAddressListGraphQLQueryParams extends PaginationParams {
   filters?: Array<Filter>;
+  sort?: Sort[] | null;
   objectKind: string;
   attributes: Array<AttributeSchema>;
   relationships: Array<RelationshipSchema>;
@@ -28,6 +31,7 @@ export function getIpAddressListWithAvailabilityGraphQLQuery({
   limit,
   offset,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -42,6 +46,7 @@ export function getIpAddressListWithAvailabilityGraphQLQuery({
           include_available: true,
           ...(objectKind !== IP_ADDRESS_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
+          ...(sort?.length ? addOrderByToRequest(sort) : {}),
         },
         edges: {
           node: {
@@ -78,6 +83,7 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
   limit,
   offset,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -92,6 +98,7 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
           limit,
           offset,
           ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
+          ...(sort?.length ? addOrderByToRequest(sort) : {}),
         },
         edges: {
           node: {

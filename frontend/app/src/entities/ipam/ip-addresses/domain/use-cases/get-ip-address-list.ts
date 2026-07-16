@@ -12,11 +12,13 @@ import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-a
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/has-incompatible-filters-for-ip-availability";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GetIpAddressListParams extends ContextParams, PaginationParams {
   schema: ModelSchema;
   filters?: Array<Filter>;
+  sort?: Sort[] | null;
 }
 
 export type GetIpAddressList = (
@@ -30,6 +32,7 @@ export const getIpAddressList: GetIpAddressList = async ({
   branchName,
   atDate,
   filters = [],
+  sort,
 }) => {
   const attributesVisible = getIpAddressAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getIpAddressRelationshipsVisibleInListView(
@@ -49,6 +52,7 @@ export const getIpAddressList: GetIpAddressList = async ({
     limit,
     offset,
     filters,
+    sort,
     objectKind: schemaKind,
     attributes: attributesVisible,
     relationships: relationshipsVisible,

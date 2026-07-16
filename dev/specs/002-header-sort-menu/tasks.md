@@ -80,11 +80,11 @@
 
 **Purpose**: The shared header ships on IPAM tables (FR-001); without this wiring its sort items would silently do nothing. Mirrors the object-list wiring (`get-objects-from-api.ts:51`).
 
-- [ ] T013 [P] Add ordering to the IP-address list API call: in `frontend/app/src/entities/ipam/ip-addresses/api/get-ip-address-list-from-api.ts`, accept a `sort: Sort[]` param and spread `addOrderByToRequest(sort)` (from `frontend/app/src/shared/api/graphql/utils.ts`) into the query `__args`.
-- [ ] T014 [P] Add ordering to the IP-prefix list API call: same change in `frontend/app/src/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api.ts`.
-- [ ] T015 Thread `sort` through the IP-address path: use-case `frontend/app/src/entities/ipam/ip-addresses/domain/use-cases/get-ip-address-list.ts` accepts and forwards `sort`; the query hook (`get-ip-address-list.query.ts`) includes `sort` in its query key and passes it through; `frontend/app/src/entities/ipam/ip-addresses/ui/ip-address-table.tsx` calls `useSort(schema)` and passes `customSort`.
-- [ ] T016 Thread `sort` through the IP-prefix path: same three-layer wiring for `frontend/app/src/entities/ipam/ip-prefixes/` (`get-ip-prefix-list.ts`, `get-ip-prefix-list.query.ts`, `ip-prefix-table.tsx`).
-- [ ] T017 [P] Create E2E spec `frontend/app/tests/e2e/ipam/ip-prefix-list-sort.spec.ts` (conventions from `tests/e2e/ipam/ip-prefix-list-filters.spec.ts`): header-sort the Prefix column → row order changes and `?sort=` updates; toggle-clear restores default order.
+- [X] T013 [P] Add ordering to the IP-address list API call: in `frontend/app/src/entities/ipam/ip-addresses/api/get-ip-address-list-from-api.ts`, accept a `sort: Sort[]` param and spread `addOrderByToRequest(sort)` (from `frontend/app/src/shared/api/graphql/utils.ts`) into the query `__args`.
+- [X] T014 [P] Add ordering to the IP-prefix list API call: same change in `frontend/app/src/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api.ts`.
+- [X] T015 Thread `sort` through the IP-address path: use-case `frontend/app/src/entities/ipam/ip-addresses/domain/use-cases/get-ip-address-list.ts` accepts and forwards `sort`; the query hook (`get-ip-address-list.query.ts`) includes `sort` in its query key and passes it through; `frontend/app/src/entities/ipam/ip-addresses/ui/ip-address-table.tsx` calls `useSort(schema)` and passes `customSort`.
+- [X] T016 Thread `sort` through the IP-prefix path: same three-layer wiring for `frontend/app/src/entities/ipam/ip-prefixes/` (`get-ip-prefix-list.ts`, `get-ip-prefix-list.query.ts`, `ip-prefix-table.tsx`).
+- [X] T017 [P] Create E2E spec `frontend/app/tests/e2e/ipam/ip-prefix-list-sort.spec.ts` (conventions from `tests/e2e/ipam/ip-prefix-list-filters.spec.ts`): header-sort the Prefix column → row order changes and `?sort=` updates; toggle-clear restores default order.
 
 **Checkpoint**: Header menu fully functional everywhere it renders — feature is releasable.
 
