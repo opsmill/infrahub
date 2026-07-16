@@ -97,7 +97,7 @@ export function DateFormatField({ preference }: { preference: Preference }) {
                 label="Date format"
                 placeholder={EMPTY_VALUE_LABEL}
                 emptyMessage="No date format found."
-                aria-describedby={exampleId}
+                aria-describedby={selected ? exampleId : undefined}
               />
             )}
           />
