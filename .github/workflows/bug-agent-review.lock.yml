@@ -56,7 +56,7 @@
 name: "Bug reviewer agent"
 on:
   # bots: # Bots processed as bot check in pre-activation job
-  # - infrahub-bug-pipeline[bot] # Bots processed as bot check in pre-activation job
+  # - opsmill-bug-pipeline[bot] # Bots processed as bot check in pre-activation job
   # github-app: # GitHub App used to mint token for reactions and status comments in activation
     # client-id: ${{ secrets.GH_AW_APP_ID }}
     # private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
@@ -264,7 +264,7 @@ jobs:
         id: sanitized
         uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
         env:
-          GH_AW_ALLOWED_BOTS: "infrahub-bug-pipeline[bot]"
+          GH_AW_ALLOWED_BOTS: "opsmill-bug-pipeline[bot]"
           GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,anthropic.com,api.anthropic.com,api.github.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,cdn.playwright.dev,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,files.pythonhosted.org,ghcr.io,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,playwright.download.prss.microsoft.com,ppa.launchpad.net,pypi.org,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,sentry.io,statsig.anthropic.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
         with:
           script: |
@@ -540,7 +540,7 @@ jobs:
           fi
 
           COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-            --jq "[.[] | select((.user.login == \"infrahub-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
+            --jq "[.[] | select((.user.login == \"opsmill-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
               and (.body | contains(\"$MARKER\")))] | length")
 
           if [ "$COUNT" -gt 0 ]; then
@@ -1713,7 +1713,7 @@ jobs:
         uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
         env:
           GH_AW_REQUIRED_ROLES: "admin,maintainer,write"
-          GH_AW_ALLOWED_BOTS: "infrahub-bug-pipeline[bot]"
+          GH_AW_ALLOWED_BOTS: "opsmill-bug-pipeline[bot]"
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
