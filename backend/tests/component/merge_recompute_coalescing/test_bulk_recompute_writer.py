@@ -31,17 +31,13 @@ from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_JINJA2
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.merge_recompute.dataset import (
-    CASCADE_NODE_KIND,
-    CYCLE_A_KIND,
-    CYCLE_B_KIND,
     PROFILE_NODE_KIND,
     PROFILE_PEER_KIND,
     chain_kind,
-    load_cascade_schema,
     load_chain_schema,
-    load_cycle_schema,
     load_profile_schema,
 )
+from tests.helpers.schema import CASCADE_NODE, CASCADE_SCHEMA, CYCLE_A, CYCLE_B, CYCLE_SCHEMA, load_schema
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -254,8 +250,8 @@ async def test_bulk_writer_reports_fields_cascaded_by_the_save(
     If the writer reported only the requested field, a cross-node reader of either would never chain
     on the coalesced pass. Covers both branches of the writer's field apply (display/hfid and generic).
     """
-    await load_cascade_schema(db=db)
-    node = await Node.init(db=db, schema=CASCADE_NODE_KIND, branch=default_branch)
+    await load_schema(db=db, schema=CASCADE_SCHEMA, update_db=True)
+    node = await Node.init(db=db, schema=CASCADE_NODE.kind, branch=default_branch)
     await node.new(db=db, name="n1")
     await node.save(db=db)
 
@@ -384,12 +380,12 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
     the two kinds forever. The bound is the only thing that ends it: below it the peer is always
     dispatched, and at the bound the same input yields nothing.
     """
-    await load_cycle_schema(db=db)
+    await load_schema(db=db, schema=CYCLE_SCHEMA, update_db=True)
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     bound = max_recompute_chain_depth(schema_branch)
 
     # Walk the cycle level by level, manufacturing the next level's writes from what was submitted.
-    written = [WrittenNode(node_id="a-node", kind=CYCLE_A_KIND, fields=("summary",))]
+    written = [WrittenNode(node_id="a-node", kind=CYCLE_A.kind, fields=("summary",))]
     kinds_seen: list[str] = []
     depth = 0
     while depth < bound:
@@ -410,7 +406,7 @@ async def test_chain_self_terminates_on_a_cyclic_schema(
         depth += 1
 
     # The cycle really did alternate between the two peers, so termination is the bound's doing.
-    assert set(kinds_seen) == {CYCLE_A_KIND, CYCLE_B_KIND}
+    assert set(kinds_seen) == {CYCLE_A.kind, CYCLE_B.kind}
 
     # At the bound the next level would exceed it, so the same cyclic input now yields nothing.
     recorder = WorkflowRecorder()
