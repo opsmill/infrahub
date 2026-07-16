@@ -22,9 +22,9 @@ How Infrahub enforces read-only constraints on branches based on their lifecycle
 
 ### Failed merge detection
 
-`backend/infrahub/core/merge/failure_recovery.py`
+`backend/infrahub/core/merge/failure_identifier.py`
 
-A merge holds the global `all_branches` merge lock for its whole `MERGING` window; the lock token encodes the holder's `worker_id`. When the holding worker dies, the lock stays held by a `worker_id` that is no longer in the active-worker set. `MergeFailureRecovery.detect_and_mark` flips such a branch `MERGING → MERGE_FAILED` (after a configurable grace period, `INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS`, that absorbs a transient heartbeat blip) and updates the `merge:protected` key to `"{branch}::MERGE_FAILED"`. It runs from the recurring `MERGE_WATCHER` workflow (one-minute cron, single-flighted), from a check at worker startup, and the recurring scan also reconciles the cache key against the durable branch status so protection self-heals after a restart or cache flush. A healthy in-progress merge (lock held by a live worker) is never flagged.
+A merge holds the global `all_branches` merge lock for its whole `MERGING` window; the lock token encodes the holder's `worker_id`. When the holding worker dies, the lock stays held by a `worker_id` that is no longer in the active-worker set. `MergeFailureIdentifier.scan` flips such a branch `MERGING → MERGE_FAILED` (after a configurable grace period, `INFRAHUB_MERGE_FAILURE_GRACE_PERIOD_SECONDS`, that absorbs a transient heartbeat blip) and updates the `merge:protected` key to `"{branch}::MERGE_FAILED"`. It runs from the recurring `MERGE_WATCHER` workflow (one-minute cron, single-flighted), from a check at worker startup, and the recurring scan also reconciles the cache key against the durable branch status so protection self-heals after a restart or cache flush. A healthy in-progress merge (lock held by a live worker) is never flagged.
 
 ## BranchStatusChecker
 
