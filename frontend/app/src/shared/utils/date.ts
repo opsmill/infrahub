@@ -2,7 +2,6 @@ import { TZDate } from "@date-fns/tz";
 import { format, formatDistance, getYear } from "date-fns";
 
 export const DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
-export const DATE_TIME_FORMAT_WITH_TZ = "yyyy-MM-dd HH:mm:ss (O)";
 
 export type DateInput = string | number | Date;
 
@@ -33,10 +32,6 @@ export function formatDate(date: DateInput, { pattern, timezone }: FormatDateOpt
 
 export function formatFullDate(date: DateInput) {
   return format(date, DATE_TIME_FORMAT);
-}
-
-export function formatFullDateWithTz(date: DateInput) {
-  return format(date, DATE_TIME_FORMAT_WITH_TZ);
 }
 
 export function formatRelativeTimeFromNow(date: DateInput) {

@@ -4,7 +4,6 @@ import type React from "react";
 
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDateWithTz } from "@/shared/utils/date";
 
 type DateDisplayProps = {
   date?: number | string | Date | null;
@@ -19,14 +18,6 @@ type DateDisplayProps = {
    */
   variant?: "datetime";
 };
-
-/**
- * Standalone full-datetime string with timezone. Kept as a NON-preference-aware helper for the
- * (non-React) callers that import it directly; preference-aware rendering flows through
- * {@link DateDisplay} / `useFormatDate` instead.
- */
-export const getDateDisplay = (date?: number | string | Date | null) =>
-  formatFullDateWithTz(date ? new Date(date) : new Date());
 
 export const DateDisplay = ({
   date,
