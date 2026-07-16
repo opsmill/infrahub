@@ -2,23 +2,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub_sdk.diff import NodeDiff
+from pydantic import TypeAdapter
+
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 
 if TYPE_CHECKING:
-    from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffPeer
+    from infrahub_sdk.diff import NodeDiffElement, NodeDiffPeer
 
     from infrahub.core.diff.model.path import EnrichedDiffNode, EnrichedDiffRoot
 
+_NODE_DIFFS_ADAPTER = TypeAdapter(list[NodeDiff])
 
-class MergeDiffSerializer:
-    """Serialize an enriched merge diff into the NodeDiff summary the selection predicates consume.
 
-    Nodes are tagged with the merge target (destination) branch rather than the source branch the
-    diff was computed on: post-merge the changed data lives on the target branch, which is also
-    where selection runs its live lookups, so the tag stays valid even after the source branch is
-    deleted. Actions are emitted as the uppercase enum name to match the proposed-change summary.
-    Unchanged nodes and unchanged elements are dropped; a node whose only change was a conflict
-    resolved to the base branch is still emitted, since it remains a real change for regeneration.
+class DiffSummarySerializer:
+    """Build the node-diff summary from an enriched diff root and encode it for caching.
+
+    Unchanged nodes and elements are omitted from the summary. ``dump`` and ``load`` are the
+    inverse halves of the cached JSON encoding.
     """
 
     def serialize(self, root: EnrichedDiffRoot, target_branch_name: str) -> list[NodeDiff]:
@@ -27,6 +28,12 @@ class MergeDiffSerializer:
             for node in root.nodes
             if node.action != DiffAction.UNCHANGED
         ]
+
+    def dump(self, diff_summary: list[NodeDiff]) -> str:
+        return _NODE_DIFFS_ADAPTER.dump_json(diff_summary).decode()
+
+    def load(self, payload: str | bytes) -> list[NodeDiff]:
+        return _NODE_DIFFS_ADAPTER.validate_json(payload)
 
     def _convert_node(self, node: EnrichedDiffNode, target_branch_name: str) -> NodeDiff:
         elements: list[NodeDiffElement] = []

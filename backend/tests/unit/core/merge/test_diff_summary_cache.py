@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffPeer, NodeDiffSummary
 
+from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.diff_summary_cache import MergeDiffSummaryCache
 from infrahub.exceptions import ResourceNotFoundError
 from tests.adapters.cache import MemoryCache
@@ -32,14 +33,14 @@ def _summary() -> list[NodeDiff]:
 
 
 async def test_round_trip() -> None:
-    cache = MergeDiffSummaryCache(cache=MemoryCache())
+    cache = MergeDiffSummaryCache(cache=MemoryCache(), serializer=DiffSummarySerializer())
     summary = _summary()
     await cache.set(diff_id="diff-1", diff_summary=summary)
     assert await cache.get(diff_id="diff-1") == summary
 
 
 async def test_miss_raises() -> None:
-    cache = MergeDiffSummaryCache(cache=MemoryCache())
+    cache = MergeDiffSummaryCache(cache=MemoryCache(), serializer=DiffSummarySerializer())
     with pytest.raises(ResourceNotFoundError, match=r"^Merge diff summary for diff absent was not found in the cache$"):
         await cache.get(diff_id="absent")
 
@@ -50,7 +51,7 @@ async def test_malformed_payload_raises() -> None:
     with pytest.raises(
         ResourceNotFoundError, match=r"^Merge diff summary for diff corrupt could not be loaded from the cache$"
     ):
-        await MergeDiffSummaryCache(cache=memory).get(diff_id="corrupt")
+        await MergeDiffSummaryCache(cache=memory, serializer=DiffSummarySerializer()).get(diff_id="corrupt")
 
 
 async def test_wrong_shape_raises() -> None:
@@ -61,4 +62,4 @@ async def test_wrong_shape_raises() -> None:
     with pytest.raises(
         ResourceNotFoundError, match=r"^Merge diff summary for diff wrong could not be loaded from the cache$"
     ):
-        await MergeDiffSummaryCache(cache=memory).get(diff_id="wrong")
+        await MergeDiffSummaryCache(cache=memory, serializer=DiffSummarySerializer()).get(diff_id="wrong")

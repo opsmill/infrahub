@@ -22,13 +22,13 @@ if TYPE_CHECKING:
     from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
     from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
+    from infrahub.core.diff.summary_serializer import DiffSummarySerializer
     from infrahub.core.models import SchemaDiff
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
     from infrahub.database import InfrahubDatabase
     from infrahub.log import InfrahubLogger
 
-    from .diff_serializer import MergeDiffSerializer
     from .diff_summary_cache import MergeDiffSummaryCache
     from .graph_merger import GraphMerger
     from .post_merge import PostMergeDispatcher
@@ -54,7 +54,7 @@ class BranchMergeOrchestrator:
         merge_write_blocker: MergeWriteBlocker,
         ipam_diff_parser: IpamDiffParser,
         diff_repository: DiffRepository,
-        diff_serializer: MergeDiffSerializer,
+        diff_serializer: DiffSummarySerializer,
         merge_diff_summary_cache: MergeDiffSummaryCache,
         logger: InfrahubLogger | None = None,
     ) -> None:

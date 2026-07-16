@@ -10,7 +10,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffSingleRelationship,
     NodeIdentifier,
 )
-from infrahub.core.merge.diff_serializer import MergeDiffSerializer
+from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.timestamp import Timestamp
 
 SOURCE_BRANCH = "feature"
@@ -87,7 +87,7 @@ def _root(nodes: set[EnrichedDiffNode]) -> EnrichedDiffRoot:
 
 
 def _serialize(root: EnrichedDiffRoot) -> list:
-    return MergeDiffSerializer().serialize(root=root, target_branch_name=TARGET_BRANCH)
+    return DiffSummarySerializer().serialize(root=root, target_branch_name=TARGET_BRANCH)
 
 
 def test_unchanged_nodes_are_excluded() -> None:
@@ -208,3 +208,27 @@ def test_changed_node_retained_when_all_elements_unchanged() -> None:
     result = _serialize(_root({node}))
     assert [entry["id"] for entry in result] == ["n1"]
     assert result[0]["elements"] == []
+
+
+def test_dump_then_load_round_trips_the_summary() -> None:
+    serializer = DiffSummarySerializer()
+    root = _root(
+        {
+            _node(
+                uuid="n1",
+                kind="CoreStandardGroup",
+                action=DiffAction.UPDATED,
+                relationships={
+                    _relationship(
+                        name="members",
+                        action=DiffAction.UPDATED,
+                        cardinality=RelationshipCardinality.MANY,
+                        added=1,
+                        peers={_peer(peer_id="member-1", action=DiffAction.ADDED, added=1)},
+                    )
+                },
+            )
+        }
+    )
+    summary = serializer.serialize(root=root, target_branch_name=TARGET_BRANCH)
+    assert serializer.load(serializer.dump(summary)) == summary
