@@ -98,7 +98,41 @@ class TestFlowRunConnectionSerializer:
                 "edges": [{"node": {"message": "hello", "severity": "warning", "timestamp": TIMESTAMP.isoformat()}}],
                 "count": 1,
             },
+            "error": None,
+            "http_request": None,
+            "http_response": None,
         }
+
+    def test_http_capture_is_projected_onto_request_response_and_error(self) -> None:
+        http = {
+            "request": {"url": "http://target/hook", "headers": {"webhook-signature": "***"}},
+            "response": {"status_code": 500, "body": "boom", "latency_ms": 12.5},
+            "error": {
+                "status_class": "HTTP_SERVER_ERROR",
+                "message": "The target responded with HTTP 500.",
+                "remediation": "Retry.",
+            },
+        }
+        run = EnrichedFlowRun(flow_run=make_flow_run(), workflow_name="webhook_send", http=http)
+
+        node = FlowRunConnectionSerializer().serialize(result=FlowRunQueryResult(count=1, runs=[run]))["edges"][0][
+            "node"
+        ]
+
+        assert node["http_request"] == http["request"]
+        assert node["http_response"] == http["response"]
+        assert node["error"] == http["error"]
+
+    def test_absent_http_capture_leaves_request_response_and_error_null(self) -> None:
+        run = EnrichedFlowRun(flow_run=make_flow_run(), workflow_name="webhook_send")
+
+        node = FlowRunConnectionSerializer().serialize(result=FlowRunQueryResult(count=1, runs=[run]))["edges"][0][
+            "node"
+        ]
+
+        assert node["http_request"] is None
+        assert node["http_response"] is None
+        assert node["error"] is None
 
     def test_unknown_state_name_falls_back_to_unknown_conclusion(self) -> None:
         run = EnrichedFlowRun(flow_run=make_flow_run(state_name="Surprise"))
@@ -187,6 +221,16 @@ FETCH_OPTIONS_CASES = [
         name="related_nodes_enables_related_nodes",
         fields={"edges": {"node": {"related_nodes": {}}}},
         expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_related_nodes=True),
+    ),
+    FetchOptionsCase(
+        name="http_request_enables_http",
+        fields={"edges": {"node": {"http_request": {"url": {}}}}},
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_http=True),
+    ),
+    FetchOptionsCase(
+        name="error_enables_http",
+        fields={"edges": {"node": {"error": {"status_class": {}}}}},
+        expected=FlowRunFetchOptions(include_runs=True, include_workflow=True, include_http=True),
     ),
     FetchOptionsCase(
         name="empty_selection_enables_nothing",

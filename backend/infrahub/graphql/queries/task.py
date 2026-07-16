@@ -42,6 +42,7 @@ class FlowRunConnectionSerializer:
     def _serialize_node(self, run: EnrichedFlowRun) -> dict[str, Any]:
         flow = run.flow_run
         related_node = run.related_nodes[0] if run.related_nodes else None
+        http = run.http or {}
         logs = [
             {
                 "node": {
@@ -70,6 +71,9 @@ class FlowRunConnectionSerializer:
             "start_time": flow.start_time.isoformat() if flow.start_time else None,
             "id": flow.id,
             "logs": {"edges": logs, "count": len(logs)},
+            "error": http.get("error"),
+            "http_request": http.get("request"),
+            "http_response": http.get("response"),
         }
 
 
@@ -82,6 +86,7 @@ def _build_fetch_options(fields: dict[str, Any], log_limit: int | None, log_offs
         include_logs=bool(log_fields),
         include_progress="progress" in node_fields,
         include_related_nodes=any(key in node_fields for key in ("related_nodes", "related_node", "related_node_kind")),
+        include_http=any(key in node_fields for key in ("http_request", "http_response", "error")),
         # The workflow name is the concrete-type discriminant, and the type of every returned node is
         # resolved regardless of which fields are selected (an inline fragment can request only common
         # fields), so the name must be fetched whenever runs are.
