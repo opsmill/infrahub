@@ -1,5 +1,7 @@
 from typing import Any
 
+from infrahub_sdk.constants import Priority
+
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
@@ -55,17 +57,25 @@ def test_payload_with_unknown_extra_key_still_deserializes() -> None:
     assert context.priority is None
 
 
-def test_event_context_exposes_no_priority() -> None:
+def test_event_context_carries_priority() -> None:
     event_context = build_context(priority=WorkflowPriority.HIGH).to_event_context()
 
-    assert "priority" not in type(event_context).model_fields
-    assert not hasattr(event_context, "priority")
-    assert "priority" not in event_context.model_dump()
+    assert event_context.priority is WorkflowPriority.HIGH
 
 
-def test_request_context_exposes_no_priority() -> None:
-    request_context = build_context(priority=WorkflowPriority.HIGH).to_request_context()
+def test_event_context_priority_none_when_unset() -> None:
+    event_context = build_context(priority=None).to_event_context()
 
-    assert "priority" not in type(request_context).model_fields
-    assert not hasattr(request_context, "priority")
-    assert "priority" not in request_context.model_dump()
+    assert event_context.priority is None
+
+
+def test_request_context_maps_medium_priority_to_normal() -> None:
+    request_context = build_context(priority=WorkflowPriority.MEDIUM).to_request_context()
+
+    assert request_context.priority is Priority.NORMAL
+
+
+def test_request_context_priority_none_when_unset() -> None:
+    request_context = build_context(priority=None).to_request_context()
+
+    assert request_context.priority is None

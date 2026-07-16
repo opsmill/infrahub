@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any, ClassVar, Self, final
 from uuid import UUID, uuid4
 
+from infrahub_sdk.constants import Priority
 from infrahub_sdk.context import ContextAccount, RequestContext
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
@@ -11,8 +12,22 @@ from infrahub import __version__
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workflows.constants import WorkflowPriority
 
 from .constants import EVENT_NAMESPACE, NodeMutationOrigin
+
+_WORKFLOW_PRIORITY_TO_REQUEST_PRIORITY: dict[WorkflowPriority, Priority] = {
+    WorkflowPriority.HIGH: Priority.HIGH,
+    WorkflowPriority.MEDIUM: Priority.NORMAL,
+    WorkflowPriority.LOW: Priority.LOW,
+}
+
+
+def workflow_priority_to_request_priority(priority: WorkflowPriority | None) -> Priority | None:
+    """Map a workflow priority onto the SDK request priority emitted as the X-Priority header."""
+    if priority is None:
+        return None
+    return _WORKFLOW_PRIORITY_TO_REQUEST_PRIORITY[priority]
 
 
 class EventNode(BaseModel):
@@ -39,6 +54,9 @@ class EventContext(BaseModel):
 
     branch: EventBranchContext
     account_id: str
+    priority: WorkflowPriority | None = Field(
+        default=None, description="Priority of the work that triggered this event, propagated for request tagging"
+    )
     parent_event: ParentEvent | None = Field(default=None)
 
     def set_parent_event(self, name: str, id: str) -> None:
@@ -52,7 +70,10 @@ class EventContext(BaseModel):
         return self.model_dump(mode="json")
 
     def to_request_context(self) -> RequestContext:
-        return RequestContext(account=ContextAccount(id=self.account_id))
+        return RequestContext(
+            account=ContextAccount(id=self.account_id),
+            priority=workflow_priority_to_request_priority(self.priority),
+        )
 
 
 class EventMeta(BaseModel):

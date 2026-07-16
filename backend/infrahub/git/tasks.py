@@ -495,7 +495,9 @@ async def git_branch_delete(
 async def generate_artifact_definition(branch: str, context: InfrahubContext) -> None:
     await add_branch_tag(branch_name=branch)
 
-    artifact_definitions = await get_client().all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
+    client = get_client()
+    client.request_context = context.to_request_context()
+    artifact_definitions = await client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
 
     for artifact_definition in artifact_definitions:
         model = RequestArtifactDefinitionGenerate(
@@ -512,8 +514,10 @@ async def generate_artifact_definition(branch: str, context: InfrahubContext) ->
 async def generate_artifact(model: RequestArtifactGenerate) -> None:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
     log = get_run_logger()
+    client = get_client()
+    client.request_context = model.context.to_request_context()
     repo = await get_initialized_repo(
-        client=get_client(),
+        client=client,
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
@@ -544,6 +548,7 @@ async def generate_request_artifact_definition(
     await add_tags(branches=[model.branch])
 
     client = get_client()
+    client.request_context = context.to_request_context()
 
     # Needs to be fetched before fetching group members otherwise `object` relationship would override
     # existing node in client store without the `name` attribute due to #521
@@ -865,6 +870,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     definition = await client.get(kind=CoreCheckDefinition, id=model.check_definition_id, branch=model.branch_name)
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
@@ -980,6 +986,7 @@ async def trigger_user_checks(model: TriggerRepositoryUserChecks, context: Infra
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     repository = await client.get(
         kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch, fragment=True
@@ -1018,6 +1025,7 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     repository = await client.get(kind=InfrahubKind.GENERICREPOSITORY, id=model.repository, branch=model.source_branch)
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)

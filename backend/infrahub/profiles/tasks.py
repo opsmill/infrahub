@@ -96,6 +96,7 @@ async def profile_refresh_process(
     """
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     await add_tags(branches=[branch_name])
 
