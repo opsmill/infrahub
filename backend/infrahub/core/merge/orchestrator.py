@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector
 from infrahub.core.diff.model.path import BranchTrackingId
@@ -109,7 +109,11 @@ class BranchMergeOrchestrator:
             changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=self.source_branch, db=self.db)
             node_events = changelog_collector.collect_changelogs()
 
-            serialized_diff_summary = self._serialize_diff_summary(branch_diff=branch_diff)
+            serialized_diff_summary = (
+                self._serialize_diff_summary(branch_diff=branch_diff)
+                if config.SETTINGS.main.selective_execution_after_merge
+                else None
+            )
 
             if await self.schema_analyzer.has_schema_changes():
                 self.log.info("Applying schema migrations after merge")

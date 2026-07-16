@@ -32,6 +32,18 @@ class FullRegenerationReason(StrEnum):
     SELECTION_FAILED = "Selective post-merge regeneration failed"
 
 
+async def submit_full_regeneration(*, workflow: InfrahubWorkflow, context: InfrahubContext, target_branch: str) -> None:
+    """Regenerate every generator and artifact definition on the branch."""
+    await workflow.submit_workflow(
+        workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"branch": target_branch}
+    )
+    await workflow.submit_workflow(
+        workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
+        context=context,
+        parameters={"branch": target_branch, "source": GeneratorDefinitionRunSource.MERGE},
+    )
+
+
 class PostMergeRegenerationDispatcher:
     """Decide and submit which generators and artifacts a committed merge should regenerate.
 
@@ -104,14 +116,4 @@ class PostMergeRegenerationDispatcher:
         self, context: InfrahubContext, target_branch: str, reason: FullRegenerationReason
     ) -> None:
         self.log.info(f"{reason}; regenerating all definitions")
-        await self._submit_full_regeneration(context=context, target_branch=target_branch)
-
-    async def _submit_full_regeneration(self, context: InfrahubContext, target_branch: str) -> None:
-        await self.workflow.submit_workflow(
-            workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"branch": target_branch}
-        )
-        await self.workflow.submit_workflow(
-            workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
-            context=context,
-            parameters={"branch": target_branch, "source": GeneratorDefinitionRunSource.MERGE},
-        )
+        await submit_full_regeneration(workflow=self.workflow, context=context, target_branch=target_branch)

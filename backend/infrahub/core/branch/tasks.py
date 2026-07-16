@@ -29,6 +29,7 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
     MergeRecomputeCoordinator,
 )
+from infrahub.core.merge.regeneration_dispatcher import submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -507,12 +508,15 @@ async def post_process_branch_merge(
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
-        dispatcher = await _build_post_merge_regeneration_dispatcher(log=log)
-        await dispatcher.dispatch(
-            context=context,
-            target_branch=target_branch,
-            merge_diff_cache_key=merge_diff_cache_key,
-        )
+        if config.SETTINGS.main.selective_execution_after_merge:
+            dispatcher = await _build_post_merge_regeneration_dispatcher(log=log)
+            await dispatcher.dispatch(
+                context=context,
+                target_branch=target_branch,
+                merge_diff_cache_key=merge_diff_cache_key,
+            )
+        else:
+            await submit_full_regeneration(workflow=get_workflow(), context=context, target_branch=target_branch)
 
         if not config.SETTINGS.main.diff_update_after_merge:
             return
