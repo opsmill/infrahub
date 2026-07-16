@@ -1,1 +1,0 @@
-Fresh installations now persist the deprecated-model markers, so the core-schema diff computed by `infrahub upgrade` starts out empty instead of always reporting `LineageSource` and `LineageOwner` as changed on an up-to-date installation.
