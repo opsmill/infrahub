@@ -6,7 +6,7 @@ import { type DateInput, formatDate, formatRelativeTimeFromNow } from "@/shared/
  * The resolved date-rendering preferences, reduced to what a renderer actually needs: a date-fns
  * `pattern` and an IANA `timezone`. Both may be null, meaning "no explicit preference — use the
  * browser default" (locale pattern / browser zone). This lives in `shared` and carries NO
- * dependency on `entities/preferences`; the provider that fills it from `useEffectivePreferences()`
+ * dependency on `entities/preferences`; the provider that fills it from `useGetEffectivePreferences()`
  * lives in `entities/preferences` (see `date-preferences-provider.tsx`), keeping the
  * data-fetching layer out of `shared`.
  */
@@ -29,7 +29,7 @@ export type DateVariant = "datetime" | "date" | "relative";
 
 /**
  * Browser-locale fallback used whenever there is no explicit `pattern` (either no provider is
- * mounted, or the preference source is "default"). `dateStyle`/`timeStyle` respect the browser's
+ * mounted, or the preference source is "DEFAULT"). `dateStyle`/`timeStyle` respect the browser's
  * locale AND, when a `timezone` is resolved, that zone — so we never hardcode a pattern.
  */
 function formatWithLocale(date: DateInput, variant: DateVariant, timezone: string | null): string {
@@ -57,7 +57,7 @@ export interface UseFormatDateResult {
  * `formatDate(date, variant?)`:
  *
  *   - `"datetime"` (default): the user's full preferred pattern in their timezone. When no pattern
- *     is resolved (no provider, or source === "default"), falls back to the browser locale
+ *     is resolved (no provider, or source === "DEFAULT"), falls back to the browser locale
  *     (`toLocaleString`) rather than a hardcoded pattern.
  *   - `"relative"`: "x ago" — timezone-independent, so the resolved timezone is irrelevant.
  *   - `"date"`: date-only. Derived from the SAME resolved state, then stripped to the date portion:

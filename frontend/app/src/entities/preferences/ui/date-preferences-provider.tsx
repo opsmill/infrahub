@@ -11,7 +11,7 @@ import { useGetEffectivePreferences } from "@/entities/preferences/ui/queries/ge
 /**
  * Fills the shared {@link DatePreferencesContext} from the effective user/org preferences. This
  * lives in `entities/preferences` — NOT `shared` — because it is the layer that owns the
- * preferences data (`useEffectivePreferences`). `shared/DateDisplay` consumes only the resolved
+ * preferences data (`useGetEffectivePreferences`). `shared/DateDisplay` consumes only the resolved
  * `{ pattern, timezone }` via context, so it never imports `entities`.
  *
  * Resolution rules mirror the spec:
