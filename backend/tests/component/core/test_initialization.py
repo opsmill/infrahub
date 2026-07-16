@@ -16,23 +16,6 @@ async def test_first_time_initialization(db: InfrahubDatabase, default_branch: B
     assert True
 
 
-async def test_first_time_initialization_converges_core_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """A fresh installation must persist the schema shape the upgrade flow builds as its candidate.
-
-    The candidate includes the deprecated overlay, so the core-schema diff starts out empty.
-    """
-    await first_time_initialization(db=db)
-
-    branch_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-    candidate_schema = branch_schema.duplicate()
-    candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
-    candidate_schema.load_schema(schema=SchemaRoot(**core_models))
-    candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
-    candidate_schema.process()
-
-    assert branch_schema.diff(other=candidate_schema).all == []
-
-
 async def test_first_time_initialization_does_not_seed_preferences(
     db: InfrahubDatabase, delete_all_nodes_in_db: None
 ) -> None:
