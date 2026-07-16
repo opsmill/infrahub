@@ -22,7 +22,7 @@ from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ResourceNotFoundError
+from infrahub.exceptions import ResourceMultipleFoundError, ResourceNotFoundError
 
 from ..factories import (
     EnrichedAttributeFactory,
@@ -574,6 +574,36 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 tracking_id=BranchTrackingId(name="not a branch"),
                 diff_branch_name=self.diff_branch_name,
             )
+
+    async def test_get_one_multiple_results_raises_distinct_error(
+        self, diff_repository: DiffRepository, reset_database: None
+    ) -> None:
+        # two diffs for the same branch with distinct, non-overlapping time ranges
+        first_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp("2024-06-15T10:00:00Z"),
+            to_time=Timestamp("2024-06-15T11:00:00Z"),
+            nodes=self._build_nodes(num_nodes=1, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="diff-one"),
+        )
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=first_diff, do_summary_counts=False)
+        second_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp("2024-06-15T12:00:00Z"),
+            to_time=Timestamp("2024-06-15T13:00:00Z"),
+            nodes=self._build_nodes(num_nodes=1, num_sub_fields=1),
+            tracking_id=NameTrackingId(name="diff-two"),
+        )
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=second_diff, do_summary_counts=False
+        )
+
+        # a "multiple results" case must not masquerade as "not found"
+        with pytest.raises(ResourceMultipleFoundError, match="Multiple diffs for"):
+            await diff_repository.get_one(diff_branch_name=self.diff_branch_name)
+        assert not issubclass(ResourceMultipleFoundError, ResourceNotFoundError)
 
     async def test_get_node_field_summaries(self, diff_repository: DiffRepository) -> None:
         diff_nodes = self._build_nodes(num_nodes=5, num_sub_fields=2)

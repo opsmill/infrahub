@@ -9,10 +9,18 @@ if TYPE_CHECKING:
     from infrahub.core.validators.model import SchemaViolation
 
 
-def _rebuild_error(cls: type[Error], args: tuple[Any, ...], state: dict[str, Any]) -> Error:
+def _rebuild_error(cls: type[Error], args: tuple[Any, ...], state: Any) -> Error:
     obj = cls.__new__(cls)
     obj.args = args
-    obj.__dict__.update(state)
+    # Mirror object.__setstate__: state is a dict of instance attributes, or a
+    # (dict_state, slots_state) tuple for subclasses that define __slots__, or None.
+    if state is not None:
+        dict_state, slots_state = state if isinstance(state, tuple) else (state, None)
+        if dict_state:
+            obj.__dict__.update(dict_state)
+        if slots_state:
+            for key, value in slots_state.items():
+                setattr(obj, key, value)
     return obj
 
 
@@ -23,12 +31,12 @@ class Error(Exception):
     errors: list | None = None
 
     def __reduce__(self) -> tuple[Any, ...]:
-        # BaseException.__reduce__ rebuilds via cls(*self.args), replaying only the message and
-        # dropping any additional required constructor arguments, so subclasses with extra
-        # parameters fail to unpickle. Rebuild via __new__ + instance state instead so every
-        # subclass round-trips regardless of its __init__ signature (errors are pickled when they
-        # cross the workflow engine).
-        return (_rebuild_error, (self.__class__, self.args, self.__dict__))
+        # BaseException.__reduce__ rebuilds via cls(*self.args), dropping any additional required
+        # constructor arguments, so subclasses with extra parameters fail to unpickle. Rebuild via
+        # __new__ + instance state instead so every subclass round-trips regardless of its
+        # __init__ signature. __getstate__ captures both __dict__ and __slots__ state so
+        # slotted subclasses round-trip too.
+        return (_rebuild_error, (self.__class__, self.args, self.__getstate__()))
 
     def api_response(self) -> dict[str, Any]:
         """Return error response."""
@@ -256,6 +264,14 @@ class ResourceNotFoundError(Error):
 
     def __init__(self, message: str | None = None) -> None:
         self.message = message or "The requested resource was not found"
+        super().__init__(self.message)
+
+
+class ResourceMultipleFoundError(Error):
+    HTTP_CODE: int = 500
+
+    def __init__(self, message: str | None = None) -> None:
+        self.message = message or "Multiple matching resources were found"
         super().__init__(self.message)
 
 
