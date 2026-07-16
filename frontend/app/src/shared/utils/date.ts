@@ -19,10 +19,6 @@ export function formatDate(date: DateInput, { pattern, timezone }: FormatDateOpt
   return format(new Date(date), pattern);
 }
 
-export function formatFullDate(date: DateInput) {
-  return format(date, DATE_TIME_FORMAT);
-}
-
 export function formatRelativeTimeFromNow(date: DateInput) {
   return formatDistance(date, new Date(), { addSuffix: true });
 }
