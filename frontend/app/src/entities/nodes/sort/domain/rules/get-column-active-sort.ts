@@ -1,5 +1,8 @@
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
-import { buildAttributeSortField } from "@/entities/nodes/sort/domain/rules/sort-field";
+import {
+  buildAttributeSortField,
+  sortFieldBelongsToRelationship,
+} from "@/entities/nodes/sort/domain/rules/sort-field";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 /**
@@ -17,8 +20,7 @@ export function getColumnActiveSort(
   if (!sort) return null;
 
   if ("peer" in columnSchema) {
-    const [relationshipName] = sort.field.split("__");
-    return relationshipName === columnSchema.name ? sort : null;
+    return sortFieldBelongsToRelationship(sort.field, columnSchema.name) ? sort : null;
   }
 
   return sort.field === buildAttributeSortField(columnSchema.name) ? sort : null;

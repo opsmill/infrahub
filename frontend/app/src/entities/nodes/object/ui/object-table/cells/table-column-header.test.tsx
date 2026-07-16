@@ -338,6 +338,38 @@ describe("TableColumnHeader", () => {
       .not.toBeInTheDocument();
   });
 
+  test("keeps the pagination offset unchanged when sorting from the header", async () => {
+    // GIVEN
+    const pagination = JSON.stringify({ limit: 10, offset: 20 });
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}?pagination=${encodeURIComponent(pagination)}`
+    );
+    const component = await render(
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Name" }).click();
+    await component.getByRole("menuitemradio", { name: "Sort ascending" }).click();
+
+    // THEN
+    await expect.poll(getSortInUrl).toBe("name__value__asc");
+    expect(new URLSearchParams(window.location.search).get("pagination")).toBe(pagination);
+  });
+
+  test("renders a plain non-interactive header when disabled", async () => {
+    // GIVEN
+    const component = await render(
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} disabled />
+    );
+
+    // THEN
+    await expect.element(component.getByText("Name")).toBeVisible();
+    await expect.element(component.getByRole("button")).not.toBeInTheDocument();
+  });
+
   test("writes the same filter state as the toolbar filter path", async () => {
     // GIVEN
     const component = await render(

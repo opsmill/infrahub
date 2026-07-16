@@ -71,4 +71,6 @@ Invariants: absent `?sort=` ⇒ schema default order; invalid/unsortable fields 
 
 ## 4. Scope
 
-Applies to every table rendering the shared interactive header: object lists (`/objects/:kind`), IPAM IP-address and IP-prefix lists. Branches table and read-only property tables are out of scope and keep their current headers.
+Sorting applies to every table rendering the shared interactive header **with a schema wired**: object lists (`/objects/:kind`), IPAM IP-address and IP-prefix lists.
+
+Other tables that share the interactive header component without sort wiring (role-manager lists, the branches table's filterable columns) render the menu with **"Filter…" only** — their filtering behavior is unchanged in outcome, but the interaction moves under the menu like everywhere else. Sorting there is out of scope. Read-only property tables keep their plain headers.

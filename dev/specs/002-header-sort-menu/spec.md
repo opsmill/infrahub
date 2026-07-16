@@ -109,7 +109,7 @@ A user who starts filtering from a column header gets exactly the same experienc
 ## Assumptions
 
 - The existing unified-filter-menu specification (`specs/ifc-2428-filters`, still Draft) is softened, not contradicted: its FR-001b ("column headers are no longer clickable filter triggers") becomes "column headers reuse the unified filter flow as a second entry point". That Draft spec should be amended when it is next worked on; this spec is the current source of truth for header behavior.
-- Scope is exactly the list views whose headers are interactive today: object lists and the IPAM IP address / IP prefix lists. The branches list and simple read-only tables are out of scope.
+- Sorting scope is exactly the list views wired to the sorting state: object lists and the IPAM IP address / IP prefix lists. Other lists sharing the interactive header (role-manager lists, the branches list's filterable columns) render the menu with "Filter…" only — filtering outcome unchanged, the interaction moves under the menu like everywhere else. Simple read-only tables are untouched.
 - The IPAM lists do **not** currently pass any ordering to their data queries (verified during planning). Because the header menu is shared, shipping it without that wiring would show sort actions on IPAM tables that silently do nothing. IPAM sort wiring is therefore **in scope and release-blocking**: it may be implemented after Story 1, but the feature does not ship to IPAM tables without it.
 - Multi-field sort management stays in the toolbar sort control; headers intentionally offer single-field sorting only.
 - Resetting pagination on sort or filter change is explicitly out of scope (current behavior keeps the offset); revisiting that is a separate improvement.
