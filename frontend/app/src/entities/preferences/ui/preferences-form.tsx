@@ -22,10 +22,14 @@ function ownOverride<T extends string>(preference: Preference<T>): T | null {
   return preference.source === "USER" ? preference.value : null;
 }
 
-function SaveButton({ isDisabled }: { isDisabled?: boolean }) {
+function SaveButton({ isPending }: { isPending?: boolean }) {
   const { isDirty } = useFormState();
 
-  return <FormSubmit isDisabled={isDisabled || !isDirty}>Save</FormSubmit>;
+  return (
+    <FormSubmit isPending={isPending} isDisabled={!isDirty}>
+      Save
+    </FormSubmit>
+  );
 }
 
 export function PreferencesForm() {
@@ -75,7 +79,7 @@ export function PreferencesForm() {
       <TimezoneField preference={preferences.timezone} />
 
       <Row className="justify-end p-2">
-        <SaveButton isDisabled={updatePreferences.isPending} />
+        <SaveButton isPending={updatePreferences.isPending} />
       </Row>
     </Form>
   );
