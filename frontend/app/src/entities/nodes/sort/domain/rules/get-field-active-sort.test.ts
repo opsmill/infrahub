@@ -1,21 +1,21 @@
 import { describe, expect, test } from "vitest";
 
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
-import { getColumnActiveSort } from "@/entities/nodes/sort/domain/rules/get-column-active-sort";
+import { getFieldActiveSort } from "@/entities/nodes/sort/domain/rules/get-field-active-sort";
 
 import {
   generateAttributeSchema,
   generateRelationshipSchema,
 } from "../../../../../../tests/fake/schema";
 
-describe("getColumnActiveSort", () => {
+describe("getFieldActiveSort", () => {
   test("returns the sort when it targets the attribute column", () => {
     // GIVEN
     const customSort: Sort[] = [{ field: "name__value", direction: "ASC" }];
-    const columnSchema = generateAttributeSchema({ name: "name", kind: "Text" });
+    const fieldSchema = generateAttributeSchema({ name: "name", kind: "Text" });
 
     // WHEN
-    const activeSort = getColumnActiveSort(customSort, columnSchema);
+    const activeSort = getFieldActiveSort(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toEqual({ field: "name__value", direction: "ASC" });
@@ -24,14 +24,14 @@ describe("getColumnActiveSort", () => {
   test("returns the sort when it targets a peer attribute of the relationship column", () => {
     // GIVEN
     const customSort: Sort[] = [{ field: "site__name__value", direction: "DESC" }];
-    const columnSchema = generateRelationshipSchema({
+    const fieldSchema = generateRelationshipSchema({
       name: "site",
       peer: "LocationSite",
       cardinality: "one",
     });
 
     // WHEN
-    const activeSort = getColumnActiveSort(customSort, columnSchema);
+    const activeSort = getFieldActiveSort(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toEqual({ field: "site__name__value", direction: "DESC" });
@@ -40,14 +40,14 @@ describe("getColumnActiveSort", () => {
   test("does not match the relationship `site` against the attribute field `site_code__value`", () => {
     // GIVEN
     const customSort: Sort[] = [{ field: "site_code__value", direction: "ASC" }];
-    const columnSchema = generateRelationshipSchema({
+    const fieldSchema = generateRelationshipSchema({
       name: "site",
       peer: "LocationSite",
       cardinality: "one",
     });
 
     // WHEN
-    const activeSort = getColumnActiveSort(customSort, columnSchema);
+    const activeSort = getFieldActiveSort(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toBeNull();
@@ -56,10 +56,10 @@ describe("getColumnActiveSort", () => {
   test("returns null when the sort targets another attribute column", () => {
     // GIVEN
     const customSort: Sort[] = [{ field: "description__value", direction: "ASC" }];
-    const columnSchema = generateAttributeSchema({ name: "name", kind: "Text" });
+    const fieldSchema = generateAttributeSchema({ name: "name", kind: "Text" });
 
     // WHEN
-    const activeSort = getColumnActiveSort(customSort, columnSchema);
+    const activeSort = getFieldActiveSort(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toBeNull();
@@ -71,10 +71,10 @@ describe("getColumnActiveSort", () => {
       { field: "name__value", direction: "ASC" },
       { field: "description__value", direction: "DESC" },
     ];
-    const columnSchema = generateAttributeSchema({ name: "name", kind: "Text" });
+    const fieldSchema = generateAttributeSchema({ name: "name", kind: "Text" });
 
     // WHEN
-    const activeSort = getColumnActiveSort(customSort, columnSchema);
+    const activeSort = getFieldActiveSort(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toBeNull();
@@ -82,10 +82,10 @@ describe("getColumnActiveSort", () => {
 
   test("returns null when there is no custom sort", () => {
     // GIVEN
-    const columnSchema = generateAttributeSchema({ name: "name", kind: "Text" });
+    const fieldSchema = generateAttributeSchema({ name: "name", kind: "Text" });
 
     // WHEN
-    const activeSort = getColumnActiveSort(null, columnSchema);
+    const activeSort = getFieldActiveSort(null, fieldSchema);
 
     // THEN
     expect(activeSort).toBeNull();
