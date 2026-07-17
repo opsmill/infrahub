@@ -12,12 +12,3 @@ export function buildRelationshipSortField(
 ): SortField {
   return `${relationshipName}__${attributeField}`;
 }
-
-/** Inverse of `buildRelationshipSortField`'s prefix: the field's first `__` token names the relationship. */
-export function sortFieldBelongsToRelationship(
-  field: SortField,
-  relationshipName: string
-): boolean {
-  const [firstToken] = field.split("__");
-  return firstToken === relationshipName;
-}

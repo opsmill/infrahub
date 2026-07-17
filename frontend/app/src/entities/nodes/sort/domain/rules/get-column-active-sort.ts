@@ -1,8 +1,5 @@
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
-import {
-  buildAttributeSortField,
-  sortFieldBelongsToRelationship,
-} from "@/entities/nodes/sort/domain/rules/sort-field";
+import { buildAttributeSortField } from "@/entities/nodes/sort/domain/rules/sort-field";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 /**
@@ -13,14 +10,15 @@ import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/doma
  * sorts, or a sort on another column.
  */
 export function getColumnActiveSort(
-  customSort: Sort[] | null,
+  sorts: Sort[] | null,
   columnSchema: AttributeSchema | RelationshipSchema
 ): Sort | null {
-  const sort = customSort?.length === 1 ? customSort[0] : undefined;
+  const sort = sorts?.length === 1 ? sorts[0] : undefined;
   if (!sort) return null;
 
   if ("peer" in columnSchema) {
-    return sortFieldBelongsToRelationship(sort.field, columnSchema.name) ? sort : null;
+    const [relationshipName] = sort.field.split("__");
+    return relationshipName === columnSchema.name ? sort : null;
   }
 
   return sort.field === buildAttributeSortField(columnSchema.name) ? sort : null;
