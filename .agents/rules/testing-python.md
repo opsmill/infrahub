@@ -59,11 +59,11 @@ Exact-match is not only for error messages. Assert the exact collection (full se
 
 ## Don't test the framework
 
-Skip tests that only exercise library behaviour: plain `Enum` value/round-trip checks, Pydantic field constraints (`ge`, `min_length`, …), `SettingsConfigDict`/env plumbing, or "a model has field X". Rule of thumb: if the test would still pass after deleting our implementation and reinstalling the library, it belongs to the library. See `dev/guidelines/backend/testing.md` §"What not to test".
+Skip tests that only exercise library behavior: plain `Enum` value/round-trip checks, Pydantic field constraints (`ge`, `min_length`, …), `SettingsConfigDict`/env plumbing, or "a model has field X". Rule of thumb: if the test would still pass after deleting our implementation and reinstalling the library, it belongs to the library. See `dev/guidelines/backend/testing.md` §"What not to test".
 
 ## Pick the cheapest test tier
 
-If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbour uses one. Use the database or containers only when behaviour genuinely depends on them.
+If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them.
 
 ## Test file placement
 

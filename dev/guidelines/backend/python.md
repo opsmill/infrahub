@@ -262,7 +262,7 @@ async def set(self, key: str, value: str, expires: KVTTL | int | None = None) ->
 
 ### Prefer `isinstance` over `getattr` for narrowing
 
-To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behaviour and a `NodeSchema`-only check silently drops them.
+To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behavior and a `NodeSchema`-only check silently drops them.
 
 ### Deterministic serialization for hashes and cache keys
 

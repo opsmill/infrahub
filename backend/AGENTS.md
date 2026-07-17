@@ -94,7 +94,6 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
-- `dev/knowledge/backend/preferences.md` - User/global preferences (Repository + Query persistence); read when touching preferences
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
@@ -104,7 +103,6 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/computed-attributes.md` - Jinja2 computed attributes and their recompute paths; read when touching Jinja2 computed attributes
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
 - `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
-- `dev/knowledge/backend/package-init-files.md` - Keep `__init__.py` free of logic for new code; read when adding a package or wiring imports
 - `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code
 
 ### Guides (How to do X)
