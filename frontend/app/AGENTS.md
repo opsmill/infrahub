@@ -32,14 +32,6 @@ cd frontend/app && pnpm exec betterer ci  # TypeScript-regression gate (NOT plai
 cd frontend/app && pnpm test              # vitest (browser mode)
 ```
 
-- **`betterer`** ratchets ~200 tracked pre-existing TS errors (`.betterer.results`); the count must
-  never grow. **After a rebase, or when moving/editing a file with tracked errors, refresh it**:
-  `pnpm betterer`, then commit `.betterer.results`. See `dev/guidelines/frontend/typescript.md`.
-- **Browser-test flakes**: tests run in real Chromium. A new npm dependency that Vite's initial scan
-  can't see (reached only via `React.lazy`/dynamic import) must be added to
-  `vitest.config.ts` → `optimizeDeps.include`, or CI fails with
-  `[vitest] Vite unexpectedly reloaded a test`.
-
 ## See Also
 
 ### Guidelines (How to write code)
