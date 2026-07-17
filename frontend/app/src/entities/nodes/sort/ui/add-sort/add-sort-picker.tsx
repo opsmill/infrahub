@@ -27,27 +27,21 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface SortableFieldMenuItemProps {
   field: SortField;
-  textValue: string;
-  children: React.ReactNode;
+  icon?: React.ReactNode;
+  label: string;
   onSelect: (sort: Sort) => void;
 }
 
-function SortableFieldMenuItem({
-  field,
-  textValue,
-  children,
-  onSelect,
-}: SortableFieldMenuItemProps) {
+function SortableFieldMenuItem({ field, icon, label, onSelect }: SortableFieldMenuItemProps) {
   return (
     <SubmenuTrigger>
-      <MenuItem textValue={textValue}>{children}</MenuItem>
+      <MenuItem textValue={label}>
+        {icon}
+        <span>{label}</span>
+      </MenuItem>
 
       <Popover>
-        <Menu
-          variant="picker"
-          aria-label={`Sort direction for ${textValue}`}
-          items={DIRECTION_OPTIONS}
-        >
+        <Menu variant="picker" aria-label={`Sort direction for ${label}`} items={DIRECTION_OPTIONS}>
           {(option) => (
             <MenuItem
               textValue={option.label}
@@ -69,17 +63,13 @@ interface SortableAttributeMenuItemProps {
 }
 
 function SortableAttributeMenuItem({ attribute, onSelect }: SortableAttributeMenuItemProps) {
-  const label = attribute.label ?? attribute.name;
-
   return (
     <SortableFieldMenuItem
       field={buildAttributeSortField(attribute.name)}
-      textValue={label}
+      icon={<FieldSchemaIcon fieldSchema={attribute} />}
+      label={attribute.label ?? attribute.name}
       onSelect={onSelect}
-    >
-      <FieldSchemaIcon fieldSchema={attribute} />
-      <span>{label}</span>
-    </SortableFieldMenuItem>
+    />
   );
 }
 
@@ -153,9 +143,7 @@ function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
   const availableFields = sortableFields.filter(({ field }) => !activeFields.has(field));
 
   return availableFields.map(({ field, label }) => (
-    <SortableFieldMenuItem key={field} field={field} textValue={label} onSelect={onSelect}>
-      {label}
-    </SortableFieldMenuItem>
+    <SortableFieldMenuItem key={field} field={field} label={label} onSelect={onSelect} />
   ));
 }
 
@@ -188,12 +176,10 @@ function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) 
         <SortableFieldMenuItem
           key={metadata.field}
           field={metadata.field}
-          textValue={metadata.label}
+          icon={<CalendarClockIcon />}
+          label={metadata.label}
           onSelect={onSelect}
-        >
-          <CalendarClockIcon />
-          <span>{metadata.label}</span>
-        </SortableFieldMenuItem>
+        />
       ))}
     </>
   );
