@@ -18,3 +18,6 @@ export interface EffectivePreferences {
   dateFormat: Preference<DateFormatKey>;
   timezone: Preference;
 }
+
+// Org's own stored values, never merged with personal overrides.
+export type GlobalPreferences = PreferenceValues;

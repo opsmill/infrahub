@@ -68,7 +68,16 @@ function SourceInfo({ message }: { message: string }) {
   );
 }
 
-export function DateFormatField({ preference }: { preference: Preference }) {
+interface PreferenceFieldProps {
+  /** Effective preference used to resolve the (i) source tooltip. Omit it (e.g. global editing) to hide the tooltip. */
+  preference?: Preference;
+  emptyValueLabel?: string;
+}
+
+export function DateFormatField({
+  preference,
+  emptyValueLabel = EMPTY_VALUE_LABEL,
+}: PreferenceFieldProps) {
   const now = new Date();
   const exampleId = React.useId();
   const items = buildDateFormatPresets().map(({ key, label }) => ({ value: key, label }));
@@ -76,11 +85,13 @@ export function DateFormatField({ preference }: { preference: Preference }) {
   const fieldValue = useWatch({ name: "date_format" }) as FormAttributeValue | undefined;
   const selected = (fieldValue?.value as string | null | undefined) ?? null;
 
-  const message = sourceMessage(preference, {
-    formatGlobalValue: (value) =>
-      `${formatDateFormatExample(value, now)} (${dateFormatLabel(value)})`,
-    browserValue: now.toLocaleString(),
-  });
+  const message = preference
+    ? sourceMessage(preference, {
+        formatGlobalValue: (value) =>
+          `${formatDateFormatExample(value, now)} (${dateFormatLabel(value)})`,
+        browserValue: now.toLocaleString(),
+      })
+    : null;
 
   return (
     <DetailRow icon="mdi:calendar-text" label="Date format">
@@ -95,7 +106,7 @@ export function DateFormatField({ preference }: { preference: Preference }) {
                 onChange={(newValue) => field.onChange(toFieldValue(newValue))}
                 items={items}
                 label="Date format"
-                placeholder={EMPTY_VALUE_LABEL}
+                placeholder={emptyValueLabel}
                 emptyMessage="No date format found."
                 aria-describedby={selected ? exampleId : undefined}
               />
@@ -109,17 +120,22 @@ export function DateFormatField({ preference }: { preference: Preference }) {
             </p>
           )}
         </div>
-        <SourceInfo message={message} />
+        {message && <SourceInfo message={message} />}
       </Row>
     </DetailRow>
   );
 }
 
-export function TimezoneField({ preference }: { preference: Preference }) {
-  const message = sourceMessage(preference, {
-    formatGlobalValue: (value) => value,
-    browserValue: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  });
+export function TimezoneField({
+  preference,
+  emptyValueLabel = EMPTY_VALUE_LABEL,
+}: PreferenceFieldProps) {
+  const message = preference
+    ? sourceMessage(preference, {
+        formatGlobalValue: (value) => value,
+        browserValue: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      })
+    : null;
 
   return (
     <DetailRow icon="mdi:earth" label="Timezone">
@@ -134,7 +150,7 @@ export function TimezoneField({ preference }: { preference: Preference }) {
                 onChange={(newValue) => field.onChange(toFieldValue(newValue))}
                 items={TIMEZONE_ITEMS}
                 label="Timezone"
-                placeholder={EMPTY_VALUE_LABEL}
+                placeholder={emptyValueLabel}
                 emptyMessage="No timezone found."
                 virtualized
               />
@@ -142,7 +158,7 @@ export function TimezoneField({ preference }: { preference: Preference }) {
           />
         </div>
         <div className="flex-1" />
-        <SourceInfo message={message} />
+        {message && <SourceInfo message={message} />}
       </Row>
     </DetailRow>
   );
