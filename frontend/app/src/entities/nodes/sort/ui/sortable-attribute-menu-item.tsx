@@ -6,7 +6,6 @@ import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export interface SortableAttributeMenuItemProps {
   attribute: AttributeSchema;
-  /** Direction of the active sort when this attribute drives it. */
   activeDirection?: SortDirection;
   onSelect: (sort: Sort) => void;
 }

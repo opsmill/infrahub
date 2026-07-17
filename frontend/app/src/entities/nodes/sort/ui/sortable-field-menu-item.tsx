@@ -12,7 +12,6 @@ export interface SortableFieldMenuItemProps {
   field: SortField;
   icon?: React.ReactNode;
   label: string;
-  /** Direction of the active sort when this field drives it. */
   activeDirection?: SortDirection;
   onSelect: (sort: Sort) => void;
 }

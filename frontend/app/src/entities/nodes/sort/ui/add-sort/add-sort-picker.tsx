@@ -26,19 +26,19 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface SortableRelationshipMenuItemProps {
   relationship: RelationshipSchema;
-  activeFields: ReadonlySet<SortField>;
+  activeFields?: ReadonlySet<SortField>;
   onSelect: (sort: Sort) => void;
 }
 
 function getAvailablePeerAttributes(
   peerSchema: ModelSchema,
   relationship: RelationshipSchema,
-  activeFields: ReadonlySet<SortField>
+  activeFields?: ReadonlySet<SortField>
 ): AttributeSchema[] {
   return (peerSchema.attributes ?? []).filter(isSortableAttribute).filter((attribute) => {
     const attributeField = buildAttributeSortField(attribute.name);
     const relationshipField = buildRelationshipSortField(relationship.name, attributeField);
-    return !activeFields.has(relationshipField);
+    return !activeFields?.has(relationshipField);
   });
 }
 
@@ -84,14 +84,14 @@ function GroupedSortableRelationshipMenuItem({
 
 interface FieldItemsProps {
   schema: ModelSchema;
-  activeFields: ReadonlySet<SortField>;
+  activeFields?: ReadonlySet<SortField>;
   onSelect: (sort: Sort) => void;
 }
 
 // Flat list of every available field, shown while searching.
 function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
   const sortableFields = useSortableFields(schema);
-  const availableFields = sortableFields.filter(({ field }) => !activeFields.has(field));
+  const availableFields = sortableFields.filter(({ field }) => !activeFields?.has(field));
 
   return availableFields.map(({ field, label, fieldSchema }) => (
     <SortableFieldMenuItem
@@ -108,11 +108,13 @@ function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
 function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
   const sortableAttributes = sortByOrderWeight(schema.attributes ?? [])
     .filter(isSortableAttribute)
-    .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
+    .filter((attribute) => !activeFields?.has(buildAttributeSortField(attribute.name)));
   const sortableRelationships = sortByOrderWeight(schema.relationships ?? []).filter(
     isSortableRelationship
   );
-  const metadataFields = NODE_METADATA_SORT_OPTIONS.filter(({ field }) => !activeFields.has(field));
+  const metadataFields = NODE_METADATA_SORT_OPTIONS.filter(
+    ({ field }) => !activeFields?.has(field)
+  );
 
   return (
     <>
@@ -142,19 +144,13 @@ function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) 
   );
 }
 
-const NO_ACTIVE_FIELDS: ReadonlySet<SortField> = new Set();
-
 export interface AddSortPickerProps {
   schema: ModelSchema;
   activeFields?: ReadonlySet<SortField>;
   onSelect: (sort: Sort) => void;
 }
 
-export function AddSortPicker({
-  schema,
-  activeFields = NO_ACTIVE_FIELDS,
-  onSelect,
-}: AddSortPickerProps) {
+export function AddSortPicker({ schema, activeFields, onSelect }: AddSortPickerProps) {
   const { contains } = useFilter({ sensitivity: "base" });
   const [search, setSearch] = React.useState("");
   const isSearching = search.trim() !== "";
