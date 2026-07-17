@@ -22,19 +22,20 @@ and never a hardcoded pattern.
 - `DatePreferencesContext` + `useFormatDate` live in **`shared`** and carry **no** dependency on
   `entities/`.
 - `DatePreferencesProvider` (`entities/preferences/ui/date-preferences-provider.tsx`) fills the
-  context from `useEffectivePreferences()` and is mounted app-wide in `app.tsx`. This keeps
-  data-fetching out of `shared`.
-- When no provider is mounted, or a preference's `source` is `"default"` (nothing set), formatting
+  context from `useGetEffectivePreferences()`. It is mounted **inside `RequireAuth`** (`app/router.tsx`),
+  next to `BranchesProvider`/`SchemaProvider` — never at the app root — because its query is
+  authenticated: mounting it above the login page would fire a pre-auth request whose 401 trips
+  Apollo's error link and bounces back to `/login`.
+- When no provider is mounted, or a preference's `source` is `"DEFAULT"` (nothing set), formatting
   falls back to the **browser locale + zone** (`toLocaleString`) — never a hardcoded pattern. So
   `DateDisplay`/`useFormatDate` are always safe to use, including in tests/stories.
 - Timezone rendering uses date-fns v4 + the first-party **`@date-fns/tz`** (`TZDate`). The semantic
   `date_format` key → date-fns pattern mapping is `patternForKey`
-  (`entities/preferences/domain/date-format-presets.ts`); the `date` variant derives a date-only
+  (`entities/preferences/domain/rules/date-format.ts`); the `date` variant derives a date-only
   pattern by stripping the preferred pattern at its first time token.
 
 ## Do NOT route through it
 
 Machine/serialized values, not user-facing display: form inputs / date-pickers
 (`datetime.field.tsx`, `date-picker.tsx`), `.toISOString()` sent to an API or used as a key/query
-param, chart axis ticks, and tests. `getDateDisplay` in `date-display.tsx` is intentionally kept
-non-preference-aware for the few non-React callers that need a plain full-datetime string.
+param, chart axis ticks, and tests.
