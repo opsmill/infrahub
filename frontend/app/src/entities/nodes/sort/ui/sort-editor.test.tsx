@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { render } from "../../../../../tests/components/render";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 import { SortEditor } from "./sort-editor";
+import { PEER_LABEL_SEPARATOR } from "./sort-options";
 
 const schemaWithDefaultSort = generateNodeSchema({
   order_by: ["name__value"],
@@ -66,35 +67,35 @@ describe("SortEditor", () => {
       attribute: "prefix",
       label: "Prefix",
       field: "prefix__version",
-      expected: "Prefix (version)",
+      property: "version",
     },
     {
       kind: "IPNetwork",
       attribute: "prefix",
       label: "Prefix",
       field: "prefix__binary_address",
-      expected: "Prefix (binary address)",
+      property: "binary address",
     },
     {
       kind: "MacAddress",
       attribute: "mac",
       label: "Mac",
       field: "mac__dot_notation",
-      expected: "Mac (dot notation)",
+      property: "dot notation",
     },
     {
       kind: "Dropdown",
       attribute: "status",
       label: "Status",
       field: "status__label",
-      expected: "Status (label)",
+      property: "label",
     },
   ])("labels the read-only $field sub-property sort", async ({
     kind,
     attribute,
     label,
     field,
-    expected,
+    property,
   }) => {
     // GIVEN
     const schema = generateNodeSchema({
@@ -102,13 +103,14 @@ describe("SortEditor", () => {
       attributes: [generateAttributeSchema({ name: attribute, label, kind })],
       relationships: [],
     });
+    const expectedLabel = `${label}${PEER_LABEL_SEPARATOR}${property}`;
 
     // WHEN
     const component = await render(<SortEditor schema={schema} />);
 
     // THEN
     await expect
-      .element(component.getByRole("button", { name: `${expected} Sort field` }))
+      .element(component.getByRole("button", { name: `${expectedLabel} Sort field` }))
       .toBeVisible();
   });
 

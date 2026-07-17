@@ -21,7 +21,7 @@ import { AddSortButton } from "@/entities/nodes/sort/ui/add-sort/add-sort-button
 import { AddSortPicker } from "@/entities/nodes/sort/ui/add-sort/add-sort-picker";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 import { useSortableFields } from "@/entities/nodes/sort/ui/hooks/use-sortable-fields";
-import { DIRECTION_OPTIONS } from "@/entities/nodes/sort/ui/sort-options";
+import { DIRECTION_OPTIONS, PEER_LABEL_SEPARATOR } from "@/entities/nodes/sort/ui/sort-options";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface SortEditorProps {
@@ -116,15 +116,15 @@ interface SortFieldSelectProps {
 /**
  * Readable label for a sort field the picker doesn't offer — a schema default order can target an
  * attribute sub-property (e.g. IP prefixes sort on `prefix__version`) while the picker only exposes
- * `__value` fields. Renders as "Prefix (version)".
+ * `__value` fields. Renders as "Prefix › version", matching the peer-attribute label style.
  */
 function describeUnlistedSortField(field: SortField, schema: ModelSchema): string {
-  const [attributeName, ...propertySegments] = field.split("__");
+  const [attributeName = field, ...propertySegments] = field.split("__");
   const attributeLabel =
     schema.attributes?.find((attribute) => attribute.name === attributeName)?.label ??
     attributeName;
   const property = propertySegments.map((segment) => segment.replace(/_/g, " ")).join(" · ");
-  return property ? `${attributeLabel} (${property})` : attributeLabel;
+  return property ? `${attributeLabel}${PEER_LABEL_SEPARATOR}${property}` : attributeLabel;
 }
 
 function SortFieldSelect({ schema, value, onChange }: SortFieldSelectProps) {
