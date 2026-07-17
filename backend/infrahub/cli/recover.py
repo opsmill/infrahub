@@ -137,7 +137,8 @@ async def recover_cmd(
                 console.print("Aborted; no changes were made.")
                 raise typer.Exit(code=1)
 
-        report = await recoverer.recover(force=force, branch_name=branch)
+        # Pin recovery to the branch that was previewed and confirmed
+        report = await recoverer.recover(force=force, branch_name=branch or preview.branch)
         _print_report(console=console, report=report)
         if report.outcome is RecoveryOutcome.FAILED:
             raise typer.Exit(code=1)
