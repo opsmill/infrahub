@@ -140,5 +140,22 @@ core_artifact_definition = NodeSchema(
             cardinality=Cardinality.ONE,
             optional=False,
         ),
+        Rel(
+            name="artifacts",
+            peer=InfrahubKind.ARTIFACT,
+            identifier="artifact__artifact_definition",
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
+        Rel(
+            name="validators",
+            peer=InfrahubKind.ARTIFACTVALIDATOR,
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
     ],
 )
