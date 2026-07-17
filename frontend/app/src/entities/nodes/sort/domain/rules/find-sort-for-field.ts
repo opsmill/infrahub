@@ -9,7 +9,7 @@ import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/doma
  * name). `null` otherwise — default order, multi-field sorts, or a sort on
  * another field.
  */
-export function getFieldActiveSort(
+export function findSortForField(
   sorts: Sort[] | null,
   fieldSchema: AttributeSchema | RelationshipSchema
 ): Sort | null {

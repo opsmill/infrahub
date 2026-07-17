@@ -23,7 +23,7 @@ import {
   type Sort,
   type SortDirection,
 } from "@/entities/nodes/sort/domain/model/sort";
-import { getFieldActiveSort } from "@/entities/nodes/sort/domain/rules/get-field-active-sort";
+import { findSortForField } from "@/entities/nodes/sort/domain/rules/find-sort-for-field";
 import { isSortableAttribute } from "@/entities/nodes/sort/domain/rules/is-sortable-attribute";
 import { isSortableRelationship } from "@/entities/nodes/sort/domain/rules/is-sortable-relationship";
 import {
@@ -93,7 +93,7 @@ function SortableAttributeColumnHeader({
   className,
 }: SortableAttributeColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
-  const activeSort = getFieldActiveSort(customSort, attributeSchema);
+  const activeSort = findSortForField(customSort, attributeSchema);
 
   const selectSortDirection = (direction: SortDirection) => {
     if (activeSort?.direction === direction) {
@@ -143,7 +143,7 @@ function SortableRelationshipColumnHeader({
 }: SortableRelationshipColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
   const { schema: peerSchema } = useSchema(relationshipSchema.peer);
-  const activeSort = getFieldActiveSort(customSort, relationshipSchema);
+  const activeSort = findSortForField(customSort, relationshipSchema);
   const sortableAttributes = sortByOrderWeight(
     (peerSchema?.attributes ?? []).filter(isSortableAttribute)
   );

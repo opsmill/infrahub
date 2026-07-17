@@ -1,21 +1,21 @@
 import { describe, expect, test } from "vitest";
 
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
-import { getFieldActiveSort } from "@/entities/nodes/sort/domain/rules/get-field-active-sort";
+import { findSortForField } from "@/entities/nodes/sort/domain/rules/find-sort-for-field";
 
 import {
   generateAttributeSchema,
   generateRelationshipSchema,
 } from "../../../../../../tests/fake/schema";
 
-describe("getFieldActiveSort", () => {
+describe("findSortForField", () => {
   test("returns the sort when it targets the attribute column", () => {
     // GIVEN
     const customSort: Sort[] = [{ field: "name__value", direction: "ASC" }];
     const fieldSchema = generateAttributeSchema({ name: "name", kind: "Text" });
 
     // WHEN
-    const activeSort = getFieldActiveSort(customSort, fieldSchema);
+    const activeSort = findSortForField(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toEqual({ field: "name__value", direction: "ASC" });
@@ -31,7 +31,7 @@ describe("getFieldActiveSort", () => {
     });
 
     // WHEN
-    const activeSort = getFieldActiveSort(customSort, fieldSchema);
+    const activeSort = findSortForField(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toEqual({ field: "site__name__value", direction: "DESC" });
@@ -47,7 +47,7 @@ describe("getFieldActiveSort", () => {
     });
 
     // WHEN
-    const activeSort = getFieldActiveSort(customSort, fieldSchema);
+    const activeSort = findSortForField(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toBeNull();
@@ -59,7 +59,7 @@ describe("getFieldActiveSort", () => {
     const fieldSchema = generateAttributeSchema({ name: "name", kind: "Text" });
 
     // WHEN
-    const activeSort = getFieldActiveSort(customSort, fieldSchema);
+    const activeSort = findSortForField(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toBeNull();
@@ -74,7 +74,7 @@ describe("getFieldActiveSort", () => {
     const fieldSchema = generateAttributeSchema({ name: "name", kind: "Text" });
 
     // WHEN
-    const activeSort = getFieldActiveSort(customSort, fieldSchema);
+    const activeSort = findSortForField(customSort, fieldSchema);
 
     // THEN
     expect(activeSort).toBeNull();
@@ -85,7 +85,7 @@ describe("getFieldActiveSort", () => {
     const fieldSchema = generateAttributeSchema({ name: "name", kind: "Text" });
 
     // WHEN
-    const activeSort = getFieldActiveSort(null, fieldSchema);
+    const activeSort = findSortForField(null, fieldSchema);
 
     // THEN
     expect(activeSort).toBeNull();
