@@ -240,7 +240,7 @@ describe("TableColumnHeader", () => {
     await component.getByRole("button", { name: "Site" }).click();
     await component.getByRole("menuitem", { name: "Sort by" }).click();
     await component.getByRole("menuitem", { name: "Name" }).click();
-    await component.getByRole("menuitemradio", { name: "Ascending" }).click();
+    await component.getByRole("menuitem", { name: "Ascending" }).click();
 
     // THEN
     await expect.poll(getSortInUrl).toBe("site__name__value__asc");
@@ -257,13 +257,13 @@ describe("TableColumnHeader", () => {
     await component.getByRole("button", { name: "Site" }).click();
     await component.getByRole("menuitem", { name: "Sort by" }).click();
     await component.getByRole("menuitem", { name: "Name" }).click();
-    await component.getByRole("menuitemradio", { name: "Ascending" }).click();
+    await component.getByRole("menuitem", { name: "Ascending" }).click();
 
     // THEN
     await expect.poll(getSortInUrl).toBeNull();
   });
 
-  test("marks the active peer attribute and direction as selected in the submenus", async () => {
+  test("marks the active peer attribute and direction in the submenus", async () => {
     // GIVEN
     seedSortInUrl("site__name__value__desc");
     const component = await render(
@@ -277,11 +277,11 @@ describe("TableColumnHeader", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("menuitemradio", { name: "Descending" }))
-      .toHaveAttribute("aria-checked", "true");
+      .element(component.getByRole("menuitem", { name: "Descending active" }))
+      .toBeVisible();
     await expect
-      .element(component.getByRole("menuitemradio", { name: "Ascending" }))
-      .toHaveAttribute("aria-checked", "false");
+      .element(component.getByRole("menuitem", { name: "Ascending active" }))
+      .not.toBeInTheDocument();
     await expect
       .element(component.getByRole("menuitem", { name: "Description active sort field" }))
       .not.toBeInTheDocument();

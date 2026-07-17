@@ -31,6 +31,7 @@ import {
   buildRelationshipSortField,
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
+import { SortableFieldMenuItem } from "@/entities/nodes/sort/ui/sortable-field-menu-item";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -175,15 +176,23 @@ function SortableRelationshipColumnHeader({
 
           <Popover>
             <Menu aria-label={`Sort by ${label}`}>
-              {sortableAttributes.map((attribute) => (
-                <PeerAttributeSortMenuItem
-                  key={attribute.name}
-                  relationshipName={relationshipSchema.name}
-                  attribute={attribute}
-                  activeSort={activeSort}
-                  onSelect={selectSort}
-                />
-              ))}
+              {sortableAttributes.map((attribute) => {
+                const field = buildRelationshipSortField(
+                  relationshipSchema.name,
+                  buildAttributeSortField(attribute.name)
+                );
+
+                return (
+                  <SortableFieldMenuItem
+                    key={attribute.name}
+                    field={field}
+                    icon={<FieldSchemaIcon fieldSchema={attribute} />}
+                    label={attribute.label ?? attribute.name}
+                    activeDirection={activeSort?.field === field ? activeSort.direction : undefined}
+                    onSelect={selectSort}
+                  />
+                );
+              })}
             </Menu>
           </Popover>
         </SubmenuTrigger>
@@ -192,67 +201,9 @@ function SortableRelationshipColumnHeader({
   );
 }
 
-interface PeerAttributeSortMenuItemProps {
-  relationshipName: string;
-  attribute: AttributeSchema;
-  activeSort: Sort | null;
-  onSelect: (sort: Sort) => void;
-}
-
-function PeerAttributeSortMenuItem({
-  relationshipName,
-  attribute,
-  activeSort,
-  onSelect,
-}: PeerAttributeSortMenuItemProps) {
-  const field = buildRelationshipSortField(
-    relationshipName,
-    buildAttributeSortField(attribute.name)
-  );
-  const label = attribute.label ?? attribute.name;
-  const isActive = activeSort?.field === field;
-
-  return (
-    <SubmenuTrigger>
-      <MenuItem id={field} textValue={label}>
-        <FieldSchemaIcon fieldSchema={attribute} />
-        <span>{label}</span>
-        {isActive && (
-          <>
-            <CheckIcon className="ml-auto" />
-            <span className="sr-only">active sort field</span>
-          </>
-        )}
-      </MenuItem>
-
-      <Popover>
-        <Menu
-          aria-label={`Sort direction for ${label}`}
-          selectionMode="single"
-          selectedKeys={activeSort?.field === field ? [activeSort.direction] : []}
-        >
-          <SortDirectionMenuItem
-            direction={SORT_DIRECTION.ASC}
-            onSelect={(direction) => onSelect({ field, direction })}
-          >
-            Ascending
-          </SortDirectionMenuItem>
-          <SortDirectionMenuItem
-            direction={SORT_DIRECTION.DESC}
-            onSelect={(direction) => onSelect({ field, direction })}
-          >
-            Descending
-          </SortDirectionMenuItem>
-        </Menu>
-      </Popover>
-    </SubmenuTrigger>
-  );
-}
-
 interface SortDirectionMenuItemProps {
   direction: SortDirection;
   onSelect: (direction: SortDirection) => void;
-  /** Marks the item outside menu selection, for menus where only some items are sort entries. */
   isActive?: boolean;
   children: string;
 }
@@ -265,12 +216,12 @@ function SortDirectionMenuItem({
 }: SortDirectionMenuItemProps) {
   return (
     <MenuItem id={direction} textValue={children} onAction={() => onSelect(direction)}>
-      {({ isSelected }) => (
+      {direction === SORT_DIRECTION.DESC ? <ArrowDownIcon /> : <ArrowUpIcon />}
+      <span>{children}</span>
+      {isActive && (
         <>
-          {direction === SORT_DIRECTION.DESC ? <ArrowDownIcon /> : <ArrowUpIcon />}
-          <span>{children}</span>
-          {(isSelected || isActive) && <CheckIcon className="ml-auto" />}
-          {isActive && <span className="sr-only">active</span>}
+          <CheckIcon className="ml-auto" />
+          <span className="sr-only">active</span>
         </>
       )}
     </MenuItem>

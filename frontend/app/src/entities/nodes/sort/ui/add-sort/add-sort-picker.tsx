@@ -1,5 +1,5 @@
 import { Autocomplete, Menu, MenuItem, Popover, SubmenuTrigger } from "@infrahub/ui";
-import { ArrowDownIcon, ArrowUpIcon, CalendarClockIcon } from "lucide-react";
+import { CalendarClockIcon } from "lucide-react";
 import React from "react";
 import { useFilter } from "react-aria-components";
 
@@ -13,10 +13,8 @@ import {
   buildRelationshipSortField,
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import { useSortableFields } from "@/entities/nodes/sort/ui/hooks/use-sortable-fields";
-import {
-  DIRECTION_OPTIONS,
-  NODE_METADATA_SORT_OPTIONS,
-} from "@/entities/nodes/sort/ui/sort-options";
+import { NODE_METADATA_SORT_OPTIONS } from "@/entities/nodes/sort/ui/sort-options";
+import { SortableFieldMenuItem } from "@/entities/nodes/sort/ui/sortable-field-menu-item";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -24,38 +22,6 @@ import type {
 } from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-
-interface SortableFieldMenuItemProps {
-  field: SortField;
-  icon?: React.ReactNode;
-  label: string;
-  onSelect: (sort: Sort) => void;
-}
-
-function SortableFieldMenuItem({ field, icon, label, onSelect }: SortableFieldMenuItemProps) {
-  return (
-    <SubmenuTrigger>
-      <MenuItem textValue={label}>
-        {icon}
-        <span>{label}</span>
-      </MenuItem>
-
-      <Popover>
-        <Menu variant="picker" aria-label={`Sort direction for ${label}`} items={DIRECTION_OPTIONS}>
-          {(option) => (
-            <MenuItem
-              textValue={option.label}
-              onAction={() => onSelect({ field, direction: option.id })}
-            >
-              {option.id === "DESC" ? <ArrowDownIcon /> : <ArrowUpIcon />}
-              <span>{option.label}</span>
-            </MenuItem>
-          )}
-        </Menu>
-      </Popover>
-    </SubmenuTrigger>
-  );
-}
 
 interface SortableAttributeMenuItemProps {
   attribute: AttributeSchema;

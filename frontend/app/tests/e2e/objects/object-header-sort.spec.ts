@@ -101,7 +101,7 @@ test.describe("Object header sort", () => {
       await siteHeader.click();
       await page.getByRole("menuitem", { name: "Sort by" }).click();
       await page.getByRole("menuitem", { name: "Name", exact: true }).click();
-      await page.getByRole("menuitemradio", { name: "Ascending" }).click();
+      await page.getByRole("menuitem", { name: "Ascending" }).click();
 
       await expect(page).toHaveURL(/sort=site__name__value__asc/);
       await expect(firstRowLink).toHaveText("atl1-leaf1");
@@ -131,7 +131,7 @@ test.describe("Object header sort", () => {
       await expect(page.getByRole("menuitem", { name: "Name", exact: true })).toBeFocused();
 
       await page.keyboard.press("ArrowRight");
-      await expect(page.getByRole("menuitemradio", { name: "Ascending" })).toBeFocused();
+      await expect(page.getByRole("menuitem", { name: "Ascending" })).toBeFocused();
 
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/sort=site__name__value__asc/);
