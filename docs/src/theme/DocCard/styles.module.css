@@ -1,0 +1,35 @@
+.cardWrapper {
+  position: relative;
+  height: 100%;
+}
+
+.badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  /* Let clicks fall through to the underlying card link. */
+  pointer-events: none;
+}
+
+.badge_release {
+  background-color: var(--ifm-color-primary);
+  color: #fff;
+}
+
+.badge_update {
+  background-color: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-800);
+}
+
+.badge_security {
+  background-color: #b91c1c;
+  color: #fff;
+}
