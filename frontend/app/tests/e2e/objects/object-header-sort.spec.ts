@@ -19,7 +19,7 @@ test.describe("Object header sort", () => {
 
     await test.step("sort descending from the Name header", async () => {
       await nameHeader.click();
-      await page.getByRole("menuitemradio", { name: "Sort descending" }).click();
+      await page.getByRole("menuitem", { name: "Sort descending" }).click();
 
       await expect(page).toHaveURL(/sort=name__value__desc/);
       await expect(firstRowLink).toHaveText("ord1-leaf2");
@@ -35,7 +35,7 @@ test.describe("Object header sort", () => {
 
     await test.step("toggle-clear restores the default order", async () => {
       await nameHeader.click();
-      await page.getByRole("menuitemradio", { name: "Sort descending" }).click();
+      await page.getByRole("menuitem", { name: "Sort descending" }).click();
 
       await expect(page).not.toHaveURL(/sort=/);
       await expect(firstRowLink).toHaveText("atl1-core1");
@@ -72,7 +72,7 @@ test.describe("Object header sort", () => {
 
     await test.step("sort ascending from the Name header", async () => {
       await nameHeader.click();
-      await page.getByRole("menuitemradio", { name: "Sort ascending" }).click();
+      await page.getByRole("menuitem", { name: "Sort ascending" }).click();
 
       await expect(page).toHaveURL(/sort=name__value__asc/);
       await expect(page).not.toHaveURL(/site__name__value__asc/);

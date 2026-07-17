@@ -92,18 +92,14 @@ describe("TableColumnHeader", () => {
     await component.getByRole("button", { name: "Name" }).click();
 
     // THEN
+    await expect.element(component.getByRole("menuitem", { name: "Sort ascending" })).toBeVisible();
     await expect
-      .element(component.getByRole("menuitemradio", { name: "Sort ascending" }))
-      .toBeVisible();
-    await expect
-      .element(component.getByRole("menuitemradio", { name: "Sort descending" }))
+      .element(component.getByRole("menuitem", { name: "Sort descending" }))
       .toBeVisible();
     await expect.element(component.getByRole("menuitem", { name: "Filter…" })).toBeVisible();
-    const itemLabels = Array.from(
-      document.querySelectorAll(
-        '[role="menu"] [role="menuitemradio"], [role="menu"] [role="menuitem"]'
-      )
-    ).map((item) => item.textContent);
+    const itemLabels = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]')).map(
+      (item) => item.textContent
+    );
     expect(itemLabels).toEqual(["Sort ascending", "Sort descending", "Filter…"]);
   });
 
@@ -116,7 +112,7 @@ describe("TableColumnHeader", () => {
 
     // WHEN
     await component.getByRole("button", { name: "Name" }).click();
-    await component.getByRole("menuitemradio", { name: "Sort ascending" }).click();
+    await component.getByRole("menuitem", { name: "Sort ascending" }).click();
 
     // THEN
     await expect.poll(getSortInUrl).toBe("name__value__asc");
@@ -131,13 +127,13 @@ describe("TableColumnHeader", () => {
 
     // WHEN
     await component.getByRole("button", { name: "Name" }).click();
-    await component.getByRole("menuitemradio", { name: "Sort descending" }).click();
+    await component.getByRole("menuitem", { name: "Sort descending" }).click();
 
     // THEN
     await expect.poll(getSortInUrl).toBeNull();
   });
 
-  test("marks the active direction as selected in the menu", async () => {
+  test("marks the active direction in the menu", async () => {
     // GIVEN
     seedSortInUrl("name__value__desc");
     const component = await render(
@@ -149,11 +145,11 @@ describe("TableColumnHeader", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("menuitemradio", { name: "Sort descending" }))
-      .toHaveAttribute("aria-checked", "true");
+      .element(component.getByRole("menuitem", { name: "Sort descending active" }))
+      .toBeVisible();
     await expect
-      .element(component.getByRole("menuitemradio", { name: "Sort ascending" }))
-      .toHaveAttribute("aria-checked", "false");
+      .element(component.getByRole("menuitem", { name: "Sort ascending active" }))
+      .not.toBeInTheDocument();
   });
 
   test("shows a direction indicator on the header for a custom sort", async () => {
@@ -194,10 +190,10 @@ describe("TableColumnHeader", () => {
     // THEN
     await expect.element(component.getByRole("menuitem", { name: "Filter…" })).toBeVisible();
     await expect
-      .element(component.getByRole("menuitemradio", { name: "Sort ascending" }))
+      .element(component.getByRole("menuitem", { name: "Sort ascending" }))
       .not.toBeInTheDocument();
     await expect
-      .element(component.getByRole("menuitemradio", { name: "Sort descending" }))
+      .element(component.getByRole("menuitem", { name: "Sort descending" }))
       .not.toBeInTheDocument();
   });
 
@@ -352,7 +348,7 @@ describe("TableColumnHeader", () => {
 
     // WHEN
     await component.getByRole("button", { name: "Name" }).click();
-    await component.getByRole("menuitemradio", { name: "Sort ascending" }).click();
+    await component.getByRole("menuitem", { name: "Sort ascending" }).click();
 
     // THEN
     await expect.poll(getSortInUrl).toBe("name__value__asc");

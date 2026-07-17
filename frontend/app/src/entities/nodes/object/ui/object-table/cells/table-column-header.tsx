@@ -1,13 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import {
-  Menu,
-  MenuItem,
-  MenuSection,
-  MenuSeparator,
-  MenuTrigger,
-  Popover,
-  SubmenuTrigger,
-} from "@infrahub/ui";
+import { Menu, MenuItem, MenuSeparator, MenuTrigger, Popover, SubmenuTrigger } from "@infrahub/ui";
 import { CheckIcon } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
@@ -103,14 +95,22 @@ function SortableColumnHeader({ schema, attributeSchema, className }: SortableCo
       className={className}
       activeSort={activeSort}
       sortItems={
-        <MenuSection selectionMode="single" selectedKeys={activeSort ? [activeSort.direction] : []}>
-          <SortDirectionMenuItem direction={SORT_DIRECTION.ASC} onSelect={selectSortDirection}>
+        <>
+          <SortDirectionMenuItem
+            direction={SORT_DIRECTION.ASC}
+            isActive={activeSort?.direction === SORT_DIRECTION.ASC}
+            onSelect={selectSortDirection}
+          >
             Sort ascending
           </SortDirectionMenuItem>
-          <SortDirectionMenuItem direction={SORT_DIRECTION.DESC} onSelect={selectSortDirection}>
+          <SortDirectionMenuItem
+            direction={SORT_DIRECTION.DESC}
+            isActive={activeSort?.direction === SORT_DIRECTION.DESC}
+            onSelect={selectSortDirection}
+          >
             Sort descending
           </SortDirectionMenuItem>
-        </MenuSection>
+        </>
       }
     />
   );
@@ -209,24 +209,23 @@ function PeerAttributeSortMenuItem({
       </MenuItem>
 
       <Popover>
-        <Menu aria-label={`Sort direction for ${label}`}>
-          <MenuSection
-            selectionMode="single"
-            selectedKeys={activeSort?.field === field ? [activeSort.direction] : []}
+        <Menu
+          aria-label={`Sort direction for ${label}`}
+          selectionMode="single"
+          selectedKeys={activeSort?.field === field ? [activeSort.direction] : []}
+        >
+          <SortDirectionMenuItem
+            direction={SORT_DIRECTION.ASC}
+            onSelect={(direction) => onSelect({ field, direction })}
           >
-            <SortDirectionMenuItem
-              direction={SORT_DIRECTION.ASC}
-              onSelect={(direction) => onSelect({ field, direction })}
-            >
-              Ascending
-            </SortDirectionMenuItem>
-            <SortDirectionMenuItem
-              direction={SORT_DIRECTION.DESC}
-              onSelect={(direction) => onSelect({ field, direction })}
-            >
-              Descending
-            </SortDirectionMenuItem>
-          </MenuSection>
+            Ascending
+          </SortDirectionMenuItem>
+          <SortDirectionMenuItem
+            direction={SORT_DIRECTION.DESC}
+            onSelect={(direction) => onSelect({ field, direction })}
+          >
+            Descending
+          </SortDirectionMenuItem>
         </Menu>
       </Popover>
     </SubmenuTrigger>
@@ -236,16 +235,24 @@ function PeerAttributeSortMenuItem({
 interface SortDirectionMenuItemProps {
   direction: SortDirection;
   onSelect: (direction: SortDirection) => void;
+  /** Marks the item outside menu selection, for menus where only some items are sort entries. */
+  isActive?: boolean;
   children: string;
 }
 
-function SortDirectionMenuItem({ direction, onSelect, children }: SortDirectionMenuItemProps) {
+function SortDirectionMenuItem({
+  direction,
+  onSelect,
+  isActive = false,
+  children,
+}: SortDirectionMenuItemProps) {
   return (
     <MenuItem id={direction} textValue={children} onAction={() => onSelect(direction)}>
       {({ isSelected }) => (
         <>
           {children}
-          {isSelected && <CheckIcon className="ml-auto" />}
+          {(isSelected || isActive) && <CheckIcon className="ml-auto" />}
+          {isActive && <span className="sr-only">active</span>}
         </>
       )}
     </MenuItem>

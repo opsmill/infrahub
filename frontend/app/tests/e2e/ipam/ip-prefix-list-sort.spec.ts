@@ -17,7 +17,7 @@ test.describe("/ipam - IP Prefix List Sorting", () => {
 
     await test.step("sort descending from the Description header", async () => {
       await descriptionHeader.click();
-      await page.getByRole("menuitemradio", { name: "Sort descending" }).click();
+      await page.getByRole("menuitem", { name: "Sort descending" }).click();
 
       await expect(page).toHaveURL(/sort=description__value__desc/);
       await expect(firstRowLink).toHaveText("203.111.0.80/29");
@@ -28,7 +28,7 @@ test.describe("/ipam - IP Prefix List Sorting", () => {
 
     await test.step("toggle-clear restores the default order", async () => {
       await descriptionHeader.click();
-      await page.getByRole("menuitemradio", { name: "Sort descending" }).click();
+      await page.getByRole("menuitem", { name: "Sort descending" }).click();
 
       await expect(page).not.toHaveURL(/sort=/);
       await expect(firstRowLink).toHaveText("10.0.0.0/8");
