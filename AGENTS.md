@@ -160,6 +160,7 @@ CI validates that all generated files are committed — the `validate-generated-
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
+- In `tasks/*.py`, build Docker Compose commands through the shared helpers (`get_compose_cmd`, `get_env_vars`, `execute_command`) and reference services via the shared constants (e.g. `SERVICE_WORKER_NAME`) — never hard-code `docker compose` or service names, which breaks in environments needing `--profile`, `--ansi never`, or `sudo`
 - Before pushing, run `/pre-ci` (`.agents/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
 
 ### Ask First

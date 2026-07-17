@@ -38,6 +38,15 @@ The boundary is: long-lived collaborators go in the constructor; transient work 
 
 Each component should have one reason to change. If a class is doing two unrelated things, split it. Prefer composition of small components over large multi-purpose ones.
 
+## Persistence lives in Repository/Query classes, not on models
+
+For new code, database access and (de)serialization do not belong on the model. A model is a plain data holder; give it no `save`/`get`/`get_list`/`from_db`/`to_db` methods. Instead:
+
+- Put read/write access behind a `Repository` class that takes `db` in its constructor and exposes intent-named methods (`get_for_owner`, `get_all`, `save`).
+- Put the Cypher and the row→model deserialization in a `Query` class (see `dev/knowledge/backend/query-pattern.md`), returning exactly the fields the model needs.
+
+The older `StandardNode`/`Branch` shape — persistence methods and `from_db` on the model itself — is legacy. Do not copy it into new code; when you extend an existing model that follows it, prefer adding a Repository/Query rather than another method on the model.
+
 ## Interfaces for multiple implementations
 
 When more than one implementation of a component is required (e.g. real vs. in-memory adapter, different backends, A/B variants), define a `Protocol` or abstract base class. The correct implementation is selected at the wiring layer and injected to the constructor — the consumer codes against the interface, not a concrete class.

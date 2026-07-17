@@ -226,6 +226,48 @@ class MyQuery(Query):
 - Use `str | None` for optional strings (Python 3.10+)
 - Use `list[Type]` instead of `List[Type]` (Python 3.9+)
 
+### Type a closed value set as an enum, not `str`
+
+When a field or argument accepts only a fixed set of values, model it as an enum (subclass `str`/`StrEnum` when it must round-trip as text), never a bare `str`. A bare `str` lets a typo through silently and hides the valid set from readers and from the schema.
+
+```python
+# ❌ Bad - any string is accepted; a typo silently bypasses downstream logic
+origin: str | None = None
+
+# ✅ Good - invalid values are rejected at construction, the set is discoverable
+class NodeMutationOrigin(StrEnum):
+    LIVE = "live"
+    MERGE = "merge"
+    REBASE = "rebase"
+
+origin: NodeMutationOrigin | None = None
+```
+
+For a value exposed over GraphQL, reuse the existing Python-enum → GraphQL-enum conversion rather than re-declaring the values as strings in the GraphQL layer.
+
+### Do not narrow a type in an override (Liskov / `ty`)
+
+An override may not make a parameter type *narrower* (or a return type *wider*) than the base declaration — `ty` rejects it as a Liskov violation. When an abstract method and its implementations must accept a union, declare the full shared type on the abstract **and** on every implementation; do not tighten one adapter.
+
+```python
+# ❌ Bad - RedisCache narrows the abstract's `int` to `KVTTL`; ty errors
+class InfrahubCache(ABC):
+    async def set(self, key: str, value: str, expires: int | None = None) -> None: ...
+class RedisCache(InfrahubCache):
+    async def set(self, key: str, value: str, expires: KVTTL | None = None) -> None: ...
+
+# ✅ Good - the shared union on the base and all adapters
+async def set(self, key: str, value: str, expires: KVTTL | int | None = None) -> None: ...
+```
+
+### Prefer `isinstance` over `getattr` for narrowing
+
+To branch on or read from a typed object, use `isinstance` so the type checker can narrow it; reaching for `getattr(obj, "attr", default)` defeats type analysis. When guarding a schema object, cover the whole family that carries the attribute — `isinstance(schema, (NodeSchema, ProfileSchema, TemplateSchema))` — since profiles and templates inherit node behaviour and a `NodeSchema`-only check silently drops them.
+
+### Deterministic serialization for hashes and cache keys
+
+When a JSON string feeds a hash, fingerprint, or cache key, its output must be deterministic. Do **not** pass `default=str` to `json.dumps` there: it silently serializes unexpected types via `str()`, which can embed run-specific data (memory addresses) and break determinism. Serialize an explicit, canonical shape (sorted keys, known field types) and let unknown types raise instead of being coerced.
+
 ## Python Version Compatibility
 
 The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.

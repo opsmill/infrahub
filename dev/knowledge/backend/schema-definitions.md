@@ -58,6 +58,12 @@ core_standard_webhook = NodeSchema(
 | `common_parent` | `str \| None` | `None` | Constrains peer's parent to match this object's parent |
 | `common_relatives` | `list[str] \| None` | `None` | Peer relationships that must share the same set of peers |
 
+### Cascade deletes (`on_delete`)
+
+A relationship marked `on_delete=cascade` deletes its peers when the owner is deleted. When you build a cascade to make a node deletable, the closure must reach **every** node that holds a *mandatory* relationship into the deleted subtree — not just the direct children. A mandatory back-reference from any node that is *not* in the cascade closure still blocks the delete (Infrahub refuses to orphan a mandatory child), so the delete fails even though the top-level cascade looks complete.
+
+When wiring a new cascade, walk each reachable node and check its mandatory relationships: any mandatory referrer must either be inside the cascade or be reconsidered. Assert the exact cascade closure in a test so a missing (or unexpected) edge is caught.
+
 ### Relationship Kinds
 
 | Kind | Purpose |
