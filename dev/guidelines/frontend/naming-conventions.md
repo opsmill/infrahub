@@ -66,6 +66,12 @@ export type GetDiffSummaryResponse = { /* ... */ };
 
 Do not use `*Response`, `*Output`, `*Outcome`, or `*Data` suffixes — `*Result` is the only sanctioned name.
 
+## Hook Naming
+
+- A hook that reads or writes through the API takes a CRUD/verb prefix that **matches the operation**: `useGet…`, `useCreate…`, `useUpsert…`, `useDelete…`, `useMerge…`. Do not call an upsert `useUpdate…` — the verb should read the same as the domain function it wraps.
+- A hook that answers a yes/no question reads as one: `useHasGlobalPermission`, `useCanEditX` — not `useGlobalPermission`.
+- Match the shape of the entity's existing hooks (`useGetBranches`, `useMergeBranch`); don't invent a parallel suffix.
+
 ## Query Keys
 
 Build query keys from a single object, not positional spreads. Object-shaped keys are easier to read in devtools, easier to invalidate by partial match, and easier to diff.

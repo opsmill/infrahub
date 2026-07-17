@@ -26,8 +26,8 @@ type LinkProps =
 ## Hooks
 
 - Prefix: `use*`
-- Let TypeScript infer return types (annotate only when complex)
-- Include all deps in useEffect/useCallback/useMemo arrays
+- Let TypeScript infer return types (annotate only when complex) — this includes `useMutation`/`useQuery` callbacks; don't hand-type them
+- Include all deps in `useEffect` arrays. Do **not** use `useMemo`/`useCallback`/`memo` — React Compiler memoizes automatically (see [react.md](../../knowledge/frontend/react.md))
 
 ## Type Safety
 
@@ -45,6 +45,10 @@ if (isUserData(response)) {
   const data = response; // TS knows type
 }
 ```
+
+### `null` vs `undefined`
+
+Distinguish them by intent: return `null` for a value that is *intentionally empty*, and `undefined` for one that is *absent / not provided*. A domain function that resolves to "no value" should return `null`, not `undefined`.
 
 ### `optional?.x!` is always wrong
 

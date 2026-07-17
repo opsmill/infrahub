@@ -48,6 +48,19 @@ Page (thin route wrapper)
 
 Global state (branch, date, schema) is injected at the ui/ layer and passed as parameters to domain/ functions. Domain functions never read global state directly.
 
+## What goes in a domain function
+
+The `api/` function is a thin transport call. The `domain/` function is where the work happens, in this order:
+
+1. **Call** the `api/` function.
+2. **Check for errors** — throw on failure (don't return an unread `ok` flag that a caller might ignore).
+3. **Validate** the response shape.
+4. **Map** to domain types.
+
+A domain function should *answer the business question*, not just "fetch data": expose `hasGlobalPermission(action)` rather than `getGlobalPermissions()` + a check the caller has to repeat. Keep that decision in `domain/`; the `ui/queries/` hook only wires TanStack Query — don't put business logic in `useQuery`'s `select`.
+
+Reusable pure logic (list transforms, sort/merge rules, permission resolution) belongs in a `domain/` rule module so it can be unit-tested on its own, not inlined in a component where it is only reachable through the UI.
+
 ## queryOptions Live in ui/queries/
 
 queryOptions factories and useQuery/useMutation hooks live in `ui/queries/`, not in domain/. Domain's public API is async functions and types only.
@@ -163,3 +176,7 @@ Do not enable Apollo's normalized cache, do not pass `fetchPolicy: "cache-first"
 ### Mutation invalidation
 
 Mutations own their cache invalidation. Place `onSuccess`/`onSettled` inside the `useMutation` hook in `ui/queries/*.mutation.ts`. See `dev/guidelines/frontend/naming-conventions.md#mutation-invalidation` for the convention and the audit script.
+
+### Avoiding double error toasts
+
+The Apollo error link already surfaces a toast for a failed request. If a mutation also renders its own error toast (in `onError` or a `catch`), the user sees two. Suppress the automatic one for that call by passing `context: { processErrorMessage: () => {} }` to the mutation so only the component's toast shows.
