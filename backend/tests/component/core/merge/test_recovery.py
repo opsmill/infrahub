@@ -46,6 +46,18 @@ class _FailAtBranchResetRecoverer(MergeFailureRecoverer):
         raise RuntimeError("branch reset failed")
 
 
+class _FailAtLockReleaseRecoverer(MergeFailureRecoverer):
+    """Real recoverer whose merge-lock release fails, before the branch is reopened.
+
+    Reproduces a cache backend that cannot drop the stale lock key. The failure must not be swallowed:
+    a held lock blocks every future merge, so recovery must report failure and leave the branch flagged,
+    the protection held and the lock in place for a re-run.
+    """
+
+    async def _release_merge_lock(self) -> None:
+        raise RuntimeError("lock release failed")
+
+
 class TestRecovery:
     """Recovery's non-happy paths: nothing to recover, orphaned marker, stuck merge, preview, delete gate."""
 
@@ -328,6 +340,45 @@ class TestRecovery:
         reloaded = await Branch.get_by_name(db=db, name=branch.name)
         assert reloaded.status == BranchStatus.MERGE_FAILED
         assert await blocker.get() == MergeProtection(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+
+    async def test_lock_release_failure_holds_protection_and_lock(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        cache: MemoryCache,
+        component: InfrahubComponent,
+    ) -> None:
+        branch = Branch(
+            name="recovery-lock-release-failed",
+            status=BranchStatus.MERGE_FAILED,
+            branched_from=Timestamp().to_string(),
+            merge_started_at=Timestamp().to_string(),
+        )
+        await branch.save(db=db)
+        lock_token = _lock_token(DEAD_WORKER)
+        await cache.set(MERGE_LOCK_KEY, lock_token)
+        blocker = MergeWriteBlocker(cache=cache)
+        await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+
+        recovery = _FailAtLockReleaseRecoverer(
+            db=db,
+            merge_write_blocker=blocker,
+            identifier=self._build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
+            default_branch=default_branch,
+            cache=cache,
+        )
+
+        report = await recovery.recover()
+
+        assert report.outcome == RecoveryOutcome.FAILED
+        assert report.branch == branch.name
+        # A swallowed lock-release failure would report success while leaving merges permanently blocked;
+        # instead the branch stays flagged, the protection held and the lock in place for a re-run.
+        reloaded = await Branch.get_by_name(db=db, name=branch.name)
+        assert reloaded.status == BranchStatus.MERGE_FAILED
+        assert await blocker.get() == MergeProtection(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+        assert await cache.get(MERGE_LOCK_KEY) == lock_token
 
     async def test_absent_lock_merging_is_gated_by_force(
         self,

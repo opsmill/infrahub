@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -126,13 +125,14 @@ class MergeFailureRecoverer:
         started_at = time.monotonic()
         try:
             await self._rollback(merge_started_at=merge_started_at)
-            # Reset the proposed change before the branch: if a later step fails, the branch stays
-            # flagged so a re-run re-detects it and finishes, rather than being reopened and losing the
-            # link to the still-merging proposed change.
+            # Reset the proposed change before the branch in case a later step fails, the branch stays
+            # flagged so a re-run re-detects it and completes.
             await self._reset_proposed_change(proposed_change=proposed_change)
+            # Drop the stale merge lock while protection is still up, so this unconditional delete can
+            # only hit the dead worker's lock, not a lock for a fresh merge.
+            await self._release_merge_lock()
             await self._reset_branch(branch=branch)
-            # Lift the write protection last, once the branch is back to OPEN, so a failure earlier in
-            # the sequence leaves the protection in place for a re-run.
+            # Lift the write protection last, so a failure earlier in the sequence leaves it in place.
             await self.merge_write_blocker.delete()
         except Exception as exc:
             log.error("merge.recovery.failed", branch=branch.name, error=str(exc), exc_info=True)
@@ -142,10 +142,6 @@ class MergeFailureRecoverer:
                 proposed_change=proposed_change_id,
                 merge_started_at=merge_started_at,
             )
-
-        # Release the global merge lock the dead worker never freed, if it exists
-        with contextlib.suppress(Exception):
-            await self._release_merge_lock()
 
         log.info(
             "merge.recovery.completed",
