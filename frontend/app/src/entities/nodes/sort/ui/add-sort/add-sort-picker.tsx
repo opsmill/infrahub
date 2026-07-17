@@ -1,4 +1,5 @@
 import { Autocomplete, Menu, MenuItem, Popover, SubmenuTrigger } from "@infrahub/ui";
+import { ArrowDownIcon, ArrowUpIcon, CalendarClockIcon } from "lucide-react";
 import React from "react";
 import { useFilter } from "react-aria-components";
 
@@ -21,28 +22,39 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface SortableFieldMenuItemProps {
   field: SortField;
-  children: string;
+  textValue: string;
+  children: React.ReactNode;
   onSelect: (sort: Sort) => void;
 }
 
-function SortableFieldMenuItem({ field, children, onSelect }: SortableFieldMenuItemProps) {
+function SortableFieldMenuItem({
+  field,
+  textValue,
+  children,
+  onSelect,
+}: SortableFieldMenuItemProps) {
   return (
     <SubmenuTrigger>
-      <MenuItem>{children}</MenuItem>
+      <MenuItem textValue={textValue}>{children}</MenuItem>
 
       <Popover>
         <Menu
           variant="picker"
-          aria-label={`Sort direction for ${children}`}
+          aria-label={`Sort direction for ${textValue}`}
           items={DIRECTION_OPTIONS}
         >
           {(option) => (
-            <MenuItem onAction={() => onSelect({ field, direction: option.id })}>
-              {option.label}
+            <MenuItem
+              textValue={option.label}
+              onAction={() => onSelect({ field, direction: option.id })}
+            >
+              {option.id === "DESC" ? <ArrowDownIcon /> : <ArrowUpIcon />}
+              <span>{option.label}</span>
             </MenuItem>
           )}
         </Menu>
@@ -57,9 +69,16 @@ interface SortableAttributeMenuItemProps {
 }
 
 function SortableAttributeMenuItem({ attribute, onSelect }: SortableAttributeMenuItemProps) {
+  const label = attribute.label ?? attribute.name;
+
   return (
-    <SortableFieldMenuItem field={buildAttributeSortField(attribute.name)} onSelect={onSelect}>
-      {attribute.label ?? attribute.name}
+    <SortableFieldMenuItem
+      field={buildAttributeSortField(attribute.name)}
+      textValue={label}
+      onSelect={onSelect}
+    >
+      <FieldSchemaIcon fieldSchema={attribute} />
+      <span>{label}</span>
     </SortableFieldMenuItem>
   );
 }
@@ -97,7 +116,10 @@ function GroupedSortableRelationshipMenuItem({
 
   return (
     <SubmenuTrigger>
-      <MenuItem>{relationshipLabel}</MenuItem>
+      <MenuItem textValue={relationshipLabel}>
+        <FieldSchemaIcon fieldSchema={relationship} />
+        <span>{relationshipLabel}</span>
+      </MenuItem>
 
       <Popover>
         <Menu aria-label={`Sort by ${relationshipLabel}`}>
@@ -131,7 +153,7 @@ function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
   const availableFields = sortableFields.filter(({ field }) => !activeFields.has(field));
 
   return availableFields.map(({ field, label }) => (
-    <SortableFieldMenuItem key={field} field={field} onSelect={onSelect}>
+    <SortableFieldMenuItem key={field} field={field} textValue={label} onSelect={onSelect}>
       {label}
     </SortableFieldMenuItem>
   ));
@@ -163,8 +185,14 @@ function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) 
       ))}
 
       {metadataFields.map((metadata) => (
-        <SortableFieldMenuItem key={metadata.field} field={metadata.field} onSelect={onSelect}>
-          {metadata.label}
+        <SortableFieldMenuItem
+          key={metadata.field}
+          field={metadata.field}
+          textValue={metadata.label}
+          onSelect={onSelect}
+        >
+          <CalendarClockIcon />
+          <span>{metadata.label}</span>
         </SortableFieldMenuItem>
       ))}
     </>
