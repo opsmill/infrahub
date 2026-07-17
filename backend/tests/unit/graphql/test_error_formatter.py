@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from graphql import GraphQLError
 
+from infrahub.core.protocols import CoreMenuItem
 from infrahub.errors.exceptions import (
     AttributeConstraintViolationError,
     AttributeInvalidTypeError,
@@ -131,6 +132,19 @@ def test_build_catalogue_extensions_per_code(case: CodeCase) -> None:
     assert extensions["code"] == case.expected_code
     assert extensions["http_status"] == case.expected_http_status
     assert extensions["data"] == case.expected_data
+
+
+def test_build_catalogue_extensions_handles_class_node_type() -> None:
+    exc = NodeNotFoundError(node_type=CoreMenuItem, identifier="x")
+
+    extensions = build_catalogue_extensions(exc)
+
+    assert extensions["code"] == "NODE_NOT_FOUND"
+    assert extensions["http_status"] == 404
+    assert extensions["data"]["identifier"] == "x"
+    node_kind = extensions["data"]["node_kind"]
+    assert isinstance(node_kind, str)
+    assert "CoreMenuItem" in node_kind
 
 
 def test_undefined_error_for_uncatalogued_error_with_http_code() -> None:
