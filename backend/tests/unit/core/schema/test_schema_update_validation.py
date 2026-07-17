@@ -2,6 +2,7 @@ from typing import Any
 
 from infrahub.core.constants import UpdateValidationErrorType
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 
 WIDGET_GADGET_SCHEMA: dict[str, Any] = {
@@ -65,7 +66,9 @@ async def test_schema_diff_constraint_scoped_to_changed_attribute() -> None:
 
     candidate = schema.duplicate()
     widget = candidate.get_node(name="TestWidget", duplicate=True)
-    widget.get_attribute(name="name").parameters.max_length = 20
+    parameters = widget.get_attribute(name="name").parameters
+    assert isinstance(parameters, TextAttributeParameters)
+    parameters.max_length = 20
     candidate.set(name="TestWidget", schema=widget)
 
     diff = schema.diff(other=candidate)

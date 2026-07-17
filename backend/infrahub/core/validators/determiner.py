@@ -5,12 +5,11 @@ from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import AttributeSchema, MainSchemaTypes
+from infrahub.core.schema import AttributePathParsingError, AttributeSchema, MainSchemaTypes
 from infrahub.core.schema.attribute_parameters import AttributeParameters
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
-from infrahub.core.validators.uniqueness.checker import get_attribute_path_from_string
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
@@ -135,17 +134,30 @@ class ConstraintValidatorDeterminer:
         for constraint_group in schema.uniqueness_constraints or []:
             for constraint_path in constraint_group:
                 try:
-                    sub_schema, peer_property_name = get_attribute_path_from_string(constraint_path, schema)
-                except ValueError:
+                    schema_path = schema.parse_schema_path(path=constraint_path, schema=self.schema_branch)
+                except AttributePathParsingError:
                     continue
-                if isinstance(sub_schema, AttributeSchema):
-                    if self._field_in_diff(schema=schema, field_name=sub_schema.name, is_relationship=False):
+                if schema_path.relationship_schema is not None:
+                    # check if the relationship changed
+                    if self._field_in_diff(
+                        schema=schema, field_name=schema_path.relationship_schema.name, is_relationship=True
+                    ):
                         return True
-                elif isinstance(sub_schema, RelationshipSchema):
-                    if self._field_in_diff(schema=schema, field_name=sub_schema.name, is_relationship=True):
+                    # check if an attribute on the peer changed 
+                    if (
+                        schema_path.attribute_schema is not None
+                        and schema_path.related_schema is not None
+                        and self._field_in_diff(
+                            schema=schema_path.related_schema,
+                            field_name=schema_path.attribute_schema.name,
+                            is_relationship=False,
+                        )
+                    ):
                         return True
-                    if peer_property_name and self._has_attribute_diff(kind=sub_schema.peer, name=peer_property_name):
-                        return True
+                elif schema_path.attribute_schema is not None and self._field_in_diff(
+                    schema=schema, field_name=schema_path.attribute_schema.name, is_relationship=False
+                ):
+                    return True
         return False
 
     def _node_property_triggered_by_diff(self, schema: MainSchemaTypes, prop_name: str) -> bool:

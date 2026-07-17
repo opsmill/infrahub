@@ -291,6 +291,24 @@ class TestConstraintDeterminer:
         }
         assert set(constraints) == expected
 
+    async def test_uniqueness_triggered_by_generic_peer_implementation(
+        self,
+        hierarchical_location_schema_simple: SchemaRoot,
+        default_branch: Branch,
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        thing_schema = schema_branch.get(name="TestThing", duplicate=False)
+        # TestThing.location (cardinality one) points to the generic LocationGeneric; a constraint
+        # reading the peer's `name` must fire when an implementation of that generic (LocationSite)
+        # changes `name`, even though the peer kind named in the path (LocationGeneric) has no diff
+        thing_schema.uniqueness_constraints = [["location__name"]]
+        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        node_diff = NodeDiffFieldSummary(kind="LocationSite", attribute_names={"name"})
+
+        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+
+        assert node_uniqueness_constraint("TestThing") in set(constraints)
+
     async def test_uniqueness_not_triggered_by_unrelated_peer_attribute(
         self,
         car_person_schema: SchemaBranch,
