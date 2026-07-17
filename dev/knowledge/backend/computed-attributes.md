@@ -1,10 +1,10 @@
-# Computed Attributes (Jinja2)
+# Computed Attributes
 
 > Part of: `dev/knowledge/backend/` | Related: [display-labels-and-hfid.md](display-labels-and-hfid.md), [mutations.md](mutations.md)
 
-Jinja2 computed attributes are schema-defined attributes whose values are derived from other attributes or relationships on the same or related nodes. They use Jinja2 templates for rendering.
+Computed attributes are schema-defined attributes whose values Infrahub derives instead of a user setting them. There are two kinds: **Jinja2** attributes rendered from a template, and **Python transform** attributes whose value comes from running a Python transformation. The Jinja2 sections come first; Python transform computed attributes have their own section below.
 
-## Evaluation Paths
+## Jinja2 Evaluation Paths
 
 There are three distinct paths for evaluating computed attributes, depending on when and where the triggering change occurs.
 
@@ -76,7 +76,7 @@ Key methods:
 | `get_registered_jinja2_node(kind)` | Returns the registered node definition for a kind |
 | `get_local_jinja2_targets(kind, updates)` | Returns self-targeting targets whose dependencies overlap with changed fields, in dependency order |
 
-## Lifecycle Summary
+## Jinja2 Lifecycle Summary
 
 | Event | Path | Method | Scope |
 |-------|------|--------|-------|
@@ -85,16 +85,56 @@ Key methods:
 | Local attribute/relationship change | Inline | `_recompute_local_jinja2()` | Self-targeting computed attrs |
 | Remote peer attribute change | Async | Prefect task | Cross-node computed attrs |
 
+## Python Transform Computed Attributes
+
+Python transform computed attributes take their value from a Python transformation rather than a Jinja2 template. The schema wires an attribute to a transform with `computed_attribute: {kind: TransformPython, transform: <name-or-id>}`. Computation always runs asynchronously in a worker, so the value appears a few seconds after the triggering change.
+
+### Registration
+
+The `ComputedAttributes` facade builds `python_attributes_by_transform`, a `dict[transform -> list[PythonDefinition]]` keyed by the raw `transform` value, which is **either a transform name or a transform UUID**. One transform can feed several attributes; one attribute is fed by exactly one transform.
+
+### Recompute Drivers
+
+Two independent paths recompute these attributes:
+
+- **Schema change** — a `SchemaUpdatedEvent` runs `computed_attribute_setup_python`, which reconciles the automations and, via `RecomputeScoper`, submits a recompute only for the attributes whose backing fields changed.
+- **Git change** — importing a repository writes each transform's `fingerprint`. That write emits a `CoreTransformPython` node lifecycle event, matched by three builtin triggers:
+
+| Trigger | Event | Match | Action |
+|---------|-------|-------|--------|
+| created | `NodeCreatedEvent` | kind + `origin=live` | recompute the attributes it feeds (first computation) |
+| updated | `NodeUpdatedEvent` | kind + `origin=live` + related `field.name == fingerprint` | selective recompute |
+| deleted | `NodeDeletedEvent` | kind + `origin=live` | reconcile automations (prunes the removed transform's) |
+
+All three run `process_transform_lifecycle`. On create or update it waits for the schema to converge, then `TransformRecomputeSubmitter` resolves the transform to its attributes through `RecomputeResolver` and fans out one recompute per attribute across every node of each attribute's kind. Every event, including a delete or a failed recompute, reconciles the node-input automations in a `finally` block.
+
+`RecomputeResolver` looks the transform up by **both** name and UUID and dedupes by `(kind, attribute)`, so an attribute wired by name and another wired by UUID both recompute for the same transform.
+
+### Node-Input Automations
+
+Besides the transform-lifecycle triggers, each `(kind, attribute)` has a data-path automation that recomputes the value when a node feeding the transform's query changes. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
+
+### Invariants
+
+- **Over-recompute is acceptable, under-recompute is not.** Any fallback or error path recomputes rather than risk a stale value.
+- **The `origin=live` filter** keeps merge and rebase replays out; those are handled by the coalesced merge/rebase recompute path, so the lifecycle triggers do not fire a second time.
+- **The recompute write targets the attribute's own node kind, not `CoreTransformPython`,** so it never re-fires the lifecycle triggers (no loop).
+- **A null fingerprint** (a pre-upgrade node) is treated as unknown: the first import stamps a value and recomputes once, then self-heals.
+- **No `watch` declaration** folds the commit id into the fingerprint, so such a transform recomputes on every commit, but still only its own attributes.
+
 ## Key Files
 
 | File | What |
 |------|------|
 | `core/node/__init__.py` | `_process_macros()`, `_recompute_local_jinja2()`, `_collect_extra_filters()` |
-| `core/schema/schema_branch_computed/facade.py` | `ComputedAttributes` facade, `get_local_jinja2_targets()` |
+| `core/schema/schema_branch_computed/facade.py` | `ComputedAttributes` facade, `get_local_jinja2_targets()`, `python_attributes_by_transform` |
 | `core/schema/schema_branch_computed/jinja2.py` | `RegisteredNodeComputedAttribute`, dependency ordering |
 | `computed_attribute/models.py` | `ComputedAttrJinja2TriggerDefinition`, `targets_self` property |
-| `computed_attribute/tasks.py` | Prefect task definitions for async recomputation |
+| `computed_attribute/tasks.py` | Prefect flows: async recomputation, `process_transform_lifecycle`, automation reconcile |
 | `computed_attribute/gather.py` | Gathers computed attribute triggers from schema |
+| `computed_attribute/triggers.py` | `CoreTransformPython` lifecycle triggers (create/update/delete) |
+| `computed_attribute/recompute_resolution.py` | `RecomputeResolver` — transform to the attributes it feeds |
+| `computed_attribute/transform_recompute.py` | `TransformRecomputeSubmitter` — per-attribute recompute fan-out |
 
 ## See Also
 
