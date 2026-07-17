@@ -24,6 +24,16 @@ def _round_trip(error: Error) -> Error:
     return pickle.loads(pickle.dumps(error))  # noqa: S301
 
 
+class SlottedError(Error):
+    """Error subclass that stores state in __slots__ instead of __dict__."""
+
+    __slots__ = ("detail",)
+
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
+        super().__init__(detail)
+
+
 @dataclass
 class ErrorPickleCase:
     name: str
@@ -63,6 +73,10 @@ ERROR_PICKLE_CASES = [
         name="list_arg",
         error=GraphQLQueryError(errors=[{"message": "bad query"}]),
     ),
+    ErrorPickleCase(
+        name="slotted_state",
+        error=SlottedError(detail="slot-value"),
+    ),
 ]
 
 
@@ -86,6 +100,15 @@ def test_pickle_preserves_extra_constructor_attributes() -> None:
     assert isinstance(restored, SchemaNotFoundError)
     assert restored.branch_name == "main"
     assert restored.identifier == "TestingReproSolo"
+
+
+def test_pickle_preserves_slot_state() -> None:
+    error = SlottedError(detail="slot-value")
+
+    restored = _round_trip(error)
+
+    assert isinstance(restored, SlottedError)
+    assert restored.detail == "slot-value"
 
 
 def test_reconstructed_error_can_be_raised_and_caught() -> None:
