@@ -4,7 +4,6 @@ import asyncio
 import time
 from typing import TYPE_CHECKING
 
-import pytest
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
 if TYPE_CHECKING:
