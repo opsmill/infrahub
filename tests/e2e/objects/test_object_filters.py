@@ -193,7 +193,8 @@ class TestObjectFiltersColumnHeader:
 
         # filter by attribute with 'contains' condition via column header
         await admin_page.get_by_role("button", name="Role").click()
-        await expect(admin_page.get_by_text("Filter by Role")).to_be_visible()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
+        await expect(admin_page.get_by_test_id("attribute-filter-form")).to_be_visible()
 
         await admin_page.get_by_role("option", name="Edge Router").click()
         await admin_page.get_by_role("button", name="Apply").click()
@@ -205,6 +206,7 @@ class TestObjectFiltersColumnHeader:
 
         # update attribute filter via column header
         await admin_page.get_by_test_id("object-items").get_by_role("button", name="Role").click()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
         await expect(admin_page.get_by_test_id("attribute-filter-form")).to_contain_text("Edge Router")
 
         await admin_page.get_by_role("option", name="Core Router").click()
@@ -219,6 +221,7 @@ class TestObjectFiltersColumnHeader:
 
         # filter by attribute with 'is empty' condition via column header
         await admin_page.get_by_role("button", name="Role").click()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
 
         await admin_page.get_by_role("button", name=re.compile(r"select a condition")).click()
         await admin_page.get_by_role("option", name="is empty").click()
@@ -231,6 +234,7 @@ class TestObjectFiltersColumnHeader:
 
         # filter by attribute with 'is not empty' condition via column header
         await admin_page.get_by_role("button", name="Role").click()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
 
         await admin_page.get_by_role("button", name=re.compile(r"select a condition")).click()
         await admin_page.get_by_role("option", name="is not empty").click()
@@ -244,7 +248,8 @@ class TestObjectFiltersColumnHeader:
         # filter by relationship with 'is any of' condition via column header
         # (scope to the table; "Site" also matches the sidebar menu button)
         await admin_page.get_by_test_id("object-items").get_by_role("button", name="Site").click()
-        await expect(admin_page.get_by_text("Filter by Site")).to_be_visible()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
+        await expect(admin_page.get_by_test_id("relationship-filter-form")).to_be_visible()
 
         await admin_page.get_by_role("option", name="atl1").click()
         await admin_page.get_by_test_id("relationship-filter-form").get_by_role("button", name="Apply").click()
@@ -258,6 +263,7 @@ class TestObjectFiltersColumnHeader:
 
         # filter by relationship with 'is empty' condition via column header
         await admin_page.get_by_role("button", name="Tags").click()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
 
         await admin_page.get_by_role("button", name=re.compile(r"select a condition")).click()
         await admin_page.get_by_role("option", name="is empty").click()
@@ -270,6 +276,7 @@ class TestObjectFiltersColumnHeader:
 
         # filter by relationship with 'is not empty' condition via column header
         await admin_page.get_by_role("button", name="Tags").click()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
 
         await admin_page.get_by_role("button", name=re.compile(r"select a condition")).click()
         await admin_page.get_by_role("option", name="is not empty").click()
@@ -333,6 +340,7 @@ class TestObjectFilters:
         await expect(admin_page.get_by_test_id("object-items")).to_contain_text("INTERNAL")
 
         await admin_page.get_by_role("button", name="Type").click()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
         await expect(admin_page.get_by_placeholder("Filter...")).to_be_focused()
         await expect(admin_page.get_by_role("option", name="EXTERNAL")).to_be_visible()
         await expect(admin_page.get_by_role("option", name="INTERNAL")).to_be_visible()
@@ -345,6 +353,7 @@ class TestObjectFilters:
         await expect(admin_page.get_by_test_id("object-items")).not_to_contain_text("INTERNAL")
 
         await admin_page.get_by_test_id("object-items").get_by_role("button", name="Type").click()
+        await admin_page.get_by_role("menuitem", name="Filter").click()
         await expect(admin_page.get_by_role("combobox").filter(has_text="EXTERNAL")).to_be_visible()
         await admin_page.keyboard.press("Escape")
 
