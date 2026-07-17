@@ -457,7 +457,11 @@ test.describe("Object filters", () => {
     await page.getByTestId("object-items").getByRole("button", { name: "Type" }).click();
     await page.getByRole("menuitem", { name: "Filter" }).click();
     await expect(page.getByRole("combobox").filter({ hasText: "EXTERNAL" })).toBeVisible();
+    // Focus inside the popover before Escape: on slow runners the form's autofocus
+    // may not have landed yet, leaving Escape on the body where the popover never receives it.
+    await page.getByRole("combobox").filter({ hasText: "EXTERNAL" }).focus();
     await page.keyboard.press("Escape");
+    await expect(page.getByTestId("attribute-filter-form")).not.toBeVisible();
 
     await page.getByRole("button", { name: "Remove Type contains EXTERNAL" }).click();
     await expect(page.getByTestId("object-items")).toContainText("EXTERNAL");

@@ -104,7 +104,8 @@ test.describe("Object header sort", () => {
       await page.getByRole("menuitem", { name: "Ascending" }).click();
 
       await expect(page).toHaveURL(/sort=site__name__value__asc/);
-      await expect(firstRowLink).toHaveText("atl1-leaf1");
+      // Within a site the order falls back to the uuid tiebreaker, so only pin the site prefix.
+      await expect(firstRowLink).toHaveText(/^atl1-/);
       await expect(page.getByRole("button", { name: "Site sorted ascending" })).toBeVisible();
     });
   });
@@ -135,7 +136,8 @@ test.describe("Object header sort", () => {
 
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/sort=site__name__value__asc/);
-      await expect(firstRowLink).toHaveText("atl1-leaf1");
+      // Within a site the order falls back to the uuid tiebreaker, so only pin the site prefix.
+      await expect(firstRowLink).toHaveText(/^atl1-/);
       await expect(page.getByRole("button", { name: "Site sorted ascending" })).toBeVisible();
     });
   });
