@@ -22,10 +22,11 @@ and never a hardcoded pattern.
 - `DatePreferencesContext` + `useFormatDate` live in **`shared`** and carry **no** dependency on
   `entities/`.
 - `DatePreferencesProvider` (`entities/preferences/ui/date-preferences-provider.tsx`) fills the
-  context from `useGetEffectivePreferences()`. It is mounted **inside `RequireAuth`** (`app/router.tsx`),
-  next to `BranchesProvider`/`SchemaProvider` — never at the app root — because its query is
-  authenticated: mounting it above the login page would fire a pre-auth request whose 401 trips
-  Apollo's error link and bounces back to `/login`.
+  context from `useGetEffectivePreferences()`, but **only once the user is authenticated** — it
+  returns its children unchanged when logged out. The query needs auth, yet the app also renders for
+  logged-out users (`allow_anonymous_access`), so an ungated fetch would 401 and Apollo's error link
+  would bounce them to `/login`. Gating by *mount* (not react-query `enabled`) keeps the query hook
+  auth-agnostic. `RequireAuth` is **not** a sufficient gate here — it renders for anonymous users too.
 - When no provider is mounted, or a preference's `source` is `"DEFAULT"` (nothing set), formatting
   falls back to the **browser locale + zone** (`toLocaleString`) — never a hardcoded pattern. So
   `DateDisplay`/`useFormatDate` are always safe to use, including in tests/stories.
