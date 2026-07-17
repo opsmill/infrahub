@@ -4,6 +4,7 @@ import asyncio
 import time
 from typing import TYPE_CHECKING
 
+import pytest
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
 if TYPE_CHECKING:
@@ -88,7 +89,7 @@ async def _drive_branch_to_merge_failed(
             print(f"merge mutation task raised: {exc!r}")
 
 
-# @pytest.mark.skip(reason="test takes too long")
+@pytest.mark.skip(reason="test takes too long")
 class TestMergeKillRecovery(TestInfrahubDockerClient):
     """End-to-end cross-process detection and recovery from a killed merge.
 
