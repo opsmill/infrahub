@@ -388,3 +388,18 @@ async def count_branch_edges_at(db: InfrahubDatabase, branch_name: str, at: str)
         params={"at": at, "branch": branch_name},
     )
     return result[0].get("c")
+
+
+async def get_node_metadata(db: InfrahubDatabase, node_uuid: str) -> dict[str, str | None]:
+    """Return a node vertex's ``updated_at``/``previous_updated_at`` metadata."""
+    result = await db.execute_query(
+        query=(
+            "MATCH (n:Node {uuid: $uuid}) "
+            "RETURN n.updated_at AS updated_at, n.previous_updated_at AS previous_updated_at"
+        ),
+        params={"uuid": node_uuid},
+    )
+    return {
+        "updated_at": result[0].get("updated_at"),
+        "previous_updated_at": result[0].get("previous_updated_at"),
+    }

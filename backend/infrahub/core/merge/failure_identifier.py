@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
 from typing import TYPE_CHECKING
 
 from infrahub import config
@@ -22,22 +20,6 @@ if TYPE_CHECKING:
     from infrahub.services.component import InfrahubComponent
 
 log = get_logger()
-
-
-class RecoveryOutcome(Enum):
-    NOTHING_TO_RECOVER = "nothing_to_recover"
-    DECLINED = "declined"
-    RECOVERED = "recovered"
-    ORPHANED_CLEARED = "orphaned_cleared"
-    FAILED = "failed"
-
-
-@dataclass(frozen=True)
-class RecoveryReport:
-    outcome: RecoveryOutcome
-    branch: str | None
-    proposed_change: str | None
-    merge_started_at: str | None
 
 
 class MergeFailureIdentifier:
