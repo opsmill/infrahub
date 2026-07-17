@@ -4,7 +4,7 @@ import { render } from "../../../../../tests/components/render";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 import { SortEditor } from "./sort-editor";
 
-const schema = generateNodeSchema({
+const schemaWithDefaultSort = generateNodeSchema({
   order_by: ["name__value"],
   attributes: [
     generateAttributeSchema({ name: "name", label: "Name", kind: "Text" }),
@@ -13,7 +13,7 @@ const schema = generateNodeSchema({
   relationships: [],
 });
 
-const schemaWithoutDefaultSort = generateNodeSchema({ ...schema, order_by: [] });
+const schemaWithoutDefaultSort = generateNodeSchema({ ...schemaWithDefaultSort, order_by: [] });
 
 const seedSortInUrl = (sort: string) =>
   window.history.replaceState(null, "", `${window.location.pathname}?sort=${sort}`);
@@ -25,7 +25,7 @@ describe("SortEditor", () => {
 
   test("hides the schema default sort fields from the picker", async () => {
     // GIVEN
-    const component = await render(<SortEditor schema={schema} />);
+    const component = await render(<SortEditor schema={schemaWithDefaultSort} />);
 
     // WHEN
     await component.getByRole("button", { name: "Add sort" }).click();
@@ -37,6 +37,9 @@ describe("SortEditor", () => {
 
   test("shows the schema default as an applied, non-removable row", async () => {
     // GIVEN
+    const schema = schemaWithDefaultSort;
+
+    // WHEN
     const component = await render(<SortEditor schema={schema} />);
 
     // THEN
@@ -53,9 +56,65 @@ describe("SortEditor", () => {
       .not.toBeInTheDocument();
   });
 
+  // A schema's default order can target an attribute sub-property the picker never offers as a
+  // selectable field (it only builds `__value` fields): IP prefixes/addresses sort on
+  // `prefix__version`, dropdowns can sort on `status__label`, etc. Without a read-only fallback the
+  // row's field select has no matching option and renders blank.
+  test.each([
+    {
+      kind: "IPNetwork",
+      attribute: "prefix",
+      label: "Prefix",
+      field: "prefix__version",
+      expected: "Prefix (version)",
+    },
+    {
+      kind: "IPNetwork",
+      attribute: "prefix",
+      label: "Prefix",
+      field: "prefix__binary_address",
+      expected: "Prefix (binary address)",
+    },
+    {
+      kind: "MacAddress",
+      attribute: "mac",
+      label: "Mac",
+      field: "mac__dot_notation",
+      expected: "Mac (dot notation)",
+    },
+    {
+      kind: "Dropdown",
+      attribute: "status",
+      label: "Status",
+      field: "status__label",
+      expected: "Status (label)",
+    },
+  ])("labels the read-only $field sub-property sort", async ({
+    kind,
+    attribute,
+    label,
+    field,
+    expected,
+  }) => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      order_by: [field],
+      attributes: [generateAttributeSchema({ name: attribute, label, kind })],
+      relationships: [],
+    });
+
+    // WHEN
+    const component = await render(<SortEditor schema={schema} />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: `${expected} Sort field` }))
+      .toBeVisible();
+  });
+
   test("changes the sort field from a row", async () => {
     // GIVEN
-    const component = await render(<SortEditor schema={schema} />);
+    const component = await render(<SortEditor schema={schemaWithDefaultSort} />);
 
     // WHEN
     await component.getByRole("button", { name: "Name Sort field" }).click();
@@ -69,7 +128,10 @@ describe("SortEditor", () => {
 
   test("renders only the field picker when there is no sort to edit", async () => {
     // GIVEN
-    const component = await render(<SortEditor schema={schemaWithoutDefaultSort} />);
+    const schema = schemaWithoutDefaultSort;
+
+    // WHEN
+    const component = await render(<SortEditor schema={schema} />);
 
     // THEN
     await expect.element(component.getByRole("menuitem", { name: "Name" })).toBeVisible();
@@ -80,7 +142,7 @@ describe("SortEditor", () => {
 
   test("switches to a custom order when changing the direction", async () => {
     // GIVEN
-    const component = await render(<SortEditor schema={schema} />);
+    const component = await render(<SortEditor schema={schemaWithDefaultSort} />);
 
     // WHEN
     await component.getByRole("button", { name: "Sort direction" }).click();
@@ -96,7 +158,7 @@ describe("SortEditor", () => {
   test("resets a custom order back to the default", async () => {
     // GIVEN
     seedSortInUrl("name__value__desc");
-    const component = await render(<SortEditor schema={schema} />);
+    const component = await render(<SortEditor schema={schemaWithDefaultSort} />);
 
     // WHEN
     await component.getByRole("button", { name: "Reset to default" }).first().click();
@@ -111,6 +173,8 @@ describe("SortEditor", () => {
   test("offers to clear the sort instead of resetting when the schema has no default", async () => {
     // GIVEN
     seedSortInUrl("name__value__desc");
+
+    // WHEN
     const component = await render(<SortEditor schema={schemaWithoutDefaultSort} />);
 
     // THEN
@@ -135,7 +199,7 @@ describe("SortEditor", () => {
 
   test("adds a sort as a new row", async () => {
     // GIVEN
-    const component = await render(<SortEditor schema={schema} />);
+    const component = await render(<SortEditor schema={schemaWithDefaultSort} />);
 
     // WHEN
     await component.getByRole("button", { name: "Add sort" }).click();
@@ -155,7 +219,7 @@ describe("SortEditor", () => {
   test("excludes fields used by other rows from a row's field select", async () => {
     // GIVEN
     seedSortInUrl("name__value__asc,description__value__desc");
-    const component = await render(<SortEditor schema={schema} />);
+    const component = await render(<SortEditor schema={schemaWithDefaultSort} />);
 
     // WHEN
     await component.getByRole("button", { name: "Name Sort field" }).click();
@@ -170,7 +234,7 @@ describe("SortEditor", () => {
   test("removes one row of a multi-row custom sort", async () => {
     // GIVEN
     seedSortInUrl("name__value__asc,description__value__desc");
-    const component = await render(<SortEditor schema={schema} />);
+    const component = await render(<SortEditor schema={schemaWithDefaultSort} />);
 
     // WHEN
     await component.getByRole("button", { name: "Remove sort" }).first().click();
@@ -187,7 +251,7 @@ describe("SortEditor", () => {
   test("frames removing the last custom row as a reset to the default", async () => {
     // GIVEN
     seedSortInUrl("description__value__desc");
-    const component = await render(<SortEditor schema={schema} />);
+    const component = await render(<SortEditor schema={schemaWithDefaultSort} />);
 
     // WHEN
     await component.getByRole("button", { name: "Reset to default" }).nth(1).click();

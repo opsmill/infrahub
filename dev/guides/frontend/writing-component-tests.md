@@ -34,7 +34,7 @@ import { render } from "../../../../tests/components/render";
 import { ComponentName } from "./component-name";
 
 describe("ComponentName", () => {
-  test("shows button when clicked", async () => {
+  test("shows content when the button is clicked", async () => {
     // GIVEN
     const component = await render(<ComponentName prop="value" />);
 
@@ -51,11 +51,21 @@ describe("ComponentName", () => {
 
 Follow BDD structure consistently:
 
-- **GIVEN**: Set up the component and initial state (component render)
-- **WHEN**: Perform user interactions or trigger events
-- **THEN**: Assert expected outcomes
+- **GIVEN**: Arrange the inputs and initial state (props, schema, URL/route state, mocks)
+- **WHEN**: The single action that triggers the expectation
+- **THEN**: Assert the expected outcomes
 
-**Important**: Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate.
+**Important**:
+
+- Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate.
+- Every test has **exactly one** of each marker - always a GIVEN, a WHEN, and a THEN.
+- The WHEN is whatever triggers the expectation:
+  - When a **user interaction** triggers it, that interaction is the WHEN and the render is part of
+    the GIVEN setup.
+  - When the **render itself** produces what you assert (a render-only test, no interaction), the
+    render is the WHEN and the GIVEN arranges its inputs.
+- A test that needs a second WHEN/THEN is exercising a multi-phase flow - split it into separate,
+  single-phase tests instead of chaining WHEN → THEN → WHEN → THEN in one test.
 
 ## Querying Elements
 
@@ -110,7 +120,10 @@ Test that components render correctly based on props or state:
 describe("StatusBadge", () => {
   test("renders success state", async () => {
     // GIVEN
-    const component = await render(<StatusBadge status="success" />);
+    const status = "success";
+
+    // WHEN
+    const component = await render(<StatusBadge status={status} />);
 
     // THEN
     await expect.element(component.getByText("Success")).toBeVisible();
@@ -118,7 +131,10 @@ describe("StatusBadge", () => {
 
   test("hides when status is null", async () => {
     // GIVEN
-    const component = await render(<StatusBadge status={null} />);
+    const status = null;
+
+    // WHEN
+    const component = await render(<StatusBadge status={status} />);
 
     // THEN
     await expect.element(component.queryByTestId("status-badge")).not.toBeVisible();
@@ -130,20 +146,27 @@ describe("StatusBadge", () => {
 
 Test user interactions and their visible outcomes:
 
+Each test covers a single phase. Don't chain WHEN → THEN → WHEN → THEN - split a multi-step flow
+into one test per outcome:
+
 ```tsx
 describe("FormComponent", () => {
-  test("shows validation then submits", async () => {
+  test("shows a validation error when the required field is empty", async () => {
     // GIVEN
-    const component = await render(<FormComponent />);
+    const component = await render(<FormComponent defaultValues={{ name: "" }} />);
 
     // WHEN
     await component.getByRole("button", { name: "Save" }).click();
 
     // THEN
     await expect.element(component.getByText("Name is required")).toBeVisible();
+  });
+
+  test("submits when the required field is filled", async () => {
+    // GIVEN
+    const component = await render(<FormComponent defaultValues={{ name: "device-1" }} />);
 
     // WHEN
-    await component.getByLabelText("Name").fill("device-1");
     await component.getByRole("button", { name: "Save" }).click();
 
     // THEN
@@ -159,7 +182,7 @@ Use `userEvent` from `vitest/browser` for keyboard interactions:
 ```tsx
 import { userEvent } from "vitest/browser";
 
-test("adds item when pressing enter", async () => {
+test("adds an item when pressing enter", async () => {
   // GIVEN
   const component = await render(<List />);
   const input = component.getByPlaceholder("Add a new item + hit 'enter'");
@@ -223,7 +246,8 @@ src/entities/schema/components/status-badge.test.tsx
 
 - Use accessibility-first queries (`getByRole`, `getByLabelText`) over `getByTestId`
 - Test user interactions and visible outcomes, not internal state
-- Follow BDD structure: GIVEN = component render, WHEN = user interaction, THEN = assertion
+- Follow BDD structure: GIVEN = arrange props/state (and the render when an interaction follows), WHEN = the action that triggers the expectation, THEN = assertion
+- Give every test exactly one GIVEN, one WHEN, and one THEN - split multi-phase flows into separate tests
 - Keep GIVEN/WHEN/THEN comments separate
 - Test component-specific behavior only
 - Use descriptive test names that explain what is being tested
@@ -234,6 +258,7 @@ src/entities/schema/components/status-badge.test.tsx
 - Don't test behavior implemented by third-party libraries
 - Don't test internal implementation details
 - Don't mix GIVEN/WHEN/THEN comments
+- Don't repeat a marker within one test (two WHENs/THENs)
 - Don't test library functionality that's already tested
 
 ## Example: Complete Test File
@@ -248,7 +273,10 @@ import { List } from "./list";
 describe("List Component", () => {
   test("renders empty list state correctly", async () => {
     // GIVEN
-    const component = await render(<List />);
+    const defaultValue: string[] = [];
+
+    // WHEN
+    const component = await render(<List defaultValue={defaultValue} />);
 
     // THEN
     await expect.element(component.getByPlaceholder("Add a new item + hit 'enter'")).toBeVisible();
@@ -293,7 +321,7 @@ describe("List Component", () => {
 
 Before submitting your component tests:
 
-- [ ] Tests use GIVEN/WHEN/THEN structure with separate comments
+- [ ] Every test has exactly one GIVEN, one WHEN, and one THEN, as separate comments (WHEN = whatever triggers the expectation)
 - [ ] Tests use accessibility-first queries (`getByRole`, `getByLabelText`)
 - [ ] `getByTestId` is only used as a last resort
 - [ ] Tests focus on component-specific behavior
