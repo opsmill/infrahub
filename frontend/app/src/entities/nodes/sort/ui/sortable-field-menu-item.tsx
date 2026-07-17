@@ -1,15 +1,11 @@
 import { Menu, MenuItem, Popover, SubmenuTrigger } from "@infrahub/ui";
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import type React from "react";
 
 import { Row } from "@/shared/components/container";
 
-import {
-  SORT_DIRECTION,
-  type Sort,
-  type SortDirection,
-  type SortField,
-} from "@/entities/nodes/sort/domain/model/sort";
+import type { Sort, SortDirection, SortField } from "@/entities/nodes/sort/domain/model/sort";
+import { SortDirectionMenuItem } from "@/entities/nodes/sort/ui/sort-direction-menu-item";
 import { DIRECTION_OPTIONS } from "@/entities/nodes/sort/ui/sort-options";
 
 export interface SortableFieldMenuItemProps {
@@ -44,22 +40,17 @@ export function SortableFieldMenuItem({
       </MenuItem>
 
       <Popover>
-        <Menu variant="picker" aria-label={`Sort direction for ${label}`} items={DIRECTION_OPTIONS}>
-          {(option) => (
-            <MenuItem
-              textValue={option.label}
-              onAction={() => onSelect({ field, direction: option.id })}
+        <Menu variant="picker" aria-label={`Sort direction for ${label}`}>
+          {DIRECTION_OPTIONS.map((option) => (
+            <SortDirectionMenuItem
+              key={option.id}
+              direction={option.id}
+              isActive={activeDirection === option.id}
+              onSelect={(direction) => onSelect({ field, direction })}
             >
-              {option.id === SORT_DIRECTION.DESC ? <ArrowDownIcon /> : <ArrowUpIcon />}
-              <span>{option.label}</span>
-              {activeDirection === option.id && (
-                <>
-                  <CheckIcon className="ml-auto" />
-                  <span className="sr-only">active</span>
-                </>
-              )}
-            </MenuItem>
-          )}
+              {option.label}
+            </SortDirectionMenuItem>
+          ))}
         </Menu>
       </Popover>
     </SubmenuTrigger>

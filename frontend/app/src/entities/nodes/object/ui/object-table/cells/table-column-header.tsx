@@ -1,11 +1,5 @@
 import { Menu, MenuItem, MenuSeparator, MenuTrigger, Popover, SubmenuTrigger } from "@infrahub/ui";
-import {
-  ArrowDownIcon,
-  ArrowUpDownIcon,
-  ArrowUpIcon,
-  CheckIcon,
-  ListFilterIcon,
-} from "lucide-react";
+import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ListFilterIcon } from "lucide-react";
 import React from "react";
 import { Button } from "react-aria-components";
 
@@ -31,6 +25,7 @@ import {
   buildRelationshipSortField,
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
+import { SortDirectionMenuItem } from "@/entities/nodes/sort/ui/sort-direction-menu-item";
 import { SortableAttributeMenuItem } from "@/entities/nodes/sort/ui/sortable-attribute-menu-item";
 import type {
   AttributeSchema,
@@ -42,7 +37,6 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface TableColumnHeaderProps {
   columnSchema: AttributeSchema | RelationshipSchema;
-  /** Enables the sort menu entries; without it the menu offers filtering only. */
   schema?: ModelSchema;
   isDisabled?: boolean;
   className?: string;
@@ -196,33 +190,6 @@ function SortableRelationshipColumnHeader({
         </SubmenuTrigger>
       }
     />
-  );
-}
-
-interface SortDirectionMenuItemProps {
-  direction: SortDirection;
-  onSelect: (direction: SortDirection) => void;
-  isActive?: boolean;
-  children: string;
-}
-
-function SortDirectionMenuItem({
-  direction,
-  onSelect,
-  isActive = false,
-  children,
-}: SortDirectionMenuItemProps) {
-  return (
-    <MenuItem id={direction} textValue={children} onAction={() => onSelect(direction)}>
-      {direction === SORT_DIRECTION.DESC ? <ArrowDownIcon /> : <ArrowUpIcon />}
-      <span>{children}</span>
-      {isActive && (
-        <>
-          <CheckIcon className="ml-auto" />
-          <span className="sr-only">active</span>
-        </>
-      )}
-    </MenuItem>
   );
 }
 
