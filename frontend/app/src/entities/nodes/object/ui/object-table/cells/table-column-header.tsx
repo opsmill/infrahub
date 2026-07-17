@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Menu, MenuItem, MenuSeparator, MenuTrigger, Popover, SubmenuTrigger } from "@infrahub/ui";
 import {
   ArrowDownIcon,
@@ -11,6 +10,7 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { Button } from "react-aria-components";
 
+import { Row } from "@/shared/components/container";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
@@ -300,28 +300,21 @@ function ColumnHeaderMenu({
           <FieldSchemaIcon fieldSchema={columnSchema} />
 
           <span className="mr-2 truncate">{label}</span>
-          {activeSort && (
-            <>
-              <Icon
-                icon={
-                  activeSort.direction === SORT_DIRECTION.DESC ? "mdi:arrow-down" : "mdi:arrow-up"
-                }
-                className="text-indigo-700 text-lg"
-              />
-              <span className="sr-only">
-                {activeSort.direction === SORT_DIRECTION.DESC
-                  ? "sorted descending"
-                  : "sorted ascending"}
-              </span>
-            </>
-          )}
-          <Icon
-            icon="mdi:filter-variant"
-            className={classNames(
-              "ml-auto text-lg",
-              currentColumnFilters ? "text-indigo-700" : "invisible"
-            )}
-          />
+          <Row className="ml-auto">
+            {activeSort &&
+              (activeSort.direction === SORT_DIRECTION.DESC ? (
+                <>
+                  <ArrowDownIcon className="size-4 text-indigo-700" />
+                  <span className="sr-only">sorted descending</span>
+                </>
+              ) : (
+                <>
+                  <ArrowUpIcon className="size-4 text-indigo-700" />
+                  <span className="sr-only">sorted ascending</span>
+                </>
+              ))}
+            {currentColumnFilters && <ListFilterIcon className="size-4 text-indigo-700" />}
+          </Row>
         </Button>
 
         <Popover placement="bottom start">
