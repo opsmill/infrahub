@@ -293,11 +293,36 @@ The path-based tab routing migration left `Pill`, `TASK_TAB`, and `DIFF_TABS` or
 
 Add `pnpm knip` to your verification commands any time a PR deletes a component, switches a switch-on-QSP to nested routes, or otherwise removes the last importer of a helper. Fix in the same PR — orphaned exports compound and become harder to delete with confidence as time passes.
 
+## Authenticated data providers mount under `RequireAuth`
+
+A React context provider whose data comes from an **authenticated** query (`BranchesProvider`,
+`SchemaProvider`, `DatePreferencesProvider`, …) must mount **inside `RequireAuth`** in
+`app/router.tsx`, not at the app root in `app.tsx`.
+
+```tsx
+<RequireAuth>
+  <DatePreferencesProvider>
+    <BranchesProvider>
+      <SchemaProvider>
+        <Outlet />
+```
+
+Mounting such a provider above the router means its query also runs on the **login page**, before a
+token exists. The resulting 401 trips Apollo's `errorLink` → `redirectToLogin`, which races the
+just-submitted login back to `/login` — intermittently, so it surfaces as a flaky E2E auth-setup
+timeout rather than an obvious error. Placement is the fix; **prefer it over a runtime `enabled`
+flag**, which leaves the provider mounted (and coupled to auth state) on pages that don't need it.
+
+This came from PR #9930: `DatePreferencesProvider` was mounted at the root and broke the read-write
+E2E login. Scope a provider by *where it mounts*, mirroring the sibling providers already under
+`RequireAuth`.
+
 ## Anti-patterns observed in past PRs
 
 | Anti-pattern | Replacement |
 |---|---|
 | `?tab=foo` URL state for tab navigation | Nested child routes + `LinkTab` + `<Outlet />` |
+| App-level provider with an authenticated query mounted in `app.tsx` | Mount under `RequireAuth` in `router.tsx` |
 | Tab bar without `<nav aria-label="Tabs">` | Always wrap; E2E selectors and screen readers depend on it |
 | Children re-calling the same parent query | `<Outlet context>` + typed hook with runtime guard |
 | `useParams() as { foo: string }` for guaranteed params | `useRequiredParams("foo")` |
