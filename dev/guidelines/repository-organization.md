@@ -122,6 +122,44 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 
 **Naming**: Use descriptive, kebab-case names that clearly indicate the topic.
 
+**Relationship to `.agents/rules/`**: Guidelines are the *full* rulebook. The lean subset of these rules that must be in front of an agent while it writes code — auto-injected every turn — lives in `.agents/rules/` (see below). Both are rules; the only difference is how they load.
+
+### rules/
+
+**Purpose**: "What must I always/never do while writing this code?"
+
+**Content Lifecycle**: Stable. The lean, always-loaded subset of the coding rules in `guidelines/`.
+
+**Primary Target**: AI
+
+**Location**: Rules live in `.agents/rules/` (the vendor-neutral canonical source), not under `dev/`. Tool adapters symlink here (e.g. `.claude/rules → ../.agents/rules`).
+
+**File Size Guidelines**: As small as possible — terse always/never bullets, no long examples or tables.
+
+**Rules vs. guidelines — same content, different delivery.** Both hold prescriptive rules; they are not "rules vs. not-rules". The difference is how each is loaded:
+
+- A file in `.agents/rules/` carries a `paths:` glob in its frontmatter and is **auto-injected into every agent turn** that touches a matching file. It is paid for on every such turn, so it must stay lean.
+- `dev/guidelines/**` is the **full rulebook** — the same rules with tables, ✅/❌ examples, and enforcement scripts — loaded **on demand** when the relevant `AGENTS.md` router points an agent at it.
+
+So `.agents/rules/` is not "the rules" as opposed to the guidelines; it is the always-on *index* of the highest-value rules, each pointing to its fuller home in `dev/guidelines/`.
+
+**What earns a rule slot** (all three must hold — every rule costs tokens on every matching turn):
+
+1. It is a terse always/never an author can follow without opening anything else.
+2. It applies broadly across files matching the glob, not to one narrow task.
+3. The cost of an agent *not* knowing it — a repeated review nit or a real bug — outweighs the per-turn tokens.
+
+**Keep rules as pointers, not copies.** A rule line states the imperative and points to the guideline for the detail (examples, enforcement scripts). When a rule would restate a guideline at the same depth, shrink it to a pointer — the guideline stays the single source of truth.
+
+**Example Files**:
+
+- `code-doc-style.md` — comment and docstring rules (backend)
+- `backend-component-design.md` — SOLID/DI for new backend components
+- `testing-python.md` — backend test rules
+- `frontend-conventions.md` — the always-on frontend conventions, pointing into `dev/guidelines/frontend/`
+
+**Naming**: Use descriptive, kebab-case names that indicate the domain or concern (e.g. `python-module-layout.md`).
+
 ### knowledge/
 
 **Purpose**: "How does this work?"
@@ -533,7 +571,7 @@ Maintain a single source of truth with symlinks for tool compatibility, since mo
 rm -rf .claude/commands .claude/skills
 
 # Create tool directories
-mkdir -p .claude 
+mkdir -p .claude
 
 # Create symlinks to canonical source
 ln -s ../.agents/commands .claude/commands

@@ -46,4 +46,4 @@ Before building anything generic (a row/layout wrapper, a combobox, a modal vari
 
 ## Naming
 
-File and hook names follow `dev/guidelines/frontend/naming-conventions.md`. Hook names match the operation (`useUpsert…` not `useUpdate…` for an upsert) and predicate hooks read as a question (`useHasX`).
+File and hook names follow `dev/guidelines/frontend/naming-conventions.md` — see its File Naming and Hook Naming sections.
