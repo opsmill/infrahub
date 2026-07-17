@@ -1,5 +1,6 @@
 import re
 import shutil
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -546,6 +547,13 @@ async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> 
     await syncer.sync(repo, staging_branch=staging_branch)
 
 
+@pytest.fixture
+def mock_branch_all() -> Generator[AsyncMock]:
+    """Git sync queries all branches to skip merged/read-only ones; stub the SDK call with no such branches."""
+    with patch("infrahub_sdk.branch.InfrahubBranchManager.all", new_callable=AsyncMock, return_value={}) as mock:
+        yield mock
+
+
 async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
     repo = git_repo_02
     await _sync(repo)
@@ -560,6 +568,7 @@ async def test_sync_new_branch(
     git_repo_03: InfrahubRepository,
     httpx_mock: HTTPXMock,
     mock_add_branch01_query: HTTPXMock,
+    mock_branch_all: AsyncMock,
 ) -> None:
     repo = git_repo_03
 
@@ -598,7 +607,9 @@ async def test_sync_new_branch(
     assert len(worktrees) == 4
 
 
-async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: InfrahubRepository) -> None:
+async def test_sync_updated_branch(
+    prefect_test_fixture: None, git_repo_04: InfrahubRepository, mock_branch_all: AsyncMock
+) -> None:
     repo = git_repo_04
 
     branch = Branch(name="branch01", uuid=uuid4())
@@ -621,7 +632,7 @@ async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: Infr
 
 
 async def test_sync_continues_after_branch_pull_failure(
-    prefect_test_fixture: None, git_repo_07: InfrahubRepository
+    prefect_test_fixture: None, git_repo_07: InfrahubRepository, mock_branch_all: AsyncMock
 ) -> None:
     """A branch whose pull fails must not prevent the synchronization of the remaining branches."""
     repo = git_repo_07
