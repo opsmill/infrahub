@@ -355,10 +355,10 @@ describe("TableColumnHeader", () => {
     expect(new URLSearchParams(window.location.search).get("pagination")).toBe(pagination);
   });
 
-  test("renders a plain non-interactive header when disabled", async () => {
+  test("renders a plain non-interactive header when isDisabled", async () => {
     // GIVEN
     const component = await render(
-      <TableColumnHeader schema={schema} columnSchema={nameAttribute} disabled />
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} isDisabled />
     );
 
     // THEN

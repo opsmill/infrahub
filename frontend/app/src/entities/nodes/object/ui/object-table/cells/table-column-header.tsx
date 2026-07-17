@@ -44,17 +44,17 @@ export interface TableColumnHeaderProps {
   columnSchema: AttributeSchema | RelationshipSchema;
   /** Enables the sort menu entries; without it the menu offers filtering only. */
   schema?: ModelSchema;
-  disabled?: boolean;
+  isDisabled?: boolean;
   className?: string;
 }
 
 export function TableColumnHeader({
   columnSchema,
   schema,
-  disabled,
+  isDisabled,
   className,
 }: TableColumnHeaderProps) {
-  if (disabled) {
+  if (isDisabled) {
     return <TableColumnHeaderSimple columnSchema={columnSchema} className={className} />;
   }
 
