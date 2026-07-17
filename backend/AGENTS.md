@@ -86,13 +86,26 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 
 ### Knowledge (How the system works)
 
-- `dev/knowledge/backend/architecture.md` - Backend architecture overview
-- `dev/knowledge/backend/testing.md` - Testing infrastructure and patterns
-- `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups
-- `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration)
-- `dev/knowledge/backend/events.md` - Events system
-- `dev/knowledge/backend/async-tasks.md` - Asynchronous tasks (Prefect)
-- `dev/knowledge/backend/message-bus.md` - Message bus system
+Each entry says *when* to load it — open the doc before working in that area.
+
+- `dev/knowledge/backend/architecture.md` - Backend architecture overview; read first for layer responsibilities and entry points
+- `dev/knowledge/backend/query-pattern.md` - Read/write Query classes, return-shape, pagination, read-vs-write routing; read before writing or changing any DB access
+- `dev/knowledge/backend/database-schema.md` - Neo4j temporal graph (vertices, edges, branch/time metadata); read before writing Cypher
+- `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
+- `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
+- `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
+- `dev/knowledge/backend/preferences.md` - User/global preferences (Repository + Query persistence); read when touching preferences
+- `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
+- `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
+- `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
+- `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
+- `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
+- `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
+- `dev/knowledge/backend/computed-attributes.md` - Jinja2 computed attributes and their recompute paths; read when touching Jinja2 computed attributes
+- `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
+- `dev/knowledge/backend/templates.md` - Object template generation and application; read when touching templates
+- `dev/knowledge/backend/package-init-files.md` - Keep `__init__.py` free of logic for new code; read when adding a package or wiring imports
+- `dev/knowledge/backend/code-generation.md` - Generated-file pipeline (protocols, schema, SDK); read before/after changing event, schema, CLI, or config code
 
 ### Guides (How to do X)
 
