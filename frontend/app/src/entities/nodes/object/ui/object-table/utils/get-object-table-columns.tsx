@@ -91,7 +91,7 @@ export function getObjectGenericColumns(schema: ModelSchema): Array<ColumnDef<No
 
 export function getObjectFieldsColumns(
   schema: ModelSchema,
-  headerProps?: Pick<TableColumnHeaderProps, "disabled">
+  headerProps?: Partial<TableColumnHeaderProps>
 ): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []).filter(
@@ -148,7 +148,7 @@ export function getObjectFieldsColumns(
 
 export const getObjectTableColumns = (
   schema: ModelSchema,
-  headerProps?: Pick<TableColumnHeaderProps, "disabled">
+  headerProps?: Partial<TableColumnHeaderProps>
 ): Array<ColumnDef<NodeObject>> => {
   return [
     ...getObjectIdentifierColumns(schema),

@@ -32,7 +32,7 @@ const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();
 
 export const getIpAddressTableColumns = (
   schema: ModelSchema,
-  headerProps?: Pick<TableColumnHeaderProps, "disabled">
+  headerProps?: Partial<TableColumnHeaderProps>
 ): ColumnDef<NodeObject>[] => {
   const attributes = getIpAddressAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getIpAddressRelationshipsVisibleInListView(schema.relationships ?? []);
