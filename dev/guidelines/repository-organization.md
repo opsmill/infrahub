@@ -128,7 +128,7 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 
 **Purpose**: "What must I always/never do while writing this code?"
 
-**Content Lifecycle**: Stable. The lean, always-loaded subset of the coding rules in `guidelines/`.
+**Content Lifecycle**: Stable. The lean, always-loaded subset of the coding rules; the fuller reference lives in `guidelines/` (or `knowledge/` when the detail is how-it-works context).
 
 **Primary Target**: AI
 
@@ -141,7 +141,7 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 - A file in `.agents/rules/` carries a `paths:` glob in its frontmatter and is **auto-injected into every agent turn** that touches a matching file. It is paid for on every such turn, so it must stay lean.
 - `dev/guidelines/**` is the **full rulebook** — the same rules with tables, ✅/❌ examples, and enforcement scripts — loaded **on demand** when the relevant `AGENTS.md` router points an agent at it.
 
-So `.agents/rules/` is not "the rules" as opposed to the guidelines; it is the always-on *index* of the highest-value rules, each pointing to its fuller home in `dev/guidelines/`.
+So `.agents/rules/` is not "the rules" as opposed to the guidelines; it is the always-on *index* of the highest-value rules, each pointing to its fuller home in `dev/guidelines/` (or `dev/knowledge/` for how-it-works detail).
 
 **What earns a rule slot** (all three must hold — every rule costs tokens on every matching turn):
 
@@ -568,14 +568,15 @@ Maintain a single source of truth with symlinks for tool compatibility, since mo
 
 ```bash
 # Remove old directories if they exist
-rm -rf .claude/commands .claude/skills
+rm -rf .claude/commands .claude/skills .claude/rules
 
 # Create tool directories
 mkdir -p .claude
 
 # Create symlinks to canonical source
 ln -s ../.agents/commands .claude/commands
-
+ln -s ../.agents/skills .claude/skills
+ln -s ../.agents/rules .claude/rules
 ```
 
 ## Best Practices
