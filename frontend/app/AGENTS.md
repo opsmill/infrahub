@@ -19,6 +19,27 @@ cd frontend/app && pnpm biome:fix  # Format and lint
 cd frontend/app && pnpm codegen    # Generate GraphQL types
 ```
 
+## Before pushing (run the full CI gate locally)
+
+`pnpm biome:fix` alone is **not** the CI gate. The `frontend-lint` job runs three checks and
+`frontend-tests` runs the browser test suite. Run all of them before pushing — they each fail CI
+independently:
+
+```bash
+cd frontend/app && pnpm exec biome ci .   # format + lint (same as CI)
+cd frontend/app && pnpm knip              # unused exports/files/deps
+cd frontend/app && pnpm exec betterer ci  # TypeScript-regression gate (NOT plain tsc)
+cd frontend/app && pnpm test              # vitest (browser mode)
+```
+
+- **`betterer`** ratchets ~200 tracked pre-existing TS errors (`.betterer.results`); the count must
+  never grow. **After a rebase, or when moving/editing a file with tracked errors, refresh it**:
+  `pnpm betterer`, then commit `.betterer.results`. See `dev/guidelines/frontend/typescript.md`.
+- **Browser-test flakes**: tests run in real Chromium. A new npm dependency that Vite's initial scan
+  can't see (reached only via `React.lazy`/dynamic import) must be added to
+  `vitest.config.ts` → `optimizeDeps.include`, or CI fails with
+  `[vitest] Vite unexpectedly reloaded a test`.
+
 ## See Also
 
 ### Guidelines (How to write code)
