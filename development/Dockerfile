@@ -132,13 +132,17 @@ ENV PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0
 
 # Runtime-only OS packages: tini (init/entrypoint), git (repository sync), curl (healthcheck).
-# No build-essential/pkg-config/uv — those exist only in the builder stage.
+# No build-essential/pkg-config — the compiler toolchain exists only in the builder stage.
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install --no-install-recommends -y tini git curl ca-certificates && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/*
+
+# Ship the uv/uvx standalone binaries (not the compiler toolchain) so downstream images built
+# `FROM` this one can install extra Python packages into /.venv when extending Infrahub.
+COPY --from=base /root/.local/bin/uv /root/.local/bin/uvx /usr/local/bin/
 
 RUN mkdir /prom_shared /remote && \
     mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow
