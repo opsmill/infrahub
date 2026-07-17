@@ -21,7 +21,7 @@ Full detail: `dev/knowledge/frontend/entities-structure.md`.
 ## React Query
 
 - Build query keys from the entity's key factory (`{noun}.query-keys.ts` → `{noun}QueryKeys`); never hardcode a key array.
-- Cache invalidation lives inside the `useMutation` hook (`onSuccess`/`onSettled`), not at the call site.
+- Cache invalidation lives inside the `useMutation` hook (`onSuccess`/`onSettled`) by default. Call-site invalidation is allowed only when the key needs context the hook lacks — mark it with an `invalidation-at-callsite` comment (see `naming-conventions.md#mutation-invalidation`).
 - Do not set Apollo `fetchPolicy` at a call site — the default is `no-cache` and TanStack Query is the only server-state cache.
 
 See `dev/guidelines/frontend/naming-conventions.md` and `dev/knowledge/frontend/entities-structure.md`.

@@ -68,7 +68,9 @@ Do not use `*Response`, `*Output`, `*Outcome`, or `*Data` suffixes — `*Result`
 
 ## Hook Naming
 
-- A hook that reads or writes through the API takes a CRUD/verb prefix that **matches the operation**: `useGet…`, `useCreate…`, `useUpsert…`, `useDelete…`, `useMerge…`. Do not call an upsert `useUpdate…` — the verb should read the same as the domain function it wraps.
+Applies to **new** hooks — some legacy hooks (e.g. `useMenu`) predate this and are not worth churning.
+
+- A new hook that reads or writes through the API takes a CRUD/verb prefix that **matches the operation**: `useGet…`, `useCreate…`, `useUpsert…`, `useDelete…`, `useMerge…`. Do not call an upsert `useUpdate…` — the verb should read the same as the domain function it wraps.
 - A hook that answers a yes/no question reads as one: `useHasGlobalPermission`, `useCanEditX` — not `useGlobalPermission`.
 - Match the shape of the entity's existing hooks (`useGetBranches`, `useMergeBranch`); don't invent a parallel suffix.
 
