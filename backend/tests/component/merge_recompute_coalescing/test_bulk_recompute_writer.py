@@ -292,7 +292,7 @@ async def test_bulk_writer_reports_fields_cascaded_by_the_save(
     assert await reloaded.get_hfid(db=db) == ["override"]
 
 
-async def test_persist_and_chain_returns_without_writing_when_branch_is_gone(
+async def test_dispatch_returns_without_writing_when_branch_is_gone(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -313,7 +313,7 @@ async def test_persist_and_chain_returns_without_writing_when_branch_is_gone(
         db=db, event_service=event_recorder, workflow=workflow_recorder, schema_branch=schema_branch
     )
 
-    @flow(name="test-persist-and-chain-branch-gone")
+    @flow(name="test-dispatch-branch-gone")
     async def _run() -> None:
         await dispatcher.dispatch(
             writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="ignored")],
@@ -334,7 +334,7 @@ async def test_persist_and_chain_returns_without_writing_when_branch_is_gone(
     assert await reloaded.get_display_label(db=db) != "ignored"
 
 
-async def test_persist_and_chain_live_path_stamps_live_and_does_not_chain(
+async def test_dispatch_live_path_stamps_live_and_does_not_chain(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -355,7 +355,7 @@ async def test_persist_and_chain_live_path_stamps_live_and_does_not_chain(
         db=db, event_service=event_recorder, workflow=workflow_recorder, schema_branch=schema_branch
     )
 
-    @flow(name="test-persist-and-chain-live")
+    @flow(name="test-dispatch-live")
     async def _run() -> None:
         await dispatcher.dispatch(
             writes=[AttributeValueWrite(node_id=node.id, field=DISPLAY_LABEL_FIELD, value="live label")],
