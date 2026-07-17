@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -16,10 +17,12 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.proposed_change.constants import ProposedChangeState
 
+from .merge_locker import MERGE_LOCK_KEY
 from .write_blocker import MalformedMergeProtectionError
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+    from infrahub.services.adapters.cache import InfrahubCache
 
     from .failure_identifier import MergeFailureIdentifier
     from .write_blocker import MergeWriteBlocker
@@ -59,11 +62,13 @@ class MergeFailureRecoverer:
         merge_write_blocker: MergeWriteBlocker,
         identifier: MergeFailureIdentifier,
         default_branch: Branch,
+        cache: InfrahubCache,
     ) -> None:
         self.db = db
         self.merge_write_blocker = merge_write_blocker
         self.identifier = identifier
         self.default_branch = default_branch
+        self.cache = cache
 
     async def preview(self, *, force: bool = False, branch_name: str | None = None) -> RecoveryReport:
         """Report whether a failed merge can be recovered, making no changes.
@@ -138,6 +143,10 @@ class MergeFailureRecoverer:
                 merge_started_at=merge_started_at,
             )
 
+        # Release the global merge lock the dead worker never freed, if it exists
+        with contextlib.suppress(Exception):
+            await self._release_merge_lock()
+
         log.info(
             "merge.recovery.completed",
             branch=branch.name,
@@ -200,13 +209,16 @@ class MergeFailureRecoverer:
         return None
 
     async def _clear_orphaned_or_nothing(self) -> RecoveryReport:
-        """Clear the write-protection cache key only when the branch it names no longer exists.
+        """Clear a stale write-protection cache key when no merge still owns it.
 
-        Reached when no branch needs recovering. A cache key naming a branch that still exists is left
-        in place — that branch is either a healthy in-progress merge or one that was not auto-recovered.
-        Only a cache key whose branch was removed out-of-band, or a malformed one with no identifiable
-        branch, is orphaned and safe to drop. Transient cache errors are allowed to propagate so the
-        key is never dropped on an unreadable-but-present value.
+        Reached when no branch needs recovering. A cache key naming a branch that is still ``MERGING``
+        is left in place — that is a healthy in-progress merge, or an ambiguous absent-lock merge that
+        was not auto-recovered. A key is stale and safe to drop when its branch was removed out-of-band,
+        when it is malformed with no identifiable branch, or when the branch is already ``OPEN`` — the
+        latter happens when a prior recovery reopened the branch but the key delete then failed, so a
+        re-run finishes the cleanup instead of leaving writes blocked until the watcher reconciles.
+        Transient cache errors are allowed to propagate so the key is never dropped on an
+        unreadable-but-present value.
         """
         try:
             protection = await self.merge_write_blocker.get()
@@ -224,7 +236,10 @@ class MergeFailureRecoverer:
             )
 
         existing = await Branch.get_list(db=self.db, name=protection.branch)
-        if existing:
+        branch = existing[0] if existing else None
+        if branch is not None and branch.status == BranchStatus.MERGING:
+            # A live in-progress merge (or an ambiguous absent-lock merge not auto-recovered) still owns
+            # the key. A MERGE_FAILED branch would have been recovered before reaching here.
             return RecoveryReport(
                 outcome=RecoveryOutcome.NOTHING_TO_RECOVER, branch=None, proposed_change=None, merge_started_at=None
             )
@@ -262,6 +277,13 @@ class MergeFailureRecoverer:
         branch.status = BranchStatus.OPEN
         await branch.save(db=self.db)
         registry.branch[branch.name] = branch
+
+    async def _release_merge_lock(self) -> None:
+        """Release the global merge lock a dead merge worker left held by dropping its cache key.
+
+        A no-op when the lock is already unheld.
+        """
+        await self.cache.delete(key=MERGE_LOCK_KEY)
 
     async def _find_proposed_change(self, branch_name: str) -> CoreProposedChange | None:
         proposed_changes = await NodeManager.query(

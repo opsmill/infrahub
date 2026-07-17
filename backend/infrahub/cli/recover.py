@@ -123,6 +123,7 @@ async def recover_cmd(
             merge_write_blocker=merge_write_blocker,
             identifier=identifier,
             default_branch=default_branch,
+            cache=cache,
         )
 
         preview = await recoverer.preview(force=force, branch_name=branch)

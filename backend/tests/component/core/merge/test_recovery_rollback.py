@@ -175,6 +175,7 @@ class TestRecoveryRollback:
             merge_write_blocker=MergeWriteBlocker(cache=cache),
             identifier=self._build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
             default_branch=default_branch,
+            cache=cache,
         )
 
     async def _flag_merge_failed(
@@ -306,6 +307,7 @@ class TestRecoveryRollback:
             merge_write_blocker=blocker,
             identifier=self._build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
             default_branch=default_branch,
+            cache=cache,
         )
         first = await failing.recover()
 

@@ -98,6 +98,7 @@ class TestRecovery:
                 grace_period_seconds=grace_period_seconds,
             ),
             default_branch=default_branch,
+            cache=cache,
         )
 
     async def test_no_failure_reports_nothing_to_recover(
@@ -132,6 +133,32 @@ class TestRecovery:
         assert report.branch == "branch-removed-out-of-band"
         assert await blocker.get() is None
 
+    async def test_stale_marker_for_reopened_branch_is_cleared(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        cache: MemoryCache,
+        component: InfrahubComponent,
+    ) -> None:
+        # A prior recovery reopened the branch to OPEN but its cache-key delete then failed, leaving a
+        # stale MERGE_FAILED marker for a branch that is now OPEN. A re-run finishes the cleanup rather
+        # than leaving default-branch writes blocked until the watcher reconciles.
+        branch = Branch(
+            name="recovery-reopened-stale-marker",
+            status=BranchStatus.OPEN,
+            branched_from=Timestamp().to_string(),
+        )
+        await branch.save(db=db)
+        blocker = MergeWriteBlocker(cache=cache)
+        await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+
+        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        report = await recovery.recover()
+
+        assert report.outcome == RecoveryOutcome.ORPHANED_CLEARED
+        assert report.branch == branch.name
+        assert await blocker.get() is None
+
     async def test_stuck_merging_with_dead_lock_is_recovered(
         self,
         db: InfrahubDatabase,
@@ -163,6 +190,9 @@ class TestRecovery:
         reloaded = await Branch.get_by_name(db=db, name=branch.name)
         assert reloaded.status == BranchStatus.OPEN
         assert await blocker.get() is None
+        # The stale merge lock the dead worker held is released, so the next merge is not blocked until
+        # the deadlock-cleanup cron runs.
+        assert await cache.get(MERGE_LOCK_KEY) is None
 
     async def test_preview_is_read_only_then_recover_recovers(
         self,
@@ -287,6 +317,7 @@ class TestRecovery:
             merge_write_blocker=blocker,
             identifier=self._build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
             default_branch=default_branch,
+            cache=cache,
         )
 
         report = await recovery.recover()
