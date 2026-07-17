@@ -191,7 +191,7 @@ class TestConstraintDeterminer:
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
         assert len(constraints) >= len(constraint_info_set)
-        assert constraint_info_set < set(constraints)
+        assert constraint_info_set <= set(constraints)
 
     async def test_node_property_constraints_included(
         self,
@@ -244,7 +244,7 @@ class TestConstraintDeterminer:
 
         assert set(constraints) == constraint_info_set
 
-    async def test_generic_of_changed_kind_included(
+    async def test_uniqueness_not_triggered_by_unrelated_field(
         self,
         car_person_schema_generics_simple: SchemaRoot,
         default_branch: Branch,
@@ -254,11 +254,9 @@ class TestConstraintDeterminer:
         generic_schema.uniqueness_constraints = [["name__value"]]
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         node_diff = NodeDiffFieldSummary(kind="TestElectricCar", attribute_names={"nbr_engine"})
-        # a generic-level uniqueness check spans every implementing node, so a data change on an
-        # implementation must trigger the check on the generic (TestCar) as well as the implementation
+        # nbr_engine participates in no uniqueness path, so the uniqueness check must not be
+        # triggered on the implementation or on its generic; only the nbr_engine field constraints remain
         constraint_info_set = {
-            node_uniqueness_constraint("TestCar"),
-            node_uniqueness_constraint("TestElectricCar"),
             attribute_constraint("TestElectricCar", "nbr_engine", "kind"),
             attribute_constraint("TestElectricCar", "nbr_engine", "optional"),
             attribute_constraint("TestElectricCar", "nbr_engine", "unique"),
@@ -267,6 +265,51 @@ class TestConstraintDeterminer:
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
         assert set(constraints) == constraint_info_set
+
+    async def test_generic_uniqueness_triggered_by_inherited_field(
+        self,
+        car_person_schema_generics_simple: SchemaRoot,
+        default_branch: Branch,
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        generic_schema = schema_branch.get(name="TestCar", duplicate=False)
+        generic_schema.uniqueness_constraints = [["name__value"]]
+        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        # `name` is inherited from the generic; a generic-level uniqueness check spans every
+        # implementing node, so changing name on an implementation must trigger the check on the
+        # generic (TestCar) as well as on the implementation (TestElectricCar)
+        node_diff = NodeDiffFieldSummary(kind="TestElectricCar", attribute_names={"name"})
+
+        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+
+        expected = {
+            node_uniqueness_constraint("TestCar"),
+            node_uniqueness_constraint("TestElectricCar"),
+            attribute_constraint("TestElectricCar", "name", "kind"),
+            attribute_constraint("TestElectricCar", "name", "optional"),
+            attribute_constraint("TestElectricCar", "name", "unique"),
+        }
+        assert set(constraints) == expected
+
+    async def test_uniqueness_not_triggered_by_unrelated_peer_attribute(
+        self,
+        car_person_schema: SchemaBranch,
+        default_branch: Branch,
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        car_schema = schema_branch.get(name="TestCar", duplicate=False)
+        car_schema.uniqueness_constraints = [["owner__name", "color__value"]]
+        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        # TestCar's uniqueness constraints read TestPerson.name; a change to an unrelated
+        # TestPerson attribute, height, does not participate, so neither kind's uniqueness
+        # check should trigger
+        node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_names={"height"})
+
+        constraints = await determiner.get_constraints(node_diffs=[node_diff])
+
+        constraint_set = set(constraints)
+        assert node_uniqueness_constraint("TestCar") not in constraint_set
+        assert node_uniqueness_constraint("TestPerson") not in constraint_set
 
     async def test_kind_missing_from_schema_is_skipped(
         self,
@@ -325,19 +368,16 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         # A hierarchy edge change surfaces on both endpoints: the child (LocationRack) records its
-        # `parent` change and the parent (LocationSite) records its `children` change.
+        # `parent` change and the parent (LocationSite) records its `children` change. Each endpoint
+        # emits only the hierarchy constraint whose relationship actually changed there, and no
+        # uniqueness constraint since `name` (the only unique field) is not in the diff.
         node_diffs = [
             NodeDiffFieldSummary(kind="LocationRack", relationship_names={"parent"}),
             NodeDiffFieldSummary(kind="LocationSite", relationship_names={"children"}),
         ]
         expected = {
             node_constraint("LocationRack", "parent"),
-            node_constraint("LocationRack", "children"),
-            node_uniqueness_constraint("LocationRack"),
-            node_constraint("LocationSite", "parent"),
             node_constraint("LocationSite", "children"),
-            node_uniqueness_constraint("LocationSite"),
-            node_uniqueness_constraint("LocationGeneric"),
             *(relationship_constraint("LocationRack", "parent", p) for p in RELATIONSHIP_PROPERTIES),
             *(relationship_constraint("LocationSite", "children", p) for p in RELATIONSHIP_PROPERTIES),
         }
@@ -345,3 +385,21 @@ class TestConstraintDeterminer:
         constraints = await determiner.get_constraints(node_diffs=node_diffs)
 
         assert set(constraints) == expected
+
+    async def test_hierarchy_constraint_scoped_to_changed_relationship(
+        self,
+        hierarchical_location_schema_simple: SchemaRoot,
+        default_branch: Branch,
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        # Re-parenting a rack changes only its `parent` relationship, so only the parent hierarchy
+        # constraint may be emitted for that kind, never the children one.
+        node_diffs = [NodeDiffFieldSummary(kind="LocationSite", relationship_names={"parent"})]
+
+        constraints = await determiner.get_constraints(node_diffs=node_diffs)
+
+        constraint_set = set(constraints)
+        assert node_constraint("LocationSite", "parent") in constraint_set
+        assert node_constraint("LocationSite", "children") not in constraint_set
+        assert node_uniqueness_constraint("LocationSite") not in constraint_set

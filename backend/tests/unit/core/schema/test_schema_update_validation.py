@@ -57,3 +57,22 @@ async def test_relationship_identifier_update_is_not_supported() -> None:
     assert error.path.field_name == "gadgets"
     assert error.path.property_name == "identifier"
     assert result.migrations == []
+
+
+async def test_schema_diff_constraint_scoped_to_changed_attribute() -> None:
+    """A change to one attribute property emits only that attribute's constraint, not the kind's uniqueness constraint."""
+    schema = _build_schema()
+
+    candidate = schema.duplicate()
+    widget = candidate.get_node(name="TestWidget", duplicate=True)
+    widget.get_attribute(name="name").parameters.max_length = 20
+    candidate.set(name="TestWidget", schema=widget)
+
+    diff = schema.diff(other=candidate)
+    result = schema.validate_update(other=candidate, diff=diff)
+
+    constraint_names = {c.constraint_name for c in result.constraints}
+    assert constraint_names
+    assert "node.uniqueness_constraints.update" not in constraint_names
+    # every emitted constraint is scoped to the single changed element
+    assert all(c.path.schema_kind == "TestWidget" and c.path.field_name == "name" for c in result.constraints)
