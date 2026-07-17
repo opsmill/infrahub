@@ -14,6 +14,7 @@ import {
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import { useSortableFields } from "@/entities/nodes/sort/ui/hooks/use-sortable-fields";
 import { NODE_METADATA_SORT_OPTIONS } from "@/entities/nodes/sort/ui/sort-options";
+import { SortableAttributeMenuItem } from "@/entities/nodes/sort/ui/sortable-attribute-menu-item";
 import { SortableFieldMenuItem } from "@/entities/nodes/sort/ui/sortable-field-menu-item";
 import type {
   AttributeSchema,
@@ -22,22 +23,6 @@ import type {
 } from "@/entities/schema/domain/model/schema";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-
-interface SortableAttributeMenuItemProps {
-  attribute: AttributeSchema;
-  onSelect: (sort: Sort) => void;
-}
-
-function SortableAttributeMenuItem({ attribute, onSelect }: SortableAttributeMenuItemProps) {
-  return (
-    <SortableFieldMenuItem
-      field={buildAttributeSortField(attribute.name)}
-      icon={<FieldSchemaIcon fieldSchema={attribute} />}
-      label={attribute.label ?? attribute.name}
-      onSelect={onSelect}
-    />
-  );
-}
 
 interface SortableRelationshipMenuItemProps {
   relationship: RelationshipSchema;

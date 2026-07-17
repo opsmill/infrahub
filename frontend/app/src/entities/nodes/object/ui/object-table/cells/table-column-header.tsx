@@ -31,7 +31,7 @@ import {
   buildRelationshipSortField,
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
-import { SortableFieldMenuItem } from "@/entities/nodes/sort/ui/sortable-field-menu-item";
+import { SortableAttributeMenuItem } from "@/entities/nodes/sort/ui/sortable-attribute-menu-item";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -183,13 +183,11 @@ function SortableRelationshipColumnHeader({
                 );
 
                 return (
-                  <SortableFieldMenuItem
+                  <SortableAttributeMenuItem
                     key={attribute.name}
-                    field={field}
-                    icon={<FieldSchemaIcon fieldSchema={attribute} />}
-                    label={attribute.label ?? attribute.name}
+                    attribute={attribute}
                     activeDirection={activeSort?.field === field ? activeSort.direction : undefined}
-                    onSelect={selectSort}
+                    onSelect={(sort) => selectSort({ ...sort, field })}
                   />
                 );
               })}

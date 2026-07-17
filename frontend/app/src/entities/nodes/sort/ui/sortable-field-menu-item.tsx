@@ -2,6 +2,8 @@ import { Menu, MenuItem, Popover, SubmenuTrigger } from "@infrahub/ui";
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon } from "lucide-react";
 import type React from "react";
 
+import { Row } from "@/shared/components/container";
+
 import {
   SORT_DIRECTION,
   type Sort,
@@ -29,14 +31,16 @@ export function SortableFieldMenuItem({
   return (
     <SubmenuTrigger>
       <MenuItem textValue={label}>
-        {icon}
-        <span>{label}</span>
-        {activeDirection && (
-          <>
-            <CheckIcon className="ml-auto" />
-            <span className="sr-only">active sort field</span>
-          </>
-        )}
+        <Row>
+          {icon}
+          {label}
+          {activeDirection && (
+            <>
+              <CheckIcon className="ml-auto" />
+              <span className="sr-only">active sort field</span>
+            </>
+          )}
+        </Row>
       </MenuItem>
 
       <Popover>
