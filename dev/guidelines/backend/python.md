@@ -228,13 +228,13 @@ class MyQuery(Query):
 
 ### Type a closed value set as an enum, not `str`
 
-When a field or argument accepts only a fixed set of values, model it as an enum (subclass `str`/`StrEnum` when it must round-trip as text), never a bare `str`. A bare `str` lets a typo through silently and hides the valid set from readers and from the schema.
+When a field or argument accepts only a fixed set of values, model it as an enum, never a bare `str`. A bare `str` lets a typo through silently and hides the valid set from readers and from the schema. Subclass `str` so the value round-trips as text — `StrEnum` on the backend (Python 3.11+); use `class X(str, Enum)` for code shared with `python_testcontainers` (which targets 3.10).
 
 ```python
 # ❌ Bad - any string is accepted; a typo silently bypasses downstream logic
 origin: str | None = None
 
-# ✅ Good - invalid values are rejected at construction, the set is discoverable
+# ✅ Good - the valid set is discoverable and reusable; the owning model validates input
 class NodeMutationOrigin(StrEnum):
     LIVE = "live"
     MERGE = "merge"
@@ -243,7 +243,7 @@ class NodeMutationOrigin(StrEnum):
 origin: NodeMutationOrigin | None = None
 ```
 
-For a value exposed over GraphQL, reuse the existing Python-enum → GraphQL-enum conversion rather than re-declaring the values as strings in the GraphQL layer.
+The annotation alone does not reject a bad value at runtime — a validation layer enforces it (a Pydantic model, or an explicit `NodeMutationOrigin(value)` conversion at the boundary for plain dataclasses/adapters). For a value exposed over GraphQL, reuse the existing Python-enum → GraphQL-enum conversion rather than re-declaring the values as strings in the GraphQL layer.
 
 ### Do not narrow a type in an override (Liskov / `ty`)
 

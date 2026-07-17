@@ -301,7 +301,7 @@ When inspecting a subflow's terminal state, gate on `state.is_completed()`, not 
 
 ### Post-commit follow-up work is best-effort
 
-Work dispatched *after* an operation has already committed — the recompute and event-send follow-ups on the merge/rebase path, for example — must not be able to fail or roll back the committed operation. The contract is log-and-continue: catch per item, log the skipped item at exception level so a partial failure is greppable rather than silent, and carry on with the rest of the batch. A single failed dispatch never aborts the others. Guaranteeing eventual consistency after a transient dispatch failure is the job of a separate reconciliation/backfill job, not of the best-effort path — do not bolt retries onto it.
+Work dispatched *after* an operation has already committed — the recompute and event-send follow-ups after a merge, for example — must not be able to fail or roll back the committed operation. The contract to follow for such work is log-and-continue: catch per item, log the skipped item at exception level so a partial failure is greppable rather than silent, and carry on with the rest of the batch so one failed dispatch never aborts the others. Guaranteeing eventual consistency after a transient dispatch failure is the job of a separate reconciliation/backfill job, not of the best-effort path — do not bolt retries onto it. (Not every post-commit path enforces this yet — the merge recompute does per-item; verify before assuming a given caller isolates failures.)
 
 ## Recovery actions
 

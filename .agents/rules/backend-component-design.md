@@ -43,7 +43,7 @@ Each component should have one reason to change. If a class is doing two unrelat
 For new code, database access and (de)serialization do not belong on the model. A model is a plain data holder; give it no `save`/`get`/`get_list`/`from_db`/`to_db` methods. Instead:
 
 - Put read/write access behind a `Repository` class that takes `db` in its constructor and exposes intent-named methods (`get_for_owner`, `get_all`, `save`).
-- Put the Cypher and the row→model deserialization in a `Query` class (see `dev/knowledge/backend/query-pattern.md`), returning exactly the fields the model needs.
+- Put the Cypher and the row→typed-result deserialization in a `Query` class (see `dev/knowledge/backend/query-pattern.md`), returning a `*QueryResult` with exactly the fields the Repository needs; the Repository maps that result to the domain model. Don't return the model directly from `get_data()`.
 
 The older `StandardNode`/`Branch` shape — persistence methods and `from_db` on the model itself — is legacy. Do not copy it into new code; when you extend an existing model that follows it, prefer adding a Repository/Query rather than another method on the model.
 

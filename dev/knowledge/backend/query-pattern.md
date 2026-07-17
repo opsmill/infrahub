@@ -57,9 +57,9 @@ await query.execute(db=db)  # Execute when ready
 
 ## Reads must not write
 
-A query declares its `type` (`QueryType.READ` or `QueryType.WRITE`), and the database layer routes them differently: in a clustered deployment reads can land on any Neo4j server (a replica) while writes must land on the primary. A read path that also writes is therefore both misleading and mis-routed.
+Neo4j routing is selected by the **database session**, not by `QueryType`: `db.start_session(read_only=True)` opens a session with `READ_ACCESS` (which a clustered deployment can route to any replica), while a normal session uses `WRITE_ACCESS` (the primary). `QueryType.READ` / `QueryType.WRITE` drives Query execution behaviour and metrics, not server selection.
 
-This applies above the Query class too. A method named `get_*` (or any read-shaped accessor, at any layer) must never create or mutate as a side effect — e.g. a `get_global()` that lazily materialises a missing row. Return a "not set" sentinel or `None` and let the dedicated write path (a mutation, a `Repository.save`) be the only thing that creates. Reserve `QueryType.WRITE` for queries that genuinely change data.
+Because a read-shaped operation may run inside a read-only session, it must never write. This is a separate invariant that holds at every layer: a method named `get_*` (or any read-shaped accessor) must not create or mutate as a side effect — e.g. a `get_global()` that lazily materialises a missing row. Return a "not set" sentinel or `None`, and let the dedicated write path (a mutation, a `Repository.save`) be the only thing that creates.
 
 ## Core Patterns
 
