@@ -143,7 +143,7 @@ class ConstraintValidatorDeterminer:
                         schema=schema, field_name=schema_path.relationship_schema.name, is_relationship=True
                     ):
                         return True
-                    # check if an attribute on the peer changed 
+                    # check if an attribute on the peer changed
                     if (
                         schema_path.attribute_schema is not None
                         and schema_path.related_schema is not None
