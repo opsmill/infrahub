@@ -482,6 +482,7 @@ const sidebars: SidebarsConfig = {
             },
             // Managing API Tokens (PR 14)
             { type: 'doc', id: 'deploy-manage/user-management/managing-api-tokens', label: 'Managing API tokens' },
+            { type: 'doc', id: 'deploy-manage/user-management/managing-preferences', label: 'Managing preferences' },
           ],
         },
       ],

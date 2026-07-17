@@ -1,0 +1,141 @@
+---
+title: Managing preferences
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Managing preferences
+
+Preferences control how Infrahub renders dates and times in the web interface. Each user sets their own preferences, and administrators set organisation-wide defaults that apply to everyone who has not chosen their own.
+
+Two preferences are available today: **date format** and **timezone**.
+
+## How preferences resolve
+
+Infrahub resolves each preference field on its own, in this order:
+
+1. **Your value** — the value you set for yourself.
+2. **The organisation default** — the value an administrator set for everyone.
+3. **The browser default** — your browser's locale for date formatting, and your browser's timezone.
+
+Resolution is per field, so you can take the date format from your own value and the timezone from the organisation default at the same time. A field you never set falls through to the next layer; it is not stored until you set it.
+
+## Available preferences
+
+### Date format
+
+The date format is a semantic key, not a rendering pattern. Each preset renders both a date and a time. The web interface renders the following presets:
+
+| Key | Format | Example |
+|---|---|---|
+| `ISO_DATETIME` (default) | `yyyy-MM-dd HH:mm` | `2026-07-01 14:30` |
+| `ISO_DATETIME_SECONDS` | `yyyy-MM-dd HH:mm:ss` | `2026-07-01 14:30:00` |
+| `ISO_8601` | `yyyy-MM-dd'T'HH:mm:ssXXX` | `2026-07-01T14:30:00+02:00` |
+| `EU_DATETIME` | `dd/MM/yyyy HH:mm` | `01/07/2026 14:30` |
+| `US_12H` | `MM/dd/yyyy hh:mm a` | `07/01/2026 02:30 PM` |
+
+When you select a format, the interface shows a live example next to the field.
+
+### Timezone
+
+The timezone is an IANA name, such as `Europe/Paris` or `UTC`. The picker lists the timezones your browser supports. A field left unset uses your browser's own timezone.
+
+## Set your preferences
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the web interface" default>
+
+1. Open **Account settings** from the user menu in the left sidebar.
+2. On the **Profile** tab, find the **Preferences** card.
+3. Select a **Date format** and a **Timezone**.
+4. Click **Save**.
+
+A field you leave on **Automatic (inherited)** takes the organisation default, or your browser default when no organisation default is set. The information icon next to each field shows where the current value comes from.
+
+To clear an override and go back to the inherited value, re-select the value that is currently applied.
+
+  </TabItem>
+  <TabItem value="graphql" label="Via the GraphQL interface">
+
+Write your own preferences with `InfrahubSetPreferences` using `scope: USER`. The mutation only ever writes your own row — there is no account argument.
+
+```graphql
+mutation {
+  InfrahubSetPreferences(scope: USER, date_format: EU_DATETIME, timezone: "Europe/Paris") {
+    ok
+    date_format
+    timezone
+  }
+}
+```
+
+An omitted argument leaves that field unchanged. An explicit `null` clears the field, so it falls back to the organisation default or your browser default.
+
+Read your resolved values — the ones the interface renders with — with `InfrahubEffectivePreferences`. Each field returns its `value` and the `source` it resolved from (`USER`, `GLOBAL`, or `DEFAULT`).
+
+```graphql
+query {
+  InfrahubEffectivePreferences {
+    date_format {
+      value
+      source
+    }
+    timezone {
+      value
+      source
+    }
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Set organisation defaults
+
+Organisation defaults apply to every user who has not set their own value. Setting them requires the `manage_global_preferences` permission (super administrators have it implicitly). See the [permissions reference](../../reference/permissions.mdx) for the full list of permissions.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the web interface" default>
+
+1. Open **Account settings** from the user menu in the left sidebar.
+2. Open the **Global preferences** tab. The tab is visible only to users with the `manage_global_preferences` permission.
+3. Select a **Date format** and a **Timezone**.
+4. Click **Save**.
+
+A field left on **Automatic (browser default)** sets no organisation default for that field, so users without their own value fall back to their browser default.
+
+  </TabItem>
+  <TabItem value="graphql" label="Via the GraphQL interface">
+
+Write organisation defaults with `InfrahubSetPreferences` using `scope: GLOBAL`. The mutation enforces the `manage_global_preferences` permission before it writes.
+
+```graphql
+mutation {
+  InfrahubSetPreferences(scope: GLOBAL, date_format: ISO_DATETIME, timezone: "UTC") {
+    ok
+    date_format
+    timezone
+  }
+}
+```
+
+Read the raw organisation defaults with `InfrahubGlobalPreferences`. This query also requires the `manage_global_preferences` permission.
+
+```graphql
+query {
+  InfrahubGlobalPreferences {
+    date_format
+    timezone
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Best practices
+
+- **Set an organisation default for the timezone when your teams work in one region.** Everyone then reads timestamps in the same zone until they choose their own.
+- **Leave the date format on the default (`ISO_DATETIME`) unless your organisation has a house style.** The ISO presets sort and compare the same way in every locale.
+- **Preferences affect display only.** They change how the web interface renders timestamps; they never change the stored data. A timezone preference renders each timestamp in that zone without altering the underlying value.
