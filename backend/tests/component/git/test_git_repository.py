@@ -1,6 +1,5 @@
 import re
 import shutil
-from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -545,13 +544,6 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> 
 async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> None:
     syncer = RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter())
     await syncer.sync(repo, staging_branch=staging_branch)
-
-
-@pytest.fixture
-def mock_branch_all() -> Generator[AsyncMock]:
-    """Git sync queries all branches to skip merged/read-only ones; stub the SDK call with no such branches."""
-    with patch("infrahub_sdk.branch.InfrahubBranchManager.all", new_callable=AsyncMock, return_value={}) as mock:
-        yield mock
 
 
 async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
