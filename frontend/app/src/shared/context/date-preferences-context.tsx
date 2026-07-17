@@ -36,27 +36,24 @@ export function useFormatDate(): UseFormatDateResult {
   const pattern = resolved?.pattern ?? null;
   const timezone = resolved?.timezone ?? null;
 
-  const boundFormat = React.useCallback(
-    (date: DateInput, variant: DateVariant = "datetime"): string => {
-      if (variant === "relative") {
-        return formatRelativeTimeFromNow(date);
-      }
+  const boundFormat = (date: DateInput, variant: DateVariant = "datetime"): string => {
+    if (variant === "relative") {
+      return formatRelativeTimeFromNow(date);
+    }
 
-      if (!pattern) {
-        return formatWithLocale(date, variant, timezone);
-      }
+    if (!pattern) {
+      return formatWithLocale(date, variant, timezone);
+    }
 
-      if (variant === "date") {
-        const datePattern = dateOnlyPattern(pattern);
-        return datePattern
-          ? formatDate(date, { pattern: datePattern, timezone })
-          : formatWithLocale(date, "date", timezone);
-      }
+    if (variant === "date") {
+      const datePattern = dateOnlyPattern(pattern);
+      return datePattern
+        ? formatDate(date, { pattern: datePattern, timezone })
+        : formatWithLocale(date, "date", timezone);
+    }
 
-      return formatDate(date, { pattern, timezone });
-    },
-    [pattern, timezone]
-  );
+    return formatDate(date, { pattern, timezone });
+  };
 
   return { formatDate: boundFormat, pattern, timezone };
 }

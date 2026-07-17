@@ -8,9 +8,11 @@ and never a hardcoded pattern.
 
 - **Rendering JSX → `<DateDisplay date={…} />`** (`shared/components/display/date-display.tsx`).
   - Default: relative "x ago" for recent dates, a compact date otherwise; the **tooltip** shows the
-    user's full preferred datetime + timezone.
-  - `variant="datetime"`: render the user's full preferred datetime + timezone inline (use for a
-    site that shows a full timestamp).
+    user's full preferred datetime, rendered in their preferred timezone.
+  - `variant="datetime"`: render the user's full preferred datetime inline, in their preferred
+    timezone (use for a site that shows a full timestamp).
+  - The value renders *in* the preferred timezone, but an offset/label only shows when the chosen
+    `date_format` preset includes one (e.g. `ISO_8601`); other presets render a bare datetime.
   - `dateFormat="<date-fns pattern>"`: explicit escape hatch — pins a specific pattern, bypassing the
     preference. Use only when a format genuinely must not follow the user's preference (rare).
 - **Need a date *string* in code → `useFormatDate()`** (`shared/context/date-preferences-context.tsx`):
