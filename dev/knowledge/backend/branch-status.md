@@ -78,7 +78,7 @@ Some mutations need explicit status checks beyond the middleware for richer erro
 | File | Mutation | Check |
 |------|----------|-------|
 | `graphql/mutations/branch.py` | `BranchMerge` | Rejects `MERGED` source; rejects new merges/rebases while any merge is in progress |
-| `graphql/mutations/branch.py` | `BranchDelete` | Rejects deleting the branch currently being merged |
+| `graphql/mutations/branch.py` | `BranchDelete` | Rejects deleting a `MERGE_FAILED` branch until recovery, enforced against the branch's durable status in the database so it holds regardless of which branch the request targets and even after the volatile write-protection cache key has been dropped; also rejects deleting the branch currently being merged |
 | `graphql/mutations/proposed_change.py` | `ProposedChangeCreate` | Rejects `MERGED` source branch |
 
 ### 3. REST API Endpoints
