@@ -20,7 +20,7 @@ title: Schema events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | How this event was produced: live (the default), or replayed by a merge or rebase. |
+| **meta.origin** | How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write. |
 | **branch_name** | The name of the branch |
 | **schema_hash** | Schema hash after the update |
 | **changed_elements** | The schema elements changed by the update, when available |

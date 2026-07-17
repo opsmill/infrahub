@@ -10,6 +10,8 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind, MutationAction
+from infrahub.core.recompute.bulk_write import AttributeValueWrite
+from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
@@ -275,47 +277,6 @@ async def trigger_update_python_computed_attributes(
 
 
 @flow(
-    name="computed-attribute-jinja2-update-value",
-    flow_run_name="Update value for computed attribute {node_kind}:{attribute_name}",
-)
-async def computed_attribute_jinja2_update_value(
-    branch_name: str,
-    obj: ComputedAttrJinja2GraphQLResponse,
-    node_kind: str,
-    attribute_name: str,
-    template: InfrahubJinja2Template,
-    context: EventContext,
-) -> None:
-    log = get_run_logger()
-    client = get_client()
-
-    await add_tags(branches=[branch_name], nodes=[obj.node_id], db_change=True)
-
-    value = await template.render(variables=obj.variables)
-    if value == obj.computed_attribute_value:
-        log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
-        return
-
-    try:
-        await client.execute_graphql(
-            query=UPDATE_ATTRIBUTE,
-            variables={
-                "id": obj.node_id,
-                "kind": node_kind,
-                "attribute": attribute_name,
-                "value": value,
-                "context_account_id": context.account_id,
-            },
-            branch_name=branch_name,
-        )
-        log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
-    except URLNotFoundError:
-        log.warning(
-            f"Update of computed attribute {node_kind}.{attribute_name} failed for branch {branch_name} (not found)"
-        )
-
-
-@flow(
     name="computed_attribute_process_jinja2",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
@@ -328,6 +289,7 @@ async def process_jinja2(
     object_id: str | None = None,
     updated_fields: list[str] | None = None,
     object_ids: list[str] | None = None,
+    recompute_depth: int = 0,
 ) -> None:
     """Recompute a single Jinja2 computed attribute in response to a node mutation.
 
@@ -356,6 +318,7 @@ async def process_jinja2(
         for resolved in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
         if resolved.target.kind == computed_attribute_kind and resolved.target.attribute.name == computed_attribute_name
     ]
+    writes: list[AttributeValueWrite] = []
     for resolved in resolved_targets:
         found: list[ComputedAttrJinja2GraphQLResponse] = []
         template_string = "n/a"
@@ -385,19 +348,19 @@ async def process_jinja2(
         if not found:
             log.debug("No nodes found that requires updates")
 
-        batch = await client.create_batch()
         for node in found:
-            batch.add(
-                task=computed_attribute_jinja2_update_value,
-                branch_name=branch_name,
-                obj=node,
-                node_kind=node_schema.kind,
-                attribute_name=attribute.name,
-                template=jinja_template,
-                context=context,
-            )
+            value = await jinja_template.render(variables=node.variables)
+            if value != node.computed_attribute_value:
+                writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
-        _ = [response async for _, response in batch.execute()]
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    await dispatcher.dispatch(
+        writes=writes,
+        branch_name=branch_name,
+        context=context,
+        coalesced=object_ids is not None,
+        recompute_depth=recompute_depth,
+    )
 
 
 @flow(

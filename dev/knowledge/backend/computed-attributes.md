@@ -1,12 +1,12 @@
 # Computed Attributes
 
-> Part of: `dev/knowledge/backend/` | Related: [display-labels-and-hfid.md](display-labels-and-hfid.md), [mutations.md](mutations.md)
+> Part of: `dev/knowledge/backend/` | Related: [display-labels-and-hfid.md](display-labels-and-hfid.md), [mutations.md](mutations.md), [merge-recompute.md](merge-recompute.md)
 
 Computed attributes are schema-defined attributes whose values Infrahub derives instead of a user setting them. There are two kinds: **Jinja2** attributes rendered from a template, and **Python transform** attributes whose value comes from running a Python transformation. The Jinja2 sections come first; Python transform computed attributes have their own section below.
 
 ## Jinja2 Evaluation Paths
 
-There are three distinct paths for evaluating computed attributes, depending on when and where the triggering change occurs.
+There are four distinct paths for evaluating computed attributes, depending on when and where the triggering change occurs.
 
 ### 1. Creation — Inline via `_process_macros()`
 
@@ -34,6 +34,12 @@ This path eliminates background task overhead for local changes and provides imm
 **When**: A peer node's attribute changes, affecting a computed attribute on a different node (e.g., changing a device's `role.name` triggers recomputation of the device's `label` which references `{{ role__name__value }}`).
 
 These changes are handled by Prefect background tasks triggered by `NodeCreatedEvent` / attribute change events. The async path uses `ComputedAttrJinja2TriggerDefinition` to match events to affected computed attributes.
+
+### 4. Merge / Rebase — Coalesced via a bulk recompute
+
+**When**: A branch merge or rebase changes nodes that feed computed attributes.
+
+A merge or rebase does not emit one event and one flow per changed node. It runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. The three families (computed attributes, display labels, human-friendly ids) share this path, and the per-node triggers are suppressed for merge/rebase/recompute-origin events so the change is processed once. See [merge-recompute.md](merge-recompute.md).
 
 ## Self-Targeting Filter (`targets_self`)
 
@@ -84,6 +90,7 @@ Key methods:
 | Node creation (cross-node optional attrs) | Async | Prefect task | Optional cross-node computed attrs (via `NodeCreatedEvent`) |
 | Local attribute/relationship change | Inline | `_recompute_local_jinja2()` | Self-targeting computed attrs |
 | Remote peer attribute change | Async | Prefect task | Cross-node computed attrs |
+| Branch merge or rebase | Coalesced | `CoalescedRecomputeBuilder` + `BulkRecomputeWriter` | Affected computed attrs across the whole change set |
 
 ## Python Transform Computed Attributes
 
@@ -141,3 +148,4 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has a data-pa
 - [Testing](testing.md) — integration_docker test patterns for computed attributes
 - [Mutations](mutations.md) — where `_recompute_local_jinja2()` fits in the update flow
 - [Display Labels & HFID](display-labels-and-hfid.md) — parallel `_collect_extra_filters()` pattern
+- [Merge/Rebase Recompute](merge-recompute.md) — the coalesced recompute path for merges and rebases

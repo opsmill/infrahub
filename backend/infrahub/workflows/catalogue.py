@@ -334,29 +334,11 @@ COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
     default_priority=WorkflowPriority.LOW,
 )
 
-COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
-    name="computed-attribute-jinja2-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.computed_attribute.tasks",
-    function="computed_attribute_jinja2_update_value",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-    default_priority=WorkflowPriority.LOW,
-)
-
 DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
     name="display-label-process-jinja2",
     type=WorkflowType.CORE,
     module="infrahub.display_labels.tasks",
     function="process_display_label",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-    default_priority=WorkflowPriority.LOW,
-)
-
-DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
-    name="display-label-jinja2-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.display_labels.tasks",
-    function="display_label_jinja2_update_value",
     tags=[WorkflowTag.DATABASE_CHANGE],
     default_priority=WorkflowPriority.LOW,
 )
@@ -378,15 +360,6 @@ HFID_SETUP = WorkflowDefinition(
     default_priority=WorkflowPriority.LOW,
 )
 
-
-HFID_UPDATE_VALUE = WorkflowDefinition(
-    name="hfid-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.hfid.tasks",
-    function="hfid_update_value",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-    default_priority=WorkflowPriority.LOW,
-)
 
 TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
     name="trigger-update-display-labels",
@@ -719,7 +692,6 @@ WORKFLOWS = [
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     CLEAN_UP_DEADLOCKS,
-    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM_LIFECYCLE,
@@ -731,7 +703,6 @@ WORKFLOWS = [
     DIFF_UPDATE,
     DISPLAY_LABELS_PROCESS_JINJA2,
     DISPLAY_LABELS_SETUP_JINJA2,
-    DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
@@ -751,7 +722,6 @@ WORKFLOWS = [
     GRAPHQL_QUERY_GROUP_UPDATE,
     HFID_PROCESS,
     HFID_SETUP,
-    HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
     MERGE_WATCHER,
     PROFILE_REFRESH,
