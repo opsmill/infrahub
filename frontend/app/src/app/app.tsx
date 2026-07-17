@@ -17,7 +17,6 @@ import { store } from "@/shared/stores";
 
 import { AuthProvider } from "@/entities/authentication/ui/auth-provider";
 import { ConfigProvider } from "@/entities/config/ui/config-provider";
-import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
 
 import "@/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
@@ -33,9 +32,7 @@ export function App() {
             <ApolloProvider client={graphqlClient}>
               <AuthProvider>
                 <ConfigProvider>
-                  <DatePreferencesProvider>
-                    <RouterProvider router={router} />
-                  </DatePreferencesProvider>
+                  <RouterProvider router={router} />
                 </ConfigProvider>
               </AuthProvider>
             </ApolloProvider>
