@@ -23,8 +23,7 @@ def map_subscriber_ids_by_member(
     subscriber_by_member: dict[str, str] = {}
     for subscriber in existing_subscribers:
         try:
-            # Resolve through the peer rather than subscriber.object.id: for some subscriber kinds the
-            # member id is only reachable through the client store, where subscriber.object.id stays None.
+            # The member id lives on the object peer; subscriber.object.id is None for some kinds.
             member_id = subscriber.object.peer.id
         except (ValueError, NodeNotFoundError):
             log.warning(
