@@ -11,6 +11,9 @@ from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.events.schema_action import ChangedElementsPayload  # noqa: TC001  used in dataclass field
 from infrahub.server import app
 from infrahub.workers.dependencies import build_workflow
@@ -26,6 +29,58 @@ if TYPE_CHECKING:
     from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
     from infrahub.workflows.models import WorkflowDefinition
+
+
+# Two Python computed attributes on TestCar, each fed by its own transform (transform01 and
+# transform_opaque), with a Person peer.
+CAR_PERSON_PYTHON_SCHEMA = SchemaRoot(
+    nodes=[
+        NodeSchema(
+            name="Car",
+            namespace="Test",
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="nbr_seats", kind="Number", optional=True),
+                AttributeSchema(
+                    name="computed_desc_python",
+                    kind="Text",
+                    read_only=True,
+                    optional=True,
+                    computed_attribute=ComputedAttribute(
+                        kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                        transform="transform01",
+                    ),
+                ),
+                AttributeSchema(
+                    name="computed_desc_python_opaque",
+                    kind="Text",
+                    read_only=True,
+                    optional=True,
+                    computed_attribute=ComputedAttribute(
+                        kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                        transform="transform_opaque",
+                    ),
+                ),
+            ],
+            relationships=[
+                RelationshipSchema(
+                    name="owner",
+                    peer="TestPerson",
+                    optional=False,
+                    cardinality=RelationshipCardinality.ONE,
+                ),
+            ],
+        ),
+        NodeSchema(
+            name="Person",
+            namespace="Test",
+            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            relationships=[
+                RelationshipSchema(name="cars", peer="TestCar", cardinality=RelationshipCardinality.MANY),
+            ],
+        ),
+    ]
+)
 
 
 @dataclass
