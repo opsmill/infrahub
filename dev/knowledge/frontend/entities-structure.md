@@ -285,6 +285,21 @@ const { data } = useGetObject({ objectId, objectSchema: schema });
 
 Do not write a one-off `resolveUuid` function.
 
+### api-layer `graphqlClient` call conventions
+
+Two defaults of the shared `graphqlClient` are easy to override by mistake in `api/*-from-api.ts` files:
+
+- **Don't pass `fetchPolicy`.** The client already defaults to `no-cache` (TanStack Query owns caching, not Apollo). Passing `fetchPolicy: "no-cache"` is redundant — omit it.
+- **Mutations already surface their own error toast.** The client's error link shows a toast for a failed request. If the caller *also* renders one (e.g. in a `useMutation` `onError`), the user sees two. To let the caller own the toast, suppress the client's with the mutation `context`:
+
+  ```ts
+  graphqlClient.mutate({
+    mutation,
+    variables,
+    context: { processErrorMessage: () => {} }, // caller renders the toast; don't double up
+  });
+  ```
+
 ## Backend is authoritative
 
 If the server defaults, filters, sorts, or hides something, the client must not maintain a parallel constant. Examples:

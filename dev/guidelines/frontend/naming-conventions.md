@@ -69,6 +69,21 @@ export type GetDiffSummaryResponse = { /* ... */ };
 
 Do not use `*Response`, `*Output`, `*Outcome`, or `*Data` suffixes — `*Result` is the only sanctioned name.
 
+## Hook Names
+
+Hooks that fetch or mutate through the API carry a CRUD verb, so a reader sees the operation at the call site and `grep` finds it by verb:
+
+```ts
+// ✅ Good
+useGetEffectivePreferences();
+useUpsertUserPreferences();
+
+// ❌ Bad — no verb; reads like a value, not a call
+useEffectivePreferences();
+```
+
+Match the verb to the operation (`useGet…`, `useCreate…`, `useUpdate…`, `useUpsert…`, `useDelete…`) and keep it consistent with the underlying `domain/use-cases/{verb-noun}.ts` function.
+
 ## Query Keys
 
 Build query keys from a single object, not positional spreads. Object-shaped keys are easier to read in devtools, easier to invalidate by partial match, and easier to diff.
