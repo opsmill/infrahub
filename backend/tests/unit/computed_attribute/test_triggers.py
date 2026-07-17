@@ -4,7 +4,6 @@ import json
 
 from jinja2 import ChainableUndefined, Environment
 
-from infrahub.computed_attribute import triggers
 from infrahub.computed_attribute.triggers import (
     TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA,
     TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_CREATED,
@@ -106,10 +105,6 @@ def test_lifecycle_triggers_run_the_lifecycle_flow() -> None:
         action = definition.actions[0]
         assert isinstance(action, ExecuteWorkflow)
         assert action.workflow == COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM_LIFECYCLE
-
-
-def test_commit_trigger_is_removed() -> None:
-    assert not hasattr(triggers, "TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT")
 
 
 def test_lifecycle_triggers_registered_and_commit_trigger_gone() -> None:

@@ -35,9 +35,7 @@ class TestSelectiveRecompute(FingerprintImportTestBase):
     ) -> None:
         """A real import that changes a transform's fingerprint emits the node event the trigger matches.
 
-        The update trigger keys on a node.updated event whose primary node is the transform and whose
-        related resources carry a fingerprint attribute update. This proves the import produces exactly
-        that event, tagged as a live edit.
+        The event is node.updated on the transform, with a fingerprint attribute update and live origin.
         """
         transform = await client.get(kind=CoreTransformPython, name__value="CarSpecMarkdown")
         transform_id = transform.id

@@ -6,16 +6,16 @@ import pytest
 from prefect.client.orchestration import get_client as get_prefect_client
 
 from infrahub.computed_attribute.tasks import process_transform_lifecycle
-from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality
+from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import gather_all_automations
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
-from tests.component.computed_attribute._base import ScopedRecomputeTestBase
+from tests.component.computed_attribute._base import CAR_PERSON_PYTHON_SCHEMA, ScopedRecomputeTestBase
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -27,70 +27,8 @@ if TYPE_CHECKING:
     from tests.adapters.workflow import WorkflowRecorder
 
 
-# Two independent Python transforms, each feeding a different computed attribute, plus a third
-# transform that feeds nothing. ``computed_a``/``computed_b`` wire their transform by name.
-# ``computed_by_id`` wires its transform by the transform's UUID (set once the node exists), so
-# the resolver's id fallback is exercised end to end.
-CAR_PERSON_LIFECYCLE_SCHEMA = SchemaRoot(
-    nodes=[
-        NodeSchema(
-            name="Car",
-            namespace="Test",
-            attributes=[
-                AttributeSchema(name="name", kind="Text", unique=True),
-                AttributeSchema(name="nbr_seats", kind="Number", optional=True),
-                AttributeSchema(
-                    name="computed_a",
-                    kind="Text",
-                    read_only=True,
-                    optional=True,
-                    computed_attribute=ComputedAttribute(
-                        kind=ComputedAttributeKind.TRANSFORM_PYTHON,
-                        transform="transform_a",
-                    ),
-                ),
-                AttributeSchema(
-                    name="computed_b",
-                    kind="Text",
-                    read_only=True,
-                    optional=True,
-                    computed_attribute=ComputedAttribute(
-                        kind=ComputedAttributeKind.TRANSFORM_PYTHON,
-                        transform="transform_b",
-                    ),
-                ),
-            ],
-            relationships=[
-                RelationshipSchema(
-                    name="owner",
-                    peer="TestPerson",
-                    optional=False,
-                    cardinality=RelationshipCardinality.ONE,
-                ),
-            ],
-        ),
-        NodeSchema(
-            name="Person",
-            namespace="Test",
-            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-            relationships=[
-                RelationshipSchema(name="cars", peer="TestCar", cardinality=RelationshipCardinality.MANY),
-            ],
-        ),
-    ]
-)
-
-
-async def _make_transform(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    name: str,
-    repository: Node,
-) -> Node:
-    """Create a query and a Python transform reading TestCar.name.
-
-    The edges/node structure is what the analyzer needs to record the field as a read.
-    """
+async def _make_transform(db: InfrahubDatabase, name: str, repository: Node) -> Node:
+    """Create a query and a Python transform for the given name."""
     query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
     await query.new(
         db=db,
@@ -123,22 +61,16 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
         await repository.new(db=db, name="repo01", ref=default_branch.name, commit="commit01", location="location01")
         await repository.save(db=db)
 
-        transform_a = await _make_transform(
-            db=db, default_branch=default_branch, name="transform_a", repository=repository
-        )
-        transform_b = await _make_transform(
-            db=db, default_branch=default_branch, name="transform_b", repository=repository
-        )
-        # Feeds no computed attribute: it is the scoping-floor transform.
-        transform_orphan = await _make_transform(
-            db=db, default_branch=default_branch, name="transform_orphan", repository=repository
-        )
-        # Wired into ``computed_by_id`` by its UUID once the node exists.
-        transform_by_id = await _make_transform(
-            db=db, default_branch=default_branch, name="transform_by_id", repository=repository
-        )
+        # transform01 and transform_opaque are wired by name in the shared schema; query content
+        # does not matter here since the lifecycle flow recomputes every attribute they feed.
+        transform01 = await _make_transform(db=db, name="transform01", repository=repository)
+        transform_opaque = await _make_transform(db=db, name="transform_opaque", repository=repository)
+        # Feeds no computed attribute.
+        transform_orphan = await _make_transform(db=db, name="transform_orphan", repository=repository)
+        # Wired into computed_by_id by its UUID, exercising the resolver's id path.
+        transform_by_id = await _make_transform(db=db, name="transform_by_id", repository=repository)
 
-        schema = CAR_PERSON_LIFECYCLE_SCHEMA.duplicate()
+        schema = CAR_PERSON_PYTHON_SCHEMA.duplicate()
         car = next(node for node in schema.nodes if node.name == "Car")
         car.attributes.append(
             AttributeSchema(
@@ -155,8 +87,8 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
         await load_schema(db=db, schema=schema, update_db=True)
 
         return {
-            "transform_a": transform_a.id,
-            "transform_b": transform_b.id,
+            "transform01": transform01.id,
+            "transform_opaque": transform_opaque.id,
             "transform_orphan": transform_orphan.id,
             "transform_by_id": transform_by_id.id,
         }
@@ -170,12 +102,12 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
     ) -> None:
         await process_transform_lifecycle(
             branch_name=default_branch.name,
-            transform_id=transform_dataset["transform_a"],
+            transform_id=transform_dataset["transform01"],
             action=MutationAction.UPDATED.value,
             context=self._context(admin_account, default_branch),
         )
 
-        assert self._submitted_attribute_names(workflow_recorder) == {"computed_a"}
+        assert self._submitted_attribute_names(workflow_recorder) == {"computed_desc_python"}
 
     async def test_update_of_transform_feeding_nothing_submits_no_recompute(
         self,
@@ -184,9 +116,7 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        # The other half of "an unrelated change produces no recompute" is the update trigger's
-        # match filter (fingerprint-only); that is covered by the trigger-match unit test in
-        # test_triggers.py. Here the resolver returns empty, so nothing is submitted.
+        # The transform feeds nothing, so the resolver returns empty and nothing is submitted.
         await process_transform_lifecycle(
             branch_name=default_branch.name,
             transform_id=transform_dataset["transform_orphan"],
@@ -221,12 +151,12 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
     ) -> None:
         await process_transform_lifecycle(
             branch_name=default_branch.name,
-            transform_id=transform_dataset["transform_b"],
+            transform_id=transform_dataset["transform_opaque"],
             action=MutationAction.CREATED.value,
             context=self._context(admin_account, default_branch),
         )
 
-        assert self._submitted_attribute_names(workflow_recorder) == {"computed_b"}
+        assert self._submitted_attribute_names(workflow_recorder) == {"computed_desc_python_opaque"}
 
     async def _python_automation_names(self) -> set[str]:
         async with get_prefect_client(sync_client=False) as prefect_client:
@@ -262,35 +192,31 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        # Automation names are ``computed_attr_python::<branch>::<kind>_<attribute>``, one per
-        # (transform -> attribute) wiring the gather resolves from the schema and the transform nodes.
+        # Automation names are ``computed_attr_python::<branch>::TestCar_<attribute>``.
         def automation(attribute: str) -> str:
             return f"{TriggerType.COMPUTED_ATTR_PYTHON.value}{NAME_SEPARATOR}{default_branch.name}{NAME_SEPARATOR}TestCar_{attribute}"
 
-        automation_a = automation("computed_a")
-        automation_b = automation("computed_b")
-        # ``computed_a`` and ``computed_b`` wire their transform by name, so the gather (which looks
-        # transforms up by name) resolves both. ``computed_by_id`` wires its transform by UUID, which
-        # the name lookup never finds, and ``transform_orphan`` feeds nothing; neither yields an
-        # automation. So the full node-input set is exactly A and B.
-        automations_full = {automation_a, automation_b}
+        automation_desc = automation("computed_desc_python")
+        automation_opaque = automation("computed_desc_python_opaque")
+        # Both attributes wire their transform by name, so the gather resolves an automation for
+        # each; computed_by_id (by UUID) and the orphan yield none, so the full set is just these two.
+        automations_full = {automation_desc, automation_opaque}
 
-        # Reconcile once with the full wiring so every automation exists to begin with; without this
-        # baseline the assertion that A is dropped could pass on a set that never had A.
+        # Reconcile once so both automations exist before asserting one gets dropped.
         await process_transform_lifecycle(
             branch_name=default_branch.name,
-            transform_id=transform_dataset["transform_b"],
+            transform_id=transform_dataset["transform_opaque"],
             action=MutationAction.UPDATED.value,
             context=self._context(admin_account, default_branch),
         )
         automations_before = await self._python_automation_names()
         assert automations_before == automations_full
 
-        # Remove transform A's wiring the way a real transform delete does: drop the node and the
-        # computed-attribute definition that referenced it, so the gathered set no longer yields A.
-        schema = CAR_PERSON_LIFECYCLE_SCHEMA.duplicate()
+        # Remove the wiring the way a real delete does: drop the attribute definition and the node,
+        # so the gathered set no longer yields it.
+        schema = CAR_PERSON_PYTHON_SCHEMA.duplicate()
         car = next(node for node in schema.nodes if node.name == "Car")
-        car.attributes = [attribute for attribute in car.attributes if attribute.name != "computed_a"]
+        car.attributes = [attribute for attribute in car.attributes if attribute.name != "computed_desc_python"]
         car.attributes.append(
             AttributeSchema(
                 name="computed_by_id",
@@ -305,23 +231,25 @@ class TestTransformLifecycleRecompute(ScopedRecomputeTestBase):
         )
         await load_schema(db=db, schema=schema, update_db=True)
 
-        transform_a = await NodeManager.get_one(id=transform_dataset["transform_a"], db=db, branch=default_branch)
-        assert transform_a is not None
-        await transform_a.delete(db=db)
+        transform_to_delete = await NodeManager.get_one(
+            id=transform_dataset["transform01"], db=db, branch=default_branch
+        )
+        assert transform_to_delete is not None
+        await transform_to_delete.delete(db=db)
 
         workflow_recorder.execute_calls.clear()
         workflow_recorder.submit_calls.clear()
 
         await process_transform_lifecycle(
             branch_name=default_branch.name,
-            transform_id=transform_dataset["transform_a"],
+            transform_id=transform_dataset["transform01"],
             action=MutationAction.DELETED.value,
             context=self._context(admin_account, default_branch),
         )
 
-        # The delete leg never recomputes; the whole point is that reconciliation prunes A.
+        # The delete leg never recomputes; reconciliation prunes the wiring instead.
         assert self._submitted_attribute_names(workflow_recorder) == set()
 
-        # Only A's automation is gone; the exact remaining set is B alone.
+        # Only the deleted transform's automation is gone.
         automations_after = await self._python_automation_names()
-        assert automations_after == {automation_b}
+        assert automations_after == {automation_opaque}

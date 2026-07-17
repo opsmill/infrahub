@@ -59,12 +59,8 @@ def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
 async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase) -> None:
     """Reconcile the node-input (data-path) automations against the current schema.
 
-    These automations recompute an attribute when a node feeding its transform's query
-    changes. Both trigger types share one gather (which builds both lists at once) and are
-    applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an
-    automation another run just created by applying a stale desired set. Reconciling drops the
-    automations of transforms that no longer exist and builds those of transforms that just
-    appeared.
+    One gather builds both trigger lists and they are applied under a single trigger-registry
+    lock, so a concurrent reconcile cannot delete an automation another run just created.
     """
     log = get_run_logger()
     async with lock.registry.get(
@@ -640,10 +636,8 @@ async def process_transform_lifecycle(
 ) -> None:
     """React to a Python transform's own lifecycle event.
 
-    A create or a fingerprint change recomputes only the attributes that transform feeds,
-    across every node of each attribute's kind. Every event also reconciles the node-input
-    automations so a transform-only import never leaves them unbuilt and a delete drops the
-    gone transform's automation.
+    A create or fingerprint change recomputes the attributes it feeds; every event also
+    reconciles the node-input automations, so a delete drops the gone transform's automation.
     """
     log = get_run_logger()
     await add_tags(branches=[branch_name], nodes=[transform_id])

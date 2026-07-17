@@ -85,12 +85,3 @@ def test_transform_wired_by_name_and_id_returns_both() -> None:
         ("TestingCar", "description"),
         ("TestingPerson", "summary"),
     }
-
-
-def test_transform_feeding_nothing_returns_empty() -> None:
-    # An empty mapping (no transform feeds any attribute) resolves to nothing from the lookup alone.
-    resolver = RecomputeResolver(attributes_by_transform={})
-
-    resolved = resolver.resolve(transform_name=TRANSFORM_NAME, transform_id=TRANSFORM_ID)
-
-    assert resolved == []

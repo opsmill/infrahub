@@ -11,19 +11,15 @@ if TYPE_CHECKING:
 class RecomputeResolver:
     """Resolve a Python transform to the computed attributes it feeds.
 
-    A computed attribute wires its transform by either a name or a UUID, and the
-    lookup mapping is keyed by that raw value, so the resolution checks both. A
-    transform that feeds nothing resolves to an empty list from the mapping lookup
-    alone, without touching the database or the client.
+    A computed attribute wires its transform by name or UUID, so both keys are checked.
     """
 
     def __init__(self, attributes_by_transform: Mapping[str, list[PythonDefinition]]) -> None:
         self._attributes_by_transform = attributes_by_transform
 
     def resolve(self, transform_name: str, transform_id: str) -> list[PythonDefinition]:
-        # A transform can be wired by name for one attribute and by id for another, so both
-        # lookups are unioned rather than short-circuited; deduplicate by (kind, attribute name)
-        # so a definition reachable under both keys is never recomputed twice.
+        # A transform can be wired by name for one attribute and by id for another, so union both
+        # lookups (not short-circuit) and dedupe by (kind, attribute) to avoid a double recompute.
         resolved: list[PythonDefinition] = []
         seen: set[tuple[str, str]] = set()
         for key in (transform_name, transform_id):

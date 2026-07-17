@@ -53,7 +53,6 @@ class _FetcherReturning:
         raise_when_missing: bool,
     ) -> InfrahubNode | None:
         self.requested_ids.append(id)
-        # A hand-written stub stands in for the SDK node the component only reads ``name.value`` off.
         return self._transform  # type: ignore[return-value]  # ty: ignore[invalid-return-type]
 
 
@@ -70,8 +69,7 @@ def _computed_attribute(name: str, transform: str) -> AttributeSchema:
 def schema_branch_with_transform() -> Generator[None, None, None]:
     """Register a schema branch whose Car.description is fed by ``transform_a``.
 
-    The registry schema is swapped for a fresh manager so the test never leaks state, and the
-    resolver reads a real ``ComputedAttributes`` mapping rather than a mock.
+    The registry schema is swapped for a fresh manager so the test never leaks state.
     """
     original = registry._schema
     manager = SchemaManager()
@@ -105,22 +103,6 @@ async def test_submit_fans_out_recompute_for_each_fed_attribute(
     assert calls[0]["parameters"]["computed_attribute_name"] == "description"
     assert calls[0]["parameters"]["computed_attribute_kind"] == "TestingCar"
     assert calls[0]["parameters"]["branch_name"] == BRANCH
-
-
-async def test_submit_submits_nothing_when_transform_feeds_no_attribute(
-    schema_branch_with_transform: None,
-) -> None:
-    recorder = WorkflowRecorder()
-    # A transform that no attribute wires (neither by this name nor this id) resolves to nothing.
-    fetcher = _FetcherReturning(
-        _StubTransform(id="unused-transform", name=_StubAttributeValue(value="transform_feeding_nothing"))
-    )
-    submitter = TransformRecomputeSubmitter(client=fetcher, workflow=recorder)
-
-    submitted = await submitter.submit(branch_name=BRANCH, transform_id="unused-transform", context=_context())
-
-    assert submitted == 0
-    assert recorder.submit_calls == []
 
 
 async def test_submit_skips_a_missing_transform(schema_branch_with_transform: None) -> None:

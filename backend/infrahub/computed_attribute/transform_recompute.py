@@ -27,10 +27,7 @@ class TransformFetcher(Protocol):
 class TransformRecomputeSubmitter:
     """Resolve a Python transform to the attributes it feeds and fan out their recompute.
 
-    This is the pure, testable core of a transform create/update lifecycle event: it reads the
-    transform node, maps it to its computed attributes through the schema, and submits one
-    recompute per attribute. It owns no Prefect orchestration (session, converge wait,
-    reconciliation) so it can be exercised with an injected fetcher and workflow submitter.
+    Holds no Prefect orchestration, so an injected fetcher and workflow make it testable.
     """
 
     def __init__(self, client: TransformFetcher, workflow: InfrahubWorkflow) -> None:
@@ -38,10 +35,9 @@ class TransformRecomputeSubmitter:
         self._workflow = workflow
 
     async def submit(self, *, branch_name: str, transform_id: str, context: EventContext) -> int:
-        """Fan out a recompute for every attribute the transform feeds; return how many were submitted.
+        """Fan out a recompute for every attribute the transform feeds; return the count submitted.
 
-        A transform that no longer resolves (a branch race, or a delete that already landed)
-        returns 0 without submitting anything, leaving the caller to still reconcile.
+        A transform that no longer resolves (branch race, or an already-landed delete) returns 0.
         """
         transform = await self._client.get(
             kind=InfrahubKind.TRANSFORMPYTHON, id=transform_id, branch=branch_name, raise_when_missing=False
