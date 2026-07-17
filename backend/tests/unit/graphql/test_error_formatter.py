@@ -135,7 +135,10 @@ def test_build_catalogue_extensions_per_code(case: CodeCase) -> None:
 
 
 def test_build_catalogue_extensions_handles_class_node_type() -> None:
-    exc = NodeNotFoundError(node_type=CoreMenuItem, identifier="x")
+    # A class kind here deliberately violates the str-typed API to prove the formatter
+    # still produces a valid payload rather than raising.
+    kwargs: dict[str, Any] = {"node_type": CoreMenuItem, "identifier": "x"}
+    exc = NodeNotFoundError(**kwargs)
 
     extensions = build_catalogue_extensions(exc)
 

@@ -876,7 +876,8 @@ class NodeManager:
             branch_agnostic=branch_agnostic,
         )
         if not node:
-            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
+            kind_str = get_schema(db=db, branch=branch, node_schema=kind).kind
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=id)
         return node
 
     @overload
@@ -1059,7 +1060,8 @@ class NodeManager:
 
         if not result:
             if raise_on_error:
-                raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
+                kind_str = get_schema(db=db, branch=branch, node_schema=kind).kind if kind else "Node"
+                raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=id)
             return None
 
         node = result[id]
