@@ -59,7 +59,11 @@ export function TableColumnHeader({
 
   if (schema && !("peer" in columnSchema) && isSortableAttribute(columnSchema)) {
     return (
-      <SortableColumnHeader schema={schema} attributeSchema={columnSchema} className={className} />
+      <SortableAttributeColumnHeader
+        schema={schema}
+        attributeSchema={columnSchema}
+        className={className}
+      />
     );
   }
 
@@ -76,13 +80,17 @@ export function TableColumnHeader({
   return <ColumnHeaderMenu columnSchema={columnSchema} className={className} />;
 }
 
-interface SortableColumnHeaderProps {
+interface SortableAttributeColumnHeaderProps {
   schema: ModelSchema;
   attributeSchema: AttributeSchema;
   className?: string;
 }
 
-function SortableColumnHeader({ schema, attributeSchema, className }: SortableColumnHeaderProps) {
+function SortableAttributeColumnHeader({
+  schema,
+  attributeSchema,
+  className,
+}: SortableAttributeColumnHeaderProps) {
   const { customSort, setCustomSort } = useSort(schema);
   const activeSort = getColumnActiveSort(customSort, attributeSchema);
 
