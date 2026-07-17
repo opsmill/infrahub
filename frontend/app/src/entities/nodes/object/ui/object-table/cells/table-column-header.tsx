@@ -1,6 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 import { Menu, MenuItem, MenuSeparator, MenuTrigger, Popover, SubmenuTrigger } from "@infrahub/ui";
-import { CheckIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  ListFilterIcon,
+} from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
 import { Button } from "react-aria-components";
@@ -155,7 +161,10 @@ function SortableRelationshipColumnHeader({
       activeSort={activeSort}
       sortItems={
         <SubmenuTrigger>
-          <MenuItem>Sort by</MenuItem>
+          <MenuItem textValue="Sort by">
+            <ArrowUpDownIcon />
+            <span>Sort by</span>
+          </MenuItem>
 
           <Popover>
             <Menu aria-label={`Sort by ${label}`}>
@@ -199,7 +208,8 @@ function PeerAttributeSortMenuItem({
   return (
     <SubmenuTrigger>
       <MenuItem id={field} textValue={label}>
-        {label}
+        <FieldSchemaIcon fieldSchema={attribute} />
+        <span>{label}</span>
         {isActive && (
           <>
             <CheckIcon className="ml-auto" />
@@ -250,7 +260,8 @@ function SortDirectionMenuItem({
     <MenuItem id={direction} textValue={children} onAction={() => onSelect(direction)}>
       {({ isSelected }) => (
         <>
-          {children}
+          {direction === SORT_DIRECTION.DESC ? <ArrowDownIcon /> : <ArrowUpIcon />}
+          <span>{children}</span>
           {(isSelected || isActive) && <CheckIcon className="ml-auto" />}
           {isActive && <span className="sr-only">active</span>}
         </>
@@ -317,7 +328,10 @@ function ColumnHeaderMenu({
           <Menu aria-label={`${label} column options`} variant="picker">
             {sortItems}
             {sortItems ? <MenuSeparator /> : null}
-            <MenuItem onAction={() => setShowFilterForm(true)}>Filter…</MenuItem>
+            <MenuItem textValue="Filter…" onAction={() => setShowFilterForm(true)}>
+              <ListFilterIcon />
+              <span>Filter…</span>
+            </MenuItem>
           </Menu>
         </Popover>
       </MenuTrigger>
