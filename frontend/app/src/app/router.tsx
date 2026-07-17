@@ -8,7 +8,6 @@ import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-r
 import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
 import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
-import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 
 export const router = createBrowserRouter([
@@ -33,13 +32,11 @@ export const router = createBrowserRouter([
         path: "",
         element: (
           <RequireAuth>
-            <DatePreferencesProvider>
-              <BranchesProvider>
-                <SchemaProvider>
-                  <Outlet />
-                </SchemaProvider>
-              </BranchesProvider>
-            </DatePreferencesProvider>
+            <BranchesProvider>
+              <SchemaProvider>
+                <Outlet />
+              </SchemaProvider>
+            </BranchesProvider>
           </RequireAuth>
         ),
         children: [

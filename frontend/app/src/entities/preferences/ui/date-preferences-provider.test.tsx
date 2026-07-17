@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { DatePreferencesContext } from "@/shared/context/date-preferences-context";
 
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
 import { patternForKey } from "@/entities/preferences/domain/rules/date-format";
 import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
@@ -11,12 +12,17 @@ import { useGetEffectivePreferences } from "@/entities/preferences/ui/queries/ge
 import { render } from "../../../../tests/components/render";
 
 vi.mock("@/entities/preferences/ui/queries/get-effective-preferences.query");
+vi.mock("@/entities/authentication/ui/auth-provider");
 
 function mockEffective(data: EffectivePreferences | undefined) {
   // The provider only reads `.data`; the rest of the query result is irrelevant here.
   vi.mocked(useGetEffectivePreferences).mockReturnValue({ data } as ReturnType<
     typeof useGetEffectivePreferences
   >);
+}
+
+function mockAuth(isAuthenticated: boolean) {
+  vi.mocked(useAuth).mockReturnValue({ isAuthenticated } as ReturnType<typeof useAuth>);
 }
 
 /** Surfaces the resolved context so tests can assert what the provider computed. */
@@ -42,6 +48,20 @@ async function renderWithEffective(data: EffectivePreferences | undefined) {
 describe("DatePreferencesProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuth(true);
+  });
+
+  test("does not fetch for a logged-out user (anonymous access must not 401)", async () => {
+    mockAuth(false);
+    const component = await renderWithEffective(undefined);
+    expect(useGetEffectivePreferences).not.toHaveBeenCalled();
+    await expect.element(component.getByTestId("pattern")).toHaveTextContent("null");
+    await expect.element(component.getByTestId("timezone")).toHaveTextContent("null");
+  });
+
+  test("fetches once authenticated", async () => {
+    await renderWithEffective(undefined);
+    expect(useGetEffectivePreferences).toHaveBeenCalled();
   });
 
   test("resolves the preferred pattern + timezone from a USER preference", async () => {
