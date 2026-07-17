@@ -3,10 +3,13 @@ import type {
   SortDirection,
   SortField,
 } from "@/entities/nodes/sort/domain/model/sort";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export interface SortableField {
   field: SortField;
   label: string;
+  /** Schema field the sort field originates from (absent for node metadata). */
+  fieldSchema?: AttributeSchema | RelationshipSchema;
 }
 
 export const NODE_METADATA_SORT_OPTIONS: SortableField[] = [

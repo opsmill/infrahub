@@ -93,8 +93,14 @@ function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
   const sortableFields = useSortableFields(schema);
   const availableFields = sortableFields.filter(({ field }) => !activeFields.has(field));
 
-  return availableFields.map(({ field, label }) => (
-    <SortableFieldMenuItem key={field} field={field} label={label} onSelect={onSelect} />
+  return availableFields.map(({ field, label, fieldSchema }) => (
+    <SortableFieldMenuItem
+      key={field}
+      field={field}
+      icon={fieldSchema ? <FieldSchemaIcon fieldSchema={fieldSchema} /> : <CalendarClockIcon />}
+      label={label}
+      onSelect={onSelect}
+    />
   ));
 }
 

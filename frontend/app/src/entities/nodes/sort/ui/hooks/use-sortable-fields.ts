@@ -39,6 +39,7 @@ export function useSortableFields(schema: ModelSchema): SortableField[] {
     .map((attribute) => ({
       field: buildAttributeSortField(attribute.name),
       label: attribute.label ?? attribute.name,
+      fieldSchema: attribute,
     }));
 
   const relationshipFields: SortableField[] = sortByOrderWeight(schema.relationships ?? [])
@@ -62,6 +63,7 @@ export function useSortableFields(schema: ModelSchema): SortableField[] {
         return {
           field: buildRelationshipSortField(relationship.name, attributeField),
           label: `${relationshipLabel}${PEER_LABEL_SEPARATOR}${attributeLabel}`,
+          fieldSchema: relationship,
         };
       });
     });
