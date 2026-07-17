@@ -49,7 +49,10 @@ def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
     payload: BaseModel = UndefinedErrorData()
     match code:
         case "NODE_NOT_FOUND" if isinstance(exc, NodeNotFoundError):
-            payload = NodeNotFoundData(node_kind=exc.node_type, identifier=exc.identifier)
+            # ``node_type`` is normally a kind string, but guard against a non-str value
+            # so formatting an error can never itself raise.
+            node_kind = exc.node_type if isinstance(exc.node_type, str) else getattr(exc.node_type, "__name__", None)
+            payload = NodeNotFoundData(node_kind=node_kind or str(exc.node_type), identifier=exc.identifier)
         case "AUTHENTICATION_REQUIRED":
             payload = AuthenticationRequiredData()
         case "TOKEN_EXPIRED":

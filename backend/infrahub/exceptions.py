@@ -244,12 +244,15 @@ class NodeNotFoundError(Error):
     HTTP_CODE: int = 404
 
     def __init__(
-        self, node_type: str, identifier: str, branch_name: str | None = None, message: str | None = None
+        self, node_type: str | type, identifier: str, branch_name: str | None = None, message: str | None = None
     ) -> None:
-        self.node_type = node_type
+        # Callers may pass a schema/protocol class as the kind rather than its kind string;
+        # normalize to a string so downstream consumers (e.g. error payload serialization)
+        # always see a plain kind name.
+        self.node_type = node_type if isinstance(node_type, str) else getattr(node_type, "__name__", str(node_type))
         self.identifier = identifier
         self.branch_name = branch_name
-        self.message = message or f"Unable to find the node {identifier} / {node_type} in the database."
+        self.message = message or f"Unable to find the node {identifier} / {self.node_type} in the database."
         super().__init__(self.message)
 
     def __str__(self) -> str:
