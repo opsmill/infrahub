@@ -355,7 +355,12 @@ class TestObjectFilters:
         await admin_page.get_by_test_id("object-items").get_by_role("button", name="Type").click()
         await admin_page.get_by_role("menuitem", name="Filter").click()
         await expect(admin_page.get_by_role("combobox").filter(has_text="EXTERNAL")).to_be_visible()
+        # Focus inside the popover before Escape: on slow runners the form's
+        # autofocus may not have landed yet, leaving Escape on the body where
+        # the popover never receives it.
+        await admin_page.get_by_role("combobox").filter(has_text="EXTERNAL").focus()
         await admin_page.keyboard.press("Escape")
+        await expect(admin_page.get_by_test_id("attribute-filter-form")).not_to_be_visible()
 
         await admin_page.get_by_role("button", name="Remove Type contains EXTERNAL").click()
         await expect(admin_page.get_by_test_id("object-items")).to_contain_text("EXTERNAL")
