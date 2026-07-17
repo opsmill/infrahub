@@ -2,6 +2,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     GeneratorInstanceStatus,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -79,6 +80,23 @@ core_generator_definition = NodeSchema(
             identifier="generator_definition___group",
             cardinality=Cardinality.ONE,
             optional=False,
+        ),
+        Rel(
+            name="instances",
+            peer=InfrahubKind.GENERATORINSTANCE,
+            identifier="generator__generator_definition",
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
+        Rel(
+            name="validators",
+            peer=InfrahubKind.GENERATORVALIDATOR,
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
         ),
     ],
 )
