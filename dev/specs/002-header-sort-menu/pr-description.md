@@ -10,15 +10,15 @@ Column headers in object lists and IPAM IP address/prefix lists now open a react
 
 - **Sort ascending / Sort descending** on sortable attribute columns — selecting one replaces the entire active sort with a single-field sort on that column; selecting the already-active direction again toggle-clears back to the schema default order.
 - **Sort by ▸** submenu on cardinality-one relationship columns, listing the peer's sortable attributes with a direction choice (e.g. sort devices by their site's name).
-- **Filter…** (always last, after a separator) — opens the existing per-column filter form in a controlled popover, pre-filled when a filter is active on the column.
+- **Filter** (always last, after a separator) — opens the existing per-column filter form in a controlled popover, pre-filled when a filter is active on the column.
 
-The header shows an ↑/↓ indicator when it drives the active user-applied sort (never for the schema default). Sort state is shared with the toolbar Sort control through the existing `?sort=` URL param via `useSort`, so both surfaces always agree and sorted views survive reload and link-sharing. Cardinality-many or unresolvable-peer relationship columns offer Filter… only; columns that are neither sortable nor filterable keep their plain non-interactive header.
+The header shows an ↑/↓ indicator when it drives the active user-applied sort (never for the schema default). Sort state is shared with the toolbar Sort control through the existing `?sort=` URL param via `useSort`, so both surfaces always agree and sorted views survive reload and link-sharing. Cardinality-many or unresolvable-peer relationship columns offer Filter only; columns that are neither sortable nor filterable keep their plain non-interactive header.
 
 The IPAM IP-address and IP-prefix lists previously ignored sorting entirely; this PR wires `sort` end-to-end (API call → use-case → query hook → table) so the shared header's sort actions work there too (release-blocking per spec Assumptions).
 
 ## User-facing interaction change
 
-Clicking a column header previously opened the filter form directly. It now opens the menu, and filtering sits under **Filter…** — one click further. The filter experience itself is unchanged and remains fully consistent with the toolbar path: same form, same active-filter tags, same `?filters=` URL, editable/removable from either place (spec Story 3).
+Clicking a column header previously opened the filter form directly. It now opens the menu, and filtering sits under **Filter** — one click further. The filter experience itself is unchanged and remains fully consistent with the toolbar path: same form, same active-filter tags, same `?filters=` URL, editable/removable from either place (spec Story 3).
 
 A Towncrier fragment covers this: `changelog/+header-sort-menu.changed.md`.
 
@@ -40,7 +40,7 @@ On the IPAM prefix list, the prefix value renders in the identifier column, whic
 ## Test coverage
 
 - **Unit/domain**: `get-column-active-sort.test.ts` — attribute/relationship match, near-miss names, multi-field sort → null.
-- **Component** (vitest browser mode): `table-column-header.test.tsx` — menu structure, full-replace write, toggle-clear, active direction marked, non-sortable kinds, relationship submenu contents, cardinality-many/unresolvable peer → Filter… only, filter form pre-fill and state parity.
+- **Component** (vitest browser mode): `table-column-header.test.tsx` — menu structure, full-replace write, toggle-clear, active direction marked, non-sortable kinds, relationship submenu contents, cardinality-many/unresolvable peer → Filter only, filter form pre-fill and state parity.
 - **E2E** (Playwright): new `objects/object-header-sort.spec.ts` (sort, persistence, toggle-clear, toolbar replace semantics, relationship submenu incl. keyboard-only path) and `ipam/ip-prefix-list-sort.spec.ts`; `objects/object-filters.spec.ts` extended with header-menu paths and explicit header/toolbar parity assertions; `objects/object-sort.spec.ts` (toolbar sort) passes unmodified.
 - Full frontend unit suite green (134 files / 931 tests); the four affected E2E specs green (14 tests); a scripted browser pass over the quickstart flows confirmed no console errors from overlay/focus management in the menu → filter-popover sequence.
 

@@ -14,11 +14,11 @@
 
 ### User Story 1 - Sort a list from a column header (Priority: P1)
 
-A user viewing a list of objects wants to reorder it by one of the visible columns. They click the column header, which opens a menu offering "Sort ascending", "Sort descending", and "Filter…". Selecting a sort direction reorders the whole list by that column, shows a direction indicator on the header, and is reflected in the page URL so the view survives reload and link-sharing. Selecting the already-active direction again clears the custom sort and returns the list to its default order. The "Filter…" item opens the same per-column filter form users get from the header today, so no existing capability is lost.
+A user viewing a list of objects wants to reorder it by one of the visible columns. They click the column header, which opens a menu offering "Sort ascending", "Sort descending", and "Filter". Selecting a sort direction reorders the whole list by that column, shows a direction indicator on the header, and is reflected in the page URL so the view survives reload and link-sharing. Selecting the already-active direction again clears the custom sort and returns the list to its default order. The "Filter" item opens the same per-column filter form users get from the header today, so no existing capability is lost.
 
 **Why this priority**: Sorting is the new capability and the core of the idea. Today sorting is only reachable through a separate toolbar control that users don't associate with the column they are looking at. This story alone delivers the full value for the most common case (sorting by a regular column) while preserving the existing header filtering entry point.
 
-**Independent Test**: On any object list, click a text column's header, choose "Sort descending", and verify the list reorders newest-value-first with a ↓ indicator on the header and the sort captured in the URL. Reload the page and verify the order persists. Click the header again, choose "Sort descending" a second time, and verify the list returns to its default order and the indicator disappears. Open the menu and choose "Filter…", apply a value, and verify the list narrows exactly as header filtering does today.
+**Independent Test**: On any object list, click a text column's header, choose "Sort descending", and verify the list reorders newest-value-first with a ↓ indicator on the header and the sort captured in the URL. Reload the page and verify the order persists. Click the header again, choose "Sort descending" a second time, and verify the list returns to its default order and the indicator disappears. Open the menu and choose "Filter", apply a value, and verify the list narrows exactly as header filtering does today.
 
 **Acceptance Scenarios**:
 
@@ -27,7 +27,7 @@ A user viewing a list of objects wants to reorder it by one of the visible colum
 3. **Given** a custom sort is active on a column, **When** the user selects the already-active direction again, **Then** the custom sort is cleared, the list returns to its default order, and the header indicator disappears.
 4. **Given** a multi-field sort was previously built in the toolbar sort control, **When** the user selects a sort direction from any column header, **Then** the entire sort is replaced by a single-field sort on that column.
 5. **Given** a sort was applied from a column header, **When** the user opens the toolbar sort control, **Then** it displays exactly that sort — both controls always reflect the same state.
-6. **Given** a column header menu is open, **When** the user selects "Filter…" and applies a value, **Then** the list is filtered and the applied filter appears in the active-filter tags identically to a filter applied from the toolbar.
+6. **Given** a column header menu is open, **When** the user selects "Filter" and applies a value, **Then** the list is filtered and the applied filter appears in the active-filter tags identically to a filter applied from the toolbar.
 7. **Given** a sorted view's URL is opened in a new session, **When** the page loads, **Then** the list is ordered by the shared sort and the header indicator is shown.
 
 ---
@@ -38,13 +38,13 @@ A user viewing a list where a column shows a related object (for example a devic
 
 **Why this priority**: Relationship columns are common in Infrahub lists, and ordering "through" them is already supported by the platform's sorting model — but a relationship has no single obvious sort value, so the user must choose which related attribute to sort on. This builds directly on the menu introduced in Story 1.
 
-**Independent Test**: On a device list with a Site column, click the Site header, open "Sort by", choose "Name ↑", and verify devices are ordered by their site's name ascending with the indicator on the Site header. Verify a to-many relationship column offers no sort entries in its menu, only "Filter…".
+**Independent Test**: On a device list with a Site column, click the Site header, open "Sort by", choose "Name ↑", and verify devices are ordered by their site's name ascending with the indicator on the Site header. Verify a to-many relationship column offers no sort entries in its menu, only "Filter".
 
 **Acceptance Scenarios**:
 
 1. **Given** a list with a to-one relationship column, **When** the user opens its header menu, **Then** a "Sort by" submenu lists the related object's sortable attributes, each selectable with ascending or descending direction.
 2. **Given** the user selects a related attribute and direction, **When** the list refreshes, **Then** items are ordered by that related attribute in the chosen direction and the relationship column header shows the direction indicator.
-3. **Given** a list with a to-many relationship column, **When** the user opens its header menu, **Then** no sort entries are offered — only "Filter…".
+3. **Given** a list with a to-many relationship column, **When** the user opens its header menu, **Then** no sort entries are offered — only "Filter".
 
 ---
 
@@ -59,7 +59,7 @@ A user who starts filtering from a column header gets exactly the same experienc
 **Acceptance Scenarios**:
 
 1. **Given** a filter applied from a column header menu, **When** the user inspects the active-filter tags and the URL, **Then** they are indistinguishable from the same filter applied via the toolbar filter control.
-2. **Given** a filter is active on a column, **When** the user opens that column's header menu and selects "Filter…", **Then** the filter form opens pre-filled with the current value for editing.
+2. **Given** a filter is active on a column, **When** the user opens that column's header menu and selects "Filter", **Then** the filter form opens pre-filled with the current value for editing.
 3. **Given** a filter applied from a header, **When** the user removes it from the toolbar's active-filter tag, **Then** the column header no longer shows an active-filter indication.
 
 ---
@@ -67,7 +67,7 @@ A user who starts filtering from a column header gets exactly the same experienc
 ### Edge Cases
 
 - A column that is neither sortable nor filterable (e.g., a JSON attribute) renders a plain, non-interactive header — no menu, no empty menu.
-- A sortable column whose values cannot be meaningfully ordered (list, JSON, password kinds) offers "Filter…" only, no sort entries.
+- A sortable column whose values cannot be meaningfully ordered (list, JSON, password kinds) offers "Filter" only, no sort entries.
 - The URL contains a sort referencing a field that is not sortable for the schema (hand-edited or stale link): the invalid sort is ignored and the default order applies — matching how sorts from the URL are validated today.
 - The related object's definition for a relationship column cannot be resolved: that column offers no "Sort by" submenu.
 - A column both drives the active sort and has an active filter: the header shows both the sort direction indicator and the active-filter indication.
@@ -83,7 +83,7 @@ A user who starts filtering from a column header gets exactly the same experienc
 - **FR-003**: To-one relationship columns MUST offer a "Sort by" submenu listing the related object's sortable attributes with a direction choice. To-many relationship columns MUST offer no sort entries.
 - **FR-004**: The header menu MUST visibly mark the active sort direction for that column. Selecting the already-active direction MUST clear the user-applied sort and restore the schema's default order.
 - **FR-005**: A column header MUST display an ascending/descending indicator when that column drives the active user-applied sort. No indicator is shown for the schema default order.
-- **FR-006**: The header menu MUST offer "Filter…", which opens the existing per-column filter form. Filters applied this way MUST be identical in state, active-filter tags, and URL persistence to filters applied from the toolbar filter control.
+- **FR-006**: The header menu MUST offer "Filter", which opens the existing per-column filter form. Filters applied this way MUST be identical in state, active-filter tags, and URL persistence to filters applied from the toolbar filter control.
 - **FR-007**: Header sorting and the toolbar sort control MUST share a single sort state: a sort applied in one MUST be immediately reflected in the other, and the sort MUST be persisted in the page URL as it is today.
 - **FR-008**: Columns that are neither sortable nor filterable MUST render as plain, non-interactive headers.
 - **FR-009**: Sort selections originating from headers MUST pass the same validation applied to sorts read from the URL, so only fields sortable for the schema ever reach the data layer.
@@ -109,7 +109,7 @@ A user who starts filtering from a column header gets exactly the same experienc
 ## Assumptions
 
 - The existing unified-filter-menu specification (`specs/ifc-2428-filters`, still Draft) is softened, not contradicted: its FR-001b ("column headers are no longer clickable filter triggers") becomes "column headers reuse the unified filter flow as a second entry point". That Draft spec should be amended when it is next worked on; this spec is the current source of truth for header behavior.
-- Sorting scope is exactly the list views wired to the sorting state: object lists and the IPAM IP address / IP prefix lists. Other lists sharing the interactive header (role-manager lists, the branches list's filterable columns) render the menu with "Filter…" only — filtering outcome unchanged, the interaction moves under the menu like everywhere else. Simple read-only tables are untouched.
+- Sorting scope is exactly the list views wired to the sorting state: object lists and the IPAM IP address / IP prefix lists. Other lists sharing the interactive header (role-manager lists, the branches list's filterable columns) render the menu with "Filter" only — filtering outcome unchanged, the interaction moves under the menu like everywhere else. Simple read-only tables are untouched.
 - The IPAM lists do **not** currently pass any ordering to their data queries (verified during planning). Because the header menu is shared, shipping it without that wiring would show sort actions on IPAM tables that silently do nothing. IPAM sort wiring is therefore **in scope and release-blocking**: it may be implemented after Story 1, but the feature does not ship to IPAM tables without it.
 - Multi-field sort management stays in the toolbar sort control; headers intentionally offer single-field sorting only.
 - Resetting pagination on sort or filter change is explicitly out of scope (current behavior keeps the offset); revisiting that is a separate improvement.

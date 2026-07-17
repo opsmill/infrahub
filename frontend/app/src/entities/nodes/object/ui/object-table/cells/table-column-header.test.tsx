@@ -96,11 +96,11 @@ describe("TableColumnHeader", () => {
     await expect
       .element(component.getByRole("menuitem", { name: "Sort descending" }))
       .toBeVisible();
-    await expect.element(component.getByRole("menuitem", { name: "Filter…" })).toBeVisible();
+    await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
     const itemLabels = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]')).map(
       (item) => item.textContent
     );
-    expect(itemLabels).toEqual(["Sort ascending", "Sort descending", "Filter…"]);
+    expect(itemLabels).toEqual(["Sort ascending", "Sort descending", "Filter"]);
   });
 
   test("replaces the whole custom sort with a single-field sort", async () => {
@@ -188,7 +188,7 @@ describe("TableColumnHeader", () => {
     await component.getByRole("button", { name: "Config" }).click();
 
     // THEN
-    await expect.element(component.getByRole("menuitem", { name: "Filter…" })).toBeVisible();
+    await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
     await expect
       .element(component.getByRole("menuitem", { name: "Sort ascending" }))
       .not.toBeInTheDocument();
@@ -206,7 +206,7 @@ describe("TableColumnHeader", () => {
 
     // WHEN
     await component.getByRole("button", { name: "Name" }).click();
-    await component.getByRole("menuitem", { name: "Filter…" }).click();
+    await component.getByRole("menuitem", { name: "Filter" }).click();
 
     // THEN
     await expect.element(component.getByRole("textbox")).toHaveValue("atl");
@@ -312,7 +312,7 @@ describe("TableColumnHeader", () => {
     await component.getByRole("button", { name: "Tags" }).click();
 
     // THEN
-    await expect.element(component.getByRole("menuitem", { name: "Filter…" })).toBeVisible();
+    await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
     await expect
       .element(component.getByRole("menuitem", { name: "Sort by" }))
       .not.toBeInTheDocument();
@@ -328,7 +328,7 @@ describe("TableColumnHeader", () => {
     await component.getByRole("button", { name: "Owner" }).click();
 
     // THEN
-    await expect.element(component.getByRole("menuitem", { name: "Filter…" })).toBeVisible();
+    await expect.element(component.getByRole("menuitem", { name: "Filter" })).toBeVisible();
     await expect
       .element(component.getByRole("menuitem", { name: "Sort by" }))
       .not.toBeInTheDocument();
@@ -374,7 +374,7 @@ describe("TableColumnHeader", () => {
 
     // WHEN
     await component.getByRole("button", { name: "Name" }).click();
-    await component.getByRole("menuitem", { name: "Filter…" }).click();
+    await component.getByRole("menuitem", { name: "Filter" }).click();
     await component.getByRole("textbox").fill("atl");
     await component.getByRole("button", { name: "Apply" }).click();
 

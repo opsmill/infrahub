@@ -14,14 +14,14 @@ The feature exposes no new API endpoints. Its external contracts are (1) the hea
    ├─ Sort ascending      (marked selected when active)
    ├─ Sort descending     (marked selected when active)
    ├─ ────────────
-   └─ Filter…             → closes menu, opens existing per-column filter form in popover
+   └─ Filter             → closes menu, opens existing per-column filter form in popover
 ```
 
 ### Non-sortable attribute column (JSON / List / Any / Password kinds)
 
 ```text
 └─ Menu
-   └─ Filter…             (no sort entries)
+   └─ Filter             (no sort entries)
 ```
 
 ### Cardinality-one relationship column (peer schema resolvable)
@@ -32,14 +32,14 @@ The feature exposes no new API endpoints. Its external contracts are (1) the hea
    │   └─ Submenu: one entry per peer attribute passing sortability,
    │      each offering ascending / descending
    ├─ ────────────
-   └─ Filter…
+   └─ Filter
 ```
 
 ### Cardinality-many relationship column, or peer schema unresolvable
 
 ```text
 └─ Menu
-   └─ Filter…             (no sort entries)
+   └─ Filter             (no sort entries)
 ```
 
 ### Column with no sort entries and no filter
@@ -53,8 +53,8 @@ Plain, non-interactive header — no menu trigger at all.
 | B1 | Any sort state | Menu "Sort ascending/descending" selected | Entire sort replaced by that single field+direction; list refetches server-sorted; menu closes |
 | B2 | Column drives the custom sort | Menu opened | Active direction is visibly selected |
 | B3 | Column drives the custom sort with direction D | "Sort D" selected again | Custom sort cleared; schema default order restored; header indicator removed |
-| B4 | Any | "Filter…" selected | Menu closes; existing attribute/relationship filter form opens anchored to the header; applying writes the same filter state as the toolbar path |
-| B5 | Filter active on column | "Filter…" selected | Form opens pre-filled with current value |
+| B4 | Any | "Filter" selected | Menu closes; existing attribute/relationship filter form opens anchored to the header; applying writes the same filter state as the toolbar path |
+| B5 | Filter active on column | "Filter" selected | Form opens pre-filled with current value |
 | B6 | Sort applied from header | Toolbar SortPicker opened | Shows exactly that sort |
 | B7 | Multi-field sort built in SortPicker | Any header sort selected | Replaced by single-field sort (B1) |
 | B8 | Sort applied | — | Pagination offset unchanged |
@@ -73,4 +73,4 @@ Invariants: absent `?sort=` ⇒ schema default order; invalid/unsortable fields 
 
 Sorting applies to every table rendering the shared interactive header **with a schema wired**: object lists (`/objects/:kind`), IPAM IP-address and IP-prefix lists.
 
-Other tables that share the interactive header component without sort wiring (role-manager lists, the branches table's filterable columns) render the menu with **"Filter…" only** — their filtering behavior is unchanged in outcome, but the interaction moves under the menu like everywhere else. Sorting there is out of scope. Read-only property tables keep their plain headers.
+Other tables that share the interactive header component without sort wiring (role-manager lists, the branches table's filterable columns) render the menu with **"Filter" only** — their filtering behavior is unchanged in outcome, but the interaction moves under the menu like everywhere else. Sorting there is out of scope. Read-only property tables keep their plain headers.

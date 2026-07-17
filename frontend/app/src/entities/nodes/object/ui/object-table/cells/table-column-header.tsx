@@ -328,9 +328,9 @@ function ColumnHeaderMenu({
           <Menu aria-label={`${label} column options`} variant="picker">
             {sortItems}
             {sortItems ? <MenuSeparator /> : null}
-            <MenuItem textValue="Filter…" onAction={() => setShowFilterForm(true)}>
+            <MenuItem textValue="Filter" onAction={() => setShowFilterForm(true)}>
               <ListFilterIcon />
-              <span>Filter…</span>
+              <span>Filter</span>
             </MenuItem>
           </Menu>
         </Popover>
