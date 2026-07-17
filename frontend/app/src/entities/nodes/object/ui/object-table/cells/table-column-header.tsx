@@ -6,8 +6,7 @@ import {
   CheckIcon,
   ListFilterIcon,
 } from "lucide-react";
-import type React from "react";
-import { useRef, useState } from "react";
+import React from "react";
 import { Button } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
@@ -284,8 +283,8 @@ function ColumnHeaderMenu({
   sortItems,
 }: ColumnHeaderMenuProps) {
   const [filters] = useFilters();
-  const [showFilterForm, setShowFilterForm] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [showFilterForm, setShowFilterForm] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const currentColumnFilters = filters.find((f) => isFieldFiltered(f, columnSchema.name));
   const label = columnSchema.label ?? columnSchema.name;
 
@@ -319,8 +318,12 @@ function ColumnHeaderMenu({
 
         <Popover placement="bottom start">
           <Menu aria-label={`${label} column options`} variant="picker">
-            {sortItems}
-            {sortItems ? <MenuSeparator /> : null}
+            {sortItems ? (
+              <>
+                {sortItems}
+                <MenuSeparator />
+              </>
+            ) : null}
             <MenuItem textValue="Filter" onAction={() => setShowFilterForm(true)}>
               <ListFilterIcon />
               <span>Filter</span>
