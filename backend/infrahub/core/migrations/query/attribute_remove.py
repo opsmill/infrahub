@@ -142,7 +142,23 @@ class AttributeRemoveQuery(Query):
         CALL (active_attr, active_node) {
             WITH active_attr, active_node
             WHERE $set_metadata
+            SET active_attr.previous_updated_at = CASE
+                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $current_time THEN active_attr.updated_at
+                    ELSE active_attr.previous_updated_at
+                END,
+                active_attr.previous_updated_by = CASE
+                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $current_time THEN active_attr.updated_by
+                    ELSE active_attr.previous_updated_by
+                END
             SET active_attr.updated_at = $current_time, active_attr.updated_by = $user_id
+            SET active_node.previous_updated_at = CASE
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                    ELSE active_node.previous_updated_at
+                END,
+                active_node.previous_updated_by = CASE
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                    ELSE active_node.previous_updated_by
+                END
             SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
         }
         RETURN DISTINCT active_attr

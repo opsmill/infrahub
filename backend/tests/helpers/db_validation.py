@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 
 from infrahub.core.branch import Branch
@@ -379,3 +380,68 @@ async def assert_attribute_absent(
     query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
     results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
     assert len(results) == 0, f"Expected no active/deleted {node_label}.{attr_name} edges, found {len(results)}"
+
+
+async def count_branch_edges_at(db: InfrahubDatabase, branch_name: str, at: str) -> int:
+    """Count edges on a branch whose ``from`` timestamp equals ``at`` (edges written exactly then)."""
+    result = await db.execute_query(
+        query="MATCH ()-[r {from: $at, branch: $branch}]->() RETURN count(r) AS c",
+        params={"at": at, "branch": branch_name},
+    )
+    return result[0].get("c")
+
+
+@dataclass
+class VertexMetadata:
+    """The user-timestamp metadata stored directly on a Node/Attribute/Relationship vertex.
+
+    ``previous_updated_at``/``previous_updated_by`` hold the snapshot a schema migration or merge
+    records before bumping ``updated_at``/``updated_by``, so a merge-failure rollback can restore them.
+    """
+
+    updated_at: str | None = None
+    updated_by: str | None = None
+    previous_updated_at: str | None = None
+    previous_updated_by: str | None = None
+
+
+async def branch_edge_fingerprint(db: InfrahubDatabase, branch_name: str) -> list[tuple]:
+    """Snapshot every edge on a branch, keyed on endpoints, timestamps and status.
+
+    Two snapshots compare equal only when the branch's edges are identical, so an empty diff between a
+    pre-change and a post-rollback snapshot proves the rollback restored the branch exactly.
+    """
+    results = await db.execute_query(
+        query=(
+            "MATCH (src)-[r {branch: $branch}]->(dst) "
+            "RETURN type(r) AS edge_type, elementId(src) AS src, elementId(dst) AS dst, "
+            "r.from AS edge_from, r.to AS edge_to, r.status AS status"
+        ),
+        params={"branch": branch_name},
+    )
+    return sorted(
+        (
+            row["edge_type"],
+            row["src"],
+            row["dst"],
+            row["edge_from"] or "",
+            row["edge_to"] or "",
+            row["status"] or "",
+        )
+        for row in results
+    )
+
+
+async def get_node_metadata(db: InfrahubDatabase, node_uuid: str) -> dict[str, str | None]:
+    """Return a node vertex's ``updated_at``/``previous_updated_at`` metadata."""
+    result = await db.execute_query(
+        query=(
+            "MATCH (n:Node {uuid: $uuid}) "
+            "RETURN n.updated_at AS updated_at, n.previous_updated_at AS previous_updated_at"
+        ),
+        params={"uuid": node_uuid},
+    )
+    return {
+        "updated_at": result[0].get("updated_at"),
+        "previous_updated_at": result[0].get("previous_updated_at"),
+    }
