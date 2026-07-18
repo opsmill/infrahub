@@ -18,7 +18,7 @@ title: Release 1.9.7
   </tbody>
 </table>
 
-### Breaking Changes
+### Breaking changes
 
 - Schema attribute and relationship names containing `__` are now rejected at load time, since `__` is reserved as the schema path separator. Any existing schema using such names will fail to load after upgrading — rename the affected attributes or relationships in your schema files (and remove or rename the corresponding data) before upgrading. ([#9209](https://github.com/opsmill/infrahub/issues/9209))
 
@@ -31,7 +31,7 @@ title: Release 1.9.7
 ### Fixed
 
 - Prefix pools no longer allocate the same prefix multiple times when the pool resource has the same prefix length as the requested allocation size. Prefix pools can now correctly allocate a prefix that uses an entire linked resource.
-- Fix schema processing crashing with `'NodeSchema' object has no attribute 'get'` when a node defines a single-element relationship-only `uniqueness_constraints` entry (e.g. `[["parent"]]`). ([#4483](https://github.com/opsmill/infrahub/issues/4483))
+- Fix schema processing crashing with `'NodeSchema' object has no attribute 'get'` when a node defines a single-element relationship-only `uniqueness_constraints` entry (for example `[["parent"]]`). ([#4483](https://github.com/opsmill/infrahub/issues/4483))
 - The 'Manage Groups' dropdown and the bulk 'Add to groups' toolbar now hide groups whose `group_type` is `internal`, so only user-assignable groups appear in the selector. ([#4872](https://github.com/opsmill/infrahub/issues/4872))
 - RelationshipAdd now allows setting a cardinality-one relationship (previously, any attempt was rejected). A second add is rejected when a peer is already present. RelationshipRemove now enforces mandatory constraints on cardinality-many relationships and rejects removals that would leave a mandatory relationship with no peers. ([#5794](https://github.com/opsmill/infrahub/issues/5794))
 - GraphQL variables used inside the `data` sub-object of `IPPrefixPoolGetResource` and `IPAddressPoolGetResource` mutations now resolve correctly instead of being silently ignored (set to null). ([#6850](https://github.com/opsmill/infrahub/issues/6850))
