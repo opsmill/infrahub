@@ -1,16 +1,17 @@
 {
   "integration": "speckit",
-  "version": "0.8.1",
+  "version": "0.11.9",
   "installed_at": "2026-04-27T05:54:41.004365+00:00",
   "files": {
-    ".specify/scripts/bash/common.sh": "dd638316259e699fd466542c77ef16af5eb198efe0447c081f86b890db414ba8",
-    ".specify/scripts/bash/setup-plan.sh": "0d1d7a66de157b0be1385bb91aa71e5bf95550217abf47a73270dab0dc52895a",
-    ".specify/scripts/bash/check-prerequisites.sh": "aff361639c504b95a2901493f5022788adc01a6792fd37f132de8f57782e4b80",
-    ".specify/scripts/bash/create-new-feature.sh": "bcf4964ca0c6c78717bb42d9e66b8c7e5ee82779cd96afc5aa7b08b75abe5790",
+    ".specify/scripts/bash/common.sh": "af8a16f87b4f9084759c42ff9abf35c0b2a2025dffe58c298758ff86de2923b2",
+    ".specify/scripts/bash/setup-plan.sh": "4eb12c5b00f5c66a7d01b56c90898d320dcef4425d9b96652d57156c84948eda",
+    ".specify/scripts/bash/check-prerequisites.sh": "afce0aa8db177320d83aa0b8e3619c06b865fd810781894e4a7a3f81664941ce",
+    ".specify/scripts/bash/create-new-feature.sh": "9ba116b64f0328eb69bc1a195d209074ea38823a73a554160d69df34a74daa65",
     ".specify/templates/constitution-template.md": "ce7549540fa45543cca797a150201d868e64495fdff39dc38246fb17bd4024b3",
     ".specify/templates/checklist-template.md": "c37695297e5d3153d64f82c21223509940b13932046c7961c42d1d669516130c",
-    ".specify/templates/tasks-template.md": "fb7a30a6e8e7319b7134bd52a26dd52fb7dd9106ab8fa08b6fb551d704dac498",
-    ".specify/templates/spec-template.md": "785dc50d856dd92d6515eca0761e16dce0c9ba0a3cd07154fd33eae77932422a",
-    ".specify/templates/plan-template.md": "5ad267630e370c73fe957dafa61bf76d633f3aea9d2f0b5195087d729cdd1e41"
+    ".specify/templates/tasks-template.md": "fc29a233f6f5a27ca31f1aa46b596af6500c627441c6e62b2bc4a1d721525842",
+    ".specify/templates/spec-template.md": "3945437fc35cd30a5b2bf7beea680337c3516826d3efa5a6b92c4a7eca1ba28e",
+    ".specify/templates/plan-template.md": "cc7f7979cf8d8836ec26492785affd80791d3422a2b745062ec695be8c985ef7",
+    ".specify/scripts/bash/setup-tasks.sh": "cf21ba2212b4dd5b435c5ea8527500cfd27768b86c0bbc7ebc3207759f118d27"
   }
 }

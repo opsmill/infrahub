@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,9 +53,9 @@ export function ObjectActionsCell({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              size="square"
+              size="sm"
+              shape="square"
               variant="ghost"
-              className="size-6"
               data-testid={`actions-cell-${objectLabel}`}
             >
               <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />

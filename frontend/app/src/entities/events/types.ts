@@ -6,6 +6,9 @@ import type {
   BranchDeletedEvent,
   BranchMergedEvent,
   BranchRebasedEvent,
+  GroupAutoCreateCappedEventType,
+  GroupAutoCreatedEventType,
+  GroupAutoCreateRejectedEventType,
   GroupEvent,
   NodeMutatedEvent,
   StandardEvent,
@@ -19,10 +22,16 @@ export type BranchEvent =
   | BranchRebasedEvent
   | BranchDeletedEvent;
 
+export type GroupAutoCreateEvent =
+  | GroupAutoCreatedEventType
+  | GroupAutoCreateRejectedEventType
+  | GroupAutoCreateCappedEventType;
+
 export type EventType =
   | AccountEvent
   | BranchEvent
   | ArtifactEvent
   | NodeMutatedEvent
   | GroupEvent
+  | GroupAutoCreateEvent
   | StandardEvent;

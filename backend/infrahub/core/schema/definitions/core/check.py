@@ -1,6 +1,7 @@
 from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -20,7 +21,7 @@ core_check_definition = NodeSchema(
     label="Check Definition",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
@@ -69,6 +70,14 @@ core_check_definition = NodeSchema(
             kind=RelKind.ATTRIBUTE,
             optional=True,
             cardinality=Cardinality.MANY,
+        ),
+        Rel(
+            name="validators",
+            peer=InfrahubKind.USERVALIDATOR,
+            kind=RelKind.GENERIC,
+            cardinality=Cardinality.MANY,
+            optional=True,
+            on_delete=RelationshipDeleteBehavior.CASCADE,
         ),
     ],
 )

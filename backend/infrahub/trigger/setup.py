@@ -45,7 +45,7 @@ def compare_automations(
     return TriggerComparison.UPDATE
 
 
-@task(name="trigger-setup-specific", task_run_name="Setup triggers of a specific kind", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="trigger-setup-specific", task_run_name="Setup triggers of a specific kind", cache_policy=NONE)
 async def setup_triggers_specific(
     gatherer: Callable[[InfrahubDatabase | None], Awaitable[Sequence[TriggerDefinition]]],
     trigger_type: TriggerType,
@@ -60,7 +60,7 @@ async def setup_triggers_specific(
                 client=prefect_client,
                 triggers=triggers,
                 trigger_type=trigger_type,
-            )  # type: ignore[misc]
+            )
 
 
 @task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)

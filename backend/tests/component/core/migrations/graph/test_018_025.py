@@ -3,7 +3,8 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph import Migration018, Migration025
+from infrahub.core.migrations.graph.m018_uniqueness_nulls import Migration018
+from infrahub.core.migrations.graph.m025_uniqueness_nulls import Migration025
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot

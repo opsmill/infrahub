@@ -32,6 +32,7 @@ class Migration031(InternalSchemaMigration):
     """
 
     name: str = "031_check_number_attributes"
+    description: str = "N/A"
     minimum_version: int = 30
     migrations: Sequence[SchemaMigration] = []
 

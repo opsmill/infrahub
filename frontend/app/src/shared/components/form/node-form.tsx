@@ -97,7 +97,10 @@ export const NodeForm = ({
       {
         onSuccess: async (newObject) => {
           toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
-            toastId: `alert-success-${schema?.name}-created`,
+            // Per-node id so creating several objects of the same kind in quick succession
+            // each render their own toast (react-toastify treats a re-used active toastId as
+            // a no-op for the autoClose window).
+            toastId: `alert-success-${schema?.name}-created-${newObject.id}`,
           });
 
           if (onSuccess) await onSuccess(newObject);

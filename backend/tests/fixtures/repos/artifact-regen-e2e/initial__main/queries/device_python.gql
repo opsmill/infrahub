@@ -1,0 +1,14 @@
+query GetPythonDevice($ids: [ID!]!) {
+    TestNetworkDevice(ids: $ids) {
+        edges {
+            node {
+                name {
+                    value
+                }
+                color {
+                    value
+                }
+            }
+        }
+    }
+}

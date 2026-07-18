@@ -5,7 +5,8 @@ import pytest
 from fast_depends import Provider
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus

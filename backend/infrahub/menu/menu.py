@@ -168,6 +168,16 @@ default_menu = [
             ),
             MenuItemDefinition(
                 namespace="Builtin",
+                name="PathTraversal",
+                label="Path Traversal",
+                path="/path-traversal",
+                icon="mdi:map-marker-path",
+                protected=True,
+                section=MenuSection.INTERNAL,
+                order_weight=2700,
+            ),
+            MenuItemDefinition(
+                namespace="Builtin",
                 name="Schema",
                 label="Schemas",
                 path="/schema",

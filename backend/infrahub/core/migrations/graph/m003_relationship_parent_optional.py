@@ -45,6 +45,7 @@ class Migration003Query01(Query):
 
 class Migration003(GraphMigration):
     name: str = "003_relationship_parent_mandatory"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration003Query01]
     minimum_version: int = 2
 

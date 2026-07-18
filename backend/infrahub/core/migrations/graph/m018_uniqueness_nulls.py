@@ -87,6 +87,7 @@ async def validate_nulls_in_uniqueness_constraints(db: InfrahubDatabase) -> Migr
 
 class Migration018(InternalSchemaMigration):
     name: str = "018_validate_nulls_in_uniqueness_constraints"
+    description: str = "N/A"
     minimum_version: int = 17
     migrations: Sequence[SchemaMigration] = []
 

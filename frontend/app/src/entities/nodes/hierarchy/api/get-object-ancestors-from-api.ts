@@ -6,7 +6,7 @@ import type { ContextParams } from "@/shared/api/types";
 import {
   type GetObjectAncestorsQueryParams,
   getObjectAncestorsQuery,
-} from "@/entities/nodes/hierarchy/api/query/get-object-ancestors-query";
+} from "@/entities/nodes/hierarchy/api/get-object-ancestors.query";
 
 export interface GetObjectAncestorsFromApiParams
   extends GetObjectAncestorsQueryParams,

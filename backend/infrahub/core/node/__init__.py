@@ -23,6 +23,7 @@ from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, SchemaEleme
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.schema import (
     AttributeSchema,
@@ -248,7 +249,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
         await self._display_label.compute(db=db, node=self)
 
-    async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
+    async def get_path_value(self, db: InfrahubDatabase, path: str) -> Any:
         schema_path = self._schema.parse_schema_path(
             path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
         )
@@ -272,6 +273,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             relm: RelationshipManager = getattr(self, schema_path.relationship_schema.name)
             await relm.resolve(db=db)
             node = await relm.get_peer(db=db)
+            if node is None:
+                return None
             attr = getattr(node, schema_path.attribute_schema.name)
             return getattr(attr, schema_path.attribute_property_name)
 
@@ -363,7 +366,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
             attrs["schema"] = db.schema.get(name=schema, branch=branch)
-        elif hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:
+        elif isinstance(schema, type) and issubclass(schema, CoreNode):
             attrs["schema"] = db.schema.get(name=schema.__name__, branch=branch)
         else:
             raise ValueError(
@@ -1357,9 +1360,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
         object_template: RelationshipManager | None = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
-        return (
-            await object_template.get_peer(db=db, peer_type=CoreObjectTemplate) if object_template is not None else None
-        )
+        return await object_template.get_peer(db=db) if object_template is not None else None
 
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None

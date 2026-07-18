@@ -12,10 +12,9 @@ services:
       RABBITMQ_DEFAULT_PASS: infrahub
     healthcheck:
       test: rabbitmq-diagnostics -q check_port_connectivity
-      interval: 5s
-      timeout: 30s
-      retries: 10
-      start_period: 3s
+      interval: 1s
+      timeout: 1s
+      retries: 50
     ports:
       - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
 
@@ -24,9 +23,9 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: 1s
+      timeout: 1s
+      retries: 15
 
   infrahub-server-lb:
     image: haproxy:3.1-alpine
@@ -37,10 +36,9 @@ services:
         condition: service_started
     healthcheck:
       test: wget -O /dev/null http://127.0.0.1:8000/api/config || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: 1s
+      timeout: 1s
+      retries: 100
     ports:
       - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
 
@@ -66,10 +64,9 @@ services:
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: wget -O /dev/null http://localhost:7474 || exit 1
-      interval: 2s
-      timeout: 10s
-      retries: 20
-      start_period: 3s
+      interval: 1s
+      timeout: 1s
+      retries: 40
     ports:
       - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
       - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
@@ -100,18 +97,14 @@ services:
       PREFECT__SERVER_WEBSERVER_ONLY:
       PREFECT_API_DATABASE_MIGRATE_ON_START:
       PREFECT_API_BLOCKS_REGISTER_ON_START:
-      PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED:
-      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED:
-      PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED:
-      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED:
+      PREFECT_SERVER_DOCKET_URL:
 
       WEB_CONCURRENCY: ${INFRAHUB_TESTING_TASKMGR_API_WORKERS:-1}
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: 1s
+      timeout: 1s
+      retries: 100
     ports:
       - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
 
@@ -145,10 +138,7 @@ services:
       PREFECT_REDIS_MESSAGING_CONSUMER_MIN_IDLE_TIME: ${INFRAHUB_TESTING_TASKMGR_CONSUMER_MIN_IDLE_TIME:-5}
       PREFECT_REDIS_MESSAGING_PUBLISHER_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_PUBLISHER_BATCH_SIZE:-5}
 
-      PREFECT_SERVER_SERVICES_EVENT_LOGGER_ENABLED: "true"
-      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_ENABLED: "true"
-      PREFECT_SERVER_SERVICES_TRIGGERS_ENABLED: "true"
-      PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED: "true"
+      PREFECT_SERVER_DOCKET_URL: "redis://${INFRAHUB_TESTING_CACHE_ADDRESS:-cache}:6379/2"
 
       PREFECT_SERVER_SERVICES_EVENT_PERSISTER_READ_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_EVENT_PERSISTER_READ_BATCH_SIZE:-1}
       PREFECT_SERVER_SERVICES_EVENT_PERSISTER_BATCH_SIZE: ${INFRAHUB_TESTING_TASKMGR_EVENT_PERSISTER_BATCH_SIZE:-20}
@@ -173,9 +163,9 @@ services:
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 1s
+      timeout: 1s
+      retries: 50
 
   infrahub-server:
     deploy:
@@ -218,10 +208,9 @@ services:
     tty: true
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:8000/api/config || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: 1s
+      timeout: 1s
+      retries: 100
 
   task-worker:
     deploy:
@@ -244,6 +233,7 @@ services:
       INFRAHUB_TIMEOUT: ${INFRAHUB_TESTING_TIMEOUT}
       INFRAHUB_PAGINATION_SIZE: ${INFRAHUB_TESTING_PAGINATION_SIZE:-50}
       PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
+      PREFECT_API_REQUEST_TIMEOUT: ${INFRAHUB_TESTING_PREFECT_API_REQUEST_TIMEOUT:-120}
       INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:
       # Tracing
       INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-false}
@@ -287,10 +277,9 @@ services:
       - ${INFRAHUB_TESTING_SCRAPER_PORT:-0}:8428
     healthcheck:
       test: wget -qO- http://127.0.0.1:8428/-/healthy
-      start_period: 10s
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      interval: 1s
+      timeout: 1s
+      retries: 50
 
 volumes:
   database_data:

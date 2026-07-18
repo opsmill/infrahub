@@ -1,12 +1,12 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, LinkButton } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button, LinkButton } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -103,21 +103,28 @@ export const SchemaViewer = ({
 
         <div className="flex items-center gap-2 text-gray-600">
           {schema.kind && (
-            <Tooltip content="View in graph" enabled>
+            <Tooltip message="View in graph">
               <LinkButton
-                to={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
-                size="icon"
-                variant="ghost"
+                href={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
+                size="xs"
+                shape="circle"
+                variant="outline"
                 aria-label="View in graph"
               >
-                <Icon icon="mdi:graph-outline" className="text-xl" />
+                <Icon icon="mdi:graph-outline" />
               </LinkButton>
             </Tooltip>
           )}
 
           <SchemaHelpMenu schema={schema} />
 
-          <Button size="icon" variant="ghost" aria-label="Close schema viewer" onClick={onClose}>
+          <Button
+            size="xs"
+            shape="circle"
+            variant="ghost"
+            aria-label="Close schema viewer"
+            onPress={onClose}
+          >
             <Icon icon="mdi:close" className="text-xl" />
           </Button>
         </div>

@@ -6,7 +6,20 @@ from prefect.events.filters import EventFilter, EventIDFilter, EventNameFilter
 from prefect.events.schemas.events import Event, RelatedResource, Resource
 from pydantic import TypeAdapter
 
-from infrahub.events.models import InfrahubEvent
+from infrahub.core.branch import Branch
+from infrahub.events.models import EventBranchContext, EventContext, EventMeta, InfrahubEvent
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
+
+
+def dummy_event_meta(branch: Branch) -> EventMeta:
+    """Build a minimal `EventMeta` for tests — no authenticated account, no parent event."""
+    return EventMeta(
+        branch=branch,
+        context=EventContext(
+            branch=EventBranchContext(name=branch.name, id=str(branch.get_uuid())),
+            account_id="",
+        ),
+    )
 
 
 async def send_events(client: PrefectClient, events: list[InfrahubEvent]) -> list[Event]:
@@ -24,7 +37,7 @@ async def send_events(client: PrefectClient, events: list[InfrahubEvent]) -> lis
 
     # Ensure the events are available in the API, not sure why but we have to wait for them to be available
     last_event_id = events_data[-1].id
-    for _ in range(10):
+    for _ in range(PREFECT_EVENT_WAIT_SECONDS):
         if await has_event(client=client, event_id=last_event_id):
             return events_data
         await asyncio.sleep(1)

@@ -61,6 +61,7 @@ class SchemaRelationshipCleanupQuery(Query):
 
 class Migration058(GraphMigration):
     name: str = "058_remove_virtual_schema_relationships"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [SchemaRelationshipCleanupQuery]
     minimum_version: int = 57
 

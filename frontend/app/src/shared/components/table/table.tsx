@@ -1,9 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { isValidElement, type ReactNode } from "react";
 import { Link } from "react-router";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,16 +95,16 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                 <td className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <ButtonWithTooltip
-                        tooltipContent="Actions"
-                        tooltipEnabled
-                        variant="ghost"
-                        size="square"
-                        className="p-4"
-                        data-testid="actions-row-button"
-                      >
-                        <Icon icon="mdi:dots-vertical" className="" />
-                      </ButtonWithTooltip>
+                      <Tooltip message="Actions">
+                        <Button
+                          variant="ghost"
+                          shape="square"
+                          className="p-4"
+                          data-testid="actions-row-button"
+                        >
+                          <Icon icon="mdi:dots-vertical" className="" />
+                        </Button>
+                      </Tooltip>
                     </DropdownMenuTrigger>
 
                     <DropdownMenuContent align="end">

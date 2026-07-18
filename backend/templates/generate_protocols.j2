@@ -21,11 +21,11 @@ class {{ generic.namespace }}{{ generic.name }}(CoreNode):
     {{ attribute | render_attribute }}
     {%- endfor %}
     {%- for relationship in generic.relationships|default([]) %}
-    {{ relationship.name }}: RelationshipManager
+    {{ relationship | render_relationship }}
     {%- endfor %}
     {%- if generic.hierarchical | default(false) %}
-    parent: RelationshipManager
-    children: RelationshipManager
+    parent: RelationshipManager[{{ generic.namespace }}{{ generic.name }}]
+    children: RelationshipManager[{{ generic.namespace }}{{ generic.name }}]
     {%- endif %}
 {% endfor %}
 
@@ -38,10 +38,10 @@ class {{ model.namespace }}{{ model.name }}({{ model | inheritance }}):
     {{ attribute | render_attribute }}
     {%- endfor %}
     {%- for relationship in model.relationships|default([]) %}
-    {{ relationship.name }}: RelationshipManager
+    {{ relationship | render_relationship }}
     {%- endfor %}
     {%- if model.hierarchical | default(false) %}
-    parent:  RelationshipManager
-    children: RelationshipManager
+    parent: RelationshipManager[{{ model.namespace }}{{ model.name }}]
+    children: RelationshipManager[{{ model.namespace }}{{ model.name }}]
     {%- endif %}
 {% endfor %}

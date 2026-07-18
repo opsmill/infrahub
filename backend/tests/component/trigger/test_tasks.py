@@ -1,3 +1,4 @@
+import copy
 from collections.abc import AsyncGenerator, Generator
 
 import pytest
@@ -16,10 +17,17 @@ async def prefect_client(prefect_test_fixture: Generator) -> AsyncGenerator[Pref
 
 
 @pytest.fixture
-async def cleanup_automation(prefect_client: PrefectClient) -> None:
+async def cleanup_automation(prefect_client: PrefectClient) -> AsyncGenerator[None, None]:
     automations = await gather_all_automations(client=prefect_client)
     for automation in automations:
         await prefect_client.delete_automation(automation.id)
+    yield
+    # The test reshapes the builtin automations on the shared Prefect server; restore them
+    # so later tests, which configure the task manager only once per process, observe a
+    # fully-configured state.
+    await setup_triggers(
+        client=prefect_client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN, force_update=True
+    )
 
 
 @pytest.fixture
@@ -39,10 +47,12 @@ async def test_setup_triggers(prefect_client: PrefectClient, init_prefect: None,
     automations = await gather_all_automations(client=prefect_client)
     assert len(automations) == len(builtin_triggers)
 
-    # Update 1 Trigger and remove 2 to ensure that setup_triggers is working as expected
-    builtin_triggers[0].trigger = EventTrigger(events={"new.event.name"})
+    # Update 1 Trigger and remove 2 to ensure that setup_triggers is working as expected.
+    # Work on a copy: the catalogue is shared process-wide and must stay pristine.
+    updated_triggers = copy.deepcopy(builtin_triggers)
+    updated_triggers[0].trigger = EventTrigger(events={"new.event.name"})
     report_after = await setup_triggers(
-        client=prefect_client, triggers=builtin_triggers[:-2], trigger_type=TriggerType.BUILTIN
+        client=prefect_client, triggers=updated_triggers[:-2], trigger_type=TriggerType.BUILTIN
     )
 
     assert len(report_after.deleted) == 2
@@ -55,7 +65,7 @@ async def test_setup_triggers(prefect_client: PrefectClient, init_prefect: None,
 
     # Ensure force_update is working properly
     report_force = await setup_triggers(
-        client=prefect_client, triggers=builtin_triggers[:-2], trigger_type=TriggerType.BUILTIN, force_update=True
+        client=prefect_client, triggers=updated_triggers[:-2], trigger_type=TriggerType.BUILTIN, force_update=True
     )
     assert len(report_force.deleted) == 0
     assert len(report_force.updated) == len(builtin_triggers) - 2

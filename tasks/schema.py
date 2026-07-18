@@ -5,8 +5,8 @@ from invoke.tasks import task
 
 from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
-SDK_DIRECTORY = REPO_BASE / "generated" / "python-sdk"
-INFRAHUB_DIRECTORY = REPO_BASE / "generated" / "infrahub"
+SDK_DIRECTORY = REPO_BASE / ".generated" / "python-sdk"
+INFRAHUB_DIRECTORY = REPO_BASE / ".generated" / "infrahub"
 
 REPOSITORY_CONFIG_DIRECTORY = SDK_DIRECTORY / "repository-config"
 INFRAHUB_SCHEMA_DIRECTORY = INFRAHUB_DIRECTORY / "schema"
@@ -39,7 +39,7 @@ def generate_jsonschema(context: Context) -> None:
 
 @task
 def generate_repositoryconfig(context: Context) -> None:
-    """Generate repository config into generated/python-sdk/repository-config/develop.json."""
+    """Generate repository config into .generated/python-sdk/repository-config/develop.json."""
     from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 
     with context.cd(ESCAPED_REPO_PATH):
@@ -51,7 +51,7 @@ def generate_repositoryconfig(context: Context) -> None:
 
 @task
 def generate_infrahubnodeschema(context: Context) -> None:
-    """Generate infrahub node schema into generated/infrahub/schema/develop.json."""
+    """Generate infrahub node schema into .generated/infrahub/schema/develop.json."""
     with context.cd(ESCAPED_REPO_PATH):
         context.run(f"uv run infrahub dev export-node-schema --out {INFRAHUB_NODE_SCHEMA_PATH}")
         print(f"Wrote to {INFRAHUB_NODE_SCHEMA_PATH}")

@@ -93,9 +93,18 @@ When updating relationships, the manager compares new data against existing rela
 1. Fetch current relationships from DB -> `previous_relationships` dict (keyed by `peer_id`)
 2. Clear `_relationships` list
 3. For each new item:
-   - **UUID match** (string or dict with `"id"`): Reuse existing `Relationship` object from `previous_relationships`
+   - **UUID match** (string or dict with `"id"`): Reuse existing `Relationship` object from `previous_relationships`. If that peer was sourced from a Profile, its source is cleared (`is_from_profile = False`, `clear_source()`) — see "Profile-sourced relationships" below.
    - **No match** (HFID, default_filter, new UUID): Create new `Relationship` via `.new()`
 4. Mark as changed if the set of peers differs
+
+### Profile-sourced relationships
+
+A relationship's peers are all-or-nothing with respect to Profile sourcing: either every peer is sourced from a Profile or none are. Any user modification to a Profile-sourced relationship turns the whole relationship into a user-defined one, with the peers kept but their Profile source cleared:
+
+- `RelationshipManager.update()` clears the source from reused peers (above), so an object update detaches the relationship from its Profile.
+- The `RelationshipAdd` and `RelationshipRemove` GraphQL mutations call `_detach_relationship_from_profiles()` after a successful, modifying change to clear the source from the surviving peers. `_collect_current_peers()` requests `MetadataOptions.SOURCE` so those peers can be identified without re-reading the relationship. A failed or no-op mutation leaves the sourcing untouched (the detach runs inside the mutation transaction, after validation).
+
+`NodeProfilesApplier` then treats such a relationship as user-defined and does not re-apply Profile peers to it.
 
 ### UUID vs HFID References
 

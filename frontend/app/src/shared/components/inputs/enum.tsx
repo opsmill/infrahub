@@ -1,12 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps } from "@infrahub/ui";
 import React from "react";
 
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -16,11 +15,12 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 
-import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/entities/schema/api/enum";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
+import { useAddEnumMutation } from "@/entities/schema/ui/queries/add-enum.mutation";
+import { useRemoveEnumMutation } from "@/entities/schema/ui/queries/remove-enum.mutation";
 
-export interface EnumDeleteButtonProps extends ButtonProps {
+export interface EnumDeleteButtonProps extends Omit<ButtonProps, "value"> {
   fieldSchema: AttributeSchema;
   schema: ModelSchema;
   value: string | number;
@@ -32,23 +32,18 @@ export const EnumDeleteButton = ({
   fieldSchema,
   schema,
   onDelete,
-  className,
   value,
-  children,
-  ref,
-  ...props
 }: EnumDeleteButtonProps) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const namespace = useNamespace(schema?.namespace);
-  const [removeEnum, { loading }] = useMutation(ENUM_REMOVE_MUTATION, {
-    variables: { kind: schema?.kind, attribute: fieldSchema?.name, enum: value },
-  });
+  const { mutateAsync: removeEnum, isPending: loading } = useRemoveEnumMutation();
 
   if (!namespace?.user_editable) return null;
 
   const handleDelete = async () => {
+    if (!schema?.kind || !fieldSchema?.name) return;
     try {
-      await removeEnum();
+      await removeEnum({ kind: schema.kind, attribute: fieldSchema.name, enum: String(value) });
       onDelete(value);
     } catch (error) {
       console.error("Error deleting enum:", error);
@@ -58,17 +53,14 @@ export const EnumDeleteButton = ({
   return (
     <>
       <Button
-        ref={ref}
         aria-label="Delete option"
-        tabIndex={-1}
+        excludeFromTabOrder
         variant="ghost"
         size="sm"
         className="ml-auto h-6 text-red-800"
-        onClick={(e) => {
-          e.stopPropagation();
+        onPress={() => {
           setShowDeleteModal(true);
         }}
-        {...props}
       >
         <Icon icon="mdi:trash-can-outline" />
       </Button>
@@ -99,7 +91,7 @@ interface EnumAddActionProps {
 export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) => {
   const namespace = useNamespace(schema?.namespace);
   const [open, setOpen] = React.useState(false);
-  const [addEnum] = useMutation(ENUM_ADD_MUTATION);
+  const { mutateAsync: addEnum } = useAddEnumMutation();
 
   if (!schema || !field) return null;
 
@@ -107,8 +99,8 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
     <div className="p-2 pt-0">
       {namespace?.user_editable && (
         <Button
-          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-          onClick={() => setOpen(!open)}
+          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-700/20"
+          onPress={() => setOpen(!open)}
         >
           + Add option
         </Button>
@@ -142,18 +134,15 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
             },
           ]}
           onSubmit={async (formData) => {
+            if (!schema.kind) return;
             const newEnumValue = formData.enum.value;
-            const { data } = await addEnum({
-              variables: {
-                kind: schema.kind,
-                attribute: field.name,
-                enum: newEnumValue,
-              },
+            await addEnum({
+              kind: schema.kind,
+              attribute: field.name,
+              enum: String(newEnumValue),
             });
-            if (data?.SchemaEnumAdd?.ok) {
-              addOption(newEnumValue as string | number);
-              setOpen(false);
-            }
+            addOption(newEnumValue as string | number);
+            setOpen(false);
           }}
           onCancel={() => setOpen(false)}
           className="p-4"

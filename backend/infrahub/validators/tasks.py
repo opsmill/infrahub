@@ -35,7 +35,10 @@ async def start_validator[ValidatorType: CoreValidator](
 
     event_service = await get_event_service()
     await send_start_validator(
-        event_service=event_service, validator=validator, proposed_change_id=proposed_change, context=context
+        event_service=event_service,
+        validator=validator,
+        proposed_change_id=proposed_change,
+        context=context.to_event_context(),
     )
 
     return validator

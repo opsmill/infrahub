@@ -74,6 +74,7 @@ DELETE dup_attr_to_delete
 
 class Migration040(GraphMigration):
     name: str = "040_duplicated_attributes"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [DeleteDuplicatedAttributesQuery]
     minimum_version: int = 39
 

@@ -14,6 +14,7 @@ from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -89,7 +90,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         )
         await color1_initial.save()
 
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Give the computed attribute triggers a little while to run
             tshirt1_updated = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if (
@@ -112,7 +113,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
             "A Ember Glow Explorer t-shirt. A deep, fiery red-orange reminiscent of smoldering embers at dusk."
         )
 
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Give the computed attribute triggers a little while to run
             tshirt1_second_update_result = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if tshirt1_second_update_result.description.value == expected_description:
@@ -124,7 +125,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await tshirt1_second_update_result.save()
 
         expected_name_code = "WEARABLE-GARDENER"
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Give the computed attribute triggers a little while to run
             tshirt1_last_update_result = await client.get(kind="TestingTShirt", id=tshirt1.id)
             if tshirt1_last_update_result.name_code.value == expected_name_code:
@@ -199,7 +200,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await sth_router_1.save()
 
         initial_name_router_1 = "se-sth-router-1"
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Provide some delay for the triggers to be setup and the computed attribute to render
             sth_router_1_collected = await client.get(kind="InfraDevice", id=sth_router_1.id, include=["name"])
             if sth_router_1_collected.name.value:
@@ -214,7 +215,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         await sweden_name_update.save()
 
         swe_name_router_1 = "swe-sth-router-1"
-        for _ in range(20):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             # Give the computed attribute triggers a little while to run
             sth_router_1_swe = await client.get(kind="InfraDevice", id=sth_router_1.id, include=["name"])
             if sth_router_1_swe.name.value == swe_name_router_1:
@@ -261,7 +262,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         # Wait for the computed attribute tasks to be created and completed
         # Tasks may not be created immediately after schema load, so poll for them
         nbr_task_after_related = nbr_task_after_not_related
-        deadline = time.monotonic() + 30
+        deadline = time.monotonic() + PREFECT_EVENT_WAIT_SECONDS
         while time.monotonic() < deadline:
             await sleep(1)
             await wait_for_all_tasks_to_be_completed(client)

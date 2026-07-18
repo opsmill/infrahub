@@ -4,7 +4,7 @@ from collections.abc import Iterator
 import pytest
 
 from infrahub import config
-from infrahub.auth import ExternalAuthProtocol, ExternalIdentity, signin_sso_account
+from infrahub.auth.auth import ExternalIdentity, signin_sso_account
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -13,6 +13,7 @@ from infrahub.core.protocols import CoreAccount
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ProcessingError
+from infrahub.external_protocols import ExternalAuthProtocol
 
 
 @pytest.fixture

@@ -1,8 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { useState } from "react";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/ui/button";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
@@ -25,21 +26,37 @@ const ObjectEditSlideOverTrigger = ({
 }: ObjectEditSlideOverTriggerProps) => {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
 
-  return (
-    <>
-      <ButtonWithTooltip
+  const editButton = !permission.create.isAllowed ? (
+    <Tooltip message={permission.create.message ?? undefined}>
+      <Button
         className="ml-auto"
         variant="outline"
-        size="icon"
-        onClick={() => setIsEditDrawerOpen(true)}
-        disabled={!permission.create.isAllowed}
-        tooltipEnabled={!permission.create.isAllowed}
-        tooltipContent={permission.create.message ?? undefined}
+        size="xs"
+        shape="circle"
+        isDisabledAndFocusable
         data-testid="edit-button"
         {...props}
       >
         <Icon icon="mdi:pencil" />
-      </ButtonWithTooltip>
+      </Button>
+    </Tooltip>
+  ) : (
+    <Button
+      className="ml-auto"
+      variant="outline"
+      size="xs"
+      shape="circle"
+      onPress={() => setIsEditDrawerOpen(true)}
+      data-testid="edit-button"
+      {...props}
+    >
+      <Icon icon="mdi:pencil" />
+    </Button>
+  );
+
+  return (
+    <>
+      {editButton}
 
       <SlideOver
         title={

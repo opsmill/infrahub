@@ -1,0 +1,38 @@
+---
+# Project-level Jira configuration for this repo.
+#
+# Copy this file to `dev/jira.yml` at your repo root, fill in real values,
+# and commit. Holds every Jira parameter the taskstoissues-jira preset
+# reads. The assignee for each created issue is the user authenticated
+# to the Atlassian MCP (resolved via atlassianUserInfo).
+
+# REQUIRED — Atlassian site URL. Matched against
+# getAccessibleAtlassianResources to resolve cloudId.
+cloud: https://opsmill.atlassian.net/
+
+# REQUIRED — Jira project key new issues are created in (e.g. IFC, INFP).
+default_project_key: PROJ
+
+# REQUIRED — issue type for created phase issues.
+default_issue_type: Task
+
+# REQUIRED — custom field IDs for your Jira instance. Retrieve with
+# mcp__claude_ai_Atlassian__getJiraIssueTypeMetaWithFields and paste below.
+custom_fields:
+  epic_link: customfield_XXXXX
+  team: customfield_XXXXX
+  # Optional / reserved for future use:
+  # sprint: customfield_XXXXX
+  # story_points: customfield_XXXXX
+
+# REQUIRED — Atlassian Team assigned to every created issue. `name` is the
+# human label; `id` is the bare UUID Jira's Teams picker requires. Leave
+# `id` empty on first run and the command will resolve it from `name` and
+# write it back here.
+team:
+  name: "Core"
+  id: ""
+
+# REQUIRED — labels applied to every created issue.
+labels_default:
+  - spec-kit

@@ -1,5 +1,3 @@
-import { useQuery } from "@apollo/client";
-import { use } from "react";
 import { useParams } from "react-router";
 
 import {
@@ -8,13 +6,11 @@ import {
 } from "@/shared/config/constants";
 
 import { getThreadLabel } from "@/entities/diff/ui/diff-utils";
+import { useGetDiffComments } from "@/entities/diff/ui/queries/get-diff-comments.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
-import { GET_OBJECT_THREAD_COMMENTS } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
-
-import { DiffContext } from ".";
 
 type tDiffComments = {
   path: string;
@@ -25,24 +21,19 @@ export const DiffComments = (props: tDiffComments) => {
   const { path, refetch: parentRefetch } = props;
 
   const { proposedChangeId } = useParams();
-  const { refetch: contextRefetch, node, currentBranch } = use(DiffContext);
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
 
-  const { loading, error, data, refetch } = useQuery(GET_OBJECT_THREAD_COMMENTS, {
-    variables: { changeIds: [proposedChangeId!], objectPath: path },
-    skip: !proposedChangeId,
-  });
+  const { isLoading, error, data, refetch } = useGetDiffComments(
+    { proposedChangeId: proposedChangeId ?? "", objectPath: path },
+    { enabled: !!proposedChangeId }
+  );
 
   const handleRefetch = () => {
     refetch();
 
     if (parentRefetch) {
       parentRefetch();
-    }
-
-    if (contextRefetch) {
-      contextRefetch();
     }
   };
 
@@ -51,7 +42,7 @@ export const DiffComments = (props: tDiffComments) => {
       return;
     }
 
-    const label = getThreadLabel(node, currentBranch, path);
+    const label = getThreadLabel(path);
 
     const newThread = {
       change: {
@@ -112,9 +103,9 @@ export const DiffComments = (props: tDiffComments) => {
     );
   };
 
-  const thread = data?.CoreObjectThread?.edges?.[0]?.node;
+  const thread = data?.thread;
 
-  if (loading || error) {
+  if (!proposedChangeId || isLoading || error) {
     return null;
   }
 

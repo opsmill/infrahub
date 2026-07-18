@@ -18,7 +18,8 @@ from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core import registry
 from infrahub.core.attribute import (
     Boolean,
@@ -69,6 +70,10 @@ from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
 from tests.conftest import TestHelper
+from tests.helpers.constants import (
+    PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
+    PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
+)
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
@@ -103,6 +108,7 @@ def prefect_test_fixture() -> Generator[None, None, None]:
             "PREFECT_UI_ENABLED": "0",
             "PREFECT__SERVER_EPHEMERAL": "1",
             "PREFECT__SERVER_FINAL": "1",
+            "PREFECT_SERVER_API_MAX_PARAMETER_SIZE": "0",
         }
 
         return subprocess.Popen(
@@ -130,6 +136,9 @@ def prefect_test_fixture() -> Generator[None, None, None]:
             },
         )
 
+    os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
+    os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
+
     with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
         with prefect_test_harness(server_startup_timeout=60):
             yield
@@ -140,16 +149,6 @@ def git_sources_dir(default_branch: Branch, tmp_path: Path) -> Path:
     source_dir = tmp_path / "sources"
     source_dir.mkdir()
     return source_dir
-
-
-@pytest.fixture
-def git_repos_dir(tmp_path: Path) -> Path:
-    repos_dir = tmp_path / "repositories"
-    repos_dir.mkdir()
-
-    config.SETTINGS.git.repositories_directory = str(repos_dir)
-
-    return repos_dir
 
 
 @pytest.fixture
@@ -2547,6 +2546,17 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 
 @pytest.fixture
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: SchemaBranch, data_schema: None) -> Node:
+    return await do_create_test_admin(db=db)
+
+
+@pytest.fixture(scope="class")
+async def create_test_admin_scope_class(
+    db: InfrahubDatabase, register_core_models_schema_scope_class: SchemaBranch, data_schema_scope_class: None
+) -> Node:
+    return await do_create_test_admin(db=db)
+
+
+async def do_create_test_admin(db: InfrahubDatabase) -> Node:
     """Create a test admin account, group and role with all global permissions."""
     permissions: list[Node] = []
     global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -2592,6 +2602,11 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: S
 @pytest.fixture
 async def session_admin(db: InfrahubDatabase, create_test_admin: Node) -> AccountSession:
     return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
+
+
+@pytest.fixture(scope="class")
+async def session_admin_scope_class(db: InfrahubDatabase, create_test_admin_scope_class: Node) -> AccountSession:
+    return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin_scope_class.id)
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ import pytest
 from infrahub_sdk.timestamp import Timestamp
 from pytz import timezone
 
-from infrahub.auth import (
+from infrahub.auth.auth import (
     authenticate_with_password,
     authentication_token,
     fetch_account_groups_and_roles,

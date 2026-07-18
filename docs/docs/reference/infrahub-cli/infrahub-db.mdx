@@ -17,14 +17,16 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 **Commands**:
 
 * `migrate`: Check the current format of the internal...
+* `showmigrations`: Display all migrations and their...
+* `showmigration`: Show detailed information about a specific...
 * `check-inheritance`: Check the database for any vertices with...
 * `reset-deployment-id`: Reset the internal deployment_id on the...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
-* `update-core-schema`: Check the current format of the internal...
+* `update-core-schema`: Reload the internal core schema definition...
 * `constraint`: Manage Database Constraints.
 * `index`: Manage Database Indexes.
 * `selected-export`: Export database structure of selected...
-* `load-export`: Cannot be used for backup/restore...
+* `load-export`: Load an anonymized export produced by `db...
 * `check`: Run database sanity checks and output the...
 * `patch`: Commands for planning, applying, and...
 
@@ -45,15 +47,51 @@ $ infrahub db migrate [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
+* `--plan / --no-plan`: Show the migration plan without executing.  [default: no-plan]
+* `--verbose / --no-verbose`: Also show internal infrahub and prefect logger output (schema-loader warnings, validator messages, workflow-client logs) that is suppressed by default. Per-migration progress messages are always shown and are not controlled by this flag.  [default: no-verbose]
 * `--migration-number INTEGER`: Apply a specific migration by number, regardless of current database version
+* `--help`: Show this message and exit.
+
+## `infrahub db showmigrations`
+
+Display all migrations and their applied/pending status.
+
+**Usage**:
+
+```console
+$ infrahub db showmigrations [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `infrahub db showmigration`
+
+Show detailed information about a specific migration.
+
+**Usage**:
+
+```console
+$ infrahub db showmigration [OPTIONS] MIGRATION_NUMBER [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `MIGRATION_NUMBER`: Migration number to inspect  [required]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-inheritance`
 
 Check the database for any vertices with incorrect inheritance.
-
-Raises:
-    Exit: When inheritance checks fail (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 
@@ -77,11 +115,6 @@ Reset the internal deployment_id on the Root node.
 Running Infrahub server and worker processes cache this value at startup and
 must be restarted after this command to pick up the new value.
 
-Raises:
-    Exit: When the provided deployment_id is not a valid UUID, the user declines the
-        confirmation prompt, or resetting the deployment_id fails (raises typer.Exit to
-        terminate the CLI command).
-
 **Usage**:
 
 ```console
@@ -102,9 +135,6 @@ $ infrahub db reset-deployment-id [OPTIONS] [CONFIG_FILE]
 
 Check for any duplicate schema attributes or relationships on the default branch.
 
-Raises:
-    Exit: When duplicate schema fields are detected and not resolved (raises typer.Exit to terminate the CLI command).
-
 **Usage**:
 
 ```console
@@ -122,7 +152,7 @@ $ infrahub db check-duplicate-schema-fields [OPTIONS] [CONFIG_FILE]
 
 ## `infrahub db update-core-schema`
 
-Check the current format of the internal graph and apply the necessary migrations.
+Reload the internal core schema definition and apply schema-only migrations.
 
 **Usage**:
 
@@ -142,9 +172,6 @@ $ infrahub db update-core-schema [OPTIONS] [CONFIG_FILE]
 ## `infrahub db constraint`
 
 Manage Database Constraints.
-
-Raises:
-    Exit: When the configured database type is not supported (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 
@@ -204,10 +231,10 @@ $ infrahub db selected-export [OPTIONS] [CONFIG_FILE]
 
 ## `infrahub db load-export`
 
-Cannot be used for backup/restore functionality.
+Load an anonymized export produced by `db selected-export` into Neo4j.
 
-Loads an anonymized export into Neo4j.
-Only used for analysis of output of the selected-export command.
+Intended only for analysis of selected-export output — not a general
+backup/restore mechanism.
 
 **Usage**:
 
@@ -265,10 +292,6 @@ $ infrahub db patch [OPTIONS] COMMAND [ARGS]...
 
 Create a plan for a given patch and save it in the patch plans directory to be applied/reverted.
 
-Raises:
-    Exit: When no PatchQuery subclass is found in the provided module or when more than one
-        is defined (raises typer.Exit to terminate the CLI command).
-
 **Usage**:
 
 ```console
@@ -290,10 +313,6 @@ $ infrahub db patch plan [OPTIONS] PATCH_PATH [CONFIG_FILE]
 
 Apply a given patch plan.
 
-Raises:
-    Exit: When the provided patch_plan_dir does not exist or is not a directory
-        (raises typer.Exit to terminate the CLI command).
-
 **Usage**:
 
 ```console
@@ -312,10 +331,6 @@ $ infrahub db patch apply [OPTIONS] PATCH_PLAN_DIR [CONFIG_FILE]
 ### `infrahub db patch revert`
 
 Revert a given patch plan.
-
-Raises:
-    Exit: When the provided patch_plan_dir does not exist or is not a directory
-        (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 

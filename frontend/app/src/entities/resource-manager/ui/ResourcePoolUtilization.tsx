@@ -55,7 +55,7 @@ const ResourcePoolUtilization = ({
         }
         enabled
       >
-        <span className="w-8 text-right font-medium text-custom-blue-700">
+        <span className="w-8 text-right font-medium text-cyan-700">
           {roundNumber(utilizationOverall, 0)}%
         </span>
       </Tooltip>

@@ -12,7 +12,6 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 
 from .load_schema_branch import get_or_load_schema_branch
@@ -23,13 +22,12 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-console = get_migration_console()
-
 
 class Migration063(MigrationRequiringRebase):
     """Nullify attribute values on template nodes where the source is a CoreNumberPool."""
 
     name: str = "063_template_number_pool_cleanup"
+    description: str = "N/A"
     minimum_version: int = 62
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

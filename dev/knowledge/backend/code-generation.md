@@ -40,6 +40,7 @@ Schema definitions (Python)
 | Added/modified schema definitions (attributes, relationships) | `uv run invoke backend.generate` |
 | Changed GraphQL schema structure | `uv run invoke schema.generate-graphqlschema` + `npm run codegen` |
 | New GraphQL queries/mutations in frontend | `npm run codegen` |
+| New FastAPI route, changed request/response model, or added field on a response model | `uv run invoke schema.generate-jsonschema` (regenerates `schema/openapi.json`) + `npm run codegen` |
 | Changed event classes, schema docstrings, CLI commands, or config | `uv run invoke docs.generate` |
 
 Changes that do **not** require regeneration:
@@ -70,7 +71,7 @@ CI runs these checks to ensure generated files are committed.
 
 ## Documentation Generation
 
-Reference documentation under `docs/docs/reference/` (and `docs/reference/configuration.mdx`) is rendered from the backend source, not written by hand:
+Reference documentation under `docs/docs/reference/` (and `docs/docs/reference/configuration.mdx`) is rendered from the backend source, not written by hand:
 
 | Source | Output |
 |--------|--------|

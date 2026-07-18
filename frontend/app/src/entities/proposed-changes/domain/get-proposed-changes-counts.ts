@@ -5,14 +5,14 @@ import {
 
 export type GetProposedChangesCountsParams = ProposedChangesCountsFromApiParams;
 
-export type GetProposedChangesCountsResponse = {
+export type GetProposedChangesCountsResult = {
   opened: number;
   closed: number;
 };
 
 export type GetProposedChangesCounts = (
   params: GetProposedChangesCountsParams
-) => Promise<GetProposedChangesCountsResponse>;
+) => Promise<GetProposedChangesCountsResult>;
 
 export const getProposedChangesCounts: GetProposedChangesCounts = async (
   params: ProposedChangesCountsFromApiParams

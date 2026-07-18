@@ -2,6 +2,7 @@
 title: Authentication
 ---
 import ReferenceLink from "../../../src/components/Card";
+import EnterpriseBadge from "../../../src/components/EnterpriseBadge";
 
 # Authentication
 
@@ -40,6 +41,20 @@ Key characteristics of SSO in Infrahub:
 :::info Recommendation
 Local user store is suitable for testing and development environments. For production use, integrating with an external identity provider via SSO is recommended for better security and user management.
 :::
+
+### LDAP <EnterpriseBadge />
+
+With LDAP authentication, users sign in with the credentials from an existing directory — Active Directory, OpenLDAP, or another RFC 4510-compliant LDAP server. It suits organizations that manage identities in a directory and do not run an OIDC or OAuth2 identity provider.
+
+Key characteristics of LDAP authentication in Infrahub:
+
+- Users authenticate against the directory through a service-account lookup followed by a credential bind
+- Accounts are auto-provisioned on first sign-in, the same as SSO
+- Directory group memberships map to local groups, with support for nested groups
+- LDAPS and STARTTLS encrypt the connection, with configurable certificate validation
+- Available in the Enterprise Edition
+
+<ReferenceLink title="LDAP authentication" url="ldap/overview"/>
 
 ## OAuth 2.0 vs OpenID Connect
 
@@ -100,16 +115,19 @@ Disabling anonymous access is recommended for production environments to ensure 
 
 When a user attempts to access Infrahub, the following authentication flow occurs:
 
-1. The user is presented with available authentication options (local login and configured SSO providers)
+1. The user is presented with available authentication options (local login, LDAP, and configured SSO providers)
    :::info
    Multiple SSO providers can be configured simultaneously. Even with SSO providers enabled, local login remains available for fallback scenarios (such as when an identity provider is unavailable).
    :::
 2. Upon successful authentication:
    - For local users: Credentials are verified against the local user store
+   - For LDAP users: Credentials are verified against the directory through a service-account lookup and a credential bind
    - For SSO users: The user is redirected to the identity provider, authenticated there, and returned to Infrahub
 3. A user session is created after successful authentication
 4. For first-time SSO users, a corresponding local user record is automatically created
-5. Group memberships and roles are applied based on configuration
+5. Group memberships are applied:
+   - On a user's first login, the default group (if configured) is assigned, if the authentication provider does not provide any group membership information
+   - On every login, group memberships derived from the provider's claims are added. This is additive — Infrahub never removes a user from a group automatically, even if a claim is dropped
 6. The user is granted access according to their assigned permissions
 
 ## Application authentication

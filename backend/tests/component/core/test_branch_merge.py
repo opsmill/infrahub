@@ -8,6 +8,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
+from infrahub.core.merge.constraints import MergeConstraintValidator
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath, SchemaPathType
@@ -25,6 +26,7 @@ async def _get_branch_merger(
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=source_branch)
+    constraint_validator = MergeConstraintValidator(db=db, branch=source_branch, diff_repository=diff_repository)
     return BranchMerger(
         db=db,
         diff_coordinator=diff_coordinator,
@@ -33,6 +35,7 @@ async def _get_branch_merger(
         source_branch=source_branch,
         destination_branch=destination_branch,
         diff_locker=DiffLocker(),
+        constraint_validator=constraint_validator,
     )
 
 

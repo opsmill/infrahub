@@ -33,6 +33,15 @@ const GET_VALIDATORS = graphql(`
               }
             }
           }
+          ... on CoreArtifactValidator {
+            definition {
+              node {
+                id
+                display_label
+                __typename
+              }
+            }
+          }
           __typename
         }
       }

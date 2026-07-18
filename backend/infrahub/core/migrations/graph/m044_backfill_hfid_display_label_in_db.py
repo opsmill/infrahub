@@ -17,7 +17,7 @@ from infrahub.core.migrations.query.path_details import (
     GetPathDetailsDefaultBranch,
     GetResultMapQuery,
 )
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import SchemaNotFoundError
@@ -32,8 +32,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-console = get_migration_console()
 
 
 class UpdateAttributeValuesQuery(Query):
@@ -232,6 +230,7 @@ class Migration044(MigrationRequiringRebase):
     """Backfill `human_friendly_id` and `display_label` attributes for nodes with schemas that define them."""
 
     name: str = "044_backfill_hfid_display_label_in_db"
+    description: str = "N/A"
     minimum_version: int = 43
     update_batch_size: int = 1000
     # skip these b/c the attributes on these schema-related nodes are used to define the values included in
@@ -347,7 +346,7 @@ class Migration044(MigrationRequiringRebase):
         hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
 
         try:
-            with Progress(console=console) as progress:
+            with Progress(console=migration_input.console) as progress:
                 update_task = progress.add_task(
                     f"Set display_label and human_friendly_id for {total_nodes_count} nodes on default branch",
                     total=total_nodes_count,

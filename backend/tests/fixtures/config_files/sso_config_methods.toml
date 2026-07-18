@@ -12,6 +12,7 @@ userinfo_url = "http://localhost:8180/infrahub-users/infrahub/protocol/openid-co
 display_label = "Keycloak Users"
 icon = "mdi:security-lock-outline"
 userinfo_method = "post"
+groups_claim = "roles"
 
 [security.oauth2_provider_settings.provider2]
 client_id = "infrahub-admin-client"
@@ -30,6 +31,7 @@ discovery_url = "http://localhost:8180/realms/infrahub-users/.well-known/openid-
 display_label = "OIDC Users"
 icon = "mdi:security-lock-outline"
 userinfo_method = "post"
+groups_claim = "roles"
 
 
 [security.oidc_provider_settings.provider2]

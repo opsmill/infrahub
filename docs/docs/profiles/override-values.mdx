@@ -111,6 +111,74 @@ query {
 </TabItem>
 </Tabs>
 
+## Override a relationship
+
+Profiles can also source relationship values for both `one` and `many` cardinality relationships. Overriding a Profile-sourced relationship behaves differently from an attribute: a relationship is either **entirely** inherited from a Profile or **entirely** not. That is, all peers on a given relationship either share the same source Profile or none of the peers have a source Profile.
+
+As soon as you modify a Profile-sourced relationship on an object, by setting it explicitly or by adding or removing a peer, then all of the relationship's peers lose their Profile sourcing. Peers that the Profile also provided are kept (they are not deleted); only their Profile source is cleared. The Profile itself stays assigned to the object.
+
+<Tabs groupId="method" queryString>
+<TabItem value="web" label="Web interface">
+
+1. Open the object
+2. Click **Edit**
+3. Add or remove peers in the relationship field
+4. Click **Save**
+
+Every peer in the relationship is now object-defined; the Profile no longer sources it.
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
+
+Set the relationship explicitly on the object to override it:
+
+```graphql
+mutation {
+  <Kind>Update(
+    data: {
+      hfid: ["<object-name>"]
+      <relationship>: [{ hfid: ["<peer-name>"] }]
+    }
+  ) {
+    ok
+  }
+}
+```
+
+Adding or removing a peer has the same effect, clearing the Profile-source from every peer:
+
+```graphql
+mutation {
+  RelationshipAdd(
+    data: { id: "<object-id>", name: "<relationship>", nodes: [{ id: "<peer-id>" }] }
+  ) {
+    ok
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+To confirm a relationship is no longer inherited, query the `source` metadata of its peers. An empty `source` means the peer is object-defined:
+
+```graphql
+query {
+  <Kind>(name__value: "<object-name>") {
+    edges {
+      node {
+        <relationship> {
+          edges {
+            node { id }
+            properties { source { id } }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## How precedence works
 
 Explicit values on the object beat Profile values. When multiple Profiles also define the attribute, priority decides which Profile would have applied if no explicit value was set — see [Priority and inheritance](./priority-and-inheritance.mdx).

@@ -257,8 +257,10 @@ async def _validate_node_profile_relationships(
 
         if expected_profile_relationship:
             assert {p.id for p in updated_peers} == {p.id for p in expected_profile_relationship.peers}
-            if expected_profile_relationship.source_uuid or updated_source:
+            if expected_profile_relationship.source_uuid:
                 assert updated_source == {expected_profile_relationship.source_uuid}
+            else:
+                assert updated_source == set()
         else:
             assert {p.id for p in updated_peers} == {p.id for p in original_peers}
             assert updated_source == set()
@@ -634,7 +636,6 @@ async def test_get_many_with_profile_relationships_override(
     )
 
 
-@pytest.mark.xfail(reason="Depending on how we override the peers, it may or may not work")
 async def test_get_many_with_profile_relationships_partial_override(
     db: InfrahubDatabase, branch: Branch, child_and_thing_nodes: ChildThingFixtures
 ) -> None:
@@ -648,7 +649,9 @@ async def test_get_many_with_profile_relationships_partial_override(
     )
     await augmented_child_profile.save(db=db)
 
-    await child_and_thing_nodes.child_nodes[0].profiles.update(db=db, data=[augmented_child_profile])
+    await (
+        child_and_thing_nodes.child_nodes[0].get_relationship("profiles").update(db=db, data=[augmented_child_profile])
+    )
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
@@ -676,21 +679,14 @@ async def test_get_many_with_profile_relationships_partial_override(
         ],
     )
 
-    # Removing the peers from the profile before adding them will work
-    # for thing in {child_and_thing_nodes.thing_nodes[0], child_and_thing_nodes.thing_nodes[1]}:
-    #    await updated_child_one.things.remove_locally(db=db, peer_id=thing.id)
-
-    # Override with a peer that is also in the profile, by adding them won't work
-    # for thing in {child_and_thing_nodes.thing_nodes[1], child_and_thing_nodes.thing_nodes[2]}:
-    #    await updated_child_one.things.add(db=db, data=thing)
-
-    # Updating by replacing all peers will work
-    await updated_child_one.things.update(
+    await updated_child_one.get_relationship("things").update(
         db=db, data=[child_and_thing_nodes.thing_nodes[1], child_and_thing_nodes.thing_nodes[2]]
     )
 
     updated_field_names = await node_applier.apply_profiles(node=updated_child_one)
-    assert updated_field_names == ["things"]
+    # no profiles are applied: thing_nodes[1] is kept but de-sourced, thing_nodes[2] is added,
+    # and thing_nodes[0] is removed.
+    assert updated_field_names == []
     await updated_child_one.save(db=db)
 
     node_map = await NodeManager.get_many(

@@ -1,5 +1,27 @@
-from pathlib import Path
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub.core.diff.model.diff import SchemaConflict
+    from infrahub.core.validators.model import SchemaViolation
+
+
+def _rebuild_error(cls: type[Error], args: tuple[Any, ...], state: Any) -> Error:
+    obj = cls.__new__(cls)
+    obj.args = args
+    # Mirror object.__setstate__: state is a dict of instance attributes, or a
+    # (dict_state, slots_state) tuple for subclasses that define __slots__, or None.
+    if state is not None:
+        dict_state, slots_state = state if isinstance(state, tuple) else (state, None)
+        if dict_state:
+            obj.__dict__.update(dict_state)
+        if slots_state:
+            for key, value in slots_state.items():
+                setattr(obj, key, value)
+    return obj
 
 
 class Error(Exception):
@@ -7,6 +29,14 @@ class Error(Exception):
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
     errors: list | None = None
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        # BaseException.__reduce__ rebuilds via cls(*self.args), dropping any additional required
+        # constructor arguments, so subclasses with extra parameters fail to unpickle. Rebuild via
+        # __new__ + instance state instead so every subclass round-trips regardless of its
+        # __init__ signature. __getstate__ captures both __dict__ and __slots__ state so
+        # slotted subclasses round-trip too.
+        return (_rebuild_error, (self.__class__, self.args, self.__getstate__()))
 
     def api_response(self) -> dict[str, Any]:
         """Return error response."""
@@ -237,6 +267,14 @@ class ResourceNotFoundError(Error):
         super().__init__(self.message)
 
 
+class ResourceMultipleFoundError(Error):
+    HTTP_CODE: int = 500
+
+    def __init__(self, message: str | None = None) -> None:
+        self.message = message or "Multiple matching resources were found"
+        super().__init__(self.message)
+
+
 class AuthorizationError(Error):
     HTTP_CODE: int = 401
     message: str = "Access to the requested resource was denied"
@@ -311,6 +349,14 @@ class QueryError(Error):
         """
 
 
+class QueryTimeoutError(Error):
+    HTTP_CODE: int = 504
+
+    def __init__(self, message: str = "The query exceeded its execution time budget.") -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
 class QueryValidationError(Error):
     HTTP_CODE = 400
 
@@ -336,6 +382,7 @@ class ValidationError(Error):
     HTTP_CODE = 422
 
     def __init__(self, input_value: str | dict | list) -> None:
+        self.input_value = input_value
         self.message = ""
 
         if isinstance(input_value, str):
@@ -403,6 +450,26 @@ class MergeFailedError(Error):
         super().__init__(self.message)
 
 
+class MergeConstraintsViolatedError(ValidationError):
+    """Raised when merging a branch would violate a schema/data constraint on the destination."""
+
+    def __init__(self, violations: list[SchemaViolation], schema_conflicts: list[SchemaConflict]) -> None:
+        self.violations = violations
+        self.schema_conflicts = schema_conflicts
+        super().__init__(",\n".join(violation.message for violation in violations) or "Merge constraints violated")
+
+
+class MergeConflictsUnresolvedError(ValidationError):
+    """Raised when a branch cannot be merged because conflicts with the destination are unresolved."""
+
+    def __init__(self, conflict_paths: list[str], branch_name: str) -> None:
+        self.conflict_paths = conflict_paths
+        self.branch_name = branch_name
+        super().__init__(
+            f"Unable to merge the branch '{branch_name}', conflict resolution missing: {', '.join(conflict_paths)}"
+        )
+
+
 class BranchStatusError(Error):
     HTTP_CODE: int = 400
 
@@ -416,3 +483,59 @@ class BranchAlreadyMergedError(BranchStatusError): ...
 
 
 class BranchNeedsRebaseError(BranchStatusError): ...
+
+
+class EnterpriseRequiredError(Error):
+    """Raised when a community deployment invokes an Enterprise-gated feature.
+
+    The `feature` attribute carries the stable, snake_case feature identifier (e.g. `"ldap_auth"`).
+    """
+
+    HTTP_CODE: int = 403
+    DESCRIPTION: str = "This feature requires the Infrahub Enterprise edition."
+
+    def __init__(self, feature: str, message: str | None = None) -> None:
+        self.feature = feature
+        self.message = message or self.DESCRIPTION
+        super().__init__(self.message)
+
+
+class LDAPAuthenticationError(Error):
+    """Generic LDAP authentication failure.
+
+    Raised for wrong password, unknown user, disabled account, and any other
+    bind/search failure that should appear to the end user as a generic
+    credential failure. Never discloses the underlying cause.
+    """
+
+    HTTP_CODE: int = 401
+    message: str = "Authentication failed."
+
+
+class LDAPLookupError(LDAPAuthenticationError):
+    """LDAP user search returned multiple entries or a referral."""
+
+
+class LDAPDirectoryUnavailableError(Error):
+    """All configured LDAP servers timed out or refused the connection."""
+
+    HTTP_CODE: int = 502
+    message: str = "The LDAP directory is currently unavailable. Try again later."
+
+    def __init__(self, message: str | None = None) -> None:
+        self.message = message or self.message
+        super().__init__(self.message)
+
+
+class LDAPCollisionError(Error):
+    """LDAP login attempted for a username that exists as a local-only account."""
+
+    HTTP_CODE: int = 409
+    DESCRIPTION: str = (
+        "An account already exists for this username and is not attributed to LDAP. Contact your administrator."
+    )
+
+    def __init__(self, account_name: str, message: str | None = None) -> None:
+        self.account_name = account_name
+        self.message = message or self.DESCRIPTION
+        super().__init__(self.message)

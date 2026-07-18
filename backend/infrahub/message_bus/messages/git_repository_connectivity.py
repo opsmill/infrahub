@@ -17,6 +17,9 @@ class GitRepositoryConnectivity(InfrahubMessage):
 class GitRepositoryConnectivityResponseData(InfrahubResponseData):
     message: str = Field(..., description="The status message")
     success: bool = Field(...)
+    operational_status: str = Field(
+        ..., description="The operational status the repository should reflect after the connectivity check"
+    )
 
 
 class GitRepositoryConnectivityResponse(InfrahubResponse):

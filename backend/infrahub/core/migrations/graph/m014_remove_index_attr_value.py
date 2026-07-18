@@ -20,6 +20,7 @@ INDEX_TO_DELETE = IndexItem(name="attr_value", label="AttributeValue", propertie
 
 class Migration014(GraphMigration):
     name: str = "014_remove_index_attr_value"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = []
     minimum_version: int = 13
 

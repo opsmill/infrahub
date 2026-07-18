@@ -40,7 +40,15 @@ async def get_repositories_commit_per_branch(
         repos: list[CoreRepository | CoreReadOnlyRepository] = await NodeManager.query(
             db=db,
             branch=branch,
-            fields={"id": None, "name": None, "commit": None, "internal_status": None, "location": None, "ref": None},
+            fields={
+                "id": None,
+                "name": None,
+                "commit": None,
+                "internal_status": None,
+                "location": None,
+                "ref": None,
+                "default_branch": None,
+            },
             schema=kind,
             order=OrderModel(disable=True),
         )

@@ -43,6 +43,19 @@ export default defineConfig({
     trace: process.env.CI ? "retain-on-failure" : "on",
     screenshot: process.env.CI ? "only-on-failure" : "on",
     video: process.env.CI ? "retain-on-failure" : "on",
+
+    /* Fail NETLINK_ROUTE sockets in the browser so Chromium's AddressTrackerLinux takes its
+       "assume always online" path. Avoids ERR_NETWORK_CHANGED flake from Docker/veth netlink
+       churn on CI. NO_NETLINK_SO is the compiled LD_PRELOAD shim, set in CI only. Scoped to the
+       browser process so it doesn't leak into node/pnpm subprocesses. */
+    launchOptions: process.env.NO_NETLINK_SO
+      ? {
+          env: {
+            ...process.env,
+            LD_PRELOAD: process.env.NO_NETLINK_SO,
+          } as Record<string, string>,
+        }
+      : undefined,
   },
 
   /* Configure projects for major browsers */

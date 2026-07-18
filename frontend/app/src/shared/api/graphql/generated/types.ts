@@ -1,10 +1,5 @@
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
-export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
-export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
-export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
-export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
-export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: { input: string; output: string; }
@@ -17,13 +12,13 @@ export type Scalars = {
    * `BigInt` is not constrained to 32-bit like the `Int` type and thus is a less
    * compatible type.
    */
-  BigInt: { input: any; output: any; }
+  BigInt: { input: string; output: string; }
   /**
    * The `DateTime` scalar type represents a DateTime
    * value as specified by
    * [iso8601](https://en.wikipedia.org/wiki/ISO_8601).
    */
-  DateTime: { input: any; output: any; }
+  DateTime: { input: string; output: string; }
   /**
    * GenericScalar with correct variable substitution in parse_literal.
    *
@@ -858,7 +853,7 @@ export type BuiltinIpPrefix = {
   /** The IP prefix in CIDR notation */
   prefix: Maybe<IpNetwork>;
   profiles: NestedPaginatedCoreProfile;
-  resource_pool: NestedPaginatedCoreIpAddressPool;
+  resource_pool: NestedPaginatedCoreIpPool;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Percentage of the prefix that is allocated */
   utilization: Maybe<NumberAttribute>;
@@ -1138,33 +1133,10 @@ export type BuiltinIpPrefixProfilesArgs = {
 
 /** IPv4 or IPv6 prefix also referred as network */
 export type BuiltinIpPrefixResource_PoolArgs = {
-  default_address_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  default_address_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  default_address_type__source__id?: InputMaybe<Scalars['ID']['input']>;
-  default_address_type__value?: InputMaybe<Scalars['String']['input']>;
-  default_address_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  default_prefix_length__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  default_prefix_length__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  default_prefix_length__source__id?: InputMaybe<Scalars['ID']['input']>;
-  default_prefix_length__value?: InputMaybe<Scalars['BigInt']['input']>;
-  default_prefix_length__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  description__source__id?: InputMaybe<Scalars['ID']['input']>;
-  description__value?: InputMaybe<Scalars['String']['input']>;
-  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  display_label__value?: InputMaybe<Scalars['String']['input']>;
-  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
-  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  name__source__id?: InputMaybe<Scalars['ID']['input']>;
-  name__value?: InputMaybe<Scalars['String']['input']>;
-  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
@@ -1605,6 +1577,8 @@ export type CoreAccountGroup = CoreGroup & LineageOwner & LineageSource & {
   label: Maybe<TextAttribute>;
   members: NestedPaginatedCoreNode;
   name: Maybe<TextAttribute>;
+  /** Identity provider name that auto-created this group; null on manual / bootstrap / pre-upgrade groups. */
+  origin: Maybe<TextAttribute>;
   parent: NestedEdgedCoreGroup;
   roles: NestedPaginatedCoreAccountRole;
   subscribers: NestedPaginatedCoreNode;
@@ -1868,6 +1842,11 @@ export type CoreAccountRoleGroupsArgs = {
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
+  origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  origin__source__id?: InputMaybe<Scalars['ID']['input']>;
+  origin__value?: InputMaybe<Scalars['String']['input']>;
+  origin__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 
@@ -2536,6 +2515,7 @@ export type CoreArtifactDefinition = CoreNode & CoreTaskTarget & {
   __typename: 'CoreArtifactDefinition';
   /** Name template for generated artifacts (required) */
   artifact_name: Maybe<TextAttribute>;
+  artifacts: NestedPaginatedCoreArtifact;
   /** MIME type of the generated artifacts (required) */
   content_type: Maybe<TextAttribute>;
   /** None */
@@ -2553,6 +2533,50 @@ export type CoreArtifactDefinition = CoreNode & CoreTaskTarget & {
   subscriber_of_groups: NestedPaginatedCoreGroup;
   targets: NestedEdgedCoreGroup;
   transformation: NestedEdgedCoreTransformation;
+  validators: NestedPaginatedCoreArtifactValidator;
+};
+
+
+/** Defines how artifacts are generated from a transformation for a group of targets */
+export type CoreArtifactDefinitionArtifactsArgs = {
+  checksum__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  checksum__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  checksum__source__id?: InputMaybe<Scalars['ID']['input']>;
+  checksum__value?: InputMaybe<Scalars['String']['input']>;
+  checksum__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__value?: InputMaybe<Scalars['String']['input']>;
+  content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  status__value?: InputMaybe<Scalars['String']['input']>;
+  status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  storage_id__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  storage_id__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  storage_id__source__id?: InputMaybe<Scalars['ID']['input']>;
+  storage_id__value?: InputMaybe<Scalars['String']['input']>;
+  storage_id__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 
@@ -2621,6 +2645,44 @@ export type CoreArtifactDefinitionSubscriber_Of_GroupsArgs = {
   order?: InputMaybe<OrderInput>;
 };
 
+
+/** Defines how artifacts are generated from a transformation for a group of targets */
+export type CoreArtifactDefinitionValidatorsArgs = {
+  completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  completed_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  conclusion__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  conclusion__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
+  conclusion__value?: InputMaybe<Scalars['String']['input']>;
+  conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  started_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  state__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  state__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  state__source__id?: InputMaybe<Scalars['ID']['input']>;
+  state__value?: InputMaybe<Scalars['String']['input']>;
+  state__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
 /** Defines how artifacts are generated from a transformation for a group of targets */
 export type CoreArtifactDefinitionCreate = {
   __typename: 'CoreArtifactDefinitionCreate';
@@ -2631,6 +2693,7 @@ export type CoreArtifactDefinitionCreate = {
 export type CoreArtifactDefinitionCreateInput = {
   /** Name template for generated artifacts */
   artifact_name?: InputMaybe<TextAttributeCreate>;
+  artifacts?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** MIME type of the generated artifacts */
   content_type?: InputMaybe<TextAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
@@ -2642,6 +2705,7 @@ export type CoreArtifactDefinitionCreateInput = {
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   targets?: InputMaybe<RelatedNodeInput>;
   transformation?: InputMaybe<RelatedNodeInput>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** Defines how artifacts are generated from a transformation for a group of targets */
@@ -2660,6 +2724,7 @@ export type CoreArtifactDefinitionUpdate = {
 export type CoreArtifactDefinitionUpdateInput = {
   /** Name template for generated artifacts */
   artifact_name?: InputMaybe<TextAttributeUpdate>;
+  artifacts?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** MIME type of the generated artifacts */
   content_type?: InputMaybe<TextAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
@@ -2672,6 +2737,7 @@ export type CoreArtifactDefinitionUpdateInput = {
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   targets?: InputMaybe<RelatedNodeInput>;
   transformation?: InputMaybe<RelatedNodeInput>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** Defines how artifacts are generated from a transformation for a group of targets */
@@ -2684,6 +2750,7 @@ export type CoreArtifactDefinitionUpsert = {
 export type CoreArtifactDefinitionUpsertInput = {
   /** Name template for generated artifacts */
   artifact_name?: InputMaybe<TextAttributeUpdate>;
+  artifacts?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** MIME type of the generated artifacts */
   content_type?: InputMaybe<TextAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
@@ -2696,6 +2763,7 @@ export type CoreArtifactDefinitionUpsertInput = {
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   targets?: InputMaybe<RelatedNodeInput>;
   transformation?: InputMaybe<RelatedNodeInput>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** A file generated by a transformation, associated with a specific object */
@@ -3838,6 +3906,7 @@ export type CoreCheckDefinition = CoreNode & CoreTaskTarget & {
   targets: NestedEdgedCoreGroup;
   /** Maximum execution time in seconds before the check times out */
   timeout: Maybe<NumberAttribute>;
+  validators: NestedPaginatedCoreUserValidator;
 };
 
 
@@ -3929,6 +3998,44 @@ export type CoreCheckDefinitionTagsArgs = {
   order?: InputMaybe<OrderInput>;
 };
 
+
+/** Defines a user-defined check that validates data in a proposed change */
+export type CoreCheckDefinitionValidatorsArgs = {
+  completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  completed_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  conclusion__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  conclusion__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
+  conclusion__value?: InputMaybe<Scalars['String']['input']>;
+  conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  started_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  state__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  state__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  state__source__id?: InputMaybe<Scalars['ID']['input']>;
+  state__value?: InputMaybe<Scalars['String']['input']>;
+  state__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
 /** Defines a user-defined check that validates data in a proposed change */
 export type CoreCheckDefinitionCreate = {
   __typename: 'CoreCheckDefinitionCreate';
@@ -3954,6 +4061,7 @@ export type CoreCheckDefinitionCreateInput = {
   targets?: InputMaybe<RelatedNodeInput>;
   /** Maximum execution time in seconds before the check times out */
   timeout?: InputMaybe<NumberAttributeCreate>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** Defines a user-defined check that validates data in a proposed change */
@@ -3988,6 +4096,7 @@ export type CoreCheckDefinitionUpdateInput = {
   targets?: InputMaybe<RelatedNodeInput>;
   /** Maximum execution time in seconds before the check times out */
   timeout?: InputMaybe<NumberAttributeUpdate>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** Defines a user-defined check that validates data in a proposed change */
@@ -4016,6 +4125,7 @@ export type CoreCheckDefinitionUpsertInput = {
   targets?: InputMaybe<RelatedNodeInput>;
   /** Maximum execution time in seconds before the check times out */
   timeout?: InputMaybe<NumberAttributeUpdate>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** A check result within a validator that reports on specific validation outcomes */
@@ -6164,6 +6274,7 @@ export type CoreGeneratorDefinition = CoreNode & CoreTaskTarget & {
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Scalars['String']['output'];
+  instances: NestedPaginatedCoreGeneratorInstance;
   member_of_groups: NestedPaginatedCoreGroup;
   /** None (required) */
   name: Maybe<TextAttribute>;
@@ -6173,6 +6284,30 @@ export type CoreGeneratorDefinition = CoreNode & CoreTaskTarget & {
   repository: NestedEdgedCoreGenericRepository;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   targets: NestedEdgedCoreGroup;
+  validators: NestedPaginatedCoreGeneratorValidator;
+};
+
+
+/** Defines a generator that creates or updates objects based on a GraphQL query */
+export type CoreGeneratorDefinitionInstancesArgs = {
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  status__value?: InputMaybe<Scalars['String']['input']>;
+  status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 
@@ -6241,6 +6376,44 @@ export type CoreGeneratorDefinitionSubscriber_Of_GroupsArgs = {
   order?: InputMaybe<OrderInput>;
 };
 
+
+/** Defines a generator that creates or updates objects based on a GraphQL query */
+export type CoreGeneratorDefinitionValidatorsArgs = {
+  completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  completed_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  completed_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  conclusion__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  conclusion__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
+  conclusion__value?: InputMaybe<Scalars['String']['input']>;
+  conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  started_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  started_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  state__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  state__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  state__source__id?: InputMaybe<Scalars['ID']['input']>;
+  state__value?: InputMaybe<Scalars['String']['input']>;
+  state__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
 /** Defines a generator that creates or updates objects based on a GraphQL query */
 export type CoreGeneratorDefinitionCreate = {
   __typename: 'CoreGeneratorDefinitionCreate';
@@ -6261,6 +6434,7 @@ export type CoreGeneratorDefinitionCreateInput = {
   /** Path to the Python file containing the generator class */
   file_path?: InputMaybe<TextAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
+  instances?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
   /** GraphQL query parameters for the generator */
@@ -6269,6 +6443,7 @@ export type CoreGeneratorDefinitionCreateInput = {
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   targets?: InputMaybe<RelatedNodeInput>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** Defines a generator that creates or updates objects based on a GraphQL query */
@@ -6298,6 +6473,7 @@ export type CoreGeneratorDefinitionUpdateInput = {
   file_path?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
+  instances?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
   /** GraphQL query parameters for the generator */
@@ -6306,6 +6482,7 @@ export type CoreGeneratorDefinitionUpdateInput = {
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   targets?: InputMaybe<RelatedNodeInput>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** Defines a generator that creates or updates objects based on a GraphQL query */
@@ -6329,6 +6506,7 @@ export type CoreGeneratorDefinitionUpsertInput = {
   file_path?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
+  instances?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
   /** GraphQL query parameters for the generator */
@@ -6337,6 +6515,7 @@ export type CoreGeneratorDefinitionUpsertInput = {
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   targets?: InputMaybe<RelatedNodeInput>;
+  validators?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
 /** Group of nodes that are created by a generator. (local) */
@@ -7334,6 +7513,16 @@ export type CoreGenericRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub */
 export type CoreGenericRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -7589,6 +7778,7 @@ export type CoreGraphQlQuery = CoreNode & {
   operations: Maybe<ListAttribute>;
   /** The GraphQL query string (required) */
   query: Maybe<TextAttribute>;
+  query_groups: NestedPaginatedCoreGraphQlQueryGroup;
   repository: NestedEdgedCoreGenericRepository;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   tags: NestedPaginatedBuiltinTag;
@@ -7627,6 +7817,44 @@ export type CoreGraphQlQueryMember_Of_GroupsArgs = {
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
+};
+
+
+/** A pre-defined GraphQL Query */
+export type CoreGraphQlQueryQuery_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
 };
 
 
@@ -7699,6 +7927,7 @@ export type CoreGraphQlQueryCreateInput = {
   name?: InputMaybe<TextAttributeCreate>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeCreate>;
+  query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -7947,6 +8176,7 @@ export type CoreGraphQlQueryUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeUpdate>;
+  query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -7967,6 +8197,7 @@ export type CoreGraphQlQueryUpsertInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeUpdate>;
+  query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8510,7 +8741,7 @@ export type CoreGroupUpdateInput = {
 };
 
 /** A pool of IP address resources */
-export type CoreIpAddressPool = CoreNode & CoreResourcePool & LineageSource & {
+export type CoreIpAddressPool = CoreIpPool & CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreIPAddressPool';
   /** The object type to create when reserving a resource in the pool (required) */
   default_address_type: Maybe<TextAttribute>;
@@ -8729,8 +8960,99 @@ export type CoreIpAddressPoolUpsertInput = {
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
+/** A pool of IP resources (prefixes or addresses). */
+export type CoreIpPool = {
+  display_label: Maybe<Scalars['String']['output']>;
+  /** Human friendly identifier */
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  /** Unique identifier */
+  id: Maybe<Scalars['String']['output']>;
+  member_of_groups: NestedPaginatedCoreGroup;
+  subscriber_of_groups: NestedPaginatedCoreGroup;
+};
+
+
+/** A pool of IP resources (prefixes or addresses). */
+export type CoreIpPoolMember_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+
+/** A pool of IP resources (prefixes or addresses). */
+export type CoreIpPoolSubscriber_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+/** A pool of IP resources (prefixes or addresses). */
+export type CoreIpPoolUpdate = {
+  __typename: 'CoreIPPoolUpdate';
+  object: Maybe<CoreIpPool>;
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CoreIpPoolUpdateInput = {
+  hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+};
+
 /** A pool of IP prefix resources */
-export type CoreIpPrefixPool = CoreNode & CoreResourcePool & LineageSource & {
+export type CoreIpPrefixPool = CoreIpPool & CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreIPPrefixPool';
   /** Default member type for allocated prefixes */
   default_member_type: Maybe<TextAttribute>;
@@ -12178,6 +12500,16 @@ export type CoreReadOnlyRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub, Git-side will not be updated */
 export type CoreReadOnlyRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12638,6 +12970,16 @@ export type CoreRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub */
 export type CoreRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -14881,6 +15223,11 @@ export type CoreThreadUpdateInput = {
 /** A file rendered from a Jinja2 template */
 export type CoreTransformJinja2 = CoreNode & CoreTransformation & {
   __typename: 'CoreTransformJinja2';
+  artifact_definitions: NestedPaginatedCoreArtifactDefinition;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Human friendly identifier */
@@ -14898,6 +15245,44 @@ export type CoreTransformJinja2 = CoreNode & CoreTransformation & {
   template_path: Maybe<TextAttribute>;
   /** Maximum execution time in seconds */
   timeout: Maybe<NumberAttribute>;
+};
+
+
+/** A file rendered from a Jinja2 template */
+export type CoreTransformJinja2Artifact_DefinitionsArgs = {
+  artifact_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__value?: InputMaybe<Scalars['String']['input']>;
+  content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
 };
 
 
@@ -14997,6 +15382,11 @@ export type CoreTransformJinja2Create = {
 };
 
 export type CoreTransformJinja2CreateInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeCreate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
@@ -15026,6 +15416,11 @@ export type CoreTransformJinja2Update = {
 };
 
 export type CoreTransformJinja2UpdateInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -15050,6 +15445,11 @@ export type CoreTransformJinja2Upsert = {
 };
 
 export type CoreTransformJinja2UpsertInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -15069,10 +15469,15 @@ export type CoreTransformJinja2UpsertInput = {
 /** A transform function written in Python */
 export type CoreTransformPython = CoreNode & CoreTransformation & {
   __typename: 'CoreTransformPython';
+  artifact_definitions: NestedPaginatedCoreArtifactDefinition;
   /** Name of the Python class implementing the transformation (required) */
   class_name: Maybe<TextAttribute>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response: Maybe<CheckboxAttribute>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Path to the Python file in the repository (required) */
@@ -15090,6 +15495,44 @@ export type CoreTransformPython = CoreNode & CoreTransformation & {
   tags: NestedPaginatedBuiltinTag;
   /** Maximum execution time in seconds */
   timeout: Maybe<NumberAttribute>;
+};
+
+
+/** A transform function written in Python */
+export type CoreTransformPythonArtifact_DefinitionsArgs = {
+  artifact_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__value?: InputMaybe<Scalars['String']['input']>;
+  content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
 };
 
 
@@ -15189,10 +15632,15 @@ export type CoreTransformPythonCreate = {
 };
 
 export type CoreTransformPythonCreateInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Name of the Python class implementing the transformation */
   class_name?: InputMaybe<TextAttributeCreate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeCreate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeCreate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeCreate>;
@@ -15222,10 +15670,15 @@ export type CoreTransformPythonUpdate = {
 };
 
 export type CoreTransformPythonUpdateInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Name of the Python class implementing the transformation */
   class_name?: InputMaybe<TextAttributeUpdate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeUpdate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeUpdate>;
@@ -15250,10 +15703,15 @@ export type CoreTransformPythonUpsert = {
 };
 
 export type CoreTransformPythonUpsertInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Name of the Python class implementing the transformation */
   class_name?: InputMaybe<TextAttributeUpdate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeUpdate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeUpdate>;
@@ -15272,6 +15730,11 @@ export type CoreTransformPythonUpsertInput = {
 
 /** Generic Transformation Object. */
 export type CoreTransformation = {
+  artifact_definitions: NestedPaginatedCoreArtifactDefinition;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Human friendly identifier */
@@ -15287,6 +15750,44 @@ export type CoreTransformation = {
   tags: NestedPaginatedBuiltinTag;
   /** Maximum execution time in seconds */
   timeout: Maybe<NumberAttribute>;
+};
+
+
+/** Generic Transformation Object. */
+export type CoreTransformationArtifact_DefinitionsArgs = {
+  artifact_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__value?: InputMaybe<Scalars['String']['input']>;
+  content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
 };
 
 
@@ -15386,6 +15887,11 @@ export type CoreTransformationUpdate = {
 };
 
 export type CoreTransformationUpdateInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -16644,6 +17150,13 @@ export type EdgedCoreIpAddressPool = {
   node_metadata: Maybe<InfrahubNodeMetadata>;
 };
 
+/** A pool of IP resources (prefixes or addresses). */
+export type EdgedCoreIpPool = {
+  __typename: 'EdgedCoreIPPool';
+  node: Maybe<CoreIpPool>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+};
+
 /** A pool of IP prefix resources */
 export type EdgedCoreIpPrefixPool = {
   __typename: 'EdgedCoreIPPrefixPool';
@@ -17041,6 +17554,8 @@ export type EventTypeFilter = {
   branch_merged?: InputMaybe<BranchEventTypeFilter>;
   /** Filters specific to infrahub.branch.rebased events */
   branch_rebased?: InputMaybe<BranchEventTypeFilter>;
+  /** Filters specific to "infrahub.group.auto_create[...]" events */
+  group_auto_create?: InputMaybe<GroupAutoCreateEventTypeFilter>;
 };
 
 export type Events = {
@@ -17075,8 +17590,130 @@ export type GenericPoolInput = {
 
 export type GraphQlQueryReport = {
   __typename: 'GraphQLQueryReport';
-  /** True if every operation in the submitted query resolves to uniquely identifiable nodes (via a required ids argument or a required field matching the model uniqueness constraints). When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change. */
+  /** True if every operation in the submitted query resolves to uniquely identifiable nodes. An operation resolves uniquely when it filters by a required ids or hfid argument, or when every component of at least one of the model's uniqueness constraints is pinned by a required, single-valued argument. When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change. */
   targets_unique_nodes: Scalars['Boolean']['output'];
+};
+
+export type GroupAutoCreateCappedEventType = EventNodeInterface & {
+  __typename: 'GroupAutoCreateCappedEventType';
+  /** The account ID that triggered the event. */
+  account_id: Maybe<Scalars['String']['output']>;
+  /** The branch where the event occurred. */
+  branch: Maybe<Scalars['String']['output']>;
+  /** Configured per-login cap value */
+  cap_value: Scalars['Int']['output'];
+  /** Verbatim, per-entry length-truncated dropped claims */
+  dropped_claims: Array<Scalars['String']['output']>;
+  /** Total count of dropped claims for this login */
+  dropped_count: Scalars['Int']['output'];
+  /** The name of the event. */
+  event: Scalars['String']['output'];
+  /** Indicates if the event is expected to have child events under it */
+  has_children: Scalars['Boolean']['output'];
+  /** The ID of the event. */
+  id: Scalars['String']['output'];
+  /** Configured name of the originating identity provider */
+  idp: Scalars['String']['output'];
+  /** The level of the event 0 is a root level event, the child events will have 1 and grand children 2. */
+  level: Scalars['Int']['output'];
+  /** The timestamp when the event occurred. */
+  occurred_at: Scalars['DateTime']['output'];
+  /** The event ID of the direct parent to this event. */
+  parent_id: Maybe<Scalars['String']['output']>;
+  payload: Scalars['GenericScalar']['output'];
+  /** The primary Infrahub node this event is associated with. */
+  primary_node: Maybe<RelatedNode>;
+  /** Authentication protocol used for the login */
+  protocol: Scalars['String']['output'];
+  /** Related Infrahub nodes this event is associated with. */
+  related_nodes: Array<RelatedNode>;
+  /** UUID of the account whose login produced the event */
+  triggering_user_id: Scalars['String']['output'];
+  /** Login identifier of the triggering account */
+  triggering_user_name: Scalars['String']['output'];
+};
+
+export type GroupAutoCreateEventTypeFilter = {
+  /** Filter by the configured identity-provider name */
+  idp?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Filter by authentication protocol */
+  protocol?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+export type GroupAutoCreateRejectedEventType = EventNodeInterface & {
+  __typename: 'GroupAutoCreateRejectedEventType';
+  /** The account ID that triggered the event. */
+  account_id: Maybe<Scalars['String']['output']>;
+  /** The branch where the event occurred. */
+  branch: Maybe<Scalars['String']['output']>;
+  /** The name of the event. */
+  event: Scalars['String']['output'];
+  /** Indicates if the event is expected to have child events under it */
+  has_children: Scalars['Boolean']['output'];
+  /** The ID of the event. */
+  id: Scalars['String']['output'];
+  /** Configured name of the originating identity provider */
+  idp: Scalars['String']['output'];
+  /** The level of the event 0 is a root level event, the child events will have 1 and grand children 2. */
+  level: Scalars['Int']['output'];
+  /** The timestamp when the event occurred. */
+  occurred_at: Scalars['DateTime']['output'];
+  /** The event ID of the direct parent to this event. */
+  parent_id: Maybe<Scalars['String']['output']>;
+  payload: Scalars['GenericScalar']['output'];
+  /** The primary Infrahub node this event is associated with. */
+  primary_node: Maybe<RelatedNode>;
+  /** Authentication protocol used for the login */
+  protocol: Scalars['String']['output'];
+  /** Verbatim, length-truncated rejected claim value */
+  rejected_claim_value: Scalars['String']['output'];
+  /** Related Infrahub nodes this event is associated with. */
+  related_nodes: Array<RelatedNode>;
+  /** UUID of the account whose login produced the event */
+  triggering_user_id: Scalars['String']['output'];
+  /** Login identifier of the triggering account */
+  triggering_user_name: Scalars['String']['output'];
+};
+
+export type GroupAutoCreatedEventType = EventNodeInterface & {
+  __typename: 'GroupAutoCreatedEventType';
+  /** The account ID that triggered the event. */
+  account_id: Maybe<Scalars['String']['output']>;
+  /** The branch where the event occurred. */
+  branch: Maybe<Scalars['String']['output']>;
+  /** The name of the event. */
+  event: Scalars['String']['output'];
+  /** UUID of the newly created group */
+  group_id: Scalars['String']['output'];
+  /** Local name of the new group */
+  group_name: Scalars['String']['output'];
+  /** Indicates if the event is expected to have child events under it */
+  has_children: Scalars['Boolean']['output'];
+  /** The ID of the event. */
+  id: Scalars['String']['output'];
+  /** Configured name of the originating identity provider */
+  idp: Scalars['String']['output'];
+  /** The level of the event 0 is a root level event, the child events will have 1 and grand children 2. */
+  level: Scalars['Int']['output'];
+  /** The timestamp when the event occurred. */
+  occurred_at: Scalars['DateTime']['output'];
+  /** Configured provider name written to the group's origin attribute */
+  origin_value: Scalars['String']['output'];
+  /** The event ID of the direct parent to this event. */
+  parent_id: Maybe<Scalars['String']['output']>;
+  payload: Scalars['GenericScalar']['output'];
+  /** The primary Infrahub node this event is associated with. */
+  primary_node: Maybe<RelatedNode>;
+  /** Authentication protocol used for the login */
+  protocol: Scalars['String']['output'];
+  /** Related Infrahub nodes this event is associated with. */
+  related_nodes: Array<RelatedNode>;
+  /** Raw regex pattern from the configured filter that matched */
+  source_pattern: Scalars['String']['output'];
+  /** UUID of the account whose login produced the event */
+  triggering_user_id: Scalars['String']['output'];
+  /** Login identifier of the triggering account */
+  triggering_user_name: Scalars['String']['output'];
 };
 
 export type GroupEvent = EventNodeInterface & {
@@ -17619,7 +18256,7 @@ export type InternalIpPrefixAvailable = BuiltinIpPrefix & CoreNode & {
   /** The IP prefix in CIDR notation */
   prefix: Maybe<IpNetwork>;
   profiles: NestedPaginatedCoreProfile;
-  resource_pool: NestedPaginatedCoreIpAddressPool;
+  resource_pool: NestedPaginatedCoreIpPool;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Percentage of the prefix that is allocated */
   utilization: Maybe<NumberAttribute>;
@@ -17899,33 +18536,10 @@ export type InternalIpPrefixAvailableProfilesArgs = {
 
 /** IPv4 or IPv6 prefix also referred as network which has not been allocated yet */
 export type InternalIpPrefixAvailableResource_PoolArgs = {
-  default_address_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  default_address_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  default_address_type__source__id?: InputMaybe<Scalars['ID']['input']>;
-  default_address_type__value?: InputMaybe<Scalars['String']['input']>;
-  default_address_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  default_prefix_length__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  default_prefix_length__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  default_prefix_length__source__id?: InputMaybe<Scalars['ID']['input']>;
-  default_prefix_length__value?: InputMaybe<Scalars['BigInt']['input']>;
-  default_prefix_length__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  description__source__id?: InputMaybe<Scalars['ID']['input']>;
-  description__value?: InputMaybe<Scalars['String']['input']>;
-  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  display_label__value?: InputMaybe<Scalars['String']['input']>;
-  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
-  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  name__source__id?: InputMaybe<Scalars['ID']['input']>;
-  name__value?: InputMaybe<Scalars['String']['input']>;
-  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
@@ -18520,6 +19134,18 @@ export type MacAddress = AttributeInterface & {
   version: Maybe<Scalars['Int']['output']>;
 };
 
+/**
+ * Order input restricted to node metadata fields.
+ *
+ * Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+ * surface is limited to `created_at` / `updated_at` and does not accept the broader `by`
+ * field grammar or a `disable` toggle.
+ */
+export type MetadataOrderInput = {
+  /** Order settings for branch metadata */
+  node_metadata?: InputMaybe<InfrahubNodeMetadataOrder>;
+};
+
 export type Mutation = {
   __typename: 'Mutation';
   BranchCreate: Maybe<BranchCreate>;
@@ -18804,6 +19430,8 @@ export type Mutation = {
   CoreIPAddressPoolUpdate: Maybe<CoreIpAddressPoolUpdate>;
   /** A pool of IP address resources */
   CoreIPAddressPoolUpsert: Maybe<CoreIpAddressPoolUpsert>;
+  /** A pool of IP resources (prefixes or addresses). */
+  CoreIPPoolUpdate: Maybe<CoreIpPoolUpdate>;
   /** A pool of IP prefix resources */
   CoreIPPrefixPoolCreate: Maybe<CoreIpPrefixPoolCreate>;
   /** A pool of IP prefix resources */
@@ -19967,6 +20595,12 @@ export type MutationCoreIpAddressPoolUpdateArgs = {
 export type MutationCoreIpAddressPoolUpsertArgs = {
   context?: InputMaybe<ContextInput>;
   data: CoreIpAddressPoolUpsertInput;
+};
+
+
+export type MutationCoreIpPoolUpdateArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: CoreIpPoolUpdateInput;
 };
 
 
@@ -21291,6 +21925,15 @@ export type NestedEdgedCoreIpAddressPool = {
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
 
+/** A pool of IP resources (prefixes or addresses). */
+export type NestedEdgedCoreIpPool = {
+  __typename: 'NestedEdgedCoreIPPool';
+  node: Maybe<CoreIpPool>;
+  node_metadata: InfrahubNodeMetadata;
+  properties: Maybe<RelationshipProperty>;
+  relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
+};
+
 /** A pool of IP prefix resources */
 export type NestedEdgedCoreIpPrefixPool = {
   __typename: 'NestedEdgedCoreIPPrefixPool';
@@ -22089,6 +22732,13 @@ export type NestedPaginatedCoreIpAddressPool = {
   permissions: PaginatedObjectPermission;
 };
 
+/** A pool of IP resources (prefixes or addresses). */
+export type NestedPaginatedCoreIpPool = {
+  __typename: 'NestedPaginatedCoreIPPool';
+  count: Scalars['Int']['output'];
+  edges: Maybe<Array<NestedEdgedCoreIpPool>>;
+};
+
 /** A pool of IP prefix resources */
 export type NestedPaginatedCoreIpPrefixPool = {
   __typename: 'NestedPaginatedCoreIPPrefixPool';
@@ -22593,6 +23243,13 @@ export type ObjectPermissionNode = {
   node: ObjectPermission;
 };
 
+export type OrderByItem = {
+  /** Sort direction (default ASC) */
+  direction?: InputMaybe<OrderDirection>;
+  /** Field to order by: an attribute (`name__value`), a relationship attribute (`owner__name__value`), or node metadata (`node_metadata__created_at`). The field carries no direction suffix; use `direction` for that. */
+  field: Scalars['String']['input'];
+};
+
 /** An enumeration. */
 export const OrderDirection = {
   ASC: 'ASC',
@@ -22601,8 +23258,13 @@ export const OrderDirection = {
 
 export type OrderDirection = typeof OrderDirection[keyof typeof OrderDirection];
 export type OrderInput = {
+  /** Ordered list of fields to order results by. When provided, fully replaces the schema's `order_by`. Cannot be combined with the deprecated `node_metadata` in the same input. */
+  by?: InputMaybe<Array<OrderByItem>>;
   disable?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Order settings for branch metadata */
+  /**
+   * Order settings for node metadata
+   * @deprecated Use `by` with the `node_metadata__created_at` / `node_metadata__updated_at` fields instead.
+   */
   node_metadata?: InputMaybe<InfrahubNodeMetadataOrder>;
 };
 
@@ -22955,6 +23617,14 @@ export type PaginatedCoreIpAddressPool = {
   __typename: 'PaginatedCoreIPAddressPool';
   count: Scalars['Int']['output'];
   edges: Array<EdgedCoreIpAddressPool>;
+  permissions: PaginatedObjectPermission;
+};
+
+/** A pool of IP resources (prefixes or addresses). */
+export type PaginatedCoreIpPool = {
+  __typename: 'PaginatedCoreIPPool';
+  count: Scalars['Int']['output'];
+  edges: Array<EdgedCoreIpPool>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23371,6 +24041,89 @@ export type PaginatedProfileIpamNamespace = {
   count: Scalars['Int']['output'];
   edges: Array<EdgedProfileIpamNamespace>;
   permissions: PaginatedObjectPermission;
+};
+
+export type PathHopType = {
+  __typename: 'PathHopType';
+  /** Node visited at this hop */
+  node: PathNodeType;
+  /** Relationship traversed to reach this node from the previous hop. Null on the first hop. */
+  relationship: Maybe<PathRelationshipType>;
+};
+
+export type PathNodeType = {
+  __typename: 'PathNodeType';
+  /** Human-readable display label */
+  display_label: Scalars['String']['output'];
+  /** Human friendly identifier */
+  hfid: Array<Scalars['String']['output']>;
+  /** Node UUID */
+  id: Scalars['String']['output'];
+  /** Schema kind */
+  kind: Scalars['String']['output'];
+  /** Schema label for the node's kind */
+  label: Scalars['String']['output'];
+};
+
+export type PathRelationshipType = {
+  __typename: 'PathRelationshipType';
+  /** Relationship label on the source side of the hop */
+  from_label: Scalars['String']['output'];
+  /** Relationship name on the source side of the hop */
+  from_rel: Scalars['String']['output'];
+  /** Relationship kind (e.g. Component, Generic) */
+  kind: Scalars['String']['output'];
+  /** Relationship label on the destination side of the hop */
+  to_label: Scalars['String']['output'];
+  /** Relationship name on the destination side of the hop */
+  to_rel: Scalars['String']['output'];
+};
+
+export type PathResultType = {
+  __typename: 'PathResultType';
+  /** Number of edges in this path */
+  depth: Scalars['Int']['output'];
+  /** Ordered hops from source to destination */
+  hops: Array<PathHopType>;
+};
+
+export type PathTraversalInput = {
+  /** UUID of the end node */
+  destination_id: Scalars['String']['input'];
+  /** Specific node kinds to exclude from traversal paths. Unioned with the default excluded kinds (BuiltinIPNamespace and all kinds inheriting it); the defaults can be re-included via included_kinds. */
+  excluded_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input. */
+  excluded_namespaces?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Kinds excluded by default (BuiltinIPNamespace and all kinds inheriting it) to re-include in traversal paths. Passing the generic re-includes every implementer. Has no effect on kinds passed in excluded_kinds in the same request. */
+  included_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Filter to only traverse through nodes of these kinds */
+  kind_filter?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Maximum number of node hops (default: 5, max: 30) */
+  max_depth?: InputMaybe<Scalars['Int']['input']>;
+  /** Maximum number of paths to return (default: 10, max: 100) */
+  max_paths?: InputMaybe<Scalars['Int']['input']>;
+  /** Filter to only follow relationships with these identifiers (the relationship's schema identifier, e.g. `device__interface`), not relationship names (e.g. `interfaces`). */
+  relationship_filter?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** When true (default), return only the shortest path through each intermediate object — fast, but excludes longer paths through the same intermediate objects. When false, return all loopless paths up to max_paths. */
+  shortest_paths_only?: InputMaybe<Scalars['Boolean']['input']>;
+  /** UUID of the start node */
+  source_id: Scalars['String']['input'];
+};
+
+export type PathTraversalResultType = {
+  __typename: 'PathTraversalResultType';
+  /** Total number of paths discovered */
+  count: Scalars['Int']['output'];
+  /** The end node */
+  destination: PathNodeType;
+  /** Concrete node kinds excluded from this traversal: the default exclusions plus the requested excluded_kinds, minus included_kinds. */
+  excluded_kinds: Array<Scalars['String']['output']>;
+  /** Paths found, ordered shortest first */
+  paths: Array<PathResultType>;
+  /** The start node */
+  source: PathNodeType;
+  /** Null when the search completed. Otherwise the depth at which it ran out of budget: the returned paths are complete only for depths below this value, and deeper paths may exist. */
+  truncated_at_depth: Maybe<Scalars['Int']['output']>;
 };
 
 export type PermissionType = {
@@ -24567,6 +25320,7 @@ export type Query = {
   CoreGroupAction: PaginatedCoreGroupAction;
   CoreGroupTriggerRule: PaginatedCoreGroupTriggerRule;
   CoreIPAddressPool: PaginatedCoreIpAddressPool;
+  CoreIPPool: PaginatedCoreIpPool;
   CoreIPPrefixPool: PaginatedCoreIpPrefixPool;
   CoreKeyValue: PaginatedCoreKeyValue;
   CoreMenu: PaginatedCoreMenu;
@@ -24620,7 +25374,11 @@ export type Query = {
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
   InfrahubIPPrefixGetNextAvailable: IpPrefixGetNextAvailable;
   InfrahubInfo: Info;
+  /** Find all shortest paths between two nodes in the graph */
+  InfrahubPathTraversal: PathTraversalResultType;
   InfrahubPermissions: AccountPermissionsEdges;
+  /** Find all nodes of specified kinds reachable from a source node */
+  InfrahubReachableNodes: ReachableNodesResultType;
   InfrahubResourcePoolAllocated: PoolAllocated;
   InfrahubResourcePoolUtilization: PoolUtilization;
   InfrahubSearchAnywhere: NodeEdges;
@@ -25197,31 +25955,8 @@ export type QueryBuiltinIpPrefixArgs = {
   profiles__profile_priority__source__id?: InputMaybe<Scalars['ID']['input']>;
   profiles__profile_priority__value?: InputMaybe<Scalars['BigInt']['input']>;
   profiles__profile_priority__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  resource_pool__default_address_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__default_address_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__default_address_type__source__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__default_address_type__value?: InputMaybe<Scalars['String']['input']>;
-  resource_pool__default_address_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  resource_pool__default_prefix_length__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__default_prefix_length__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__default_prefix_length__source__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__default_prefix_length__value?: InputMaybe<Scalars['BigInt']['input']>;
-  resource_pool__default_prefix_length__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  resource_pool__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__description__source__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__description__value?: InputMaybe<Scalars['String']['input']>;
-  resource_pool__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  resource_pool__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__display_label__value?: InputMaybe<Scalars['String']['input']>;
-  resource_pool__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   resource_pool__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   resource_pool__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__name__source__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__name__value?: InputMaybe<Scalars['String']['input']>;
-  resource_pool__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -25490,6 +26225,12 @@ export type QueryCoreAccountGroupArgs = {
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
+  origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  origin__source__id?: InputMaybe<Scalars['ID']['input']>;
+  origin__value?: InputMaybe<Scalars['String']['input']>;
+  origin__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   parent__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parent__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   parent__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -25565,6 +26306,11 @@ export type QueryCoreAccountRoleArgs = {
   groups__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   groups__name__value?: InputMaybe<Scalars['String']['input']>;
   groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  groups__origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  groups__origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  groups__origin__source__id?: InputMaybe<Scalars['ID']['input']>;
+  groups__origin__value?: InputMaybe<Scalars['String']['input']>;
+  groups__origin__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -26013,6 +26759,41 @@ export type QueryCoreArtifactDefinitionArgs = {
   artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
   artifact_name__value?: InputMaybe<Scalars['String']['input']>;
   artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifacts__checksum__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__checksum__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__checksum__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__checksum__value?: InputMaybe<Scalars['String']['input']>;
+  artifacts__checksum__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifacts__content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__content_type__value?: InputMaybe<Scalars['String']['input']>;
+  artifacts__content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifacts__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  artifacts__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifacts__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  artifacts__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__name__value?: InputMaybe<Scalars['String']['input']>;
+  artifacts__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifacts__parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  artifacts__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  artifacts__status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__status__value?: InputMaybe<Scalars['String']['input']>;
+  artifacts__status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifacts__storage_id__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__storage_id__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__storage_id__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__storage_id__value?: InputMaybe<Scalars['String']['input']>;
+  artifacts__storage_id__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   content_type__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26107,6 +26888,16 @@ export type QueryCoreArtifactDefinitionArgs = {
   targets__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   targets__name__value?: InputMaybe<Scalars['String']['input']>;
   targets__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformation__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformation__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformation__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformation__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26132,6 +26923,36 @@ export type QueryCoreArtifactDefinitionArgs = {
   transformation__timeout__source__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__timeout__value?: InputMaybe<Scalars['BigInt']['input']>;
   transformation__timeout__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  validators__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__completed_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  validators__completed_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  validators__conclusion__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__conclusion__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__conclusion__value?: InputMaybe<Scalars['String']['input']>;
+  validators__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  validators__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  validators__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__label__value?: InputMaybe<Scalars['String']['input']>;
+  validators__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__started_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  validators__started_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  validators__state__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__state__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__state__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__state__value?: InputMaybe<Scalars['String']['input']>;
+  validators__state__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 
@@ -27169,6 +27990,36 @@ export type QueryCoreCheckDefinitionArgs = {
   timeout__source__id?: InputMaybe<Scalars['ID']['input']>;
   timeout__value?: InputMaybe<Scalars['BigInt']['input']>;
   timeout__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  validators__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__completed_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  validators__completed_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  validators__conclusion__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__conclusion__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__conclusion__value?: InputMaybe<Scalars['String']['input']>;
+  validators__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  validators__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  validators__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__label__value?: InputMaybe<Scalars['String']['input']>;
+  validators__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__started_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  validators__started_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  validators__state__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__state__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__state__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__state__value?: InputMaybe<Scalars['String']['input']>;
+  validators__state__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 
@@ -27431,6 +28282,16 @@ export type QueryCoreCustomWebhookArgs = {
   transformation__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  transformation__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformation__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformation__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformation__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28695,6 +29556,21 @@ export type QueryCoreGeneratorDefinitionArgs = {
   file_path__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  instances__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  instances__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  instances__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  instances__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  instances__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  instances__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  instances__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  instances__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  instances__name__value?: InputMaybe<Scalars['String']['input']>;
+  instances__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  instances__status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  instances__status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  instances__status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  instances__status__value?: InputMaybe<Scalars['String']['input']>;
+  instances__status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
@@ -28852,6 +29728,36 @@ export type QueryCoreGeneratorDefinitionArgs = {
   targets__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   targets__name__value?: InputMaybe<Scalars['String']['input']>;
   targets__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__completed_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__completed_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__completed_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__completed_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  validators__completed_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  validators__conclusion__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__conclusion__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__conclusion__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__conclusion__value?: InputMaybe<Scalars['String']['input']>;
+  validators__conclusion__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  validators__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  validators__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__label__value?: InputMaybe<Scalars['String']['input']>;
+  validators__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  validators__started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__started_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__started_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  validators__started_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  validators__state__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  validators__state__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__state__source__id?: InputMaybe<Scalars['ID']['input']>;
+  validators__state__value?: InputMaybe<Scalars['String']['input']>;
+  validators__state__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 
@@ -29653,6 +30559,16 @@ export type QueryCoreGenericRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29849,6 +30765,36 @@ export type QueryCoreGraphQlQueryArgs = {
   query__source__id?: InputMaybe<Scalars['ID']['input']>;
   query__value?: InputMaybe<Scalars['String']['input']>;
   query__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  query_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  query_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query_groups__parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query_groups__parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query_groups__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  query_groups__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30562,6 +31508,56 @@ export type QueryCoreIpAddressPoolArgs = {
   resources__utilization__source__id?: InputMaybe<Scalars['ID']['input']>;
   resources__utilization__value?: InputMaybe<Scalars['BigInt']['input']>;
   resources__utilization__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  subscriber_of_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  subscriber_of_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  subscriber_of_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
+
+export type QueryCoreIpPoolArgs = {
+  any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  any__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  any__source__id?: InputMaybe<Scalars['ID']['input']>;
+  any__value?: InputMaybe<Scalars['String']['input']>;
+  any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  member_of_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  member_of_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  member_of_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  node_metadata__created_at?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
+  node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
+  node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32881,6 +33877,16 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33198,6 +34204,16 @@ export type QueryCoreRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34640,6 +35656,48 @@ export type QueryCoreTransformJinja2Args = {
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__artifact_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__artifact_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__artifact_name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__content_type__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__description__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  artifact_definitions__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  artifact_definitions__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34819,6 +35877,36 @@ export type QueryCoreTransformPythonArgs = {
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__artifact_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__artifact_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__artifact_name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__content_type__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__description__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  artifact_definitions__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  artifact_definitions__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
   class_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   class_name__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   class_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34831,6 +35919,18 @@ export type QueryCoreTransformPythonArgs = {
   convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35010,6 +36110,48 @@ export type QueryCoreTransformationArgs = {
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__artifact_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__artifact_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__artifact_name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__content_type__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__description__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  artifact_definitions__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  artifact_definitions__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35907,7 +37049,7 @@ export type QueryInfrahubBranchArgs = {
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
-  order?: InputMaybe<OrderInput>;
+  order?: InputMaybe<MetadataOrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   status__value?: InputMaybe<BranchStatus>;
 };
@@ -35946,6 +37088,16 @@ export type QueryInfrahubIpAddressGetNextAvailableArgs = {
 export type QueryInfrahubIpPrefixGetNextAvailableArgs = {
   prefix_id: Scalars['String']['input'];
   prefix_length?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryInfrahubPathTraversalArgs = {
+  data: PathTraversalInput;
+};
+
+
+export type QueryInfrahubReachableNodesArgs = {
+  data: ReachableNodesInput;
 };
 
 
@@ -36718,6 +37870,41 @@ export type QueryRelationshipArgs = {
   offset?: InputMaybe<Scalars['Int']['input']>;
 };
 
+export type ReachableNodeType = {
+  __typename: 'ReachableNodeType';
+  /** Hops from source node */
+  depth: Scalars['Int']['output'];
+  /** Reachable node */
+  node: PathNodeType;
+  /** Full path from source to this node */
+  path: PathResultType;
+};
+
+export type ReachableNodesInput = {
+  /** Maximum traversal depth (default: 5, max: 30) */
+  max_depth?: InputMaybe<Scalars['Int']['input']>;
+  /** Maximum total paths returned across all discovered terminals (default: 500, max: 5000) */
+  max_paths?: InputMaybe<Scalars['Int']['input']>;
+  /** Maximum number of distinct terminal nodes to discover (default: 50, max: 200) */
+  max_results?: InputMaybe<Scalars['Int']['input']>;
+  /** When true (default), return only the shortest path(s) to each reachable target. When false, return every path to each target within max_depth that meets the filters. */
+  shortest_paths_only?: InputMaybe<Scalars['Boolean']['input']>;
+  /** UUID of the source node */
+  source_id: Scalars['String']['input'];
+  /** Node kinds to search for */
+  target_kinds: Array<Scalars['String']['input']>;
+};
+
+export type ReachableNodesResultType = {
+  __typename: 'ReachableNodesResultType';
+  /** Number of dependency entries returned */
+  count: Scalars['Int']['output'];
+  /** Reachable nodes of the requested kinds, one entry per (node, path) pair */
+  dependencies: Array<ReachableNodeType>;
+  /** The source node */
+  source: PathNodeType;
+};
+
 export type ReadOnlyRepositoryImportLastCommit = {
   __typename: 'ReadOnlyRepositoryImportLastCommit';
   ok: Maybe<Scalars['Boolean']['output']>;
@@ -37092,640 +38279,3 @@ export type ValueType = {
   __typename: 'ValueType';
   value: Scalars['String']['output'];
 };
-
-export type Branch_CreateMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  description?: InputMaybe<Scalars['String']['input']>;
-  sync_with_git?: InputMaybe<Scalars['Boolean']['input']>;
-}>;
-
-
-export type Branch_CreateMutation = { BranchCreate: { __typename: 'BranchCreate', object: { __typename: 'Branch', id: string, name: string, description: string | null, origin_branch: string | null, branched_from: string | null, created_at: string | null, status: BranchStatus, sync_with_git: boolean | null, is_default: boolean | null, has_schema_changes: boolean | null } | null } | null };
-
-export type Branch_DeleteMutationVariables = Exact<{
-  name?: InputMaybe<Scalars['String']['input']>;
-  deleteFromGit?: InputMaybe<Scalars['Boolean']['input']>;
-}>;
-
-
-export type Branch_DeleteMutation = { BranchDelete: { __typename: 'BranchDelete', ok: boolean | null } | null };
-
-export type GetBranchDetailsQueryVariables = Exact<{
-  branchName: Scalars['String']['input'];
-}>;
-
-
-export type GetBranchDetailsQuery = { InfrahubBranch: { __typename: 'InfrahubBranchType', edges: Array<{ __typename: 'InfrahubBranchEdge', node: { __typename: 'InfrahubBranch', id: string, created_at: string | null, name: { __typename: 'RequiredStringValueField', value: string }, description: { __typename: 'NonRequiredStringValueField', value: string | null } | null, origin_branch: { __typename: 'NonRequiredStringValueField', value: string | null } | null, branched_from: { __typename: 'NonRequiredStringValueField', value: string | null } | null, status: { __typename: 'StatusField', value: BranchStatus }, sync_with_git: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null, is_default: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null, has_schema_changes: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null } }> } };
-
-export type GetBranchesCountQueryVariables = Exact<{
-  nameValue?: InputMaybe<Scalars['String']['input']>;
-  partialMatch?: InputMaybe<Scalars['Boolean']['input']>;
-  statusValue?: InputMaybe<BranchStatus>;
-  createdById?: InputMaybe<Scalars['ID']['input']>;
-  branchedFromAfter?: InputMaybe<Scalars['DateTime']['input']>;
-  branchedFromBefore?: InputMaybe<Scalars['DateTime']['input']>;
-  createdAtAfter?: InputMaybe<Scalars['DateTime']['input']>;
-  createdAtBefore?: InputMaybe<Scalars['DateTime']['input']>;
-  updatedAtAfter?: InputMaybe<Scalars['DateTime']['input']>;
-  updatedAtBefore?: InputMaybe<Scalars['DateTime']['input']>;
-}>;
-
-
-export type GetBranchesCountQuery = { InfrahubBranch: { __typename: 'InfrahubBranchType', count: number | null } };
-
-export type GetBranchesQueryVariables = Exact<{
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
-  nameValue?: InputMaybe<Scalars['String']['input']>;
-  partialMatch?: InputMaybe<Scalars['Boolean']['input']>;
-  statusValue?: InputMaybe<BranchStatus>;
-  createdById?: InputMaybe<Scalars['ID']['input']>;
-  branchedFromAfter?: InputMaybe<Scalars['DateTime']['input']>;
-  branchedFromBefore?: InputMaybe<Scalars['DateTime']['input']>;
-  createdAtAfter?: InputMaybe<Scalars['DateTime']['input']>;
-  createdAtBefore?: InputMaybe<Scalars['DateTime']['input']>;
-  updatedAtAfter?: InputMaybe<Scalars['DateTime']['input']>;
-  updatedAtBefore?: InputMaybe<Scalars['DateTime']['input']>;
-}>;
-
-
-export type GetBranchesQuery = { InfrahubBranch: { __typename: 'InfrahubBranchType', edges: Array<{ __typename: 'InfrahubBranchEdge', node: { __typename: 'InfrahubBranch', id: string, created_at: string | null, name: { __typename: 'RequiredStringValueField', value: string }, description: { __typename: 'NonRequiredStringValueField', value: string | null } | null, origin_branch: { __typename: 'NonRequiredStringValueField', value: string | null } | null, branched_from: { __typename: 'NonRequiredStringValueField', value: string | null } | null, status: { __typename: 'StatusField', value: BranchStatus }, sync_with_git: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null, is_default: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null, has_schema_changes: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null }, node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, updated_at: any | null, created_by: { __typename: 'CoreAccount', id: string, display_label: string | null, hfid: Array<string> | null } | null, updated_by: { __typename: 'CoreAccount', id: string, display_label: string | null, hfid: Array<string> | null } | null } }> } };
-
-export type Get_Branch_Action_StateQueryVariables = Exact<{
-  branch: Scalars['String']['input'];
-  workflow?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  state?: InputMaybe<Array<InputMaybe<StateType>> | InputMaybe<StateType>>;
-}>;
-
-
-export type Get_Branch_Action_StateQuery = { InfrahubTask: { __typename: 'Tasks', count: number } };
-
-export type Branch_MergeMutationVariables = Exact<{
-  name?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type Branch_MergeMutation = { BranchMerge: { __typename: 'BranchMerge', ok: boolean | null, task: { __typename: 'TaskInfo', id: string | null } | null } | null };
-
-export type Branch_RebaseMutationVariables = Exact<{
-  name?: InputMaybe<Scalars['String']['input']>;
-  waitUntilCompletion: Scalars['Boolean']['input'];
-}>;
-
-
-export type Branch_RebaseMutation = { BranchRebase: { __typename: 'BranchRebase', ok: boolean | null, object: { __typename: 'Branch', id: string, name: string, description: string | null, origin_branch: string | null, branched_from: string | null, created_at: string | null, status: BranchStatus, sync_with_git: boolean | null, is_default: boolean | null, has_schema_changes: boolean | null } | null, task: { __typename: 'TaskInfo', id: string | null } | null } | null };
-
-export type Branch_ValidateMutationVariables = Exact<{
-  name?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type Branch_ValidateMutation = { BranchValidate: { __typename: 'BranchValidate', ok: boolean | null, task: { __typename: 'TaskInfo', id: string | null } | null } | null };
-
-export type Get_Check_DetailsQueryVariables = Exact<{
-  id: Scalars['ID']['input'];
-}>;
-
-
-export type Get_Check_DetailsQuery = { CoreCheck: { __typename: 'PaginatedCoreCheck', edges: Array<{ __typename: 'EdgedCoreCheck', node:
-        | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-        | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, keep_branch: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-        | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-        | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-        | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-        | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-       | null }> } };
-
-export type Get_Diff_TreeQueryVariables = Exact<{
-  branchName?: InputMaybe<Scalars['String']['input']>;
-  filters?: InputMaybe<DiffTreeQueryFilters>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
-  proposedChangeId?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type Get_Diff_TreeQuery = { DiffTree: { __typename: 'DiffTree', to_time: any, base_branch: string, diff_branch: string, from_time: any, nodes: Array<{ __typename: 'DiffNode', uuid: string, kind: string, contains_conflict: boolean, label: string, last_changed_at: any | null, status: DiffAction, path_identifier: string, relationships: Array<{ __typename: 'DiffRelationship', label: string | null, status: DiffAction, contains_conflict: boolean, cardinality: RelationshipCardinality, last_changed_at: any | null, name: string, path_identifier: string, elements: Array<{ __typename: 'DiffSingleRelationship', last_changed_at: any | null, contains_conflict: boolean, peer_id: string, status: DiffAction, path_identifier: string, peer_label: string | null, conflict: { __typename: 'ConflictDetails', base_branch_label: string | null, base_branch_action: DiffAction, base_branch_changed_at: any, base_branch_value: string | null, diff_branch_label: string | null, diff_branch_action: DiffAction, diff_branch_changed_at: any, diff_branch_value: string | null, selected_branch: ConflictSelection | null, uuid: string } | null, properties: Array<{ __typename: 'DiffProperty', last_changed_at: any, new_value: string | null, previous_value: string | null, property_type: string, status: DiffAction, path_identifier: string, conflict: { __typename: 'ConflictDetails', base_branch_label: string | null, base_branch_action: DiffAction, base_branch_changed_at: any, base_branch_value: string | null, diff_branch_label: string | null, diff_branch_action: DiffAction, diff_branch_changed_at: any, diff_branch_value: string | null, selected_branch: ConflictSelection | null, uuid: string } | null }> | null }> }>, conflict: { __typename: 'ConflictDetails', base_branch_label: string | null, base_branch_action: DiffAction, base_branch_changed_at: any, diff_branch_action: DiffAction, diff_branch_label: string | null, base_branch_value: string | null, diff_branch_changed_at: any, diff_branch_value: string | null, selected_branch: ConflictSelection | null, uuid: string } | null, attributes: Array<{ __typename: 'DiffAttribute', contains_conflict: boolean, last_changed_at: any, name: string, status: DiffAction, path_identifier: string, conflict: { __typename: 'ConflictDetails', base_branch_label: string | null, base_branch_action: DiffAction, base_branch_changed_at: any, base_branch_value: string | null, diff_branch_label: string | null, diff_branch_action: DiffAction, diff_branch_changed_at: any, diff_branch_value: string | null, selected_branch: ConflictSelection | null, uuid: string } | null, properties: Array<{ __typename: 'DiffProperty', last_changed_at: any, new_value: string | null, previous_value: string | null, property_type: string, status: DiffAction, path_identifier: string, conflict: { __typename: 'ConflictDetails', base_branch_label: string | null, base_branch_action: DiffAction, base_branch_changed_at: any, base_branch_value: string | null, diff_branch_label: string | null, diff_branch_action: DiffAction, diff_branch_changed_at: any, diff_branch_value: string | null, selected_branch: ConflictSelection | null, uuid: string } | null }> | null }>, parent: { __typename: 'DiffNodeParent', uuid: string, relationship_name: string | null, kind: string | null } | null }> | null } | null };
-
-export type Get_Diff_Tree_SummaryQueryVariables = Exact<{
-  branch?: InputMaybe<Scalars['String']['input']>;
-  filters?: InputMaybe<DiffTreeQueryFilters>;
-  proposedChangeId?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type Get_Diff_Tree_SummaryQuery = { DiffTreeSummary: { __typename: 'DiffTreeSummary', num_added: number, num_updated: number, num_removed: number, num_conflicts: number } | null };
-
-export type Get_Core_ValidatorsQueryVariables = Exact<{
-  id: Scalars['ID']['input'];
-}>;
-
-
-export type Get_Core_ValidatorsQuery = { CoreValidator: { __typename: 'PaginatedCoreValidator', edges: Array<{ __typename: 'EdgedCoreValidator', node:
-        | { __typename: 'CoreArtifactValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreDataValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreGeneratorValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreRepositoryValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreSchemaValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreUserValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-       | null }> } };
-
-export type Get_Validator_DetailsQueryVariables = Exact<{
-  ids?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-  checksOffset?: InputMaybe<Scalars['Int']['input']>;
-  checksLimit?: InputMaybe<Scalars['Int']['input']>;
-}>;
-
-
-export type Get_Validator_DetailsQuery = { CoreValidator: { __typename: 'PaginatedCoreValidator', edges: Array<{ __typename: 'EdgedCoreValidator', node:
-        | { __typename: 'CoreArtifactValidator', id: string, display_label: string | null, definition: { __typename: 'NestedEdgedCoreArtifactDefinition', node: { __typename: 'CoreArtifactDefinition', display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, description: { __typename: 'TextAttribute', value: string | null } | null } | null }, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreDataValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreGeneratorValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreRepositoryValidator', id: string, display_label: string | null, repository: { __typename: 'NestedEdgedCoreGenericRepository', node:
-              | { __typename: 'CoreReadOnlyRepository', display_label: string | null }
-              | { __typename: 'CoreRepository', display_label: string | null }
-             | null }, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreSchemaValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreUserValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-       | null }> } };
-
-export type Resolve_ConflictMutationVariables = Exact<{
-  id?: InputMaybe<Scalars['String']['input']>;
-  selection?: InputMaybe<ConflictSelection>;
-}>;
-
-
-export type Resolve_ConflictMutation = { ResolveDiffConflict: { __typename: 'ResolveDiffConflict', ok: boolean | null } | null };
-
-export type Run_CheckMutationVariables = Exact<{
-  proposedChangeId: Scalars['String']['input'];
-  checkType?: InputMaybe<CheckType>;
-}>;
-
-
-export type Run_CheckMutation = { CoreProposedChangeRunCheck: { __typename: 'ProposedChangeRequestRunCheck', ok: boolean | null } | null };
-
-export type Diff_UpdateMutationVariables = Exact<{
-  branchName: Scalars['String']['input'];
-  waitUntilCompletion?: InputMaybe<Scalars['Boolean']['input']>;
-}>;
-
-
-export type Diff_UpdateMutation = { DiffUpdate: { __typename: 'DiffUpdateMutation', ok: boolean | null } | null };
-
-export type Get_Infrahub_EventsQueryVariables = Exact<{
-  ids?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  hasChildren?: InputMaybe<Scalars['Boolean']['input']>;
-  branches?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  eventType?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  primaryNodeIds?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  relatedNodeIds?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  parentIds?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  accountIds?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  level?: InputMaybe<Scalars['Int']['input']>;
-  since?: InputMaybe<Scalars['DateTime']['input']>;
-  until?: InputMaybe<Scalars['DateTime']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  order?: InputMaybe<EventSortOrder>;
-}>;
-
-
-export type Get_Infrahub_EventsQuery = { InfrahubEvent: { __typename: 'Events', edges: Array<{ __typename: 'EventNodes', node:
-        | { __typename: 'AccountLoggedInEventType', account_name: string, account_type: string, auth_method: string, session_id: string, timestamp: any, client_ip: string | null, user_agent: string | null, groups: Array<string>, roles: Array<string>, identity_source: string | null, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'AccountLoggedOutEventType', account_name: string, logout_type: string, session_id: string, timestamp: any, client_ip: string | null, user_agent: string | null, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'ArtifactEvent', checksum: string, storage_id: string, artifact_definition_id: string, checksum_previous: string | null, storage_id_previous: string | null, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'BranchCreatedEvent', payload: any, created_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'BranchDeletedEvent', payload: any, deleted_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'BranchMergedEvent', source_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'BranchRebasedEvent', payload: any, rebased_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'GroupEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, ancestors: Array<{ __typename: 'RelatedNode', id: string, kind: string }>, members: Array<{ __typename: 'RelatedNode', id: string, kind: string }>, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'NodeMutatedEvent', payload: any, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, attributes: Array<{ __typename: 'InfrahubMutatedAttribute', action: DiffAction, kind: string, name: string, value: string | null, value_previous: string | null }>, relationships: Array<{ __typename: 'InfrahubMutatedRelationship', action: DiffAction, name: string, peer: { __typename: 'RelatedNode', id: string, kind: string } }>, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'ProposedChangeApprovalsRevokedEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'ProposedChangeMergedEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'ProposedChangeReviewEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'ProposedChangeReviewRequestedEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'ProposedChangeReviewRevokedEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'ProposedChangeThreadEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'StandardEvent', payload: any, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-       | null }> } };
-
-export type CoreGeneratorDefinitionRunMutationVariables = Exact<{
-  generatorId: Scalars['String']['input'];
-  waitUntilCompletion?: InputMaybe<Scalars['Boolean']['input']>;
-  targetNodeIds?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-}>;
-
-
-export type CoreGeneratorDefinitionRunMutation = { CoreGeneratorDefinitionRun: { __typename: 'GeneratorDefinitionRequestRun', task: { __typename: 'TaskInfo', id: string | null } | null } | null };
-
-export type GetNextIpAddressAvailableQueryVariables = Exact<{
-  parentPrefixId: Scalars['String']['input'];
-}>;
-
-
-export type GetNextIpAddressAvailableQuery = { InfrahubIPAddressGetNextAvailable: { __typename: 'IPAddressGetNextAvailable', address: string } };
-
-export type GetNextIpPrefixAvailableQueryVariables = Exact<{
-  parentPrefixId: Scalars['String']['input'];
-}>;
-
-
-export type GetNextIpPrefixAvailableQuery = { InfrahubIPPrefixGetNextAvailable: { __typename: 'IPPrefixGetNextAvailable', prefix: string } };
-
-export type Get_Ipam_Tree_NodesQueryVariables = Exact<{
-  isTopLevel?: InputMaybe<Scalars['Boolean']['input']>;
-  parentIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-  search?: InputMaybe<Scalars['String']['input']>;
-  ipNamespaceIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
-}>;
-
-
-export type Get_Ipam_Tree_NodesQuery = { BuiltinIPPrefix: { __typename: 'PaginatedBuiltinIPPrefix', edges: Array<{ __typename: 'EdgedBuiltinIPPrefix', node: { __typename: 'InternalIPPrefixAvailable', id: string, display_label: string | null, descendants: { __typename: 'NestedPaginatedBuiltinIPPrefix', count: number } } | null }> } };
-
-export type SearchQueryVariables = Exact<{
-  search: Scalars['String']['input'];
-  caseSensitive?: InputMaybe<Scalars['Boolean']['input']>;
-}>;
-
-
-export type SearchQuery = { InfrahubSearchAnywhere: { __typename: 'NodeEdges', count: number, edges: Array<{ __typename: 'NodeEdge', node: { __typename: 'Node', id: string, kind: string } }>, parent_prefixes: Array<{ __typename: 'NodeEdge', node: { __typename: 'Node', id: string, kind: string } }> | null } };
-
-export type Convert_Object_MutationMutationVariables = Exact<{
-  nodeId: Scalars['String']['input'];
-  targetKind: Scalars['String']['input'];
-  fieldsMapping: Scalars['GenericScalar']['input'];
-}>;
-
-
-export type Convert_Object_MutationMutation = { ConvertObjectType: { __typename: 'ConvertObjectType', node: any | null } | null };
-
-export type Get_Fields_MappingQueryVariables = Exact<{
-  sourceKind: Scalars['String']['input'];
-  targetKind: Scalars['String']['input'];
-}>;
-
-
-export type Get_Fields_MappingQuery = { FieldsMappingTypeConversion: { __typename: 'FieldsMapping', mapping: any } };
-
-export type RelationshipAddMutationVariables = Exact<{
-  objectId: Scalars['String']['input'];
-  relationshipName: Scalars['String']['input'];
-  relationshipIds?: InputMaybe<Array<InputMaybe<RelatedNodeInput>> | InputMaybe<RelatedNodeInput>>;
-}>;
-
-
-export type RelationshipAddMutation = { RelationshipAdd: { __typename: 'RelationshipAdd', ok: boolean | null } | null };
-
-export type RelationshipRemoveMutationVariables = Exact<{
-  objectId: Scalars['String']['input'];
-  relationshipName: Scalars['String']['input'];
-  relationshipIds?: InputMaybe<Array<InputMaybe<RelatedNodeInput>> | InputMaybe<RelatedNodeInput>>;
-}>;
-
-
-export type RelationshipRemoveMutation = { RelationshipRemove: { __typename: 'RelationshipRemove', ok: boolean | null } | null };
-
-export type CoreProposedChangeCreateMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  isDraft?: InputMaybe<Scalars['Boolean']['input']>;
-  description?: InputMaybe<Scalars['String']['input']>;
-  source_branch: Scalars['String']['input'];
-  destination_branch: Scalars['String']['input'];
-  reviewers?: InputMaybe<Array<RelatedNodeInput> | RelatedNodeInput>;
-}>;
-
-
-export type CoreProposedChangeCreateMutation = { CoreProposedChangeCreate: { __typename: 'CoreProposedChangeCreate', ok: boolean | null, object: { __typename: 'CoreProposedChange', id: string, display_label: string | null } | null } | null };
-
-export type Get_Proposed_Change_DetailsQueryVariables = Exact<{
-  proposedChangeId?: InputMaybe<Scalars['ID']['input']>;
-}>;
-
-
-export type Get_Proposed_Change_DetailsQuery = { CoreProposedChange: { __typename: 'PaginatedCoreProposedChange', count: number, edges: Array<{ __typename: 'EdgedCoreProposedChange', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, updated_at: any | null, created_by: { __typename: 'CoreAccount', id: string, hfid: Array<string> | null, display_label: string | null } | null, updated_by: { __typename: 'CoreAccount', id: string, hfid: Array<string> | null, display_label: string | null } | null } | null, node: { __typename: 'CoreProposedChange', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, description: { __typename: 'TextAttribute', value: string | null, updated_at: any | null } | null, source_branch: { __typename: 'TextAttribute', value: string | null } | null, destination_branch: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, is_draft: { __typename: 'CheckboxAttribute', value: boolean | null } | null, approved_by: { __typename: 'NestedPaginatedCoreGenericAccount', edges: Array<{ __typename: 'NestedEdgedCoreGenericAccount', node: { __typename: 'CoreAccount', id: string, display_label: string | null } | null }> | null }, rejected_by: { __typename: 'NestedPaginatedCoreGenericAccount', edges: Array<{ __typename: 'NestedEdgedCoreGenericAccount', node: { __typename: 'CoreAccount', id: string, display_label: string | null } | null }> | null }, reviewers: { __typename: 'NestedPaginatedCoreGenericAccount', edges: Array<{ __typename: 'NestedEdgedCoreGenericAccount', node: { __typename: 'CoreAccount', id: string, display_label: string | null } | null }> | null }, comments: { __typename: 'NestedPaginatedCoreChangeComment', count: number } } | null }> } };
-
-export type GetCoreThreadQueryVariables = Exact<{
-  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>> | InputMaybe<Scalars['ID']['input']>>;
-}>;
-
-
-export type GetCoreThreadQuery = { CoreThread: { __typename: 'PaginatedCoreThread', edges: Array<{ __typename: 'EdgedCoreThread', node:
-        | { __typename: 'CoreArtifactThread', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, line_number: { __typename: 'NumberAttribute', value: any | null } | null, label: { __typename: 'TextAttribute', value: string | null } | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number, edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, display_label: string | null, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } }
-        | { __typename: 'CoreChangeThread', id: string, display_label: string | null, label: { __typename: 'TextAttribute', value: string | null } | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number, edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, display_label: string | null, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } }
-        | { __typename: 'CoreFileThread', id: string, display_label: string | null, file: { __typename: 'TextAttribute', value: string | null } | null, line_number: { __typename: 'NumberAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, label: { __typename: 'TextAttribute', value: string | null } | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number, edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, display_label: string | null, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } }
-        | { __typename: 'CoreObjectThread', id: string, display_label: string | null, object_path: { __typename: 'TextAttribute', value: string | null } | null, label: { __typename: 'TextAttribute', value: string | null } | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number, edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, display_label: string | null, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } }
-       | null }> } };
-
-export type ActionsQueryVariables = Exact<{
-  proposedChangeId: Scalars['String']['input'];
-}>;
-
-
-export type ActionsQuery = { CoreProposedChangeAvailableActions: { __typename: 'AvailableActions', count: number, edges: Array<{ __typename: 'ActionAvailabilityEdge', node: { __typename: 'ActionAvailability', action: string, available: boolean, unavailability_reason: string | null } }> } };
-
-export type Get_Artifact_ThreadsQueryVariables = Exact<{
-  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-}>;
-
-
-export type Get_Artifact_ThreadsQuery = { CoreArtifactThread: { __typename: 'PaginatedCoreArtifactThread', count: number, edges: Array<{ __typename: 'EdgedCoreArtifactThread', node: { __typename: 'CoreArtifactThread', id: string, display_label: string | null, line_number: { __typename: 'NumberAttribute', value: any | null } | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
-
-export type Get_File_ThreadsQueryVariables = Exact<{
-  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-}>;
-
-
-export type Get_File_ThreadsQuery = { CoreFileThread: { __typename: 'PaginatedCoreFileThread', count: number, edges: Array<{ __typename: 'EdgedCoreFileThread', node: { __typename: 'CoreFileThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, file: { __typename: 'TextAttribute', value: string | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, repository: { __typename: 'NestedEdgedCoreRepository', node: { __typename: 'CoreRepository', id: string } | null }, line_number: { __typename: 'NumberAttribute', value: any | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
-
-export type Get_Object_Thread_CommentsQueryVariables = Exact<{
-  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-  objectPath?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type Get_Object_Thread_CommentsQuery = { CoreObjectThread: { __typename: 'PaginatedCoreObjectThread', count: number, edges: Array<{ __typename: 'EdgedCoreObjectThread', node: { __typename: 'CoreObjectThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number, edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, display_label: string | null, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
-
-export type Get_Object_ThreadsQueryVariables = Exact<{
-  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-  objectPath?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type Get_Object_ThreadsQuery = { CoreObjectThread: { __typename: 'PaginatedCoreObjectThread', count: number, edges: Array<{ __typename: 'EdgedCoreObjectThread', node: { __typename: 'CoreObjectThread', id: string, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number } } | null }>, permissions: { __typename: 'PaginatedObjectPermission', edges: Array<{ __typename: 'ObjectPermissionNode', node: { __typename: 'ObjectPermission', kind: string, view: BranchRelativePermissionDecision, create: BranchRelativePermissionDecision, update: BranchRelativePermissionDecision, delete: BranchRelativePermissionDecision } }> } } };
-
-export type ProposedChangeReviewMutationVariables = Exact<{
-  proposedChangeId: Scalars['String']['input'];
-  decision: ProposedChangeApprovalDecision;
-}>;
-
-
-export type ProposedChangeReviewMutation = { CoreProposedChangeReview: { __typename: 'ProposedChangeReview', ok: boolean | null } | null };
-
-export type Check_Repository_ConnectivityMutationVariables = Exact<{
-  repositoryId: Scalars['String']['input'];
-}>;
-
-
-export type Check_Repository_ConnectivityMutation = { InfrahubRepositoryConnectivity: { __typename: 'ValidateRepositoryConnectivity', ok: boolean, message: string } | null };
-
-export type Repository_GroupQueryVariables = Exact<{
-  nodeIds?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>> | InputMaybe<Scalars['ID']['input']>>;
-}>;
-
-
-export type Repository_GroupQuery = { CoreRepositoryGroup: { __typename: 'PaginatedCoreRepositoryGroup', edges: Array<{ __typename: 'EdgedCoreRepositoryGroup', node: { __typename: 'CoreRepositoryGroup', id: string } | null }> } };
-
-export type Import_Current_CommitMutationVariables = Exact<{
-  repositoryId: Scalars['String']['input'];
-}>;
-
-
-export type Import_Current_CommitMutation = { InfrahubRepositoryProcess: { __typename: 'ProcessRepository', ok: boolean | null, task: { __typename: 'TaskInfo', id: string | null } | null } | null };
-
-export type Reimport_Last_CommitMutationVariables = Exact<{
-  repositoryId: Scalars['String']['input'];
-}>;
-
-
-export type Reimport_Last_CommitMutation = { InfrahubReadOnlyRepositoryImportLastCommit: { __typename: 'ReadOnlyRepositoryImportLastCommit', ok: boolean | null, task: { __typename: 'TaskInfo', id: string | null } | null } | null };
-
-export type Get_Number_PoolsQueryVariables = Exact<{
-  objectKinds?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-}>;
-
-
-export type Get_Number_PoolsQuery = { CoreNumberPool: { __typename: 'PaginatedCoreNumberPool', edges: Array<{ __typename: 'EdgedCoreNumberPool', node: { __typename: 'CoreNumberPool', id: string, hfid: Array<string> | null, display_label: string | null, node: { __typename: 'TextAttribute', id: string | null, value: string | null } | null, node_attribute: { __typename: 'TextAttribute', id: string | null, value: string | null } | null } | null }> } };
-
-export type Get_Pool_UtilizationQueryVariables = Exact<{
-  poolId: Scalars['String']['input'];
-}>;
-
-
-export type Get_Pool_UtilizationQuery = { InfrahubResourcePoolUtilization: { __typename: 'PoolUtilization', count: any, utilization: number, utilization_branches: number, utilization_default_branch: number, edges: Array<{ __typename: 'IPPrefixUtilizationEdge', node: { __typename: 'IPPoolUtilizationResource', id: string, display_label: string, kind: string, weight: any, utilization: number, utilization_branches: number, utilization_default_branch: number } }> } };
-
-export type Get_Resource_Pool_AllocatedQueryVariables = Exact<{
-  poolId: Scalars['String']['input'];
-  resourceId: Scalars['String']['input'];
-  limit: Scalars['Int']['input'];
-  offset: Scalars['Int']['input'];
-}>;
-
-
-export type Get_Resource_Pool_AllocatedQuery = { InfrahubResourcePoolAllocated: { __typename: 'PoolAllocated', count: any, edges: Array<{ __typename: 'PoolAllocatedEdge', node: { __typename: 'PoolAllocatedNode', id: string, display_label: string, kind: string, branch: string, identifier: string | null } }> } };
-
-export type DropdownAddMutationVariables = Exact<{
-  kind: Scalars['String']['input'];
-  attribute: Scalars['String']['input'];
-  dropdown: Scalars['String']['input'];
-  label?: InputMaybe<Scalars['String']['input']>;
-  color?: InputMaybe<Scalars['String']['input']>;
-  description?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type DropdownAddMutation = { SchemaDropdownAdd: { __typename: 'SchemaDropdownAdd', ok: boolean | null, object: { __typename: 'DropdownFields', value: string | null, label: string | null, color: string | null, description: string | null } | null } | null };
-
-export type DropdownDeleteMutationVariables = Exact<{
-  kind: Scalars['String']['input'];
-  attribute: Scalars['String']['input'];
-  dropdown: Scalars['String']['input'];
-}>;
-
-
-export type DropdownDeleteMutation = { SchemaDropdownRemove: { __typename: 'SchemaDropdownRemove', ok: boolean | null } | null };
-
-export type EnumAddMutationVariables = Exact<{
-  kind: Scalars['String']['input'];
-  attribute: Scalars['String']['input'];
-  enum: Scalars['String']['input'];
-}>;
-
-
-export type EnumAddMutation = { SchemaEnumAdd: { __typename: 'SchemaEnumAdd', ok: boolean | null } | null };
-
-export type EnumDeleteMutationVariables = Exact<{
-  kind: Scalars['String']['input'];
-  attribute: Scalars['String']['input'];
-  enum: Scalars['String']['input'];
-}>;
-
-
-export type EnumDeleteMutation = { SchemaEnumRemove: { __typename: 'SchemaEnumRemove', ok: boolean | null } | null };
-
-export type Task_Details_CheckQueryVariables = Exact<{
-  ids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  branch?: InputMaybe<Scalars['String']['input']>;
-  workflow?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  state?: InputMaybe<Array<InputMaybe<StateType>> | InputMaybe<StateType>>;
-  relatedNodes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-}>;
-
-
-export type Task_Details_CheckQuery = { InfrahubTask: { __typename: 'Tasks', count: number } };
-
-export type Tasks_Branch_Status_CountQueryVariables = Exact<{
-  branch: Scalars['String']['input'];
-}>;
-
-
-export type Tasks_Branch_Status_CountQuery = { InfrahubTaskBranchStatus: { __typename: 'Tasks', count: number } };
-
-export type Task_CountQueryVariables = Exact<{
-  search?: InputMaybe<Scalars['String']['input']>;
-  branchName?: InputMaybe<Scalars['String']['input']>;
-  state?: InputMaybe<Array<InputMaybe<StateType>> | InputMaybe<StateType>>;
-  relatedNodeIds?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-}>;
-
-
-export type Task_CountQuery = { InfrahubTask: { __typename: 'Tasks', count: number } };
-
-export type Get_Task_ListQueryVariables = Exact<{
-  offset?: InputMaybe<Scalars['Int']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  search?: InputMaybe<Scalars['String']['input']>;
-  branchName?: InputMaybe<Scalars['String']['input']>;
-  state?: InputMaybe<Array<InputMaybe<StateType>> | InputMaybe<StateType>>;
-  relatedNodeIds?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-}>;
-
-
-export type Get_Task_ListQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', id: string, branch: string | null, title: string, updated_at: string, state: StateType | null, progress: number | null, workflow: string | null, related_nodes: Array<{ __typename: 'TaskRelatedNode', id: string, kind: string } | null> | null } | null }> } };
-
-export type Get_Tasks_HomepageQueryVariables = Exact<{
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  branchName: Scalars['String']['input'];
-  states?: InputMaybe<Array<InputMaybe<StateType>> | InputMaybe<StateType>>;
-}>;
-
-
-export type Get_Tasks_HomepageQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', id: string, branch: string | null, title: string, updated_at: string, state: StateType | null, related_nodes: Array<{ __typename: 'TaskRelatedNode', id: string, kind: string } | null> | null } | null }> } };
-
-export type Task_DetailsQueryVariables = Exact<{
-  ids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  branch?: InputMaybe<Scalars['String']['input']>;
-  workflow?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  relatedNodes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-}>;
-
-
-export type Task_DetailsQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', id: string, title: string, related_node: string | null, state: StateType | null, progress: number | null, created_at: string, updated_at: string, related_nodes: Array<{ __typename: 'TaskRelatedNode', id: string, kind: string } | null> | null, logs: { __typename: 'TaskLogEdge', edges: Array<{ __typename: 'TaskLogNodes', node: { __typename: 'TaskLog', id: string | null, message: string, severity: string, timestamp: string } | null }> } | null } | null }> } };
-
-export type Get_Task_Details_TitleQueryVariables = Exact<{
-  ids?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-}>;
-
-
-export type Get_Task_Details_TitleQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', title: string } | null }> } };
-
-export type InfrahubAccountTokenCreateMutationVariables = Exact<{
-  tokenName: Scalars['String']['input'];
-  tokenExpirationDate?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type InfrahubAccountTokenCreateMutation = { InfrahubAccountTokenCreate: { __typename: 'InfrahubAccountTokenCreate', ok: boolean | null, object: { __typename: 'InfrahubAccountTokenType', id: string, token: { __typename: 'ValueType', value: string } | null } | null } | null };
-
-export type GetAccountProfileQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type GetAccountProfileQuery = { AccountProfile: { __typename: 'CoreAccount', id: string, display_label: string | null, is_externally_managed: boolean, name: { __typename: 'TextAttribute', value: string | null } | null, label: { __typename: 'TextAttribute', value: string | null } | null, description: { __typename: 'TextAttribute', value: string | null } | null } | null };
-
-export type InfrahubAccountTokenQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type InfrahubAccountTokenQuery = { InfrahubAccountToken: { __typename: 'AccountTokenEdges', count: number, edges: Array<{ __typename: 'AccountTokenEdge', node: { __typename: 'AccountTokenNode', id: string, name: string | null, expiration: string | null } }> } };
-
-export type Update_Account_PasswordMutationVariables = Exact<{
-  password: Scalars['String']['input'];
-}>;
-
-
-export type Update_Account_PasswordMutation = { InfrahubAccountSelfUpdate: { __typename: 'InfrahubAccountSelfUpdate', ok: boolean | null } | null };

@@ -9,13 +9,13 @@ test.describe("/ipam/ip_addresses - IP Address list", () => {
     await page.getByTestId("identifier-cell").getByRole("link", { name: "10.0.0.16/32" }).click();
 
     const objectDetailsCard = page.getByTestId("object-details");
-    await expect(objectDetailsCard.getByRole("heading", { name: "Details" })).toBeVisible();
+    await expect(objectDetailsCard.getByText("Details", { exact: true })).toBeVisible();
     await expect(objectDetailsCard.getByText("Address10.0.0.16/32")).toBeVisible();
     await expect(objectDetailsCard.getByText("InterfaceLoopback0")).toBeVisible();
     await expect(objectDetailsCard.getByText("Ip Prefix10.0.0.0/16")).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: "Groups" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Activities" })).toBeVisible();
+    await expect(page.getByText("Groups", { exact: true })).toBeVisible();
+    await expect(page.getByText("Activities", { exact: true })).toBeVisible();
   });
 
   test("view all ip addresses under a given prefix", async ({ page }) => {
@@ -29,9 +29,10 @@ test.describe("/ipam/ip_addresses - IP Address list", () => {
 
     await test.step("click on any ip address row to view summary", async () => {
       await page.getByRole("link", { name: "172.16.0.1/16" }).click();
-      await page.getByRole("heading", { name: "172.16.0.1/16" }).click();
-      await page.getByRole("heading", { name: "Details" }).click();
-      await page.getByRole("heading", { name: "Activities" }).click();
+      await expect(page.getByRole("heading", { name: "172.16.0.1/16" })).toBeVisible();
+      await expect(page.getByTestId("object-details").getByText("Details")).toBeVisible();
+      await expect(page.getByText("Groups", { exact: true })).toBeVisible();
+      await expect(page.getByText("Activities", { exact: true })).toBeVisible();
     });
 
     await test.step("use breadcrumb to go back to parent prefix", async () => {

@@ -40,13 +40,13 @@ from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.schema import GenericSchema
+from infrahub.core.schema import AttributePathParsingError, GenericSchema
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.utils import extract_schema_models
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.schema import MainSchemaTypes, SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
@@ -272,6 +272,7 @@ class GraphQLQueryNode:
 @dataclass
 class GraphQLQueryReport:
     queries: list[GraphQLQueryNode]
+    schema_branch: SchemaBranch | None = None
 
     @property
     def impacted_models(self) -> list[str]:
@@ -316,23 +317,38 @@ class GraphQLQueryReport:
             return self.queries[0].variables
         return []
 
-    def required_argument(self, argument: GraphQLArgument) -> bool:
-        if argument.name == "ids" and argument.kind == "list_value":
-            for variable in self.variables:
-                if f"['${variable.name}']" == argument.as_variable_name and variable.required:
-                    return True
+    def _argument_provides_single_value(self, argument: GraphQLArgument, *, allow_required_list: bool = False) -> bool:
+        """Indicate whether a filter argument is guaranteed to resolve to exactly one value.
 
-            return False
+        A list literal (``[$id]``, ``["x"]``) provides a single value only when it holds exactly
+        one element that is certain to be provided. A scalar filter provides a single value when
+        it is a static literal or a required variable.
+
+        ``allow_required_list`` controls how a required *list-typed* variable is treated. The
+        artifact target selector (``ids`` / ``hfid``) is driven per target member, so a required
+        list variable there resolves to a single object and is accepted. When pinning the
+        components of a uniqueness constraint there is no such guarantee, so a required list
+        variable is rejected (it could carry several values and match several objects).
+        """
+        if argument.kind == "list_value":
+            if not isinstance(argument.value, list) or len(argument.value) != 1:
+                return False
+            element = argument.value[0]
+            if isinstance(element, str) and element.startswith("$"):
+                variable_name = element.removeprefix("$")
+                return any(variable.name == variable_name and variable.required for variable in self.variables)
+            # A single statically-defined element is always provided.
+            return element is not None
 
         if not argument.is_variable:
-            # If the argument isn't a variable it would have been
-            # statically defined in the input and as such required
+            # A statically-defined value is always provided.
             return True
-        for variable in self.variables:
-            if variable.name == argument.as_variable_name and variable.required:
-                return True
-
-        return False
+        return any(
+            variable.name == argument.as_variable_name
+            and variable.required
+            and (allow_required_list or not variable.is_list)
+            for variable in self.variables
+        )
 
     @cached_property
     def top_level_kinds(self) -> list[str]:
@@ -368,21 +384,71 @@ class GraphQLQueryReport:
 
     @property
     def only_has_unique_targets(self) -> bool:
-        """Indicate if the query document is defined so that it will return a single root level object."""
-        for query in self.queries:
-            targets_single_query = False
-            if query.infrahub_model and query.infrahub_model.uniqueness_constraints:
-                for argument in query.arguments:
-                    if [[argument.name]] == query.infrahub_model.uniqueness_constraints:
-                        if self.required_argument(argument=argument):
-                            targets_single_query = True
-                    elif argument.name == "ids" and self.required_argument(argument=argument):
-                        targets_single_query = True
+        """Indicate if the query document is defined so that every root query returns a single object."""
+        return all(self._query_targets_single_object(query=query) for query in self.queries)
 
-            if not targets_single_query:
+    def _query_targets_single_object(self, query: GraphQLQueryNode) -> bool:
+        """Indicate whether a single root query is guaranteed to resolve to one object.
+
+        A query pins a single object when it filters by a required, single ``ids`` or ``hfid``
+        value, or when at least one of the node's uniqueness constraints has every one of its
+        components pinned by a required, single-valued filter argument.
+        """
+        model = query.infrahub_model
+        if model is None:
+            return False
+
+        arguments_by_name = {argument.name: argument for argument in query.arguments}
+
+        for special_filter in ("ids", "hfid"):
+            argument = arguments_by_name.get(special_filter)
+            if argument is not None and self._argument_provides_single_value(argument, allow_required_list=True):
+                return True
+
+        if self.schema_branch is None:
+            return False
+
+        try:
+            constraint_groups = model.get_unique_constraint_schema_attribute_paths(schema_branch=self.schema_branch)
+        except AttributePathParsingError:
+            return False
+
+        return any(
+            self._constraint_group_is_pinned(group.attributes_paths, arguments_by_name=arguments_by_name)
+            for group in constraint_groups
+        )
+
+    def _constraint_group_is_pinned(
+        self, attribute_paths: list[SchemaAttributePath], arguments_by_name: dict[str, GraphQLArgument]
+    ) -> bool:
+        """Indicate whether every component of one uniqueness constraint is pinned to a single value."""
+        return bool(attribute_paths) and all(
+            self._component_is_pinned(attribute_path=attribute_path, arguments_by_name=arguments_by_name)
+            for attribute_path in attribute_paths
+        )
+
+    def _component_is_pinned(
+        self, attribute_path: SchemaAttributePath, arguments_by_name: dict[str, GraphQLArgument]
+    ) -> bool:
+        """Indicate whether a single uniqueness-constraint component is pinned by a filter argument."""
+        relationship_schema = attribute_path.relationship_schema
+        if relationship_schema is not None:
+            # A relationship can only pin a single target when it points to a single peer.
+            if relationship_schema.cardinality != RelationshipCardinality.ONE:
                 return False
+            # Pin the related peer by a single id or hfid.
+            for suffix in ("ids", "hfid"):
+                argument = arguments_by_name.get(f"{relationship_schema.name}__{suffix}")
+                if argument is not None and self._argument_provides_single_value(argument):
+                    return True
+            return False
 
-        return True
+        if attribute_path.attribute_schema is not None:
+            property_name = attribute_path.attribute_property_name or "value"
+            argument = arguments_by_name.get(f"{attribute_path.attribute_schema.name}__{property_name}")
+            return argument is not None and self._argument_provides_single_value(argument)
+
+        return False
 
 
 class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
@@ -474,7 +540,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         self._populate_named_fragments()
         operations = self._get_operations()
 
-        return GraphQLQueryReport(queries=operations)
+        return GraphQLQueryReport(queries=operations, schema_branch=self.schema_branch)
 
     def _get_operations(self) -> list[GraphQLQueryNode]:
         operations: list[GraphQLQueryNode] = []

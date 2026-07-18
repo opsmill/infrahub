@@ -2,29 +2,15 @@
 
 Infrahub is a graph-based infrastructure data management platform by OpsMill. It combines Git-like branching and version control with a flexible graph database (Neo4j) and a modern UI/API layer.
 
-## Conversation Style
+This file is a router: it carries repo-wide facts and points to the per-area AGENTS.md and `dev/` docs for depth.
 
-Responses must be direct and substantive. Do not use filler phrases, compliments, or social pleasantries.
-
-**Prohibited phrases** (including variations):
-
-- "You're right", "You're absolutely right", "Great question", "Good idea"
-- "I apologize", "I'm sorry", "Sorry about that"
-- "Let me explain", "Let me walk you through", "I'd be happy to"
-
-**Required behavior:**
-
-- Do not use introductory or transitional filler of any kind
-- Get to the point immediately — no preamble
-- Challenge ideas and assumptions when warranted
-- Ask clarifying questions rather than guessing intent
-- Offer direct criticism when an approach has flaws
+Style: be direct and substantive. No filler, preamble, or pleasantries. Challenge flawed approaches and ask before guessing intent.
 
 ## Tech Stack
 
 - **Backend:** Python 3.13, FastAPI 0.131.0, Neo4j 2025.10 (driver 6.0), Pydantic 2.12
 - **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.56
+- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
 - **Linting:** ruff 0.15, mypy 1.15, Biome 2.4
 - **Package Managers:** uv (Python), pnpm (Frontend)
 - **Task Runner:** Invoke 2.2.1
@@ -55,8 +41,50 @@ cd frontend/app && pnpm install       # Install frontend dependencies
 uv run invoke backend.test-unit       # Backend unit tests
 uv run invoke backend.test-integration # Backend integration tests
 cd frontend/app && pnpm test          # Frontend unit tests
-cd frontend/app && pnpm test:e2e      # Frontend E2E tests
+cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
+uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
 ```
+
+#### Debugging e2e tests with `--pdb`
+
+**Always run `tests/e2e/` tests with `--pdb` when debugging locally.**
+Re-running the suite just to attach a debugger after a failure wastes minutes
+per iteration (stack boot + data load); with `--pdb` a failure freezes the
+session at the failure line with the testcontainers stack, the SDK clients,
+the browser page and every fixture still alive. If the test passes, `--pdb`
+costs nothing.
+
+```bash
+uv run pytest -c tests/e2e/pytest.ini tests/e2e/<node_id> -s --pdb
+```
+
+While paused, inspect the live stack from a second shell:
+
+```bash
+docker ps --filter name=infrahub-test          # the session's compose project
+PROJECT=$(docker ps --format '{{.Label "com.docker.compose.project"}}' | grep infrahub-test | head -1)
+docker compose -p $PROJECT port infrahub-server-lb 8000   # API/UI address on localhost
+docker compose -p $PROJECT logs infrahub-server task-worker --tail 100
+```
+
+When running through a non-interactive shell (background job, agent tool),
+prefix the command with `sleep infinity |` so pdb's stdin stays open instead
+of hitting EOF and exiting (which tears the stack down):
+
+```bash
+sleep infinity | uv run pytest -c tests/e2e/pytest.ini tests/e2e/<node_id> -s --pdb 2>&1 | tee /tmp/pdb.log
+```
+
+Pytest then stays paused indefinitely on failure (`-s` keeps pdb's output
+unbuffered through the pipe). Inspect with docker/curl from a separate shell,
+then kill the process once done — pdb cannot receive commands over the dummy
+stdin. Match the node id, not the literal shell line (a bare
+`pkill -f <pattern>` kills your own shell if the pattern appears in its
+command line). Killing pytest skips the fixture teardown, so sweep the
+leftover stack afterwards: `docker compose -p $PROJECT down -v
+--remove-orphans`.
+
+See `tests/e2e/README.md` for the suite architecture and data fixtures.
 
 ### Linting & Formatting
 
@@ -86,6 +114,8 @@ cd docs && npm run build              # Build documentation
 
 - `backend/infrahub/core/schema/generated/` – Schema definitions
 - `backend/infrahub/core/protocols.py` – Protocol definitions
+- `backend/infrahub/generators/graphql_queries/*.py` – Pydantic types generated from `.gql` query files
+- `backend/infrahub/computed_attribute/graphql_queries/*.py` – Pydantic types generated from `.gql` query files
 - `frontend/app/src/shared/api/graphql/generated/` – GraphQL types
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
@@ -104,11 +134,12 @@ CI validates that all generated files are committed — the `validate-generated-
 
 ### Always Do
 
-- Before modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain
+- Before diagnosing _or_ modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
-- Before pushing, run `/pre-ci` (`dev/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
+- In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
+- Before pushing, run `/pre-ci` (`.agents/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
 
 ### Ask First
 
@@ -134,7 +165,7 @@ CI validates that all generated files are committed — the `validate-generated-
 | Why was this decided? | `dev/adr/` |
 | What are we building? | `dev/specs/` |
 | How should I write code? | `dev/guidelines/` |
-| What commands are available? | `dev/commands/` |
+| What commands are available? | `.agents/commands/` |
 
 ## Component Maps
 

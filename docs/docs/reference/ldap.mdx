@@ -1,0 +1,116 @@
+---
+title: LDAP
+---
+
+This reference document describes the configuration options for LDAP authentication in Infrahub.
+
+:::info Enterprise Edition
+
+LDAP authentication is available exclusively in the Enterprise Edition. The Community Edition includes the configuration model but rejects LDAP sign-ins with an enterprise-required error. See [Community vs enterprise](../overview/community-vs-enterprise.mdx) for details.
+
+:::
+
+All options live under the top-level `ldap` configuration group. Each maps to an environment variable prefixed with `INFRAHUB_LDAP_` and to a key under the `[ldap]` table in `infrahub.toml`.
+
+## Connection
+
+| Parameter | Environment Variable | TOML Path | Description | Default |
+|-----------|---------------------|-----------|-------------|---------|
+| Enabled | `INFRAHUB_LDAP_ENABLED` | `ldap.enabled` | Enable LDAP sign-in on this deployment. When off, new LDAP sign-ins are refused; existing sessions are unaffected. | `false` |
+| Servers | `INFRAHUB_LDAP_SERVERS` | `ldap.servers` | LDAP server URIs, tried in declaration order. Must use the `ldap` or `ldaps` scheme. As an environment variable, comma-separated. | none |
+| Per-server timeout | `INFRAHUB_LDAP_PER_SERVER_TIMEOUT` | `ldap.per_server_timeout` | Seconds to wait for a server to respond before treating it as unreachable and trying the next. | `10.0` |
+
+## Service account and user lookup
+
+| Parameter | Environment Variable | TOML Path | Description | Default |
+|-----------|---------------------|-----------|-------------|---------|
+| Service account DN | `INFRAHUB_LDAP_SERVICE_ACCOUNT_DN` | `ldap.service_account_dn` | Distinguished name of the directory account used to look up users before verifying their credentials. | none |
+| Service account password | `INFRAHUB_LDAP_SERVICE_ACCOUNT_PASSWORD` | `ldap.service_account_password` | Password for the service account used during the user lookup. | none |
+| User search base | `INFRAHUB_LDAP_USER_SEARCH_BASE` | `ldap.user_search_base` | Distinguished name of the subtree where user entries are stored, e.g. `OU=Users,DC=corp,DC=example,DC=com`. | none |
+| User search filter | `INFRAHUB_LDAP_USER_SEARCH_FILTER` | `ldap.user_search_filter` | Filter used to locate a user by sign-in name. The `{username}` placeholder is substituted at sign-in time and escaped. If empty, a default is generated from `attribute_username`. | generated |
+
+## User attribute mapping
+
+| Parameter | Environment Variable | TOML Path | Description | Default |
+|-----------|---------------------|-----------|-------------|---------|
+| Username attribute | `INFRAHUB_LDAP_ATTRIBUTE_USERNAME` | `ldap.attribute_username` | Attribute that holds a user's sign-in name. `sAMAccountName` is typical on Active Directory; `uid` is typical on OpenLDAP. | `sAMAccountName` |
+| Display name attribute | `INFRAHUB_LDAP_ATTRIBUTE_DISPLAY_NAME` | `ldap.attribute_display_name` | Attribute that holds a user's human-readable display name. | `displayName` |
+| Disabled attribute | `INFRAHUB_LDAP_ATTRIBUTE_DISABLED` | `ldap.attribute_disabled` | Attribute signaling whether an account is disabled. Leave empty to skip the disabled-account check. | `userAccountControl` |
+| Disabled bitmask | `INFRAHUB_LDAP_ATTRIBUTE_DISABLED_BITMASK` | `ldap.attribute_disabled_bitmask` | When `attribute_disabled` is set, its integer value is treated as a bitmask; the account is disabled if any of these bits are set. `0x2` matches Active Directory's standard disabled flag. | `2` |
+
+## Group resolution
+
+| Parameter | Environment Variable | TOML Path | Description | Default |
+|-----------|---------------------|-----------|-------------|---------|
+| Group resolution enabled | `INFRAHUB_LDAP_GROUP_ENABLED` | `ldap.group_enabled` | Resolve directory group memberships and map them to local groups. Requires `group_base_dn`. | `false` |
+| Group base DN | `INFRAHUB_LDAP_GROUP_BASE_DN` | `ldap.group_base_dn` | Distinguished name of the subtree where group entries are stored. Required when `group_enabled` is true. | none |
+| Group filter | `INFRAHUB_LDAP_GROUP_FILTER` | `ldap.group_filter` | Filter used to look up a user's groups. The `{user_dn}` placeholder is substituted with the user's distinguished name at sign-in time and escaped. | `(member={user_dn})` |
+| Group name attribute | `INFRAHUB_LDAP_GROUP_NAME_ATTRIBUTE` | `ldap.group_name_attribute` | Attribute read as the group's name and matched against local group names to grant permissions. | `cn` |
+| Group strategy | `INFRAHUB_LDAP_GROUP_STRATEGY` | `ldap.group_strategy` | How nested-group memberships are resolved: `bfs` (any directory) or `ad_in_chain` (Active Directory transitive-membership search). | `bfs` |
+| Group BFS max depth | `INFRAHUB_LDAP_GROUP_BFS_MAX_DEPTH` | `ldap.group_bfs_max_depth` | Maximum nesting levels traversed when `group_strategy` is `bfs`. Cycles are detected automatically. Minimum 10. | `16` |
+
+## TLS
+
+| Parameter | Environment Variable | TOML Path | Description | Default |
+|-----------|---------------------|-----------|-------------|---------|
+| TLS enabled | `INFRAHUB_LDAP_TLS_ENABLED` | `ldap.tls_enabled` | Encrypt the connection. Pair with `ldaps://` URIs, or set `tls_starttls`. | `false` |
+| STARTTLS | `INFRAHUB_LDAP_TLS_STARTTLS` | `ldap.tls_starttls` | Upgrade a plain `ldap://` connection to TLS using STARTTLS instead of connecting via `ldaps://`. | `false` |
+| CA bundle | `INFRAHUB_LDAP_TLS_CA_BUNDLE` | `ldap.tls_ca_bundle` | PEM-encoded CA bundle used to verify the server's certificate. A file path or the PEM contents directly. Checked at startup. | none |
+| Insecure | `INFRAHUB_LDAP_TLS_INSECURE` | `ldap.tls_insecure` | Skip TLS certificate validation. Test and development only; never enable in production. | `false` |
+| Minimum TLS version | `INFRAHUB_LDAP_TLS_MINIMUM_VERSION` | `ldap.tls_minimum_version` | Minimum TLS protocol version accepted: `TLSv1.2` or `TLSv1.3`. | `TLSv1.2` |
+
+:::note
+`tls_starttls` and an `ldaps://` server URI are mutually exclusive, as are `tls_insecure` and `tls_ca_bundle`. Either combination is rejected when the server starts.
+:::
+
+## Login button
+
+| Parameter | Environment Variable | TOML Path | Description | Default |
+|-----------|---------------------|-----------|-------------|---------|
+| Display label | `INFRAHUB_LDAP_DISPLAY_LABEL` | `ldap.display_label` | Text shown on the LDAP sign-in button on the login page. | `Sign in with LDAP` |
+| Icon | `INFRAHUB_LDAP_ICON` | `ldap.icon` | Material Design icon name shown on the LDAP sign-in button. | `mdi:account-key-outline` |
+
+## Examples
+
+### Active Directory
+
+```toml
+[ldap]
+enabled = true
+servers = ["ldaps://dc1.corp.example.com:636", "ldaps://dc2.corp.example.com:636"]
+tls_enabled = true
+
+service_account_dn = "CN=infrahub-svc,OU=Service,DC=corp,DC=example,DC=com"
+service_account_password = "service-account-password"
+user_search_base = "OU=Users,DC=corp,DC=example,DC=com"
+
+group_enabled = true
+group_base_dn = "OU=Groups,DC=corp,DC=example,DC=com"
+group_strategy = "ad_in_chain"
+```
+
+### OpenLDAP
+
+```toml
+[ldap]
+enabled = true
+servers = ["ldaps://ldap.example.com:636"]
+tls_enabled = true
+
+service_account_dn = "cn=infrahub,ou=services,dc=example,dc=com"
+service_account_password = "service-account-password"
+user_search_base = "ou=people,dc=example,dc=com"
+attribute_username = "uid"
+attribute_disabled = ""
+
+group_enabled = true
+group_base_dn = "ou=groups,dc=example,dc=com"
+group_strategy = "bfs"
+```
+
+## Related resources
+
+- [LDAP authentication](../deploy-manage/user-management/ldap/overview)
+- [Configure LDAP authentication](../deploy-manage/user-management/ldap/configure-ldap)
+- [Authentication](../deploy-manage/user-management/authentication)
+- [SSO reference](./sso)

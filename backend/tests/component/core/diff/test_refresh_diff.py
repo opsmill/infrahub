@@ -2,7 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import post_process_branch_merge

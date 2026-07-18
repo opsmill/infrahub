@@ -18,10 +18,11 @@ class GraphQLQueryReport(ObjectType):
         Boolean,
         required=True,
         description=(
-            "True if every operation in the submitted query resolves to uniquely identifiable nodes "
-            "(via a required ids argument or a required field matching the model uniqueness constraints). "
-            "When true, Infrahub limits artifact regeneration to only the nodes that changed. "
-            "When false, all artifacts for the definition are regenerated on any relevant node change."
+            "True if every operation in the submitted query resolves to uniquely identifiable nodes. "
+            "An operation resolves uniquely when it filters by a required ids or hfid argument, or when "
+            "every component of at least one of the model's uniqueness constraints is pinned by a required, "
+            "single-valued argument. When true, Infrahub limits artifact regeneration to only the nodes that "
+            "changed. When false, all artifacts for the definition are regenerated on any relevant node change."
         ),
     )
 

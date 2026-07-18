@@ -11,7 +11,11 @@ export default defineConfig({
   server: {
     port: 8080,
     watch: {
-      ignored: ["**/graphql/generated/**", "**/rest/types.generated.ts", "**/playwright-report/**"],
+      ignored: ["**/generated/**", "**/*.generated.ts", "**/playwright-report/**"],
+      followSymlinks: true,
+    },
+    fs: {
+      allow: [".."],
     },
   },
   preview: {
@@ -23,6 +27,7 @@ export default defineConfig({
     react(),
     babel({
       presets: [reactCompilerPreset()],
+      exclude: ["**/node_modules/**", "**/generated/**", "**/*.generated.ts"],
     }),
     svgr(),
     monacoEditorPlugin({

@@ -1,6 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.migrations.graph import Migration017
+from infrahub.core.migrations.graph.m017_add_core_profile import Migration017
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase

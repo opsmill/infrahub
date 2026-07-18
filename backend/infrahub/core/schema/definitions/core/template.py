@@ -8,7 +8,7 @@ core_object_template = GenericSchema(
     icon="mdi:pencil-ruler",
     description="Template to create pre-shaped objects.",
     label="Object Templates",
-    display_labels=["template_name__value"],
+    display_label="template_name__value",
     default_filter="template_name__value",
     uniqueness_constraints=[["template_name__value"]],
     attributes=[
@@ -30,7 +30,7 @@ core_object_component_template = GenericSchema(
     icon="mdi:pencil-ruler",
     description="Component template to create pre-shaped objects.",
     label="Object Component Templates",
-    display_labels=["template_name__value"],
+    display_label="template_name__value",
     default_filter="template_name__value",
     attributes=[
         Attr(

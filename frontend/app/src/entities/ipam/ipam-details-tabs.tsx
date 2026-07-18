@@ -19,7 +19,7 @@ export function IpamDetailsTabs({ objectSchema, objectData }: IpamDetailsTabsPro
 
   return (
     <Row className="border-gray-200 border-b">
-      <LinkTab href={constructPathForIpam("details")}>
+      <LinkTab to={constructPathForIpam("details")}>
         <IdCardIcon className="size-4" />
         Details
       </LinkTab>

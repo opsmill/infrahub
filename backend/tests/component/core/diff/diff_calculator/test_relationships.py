@@ -1,6 +1,6 @@
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, InfrahubKind
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
@@ -1285,3 +1285,79 @@ async def test_diff_relationship_property_update_on_main(
     assert diff_rel.name == "owner"
     assert diff_rel.action is DiffAction.UPDATED
     assert {elem.action for elem in diff_rel.relationships} == {DiffAction.ADDED, DiffAction.REMOVED}
+
+
+async def test_relationship_property_change_after_relationship_removed_from_base_schema(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_alfred_main: Node,
+) -> None:
+    """Diff must resolve the peer when the relationship was removed from the base branch schema.
+
+    Removing a relationship from the schema runs a no-op migration, so existing Relationship
+    vertices keep their identifier while the base schema no longer knows it. When the diff branch
+    then changes a non-peer property (source) of that relationship, the peer-side path resolves
+    only against the diff branch schema; the diff must still identify the peer.
+    """
+    branch = await create_branch(db=db, branch_name="branch-rel-removed-base")
+    from_time = Timestamp(branch.created_at)
+
+    # On the diff branch (still has the owner relationship): set owner.source = alfred.
+    branch_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await branch_car.get_relationship("owner").update(
+        db=db, data={"id": person_john_main.id, "_relation__source": person_alfred_main.id}
+    )
+    await branch_car.save(db=db)
+
+    # On the base branch: remove the owner/cars relationship from the schema. The migration is a
+    # no-op, so the Relationship vertices and their edges remain in the graph.
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate = schema.duplicate()
+    car_schema = candidate.get_node(name="TestCar")
+    car_schema.relationships = [r for r in car_schema.relationships if r.name != "owner"]
+    person_schema = candidate.get_node(name="TestPerson")
+    person_schema.relationships = [r for r in person_schema.relationships if r.name != "cars"]
+    registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+
+    diff_calculator = DiffCalculator(db=db)
+    # Must not raise DiffNoPeerIdError.
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    nodes_by_uuid = {n.uuid: n for n in branch_diff.nodes}
+    car_node = nodes_by_uuid[car_accord_main.id]
+    assert car_node.action is DiffAction.UPDATED
+
+    rels_by_name = {r.name: r for r in car_node.relationships}
+    assert set(rels_by_name) == {"owner"}
+    owner_rel = rels_by_name["owner"]
+    assert owner_rel.identifier == "testcar__testperson"
+    assert owner_rel.cardinality is RelationshipCardinality.ONE
+    assert owner_rel.action is DiffAction.UPDATED
+    assert len(owner_rel.relationships) == 1
+
+    element = owner_rel.relationships[0]
+    assert element.peer_id == person_john_main.id
+    assert element.action is DiffAction.UPDATED
+
+    props_by_type = {p.property_type: p for p in element.properties}
+    assert set(props_by_type) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.HAS_SOURCE}
+
+    is_related = props_by_type[DatabaseEdgeType.IS_RELATED]
+    assert is_related.action is DiffAction.UNCHANGED
+    assert is_related.previous_value == person_john_main.id
+    assert is_related.new_value == person_john_main.id
+
+    has_source = props_by_type[DatabaseEdgeType.HAS_SOURCE]
+    assert has_source.action is DiffAction.ADDED
+    assert has_source.previous_value is None
+    assert has_source.new_value == person_alfred_main.id

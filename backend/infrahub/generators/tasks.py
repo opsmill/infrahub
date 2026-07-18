@@ -98,7 +98,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
     await generator_instance.update(do_full_update=True)
 
 
-@task(name="generator-define-instance", task_run_name="Define Instance", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="generator-define-instance", task_run_name="Define Instance", cache_policy=NONE)
 async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -> CoreGeneratorInstance:
     if model.generator_instance:
         instance = await client.get(kind=CoreGeneratorInstance, id=model.generator_instance, branch=model.branch_name)
@@ -160,6 +160,7 @@ async def run_generator_definition(
                 file_path=generator.file_path.value,
                 query_name=generator.query.peer.name.value,
                 query_models=generator.query.peer.models.value,
+                query_payload=generator.query.peer.query.value,
                 repository_id=generator.repository.peer.id,
                 parameters=generator.parameters.value,
                 group_id=generator.targets.peer.id,

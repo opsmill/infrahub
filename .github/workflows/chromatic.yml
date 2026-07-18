@@ -26,17 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # In order for Chromatic to correctly determine baseline commits, tot access the full Git history graph.
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run Chromatic
