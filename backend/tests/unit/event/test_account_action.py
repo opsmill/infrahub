@@ -4,7 +4,8 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountType, InfrahubKind
@@ -22,7 +23,7 @@ def _make_meta(account_id: str = "test-account-id") -> EventMeta:
         context=InfrahubContext.init(
             branch=branch,
             account=AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=account_id),
-        ),
+        ).to_event_context(),
         account_id=account_id,
     )
 

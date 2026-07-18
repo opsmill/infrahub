@@ -8,7 +8,7 @@ test.describe("/role-management/roles - Roles CRUD", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
 
-  const BRANCH_NAME = generateRandomBranchName("role-crud");
+  const BRANCH_NAME = generateRandomBranchName("role-management");
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);

@@ -51,18 +51,20 @@ jobs:
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       version_upgrade_workflow: ${{ steps.changes.outputs.version_upgrade_workflow }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
+      e2e_pytest_tests: ${{ steps.changes.outputs.e2e_pytest_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
       graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
+      error_catalogue: ${{ steps.changes.outputs.error_catalogue_all }}
       dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
       observability_standalone: ${{ steps.changes.outputs.observability_standalone_all }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Check for file changes
-        uses: dorny/paths-filter@v4.0.1
+        uses: dorny/paths-filter@v4.0.2
         id: changes
         with:
           token: ${{ github.token }}
@@ -80,7 +82,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -106,7 +108,7 @@ jobs:
       contents: read
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Node.js
@@ -141,7 +143,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -171,6 +173,47 @@ jobs:
             exit 1
           fi
 
+  frontend-validate-error-catalogue:
+    if: |
+      needs.files-changed.outputs.error_catalogue == 'true'
+    needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v7"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify generated error bindings match schema/error-catalogue.json
+        run: pnpm check:error-bindings
+      - name: Surface a remediation hint on failure
+        if: failure()
+        run: |
+          echo "❌ Error: Generated error bindings are out of sync with schema/error-catalogue.json"
+          echo ""
+          echo "The backend catalogue has been updated, but the frontend's typed mirror hasn't been regenerated."
+          echo ""
+          echo "To fix this, run the following commands from the repository root:"
+          echo "  cd frontend/app"
+          echo "  pnpm generate:error-bindings"
+          echo "  git add src/shared/api/errors/catalogue.generated.ts"
+          echo "  git commit -m 'chore: regenerate error bindings'"
+
   frontend-validate-graphql-types:
     if: |
       needs.files-changed.outputs.graphql_schema == 'true'
@@ -184,7 +227,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -224,7 +267,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -264,7 +307,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -296,11 +339,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v23
+        uses: DavidAnson/markdownlint-cli2-action@v24
         with:
           globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
 
@@ -311,7 +354,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Check workflow files
@@ -340,7 +383,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
 
@@ -400,7 +443,7 @@ jobs:
         working-directory: ./python_testcontainers
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
@@ -443,7 +486,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python ${{ matrix.python-version }}
@@ -492,7 +535,7 @@ jobs:
       PYTEST_XDIST_WORKER_COUNT: 2
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -549,7 +592,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -596,7 +639,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -646,7 +689,7 @@ jobs:
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -714,7 +757,7 @@ jobs:
   #   env: ${{ matrix.env }}
   #   steps:
   #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v6"
+  #       uses: "actions/checkout@v7"
   #       with:
   #         submodules: true
   #     - name: Set up Python
@@ -747,7 +790,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set up Python
@@ -775,7 +818,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Install NodeJS
@@ -818,7 +861,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -844,7 +887,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -871,7 +914,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Set up Python
@@ -902,7 +945,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Install NodeJS
@@ -940,7 +983,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Install NodeJS
@@ -970,13 +1013,14 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.python == 'true') ||
       (needs.files-changed.outputs.dev_guidelines == 'true') ||
-      (needs.files-changed.outputs.javascript == 'true')
+      (needs.files-changed.outputs.javascript == 'true') ||
+      (needs.files-changed.outputs.github_workflows == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
-    runs-on: "ubuntu-22.04"
+    runs-on: "ubuntu-24.04"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Check links
@@ -1000,7 +1044,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
 
@@ -1026,7 +1070,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
@@ -1081,7 +1125,7 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Install NodeJS
@@ -1251,6 +1295,98 @@ jobs:
         if: always()
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
 
+  # ----------------------------- E2E pytest-playwright (infrahub-testcontainers) -----------------------------
+  # New Python e2e suite. Runs ALONGSIDE E2E-testing-playwright (the TS suite)
+  # until parity is confirmed, then the TS job can be removed. Instead of
+  # `invoke dev.start dev.load-infra-*`, infrahub-testcontainers spins up the
+  # stack and pytest fixtures load the dataset (see tests/e2e/).
+  E2E-testing-pytest-playwright:
+    needs:
+      - prepare-environment
+      - files-changed
+      - yaml-lint
+      - python-lint
+      - infrahub-testcontainers-check
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.e2e == 'true'
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [foundation, sites_a, sites_b, branches_repo, tutorial]
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      PYTEST_XDIST_WORKER_COUNT: 1
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+      - name: Install tini
+        run: apt-get update && apt-get install -y tini
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: |
+          RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
+          echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME}/_temp" >> $GITHUB_ENV
+          echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_IMAGE=opsmill/infrahub >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_PULL=false >> $GITHUB_ENV
+          echo NEO4J_DOCKER_IMAGE=neo4j:2025.10.1-enterprise >> $GITHUB_ENV
+      - name: Build no-netlink shim
+        run: |
+          gcc -shared -fPIC -Wall -Wextra \
+            -o "$RUNNER_TEMP/no_netlink.so" \
+            tests/e2e/fixtures/no_netlink.c -ldl
+          echo "NO_NETLINK_SO=$RUNNER_TEMP/no_netlink.so" >> "$GITHUB_ENV"
+      - name: Build Demo
+        run: |
+          echo "::group::Build infrahub container"
+          uv run invoke dev.build
+          echo "::endgroup::"
+      - name: Run Playwright tests
+        if: matrix.shard != 'tutorial'
+        env:
+          INFRAHUB_TESTING_RESPONSE_DELAY: ${{ needs.files-changed.outputs.e2e_pytest_tests == 'true' && '1' || '0' }}
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e --ignore=tests/e2e/tutorial -m shard_${{ matrix.shard }}
+      - name: Run tutorial Playwright tests
+        if: matrix.shard == 'tutorial'
+        run: exec tini -s -g -- uv run pytest -c tests/e2e/pytest.ini tests/e2e/tutorial
+      - name: playwright-report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: E2E-testing-pytest-playwright-${{ matrix.shard }}
+          path: |
+            test-results/
+            playwright-junit.xml
+      - name: Containers after tests
+        if: always()
+        run: docker ps -a
+
   # ------------------------------------------ E2E invoke demo ------------------------------------------------
   E2E-testing-invoke-demo-start:
     needs:
@@ -1270,7 +1406,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -1367,7 +1503,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set up Python

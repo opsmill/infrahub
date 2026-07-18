@@ -565,6 +565,7 @@ class Migration029(ArbitraryMigration):
     """
 
     name: str = "029_duplicates_cleanup"
+    description: str = "N/A"
     minimum_version: int = 28
     limit: int = 100
 

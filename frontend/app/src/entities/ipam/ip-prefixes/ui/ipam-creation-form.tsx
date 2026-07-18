@@ -60,7 +60,10 @@ function IpamCreationForm(props: IpamCreationFormProps) {
         />
       ),
       {
-        toastId: `alert-success-${props.schema.name}-created`,
+        // Per-node id so two same-kind allocations in quick succession each render their
+        // own confirmation. A constant per-kind id makes react-toastify dedupe the second
+        // toast while the first is still on screen (autoClose 5s). Matches account-role-form.
+        toastId: `alert-success-${props.schema.name}-created-${newNode.id}`,
       }
     );
     props.onSuccess?.(newNode);

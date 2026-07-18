@@ -1,3 +1,4 @@
+import { Card, CardHeader } from "@infrahub/ui/card";
 import { Outlet, useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -9,7 +10,6 @@ import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
@@ -191,18 +191,16 @@ const ResourcePoolContent = ({ resourcePoolId, schema, permission }: ResourcePoo
       <div className="flex items-start overflow-hidden p-2">
         <aside className="mr-1 inline-flex shrink-0 flex-col gap-2">
           <Card className="shrink-0">
-            <CardWithBorder.Title className="flex items-center justify-between gap-1">
-              <div>
-                <Badge variant="blue">{schema.namespace}</Badge> {schema.label}
-              </div>
-
+            <CardHeader className="flex items-center justify-between gap-1">
+              <Badge variant="blue">{schema.namespace}</Badge>
+              <span>{schema.label}</span>
               <ObjectEditSlideOverTrigger
                 data={resourcePool}
                 schema={schema}
                 onUpdateComplete={handleRefetchAll}
                 permission={permission}
               />
-            </CardWithBorder.Title>
+            </CardHeader>
 
             <PropertyList properties={properties} labelClassName="font-semibold" />
           </Card>

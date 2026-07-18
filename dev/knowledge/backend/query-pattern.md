@@ -55,6 +55,12 @@ print(query.get_query(var=True, inline=True))  # With variables substituted
 await query.execute(db=db)  # Execute when ready
 ```
 
+## Reads must not write
+
+Neo4j routing is selected by the **database session**, not by `QueryType`: `db.start_session(read_only=True)` opens a session with `READ_ACCESS` (which a clustered deployment can route to any replica), while a normal session uses `WRITE_ACCESS` (the primary). `QueryType.READ` / `QueryType.WRITE` drives Query execution behavior and metrics, not server selection.
+
+Because a read-shaped operation may run inside a read-only session, it must never write. This is a separate invariant that holds at every layer: a method named `get_*` (or any read-shaped accessor) must not create or mutate as a side effect — e.g. a `get_global()` that lazily materializes a missing row. Return a "not set" sentinel or `None`, and let the dedicated write path (a mutation, a `Repository.save`) be the only thing that creates.
+
 ## Core Patterns
 
 ### Query Naming
@@ -83,6 +89,8 @@ self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
 ### Return Labels
 
 The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return.
+
+**Never assign a shared module-level list to `return_labels`.** `update_return_labels()` *appends* to `self.return_labels`, so assigning a module-level constant (`self.return_labels = _RETURN_LABELS`) makes every instance mutate the same list and leak labels across queries. Assign a copy: `self.return_labels = list(_RETURN_LABELS)`.
 
 **Important:** Only return the specific properties you need, not entire nodes or relationships. This reduces data transfer and memory usage.
 
@@ -115,6 +123,8 @@ class MyQuery(Query):
 
 Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters. To write pagination directly in your query, set `insert_limit = False`:
 
+> **List reads default to a page limit (e.g. `Branch.get_list` defaults to `limit=1000`).** Any check that must reason over *all* matching rows — "is any branch merging?", "are there duplicates?" — must not rely on an unbounded read of a default page. Narrow the query with a filter (a status/kind predicate) or paginate explicitly; otherwise the check silently ignores everything past the first page once the table grows.
+
 ```python
 class MyQuery(Query):
     name = "my-query"
@@ -125,6 +135,66 @@ class MyQuery(Query):
         super().__init__(**kwargs)
         self.add_to_query("MATCH (n:Node)")
         self.add_to_query("RETURN n.uuid AS uuid, n.name AS name LIMIT 100")  # Manual pagination
+```
+
+### Branch-Aware Edge Resolution
+
+Every edge in the graph has branch/temporal properties (`branch`, `branch_level`, `from`, `to`, `status`). When traversing multiple edges in a single query, filter each edge independently to resolve the correct active version:
+
+```cypher
+MATCH (n:Node)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+CALL (n, attr) {
+    MATCH (n)-[r:HAS_ATTRIBUTE]->(attr)
+    WHERE %(branch_filter)s
+    RETURN r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, attr, r
+WHERE r.status = "active"
+```
+
+Each subquery:
+
+1. Re-matches the edge with branch filter applied
+2. Orders by `branch_level DESC, from DESC, status ASC` to prefer the most specific, most recent, active edge
+3. `LIMIT 1` picks the winning edge
+4. Outer `WHERE r.status = "active"` excludes soft-deleted edges
+
+Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`. For queries filtering multiple edges with different variable names, use `variable_name="r_custom"` to generate a filter bound to a specific variable.
+
+Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time.
+
+### Cypher Variable Shadowing (Neo4j 5+)
+
+Inside `CALL (var1, var2) { ... }` subqueries, Neo4j 5+ rejects re-declaring an imported variable:
+
+```cypher
+// ERROR: "Variable `r` already declared in outer scope"
+CALL (r) {
+    MATCH (a)-[r:REL]->(b)  // r is shadowed
+    RETURN r
+}
+```
+
+Either use different variable names inside the subquery, or return a fresh reference:
+
+```cypher
+CALL (attr) {
+    MATCH (attr)-[r:HAS_VALUE]->(av)
+    RETURN r
+}
+```
+
+Similarly, `CALL ... IN TRANSACTIONS` requires the `MATCH` to be outside the subquery — transform the input first with `MATCH`, then `CALL` only the write operations:
+
+```cypher
+UNWIND $updates AS update
+MATCH (attr:Attribute)-[old_r:HAS_VALUE]->(old_av)
+WHERE elementId(old_av) = update.element_id
+CALL (update, attr, old_r, old_av) {
+    // write operations here
+} IN TRANSACTIONS OF 500 ROWS
 ```
 
 ## Result Dataclass Pattern

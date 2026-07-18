@@ -10,7 +10,7 @@ from .shared import (
     PYTHON_PRIMITIVE_MAP,
     execute_command,
 )
-from .utils import ESCAPED_REPO_PATH
+from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 MAIN_DIRECTORY = "backend"
 NAMESPACE = "BACKEND"
@@ -286,6 +286,28 @@ def generate(context: Context) -> None:
     _generate_protocols(context=context)
 
 
+GRAPHQL_QUERY_FILES = [
+    "backend/infrahub/generators/graphql_queries/generator_instance_fetch.gql",
+    "backend/infrahub/computed_attribute/graphql_queries/transform_fetch.gql",
+]
+
+
+def _generate_custom_graphql_types(context: Context) -> None:
+    for gql_file in GRAPHQL_QUERY_FILES:
+        execute_command(
+            context=context,
+            command=f"uv run infrahubctl graphql generate-return-types {gql_file} --schema schema/schema.graphql",
+        )
+        execute_command(context=context, command=f"uv run ruff check --fix {Path(gql_file).parent}")
+        execute_command(context=context, command=f"uv run ruff format {Path(gql_file).parent}")
+
+
+@task
+def generate_custom_graphql_types(context: Context) -> None:
+    """Generate Pydantic models from .gql query files using infrahubctl."""
+    _generate_custom_graphql_types(context=context)
+
+
 @task
 def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
     """Validate that generated schemas and protocols are committed to Git."""
@@ -299,6 +321,24 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
+    _generate_custom_graphql_types(context=context)
+    exec_cmd = "git diff --exit-code backend/infrahub/generators/graphql_queries/ backend/infrahub/computed_attribute/graphql_queries/"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task(name="export-error-catalogue")
+def export_error_catalogue(context: Context, output: str = "schema/error-catalogue.json") -> None:  # noqa: ARG001
+    """Export the Infrahub error catalogue to a JSON Schema artefact."""
+    from infrahub.errors.export import write_catalogue
+
+    destination = Path(output)
+    if not destination.is_absolute():
+        destination = Path(ESCAPED_REPO_PATH) / destination
+
+    written = write_catalogue(destination)
+    print(f" - [{NAMESPACE}] Wrote error catalogue to {written}")
+
 
 def _generate_schemas(context: Context) -> None:
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
@@ -311,8 +351,8 @@ def _generate_schemas(context: Context) -> None:
         relationship_schema,
     )
 
-    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
-    generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core/schema/generated"
+    env = Environment(loader=FileSystemLoader(f"{REPO_BASE}/backend/templates"), undefined=StrictUndefined)
+    generated = f"{REPO_BASE}/backend/infrahub/core/schema/generated"
     template = env.get_template("generate_schema.j2")
 
     attributes_rendered = template.render(schema="AttributeSchema", node=attribute_schema, parent="HashableModel")
@@ -375,6 +415,14 @@ def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive:
     return f"{attr_name}: {value}"
 
 
+def _jinja2_filter_render_relationship(value: dict[str, Any]) -> str:
+    peer = value.get("peer", "")
+    name = value["name"]
+    if peer:
+        return f"{name}: RelationshipManager[{peer}]"
+    return f"{name}: RelationshipManager"
+
+
 def _sort_and_filter_models(
     models: list[dict[str, Any]], filters: list[tuple[str, str]] | None = None
 ) -> list[dict[str, Any]]:
@@ -401,15 +449,16 @@ def _generate_protocols(context: Context) -> None:
     # We need to insert this folder in the search order to ensure
     # that it appears before the python_sdk folder since that folder also has
     # a 'tests' module and the sys.path seems to be random between runs.
-    sys.path.insert(0, f"{ESCAPED_REPO_PATH}/backend")
+    sys.path.insert(0, f"{REPO_BASE}/backend")
     from tests.helpers.schema import test_models
 
-    env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
+    env = Environment(loader=FileSystemLoader(f"{REPO_BASE}/backend/templates"), undefined=StrictUndefined)
     env.filters["inheritance"] = _jinja2_filter_inheritance
     env.filters["render_attribute"] = _jinja2_filter_render_attribute
+    env.filters["render_relationship"] = _jinja2_filter_render_relationship
 
     # Export protocols for backend code use
-    generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core"
+    generated = f"{REPO_BASE}/backend/infrahub/core"
     template = env.get_template("generate_protocols.j2")
 
     protocols_rendered = template.render(
@@ -422,7 +471,7 @@ def _generate_protocols(context: Context) -> None:
     execute_command(context=context, command=f"ruff check --fix {protocols_output}")
 
     # Export test protocols for backend code use
-    generated = f"{ESCAPED_REPO_PATH}/backend/tests/"
+    generated = f"{REPO_BASE}/backend/tests/"
 
     test_models["nodes"].extend(core_models["nodes"])
     test_models["generics"].extend(core_models["generics"])
@@ -436,7 +485,7 @@ def _generate_protocols(context: Context) -> None:
     execute_command(context=context, command=f"ruff check --fix {protocols_output}")
 
     # Export protocols for Python SDK code use
-    generated = f"{ESCAPED_REPO_PATH}/python_sdk/infrahub_sdk"
+    generated = f"{REPO_BASE}/python_sdk/infrahub_sdk"
     template = env.get_template("generate_protocols_sdk.j2")
 
     protocols_rendered = template.render(

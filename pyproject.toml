@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.9.8"
+version = "1.10.5"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -19,7 +19,7 @@ dependencies = [
     "neo4j==6.0.3",
     "neo4j-rust-ext==6.0.3.0",
     "pydantic>=2.12,<2.13",
-    "pydantic-settings>=2.8,<2.9",
+    "pydantic-settings>=2.10,<3.0",
     "pytest>=9.0,<9.1",
     "aio-pika>=9.4,<9.5",
     "structlog==24.1.0",
@@ -27,32 +27,32 @@ dependencies = [
     "email-validator>=2.1,<2.2",
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
-    "click==8.1.7",
-    "prefect==3.6.13",
-    "prefect-redis==0.2.8",
+    "click>=8.3,<9",
+    "prefect==3.7.5",
+    "prefect-redis==0.2.12",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
-    "gitpython>=3,<4",
+    "gitpython>=3.1.50,<4",
     "pyyaml>=6,<7",
     "tomli>=1.1.0; python_version<='3.11'",
     "deepdiff==8.6.2",
     # Dependencies specific to the API Server
-    "fastapi==0.131.0",
+    "fastapi==0.136.3",
     "fastapi-storages>=0.3,<0.4",
     "graphene>=3.4,<3.5",
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
-    "python-multipart==0.0.27", # Required by FastAPI to upload large files
+    "python-multipart==0.0.31", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
-    "pyjwt==2.12.1", # Used to manage JWT tokens
+    "pyjwt==2.13.0", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.60b0",
     "opentelemetry-instrumentation-fastapi==0.60b0",
     "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
-    "nats-py==2.7.2",
+    "nats-py==2.15.0",
     "netaddr==1.3.0",
     "authlib==1.6.12",
     "aiodataloader==0.4.3",
@@ -63,11 +63,14 @@ dependencies = [
     "rich>=13,<14",
     "pyarrow>=14",
     "numpy>=1.26.2",
-    "dulwich==0.24.7",
+    "dulwich==1.2.6",
     "whenever==0.9.3",
     "netutils==1.12.0",
-    "ariadne-codegen==0.15.3",
+    "ariadne-codegen==0.18.0",
 ]
+
+[project.optional-dependencies]
+enterprise = ["bonsai>=1.5.5"]
 
 [project.urls]
 Homepage = "https://opsmill.com"
@@ -112,6 +115,7 @@ dev = [
     "ty==0.0.32",
     "prek>=0.3.0",
     "coverage==7.14.1",
+    "pytest-playwright-asyncio>=0.8.0",
 ]
 
 # test-scale = [
@@ -170,7 +174,6 @@ INFRAHUB_PRODUCTION = false
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
-disable_error_code = ["type-abstract"]
 exclude = [
     "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",
@@ -257,14 +260,6 @@ disable_error_code = [
 module = "infrahub.core.node.base"
 disable_error_code = [
     "no-untyped-def",
-]
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.node.standard"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-    "return-value",
 ]
 
 [[tool.mypy.overrides]]
@@ -605,9 +600,6 @@ allow-dunder-method-names = [
     "FIX",      # flake8-fixme
     "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
     "INP001",   # File is part of an implicit namespace package
-    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
-    "FURB140",  # Use `itertools.starmap` instead of the generator
-    "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
     "PERF401",  # Use a list comprehension to create a transformed list
@@ -650,6 +642,10 @@ allow-dunder-method-names = [
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
+"**/graphql_queries/*.py" = [
+    "E501",  # ruff check --fix produces a long single-line union before ruff format wraps it
+]
+
 "backend/infrahub/cli/db.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
@@ -677,13 +673,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-]
-
-"backend/infrahub/core/node/standard.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "UP045",  # Use X | Y for type annotations
 ]
 
 "backend/infrahub/core/query/**.py" = [
@@ -723,7 +712,21 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
+"backend/infrahub/graphql/app.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
 "backend/infrahub/graphql/manager.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/graphql/mutations/main.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
@@ -765,6 +768,27 @@ allow-dunder-method-names = [
     # Review and change the below later                                                              #
     ##################################################################################################
     "PGH004",  # Use specific rule codes when using `ruff: noqa`
+]
+
+"tests/e2e/**.py" = [
+    # pytest-playwright e2e suite: relax the same test-idiom rules the other
+    # test trees relax (fixtures injected by name, asserts, hardcoded demo
+    # credentials/tokens, function-local imports for optional async paths).
+    "ARG001",   # Unused function argument (fixtures requested for their side effects)
+    "ARG002",   # Unused method argument
+    "ARG003",   # Unused class method argument
+    "DOC501",   # Raised exception missing from docstring
+    "INP001",   # File is part of an implicit namespace package
+    "PLC0415",  # `import` should be at the top-level of a file
+    "PLR0915",  # Too many statements (long sequential UI flows)
+    "PLR2004",  # Magic value used in comparison (IPs, counts, ...)
+    "PLR6301",  # Method could be a function, class method, or static method
+    "RUF001",   # Ambiguous unicode char (matching UI strings verbatim, e.g. the × chip glyph)
+    "S101",     # Use of assert detected
+    "S105",     # Possible hardcoded password assigned to variable
+    "S106",     # Possible hardcoded password assigned to argument
+    "S404",     # Suspicious use of the subprocess module
+    "SLF001",   # Private member accessed
 ]
 
 "backend/tests/**.py" = [
@@ -1244,6 +1268,22 @@ unresolved-attribute = "ignore"
 unresolved-import = "ignore"
 unresolved-reference = "ignore"
 unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["tests/e2e/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The e2e suite drives the plain sync SDK client with kind strings, so node attribute access     #
+# goes through InfrahubNodeSync.__getattr__ and resolves to Attribute | RelationshipManagerSync  #
+# | RelatedNodeSync unions that cannot be narrowed statically without the generated protocol     #
+# classes (which tests/e2e deliberately does not depend on).                                     #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+not-subscriptable = "ignore"
+unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = ["utilities/**"]

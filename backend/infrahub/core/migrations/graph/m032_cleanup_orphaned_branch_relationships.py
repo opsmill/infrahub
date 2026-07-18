@@ -57,6 +57,7 @@ class Migration032(ArbitraryMigration):
     """Delete edges for branches that were not completely deleted."""
 
     name: str = "032_cleanup_deleted_branches"
+    description: str = "N/A"
     minimum_version: int = 31
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

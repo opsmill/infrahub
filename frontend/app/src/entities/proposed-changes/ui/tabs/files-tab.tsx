@@ -1,13 +1,13 @@
-import { DIFF_TABS } from "@/shared/config/constants";
-
 import { useGetFilesDiff } from "@/entities/diff/ui/queries/get-files-diff.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 
 export interface FilesTabProps {
   sourceBranch: string;
+  proposedChangeId: string;
 }
 
-export function FilesTab({ sourceBranch }: FilesTabProps) {
+export function FilesTab({ sourceBranch, proposedChangeId }: FilesTabProps) {
   const { isPending, data, error } = useGetFilesDiff({ branchName: sourceBranch });
 
   const count =
@@ -15,7 +15,7 @@ export function FilesTab({ sourceBranch }: FilesTabProps) {
 
   return (
     <ProposedChangeTab
-      tabId={DIFF_TABS.FILES}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "files")}
       label="Files"
       count={count}
       isCountLoading={isPending}

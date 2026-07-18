@@ -38,7 +38,8 @@ if TYPE_CHECKING:
 
 log = get_logger()
 
-VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
+# Neo4j naming rules: 3-63 chars, alphanumeric start/end, dots and dashes allowed within.
+VALID_DATABASE_NAME_REGEX = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
 
 
@@ -58,6 +59,7 @@ class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
     LOG_FORWARDING = "log_forwarding"
+    LDAP = "ldap"
 
 
 class UserInfoMethod(StrEnum):
@@ -300,7 +302,11 @@ class DatabaseSettings(BaseSettings):
     protocol: str = "bolt"
     username: str = "neo4j"
     password: str = "admin"
-    address: str = "localhost"
+    address: str = Field(
+        default="localhost",
+        description="Database host, or a comma-separated list of cluster members in 'host[:port]' format. "
+        "Members without an explicit port use the value of the port setting.",
+    )
     port: int = 7687
     database: str | None = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     policy: str | None = Field(default=None, description="Routing policy for database connections")
@@ -335,14 +341,59 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
+    path_traversal_query_timeout: float = Field(
+        default=30,
+        ge=1,
+        description=(
+            "Server-side transaction timeout in seconds for each point-to-point path-traversal "
+            "query. Point-to-point traversal runs many small queries one depth at a time, so a "
+            "single query that exceeds this budget marks a doomed search: it is aborted and the "
+            "shallower paths found so far are returned with a truncation depth, rather than the "
+            "whole request failing."
+        ),
+    )
+    reachable_nodes_query_timeout: float = Field(
+        default=75,
+        ge=1,
+        description=(
+            "Server-side transaction timeout in seconds for reachable-nodes queries; "
+            "the query is aborted once it is exceeded."
+        ),
+    )
+
+    @property
+    def address_members(self) -> list[str]:
+        """All members defined in the address setting, in 'host[:port]' format."""
+        return [member.strip() for member in self.address.split(",") if member.strip()]
 
     @property
     def database_uri(self) -> str:
-        """Constructs the database URI based on the configuration settings."""
-        base_uri = f"{self.protocol}://{self.address}:{self.port}"
+        """Constructs the database URI based on the configuration settings.
+
+        When multiple members are configured, only the first one is part of the URI;
+        the others are made available to the driver through a custom address resolver.
+        """
+        member = self.address_members[0] if self.address_members else self.address
+        host, member_port = self._split_member(member)
+        base_uri = f"{self.protocol}://{host}:{member_port or self.port}"
         if self.policy is not None:
             return f"{base_uri}?policy={self.policy}"
         return base_uri
+
+    @staticmethod
+    def _split_member(member: str) -> tuple[str, int | None]:
+        """Split a 'host[:port]' member into host and optional port, supporting bracketed IPv6 hosts."""
+        if member.startswith("["):
+            host, _, rest = member.partition("]")
+            host += "]"
+            if rest.startswith(":") and rest[1:].isdigit():
+                return host, int(rest[1:])
+            return host, None
+        if member.count(":") == 1:
+            host, _, port_str = member.partition(":")
+            if port_str.isdigit():
+                return host, int(port_str)
+        return member, None
 
     @property
     def database_name(self) -> str:
@@ -415,6 +466,15 @@ class CacheSettings(BaseSettings):
         default=15,
         ge=1,
         description="Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task.",
+    )
+    init_lock_ttl_mins: int = Field(
+        default=20,
+        ge=1,
+        description=(
+            "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
+            "the lock auto-expires after this period so Infrahub can recover on its own. "
+            "Only enforced with the Redis cache driver."
+        ),
     )
 
     @property
@@ -608,6 +668,14 @@ class SecurityOIDCBaseSettings(BaseSettings):
         default=True,
         description="Verify the cryptographic signature, audience and issuer of the OIDC id_token.",
     )
+    groups_claim: str = Field(
+        default="groups",
+        description=(
+            "Top-level key in the IdP claim payload from which the user's groups are read. "
+            "Defaults to `groups`. Set per provider when your IdP emits group memberships "
+            "under a different claim name (e.g., `roles`)."
+        ),
+    )
 
     @model_validator(mode="after")
     def warn_when_signature_verification_disabled(self) -> Self:
@@ -617,6 +685,13 @@ class SecurityOIDCBaseSettings(BaseSettings):
                 provider=self.__class__.__name__,
             )
         return self
+
+    @field_validator("groups_claim")
+    @classmethod
+    def _validate_groups_claim(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("groups_claim must not be empty or whitespace-only")
+        return value.strip()
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -672,6 +747,21 @@ class SecurityOAuth2BaseSettings(BaseSettings):
     pkce_enabled: bool = Field(
         default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
     )
+    groups_claim: str = Field(
+        default="groups",
+        description=(
+            "Top-level key in the IdP claim payload from which the user's groups are read. "
+            "Defaults to `groups`. Set per provider when your IdP emits group memberships "
+            "under a different claim name (e.g., `roles`)."
+        ),
+    )
+
+    @field_validator("groups_claim")
+    @classmethod
+    def _validate_groups_claim(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("groups_claim must not be empty or whitespace-only")
+        return value.strip()
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
@@ -781,8 +871,84 @@ class SecuritySettings(BaseSettings):
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
     sso_user_default_group: str | None = Field(
         default=None,
-        description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
+        description="Name of the group assigned to an SSO user on their first login when the identity "
+        "provider supplies no group claims. Applied only when the account is first created; it is "
+        "not re-applied on subsequent logins, so removing a user from this group is not undone.",
     )
+    auto_create_groups_filter: str | list[str] | None = Field(
+        default=None,
+        description="Regex(es) that decide which external identity-provider group claims become "
+        "Infrahub groups. Accepts one regex or a list; the first matching pattern wins. "
+        "Use a named capture group `(?P<name>...)` to set the group name; otherwise the "
+        "full claim is used. Leave empty to disable auto-creation.",
+    )
+    auto_create_groups_max_per_login: int = Field(
+        default=50,
+        ge=1,
+        description="Maximum number of groups that can be auto-created during a single login. "
+        "Once reached, further new groups are skipped (with a warning) but the login "
+        "still succeeds. Adding the user to groups that already exist is not limited.",
+    )
+    _auto_create_groups_filter_patterns: tuple[re.Pattern[str], ...] = PrivateAttr(default_factory=tuple)
+
+    @field_validator("auto_create_groups_filter", mode="after")
+    @classmethod
+    def _validate_auto_create_groups_filter(cls, value: str | list[str] | None) -> str | list[str] | None:
+        """Validate that every configured regex compiles cleanly at startup.
+
+        Empty / unset values are accepted unchanged — they mean "feature off".
+
+        Raises:
+            ValueError: When a configured regex pattern fails to compile. Pydantic surfaces the
+                error attached to the setting name.
+
+        """
+        if value is None:
+            return value
+
+        raw_patterns: list[str] = [value] if isinstance(value, str) else list(value)
+        raw_patterns = [stripped for p in raw_patterns if (stripped := p.strip())]
+        for index, pattern in enumerate(raw_patterns):
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ValueError(f"auto_create_groups_filter[{index}]: invalid regex {pattern!r}: {exc}") from exc
+        return value
+
+    @model_validator(mode="after")
+    def _compile_auto_create_groups_filter_patterns(self) -> Self:
+        self.recompile_auto_create_groups_filter_patterns()
+        return self
+
+    def recompile_auto_create_groups_filter_patterns(self) -> None:
+        """Compile `auto_create_groups_filter` into the private patterns tuple.
+
+        Plain method (not a validator) so callers that mutate `auto_create_groups_filter`
+        on the live settings singleton — e.g. test fixtures — can re-trigger compilation
+        without going through Pydantic's validator chain.
+        """
+        if self.auto_create_groups_filter is None:
+            self._auto_create_groups_filter_patterns = ()
+            return
+
+        raw_patterns: list[str]
+        if isinstance(self.auto_create_groups_filter, str):
+            raw_patterns = [self.auto_create_groups_filter]
+        else:
+            raw_patterns = list(self.auto_create_groups_filter)
+        raw_patterns = [stripped for p in raw_patterns if (stripped := p.strip())]
+        self._auto_create_groups_filter_patterns = tuple(re.compile(p) for p in raw_patterns)
+
+    @property
+    def auto_create_groups_filter_patterns(self) -> tuple[re.Pattern[str], ...]:
+        """Compiled filter patterns. Empty tuple means the feature is off."""
+        return self._auto_create_groups_filter_patterns
+
+    @property
+    def auto_create_groups_enabled(self) -> bool:
+        """True iff at least one usable filter pattern is configured."""
+        return len(self._auto_create_groups_filter_patterns) > 0
+
     sso_account_name_fallback: bool = Field(
         default=True,
         description=(
@@ -1078,6 +1244,304 @@ class PolicySettings(BaseSettings):
         return features
 
 
+LDAP_DEFAULT_DISPLAY_LABEL = "Sign in with LDAP"
+LDAP_DEFAULT_ICON = "mdi:account-key-outline"
+
+
+class LDAPGroupResolutionStrategy(StrEnum):
+    BFS = "bfs"
+    AD_IN_CHAIN = "ad_in_chain"
+
+
+class LDAPTLSMinimumVersion(StrEnum):
+    TLS_1_2 = "TLSv1.2"
+    TLS_1_3 = "TLSv1.3"
+
+
+class LDAPInfo(BaseModel):
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "True when LDAP sign-in is available on this deployment, meaning "
+            "it has been configured and the running edition supports it."
+        ),
+    )
+    display_label: str = Field(
+        default=LDAP_DEFAULT_DISPLAY_LABEL,
+        description="Text shown on the LDAP sign-in button on the login page.",
+    )
+    icon: str = Field(
+        default=LDAP_DEFAULT_ICON,
+        description="Icon shown on the LDAP sign-in button on the login page.",
+    )
+
+
+class LDAPSettings(BaseSettings):
+    """LDAP authentication configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_LDAP_")
+
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable LDAP authentication on this deployment. When turned off, "
+            "new LDAP sign-ins are refused; existing sessions are unaffected."
+        ),
+    )
+    servers: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description=(
+            "Comma-separated list of LDAP server URIs (e.g. "
+            "`ldaps://dc1.example.com:636,ldaps://dc2.example.com:636`). Each "
+            "entry is tried in declaration order, falling through to the next "
+            "when one is unreachable, so list a primary first and any standby "
+            "replicas after it for high availability. URIs must use the `ldap` "
+            "or `ldaps` scheme."
+        ),
+    )
+
+    service_account_dn: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory account used to look up users before verifying their credentials."
+        ),
+    )
+    service_account_password: str | None = Field(
+        default=None,
+        description="Password for the service account used during the user lookup. ",
+    )
+
+    user_search_base: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory subtree where user entries "
+            "are stored, e.g. `OU=Users,DC=corp,DC=example,DC=com`."
+        ),
+    )
+    user_search_filter: str | None = Field(
+        default=None,
+        description=(
+            "LDAP filter used to locate a user entry by their sign-in name. "
+            "The `{username}` placeholder is substituted at sign-in time with "
+            "the user-supplied login name and is safely escaped to prevent "
+            "filter injection. If left empty, a default is generated from "
+            "the configured username attribute (`attribute_username`), so "
+            "changing the username attribute keeps the filter aligned "
+            "automatically."
+        ),
+    )
+
+    attribute_username: str = Field(
+        default="sAMAccountName",
+        description=(
+            "Name of the LDAP attribute that holds a user's sign-in name. "
+            "Defaults to `sAMAccountName` (typical on Active Directory); "
+            "`uid` is typical on OpenLDAP."
+        ),
+    )
+    attribute_display_name: str = Field(
+        default="displayName",
+        description="Name of the LDAP attribute that holds a user's human-readable display name.",
+    )
+    attribute_disabled: str | None = Field(
+        default="userAccountControl",
+        description=(
+            "Name of an LDAP attribute that signals whether an account is "
+            "disabled. Defaults to `userAccountControl` (Active Directory's "
+            "mechanism). Leave empty for directories that do not expose an "
+            "equivalent attribute; the disabled-account check is then skipped."
+        ),
+    )
+    attribute_disabled_bitmask: int = Field(
+        default=0x2,
+        ge=1,
+        description=(
+            "When `attribute_disabled` is set, the integer value of that "
+            "attribute is treated as a bitmask; the account is considered "
+            "disabled if any of these bits are set. Default `0x2` matches "
+            "Active Directory's standard 'account disabled' flag."
+        ),
+    )
+
+    group_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable directory group resolution. When turned off, users sign "
+            "in successfully but receive no permissions until they are "
+            "assigned to local groups manually. When turned on, "
+            "`group_base_dn` must be set."
+        ),
+    )
+    group_base_dn: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory subtree where group entries "
+            "are stored, e.g. `OU=Groups,DC=corp,DC=example,DC=com`. Required "
+            "when `group_enabled` is true."
+        ),
+    )
+    group_filter: str = Field(
+        default="(member={user_dn})",
+        description=(
+            "LDAP filter used to look up the groups a user belongs to. The "
+            "`{user_dn}` placeholder is substituted with the user's "
+            "distinguished name at sign-in time and is safely escaped to "
+            "prevent filter injection."
+        ),
+    )
+    group_name_attribute: str = Field(
+        default="cn",
+        description=(
+            "Name of the LDAP attribute on group entries that is read as the "
+            "group's name. The value is matched against local group names to "
+            "grant the user the matching permissions."
+        ),
+    )
+    group_strategy: LDAPGroupResolutionStrategy = Field(
+        default=LDAPGroupResolutionStrategy.BFS,
+        description=(
+            "How nested-group memberships are resolved. `ad_in_chain` uses "
+            "Active Directory's transitive-membership search to retrieve all "
+            "nested groups in a single query; it is the fastest option "
+            "against AD. `bfs` walks group memberships level by level and "
+            "works against any LDAP-compatible directory."
+        ),
+    )
+    group_bfs_max_depth: int = Field(
+        default=16,
+        ge=10,
+        description=(
+            "Maximum number of nesting levels to traverse when "
+            "`group_strategy` is `bfs`. Has no effect for other strategies. "
+            "Cycles in the group structure are detected automatically. "
+            "Minimum value is 10."
+        ),
+    )
+
+    tls_enabled: bool = Field(
+        default=False,
+        description=(
+            "Use an encrypted connection to the LDAP server. Pair with "
+            "`ldaps://` server URIs, or set `tls_starttls = true` to upgrade "
+            "plain `ldap://` connections."
+        ),
+    )
+    tls_starttls: bool = Field(
+        default=False,
+        description="Upgrade a plain `ldap://` connection to TLS using STARTTLS instead of connecting via `ldaps://`.",
+    )
+    tls_ca_bundle: str | None = Field(
+        default=None,
+        description=(
+            "PEM-encoded certificate authority bundle used to verify the LDAP "
+            "server's TLS certificate. May be a path to a file or the PEM "
+            "contents directly. Checked at startup."
+        ),
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation. Test and development environments only; never enable in production."
+        ),
+    )
+    tls_minimum_version: LDAPTLSMinimumVersion = Field(
+        default=LDAPTLSMinimumVersion.TLS_1_2,
+        description="Minimum TLS protocol version accepted when connecting to an LDAP server.",
+    )
+
+    per_server_timeout: float = Field(
+        default=10.0,
+        gt=0.0,
+        description=(
+            "Maximum time, in seconds, to wait for an LDAP server to respond "
+            "before treating it as unreachable and trying the next configured "
+            "server."
+        ),
+    )
+
+    display_label: str = Field(
+        default=LDAP_DEFAULT_DISPLAY_LABEL,
+        description="Text shown on the LDAP sign-in button on the login page.",
+    )
+    icon: str = Field(
+        default=LDAP_DEFAULT_ICON,
+        description="Icon shown on the LDAP sign-in button on the login page.",
+    )
+
+    @field_validator("servers", mode="before")
+    @classmethod
+    def _split_servers(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v
+
+    @field_validator("servers")
+    @classmethod
+    def _validate_server_uris(cls, v: list[str]) -> list[str]:
+        for uri in v:
+            if not uri.startswith(("ldap://", "ldaps://")):
+                raise ValueError(f"LDAP URI scheme must be 'ldap' or 'ldaps', got: {uri!r}")
+            rest = uri.split("://", 1)[1]
+            host = rest.split("/", 1)[0].split(":", 1)[0]
+            if not host:
+                raise ValueError("LDAP URI must include a hostname")
+        return v
+
+    @property
+    def admin_enabled(self) -> bool:
+        return self.enabled and bool(self.servers)
+
+    @model_validator(mode="after")
+    def derive_default_user_search_filter(self) -> Self:
+        # Tie the filter to the configured username attribute so the two
+        # cannot drift. Operators who set their own filter are unaffected.
+        if self.user_search_filter is None:
+            self.user_search_filter = f"({self.attribute_username}={{username}})"
+        return self
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if not self.tls_enabled:
+            return self
+        if self.tls_insecure and self.tls_ca_bundle is not None:
+            raise ValueError("ldap.tls_insecure cannot be combined with ldap.tls_ca_bundle; pick one.")
+        try:
+            TlsContextBuilder.build(
+                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
+            )
+        except ssl.SSLError as exc:
+            raise ValueError(f"Unable to load LDAP CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+        return self
+
+    @model_validator(mode="after")
+    def check_complete_when_enabled(self) -> Self:
+        if not self.enabled:
+            return self
+        problems: list[str] = []
+        if not self.servers:
+            problems.append("ldap.servers must be non-empty")
+        if not self.service_account_dn:
+            problems.append("ldap.service_account_dn is required")
+        if not self.service_account_password:
+            problems.append("ldap.service_account_password is required")
+        if not self.user_search_base:
+            problems.append("ldap.user_search_base is required")
+        if self.group_enabled and not self.group_base_dn:
+            problems.append("ldap.group_base_dn is required when ldap.group_enabled is true")
+        if self.tls_starttls and any(uri.startswith("ldaps://") for uri in self.servers):
+            problems.append("ldap.tls_starttls cannot be combined with an ldaps:// server URI")
+        if problems:
+            raise ValueError("Invalid LDAP configuration: " + "; ".join(problems))
+        return self
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns enterprise features enabled by LDAP configuration."""
+        if self.enabled:
+            return [EnterpriseFeatures.LDAP]
+        return []
+
+
 @dataclass
 class Override:
     message_bus: InfrahubMessageBus | None = None
@@ -1178,6 +1642,10 @@ class ConfiguredSettings:
         return self.active_settings.security
 
     @property
+    def ldap(self) -> LDAPSettings:
+        return self.active_settings.ldap
+
+    @property
     def storage(self) -> StorageSettings:
         return self.active_settings.storage
 
@@ -1213,6 +1681,7 @@ class Settings(BaseSettings):
     initial: InitialSettings = InitialSettings()
     policy: PolicySettings = PolicySettings()
     security: SecuritySettings = SecuritySettings()
+    ldap: LDAPSettings = LDAPSettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
@@ -1227,7 +1696,7 @@ class Settings(BaseSettings):
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
-        return self.policy.enterprise_features + self.log_forwarding.enterprise_features
+        return self.policy.enterprise_features + self.log_forwarding.enterprise_features + self.ldap.enterprise_features
 
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:

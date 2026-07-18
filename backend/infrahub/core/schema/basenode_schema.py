@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import keyword
-import os
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -11,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, NoReturn, ov
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import ConfigDict, ValidationError, field_validator
 
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModel, HashableModelDiff
 
@@ -266,11 +266,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         # Process element b
         for name in sorted(present_both):
-            # If the element doesn't have an ID on either side
-            # this most likely means it was added recently from the internal schema.
-            if os.environ.get("PYTEST_RUNNING", "") != "true" and local_map[name] is None and other_map[name] is None:
-                elements_diff.added[name] = None
-                continue
             local_element: obj_type = get_func(self, name=name)
             other_element: obj_type = get_func(other, name=name)
             element_diff = local_element.diff(other_element)
@@ -472,15 +467,25 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         to generate the display_label.
 
-        If display_labels is not defined, we return None which equal to everything.
+        If neither display_label nor display_labels is defined, we return None which equal to everything.
         """
-        if not self.display_labels:
+        fields: dict[str, str | dict[str, None] | None] = {}
+
+        if self.display_labels:
+            for item in self.display_labels:
+                fields.update(self.convert_path_to_graphql_fields(path=item))
+            return fields
+
+        if not self.display_label:
             return None
 
-        fields: dict[str, str | dict[str, None] | None] = {}
-        for item in self.display_labels:
-            fields.update(self.convert_path_to_graphql_fields(path=item))
-        return fields
+        if "{{" in self.display_label:
+            for var in InfrahubJinja2Template(template=self.display_label).get_variables():
+                fields.update(self.convert_path_to_graphql_fields(path=var))
+        else:
+            fields.update(self.convert_path_to_graphql_fields(path=self.display_label))
+
+        return fields or None
 
     def generate_fields_for_hfid(self) -> dict | None:
         """Generate a dictionary containing the list of fields that are required.
@@ -715,12 +720,18 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if isinstance(other, BaseNodeSchema):
             self.handle_field_renames_and_deletes(other=other)
 
+        # capture the values before they are overwritten for empty-string handling
+        local_text_values = {field_name: getattr(self, field_name, None) for field_name in OPTIONAL_TEXT_FIELDS}
+
         super().update(other=other)
 
-        # Allow to specify empty string to remove existing fields values
+        # An empty string means clearing the existing field value
         for field_name in OPTIONAL_TEXT_FIELDS:
-            if getattr(other, field_name, None) == "":  # noqa: PLC1901
-                setattr(self, field_name, None)
+            if getattr(other, field_name, None) != "":  # noqa: PLC1901
+                continue
+            local_value = local_text_values[field_name]
+            # keep current local value if it's already None or ""
+            setattr(self, field_name, local_value if local_value in (None, "") else None)
 
         return self
 

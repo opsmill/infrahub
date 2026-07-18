@@ -1,4 +1,4 @@
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { Card, CardHeader } from "@infrahub/ui/card";
 
 import type { EventType } from "@/entities/events/types";
 
@@ -12,14 +12,14 @@ export interface GlobalEventDetailsProps {
 export const GlobalEventDetails = ({ eventNode }: GlobalEventDetailsProps) => {
   return (
     <div className="flex items-start gap-2 p-2">
-      <Card className="flex-1 p-0">
-        <CardWithBorder.Title>Details</CardWithBorder.Title>
+      <Card className="flex-1">
+        <CardHeader>Details</CardHeader>
         <EventDetails {...eventNode} />
       </Card>
 
       {eventNode.has_children && (
-        <Card className="flex-1 p-0">
-          <CardWithBorder.Title>Sub activities</CardWithBorder.Title>
+        <Card className="flex-1">
+          <CardHeader>Sub activities</CardHeader>
           <NodeEvents parentId={eventNode.id} />
         </Card>
       )}

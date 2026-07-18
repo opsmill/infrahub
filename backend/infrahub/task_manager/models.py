@@ -20,6 +20,11 @@ from pydantic import BaseModel, Field
 
 from infrahub.core.timestamp import Timestamp
 from infrahub.events.constants import EVENT_NAMESPACE, EventSortOrder
+from infrahub.events.group_action import (
+    GroupAutoCreateCappedEvent,
+    GroupAutoCreatedEvent,
+    GroupAutoCreateRejectedEvent,
+)
 
 from .constants import LOG_LEVEL_MAPPING
 
@@ -157,6 +162,23 @@ class InfrahubEventFilter(EventFilter):
                 event_type.append("infrahub.branch.rebased")
             if branches:
                 self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
+
+        if (group_auto_create := event_type_filter.get("group_auto_create")) is not None:
+            auto_create_event_names = [
+                GroupAutoCreatedEvent.event_name,
+                GroupAutoCreateRejectedEvent.event_name,
+                GroupAutoCreateCappedEvent.event_name,
+            ]
+            if not any(name in event_type for name in auto_create_event_names):
+                event_type.extend(auto_create_event_names)
+
+            resource_labels: dict[str, list[str] | str] = {}
+            if idps := (group_auto_create.get("idp") or []):
+                resource_labels["infrahub.security.idp"] = idps
+            if protocols := (group_auto_create.get("protocol") or []):
+                resource_labels["infrahub.security.protocol"] = protocols
+            if resource_labels:
+                self.resource = EventResourceFilter(labels=ResourceSpecification(resource_labels))
 
         if event_type:
             self.event = EventNameFilter(name=event_type)

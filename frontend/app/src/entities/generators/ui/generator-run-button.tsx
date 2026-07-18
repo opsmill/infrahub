@@ -1,17 +1,19 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
-import { Link } from "react-router";
+import type React from "react";
+import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
-import { QSP } from "@/shared/config/qsp";
 
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export interface GeneratorRunButtonProps extends ButtonProps {
   generatorId: string;
   targetNodeIds?: string[];
+  children?: React.ReactNode;
 }
 
 export function GeneratorRunButton({
@@ -22,16 +24,17 @@ export function GeneratorRunButton({
   ...props
 }: GeneratorRunButtonProps) {
   const { isPending, mutate } = useRunGeneratorMutation();
+  const { objectKind, objectId } = useParams<{ objectKind: string; objectId: string }>();
 
   const handleRunGenerator = () => {
     mutate(
       { generatorId, targetNodeIds },
       {
         onSuccess: ({ taskId }) => {
-          const url = constructPath(window.location.pathname, [
-            { name: QSP.TAB, value: "tasks" },
-            { name: QSP.TASK_ID, value: taskId },
-          ]);
+          const url =
+            objectKind && objectId
+              ? getObjectDetailsUrl(objectKind, objectId, undefined, `tasks/${taskId}`)
+              : constructPath(`/tasks/${taskId}`);
 
           toast(
             <Alert
@@ -54,13 +57,13 @@ export function GeneratorRunButton({
 
   return (
     <Button
-      isLoading={isPending}
-      disabled={isPending}
+      isPending={isPending}
+      isDisabled={isPending}
       variant={variant}
-      onClick={handleRunGenerator}
+      onPress={handleRunGenerator}
       {...props}
     >
-      {!isPending && <PlayIcon className="mr-2 size-4" />}
+      {!isPending && <PlayIcon className="size-4" />}
       {children ?? "Run"}
     </Button>
   );

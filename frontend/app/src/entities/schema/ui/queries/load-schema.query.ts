@@ -5,11 +5,13 @@ import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { type LoadSchemaParams, loadSchema } from "@/entities/schema/domain/load-schema";
+import { loadSchema } from "@/entities/schema/domain/load-schema";
+import {
+  type LoadSchemaQueryKeyParams,
+  schemaQueryKeys,
+} from "@/entities/schema/ui/queries/schema.query-keys";
 
-export interface LoadSchemaQueryOptionsParams extends LoadSchemaParams {
-  schemaHash: string | undefined;
-}
+export type LoadSchemaQueryOptionsParams = LoadSchemaQueryKeyParams;
 
 export function loadSchemaQueryOptions({
   branchName,
@@ -17,7 +19,7 @@ export function loadSchemaQueryOptions({
   schemaHash,
 }: LoadSchemaQueryOptionsParams) {
   return queryOptions({
-    queryKey: [schemaHash, "schema"],
+    queryKey: schemaQueryKeys.load({ branchName, atDate, schemaHash }),
     queryFn: async () => {
       return loadSchema({ branchName, atDate });
     },

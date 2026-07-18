@@ -45,6 +45,13 @@ We adopt the **Context Nuggets** pattern for organizing our repository, based on
   - `.claude/commands` → `dev/commands`
   - `.claude/skills` → `dev/skills`
 
+> **Update (2026):** The canonical source of truth for agent commands, skills,
+> and rules has since moved from `dev/` to the vendor-neutral `.agents/`
+> directory, with tool adapters symlinking into it (e.g. `.claude/commands` →
+> `../.agents/commands`). The context-nuggets pattern this ADR establishes still
+> holds; only the physical location of the agent-facing assets changed. See
+> [guidelines/repository-organization.md](../guidelines/repository-organization.md).
+
 ### Key Principles
 
 1. **Context nuggets, not dumps**: Small, focused files (200-400 lines) covering one concept each

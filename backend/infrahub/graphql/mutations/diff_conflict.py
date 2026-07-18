@@ -4,10 +4,11 @@ from typing import TYPE_CHECKING
 
 from graphene import Boolean, InputField, InputObjectType, Mutation, String
 
-from infrahub.core.constants import BranchConflictKeep, InfrahubKind
+from infrahub.core.constants import BranchConflictKeep
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreDataCheck
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ProcessingError
@@ -60,7 +61,7 @@ class ResolveDiffConflict(Mutation):
 
         core_data_checks = await NodeManager.query(
             db=graphql_context.db,
-            schema=InfrahubKind.DATACHECK,
+            schema=CoreDataCheck,
             filters={"enriched_conflict_id__value": data.conflict_id},
         )
         if not core_data_checks:
@@ -72,6 +73,9 @@ class ResolveDiffConflict(Mutation):
         else:
             keep_branch = None
         for cdc in core_data_checks:
-            cdc.keep_branch.value = keep_branch
+            # Generated protocols type enum-backed attributes as stdlib `enum.Enum`, whose `.value`
+            # is read-only. At runtime the attribute is an infrahub Enum/Dropdown with a writable
+            # value.
+            cdc.keep_branch.value = keep_branch  # type: ignore[misc]
             await cdc.save(db=graphql_context.db)
         return cls(ok=True)

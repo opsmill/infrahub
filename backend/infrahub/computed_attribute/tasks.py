@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
-from infrahub_sdk.protocols import CoreTransformPython
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.limits import get_prefect_max_related_resources
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
@@ -27,6 +26,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
+from .graphql_queries.queries import ComputedAttributeNodeIDQuery, ComputedAttributeTransformQuery
 from .jinja2 import InfrahubJinja2Template
 from .models import (
     ComputedAttrJinja2GraphQL,
@@ -37,13 +37,6 @@ from .models import (
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
-
-
-def get_prefect_max_related_resources() -> int:
-    max_related_resources = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500"))
-    if max_related_resources <= 0:
-        max_related_resources = 500
-    return max_related_resources
 
 
 def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
@@ -79,15 +72,15 @@ async def process_transform_for_node(
     node_kind: str,
     attribute_name: str,
     query_id: str,
-    transform_timeout: int,
+    transform_timeout: int | None,
     repository_id: str,
     repository_name: str,
     repository_kind: str,
-    commit: str,
+    commit: str | None,
     file_path: str,
     class_name: str,
     convert_query_response: bool,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     client = get_client()
 
@@ -123,7 +116,7 @@ async def process_transform_for_node(
             "kind": node_kind,
             "attribute": attribute_name,
             "value": transformed_data,
-            "context_account_id": context.account.account_id,
+            "context_account_id": context.account_id,
         },
         branch_name=branch_name,
     )
@@ -138,7 +131,7 @@ async def process_transform(
     node_kind: str,
     computed_attribute_name: str,  # noqa: ARG001
     computed_attribute_kind: str,  # noqa: ARG001
-    context: InfrahubContext,
+    context: EventContext,
     object_id: str | None = None,
     object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
@@ -158,23 +151,20 @@ async def process_transform(
         return
 
     for attribute_name, transform_attribute in transform_attributes.items():
-        transform = await client.get(
-            kind=CoreTransformPython,
-            branch=branch_name,
-            id=transform_attribute.transform,
-            prefetch_relationships=True,
-            populate_store=True,
+        if not transform_attribute.transform:
+            raise ValueError(f"No transform configured for computed attribute '{attribute_name}'")
+        transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
+        transform_response = await client.execute_graphql(
+            query=transform_query.render_query(),
+            variables=transform_query.get_variables(),
+            branch_name=branch_name,
         )
+        transform = transform_query.parse_response(response=transform_response)
 
         if not transform:
-            continue
-
-        repo_node = await client.get(
-            kind=str(transform.repository.peer.typename),
-            branch=branch_name,
-            id=transform.repository.peer.id,
-            raise_when_missing=True,
-        )
+            raise ValueError(
+                f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
+            )
 
         batch = await client.create_batch()
         for oid in all_ids:
@@ -184,15 +174,15 @@ async def process_transform(
                 object_id=oid,
                 node_kind=node_kind,
                 attribute_name=attribute_name,
-                query_id=transform.query.id,
-                transform_timeout=transform.timeout.value,
-                repository_id=transform.repository.peer.id,
-                repository_name=transform.repository.peer.name.value,
-                repository_kind=str(transform.repository.peer.typename),
-                commit=repo_node.commit.value,
-                file_path=transform.file_path.value,
-                class_name=transform.class_name.value,
-                convert_query_response=transform.convert_query_response.value,
+                query_id=transform.query_name,
+                transform_timeout=transform.timeout,
+                repository_id=transform.repository_id,
+                repository_name=transform.repository_name,
+                repository_kind=transform.repository_typename,
+                commit=transform.repository_commit,
+                file_path=transform.file_path,
+                class_name=transform.class_name,
+                convert_query_response=transform.convert_query_response,
                 context=context,
             )
         _ = [r async for _, r in batch.execute()]
@@ -206,7 +196,7 @@ async def trigger_update_python_computed_attributes(
     branch_name: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
 
@@ -242,7 +232,7 @@ async def computed_attribute_jinja2_update_value(
     node_kind: str,
     attribute_name: str,
     template: InfrahubJinja2Template,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -262,7 +252,7 @@ async def computed_attribute_jinja2_update_value(
                 "kind": node_kind,
                 "attribute": attribute_name,
                 "value": value,
-                "context_account_id": context.account.account_id,
+                "context_account_id": context.account_id,
             },
             branch_name=branch_name,
         )
@@ -283,7 +273,7 @@ async def process_jinja2(
     object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
     updated_fields: list[str] | None = None,
 ) -> None:
     """Recompute a single Jinja2 computed attribute in response to a node mutation.
@@ -370,33 +360,33 @@ async def trigger_update_jinja2_computed_attributes(
     branch_name: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
 
     client = get_client()
 
-    # NOTE we only need the id of the nodes, we need to ooptimize the query here
-    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
-
-    for node in nodes:
-        await get_workflow().submit_workflow(
-            workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
-            context=context,
-            parameters={
-                "branch_name": branch_name,
-                "computed_attribute_name": computed_attribute_name,
-                "computed_attribute_kind": computed_attribute_kind,
-                "node_kind": computed_attribute_kind,
-                "object_id": node.id,
-                "context": context,
-            },
-        )
+    node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
+    workflow = get_workflow()
+    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
+        for node_id in node_batch:
+            await workflow.submit_workflow(
+                workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "computed_attribute_name": computed_attribute_name,
+                    "computed_attribute_kind": computed_attribute_kind,
+                    "node_kind": computed_attribute_kind,
+                    "object_id": node_id,
+                    "context": context,
+                },
+            )
 
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup_jinja2(
-    context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None
+    context: EventContext, branch_name: str | None = None, event_name: str | None = None
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
@@ -463,7 +453,7 @@ async def computed_attribute_setup_jinja2(
     flow_run_name="Setup computed attributes for Python transforms in task-manager",
 )
 async def computed_attribute_setup_python(
-    context: InfrahubContext,
+    context: EventContext,
     branch_name: str | None = None,
     event_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
@@ -511,14 +501,14 @@ async def computed_attribute_setup_python(
                 client=prefect_client,
                 triggers=triggers_python,
                 trigger_type=TriggerType.COMPUTED_ATTR_PYTHON,
-            )  # type: ignore[misc]
+            )
             log.info(f"{len(triggers_python)} Computed Attribute for Python automation configuration completed")
 
             await setup_triggers(
                 client=prefect_client,
                 triggers=triggers_python_query,
                 trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
-            )  # type: ignore[misc]
+            )
             log.info(
                 f"{len(triggers_python_query)} Computed Attribute for Python Query automation configuration completed"
             )
@@ -532,7 +522,7 @@ async def query_transform_targets(
     branch_name: str,
     node_kind: str,  # noqa: ARG001
     object_id: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)

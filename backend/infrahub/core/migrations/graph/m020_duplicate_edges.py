@@ -136,6 +136,7 @@ class Migration020(GraphMigration):
     """
 
     name: str = "020_delete_duplicate_edges"
+    description: str = "N/A"
     minimum_version: int = 19
     queries: Sequence[type[Query]] = [
         DeleteDuplicateHasValueEdgesQuery,

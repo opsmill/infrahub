@@ -4,12 +4,12 @@ import { Link } from "react-router";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
-import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 import { DiffRow } from "@/entities/diff/ui/node-diff/utils";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
 type Change = {
@@ -26,14 +26,14 @@ type DataConflictProps = {
 };
 
 export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => {
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChange = useProposedChange();
   const schemaLabels = useAtomValue(schemaKindLabelState);
 
   if (!changes) {
     return null;
   }
 
-  const url = `/proposed-changes/${proposedChangesDetails.id}?${QSP.PROPOSED_CHANGES_TAB}=data#${id}`;
+  const url = `${getProposedChangeDetailsUrl(proposedChange.id, "data")}#${id}`;
 
   const mainChange = changes.find((change) => {
     return change.branch === "main";

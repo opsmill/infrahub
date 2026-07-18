@@ -1,7 +1,7 @@
+import { Meter } from "@infrahub/ui";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import { Row } from "@/shared/components/container";
-import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { cellMutedStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
@@ -106,7 +106,10 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
           if (attribute.name === "utilization") {
             return (
               <TableCell className="w-40">
-                <ProgressBarChart value={parseInt(attributeData.value as string, 10)} />
+                <Meter
+                  value={parseInt(attributeData.value as string, 10)}
+                  aria-label="Utilization"
+                />
               </TableCell>
             );
           }

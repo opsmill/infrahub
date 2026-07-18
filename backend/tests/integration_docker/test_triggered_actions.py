@@ -30,6 +30,7 @@ from prefect.client.orchestration import PrefectClient
 from infrahub.core.constants import InfrahubKind
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.setup import gather_all_automations
+from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.fixtures import get_fixtures_dir
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
@@ -119,7 +120,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
 
     async def wait_until_automations_are_configured(self, automation_names: list[str], client: PrefectClient) -> None:
         continue_waiting = True
-        max_retries = 30
+        max_retries = PREFECT_EVENT_WAIT_SECONDS
         retry = 0
 
         while continue_waiting:
@@ -214,7 +215,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         )
 
         await group_people.members.fetch()
-        for _ in range(30):
+        for _ in range(PREFECT_EVENT_WAIT_SECONDS):
             tags_updated = await client.all(kind=TestingTag)
             tag_names_updated = [tag.name.value for tag in tags_updated]
             if len(tag_names_updated) > len(tag_names_original):

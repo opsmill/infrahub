@@ -9,6 +9,7 @@ from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
@@ -192,3 +193,16 @@ def get_log_forwarding_service(
     log_forwarding_service: LogForwardingService = Depends(build_log_forwarding_service),  # noqa: B008
 ) -> LogForwardingService:
     return log_forwarding_service
+
+
+def build_ldap_auth_service() -> LDAPAuthService:
+    if "ldap_auth_service" not in _singletons:
+        _singletons["ldap_auth_service"] = LDAPAuthServiceCommunity()
+    return _singletons["ldap_auth_service"]
+
+
+@inject
+def get_ldap_auth_service(
+    ldap_auth_service: LDAPAuthService = Depends(build_ldap_auth_service),  # noqa: B008
+) -> LDAPAuthService:
+    return ldap_auth_service

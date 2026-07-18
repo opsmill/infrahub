@@ -591,3 +591,264 @@ async def test_delete_cascade_artifacts(
     assert artifact.id in {d.id for d in deleted}
     node_map = await NodeManager.get_many(db=db, ids=[c1.id, artifact.id])
     assert node_map == {}
+
+
+async def test_cascade_delete_blocked_by_external_mandatory_dependent(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    person_schema = schema_branch.get(name="TestPerson", duplicate=False)
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
+
+    person_schema.relationships.append(
+        RelationshipSchema(
+            name="favorite_car",
+            kind="Attribute",
+            optional=False,
+            peer="TestCar",
+            cardinality="one",
+            identifier="person__favorite_car",
+            on_delete=RelationshipDeleteBehavior.NO_ACTION,
+            branch=BranchSupportType.AWARE,
+        )
+    )
+
+    # Jane is NOT being deleted and mandatorily references one of John's (cascaded) cars.
+    jane = await NodeManager.get_one(db=db, id=person_jane_main.id)
+    await jane.favorite_car.update(db=db, data=car_accord_main.id)
+    await jane.save(db=db)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
+
+    expected_msg = (
+        f"Cannot delete TestCar '{car_accord_main.id}'. "
+        f"It is linked to mandatory relationship favorite_car on node TestPerson '{person_jane_main.id}' "
+        f"at TestPerson.favorite_car"
+    )
+    assert str(exc.value) == expected_msg
+
+
+async def test_delete_repository_cascades_managed_objects(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting a repository must cascade-delete its transforms, checks, generators and everything they own.
+
+    Covers the full managed-object tree: transform -> artifact definition -> artifact and its validator,
+    check definition -> user validator, generator definition -> instance and its validator.
+    """
+    c1 = car_person_data_generic["c1"]
+    q1 = car_person_data_generic["q1"]
+    r1 = car_person_data_generic["r1"]
+
+    group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await group.new(db=db, name="repo-cascade-group", members=[c1])
+    await group.save(db=db)
+
+    transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
+    await transform.new(
+        db=db,
+        name="repo-cascade-transform",
+        query=str(q1.id),
+        repository=str(r1.id),
+        file_path="transform.py",
+        class_name="Transform",
+    )
+    await transform.save(db=db)
+
+    definition = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+    await definition.new(
+        db=db,
+        name="repo-cascade-def",
+        targets=group,
+        transformation=transform,
+        content_type="application/json",
+        artifact_name="repo-cascade-artifact",
+        parameters={"value": {"name": "name__value"}},
+    )
+    await definition.save(db=db)
+
+    artifact = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+    await artifact.new(
+        db=db,
+        name="repo-cascade-artifact",
+        definition=definition,
+        status="Ready",
+        object=c1,
+        storage_id="00000000-0000-0000-0000-000000000002",
+        checksum="def456",
+        content_type="application/json",
+    )
+    await artifact.save(db=db)
+
+    check_def = await Node.init(db=db, schema=InfrahubKind.CHECKDEFINITION)
+    await check_def.new(
+        db=db,
+        name="repo-cascade-check",
+        repository=str(r1.id),
+        class_name="MyCheck",
+        file_path="check.py",
+    )
+    await check_def.save(db=db)
+
+    generator_def = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
+    await generator_def.new(
+        db=db,
+        name="repo-cascade-generator",
+        repository=str(r1.id),
+        query=str(q1.id),
+        targets=group,
+        file_path="generator.py",
+        class_name="MyGenerator",
+        parameters={"value": {"name": "name__value"}},
+    )
+    await generator_def.save(db=db)
+
+    generator_instance = await Node.init(db=db, schema=InfrahubKind.GENERATORINSTANCE)
+    await generator_instance.new(
+        db=db,
+        name="repo-cascade-gen-instance",
+        definition=generator_def,
+        object=c1,
+        status="Ready",
+    )
+    await generator_instance.save(db=db)
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db,
+        name="repo-cascade-pc",
+        source_branch="repo-cascade-source",
+        destination_branch=default_branch.name,
+    )
+    await proposed_change.save(db=db)
+
+    artifact_validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+    await artifact_validator.new(db=db, proposed_change=proposed_change, definition=definition)
+    await artifact_validator.save(db=db)
+
+    generator_validator = await Node.init(db=db, schema=InfrahubKind.GENERATORVALIDATOR)
+    await generator_validator.new(db=db, proposed_change=proposed_change, definition=generator_def)
+    await generator_validator.save(db=db)
+
+    user_validator = await Node.init(db=db, schema=InfrahubKind.USERVALIDATOR)
+    await user_validator.new(
+        db=db,
+        proposed_change=proposed_change,
+        check_definition=check_def,
+        repository=str(r1.id),
+    )
+    await user_validator.save(db=db)
+
+    # Validators attached only to the proposed change, with no link to any
+    # repository-owned definition, sit outside the repository's ownership tree
+    # and must survive the cascade.
+    data_validator = await Node.init(db=db, schema=InfrahubKind.DATAVALIDATOR)
+    await data_validator.new(db=db, proposed_change=proposed_change)
+    await data_validator.save(db=db)
+
+    schema_validator = await Node.init(db=db, schema=InfrahubKind.SCHEMAVALIDATOR)
+    await schema_validator.new(db=db, proposed_change=proposed_change)
+    await schema_validator.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
+
+    deleted_ids = {d.id for d in deleted}
+    assert deleted_ids == {
+        r1.id,
+        transform.id,
+        definition.id,
+        artifact.id,
+        check_def.id,
+        generator_def.id,
+        generator_instance.id,
+        artifact_validator.id,
+        generator_validator.id,
+        user_validator.id,
+    }
+    node_map = await NodeManager.get_many(
+        db=db,
+        ids=[
+            r1.id,
+            transform.id,
+            definition.id,
+            artifact.id,
+            check_def.id,
+            generator_def.id,
+            generator_instance.id,
+            artifact_validator.id,
+            generator_validator.id,
+            user_validator.id,
+        ],
+    )
+    assert node_map == {}
+
+    # The proposed change owns the validators as a parent but is not part of the
+    # repository's ownership tree, so it must survive the cascade.
+    surviving_pc = await NodeManager.get_one(db=db, id=proposed_change.id, branch=default_branch)
+    assert surviving_pc is not None
+
+    # Validators tied only to the proposed change (not to a repository-owned
+    # definition) fall outside the cascade and must survive it too.
+    for survivor_id in (data_validator.id, schema_validator.id):
+        survivor = await NodeManager.get_one(db=db, id=survivor_id, branch=default_branch)
+        assert survivor is not None
+
+
+async def test_delete_repository_query_group_cascade(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting a repository cascades to its queries, which in turn cascade to their query groups."""
+    r1 = car_person_data_generic["r1"]
+
+    repo_query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await repo_query.new(
+        db=db,
+        name="repo-owned-query",
+        query="{ TestPerson { edges { node { id } } } }",
+        repository=str(r1.id),
+    )
+    await repo_query.save(db=db)
+
+    query_group = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
+    await query_group.new(
+        db=db,
+        name="repo-cascade-query-group",
+        query=str(repo_query.id),
+    )
+    await query_group.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
+
+    deleted_ids = {d.id for d in deleted}
+    assert deleted_ids == {r1.id, repo_query.id, query_group.id}
+    node_map = await NodeManager.get_many(db=db, ids=[r1.id, repo_query.id, query_group.id])
+    assert node_map == {}
+
+
+async def test_delete_repository_repository_group_cascade(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting a repository cascades to its import-tracking repository groups."""
+    r1 = car_person_data_generic["r1"]
+
+    repo_group = await Node.init(db=db, schema=InfrahubKind.REPOSITORYGROUP)
+    await repo_group.new(db=db, name="repo-cascade-import-group", repository=str(r1.id), content="object")
+    await repo_group.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[r1])
+
+    deleted_ids = {d.id for d in deleted}
+    assert deleted_ids == {r1.id, repo_group.id}
+    node_map = await NodeManager.get_many(db=db, ids=[r1.id, repo_group.id])
+    assert node_map == {}

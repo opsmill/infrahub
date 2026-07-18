@@ -54,6 +54,7 @@ class Migration034(ArbitraryMigration):
     """
 
     name: str = "034_find_orphaned_schema_fields"
+    description: str = "N/A"
     minimum_version: int = 33
     queries: Sequence[type[Query]] = [FindOrphanedSchemaFieldsQuery]
 

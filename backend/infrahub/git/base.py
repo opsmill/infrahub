@@ -666,14 +666,24 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         if branch_name in local_branches:
             return False
 
-        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
-        repo.git.branch(branch_name)
+        remote_branch = None
+        if self.has_origin:
+            remote_branch = next(
+                (br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"),
+                None,
+            )
+
+        # When a matching remote branch exists, point the local branch directly at the
+        # remote tip. Branching from HEAD and then pulling would fail whenever the remote
+        # branch's history diverges from the default branch.
+        if remote_branch is not None:
+            repo.git.branch(branch_name, remote_branch.name)
+        else:
+            repo.git.branch(branch_name)
+
         self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
 
-        # If there is not remote configured, we are done
-        #  Since the branch is a match for the main branch we don't need to create a commit worktree
-        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
-        if not self.has_origin:
+        if remote_branch is None:
             log.debug(
                 f"Branch {branch_name} created in Git without tracking a remote branch.",
                 repository=self.name,
@@ -681,24 +691,14 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             )
             return True
 
-        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
-
-        if remote_branch:
-            br_repo = self.get_git_repo_worktree(identifier=branch_name)
-            br_repo.head.reference.set_tracking_branch(remote_branch[0])
-            try:
-                br_repo.remotes.origin.pull(branch_name)
-            except GitCommandError as exc:
-                await self._raise_enriched_error(error=exc, branch_name=branch_name)
-            self.create_commit_worktree(str(br_repo.head.reference.commit))
-            log.debug(
-                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
-                repository=self.name,
-                branch=branch_name,
-            )
-        else:
-            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
-
+        br_repo = self.get_git_repo_worktree(identifier=branch_name)
+        br_repo.head.reference.set_tracking_branch(remote_branch)
+        self.create_commit_worktree(str(br_repo.head.reference.commit))
+        log.debug(
+            f"Branch {branch_name} created in Git, tracking remote branch {remote_branch.name}.",
+            repository=self.name,
+            branch=branch_name,
+        )
         return True
 
     def create_commit_worktree(self, commit: str) -> bool | Worktree:
@@ -875,8 +875,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Process a remote branch to validate that we can use it safely.
 
         - Make sure that the branch name won't conflict with infrahub's default branch
-        - Make sure that a representation if the branch can be created in the database
-        - Make sure that there are no conflicts that would prevent it from being merged
+        - Make sure that a representation of the branch can be created in the database
+        - Warn (but do not block) when the branch would conflict with the default branch on merge
         """
         if branch_name == registry.default_branch and branch_name != self.default_branch:
             # If the default branch of Infrahub and the git repository differs we map the repository
@@ -894,7 +894,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             )
             return False
 
-        # Make sure the branch won't conflict on merge
+        # Surface a warning when the branch conflicts with the default branch so users
+        # know a future merge will be rejected, but still allow the import to proceed.
         try:
             has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
         except GitCommandError as exc:
@@ -904,17 +905,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 repository=self.name,
                 error=str(exc),
             )
-            return False
+            return True
 
         if has_conflicts:
             get_run_logger().warning(
-                f"Remote branch {branch_name} will cause conflicts, they need to be resolved before importing the branch into Infrahub"
+                f"Remote branch {branch_name} conflicts with {self.default_branch}; "
+                "the merge will be rejected until the conflict is resolved upstream"
             )
-            return False
-
-        # Find the commit on the remote branch
-        # Check out the commit in a worktree
-        # Validate
 
         return True
 
@@ -1118,9 +1115,45 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def _raise_enriched_error_static(
         error: GitCommandError, name: str, location: str, branch_name: str | None = None
     ) -> NoReturn:
+        """Translate a raw ``git`` CLI failure into a typed repository error.
+
+        Classification matches on ``error.stderr`` text rather than a status code because
+        these operations run through the ``git`` command line: ``git`` exits 128 for
+        virtually every fatal error, so ``GitCommandError.status`` carries no useful
+        signal, and when the failure originates in the HTTP transport the HTTP status is
+        only present as text in stderr. The matched substrings are messages emitted by
+        ``git`` itself and by its libcurl-backed HTTP remote helper:
+          - connection: "Failed to connect to", "Could not resolve host",
+            "Couldn't connect to server", "Operation timed out" (libcurl); and for a
+            gateway/proxy in front of the server returning a 5xx,
+            "The requested URL returned error: 5xx" (git http.c) plus
+            "RPC failed; HTTP 5xx" (git remote-curl.c).
+          - not-a-repo / missing: "Repository not found", "does not appear to be a git".
+          - TLS: "SSL certificate problem", "server certificate verification failed".
+          - credentials: "Authentication failed for", "could not read Username".
+        These are stable user-facing git/curl strings, but keyed on text — revisit them if
+        git or libcurl change their wording.
+
+        Raises:
+            RepositoryConnectionError: When the remote is unreachable or a gateway/proxy in
+                front of it returns a 5xx.
+            RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
+            RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
+            RepositoryError: For any other git failure, including the generic fallthrough.
+
+        """
         if any(
             err in error.stderr
-            for err in ("Repository not found", "does not appear to be a git", "Failed to connect to")
+            for err in (
+                "Repository not found",
+                "does not appear to be a git",
+                "Failed to connect to",
+                "Could not resolve host",
+                "Couldn't connect to server",
+                "Operation timed out",
+                "The requested URL returned error: 5",
+                "RPC failed; HTTP 5",
+            )
         ):
             raise RepositoryConnectionError(identifier=name) from error
 

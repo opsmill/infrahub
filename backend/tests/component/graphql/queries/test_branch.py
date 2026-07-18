@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from infrahub_sdk import InfrahubClient
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -785,6 +785,31 @@ class TestBranchQuery(TestInfrahubApp):
         assert result.errors is not None
         assert len(result.errors) > 0
         assert "created_at" in str(result.errors[0]) or "updated_at" in str(result.errors[0])
+
+    async def test_order_by_rejects_by_field(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+    ) -> None:
+        """Branch's MetadataOrderInput does not expose `by`, so the field is unknown to the schema."""
+        query = """
+        query {
+            InfrahubBranch(order: {by: [{field: "node_metadata__created_at", direction: ASC}]}) {
+                edges { node { name { value } } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is not None
+        assert any("by" in str(err.message) for err in result.errors)
 
     async def test_filter_by_status(
         self,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT
 from infrahub.core.query import QueryNode
 
 from .attribute import default_attribute_query_filter
@@ -174,3 +175,73 @@ async def build_subquery_order(
     RETURN {to_return_str}
     """
     return query, params, prefix
+
+
+def build_subquery_order_metadata(
+    metadata_field: str,
+    branch: Branch,
+    branch_filter: str,
+    branch_agnostic: bool = False,
+    node_alias: str = "n",
+    subquery_idx: int = 1,
+) -> tuple[str, dict[str, Any], str]:
+    if metadata_field not in (METADATA_CREATED_AT, METADATA_UPDATED_AT):
+        raise ValueError(f"Unsupported metadata field for ordering: {metadata_field!r}")
+
+    prefix = f"order_metadata_{metadata_field}_{subquery_idx}"
+
+    if branch.is_default or branch.is_global:
+        subquery = f"RETURN {node_alias}.{metadata_field} AS {prefix}"
+        return subquery, {}, prefix
+
+    if metadata_field == METADATA_CREATED_AT:
+        subquery = f"""
+        MATCH (:Node {{uuid: {node_alias}.uuid}})-[r:IS_PART_OF {{status: "active"}}]->(:Root)
+        WHERE {branch_filter}
+        RETURN r.from AS {prefix}
+        ORDER BY r.from ASC
+        LIMIT 1
+        """
+        return subquery, {}, prefix
+
+    if branch_agnostic:
+        time_details = """
+        WITH [r.from] AS from_details, [r.to] AS to_details
+        """
+    else:
+        time_details = """
+        WITH CASE
+            WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from]
+            WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from]
+            ELSE [NULL]
+        END AS from_details,
+        CASE
+            WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to]
+            WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to]
+            ELSE [NULL]
+        END AS to_details
+        """
+
+    subquery = f"""
+    MATCH ({node_alias})-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+    WHERE {branch_filter}
+    WITH DISTINCT field
+    CALL (field) {{
+        MATCH (field)-[r]-(property)
+        WHERE {branch_filter}
+        {time_details}
+        WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
+        WITH from_details_list + to_details_list AS details_list
+        UNWIND details_list AS one_details
+        WITH one_details[0] AS updated_at_val
+        WHERE updated_at_val IS NOT NULL
+        ORDER BY updated_at_val DESC
+        LIMIT 1
+        RETURN updated_at_val
+    }}
+    WITH updated_at_val
+    ORDER BY updated_at_val DESC
+    LIMIT 1
+    RETURN updated_at_val AS {prefix}
+    """
+    return subquery, {}, prefix

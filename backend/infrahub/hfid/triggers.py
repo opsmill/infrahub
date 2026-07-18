@@ -1,6 +1,6 @@
 from infrahub.events.branch_action import BranchDeletedEvent
 from infrahub.events.schema_action import SchemaUpdatedEvent
-from infrahub.trigger.models import BuiltinTriggerDefinition, EventTrigger, ExecuteWorkflow
+from infrahub.trigger.models import BuiltinTriggerDefinition, EventTrigger, ExecuteWorkflow, jinja_parameter
 from infrahub.workflows.catalogue import HFID_SETUP
 
 TRIGGER_HFID_ALL_SCHEMA = BuiltinTriggerDefinition(
@@ -10,8 +10,8 @@ TRIGGER_HFID_ALL_SCHEMA = BuiltinTriggerDefinition(
         ExecuteWorkflow(
             workflow=HFID_SETUP,
             parameters={
-                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                "event_name": "{{ event.event }}",
+                "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
+                "event_name": jinja_parameter("{{ event.event }}"),
                 "context": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},

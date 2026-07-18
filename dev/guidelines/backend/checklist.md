@@ -17,6 +17,12 @@ Consider whether the feature will:
 
 Plan to create a migration in `backend/infrahub/core/migrations/graph/` if any of these apply.
 
+When adding a new migration:
+
+- Bump `GRAPH_VERSION` in `backend/infrahub/core/graph/__init__.py` to match the new migration number
+- Set the migration's `minimum_version` to the previous `GRAPH_VERSION`
+- Run `uv run pytest backend/tests/unit/core/graph/test_graph_version.py` to verify consistency between `GRAPH_VERSION` and the migrations
+
 ### How will this feature maintain graph integrity?
 
 Design the feature to ensure:

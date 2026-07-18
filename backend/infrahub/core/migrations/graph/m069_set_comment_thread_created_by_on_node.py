@@ -51,6 +51,7 @@ class SetThreadCreatedByOnNodeQuery(Query):
 
 class Migration069(GraphMigration):
     name: str = "069_set_comment_thread_created_by_on_node"
+    description: str = "Backfill created_by on CoreComment and CoreThread from their existing account relationships."
     minimum_version: int = 68
     queries: Sequence[type[Query]] = [SetCommentCreatedByOnNodeQuery, SetThreadCreatedByOnNodeQuery]
 

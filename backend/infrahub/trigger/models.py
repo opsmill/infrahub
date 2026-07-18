@@ -148,7 +148,9 @@ class EventTrigger(BaseModel):
         )
 
     @property
-    def related_resource_specification(self) -> ResourceSpecification | list[ResourceSpecification]:
+    def related_resource_specification(
+        self,
+    ) -> ResourceSpecification | dict[str, str | list[str]] | list[ResourceSpecification | dict[str, str | list[str]]]:
         if isinstance(self.match_related, dict):
             return ResourceSpecification(self.match_related)
 
@@ -206,6 +208,19 @@ class ChangeFlowRunStateAction(BaseModel):
             state=self.state,
             message=self.message,
         )
+
+
+def jinja_parameter(template: str) -> dict[str, str]:
+    """Wrap a Jinja template as an explicit jinja-kind action parameter.
+
+    Prefect's ``RunDeployment._upgrade_v1_templates`` (>=3.6.24) auto-upgrades a bare
+    ``{{ ... }}`` parameter string by appending a ``| tojson`` step that JSON-serializes the
+    rendered value. That serialization fails for values that are not JSON-native (a UUID or
+    datetime) or that resolve to an undefined resource key. A parameter that already declares
+    a ``__prefect_kind`` is left untouched by that upgrade, so the value is rendered as a
+    plain string.
+    """
+    return {"__prefect_kind": "jinja", "template": template}
 
 
 class ExecuteWorkflow(BaseModel):

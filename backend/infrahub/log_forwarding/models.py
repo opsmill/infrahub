@@ -6,7 +6,8 @@ from enum import IntEnum, StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession, AuthType
+    from infrahub.auth.session import AccountSession
+    from infrahub.auth.types import AuthType
 
 LOG_AUTH = 4
 LOG_LOCAL0 = 16

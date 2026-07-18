@@ -6,7 +6,7 @@ import type { ContextParams } from "@/shared/api/types";
 import {
   type GenerateRelationshipListQueryParams,
   generateRelationshipListQuery,
-} from "@/entities/nodes/api/generateRelationshipListQuery";
+} from "@/entities/nodes/relationships/api/generate-relationship-list.query";
 
 export type getRelationshipsFromApiParams = ContextParams &
   Omit<GenerateRelationshipListQueryParams, "parent">;

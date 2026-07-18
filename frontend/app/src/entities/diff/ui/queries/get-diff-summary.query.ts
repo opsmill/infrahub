@@ -3,6 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import type { QueryConfig } from "@/shared/api/types";
 
 import { type GetDiffSummaryParams, getDiffSummary } from "@/entities/diff/domain/get-diff-summary";
+import { diffSummaryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 
 export function getDiffSummaryQueryOptions({
   branch,
@@ -10,7 +11,7 @@ export function getDiffSummaryQueryOptions({
   proposedChangeId,
 }: GetDiffSummaryParams) {
   return queryOptions({
-    queryKey: ["diff-summary", branch, filters, proposedChangeId],
+    queryKey: diffSummaryKeys.detail({ branch, filters, proposedChangeId }),
     queryFn: () => getDiffSummary({ branch, filters, proposedChangeId }),
   });
 }

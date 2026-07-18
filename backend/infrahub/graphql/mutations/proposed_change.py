@@ -18,6 +18,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
@@ -46,7 +47,6 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.node import Node
-    from infrahub.core.protocols import CoreProposedChange
     from infrahub.events.models import InfrahubEvent
 
     from ..initialization import GraphqlContext
@@ -313,7 +313,7 @@ class ProposedChangeReview(Mutation):
         async with InfrahubLock(name=lock_name, connection=lock.registry.connection):
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
                 id=pc_id,
-                kind=InfrahubKind.PROPOSEDCHANGE,
+                kind=CoreProposedChange,
                 db=graphql_context.db,
                 prefetch_relationships=True,
                 include_metadata=MetadataOptions.CREATED_BY,
@@ -367,7 +367,7 @@ class ProposedChangeReview(Mutation):
         approved_by_ids = [node.id for _, node in approved_by.items()]
         rejected_by_ids = [node.id for _, node in rejected_by.items()]
         event: InfrahubEvent | None = None
-        event_meta = EventMeta.from_context(context=context.get_context())
+        event_meta = EventMeta.from_context(context=context.get_context().to_event_context())
 
         match decision:
             case ProposedChangeApprovalDecision.APPROVE:

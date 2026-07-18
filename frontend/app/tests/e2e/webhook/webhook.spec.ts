@@ -36,7 +36,11 @@ test.describe("/objects/CoreWebhook", () => {
 
         await page.getByLabel("Shared Key *").fill("secret");
 
-        await page.getByLabel("Validate Certificates").uncheck();
+        await page
+          .getByRole("group", { name: "Validate Certificates" })
+          .locator("label")
+          .filter({ hasText: "False" })
+          .click();
 
         await saveScreenshotForDocs(page, "webhook_create");
 

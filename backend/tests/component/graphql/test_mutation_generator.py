@@ -2,7 +2,8 @@ from unittest.mock import call, patch
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -100,6 +101,7 @@ async def test_run_generator_definition(
                             file_path=definition1.file_path.value,
                             query_name=query.name.value,
                             query_models=query.models.value,
+                            query_payload=query.query.value,
                             repository_id=repository.id,
                             parameters=definition1.parameters.value,
                             group_id=group.id,

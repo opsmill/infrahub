@@ -25,7 +25,6 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 from infrahub.core.query import Query, QueryType
 
@@ -37,9 +36,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-console = get_migration_console()
 
 
 class GetNodesWithoutDisplayLabelQuery(Query):
@@ -228,6 +224,7 @@ class Migration047(MigrationRequiringRebase):
     """
 
     name: str = "047_backfill_or_null_display_label"
+    description: str = "N/A"
     minimum_version: int = 46
     update_batch_size: int = 1000
     # skip these b/c the attributes on these schema-related nodes are used to define the values included in
@@ -377,7 +374,7 @@ class Migration047(MigrationRequiringRebase):
             backfill_count = count_query.get_num_nodes()
 
         try:
-            with Progress(console=console) as progress:
+            with Progress(console=migration_input.console) as progress:
                 # Create NULL display_label
                 if nodes_without_display_label:
                     null_task = progress.add_task(

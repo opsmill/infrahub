@@ -7,9 +7,9 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import {
+  type DefaultParentInput,
   type DefaultParentParams,
   getDefaultParent,
-  type UseDefaultParentParams,
 } from "@/entities/nodes/relationships/domain/get-default-parent";
 
 export function getDefaultParentQueryOptions(params: DefaultParentParams) {
@@ -23,7 +23,7 @@ export function getDefaultParentQueryOptions(params: DefaultParentParams) {
   });
 }
 
-export function useDefaultParent(params: UseDefaultParentParams) {
+export function useDefaultParent(params: DefaultParentInput) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
   const formContext = useCurrentFormContext();

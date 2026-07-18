@@ -1,7 +1,9 @@
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { FileField } from "@/shared/components/form/fields/file.field";
 import type { ProfileData } from "@/shared/components/form/object-form";
@@ -13,7 +15,6 @@ import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
@@ -132,7 +133,9 @@ export function CoreFileForm({
               await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
 
               toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} updated`} />, {
-                toastId: `alert-success-${schema?.name}-updated`,
+                // Per-node id: a constant per-kind id makes react-toastify dedupe rapid
+                // successive operations on different objects of the same kind.
+                toastId: `alert-success-${schema?.name}-updated-${updatedNode.id}`,
               });
               if (onSuccess) await onSuccess(updatedNode);
             },
@@ -146,7 +149,7 @@ export function CoreFileForm({
           {
             onSuccess: async (newNode) => {
               toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema?.name} created`} />, {
-                toastId: `alert-success-${schema?.name}-created`,
+                toastId: `alert-success-${schema?.name}-created-${newNode.id}`,
               });
               if (onSuccess) await onSuccess(newNode);
             },
@@ -181,14 +184,14 @@ export function CoreFileForm({
           <DynamicField key={`${field.type}_${field.name}`} {...field} />
         ))}
 
-        <div className="text-right">
+        <Row className="justify-end">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" onPress={onCancel}>
               Cancel
             </Button>
           )}
           <FormSubmit>Save</FormSubmit>
-        </div>
+        </Row>
       </Form>
     </div>
   );

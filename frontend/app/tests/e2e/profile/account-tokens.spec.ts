@@ -3,10 +3,10 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe("/profile?tab=tokens", () => {
+test.describe("/profile/tokens", () => {
   test.describe("when not logged in as admin account", () => {
     test("should not access profile tokens", async ({ page }) => {
-      await page.goto("/profile?tab=tokens");
+      await page.goto("/profile/tokens");
       await expect(page.getByText("Open Proposed changes", { exact: true })).toBeVisible();
     });
   });

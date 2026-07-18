@@ -1,5 +1,4 @@
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { classNames } from "@/shared/utils/common";
+import { Card, CardHeader } from "@infrahub/ui/card";
 
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 
@@ -15,8 +14,8 @@ export function ObjectActivitiesCard({
   className,
 }: ObjectActivitiesCardProps) {
   return (
-    <Card className={classNames("overflow-x-hidden p-0", className)} data-testid="activities-panel">
-      <CardWithBorder.Title className="border-gray-200 border-b">Activities</CardWithBorder.Title>
+    <Card className={className} data-testid="activities-panel">
+      <CardHeader>Activities</CardHeader>
       <NodeEvents objectKind={objectKind} objectId={objectId} />
     </Card>
   );

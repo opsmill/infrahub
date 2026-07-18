@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import operator
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
@@ -247,6 +249,29 @@ class QueryResult:
         item = self._get(label=label)
 
         return return_type(item)
+
+    def get_as_list_of_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> list[RETURN_TYPE]:
+        """Return a label whose value is a Cypher-projected list.
+
+        Each element is constructed into ``return_type``. Map elements (e.g. a
+        ``collect`` of map projections) are unpacked as keyword arguments, so
+        ``return_type`` is typically a ``TypedDict`` or dataclass describing the
+        projection's field shape:
+
+            .get_as_list_of_type(label="hops", return_type=HopRow)
+
+        Scalar elements (e.g. a ``collect`` of strings) are passed positionally:
+
+            .get_as_list_of_type(label="terminal_uuids", return_type=str)
+
+        Raises:
+            ValueError: when the label's value is not a list.
+
+        """
+        entry = self._get(label=label)
+        if not isinstance(entry, list):
+            raise ValueError(f"{label} is not a list")
+        return [return_type(**item) if isinstance(item, Mapping) else return_type(item) for item in entry]
 
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
         entry = self._get(label=label)
@@ -536,7 +561,7 @@ class Query:
         return ":params { " + ", ".join(params) + " }"
 
     @trace.get_tracer(__name__).start_as_current_span("Query.execute")
-    async def execute(self, db: InfrahubDatabase) -> Self:
+    async def execute(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -548,14 +573,24 @@ class Query:
         if self.type == QueryType.READ:
             if self.limit or self.offset:
                 results = await db.execute_query(
-                    query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
+                    query=query_str,
+                    params=self.params,
+                    name=self.name,
+                    context=self.get_context(),
+                    type=self.type,
+                    timeout_seconds=timeout_seconds,
                 )
             else:
-                results = await self.query_with_size_limit(db=db)
+                results = await self.query_with_size_limit(db=db, timeout_seconds=timeout_seconds)
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
+                query=query_str,
+                params=self.params,
+                name=self.name,
+                context=self.get_context(),
+                type=self.type,
+                timeout_seconds=timeout_seconds,
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -571,7 +606,7 @@ class Query:
 
         return self
 
-    async def query_with_size_limit(self, db: InfrahubDatabase) -> list[Record]:
+    async def query_with_size_limit(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> list[Record]:
         query_limit = config.SETTINGS.database.query_size_limit
         offset = 0
         results: list[Record] = []
@@ -583,6 +618,7 @@ class Query:
                 name=self.name,
                 context=self.get_context(),
                 type=self.type,
+                timeout_seconds=timeout_seconds,
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -638,7 +674,7 @@ class Query:
         for idx, result in enumerate(self.results):
             score_idx[idx] = result.branch_score
 
-        for idx, _ in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
+        for idx, _ in sorted(score_idx.items(), key=operator.itemgetter(1), reverse=True):
             yield self.results[idx]
 
     def get_results_group_by(self, *args: Any) -> Generator[QueryResult, None, None]:
@@ -669,9 +705,7 @@ class Query:
             attrs_info[tuple(identifier)].append(info)
 
         for values in attrs_info.values():
-            attr_info = sorted(
-                values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]), reverse=True
-            )[0]
+            attr_info = max(values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]))
             if attr_info["deleted"]:
                 continue
 

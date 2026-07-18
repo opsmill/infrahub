@@ -7,13 +7,12 @@ from infrahub.core.migrations.shared import (
     ArbitraryMigration,
     MigrationInput,
     MigrationResult,
-    get_migration_console,
 )
 
 if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
+    from rich.console import Console
 
-console = get_migration_console()
+    from infrahub.database import InfrahubDatabase
 
 
 @dataclass
@@ -35,12 +34,14 @@ class Migration066(ArbitraryMigration):
     """
 
     name: str = "066_consolidate_duplicate_number_pools"
+    description: str = "N/A"
     minimum_version: int = 65
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        console = migration_input.console
         db = migration_input.db
         async with db.start_transaction() as dbt:
             try:
@@ -60,17 +61,23 @@ class Migration066(ArbitraryMigration):
                     )
 
                     await self._reassign_is_reserved(
-                        db=dbt, survivor_uuid=group.survivor_uuid, duplicate_uuids=group.duplicate_uuids
+                        db=dbt,
+                        survivor_uuid=group.survivor_uuid,
+                        duplicate_uuids=group.duplicate_uuids,
+                        console=console,
                     )
                     await self._reassign_has_source(
-                        db=dbt, survivor_uuid=group.survivor_uuid, duplicate_uuids=group.duplicate_uuids
+                        db=dbt,
+                        survivor_uuid=group.survivor_uuid,
+                        duplicate_uuids=group.duplicate_uuids,
+                        console=console,
                     )
-                    await self._delete_duplicate_pools(db=dbt, duplicate_uuids=group.duplicate_uuids)
+                    await self._delete_duplicate_pools(db=dbt, duplicate_uuids=group.duplicate_uuids, console=console)
 
                     for dup_uuid in group.duplicate_uuids:
                         pool_id_map[dup_uuid] = group.survivor_uuid
 
-                await self._update_schema_parameters(db=dbt, pool_id_map=pool_id_map)
+                await self._update_schema_parameters(db=dbt, pool_id_map=pool_id_map, console=console)
 
             except Exception as exc:
                 error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
@@ -154,7 +161,9 @@ class Migration066(ArbitraryMigration):
             for record in results
         ]
 
-    async def _reassign_is_reserved(self, db: InfrahubDatabase, survivor_uuid: str, duplicate_uuids: list[str]) -> None:
+    async def _reassign_is_reserved(
+        self, db: InfrahubDatabase, survivor_uuid: str, duplicate_uuids: list[str], console: Console
+    ) -> None:
         """Move IS_RESERVED relationships from duplicate pools to the surviving pool."""
         query = """
         MATCH (survivor:CoreNumberPool {uuid: $survivor_uuid})
@@ -177,7 +186,9 @@ class Migration066(ArbitraryMigration):
         if results and results[0]["moved_count"]:
             console.log(f"  Moved {results[0]['moved_count']} IS_RESERVED relationship(s) to survivor pool.")
 
-    async def _reassign_has_source(self, db: InfrahubDatabase, survivor_uuid: str, duplicate_uuids: list[str]) -> None:
+    async def _reassign_has_source(
+        self, db: InfrahubDatabase, survivor_uuid: str, duplicate_uuids: list[str], console: Console
+    ) -> None:
         """Move HAS_SOURCE relationships from duplicate pools to the surviving pool."""
         query = """
         MATCH (survivor:CoreNumberPool {uuid: $survivor_uuid})
@@ -200,7 +211,9 @@ class Migration066(ArbitraryMigration):
         if results and results[0]["moved_count"]:
             console.log(f"  Moved {results[0]['moved_count']} HAS_SOURCE relationship(s) to survivor pool.")
 
-    async def _update_schema_parameters(self, db: InfrahubDatabase, pool_id_map: dict[str, str]) -> None:
+    async def _update_schema_parameters(
+        self, db: InfrahubDatabase, pool_id_map: dict[str, str], console: Console
+    ) -> None:
         """Update SchemaAttribute parameters JSON where number_pool_id matches a deleted pool.
 
         Args:
@@ -239,7 +252,7 @@ class Migration066(ArbitraryMigration):
         if results and results[0]["updated_count"]:
             console.log(f"  Updated {results[0]['updated_count']} SchemaAttribute parameter(s).")
 
-    async def _delete_duplicate_pools(self, db: InfrahubDatabase, duplicate_uuids: list[str]) -> None:
+    async def _delete_duplicate_pools(self, db: InfrahubDatabase, duplicate_uuids: list[str], console: Console) -> None:
         """Hard-delete duplicate pool nodes and their attribute sub-graphs."""
         query = """
         // ---------------------

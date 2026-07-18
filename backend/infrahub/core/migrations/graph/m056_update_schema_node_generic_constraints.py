@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.schema.definitions.internal import (
     generic_schema as internal_generic_schema,
@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
-console = get_migration_console()
 
 
 async def update_schema_on_branch(db: InfrahubDatabase, branch: Branch, at: Timestamp, user_id: str) -> None:
@@ -65,12 +64,14 @@ async def update_schema_on_branch(db: InfrahubDatabase, branch: Branch, at: Time
 
 class Migration056(ArbitraryMigration):
     name: str = "056_update_schema_node_generic_constraints"
+    description: str = "N/A"
     minimum_version: int = 55
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        console = migration_input.console
         db = migration_input.db
         at = migration_input.at
         user_id = migration_input.user_id

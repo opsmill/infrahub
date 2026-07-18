@@ -62,6 +62,7 @@ To help with the development process of a repository configuration file, you can
 | query | string | The name of the GraphQL Query | True |
 | template_path | string | The path within the repository of the template file | True |
 | description | string | Description for this transform | False |
+| watch | InfrahubWatchConfig | Extra files and directories this transform depends on, in addition to the ones Infrahub detects automatically. | False |
 
 <!-- vale off -->
 ## Artifact Definitions
@@ -97,6 +98,7 @@ To help with the development process of a repository configuration file, you can
 | class_name | string | The name of the transform class to run. | False |
 | convert_query_response | boolean | Decide if the transform should convert the result of the GraphQL query to SDK InfrahubNode objects. | False |
 | description | string | Description for this transform | False |
+| watch | InfrahubWatchConfig | Extra files and directories this transform depends on, in addition to the ones Infrahub detects automatically. | False |
 
 <!-- vale off -->
 ## Generator Definitions

@@ -9,7 +9,12 @@ from infrahub.core.models import SchemaUpdateValidationResult
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import MergeFailedError, ValidationError
+from infrahub.exceptions import (
+    MergeConflictsUnresolvedError,
+    MergeConstraintsViolatedError,
+    MergeFailedError,
+    ValidationError,
+)
 from infrahub.git.models import GitRepositoryMerge
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
@@ -19,8 +24,8 @@ if TYPE_CHECKING:
     from infrahub.core.diff.coordinator import DiffCoordinator
     from infrahub.core.diff.diff_locker import DiffLocker
     from infrahub.core.diff.merger.merger import DiffMerger
-    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
+    from infrahub.core.merge.constraints import MergeConstraintValidator
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
     from infrahub.core.schema.manager import SchemaDiff
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -40,6 +45,7 @@ class BranchMerger:
         diff_merger: DiffMerger,
         diff_repository: DiffRepository,
         diff_locker: DiffLocker,
+        constraint_validator: MergeConstraintValidator,
         destination_branch: Branch | None = None,
         workflow: InfrahubWorkflow | None = None,
     ) -> None:
@@ -50,12 +56,14 @@ class BranchMerger:
         self.diff_merger = diff_merger
         self.diff_repository = diff_repository
         self.diff_locker = diff_locker
+        self.constraint_validator = constraint_validator
         self.migrations: list[SchemaUpdateMigrationInfo] = []
-        self._merge_at = Timestamp()
+        self._merge_at: Timestamp | None = None
 
         self._source_schema: SchemaBranch | None = None
         self._destination_schema: SchemaBranch | None = None
-        self._initial_source_schema: SchemaBranch | None = None
+        self._common_ancestor_schema: SchemaBranch | None = None
+        self._has_schema_changes: bool | None = None
 
         self._workflow = workflow
 
@@ -74,10 +82,10 @@ class BranchMerger:
         return self._destination_schema
 
     @property
-    def initial_source_schema(self) -> SchemaBranch:
-        if self._initial_source_schema:
-            return self._initial_source_schema
-        raise ValueError("_initial_source_schema hasn't been initialized")
+    def common_ancestor_schema(self) -> SchemaBranch:
+        if self._common_ancestor_schema:
+            return self._common_ancestor_schema
+        raise ValueError("__common_ancestor_schema hasn't been initialized")
 
     @property
     def workflow(self) -> InfrahubWorkflow:
@@ -85,34 +93,40 @@ class BranchMerger:
             raise ValueError("BranchMerger hasn't been initialized with a workflow object")
         return self._workflow
 
-    async def get_initial_source_branch(self) -> SchemaBranch:
-        """Retrieve the schema of the source branch when the branch was created.
+    async def get_common_ancestor_schema(self) -> SchemaBranch:
+        """Retrieve the schema baseline the source branch diverged from.
+
+        Using the destination schema at ``branched_from`` ensures that changes on the destination
+        branch that have been added to the source branch via rebases are properly reflected.
 
         For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
          - having a faster way to pull a previous version of the schema
          - using the diff generated from the data.
         """
-        if self._initial_source_schema:
-            return self._initial_source_schema
+        if self._common_ancestor_schema:
+            return self._common_ancestor_schema
 
-        self._initial_source_schema = await registry.schema.load_schema_from_db(
+        self._common_ancestor_schema = await registry.schema.load_schema_from_db(
             db=self.db,
-            branch=self.source_branch,
-            at=Timestamp(self.source_branch.created_at),
+            branch=self.destination_branch,
+            at=Timestamp(self.source_branch.branched_from),
         )
 
-        return self._initial_source_schema
+        return self._common_ancestor_schema
 
     async def has_schema_changes(self) -> bool:
+        if self._has_schema_changes is not None:
+            return self._has_schema_changes
         diff_summary = await self.diff_repository.summary(
             base_branch_name=self.destination_branch.name,
             diff_branch_names=[self.source_branch.name],
             tracking_id=BranchTrackingId(name=self.source_branch.name),
             filters={"kind": {"includes": ["SchemaNode", "SchemaAttribute", "SchemaRelationship"]}},
         )
-        if not diff_summary:
-            return False
-        return bool(diff_summary.num_added or diff_summary.num_removed or diff_summary.num_updated)
+        self._has_schema_changes = bool(
+            diff_summary and (diff_summary.num_added or diff_summary.num_removed or diff_summary.num_updated)
+        )
+        return self._has_schema_changes
 
     def get_candidate_schema(self) -> SchemaBranch:
         # For now, we retrieve the latest schema for each branch from the registry
@@ -129,10 +143,10 @@ class BranchMerger:
         # and we need to calculate a 3 ways comparison between
         # - The initial schema and the current schema in the source branch
         # - The initial schema and the current schema in the destination branch
-        initial_source_schema = await self.get_initial_source_branch()
+        common_ancestor_schema = await self.get_common_ancestor_schema()
 
-        diff_source = initial_source_schema.diff(other=self.source_schema)
-        diff_destination = initial_source_schema.diff(other=self.destination_schema)
+        diff_source = common_ancestor_schema.diff(other=self.source_schema)
+        diff_destination = common_ancestor_schema.diff(other=self.destination_schema)
         return diff_source + diff_destination
 
     async def calculate_migrations(self, target_schema: SchemaBranch) -> list[SchemaUpdateMigrationInfo]:
@@ -149,12 +163,13 @@ class BranchMerger:
     async def merge(
         self,
         at: str | Timestamp | None = None,
-    ) -> EnrichedDiffRoot:
+    ) -> None:
         """Merge the current branch into main.
 
         Raises:
-            ValidationError: When the source branch is the default branch or when there are
-                unresolved conflicts.
+            ValidationError: When the source branch is the default branch.
+            MergeConflictsUnresolvedError: When the branch has conflicts that are not resolved.
+            MergeConstraintsViolatedError: When the merged state would violate a constraint.
             MergeFailedError: When the underlying graph merge raises an exception.
 
         """
@@ -173,32 +188,59 @@ class BranchMerger:
             is_incremental=False,
         ):
             log.info("Diff lock acquired for merge")
+
+            # Pre-merge gates run before the graph is mutated
+            await self._validate_no_unresolved_conflicts()
+            await self._validate_constraints()
+
             try:
-                errors: list[str] = []
-                async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
-                    diff_branch_name=self.source_branch.name,
-                    tracking_id=BranchTrackingId(name=self.source_branch.name),
-                ):
-                    if conflict.selected_branch is None or conflict.resolvable is False:
-                        errors.append(conflict_path)
-
-                if errors:
-                    raise ValidationError(
-                        f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
-                    )
-
-                # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
-                # From the Graph or From the repositories
                 self._merge_at = Timestamp(at)
-                branch_diff = await self.diff_merger.merge_graph(at=self._merge_at)
+                await self.diff_merger.merge_graph(at=self._merge_at)
             except Exception as exc:
                 log.exception("Merge failed, beginning rollback")
                 await self.rollback()
                 raise MergeFailedError(branch_name=self.source_branch.name) from exc
         await self.merge_repositories()
-        return branch_diff
+
+    async def _validate_no_unresolved_conflicts(self) -> None:
+        """Raise if the branch still has conflicts with the destination that have not been resolved.
+
+        Raises:
+            MergeConflictsUnresolvedError: When one or more conflicts lack a resolution.
+
+        """
+        errors: list[str] = []
+        async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=self.source_branch.name,
+            tracking_id=BranchTrackingId(name=self.source_branch.name),
+        ):
+            if conflict.selected_branch is None or conflict.resolvable is False:
+                errors.append(conflict_path)
+        if errors:
+            raise MergeConflictsUnresolvedError(conflict_paths=errors, branch_name=self.source_branch.name)
+
+    async def _validate_constraints(self) -> None:
+        """Raise if merging the branch would violate a schema/data constraint on the destination.
+
+        Raises:
+            MergeConstraintsViolatedError: When the merged state would violate a constraint.
+
+        """
+        candidate_schema = self.get_candidate_schema()
+        # Gate on the freshly-recomputed diff (same check the migration calculation uses) rather than
+        # the branch's cached schema-hash flag, so a schema change is never missed at merge time.
+        schema_diff_constraints = (
+            await self.calculate_validations(target_schema=candidate_schema) if await self.has_schema_changes() else []
+        )
+        result = await self.constraint_validator.validate(
+            candidate_schema=candidate_schema, schema_diff_constraints=schema_diff_constraints
+        )
+        if result.violations:
+            raise MergeConstraintsViolatedError(violations=result.violations, schema_conflicts=result.schema_conflicts)
 
     async def rollback(self) -> None:
+        if self._merge_at is None:
+            return
         await self.diff_merger.rollback(at=self._merge_at)
 
     async def merge_repositories(self) -> None:

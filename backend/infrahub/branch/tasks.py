@@ -3,8 +3,8 @@ from __future__ import annotations
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.registry import registry
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.pools.tasks import validate_schema_number_pools
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.utils import wait_for_schema_to_converge
@@ -16,7 +16,7 @@ from infrahub.workflows.utils import wait_for_schema_to_converge
 )
 async def branch_merged(
     source_branch: str,  # noqa: ARG001
-    context: InfrahubContext,
+    context: EventContext,
     service: InfrahubServices,
     target_branch: str | None = None,
 ) -> None:

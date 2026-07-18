@@ -63,7 +63,7 @@ export const METADATA_USER_FILTER_CONDITION_OPTIONS: Array<{
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export interface FilterConditionSelectProps extends SelectProps {
+export interface FilterConditionSelectProps extends SelectProps<string> {
   filterType: FilterDefinition["type"] | "datetime";
 }
 

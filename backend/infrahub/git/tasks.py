@@ -26,6 +26,7 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, CommitNotFoundError, RepositoryError
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
@@ -163,7 +164,9 @@ async def create_branch(branch: str, branch_id: str) -> None:
 
     client = get_client()
 
-    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    repo_query = GitRepositoryNodeQuery()
+    response = await client.execute_graphql(query=repo_query.render_query())
+    repositories = repo_query.parse_response(response=response)
     batch = await client.create_batch()
     for repository in repositories:
         batch.add(
@@ -171,9 +174,9 @@ async def create_branch(branch: str, branch_id: str) -> None:
             client=client,
             branch=branch,
             branch_id=branch_id,
-            repository_name=repository.name.value,
+            repository_name=repository.name,
             repository_id=repository.id,
-            repository_location=repository.location.value,
+            repository_location=repository.location,
             message_bus=await get_message_bus(),
         )
 
@@ -185,16 +188,18 @@ async def create_branch(branch: str, branch_id: str) -> None:
 async def delete_git_branch(branch: str) -> None:
     """Fan out branch deletion across all CoreRepository instances."""
     client = get_client()
-    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    repo_query = GitRepositoryNodeQuery()
+    response = await client.execute_graphql(query=repo_query.render_query())
+    repositories = repo_query.parse_response(response=response)
     batch = await client.create_batch()
     for repository in repositories:
         batch.add(
             task=git_branch_delete,
             client=client,
             branch=branch,
-            repository_name=repository.name.value,
+            repository_name=repository.name,
             repository_id=repository.id,
-            repository_location=repository.location.value,
+            repository_location=repository.location,
         )
     async for _, _ in batch.execute():
         pass
@@ -234,6 +239,19 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         raise
 
 
+def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -> str | None:
+    """Return the git branch whose objects must be seeded after a clone, or None when none is needed.
+
+    A freshly created or re-cloned local copy needs its default branch imported into the graph; an
+    already-present clone does not. The branch is taken from the repository's own default branch, which
+    is the git branch the clone checks out, rather than the platform default branch which may differ
+    and would not exist locally.
+    """
+    if init_failed or repo.reinitialized:
+        return repo.default_branch
+    return None
+
+
 async def bootstrap_local_repository(
     repo_name: str,
     repository: CoreRepository,
@@ -248,7 +266,6 @@ async def bootstrap_local_repository(
     skipped.
     """
     log = get_run_logger()
-    default_import_git_branch: str | None = None
     pinned_import_commit: str | None = None
     async with lock.registry.get(name=repo_name, namespace="repository"):
         init_failed = False
@@ -278,23 +295,23 @@ async def bootstrap_local_repository(
             except RepositoryError as exc:
                 log.info(exc.message)
                 return None
-            default_import_git_branch = registry.default_branch
 
-        if repo.reinitialized:
-            default_import_git_branch = repo.default_branch
+        default_import_git_branch = resolve_initial_import_branch(repo, init_failed=init_failed)
 
         if default_import_git_branch is not None:
             # Pin the commit while the lock is held so the import below reads an immutable
-            # worktree even though it runs after the lock is released.
+            # worktree even though it is built after the lock is released.
             pinned_import_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
 
     if default_import_git_branch is not None:
         try:
-            await repo.import_objects_from_files(  # type: ignore[call-overload]
+            plan = await repo.build_import_plan(
                 git_branch_name=default_import_git_branch,
                 infrahub_branch_name=infrahub_branch,
                 commit=pinned_import_commit,
             )
+            async with lock.registry.get(name=repo_name, namespace="repository"):
+                await repo.apply_import_plan(plan)
         except (RepositoryError, CommitNotFoundError) as exc:
             log.info(exc.message)
             return None
@@ -326,7 +343,7 @@ async def sync_repository_from_origin(
             infrahub_branch=infrahub_branch,
         )
         try:
-            pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
+            pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
         except (ValueError, InvalidGitRepositoryError) as exc:
             log.debug(
                 f"Could not resolve pinned commit for {repository.name.value}, workers will fall back to pull: {exc}"
@@ -393,7 +410,7 @@ async def sync_remote_repositories() -> None:
         )
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="git-branch-create",
     task_run_name="Create branch '{branch}' in repository {repository_name}",
     cache_policy=NONE,
@@ -435,7 +452,7 @@ async def git_branch_create(
         log.debug("Sent message to all workers to fetch the latest version of the repository (RefreshGitFetch)")
 
 
-@task(  # type: ignore[arg-type]
+@task(
     name="git-branch-delete",
     task_run_name="Delete branch '{branch}' in repository {repository_name}",
     cache_policy=NONE,
@@ -763,7 +780,9 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
-    await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)  # type: ignore[call-overload]
+    plan = await repo.build_import_plan(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
+    async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        await repo.apply_import_plan(plan)
 
 
 @flow(

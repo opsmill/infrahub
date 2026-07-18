@@ -15,20 +15,21 @@ from pydantic import BaseModel, HttpUrl
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
 from infrahub.api.event_builder import make_event_meta, make_login_event
-from infrahub.auth import (
-    AccountSession,
-    AuthType,
-    ExternalAuthProtocol,
+from infrahub.auth.auth import (
     ExternalIdentity,
     SSOStateCache,
+    extract_sso_groups,
     get_groups_from_provider,
     signin_sso_account,
     validate_auth_response,
 )
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod
 from infrahub.exceptions import AuthorizationError, HTTPServerError, ProcessingError
+from infrahub.external_protocols import ExternalAuthProtocol
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
@@ -190,9 +191,18 @@ async def token(
     validate_auth_response(response=userinfo_response, provider_type="OIDC")
     user_info: dict[str, Any] = userinfo_response.json()
     sso_groups = (
-        user_info.get("groups")
+        extract_sso_groups(
+            payload=user_info,
+            claim_key=provider.groups_claim,
+            provider_name=provider_name,
+            source="oidc_userinfo",
+        )
         or await _get_id_token_groups(
-            oidc_config=oidc_config, service=service, payload=payload, provider_settings=provider
+            oidc_config=oidc_config,
+            service=service,
+            payload=payload,
+            provider_settings=provider,
+            provider_name=provider_name,
         )
         or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
     )
@@ -201,9 +211,6 @@ async def token(
         "SSO user authenticated",
         body={"user_name": user_info.get("name"), "groups": sso_groups},
     )
-
-    if not sso_groups and config.SETTINGS.security.sso_user_default_group:
-        sso_groups = [config.SETTINGS.security.sso_user_default_group]
 
     sub = user_info.get("sub")
     if not sub:
@@ -222,7 +229,9 @@ async def token(
     with trace.get_tracer(__name__).start_as_current_span("signin_sso_account") as span:
         span.set_attribute("account_name", ujson.dumps(userinfo_response.json()))
         span.set_attribute("sso_groups", sso_groups)
-        auth_result = await signin_sso_account(db=db, external_identity=external_identity, sso_groups=sso_groups)
+        auth_result = await signin_sso_account(
+            db=db, external_identity=external_identity, sso_groups=sso_groups, event_service=service.event
+        )
 
     response.set_cookie(
         "access_token",
@@ -262,6 +271,8 @@ async def _get_id_token_groups(
     service: InfrahubServices,
     payload: dict[str, Any],
     provider_settings: config.SecurityOIDCSettings,
+    *,
+    provider_name: str,
 ) -> list[str]:
     id_token = payload.get("id_token")
     if not id_token:
@@ -294,4 +305,9 @@ async def _get_id_token_groups(
     except jwt.PyJWTError as exc:
         raise AuthorizationError(message=f"OIDC id_token verification failed: {exc}") from exc
 
-    return decoded_token.get("groups", [])
+    return extract_sso_groups(
+        payload=decoded_token,
+        claim_key=provider_settings.groups_claim,
+        provider_name=provider_name,
+        source="oidc_id_token",
+    )

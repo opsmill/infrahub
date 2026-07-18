@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.node import Node
+from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_INVALIDATE_HEADERS, WEBHOOK_PROCESS, WORKER_POOLS
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.constants import TestKind
@@ -23,21 +24,10 @@ if TYPE_CHECKING:
 
 
 BRANCH_CREATED_PAYLOAD: dict[str, Any] = {
-    "context": {
-        "event": {
-            "id": "24790022-2bc8-42ab-a447-bf3e84675901",
-            "name": "infrahub.branch.created",
-            "ancestors": [],
-            "parent_id": None,
-        },
-        "branch": {"id": "182853ef-58a3-b3cc-3e80-c5161f4171c1", "name": "-global-"},
-        "account": {
-            "auth_type": "api",
-            "account_id": "182853f2-3a43-c7f9-3e84-c5152eff4b17",
-            "session_id": None,
-            "authenticated": None,
-        },
-    }
+    "context": EventContext(
+        branch=EventBranchContext(name=GLOBAL_BRANCH_NAME, id="182853ef-58a3-b3cc-3e80-c5161f4171c1"),
+        account_id="182853f2-3a43-c7f9-3e84-c5152eff4b17",
+    ).to_event()
 }
 
 

@@ -20,6 +20,7 @@ core_key_value = GenericSchema(
     icon="mdi:key-variant",
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(
             name="name",

@@ -1,6 +1,6 @@
+import { Breadcrumbs } from "@infrahub/ui";
 import { useLocation, useParams } from "react-router";
 
-import { Breadcrumbs } from "@/shared/components/aria/breadcrumbs";
 import { ARTIFACT_OBJECT, PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/shared/config/constants";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";

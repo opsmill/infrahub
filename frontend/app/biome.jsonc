@@ -8,7 +8,6 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
-      "**",
       "!coverage",
       "!dist",
       "!playwright-report",
@@ -105,10 +104,7 @@
         "useUniqueElementIds": "off"
       },
       "nursery": {
-        "useFind": "error",
-        "useExhaustiveSwitchCases": "off",
-        "noUnnecessaryConditions": "off",
-        "noShadow": "off"
+        "useExhaustiveSwitchCases": "off"
       },
       "performance": {
         "noAccumulatingSpread": "off",
@@ -163,6 +159,8 @@
         "noGlobalIsNan": "off",
         "noImplicitAnyLet": "off",
         "noReactSpecificProps": "off",
+        "noShadow": "off",
+        "noUnnecessaryConditions": "off",
         "useIterableCallbackReturn": "off",
         "noSkippedTests": "off",
         "useAwait": "off"
@@ -195,5 +193,5 @@
       "enabled": true
     }
   },
-  "extends": ["ultracite/core", "ultracite/react"]
+  "extends": ["ultracite/biome/core", "ultracite/biome/react"]
 }

@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
 import type { AnyAttribute } from "@/shared/api/graphql/generated/types";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
@@ -79,7 +79,8 @@ export default function MetaDetailsTooltip({
     <Popover>
       <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
         <Button
-          size="icon"
+          size="xs"
+          shape="circle"
           variant="ghost"
           className="text-gray-500 focus-visible:ring-0"
           data-cy="metadata-button"

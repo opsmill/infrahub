@@ -2,14 +2,34 @@ from uuid import UUID
 
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import first_time_initialization, get_root_node, reset_deployment_id
+from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.database import InfrahubDatabase
 
 
 async def test_first_time_initialization(db: InfrahubDatabase, default_branch: Branch) -> None:
     await first_time_initialization(db=db)
     assert True
+
+
+async def test_first_time_initialization_converges_core_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """A fresh installation must persist the schema shape the upgrade flow builds as its candidate.
+
+    The candidate includes the deprecated overlay, so the core-schema diff starts out empty.
+    """
+    await first_time_initialization(db=db)
+
+    branch_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    candidate_schema = branch_schema.duplicate()
+    candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
+    candidate_schema.load_schema(schema=SchemaRoot(**core_models))
+    candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
+    candidate_schema.process()
+
+    assert branch_schema.diff(other=candidate_schema).all == []
 
 
 async def test_reset_deployment_id_generates_new_uuid(db: InfrahubDatabase, default_branch: Branch) -> None:

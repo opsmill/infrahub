@@ -25,6 +25,7 @@ from infrahub.core.constants import (
     SchemaPathType,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.models import HashableModelDiff
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
@@ -41,6 +42,7 @@ from infrahub.core.schema.definitions.core.template import core_object_component
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
@@ -1083,7 +1085,9 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                 }
             ]
         },
-        expected_error="TestCriticality: save isn't allowed as a relationship name.",
+        expected_error=(
+            "TestCriticality: 'save' is a reserved name (relationship: 'save'). Rename this attribute or relationship."
+        ),
     ),
     SchemaBranchValidateNamesTestCaseData(
         name="attribute-reserved-names-test",
@@ -1103,7 +1107,53 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                 }
             ]
         },
-        expected_error="TestCriticality: save isn't allowed as an attribute name.",
+        expected_error=(
+            "TestCriticality: 'save' is a reserved name (attribute: 'save'). Rename this attribute or relationship."
+        ),
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="attribute-node-metadata-reserved",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text"},
+                        {"name": "node_metadata", "kind": "Text"},
+                    ],
+                }
+            ]
+        },
+        expected_error=(
+            "TestCriticality: 'node_metadata' is a reserved name (attribute: 'node_metadata'). "
+            "Rename this attribute or relationship."
+        ),
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="relationship-node-metadata-reserved",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text"},
+                    ],
+                    "relationships": [
+                        {"name": "node_metadata", "peer": "Criticality", "cardinality": "one"},
+                    ],
+                }
+            ]
+        },
+        expected_error=(
+            "TestCriticality: 'node_metadata' is a reserved name (relationship: 'node_metadata'). "
+            "Rename this attribute or relationship."
+        ),
     ),
 ]
 
@@ -1870,7 +1920,7 @@ async def test_validate_display_labels_success(schema_all_in_one: dict[str, Any]
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    schema.validate_display_labels()
+    DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
@@ -1883,7 +1933,21 @@ async def test_validate_display_label_success(schema_all_in_one: dict[str, Any],
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    schema.validate_display_label()
+    DisplayLabelValidator().check(schema)
+
+
+async def test_validate_display_label_inherited_from_generic(schema_all_in_one: dict[str, Any]) -> None:
+    """Node schemas with no display_label should inherit display_label from a parent generic."""
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = "my_generic_name__value"
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    DisplayLabelValidator().check(schema)
+
+    node = schema.get(name="TestingCriticality", duplicate=False)
+    assert node.display_label == "my_generic_name__value"
 
 
 @pytest.mark.parametrize(
@@ -1920,7 +1984,7 @@ async def test_validate_display_labels_error(
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     with pytest.raises(ValueError, match=expected_error):
-        schema.validate_display_labels()
+        DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
@@ -1964,7 +2028,7 @@ async def test_validate_display_label_error(
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     with pytest.raises(ValueError, match=expected_error):
-        schema.validate_display_label()
+        DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
@@ -1974,6 +2038,17 @@ async def test_validate_display_label_error(
         ["my_generic_name__value"],
         ["primary_tag__name__value"],
         ["status__name__value", "mybool__value"],
+        ["my_generic_name__value__asc"],
+        ["my_generic_name__value__desc"],
+        ["primary_tag__name__value__asc"],
+        ["primary_tag__name__value__desc"],
+        ["node_metadata__created_at"],
+        ["node_metadata__created_at__asc"],
+        ["node_metadata__created_at__desc"],
+        ["node_metadata__updated_at"],
+        ["node_metadata__updated_at__desc"],
+        ["my_generic_name__value__desc", "mybool__value"],
+        ["node_metadata__created_at__desc", "mybool__value"],
     ],
 )
 async def test_validate_order_by_success(schema_all_in_one: dict[str, Any], order_by: list[str]) -> None:
@@ -1991,27 +2066,98 @@ async def test_validate_order_by_success(schema_all_in_one: dict[str, Any], orde
     [
         (
             ["mybool__value", "notanattribute__value"],
-            "InfraGenericInterface.order_by: notanattribute__value is invalid on schema InfraGenericInterface",
+            "InfraGenericInterface.order_by: attribute 'notanattribute' not defined on this schema "
+            "(entry: 'notanattribute__value').",
         ),
         (
             ["my_generic_name__something"],
             "InfraGenericInterface.order_by: something is not a valid property of my_generic_name",
         ),
-        (["status__value"], "InfraGenericInterface.order_by: value is not a valid attribute of TestingStatus"),
-        (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
         (
-            ["badges"],
-            "InfraGenericInterface.order_by: cannot use badges relationship, relationship must be of cardinality one",
+            ["status__value"],
+            "InfraGenericInterface.order_by: invalid relationship path (entry: 'status__value'). "
+            "Expected '<relationship>__<attribute>__<property>' with an optional direction suffix.",
         ),
+        (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
         (["status__name__nothing"], "InfraGenericInterface.order_by: nothing is not a valid property of name"),
         (
             ["my_generic_name"],
-            "InfraGenericInterface.order_by: invalid attribute, it must end "
-            "with one of the following properties: value. (`my_generic_name`)",
+            "InfraGenericInterface.order_by: invalid attribute path (entry: 'my_generic_name'). "
+            "Expected '<attribute>__<property>' with an optional direction suffix.",
+        ),
+        (
+            ["badges"],
+            "InfraGenericInterface.order_by: invalid relationship path (entry: 'badges'). "
+            "Expected '<relationship>__<attribute>__<property>' with an optional direction suffix.",
+        ),
+        (
+            ["node_metadata__created_by"],
+            "InfraGenericInterface.order_by: unknown metadata field (entry: 'node_metadata__created_by'). "
+            "Supported metadata fields: created_at, updated_at.",
+        ),
+        (
+            ["node_metadata__deleted_at"],
+            "InfraGenericInterface.order_by: unknown metadata field (entry: 'node_metadata__deleted_at'). "
+            "Supported metadata fields: created_at, updated_at.",
+        ),
+        (
+            ["my_generic_name__value__descending"],
+            "InfraGenericInterface.order_by: invalid direction (entry: 'my_generic_name__value__descending'). "
+            "Direction must be 'asc' or 'desc'.",
+        ),
+        (
+            ["my_generic_name__value__ASC"],
+            "InfraGenericInterface.order_by: invalid direction (entry: 'my_generic_name__value__ASC'). "
+            "Direction must be 'asc' or 'desc'.",
+        ),
+        (
+            ["my_generic_name__value__"],
+            "InfraGenericInterface.order_by: invalid entry (entry: 'my_generic_name__value__'). "
+            "Entry segments must be non-empty.",
+        ),
+        (
+            [""],
+            "InfraGenericInterface.order_by: order_by entries must be non-empty strings (entry: '').",
         ),
     ],
 )
 async def test_validate_order_by_error(
+    schema_all_in_one: dict[str, Any], order_by: list[str], expected_error: str
+) -> None:
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["order_by"] = order_by
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        schema.validate_order_by()
+
+
+@pytest.mark.parametrize(
+    "order_by,expected_error",
+    [
+        (
+            ["my_generic_name__value", "my_generic_name__value__asc"],
+            "InfraGenericInterface.order_by: target 'my_generic_name.value' appears in order_by more than once "
+            "(entries: 'my_generic_name__value', 'my_generic_name__value__asc'). "
+            "Each target may appear at most once.",
+        ),
+        (
+            ["my_generic_name__value__asc", "my_generic_name__value__desc"],
+            "InfraGenericInterface.order_by: target 'my_generic_name.value' appears in order_by more than once "
+            "(entries: 'my_generic_name__value__asc', 'my_generic_name__value__desc'). "
+            "Each target may appear at most once.",
+        ),
+        (
+            ["node_metadata__created_at", "node_metadata__created_at__desc"],
+            "InfraGenericInterface.order_by: target 'created_at' appears in order_by more than once "
+            "(entries: 'node_metadata__created_at', 'node_metadata__created_at__desc'). "
+            "Each target may appear at most once.",
+        ),
+    ],
+)
+async def test_validate_order_by_duplicate_target(
     schema_all_in_one: dict[str, Any], order_by: list[str], expected_error: str
 ) -> None:
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
@@ -2979,7 +3125,7 @@ async def test_schema_manager_purge(default_branch: Branch, reset_registry: None
 # -----------------------------------------------------------------
 
 
-async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_create_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -3000,7 +3146,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
         ],
         relationships=[RelationshipSchema(name="others", peer="TestingCriticality", optional=True, cardinality="many")],
     )
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
@@ -3011,7 +3157,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     assert node_from_db
 
 
-async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_create_node_in_db_generic_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -3023,7 +3169,7 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
@@ -3075,8 +3221,12 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(
-        node=NodeSchema(**SCHEMA), db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    await registry.schema.create_node_in_db(
+        node=NodeSchema(**SCHEMA),
+        db=db,
+        branch=default_branch,
+        at=Timestamp(),
+        user_id="user-id",
     )
 
     node = registry.schema.get(name="TestingCriticality", branch=default_branch)
@@ -3086,8 +3236,14 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(
-        node=new_node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    diff = HashableModelDiff(
+        changed={
+            "default_filter": None,
+            "attributes": HashableModelDiff(changed={new_node.attributes[0].name: None}),
+        }
+    )
+    await registry.schema.update_node_in_db_based_on_diff(
+        node=new_node, diff=diff, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
     )
 
     results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)

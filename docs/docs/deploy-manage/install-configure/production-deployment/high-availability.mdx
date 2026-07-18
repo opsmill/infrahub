@@ -124,6 +124,22 @@ These examples are for reference purposes and may require customization for your
 
 </details>
 
+## Connecting Infrahub to a Neo4j cluster
+
+When running Neo4j as a cluster, set `INFRAHUB_DB_PROTOCOL=neo4j` so the driver discovers the cluster topology and routes reads and writes to the appropriate members. With the default `bolt` protocol, all traffic pins to a single member without routing awareness.
+
+Infrahub needs at least one reachable cluster member to bootstrap this routing discovery, which can be provided in two ways:
+
+- DNS routing: Point `INFRAHUB_DB_ADDRESS` at a single DNS name that resolves to all cluster members, such as the Kubernetes headless service used in the Helm example above (`infrahub-headless.infrahub.svc.cluster.local`).
+- Member list: Set `INFRAHUB_DB_ADDRESS` to a comma-separated list of cluster members in `host[:port]` format. Members without an explicit port use `INFRAHUB_DB_PORT`. This is useful when no single DNS name covers all members, for example with virtual machine based deployments.
+
+```bash
+INFRAHUB_DB_PROTOCOL=neo4j
+INFRAHUB_DB_ADDRESS=neo4j-core-1,neo4j-core-2,neo4j-core-3
+```
+
+In both cases the driver tries the members in turn until one answers, so the initial connection succeeds even when some members are down.
+
 ## Load balancer configuration
 
 For high availability deployments, a load balancer is useful to distribute traffic across multiple Infrahub API server instances. The load balancer must be configured to properly handle both HTTP/HTTPS and WebSocket connections.

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @font-face {
   font-family: InterVariable;
@@ -9,8 +10,6 @@
 
 @theme {
   --font-sans: InterVariable, sans-serif;
-  --color-custom-blue-700: #087895;
-  --color-custom-blue-green: #0b6581;
 }
 
 body {

@@ -10,6 +10,7 @@ We document significant architectural decisions using ADRs.
 | [0002](0002-events-system.md) | Prefect Events System | Accepted | 2024-12-26 |
 | [0003](0003-asynchronous-tasks.md) | Asynchronous Tasks Execution with Prefect | Accepted | 2024-12-26 |
 | [0004](0004-message-bus.md) | Message Bus Architecture | Accepted | 2024-12-26 |
+| [0005](0005-account-group-origin-attribute.md) | `origin` Attribute for `CoreAccountGroup` Provenance Tracking | Accepted | 2025-05-13 |
 
 ## Creating a New ADR
 

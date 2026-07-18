@@ -1,9 +1,8 @@
+import { Button, Tree } from "@infrahub/ui";
 import { ArrowLeftIcon } from "lucide-react";
 import React from "react";
 
-import { Tree } from "@/shared/components/aria/tree";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Button } from "@/shared/components/ui/button";
 
 import {
   ObjectHierarchyTree,
@@ -52,7 +51,7 @@ export function ObjectHierarchyTreeLite({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setDisplayFullTree(true)}
+        onPress={() => setDisplayFullTree(true)}
         className="w-full justify-start gap-2 px-2.5 text-custom-blue-800"
       >
         <ArrowLeftIcon className="size-3.5" /> Back

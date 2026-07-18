@@ -1,9 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useNavigate } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
@@ -31,18 +32,22 @@ export function ProposedChangesManagerToolbar({
 
         <ActiveObjectFilterTags schema={schema} className="p-0" />
 
-        <ButtonWithTooltip
-          size="sm"
-          disabled={!permission.create.isAllowed}
-          tooltipEnabled={!permission.create.isAllowed}
-          tooltipContent={permission.create.message ?? undefined}
-          onClick={() => navigate(constructPath("/proposed-changes/new"))}
-          data-testid="add-proposed-changes-button"
-          className="ml-auto"
+        <Tooltip
+          message={
+            !permission.create.isAllowed ? (permission.create.message ?? undefined) : undefined
+          }
         >
-          <Icon icon="mdi:plus" className="text-sm" />
-          New proposed change
-        </ButtonWithTooltip>
+          <Button
+            size="sm"
+            isDisabledAndFocusable={!permission.create.isAllowed}
+            onPress={() => navigate(constructPath("/proposed-changes/new"))}
+            data-testid="add-proposed-changes-button"
+            className="ml-auto"
+          >
+            <Icon icon="mdi:plus" className="text-sm" />
+            New proposed change
+          </Button>
+        </Tooltip>
       </Row>
     </>
   );

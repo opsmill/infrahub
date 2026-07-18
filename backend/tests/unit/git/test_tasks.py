@@ -1,4 +1,54 @@
-from infrahub.git.tasks import format_check_log_entry
+from dataclasses import dataclass
+from uuid import uuid4
+
+import pytest
+
+from infrahub.core.constants import RepositoryInternalStatus
+from infrahub.core.registry import registry
+from infrahub.git import InfrahubRepository
+from infrahub.git.tasks import format_check_log_entry, resolve_initial_import_branch
+
+
+@dataclass
+class ImportBranchCase:
+    name: str
+    init_failed: bool
+    reinitialized: bool
+    expected: str | None
+
+
+IMPORT_BRANCH_CASES = [
+    # A fresh clone (init raised, recreated via new) must seed its git default branch.
+    ImportBranchCase(name="freshly_created", init_failed=True, reinitialized=False, expected="production"),
+    # A re-cloned local copy (local directory was missing) must seed its git default branch.
+    ImportBranchCase(name="reinitialized", init_failed=False, reinitialized=True, expected="production"),
+    # An already-present valid clone needs no initial import.
+    ImportBranchCase(name="existing_clone", init_failed=False, reinitialized=False, expected=None),
+]
+
+
+@pytest.mark.parametrize("case", IMPORT_BRANCH_CASES, ids=[case.name for case in IMPORT_BRANCH_CASES])
+def test_resolve_initial_import_branch_uses_git_default(
+    case: ImportBranchCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The seeded branch must be the repository's git default branch, never the platform default."""
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    # The repository's git default branch ("production") differs from Infrahub's default ("main").
+    assert registry.default_branch != "production"
+    repo = InfrahubRepository(
+        id=uuid4(),
+        name="test-repository",
+        location="git@github.com:mock/test-repository.git",
+        default_branch_name="production",
+        has_origin=True,
+        cache_repo=None,
+        is_read_only=False,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        infrahub_branch_name=None,
+        reinitialized=case.reinitialized,
+    )
+
+    assert resolve_initial_import_branch(repo, init_failed=case.init_failed) == case.expected
 
 
 def test_format_check_log_entry_message_only() -> None:

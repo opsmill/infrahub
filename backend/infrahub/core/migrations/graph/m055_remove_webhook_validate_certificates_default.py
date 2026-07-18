@@ -77,6 +77,7 @@ SET new_hv.from = $at, new_hv.to = NULL
 
 class Migration055(GraphMigration):
     name: str = "055_remove_webhook_validate_certificates_default"
+    description: str = "N/A"
     queries: Sequence[type[Query]] = [Migration055Query01]
     minimum_version: int = 54
 

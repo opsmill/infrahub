@@ -89,7 +89,11 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
       .getByTestId("view-metadata-button")
       .click();
     await page.getByTestId("edit-metadata-button").click();
-    await page.getByLabel("is protected *").check();
+    await page
+      .getByRole("group", { name: "is protected" })
+      .locator("label")
+      .filter({ hasText: "True" })
+      .click();
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Metadata updated")).toBeVisible();
 
