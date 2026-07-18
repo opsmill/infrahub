@@ -293,6 +293,7 @@ class DisplayLabelNodeIDQuery(NodeIDQuery):
 
 Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
 
+<<<<<<< HEAD
 ## Recovery actions
 
 A task run can expose recovery actions through the GraphQL `Task` type's `available_actions` field, gated by the run's current state. `TaskActionGenerator` derives the action set per workflow, and `InfrahubTaskRetry` and `InfrahubTaskCancel` carry the actions out. Only `WEBHOOK_SEND` runs expose actions today; see [Webhooks](webhooks.md) for the delivery-specific behavior.
@@ -302,6 +303,17 @@ A task run can expose recovery actions through the GraphQL `Task` type's `availa
 A running flow emits a `prefect.flow-run.heartbeat` event on a fixed interval while it executes. The `crash-zombie-flows` system automation watches for the absence of these events: it keeps a per-run countdown that every expected event restarts, and marks a run `CRASHED` once the countdown lapses. This reaps runs whose worker process died without recording a terminal state, which would otherwise stay `RUNNING` indefinitely.
 
 A run waiting out a retry backoff emits nothing while it waits. The retry-wait transition is therefore registered as an expected event, anchoring the countdown at the start of that silence, and the detection window is sized above the longest configured retry backoff so a run waiting between attempts is not mistaken for a dead process. The window is derived from the webhook send retry delay plus a margin rather than hardcoded, so the relationship holds if the backoff changes. A run whose process genuinely died still lapses the window and is crashed, at the cost of the widened detection latency.
+=======
+## Failure handling
+
+### A subflow succeeds only when it is completed
+
+When inspecting a subflow's terminal state, gate on `state.is_completed()`, not on the negation of `state.is_failed()`. `is_failed()` is only one terminal failure mode — a `CANCELLED` or `CRASHED` subflow is not failed but is also not a success, so `if not state.is_failed(): return` reports those as success. Treat "completed" as the only success and every other terminal state as a failure.
+
+### Post-commit follow-up work is best-effort
+
+Work dispatched *after* an operation has already committed — the recompute and event-send follow-ups after a merge, for example — must not be able to fail or roll back the committed operation. The contract to follow for such work is log-and-continue: catch per item, log the skipped item at exception level so a partial failure is greppable rather than silent, and carry on with the rest of the batch so one failed dispatch never aborts the others. Guaranteeing eventual consistency after a transient dispatch failure is the job of a separate reconciliation/backfill job, not of the best-effort path — do not bolt retries onto it. (Not every post-commit path enforces this yet — the merge recompute does per-item; verify before assuming a given caller isolates failures.)
+>>>>>>> origin/stable
 
 ## Key Locations
 
