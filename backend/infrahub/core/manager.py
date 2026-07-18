@@ -84,6 +84,16 @@ def get_schema[SchemaProtocol](
     return node_schema
 
 
+def get_kind_str(kind: str | type | MainSchemaTypes | None) -> str:
+    if isinstance(kind, str):
+        return kind
+    if isinstance(kind, type) and issubclass(kind, CoreNode):
+        return kind.__name__
+    if isinstance(kind, MainSchemaTypes):
+        return kind.kind
+    return "Unknown kind"
+
+
 class NodeManager:
     @overload
     @classmethod
@@ -876,8 +886,7 @@ class NodeManager:
             branch_agnostic=branch_agnostic,
         )
         if not node:
-            kind_str = get_schema(db=db, branch=branch, node_schema=kind).kind
-            raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=id)
+            raise NodeNotFoundError(branch_name=branch.name, node_type=get_kind_str(kind), identifier=id)
         return node
 
     @overload
@@ -1060,8 +1069,7 @@ class NodeManager:
 
         if not result:
             if raise_on_error:
-                kind_str = get_schema(db=db, branch=branch, node_schema=kind).kind if kind else "Node"
-                raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=id)
+                raise NodeNotFoundError(branch_name=branch.name, node_type=get_kind_str(kind), identifier=id)
             return None
 
         node = result[id]
