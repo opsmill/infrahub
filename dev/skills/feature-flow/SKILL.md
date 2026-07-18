@@ -8,7 +8,7 @@ disable-model-invocation: false
 
 # Feature Flow
 
-End-to-end orchestrator for a single feature. Reuses existing repo-level slash commands and skills (`/speckit-*`, `/pre-ci`, `/git-commit`, `/git-pr`, `/capture-knowledge`) — does **not** reimplement them.
+End-to-end orchestrator for a single feature. Reuses existing repo-level slash commands and skills (`/speckit-*`, `/pre-ci`, `/git-commit`, `/pr`, `/capture-knowledge`) — does **not** reimplement them.
 
 ## Core principles
 
@@ -141,19 +141,13 @@ For **each** PR (one or many):
 
 #### 6c. Open
 
-For each approved PR branch, invoke `/git-pr` with the approved title and body:
+For each approved PR branch, invoke `/pr` to open it. The `pr` skill owns branch-safety checks, pushing, the PR description, creation, and handing CI monitoring to a background agent — feature-flow does not reimplement any of that.
 
-```
-/git-pr --title "<approved title>" --body "<approved body>"
-```
+- Give `/pr` the title and summary approved in 6b as the intended description, plus the Phase 1 spec brief for context; `/pr` presents its own final draft for approval before creating.
+- Invoke it **without** the `commit` argument — the work was already committed iteratively in Phase 3. If anything is uncommitted, `/pr` warns rather than committing drift; surface that to the user instead of working around it.
+- For split PRs with dependencies, have `/pr` target the parent branch as base and prepend a `Depends on #<sibling-PR>` line to dependent bodies; open in dependency order.
 
-`/git-pr` handles the push (setting upstream if needed) and `gh pr create` itself. It refuses to run if the working tree is dirty or if the branch has no commits ahead of base — surface either error to the user rather than working around it.
-
-For split PRs with dependencies, prepend a `Depends on #<sibling-PR>` line to dependent bodies and open in dependency order.
-
-Report the PR URL(s) returned by `/git-pr`. For split PRs, note merge order.
-
-Note: by this point, the work was already committed iteratively during Phase 3. If anything is uncommitted, `/git-pr` will refuse — do not auto-commit drift to satisfy it; surface the dirty state to the user.
+Report the PR URL(s) `/pr` returns; for split PRs, note merge order.
 
 ## Iteration notes
 
