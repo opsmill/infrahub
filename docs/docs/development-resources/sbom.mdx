@@ -1,0 +1,124 @@
+---
+title: Software Bill of Materials (SBOM)
+---
+
+# Software bill of materials (SBOM)
+
+A software bill of materials (SBOM) is a complete inventory of the components, libraries, and dependencies contained in a piece of software. SBOMs are a core building block for supply-chain security: they let you audit what ships inside an image, match it against vulnerability databases, and satisfy compliance requirements such as those described in the US Executive Order on cybersecurity.
+
+OpsMill generates and publishes a signed SBOM for every released Infrahub container image. This page explains how those SBOMs are produced and how to retrieve and verify them for the images you deploy.
+
+## How OpsMill generates SBOMs
+
+SBOMs are produced automatically by the release pipeline whenever an Infrahub image is published. You do not need to generate them yourself — they are attached to the published image and are ready to retrieve.
+
+The pipeline performs the following steps for each release:
+
+1. **Scan the image**: [Syft](https://github.com/anchore/syft) scans the published multi-architecture image and catalogs every package it contains.
+2. **Emit two formats**: Syft writes the inventory in both [SPDX](https://spdx.dev/) (`infrahub-sbom.spdx.json`) and [CycloneDX](https://cyclonedx.org/) (`infrahub-sbom.cdx.json`) JSON. Both are industry-standard formats; most security tooling accepts at least one of them.
+3. **Sign as attestations**: [Cosign](https://github.com/sigstore/cosign) attaches each SBOM to the image digest as a signed attestation. Signing is keyless — it uses [Sigstore](https://www.sigstore.dev/) and the release workflow's OpenID Connect identity rather than a long-lived private key, so the attestation is cryptographically tied to the build that produced the image.
+
+Because the SBOMs are attested against the image digest, they travel with the image: pulling the image and retrieving its SBOM always returns the inventory for exactly the bits you are running.
+
+## Prerequisites
+
+To retrieve and verify an SBOM you need:
+
+- [Cosign](https://docs.sigstore.dev/system_config/installation/) **v3 or later** installed locally. Cosign v2 is not compatible — it emits a different attestation envelope and the verification commands below will not work with it.
+- [`jq`](https://jqlang.github.io/jq/) to extract the SBOM document from the attestation payload.
+- Access to the registry that hosts the image you deploy, for example `registry.opsmill.io/opsmill/infrahub`.
+
+Set the image reference you want to inspect as a variable so the commands below can be reused:
+
+```shell
+export IMAGE="registry.opsmill.io/opsmill/infrahub:1.9.8"
+```
+
+Use the exact image reference you deploy. The attestation is attached to the image digest, so the SBOM you retrieve matches the version you run.
+
+## Verifying and retrieving the SBOM
+
+Use `cosign verify-attestation` to confirm the signature is valid **and** return the SBOM in a single step. Because signing is keyless, you must specify the signing identity and the OIDC issuer.
+
+The `jq` selector `(.payload // .dsseEnvelope.payload)` below is format-agnostic: it reads the `payload` field from cosign's legacy output and falls back to `dsseEnvelope.payload` for the newer DSSE bundle format that cosign v3 emits.
+
+### SPDX
+
+```shell
+cosign verify-attestation \
+  --type spdxjson \
+  --certificate-identity-regexp "^https://github.com/opsmill/.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  "$IMAGE"
+```
+
+If verification succeeds, cosign prints the signed attestations to standard output. Extract the SPDX document itself with `jq`:
+
+```shell
+cosign verify-attestation \
+  --type spdxjson \
+  --certificate-identity-regexp "^https://github.com/opsmill/.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  "$IMAGE" \
+  | jq -r '(.payload // .dsseEnvelope.payload)' | base64 -d | jq '.predicate' > infrahub-sbom.spdx.json
+```
+
+### CycloneDX
+
+The CycloneDX SBOM is retrieved the same way, using the `cyclonedx` attestation type:
+
+```shell
+cosign verify-attestation \
+  --type cyclonedx \
+  --certificate-identity-regexp "^https://github.com/opsmill/.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  "$IMAGE" \
+  | jq -r '(.payload // .dsseEnvelope.payload)' | base64 -d | jq '.predicate' > infrahub-sbom.cdx.json
+```
+
+:::note
+The `--certificate-identity-regexp` value must match the workflow identity that signed the image. The pattern above matches any workflow in the `opsmill` GitHub organization. Tighten it to the specific release workflow if you need a stricter trust policy, and contact OpsMill if you need the exact identity for your deployment.
+:::
+
+### Download without verifying
+
+To pull the attestation without checking the signature — for example, in an environment that cannot reach the Sigstore transparency log — use `cosign download attestation` and filter by predicate type:
+
+```shell
+# SPDX
+cosign download attestation "$IMAGE" \
+  | jq -r 'select((.payload // .dsseEnvelope.payload) | @base64d | fromjson | .predicateType == "https://spdx.dev/Document") | (.payload // .dsseEnvelope.payload)' \
+  | base64 -d | jq '.predicate' > infrahub-sbom.spdx.json
+
+# CycloneDX
+cosign download attestation "$IMAGE" \
+  | jq -r 'select((.payload // .dsseEnvelope.payload) | @base64d | fromjson | .predicateType == "https://cyclonedx.org/bom") | (.payload // .dsseEnvelope.payload)' \
+  | base64 -d | jq '.predicate' > infrahub-sbom.cdx.json
+```
+
+:::warning
+`cosign download attestation` does not verify the signature. Prefer `cosign verify-attestation` whenever your environment can reach Sigstore so you confirm the SBOM was produced by a trusted OpsMill build.
+:::
+
+## Inspecting the SBOM
+
+Once retrieved, the SBOM is a standard JSON document you can feed into your existing tooling. For example, scan it for known vulnerabilities with [Grype](https://github.com/anchore/grype):
+
+```shell
+grype sbom:infrahub-sbom.spdx.json
+```
+
+Or list the cataloged packages directly with `jq`:
+
+```shell
+jq -r '.packages[].name' infrahub-sbom.spdx.json | sort -u
+```
+
+## Reference
+
+| Artifact | Format | Filename | Standard |
+| -------- | ------ | -------- | -------- |
+| SPDX SBOM | SPDX JSON | `infrahub-sbom.spdx.json` | [spdx.dev](https://spdx.dev/) |
+| CycloneDX SBOM | CycloneDX JSON | `infrahub-sbom.cdx.json` | [cyclonedx.org](https://cyclonedx.org/) |
+
+Both SBOMs are attached to every published image digest as Cosign attestations and cover the same image; choose whichever format your security tooling consumes.

@@ -57,6 +57,10 @@ exceptions:
   - RFC
   - SIEM
   - PRI
+  - SBOM
+  - SBOMs
+  - SPDX
+  - CycloneDX
 
   # Technical terms that should keep their case
   - Python
