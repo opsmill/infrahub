@@ -43,7 +43,10 @@ export const getFormFieldsFromSchema = ({
   parentData,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
   const attributes = (schema.attributes ?? []).filter(
-    (attribute) => !isBulkUpdate || !attribute.unique
+    // In bulk update a unique attribute cannot be given a single value shared across every
+    // selected row, but an optional one can still be safely cleared to null on all of them --
+    // so keep unique + optional attributes (rendered clear-only) and drop unique + required ones.
+    (attribute) => !isBulkUpdate || !attribute.unique || attribute.optional
   );
   const relationships = getRelationshipsForForm(schema, isUpdate || isBulkUpdate).filter(
     (relationship) => !relationship.name.endsWith(FROM_RESOURCE_POOL_SUFFIX) // required in data but field is not visible

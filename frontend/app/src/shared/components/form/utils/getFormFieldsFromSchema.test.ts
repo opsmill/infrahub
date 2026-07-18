@@ -682,9 +682,13 @@ describe("getFormFieldsFromSchema", () => {
     });
   });
 
-  it("removes unique fields when isBulkUpdate is true", () => {
+  it("removes unique required fields when isBulkUpdate is true", () => {
     // GIVEN
-    const uniqueAttribute = generateAttributeSchema({ name: "unique_field", unique: true });
+    const uniqueAttribute = generateAttributeSchema({
+      name: "unique_field",
+      unique: true,
+      optional: false,
+    });
     const notUniqueAttribute = generateAttributeSchema({ name: "non_unique_field", unique: false });
 
     const schema = {
