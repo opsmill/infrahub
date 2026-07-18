@@ -228,7 +228,10 @@ class MyQuery(Query):
 
 ### Type a closed value set as an enum, not `str`
 
-When a field or argument accepts only a fixed set of values, model it as an enum, never a bare `str`. A bare `str` lets a typo through silently and hides the valid set from readers and from the schema. Subclass `str` so the value round-trips as text — `StrEnum` on the backend (Python 3.11+); use `class X(str, Enum)` for code shared with `python_testcontainers` (which targets 3.10).
+When a field or argument accepts only a fixed set of values, don't type it as a bare `str` — a bare `str` lets a typo through silently and hides the valid set from readers and from the schema. Use one of:
+
+- **`Literal["a", "b"]`** — the lighter option for a small closed set used in a **single file**. Still type-checked, no class to declare.
+- **An enum** — when the set is shared across modules, needs a name, round-trips through the database, or is exposed over GraphQL. Subclass `str` so the value round-trips as text — `StrEnum` on the backend (Python 3.11+); use `class X(str, Enum)` for code shared with `python_testcontainers` (which targets 3.10).
 
 ```python
 # ❌ Bad - any string is accepted; a typo silently bypasses downstream logic
