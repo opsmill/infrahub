@@ -141,11 +141,17 @@ For **each** PR (one or many):
 
 #### 6c. Open
 
-For each approved PR branch, invoke `/pr` to open it. The `pr` skill owns branch-safety checks, pushing, the PR description, creation, and handing CI monitoring to a background agent — feature-flow does not reimplement any of that.
+For each approved PR branch, delegate PR creation to `/pr` — it owns the PR description, `gh pr create`, and the CI-monitoring handoff. feature-flow's job here is to satisfy `/pr`'s preconditions and pass context, not to reimplement PR creation.
 
-- Give `/pr` the title and summary approved in 6b as the intended description, plus the Phase 1 spec brief for context; `/pr` presents its own final draft for approval before creating.
-- Invoke it **without** the `commit` argument — the work was already committed iteratively in Phase 3. If anything is uncommitted, `/pr` warns rather than committing drift; surface that to the user instead of working around it.
-- For split PRs with dependencies, have `/pr` target the parent branch as base and prepend a `Depends on #<sibling-PR>` line to dependent bodies; open in dependency order.
+**Before invoking `/pr`, for the branch being opened:**
+
+1. **Require a clean working tree.** Run `git status --porcelain`; if it is non-empty, **STOP** and surface the uncommitted changes to the user. The work should already be committed from Phase 3 — do not open a PR that silently omits drift, and do not auto-commit to work around it. (`/pr` without `commit` only *warns* about a dirty tree and then continues; the orchestrator enforces the hard stop the old flow had.)
+2. **Publish the branch:** `git push -u origin "$(git branch --show-current)"` (a no-op if already up to date). `/pr` invoked without `commit` does not push, so the branch must exist on origin first — otherwise `gh pr create` stalls on an unpushed branch.
+
+**Then invoke `/pr` without the `commit` argument** (Phase 3 already committed):
+
+- Give it the 6b-approved title and summary as the intended description, plus the Phase 1 spec brief for context; `/pr` presents its own final draft for approval before creating.
+- **Base branch:** `/pr` selects the repository's default base itself. For a **dependent** split PR whose base must be a *parent feature branch*, `/pr` cannot pick that base — after it opens the PR, retarget with `gh pr edit <pr> --base <parent-branch>`, then verify the diff shows only that PR's own commits. Add a `Depends on #<parent-PR>` line and open in dependency order.
 
 Report the PR URL(s) `/pr` returns; for split PRs, note merge order.
 
