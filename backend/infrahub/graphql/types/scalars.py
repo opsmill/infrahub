@@ -69,6 +69,10 @@ class NonNegativeInt(Scalar):
     def _validate(value: Any) -> int | None:
         """Validate that the value is a non-negative integer.
 
+        Booleans, strings and fractional floats are rejected so that variable
+        inputs are validated as strictly as inline integer literals, matching the
+        integer contract of the built-in Int scalar.
+
         Args:
            value: The value to validate.
 
@@ -76,17 +80,18 @@ class NonNegativeInt(Scalar):
            The validated non-negative integer or None if the input is None.
 
         Raises:
-           ValidationError: If the value is negative or cannot be converted to int.
+           ValidationError: If the value is not a non-negative integer.
 
         """
         if value is None:
             return None
 
-        try:
-            value = int(value)
-        except (ValueError, TypeError) as exc:
-            raise ValidationError("Value must be a non-negative integer") from exc
+        is_integer = isinstance(value, int) and not isinstance(value, bool)
+        is_whole_float = isinstance(value, float) and value.is_integer()
+        if not (is_integer or is_whole_float):
+            raise ValidationError("Value must be a non-negative integer")
 
+        value = int(value)
         if value < 0:
             raise ValidationError("Value must be a non-negative integer")
 

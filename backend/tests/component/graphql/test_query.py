@@ -219,3 +219,47 @@ async def test_builtin_tag_rejects_negative_limit_with_query_variables(
         == "Expected value of type 'NonNegativeInt', found -1; Value must be a non-negative integer"
     )
     assert result.errors[0].path is None
+
+
+async def test_builtin_tag_rejects_fractional_limit_variable(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Reject a fractional limit passed as a variable instead of truncating it."""
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="query ($limit: NonNegativeInt) { BuiltinTag(limit: $limit) { count } }",
+        context_value=gql_params.context,
+        variable_values={"limit": 1.9},
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert (
+        result.errors[0].message == "Variable '$limit' got invalid value 1.9; Expected type 'NonNegativeInt'. "
+        "Value must be a non-negative integer"
+    )
+
+
+async def test_builtin_tag_rejects_boolean_limit_variable(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Reject a boolean limit passed as a variable instead of coercing it to an integer."""
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="query ($limit: NonNegativeInt) { BuiltinTag(limit: $limit) { count } }",
+        context_value=gql_params.context,
+        variable_values={"limit": True},
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert (
+        result.errors[0].message == "Variable '$limit' got invalid value True; Expected type 'NonNegativeInt'. "
+        "Value must be a non-negative integer"
+    )
