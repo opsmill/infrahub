@@ -88,6 +88,26 @@ Stores attribute values. Labels always include `AttributeValue`. Labels include 
 
 **Sharing via `MERGE`**: `AttributeValue` nodes are de-duplicated on `value` + `is_default`. Any two attributes with identical serialized values reference the same node. Migrations that modify values must create new nodes and transfer `HAS_VALUE` edges rather than updating in place, or they risk corrupting unrelated attributes.
 
+### IP attribute values (AttributeIPHost / AttributeIPNetwork / AttributeIPAddress)
+
+IP-typed attributes store their value on a dedicated, additionally-labelled value node so a binary form of the address can be range-indexed for prefix/containment lookups. The node keeps the base `AttributeValue`/`AttributeValueIndexed` labels and adds one of:
+
+| Label | Attribute kind | Python mapping | Stores |
+|-------|----------------|----------------|--------|
+| `AttributeIPHost` | `IPHost` | `ipaddress.ip_interface` | address **with** prefix (e.g. `192.0.2.1/24`) |
+| `AttributeIPNetwork` | `IPNetwork` | `ipaddress.ip_network` | network with prefix (e.g. `192.0.2.0/24`) |
+| `AttributeIPAddress` | `IPAddress` | `ipaddress.ip_address` | **bare** address, no prefix (e.g. `192.0.2.1`) |
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `value` | string | Canonical serialized value |
+| `is_default` | boolean | Whether this is a default value |
+| `binary_address` | string | Zero-padded binary form (`max_prefixlen` bits), RANGE-indexed |
+| `version` | integer | `4` or `6` |
+| `prefixlen` | integer | Prefix length — present on `AttributeIPHost`/`AttributeIPNetwork` only; **absent** on `AttributeIPAddress` |
+
+Which label is applied is driven by `AttributeDBNodeType` (`backend/infrahub/core/constants`), selected by each attribute class's `get_db_node_type()`. The write path partitions attributes per DB node type and `MERGE`s onto the matching label (`backend/infrahub/core/query/node.py`); the RANGE index on `binary_address` per label lives in `backend/infrahub/core/graph/index.py`. Introducing a new IP-family node type is additive: new labels apply to newly-written values only, so no data backfill is required — a migration just needs to create the new index, and `GRAPH_VERSION` is bumped.
+
 ### Boolean
 
 Stores boolean values for Boolean attributes and `IS_PROTECTED` metadata edges. Label: `Boolean`.
