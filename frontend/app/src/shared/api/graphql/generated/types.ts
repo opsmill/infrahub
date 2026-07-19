@@ -39,7 +39,7 @@ export type Scalars = {
    * This scalar ensures that values are integers >= 0. It accepts None (null in GraphQL)
    * and rejects negative integers by raising ValidationError.
    */
-  NonNegativeInt: { input: unknown; output: unknown; }
+  NonNegativeInt: { input: number; output: number; }
 };
 
 export type AccountGlobalPermissionEdge = {

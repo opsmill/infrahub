@@ -24,6 +24,7 @@ const config: CodegenConfig = {
           DateTime: "string",
           FixedGenericScalar: "any",
           GenericScalar: "any",
+          NonNegativeInt: "number",
         },
       },
     },
