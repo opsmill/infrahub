@@ -34,10 +34,12 @@ export type Scalars = {
    */
   GenericScalar: { input: any; output: any; }
   /**
-   * A GraphQL scalar type that validates non-negative integer values.
+   * A GraphQL scalar that validates non-negative integer values.
    *
-   * This scalar ensures that values are integers >= 0. It accepts None (null in GraphQL)
-   * and rejects negative integers by raising ValidationError.
+   * It accepts integers >= 0 (and whole-number floats, matching the built-in Int
+   * scalar) and rejects negative, fractional or non-integer values by raising
+   * ValidationError, which the executor wraps with the argument type name and
+   * source location.
    */
   NonNegativeInt: { input: number; output: number; }
 };
@@ -534,13 +536,13 @@ export type BuiltinIpAddressMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -552,8 +554,8 @@ export type BuiltinIpAddressProfilesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -590,13 +592,13 @@ export type BuiltinIpAddressSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -653,8 +655,8 @@ export type BuiltinIpNamespaceIp_AddressesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -691,7 +693,7 @@ export type BuiltinIpNamespaceIp_PrefixesArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -707,7 +709,7 @@ export type BuiltinIpNamespaceIp_PrefixesArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -744,13 +746,13 @@ export type BuiltinIpNamespaceMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -762,8 +764,8 @@ export type BuiltinIpNamespaceProfilesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -800,13 +802,13 @@ export type BuiltinIpNamespaceSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -900,7 +902,7 @@ export type BuiltinIpPrefixAncestorsArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -916,7 +918,7 @@ export type BuiltinIpPrefixAncestorsArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -963,7 +965,7 @@ export type BuiltinIpPrefixChildrenArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -979,7 +981,7 @@ export type BuiltinIpPrefixChildrenArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -1026,7 +1028,7 @@ export type BuiltinIpPrefixDescendantsArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -1042,7 +1044,7 @@ export type BuiltinIpPrefixDescendantsArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -1075,8 +1077,8 @@ export type BuiltinIpPrefixIp_AddressesArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1104,13 +1106,13 @@ export type BuiltinIpPrefixMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1123,8 +1125,8 @@ export type BuiltinIpPrefixProfilesArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -1144,8 +1146,8 @@ export type BuiltinIpPrefixResource_PoolArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1173,13 +1175,13 @@ export type BuiltinIpPrefixSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1246,13 +1248,13 @@ export type BuiltinTagMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1264,8 +1266,8 @@ export type BuiltinTagProfilesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -1302,13 +1304,13 @@ export type BuiltinTagSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1499,13 +1501,13 @@ export type CoreAccountMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1532,13 +1534,13 @@ export type CoreAccountSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1615,13 +1617,13 @@ export type CoreAccountGroupAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1648,13 +1650,13 @@ export type CoreAccountGroupChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1681,13 +1683,13 @@ export type CoreAccountGroupDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1697,8 +1699,8 @@ export type CoreAccountGroupMembersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1711,13 +1713,13 @@ export type CoreAccountGroupRolesArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1727,8 +1729,8 @@ export type CoreAccountGroupSubscribersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1842,13 +1844,13 @@ export type CoreAccountRoleGroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -1880,13 +1882,13 @@ export type CoreAccountRoleMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1905,8 +1907,8 @@ export type CoreAccountRolePermissionsArgs = {
   identifier__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -1933,13 +1935,13 @@ export type CoreAccountRoleSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2080,13 +2082,13 @@ export type CoreActionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2113,13 +2115,13 @@ export type CoreActionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2146,13 +2148,13 @@ export type CoreActionTriggersArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2225,13 +2227,13 @@ export type CoreArtifactMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2258,13 +2260,13 @@ export type CoreArtifactSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2328,13 +2330,13 @@ export type CoreArtifactCheckMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2361,13 +2363,13 @@ export type CoreArtifactCheckSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2564,13 +2566,13 @@ export type CoreArtifactDefinitionArtifactsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -2612,13 +2614,13 @@ export type CoreArtifactDefinitionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2645,13 +2647,13 @@ export type CoreArtifactDefinitionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2678,8 +2680,8 @@ export type CoreArtifactDefinitionValidatorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -2818,13 +2820,13 @@ export type CoreArtifactTargetArtifactsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -2866,13 +2868,13 @@ export type CoreArtifactTargetMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2899,13 +2901,13 @@ export type CoreArtifactTargetSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -2955,8 +2957,8 @@ export type CoreArtifactThreadCommentsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   text__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   text__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -2988,13 +2990,13 @@ export type CoreArtifactThreadMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3021,13 +3023,13 @@ export type CoreArtifactThreadSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3215,7 +3217,7 @@ export type CoreArtifactValidatorChecksArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   message__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   message__owner__id?: InputMaybe<Scalars['ID']['input']>;
   message__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -3226,7 +3228,7 @@ export type CoreArtifactValidatorChecksArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -3263,13 +3265,13 @@ export type CoreArtifactValidatorMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3296,13 +3298,13 @@ export type CoreArtifactValidatorSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3427,13 +3429,13 @@ export type CoreBasePermissionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3445,13 +3447,13 @@ export type CoreBasePermissionRolesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3478,13 +3480,13 @@ export type CoreBasePermissionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3542,13 +3544,13 @@ export type CoreChangeCommentMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3575,13 +3577,13 @@ export type CoreChangeCommentSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3666,8 +3668,8 @@ export type CoreChangeThreadCommentsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   text__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   text__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -3699,13 +3701,13 @@ export type CoreChangeThreadMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3732,13 +3734,13 @@ export type CoreChangeThreadSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3853,13 +3855,13 @@ export type CoreCheckMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3886,13 +3888,13 @@ export type CoreCheckSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3948,13 +3950,13 @@ export type CoreCheckDefinitionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -3981,13 +3983,13 @@ export type CoreCheckDefinitionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4004,13 +4006,13 @@ export type CoreCheckDefinitionTagsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4037,8 +4039,8 @@ export type CoreCheckDefinitionValidatorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -4209,13 +4211,13 @@ export type CoreCommentMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4242,13 +4244,13 @@ export type CoreCommentSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4305,13 +4307,13 @@ export type CoreCredentialMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4338,13 +4340,13 @@ export type CoreCredentialSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4413,13 +4415,13 @@ export type CoreCustomWebhookHeadersArgs = {
   key__source__id?: InputMaybe<Scalars['ID']['input']>;
   key__value?: InputMaybe<Scalars['String']['input']>;
   key__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   value__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   value__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -4451,13 +4453,13 @@ export type CoreCustomWebhookMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4484,13 +4486,13 @@ export type CoreCustomWebhookSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4654,13 +4656,13 @@ export type CoreDataCheckMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4687,13 +4689,13 @@ export type CoreDataCheckSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4858,7 +4860,7 @@ export type CoreDataValidatorChecksArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   message__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   message__owner__id?: InputMaybe<Scalars['ID']['input']>;
   message__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -4869,7 +4871,7 @@ export type CoreDataValidatorChecksArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -4906,13 +4908,13 @@ export type CoreDataValidatorMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -4939,13 +4941,13 @@ export type CoreDataValidatorSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5072,13 +5074,13 @@ export type CoreEnvKeyValueMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5105,13 +5107,13 @@ export type CoreEnvKeyValueSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5240,13 +5242,13 @@ export type CoreFileCheckMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5273,13 +5275,13 @@ export type CoreFileCheckSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5431,13 +5433,13 @@ export type CoreFileObjectMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5464,13 +5466,13 @@ export type CoreFileObjectSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5520,8 +5522,8 @@ export type CoreFileThreadCommentsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   text__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   text__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -5553,13 +5555,13 @@ export type CoreFileThreadMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5586,13 +5588,13 @@ export type CoreFileThreadSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5720,13 +5722,13 @@ export type CoreGeneratorActionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5753,13 +5755,13 @@ export type CoreGeneratorActionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5786,13 +5788,13 @@ export type CoreGeneratorActionTriggersArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5911,13 +5913,13 @@ export type CoreGeneratorAwareGroupAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5944,13 +5946,13 @@ export type CoreGeneratorAwareGroupChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5977,13 +5979,13 @@ export type CoreGeneratorAwareGroupDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -5993,8 +5995,8 @@ export type CoreGeneratorAwareGroupMembersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6004,8 +6006,8 @@ export type CoreGeneratorAwareGroupSubscribersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6129,13 +6131,13 @@ export type CoreGeneratorCheckMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6162,13 +6164,13 @@ export type CoreGeneratorCheckSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6317,13 +6319,13 @@ export type CoreGeneratorDefinitionInstancesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   status__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -6355,13 +6357,13 @@ export type CoreGeneratorDefinitionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6388,13 +6390,13 @@ export type CoreGeneratorDefinitionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6421,8 +6423,8 @@ export type CoreGeneratorDefinitionValidatorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -6602,13 +6604,13 @@ export type CoreGeneratorGroupAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6635,13 +6637,13 @@ export type CoreGeneratorGroupChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6668,13 +6670,13 @@ export type CoreGeneratorGroupDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6684,8 +6686,8 @@ export type CoreGeneratorGroupMembersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6695,8 +6697,8 @@ export type CoreGeneratorGroupSubscribersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6809,13 +6811,13 @@ export type CoreGeneratorInstanceMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6842,13 +6844,13 @@ export type CoreGeneratorInstanceSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -6963,7 +6965,7 @@ export type CoreGeneratorValidatorChecksArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   message__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   message__owner__id?: InputMaybe<Scalars['ID']['input']>;
   message__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -6974,7 +6976,7 @@ export type CoreGeneratorValidatorChecksArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -7011,13 +7013,13 @@ export type CoreGeneratorValidatorMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7044,13 +7046,13 @@ export type CoreGeneratorValidatorSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7180,13 +7182,13 @@ export type CoreGenericAccountMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7213,13 +7215,13 @@ export type CoreGenericAccountSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7297,13 +7299,13 @@ export type CoreGenericRepositoryChecksArgs = {
   file_path__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -7370,13 +7372,13 @@ export type CoreGenericRepositoryGeneratorsArgs = {
   fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -7413,13 +7415,13 @@ export type CoreGenericRepositoryGroups_ObjectsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7446,13 +7448,13 @@ export type CoreGenericRepositoryMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7484,7 +7486,7 @@ export type CoreGenericRepositoryQueriesArgs = {
   height__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   models__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   models__owner__id?: InputMaybe<Scalars['ID']['input']>;
   models__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -7495,7 +7497,7 @@ export type CoreGenericRepositoryQueriesArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   operations__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   operations__owner__id?: InputMaybe<Scalars['ID']['input']>;
   operations__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -7537,13 +7539,13 @@ export type CoreGenericRepositorySubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7560,13 +7562,13 @@ export type CoreGenericRepositoryTagsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7603,13 +7605,13 @@ export type CoreGenericRepositoryTransformationsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   timeout__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   timeout__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -7694,13 +7696,13 @@ export type CoreGlobalPermissionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7712,13 +7714,13 @@ export type CoreGlobalPermissionRolesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7745,13 +7747,13 @@ export type CoreGlobalPermissionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7876,13 +7878,13 @@ export type CoreGraphQlQueryMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7909,13 +7911,13 @@ export type CoreGraphQlQueryQuery_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -7947,13 +7949,13 @@ export type CoreGraphQlQuerySubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -7970,13 +7972,13 @@ export type CoreGraphQlQueryTagsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8055,13 +8057,13 @@ export type CoreGraphQlQueryGroupAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8088,13 +8090,13 @@ export type CoreGraphQlQueryGroupChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8121,13 +8123,13 @@ export type CoreGraphQlQueryGroupDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8137,8 +8139,8 @@ export type CoreGraphQlQueryGroupMembersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8148,8 +8150,8 @@ export type CoreGraphQlQueryGroupSubscribersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8319,13 +8321,13 @@ export type CoreGroupAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8352,13 +8354,13 @@ export type CoreGroupChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8385,13 +8387,13 @@ export type CoreGroupDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8401,8 +8403,8 @@ export type CoreGroupMembersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8412,8 +8414,8 @@ export type CoreGroupSubscribersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8460,13 +8462,13 @@ export type CoreGroupActionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8493,13 +8495,13 @@ export type CoreGroupActionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8526,13 +8528,13 @@ export type CoreGroupActionTriggersArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8660,13 +8662,13 @@ export type CoreGroupTriggerRuleMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8693,13 +8695,13 @@ export type CoreGroupTriggerRuleSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8856,13 +8858,13 @@ export type CoreIpAddressPoolMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -8899,7 +8901,7 @@ export type CoreIpAddressPoolResourcesArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -8915,7 +8917,7 @@ export type CoreIpAddressPoolResourcesArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -8952,13 +8954,13 @@ export type CoreIpAddressPoolSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9067,13 +9069,13 @@ export type CoreIpPoolMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9100,13 +9102,13 @@ export type CoreIpPoolSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9169,13 +9171,13 @@ export type CoreIpPrefixPoolMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9212,7 +9214,7 @@ export type CoreIpPrefixPoolResourcesArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9228,7 +9230,7 @@ export type CoreIpPrefixPoolResourcesArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9265,13 +9267,13 @@ export type CoreIpPrefixPoolSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9394,13 +9396,13 @@ export type CoreKeyValueMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9427,13 +9429,13 @@ export type CoreKeyValueSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9521,7 +9523,7 @@ export type CoreMenuAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9532,7 +9534,7 @@ export type CoreMenuAncestorsArgs = {
   namespace__source__id?: InputMaybe<Scalars['ID']['input']>;
   namespace__value?: InputMaybe<Scalars['String']['input']>;
   namespace__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   order_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   order_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9589,7 +9591,7 @@ export type CoreMenuChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9600,7 +9602,7 @@ export type CoreMenuChildrenArgs = {
   namespace__source__id?: InputMaybe<Scalars['ID']['input']>;
   namespace__value?: InputMaybe<Scalars['String']['input']>;
   namespace__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   order_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   order_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9657,7 +9659,7 @@ export type CoreMenuDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9668,7 +9670,7 @@ export type CoreMenuDescendantsArgs = {
   namespace__source__id?: InputMaybe<Scalars['ID']['input']>;
   namespace__value?: InputMaybe<Scalars['String']['input']>;
   namespace__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   order_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   order_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9721,13 +9723,13 @@ export type CoreMenuMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9755,13 +9757,13 @@ export type CoreMenuSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -9828,7 +9830,7 @@ export type CoreMenuItemAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9839,7 +9841,7 @@ export type CoreMenuItemAncestorsArgs = {
   namespace__source__id?: InputMaybe<Scalars['ID']['input']>;
   namespace__value?: InputMaybe<Scalars['String']['input']>;
   namespace__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   order_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   order_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9896,7 +9898,7 @@ export type CoreMenuItemChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9907,7 +9909,7 @@ export type CoreMenuItemChildrenArgs = {
   namespace__source__id?: InputMaybe<Scalars['ID']['input']>;
   namespace__value?: InputMaybe<Scalars['String']['input']>;
   namespace__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   order_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   order_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9964,7 +9966,7 @@ export type CoreMenuItemDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -9975,7 +9977,7 @@ export type CoreMenuItemDescendantsArgs = {
   namespace__source__id?: InputMaybe<Scalars['ID']['input']>;
   namespace__value?: InputMaybe<Scalars['String']['input']>;
   namespace__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   order_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   order_weight__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -10028,13 +10030,13 @@ export type CoreMenuItemMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10062,13 +10064,13 @@ export type CoreMenuItemSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10243,13 +10245,13 @@ export type CoreNodeMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10276,13 +10278,13 @@ export type CoreNodeSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10330,13 +10332,13 @@ export type CoreNodeTriggerAttributeMatchMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10363,13 +10365,13 @@ export type CoreNodeTriggerAttributeMatchSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10485,13 +10487,13 @@ export type CoreNodeTriggerMatchMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10518,13 +10520,13 @@ export type CoreNodeTriggerMatchSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10586,13 +10588,13 @@ export type CoreNodeTriggerRelationshipMatchMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10619,13 +10621,13 @@ export type CoreNodeTriggerRelationshipMatchSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10731,8 +10733,8 @@ export type CoreNodeTriggerRule = CoreNode & CoreTriggerRule & {
 export type CoreNodeTriggerRuleMatchesArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10759,13 +10761,13 @@ export type CoreNodeTriggerRuleMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10792,13 +10794,13 @@ export type CoreNodeTriggerRuleSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10958,13 +10960,13 @@ export type CoreNumberPoolMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -10991,13 +10993,13 @@ export type CoreNumberPoolSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11114,13 +11116,13 @@ export type CoreObjectComponentTemplateMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11147,13 +11149,13 @@ export type CoreObjectComponentTemplateSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11220,13 +11222,13 @@ export type CoreObjectPermissionMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11238,13 +11240,13 @@ export type CoreObjectPermissionRolesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11271,13 +11273,13 @@ export type CoreObjectPermissionSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11391,13 +11393,13 @@ export type CoreObjectTemplateMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11424,13 +11426,13 @@ export type CoreObjectTemplateSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11477,8 +11479,8 @@ export type CoreObjectThreadCommentsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   text__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   text__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -11510,13 +11512,13 @@ export type CoreObjectThreadMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11543,13 +11545,13 @@ export type CoreObjectThreadSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11663,13 +11665,13 @@ export type CorePasswordCredentialMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11696,13 +11698,13 @@ export type CorePasswordCredentialSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11806,13 +11808,13 @@ export type CoreProfileMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11839,13 +11841,13 @@ export type CoreProfileSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -11922,13 +11924,13 @@ export type CoreProposedChangeApproved_ByArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   password__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   password__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -11950,8 +11952,8 @@ export type CoreProposedChangeCommentsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   text__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   text__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -11983,13 +11985,13 @@ export type CoreProposedChangeMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -12016,13 +12018,13 @@ export type CoreProposedChangeRejected_ByArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   password__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   password__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12059,13 +12061,13 @@ export type CoreProposedChangeReviewersArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   password__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   password__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12102,13 +12104,13 @@ export type CoreProposedChangeSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -12122,8 +12124,8 @@ export type CoreProposedChangeThreadsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   resolved__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   resolved__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12155,8 +12157,8 @@ export type CoreProposedChangeValidationsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   started_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   started_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12317,13 +12319,13 @@ export type CoreReadOnlyRepositoryChecksArgs = {
   file_path__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12390,13 +12392,13 @@ export type CoreReadOnlyRepositoryGeneratorsArgs = {
   fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12433,13 +12435,13 @@ export type CoreReadOnlyRepositoryGroups_ObjectsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -12466,13 +12468,13 @@ export type CoreReadOnlyRepositoryMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -12504,7 +12506,7 @@ export type CoreReadOnlyRepositoryQueriesArgs = {
   height__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   models__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   models__owner__id?: InputMaybe<Scalars['ID']['input']>;
   models__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12515,7 +12517,7 @@ export type CoreReadOnlyRepositoryQueriesArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   operations__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   operations__owner__id?: InputMaybe<Scalars['ID']['input']>;
   operations__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12557,13 +12559,13 @@ export type CoreReadOnlyRepositorySubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -12580,13 +12582,13 @@ export type CoreReadOnlyRepositoryTagsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -12623,13 +12625,13 @@ export type CoreReadOnlyRepositoryTransformationsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   timeout__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   timeout__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12812,13 +12814,13 @@ export type CoreRepositoryChecksArgs = {
   file_path__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12885,13 +12887,13 @@ export type CoreRepositoryGeneratorsArgs = {
   fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12928,13 +12930,13 @@ export type CoreRepositoryGroups_ObjectsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -12961,13 +12963,13 @@ export type CoreRepositoryMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -12999,7 +13001,7 @@ export type CoreRepositoryQueriesArgs = {
   height__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   models__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   models__owner__id?: InputMaybe<Scalars['ID']['input']>;
   models__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -13010,7 +13012,7 @@ export type CoreRepositoryQueriesArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   operations__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   operations__owner__id?: InputMaybe<Scalars['ID']['input']>;
   operations__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -13052,13 +13054,13 @@ export type CoreRepositorySubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13075,13 +13077,13 @@ export type CoreRepositoryTagsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13118,13 +13120,13 @@ export type CoreRepositoryTransformationsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   timeout__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   timeout__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -13222,13 +13224,13 @@ export type CoreRepositoryGroupAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13255,13 +13257,13 @@ export type CoreRepositoryGroupChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13288,13 +13290,13 @@ export type CoreRepositoryGroupDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13304,8 +13306,8 @@ export type CoreRepositoryGroupMembersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13315,8 +13317,8 @@ export type CoreRepositoryGroupSubscribersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13523,7 +13525,7 @@ export type CoreRepositoryValidatorChecksArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   message__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   message__owner__id?: InputMaybe<Scalars['ID']['input']>;
   message__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -13534,7 +13536,7 @@ export type CoreRepositoryValidatorChecksArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -13571,13 +13573,13 @@ export type CoreRepositoryValidatorMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13604,13 +13606,13 @@ export type CoreRepositoryValidatorSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13733,13 +13735,13 @@ export type CoreResourcePoolMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13766,13 +13768,13 @@ export type CoreResourcePoolSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13846,13 +13848,13 @@ export type CoreSchemaCheckMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -13879,13 +13881,13 @@ export type CoreSchemaCheckSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14044,7 +14046,7 @@ export type CoreSchemaValidatorChecksArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   message__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   message__owner__id?: InputMaybe<Scalars['ID']['input']>;
   message__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -14055,7 +14057,7 @@ export type CoreSchemaValidatorChecksArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -14092,13 +14094,13 @@ export type CoreSchemaValidatorMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14125,13 +14127,13 @@ export type CoreSchemaValidatorSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14265,13 +14267,13 @@ export type CoreStandardCheckMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14298,13 +14300,13 @@ export type CoreStandardCheckSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14444,13 +14446,13 @@ export type CoreStandardGroupAncestorsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14477,13 +14479,13 @@ export type CoreStandardGroupChildrenArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14510,13 +14512,13 @@ export type CoreStandardGroupDescendantsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14526,8 +14528,8 @@ export type CoreStandardGroupMembersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14537,8 +14539,8 @@ export type CoreStandardGroupSubscribersArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14657,13 +14659,13 @@ export type CoreStandardWebhookHeadersArgs = {
   key__source__id?: InputMaybe<Scalars['ID']['input']>;
   key__value?: InputMaybe<Scalars['String']['input']>;
   key__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   value__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   value__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -14695,13 +14697,13 @@ export type CoreStandardWebhookMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14728,13 +14730,13 @@ export type CoreStandardWebhookSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14882,13 +14884,13 @@ export type CoreStaticKeyValueMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -14915,13 +14917,13 @@ export type CoreStaticKeyValueSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15030,13 +15032,13 @@ export type CoreTaskTargetMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15063,13 +15065,13 @@ export type CoreTaskTargetSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15111,8 +15113,8 @@ export type CoreThreadCommentsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   text__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   text__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -15144,13 +15146,13 @@ export type CoreThreadMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15177,13 +15179,13 @@ export type CoreThreadSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15225,13 +15227,13 @@ export type CoreThreadCommentMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15258,13 +15260,13 @@ export type CoreThreadCommentSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15400,13 +15402,13 @@ export type CoreTransformJinja2Artifact_DefinitionsArgs = {
   fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -15438,13 +15440,13 @@ export type CoreTransformJinja2Member_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15471,13 +15473,13 @@ export type CoreTransformJinja2Subscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15494,13 +15496,13 @@ export type CoreTransformJinja2TagsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15663,13 +15665,13 @@ export type CoreTransformPythonArtifact_DefinitionsArgs = {
   fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -15701,13 +15703,13 @@ export type CoreTransformPythonMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15734,13 +15736,13 @@ export type CoreTransformPythonSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15757,13 +15759,13 @@ export type CoreTransformPythonTagsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -15931,13 +15933,13 @@ export type CoreTransformationArtifact_DefinitionsArgs = {
   fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -15969,13 +15971,13 @@ export type CoreTransformationMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16002,13 +16004,13 @@ export type CoreTransformationSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16025,13 +16027,13 @@ export type CoreTransformationTagsArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16107,13 +16109,13 @@ export type CoreTriggerRuleMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16140,13 +16142,13 @@ export type CoreTriggerRuleSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16227,7 +16229,7 @@ export type CoreUserValidatorChecksArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   message__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   message__owner__id?: InputMaybe<Scalars['ID']['input']>;
   message__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -16238,7 +16240,7 @@ export type CoreUserValidatorChecksArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -16275,13 +16277,13 @@ export type CoreUserValidatorMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16308,13 +16310,13 @@ export type CoreUserValidatorSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16454,7 +16456,7 @@ export type CoreValidatorChecksArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   message__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   message__owner__id?: InputMaybe<Scalars['ID']['input']>;
   message__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -16465,7 +16467,7 @@ export type CoreValidatorChecksArgs = {
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -16502,13 +16504,13 @@ export type CoreValidatorMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16535,13 +16537,13 @@ export type CoreValidatorSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16614,13 +16616,13 @@ export type CoreWebhookHeadersArgs = {
   key__source__id?: InputMaybe<Scalars['ID']['input']>;
   key__value?: InputMaybe<Scalars['String']['input']>;
   key__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   value__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   value__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -16652,13 +16654,13 @@ export type CoreWebhookMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16685,13 +16687,13 @@ export type CoreWebhookSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16761,13 +16763,13 @@ export type CoreWeightedPoolResourceMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -16794,13 +16796,13 @@ export type CoreWeightedPoolResourceSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18335,13 +18337,13 @@ export type InternalAccountTokenMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18368,13 +18370,13 @@ export type InternalAccountTokenSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18420,13 +18422,13 @@ export type InternalExternalIdentityMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18453,13 +18455,13 @@ export type InternalExternalIdentitySubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18535,7 +18537,7 @@ export type InternalIpPrefixAvailableAncestorsArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -18551,7 +18553,7 @@ export type InternalIpPrefixAvailableAncestorsArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -18598,7 +18600,7 @@ export type InternalIpPrefixAvailableChildrenArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -18614,7 +18616,7 @@ export type InternalIpPrefixAvailableChildrenArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -18661,7 +18663,7 @@ export type InternalIpPrefixAvailableDescendantsArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -18677,7 +18679,7 @@ export type InternalIpPrefixAvailableDescendantsArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -18710,8 +18712,8 @@ export type InternalIpPrefixAvailableIp_AddressesArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18739,13 +18741,13 @@ export type InternalIpPrefixAvailableMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18758,8 +18760,8 @@ export type InternalIpPrefixAvailableProfilesArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -18779,8 +18781,8 @@ export type InternalIpPrefixAvailableResource_PoolArgs = {
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18808,13 +18810,13 @@ export type InternalIpPrefixAvailableSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18861,13 +18863,13 @@ export type InternalIpRangeAvailableMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18879,8 +18881,8 @@ export type InternalIpRangeAvailableProfilesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -18917,13 +18919,13 @@ export type InternalIpRangeAvailableSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18965,13 +18967,13 @@ export type InternalRefreshTokenMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -18998,13 +19000,13 @@ export type InternalRefreshTokenSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -19045,8 +19047,8 @@ export type IpamNamespaceIp_AddressesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -19083,7 +19085,7 @@ export type IpamNamespaceIp_PrefixesArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -19099,7 +19101,7 @@ export type IpamNamespaceIp_PrefixesArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -19136,13 +19138,13 @@ export type IpamNamespaceMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -19154,8 +19156,8 @@ export type IpamNamespaceProfilesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -19192,13 +19194,13 @@ export type IpamNamespaceSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -24510,13 +24512,13 @@ export type ProfileBuiltinIpAddressMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -24538,8 +24540,8 @@ export type ProfileBuiltinIpAddressRelated_NodesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -24566,13 +24568,13 @@ export type ProfileBuiltinIpAddressSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -24699,13 +24701,13 @@ export type ProfileBuiltinIpPrefixMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -24742,7 +24744,7 @@ export type ProfileBuiltinIpPrefixRelated_NodesArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -24758,7 +24760,7 @@ export type ProfileBuiltinIpPrefixRelated_NodesArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -24795,13 +24797,13 @@ export type ProfileBuiltinIpPrefixSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -24933,13 +24935,13 @@ export type ProfileBuiltinTagMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -24956,13 +24958,13 @@ export type ProfileBuiltinTagRelated_NodesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -24989,13 +24991,13 @@ export type ProfileBuiltinTagSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -25103,8 +25105,8 @@ export type ProfileIpamNamespaceIp_AddressesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -25141,7 +25143,7 @@ export type ProfileIpamNamespaceIp_PrefixesArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
   member_type__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -25157,7 +25159,7 @@ export type ProfileIpamNamespaceIp_PrefixesArgs = {
   network_address__source__id?: InputMaybe<Scalars['ID']['input']>;
   network_address__value?: InputMaybe<Scalars['String']['input']>;
   network_address__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -25194,13 +25196,13 @@ export type ProfileIpamNamespaceMember_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -25222,13 +25224,13 @@ export type ProfileIpamNamespaceRelated_NodesArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -25255,13 +25257,13 @@ export type ProfileIpamNamespaceSubscriber_Of_GroupsArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   name__owner__id?: InputMaybe<Scalars['ID']['input']>;
   name__source__id?: InputMaybe<Scalars['ID']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
 
@@ -25790,7 +25792,7 @@ export type QueryBuiltinIpAddressArgs = {
   ip_prefix__utilization__value?: InputMaybe<Scalars['BigInt']['input']>;
   ip_prefix__utilization__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   kinds?: InputMaybe<Array<Scalars['String']['input']>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -25814,7 +25816,7 @@ export type QueryBuiltinIpAddressArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   profiles__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -25935,7 +25937,7 @@ export type QueryBuiltinIpNamespaceArgs = {
   ip_prefixes__utilization__source__id?: InputMaybe<Scalars['ID']['input']>;
   ip_prefixes__utilization__value?: InputMaybe<Scalars['BigInt']['input']>;
   ip_prefixes__utilization__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -25965,7 +25967,7 @@ export type QueryBuiltinIpNamespaceArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   profiles__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26126,7 +26128,7 @@ export type QueryBuiltinIpPrefixArgs = {
   is_top_level__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_top_level__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   kinds?: InputMaybe<Array<Scalars['String']['input']>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26168,7 +26170,7 @@ export type QueryBuiltinIpPrefixArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parent__broadcast_address__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parent__broadcast_address__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26288,7 +26290,7 @@ export type QueryBuiltinTagArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26318,7 +26320,7 @@ export type QueryBuiltinTagArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   profiles__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26381,7 +26383,7 @@ export type QueryCoreAccountArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26411,7 +26413,7 @@ export type QueryCoreAccountArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   password__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26496,7 +26498,7 @@ export type QueryCoreAccountGroupArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   members__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   members__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26515,7 +26517,7 @@ export type QueryCoreAccountGroupArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26605,7 +26607,7 @@ export type QueryCoreAccountRoleArgs = {
   groups__origin__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26635,7 +26637,7 @@ export type QueryCoreAccountRoleArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   permissions__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26683,7 +26685,7 @@ export type QueryCoreActionArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26713,7 +26715,7 @@ export type QueryCoreActionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -26814,7 +26816,7 @@ export type QueryCoreArtifactArgs = {
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26846,7 +26848,7 @@ export type QueryCoreArtifactArgs = {
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   object__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   object__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -26935,7 +26937,7 @@ export type QueryCoreArtifactCheckArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   line_number__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   line_number__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   line_number__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -26977,7 +26979,7 @@ export type QueryCoreArtifactCheckArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27114,7 +27116,7 @@ export type QueryCoreArtifactDefinitionArgs = {
   fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27144,7 +27146,7 @@ export type QueryCoreArtifactDefinitionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27306,7 +27308,7 @@ export type QueryCoreArtifactTargetArgs = {
   artifacts__storage_id__value?: InputMaybe<Scalars['String']['input']>;
   artifacts__storage_id__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27330,7 +27332,7 @@ export type QueryCoreArtifactTargetArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -27418,7 +27420,7 @@ export type QueryCoreArtifactThreadArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   line_number__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   line_number__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   line_number__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27448,7 +27450,7 @@ export type QueryCoreArtifactThreadArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   resolved__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27587,7 +27589,7 @@ export type QueryCoreArtifactValidatorArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27611,7 +27613,7 @@ export type QueryCoreArtifactValidatorArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   proposed_change__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27701,7 +27703,7 @@ export type QueryCoreBasePermissionArgs = {
   identifier__value?: InputMaybe<Scalars['String']['input']>;
   identifier__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27725,7 +27727,7 @@ export type QueryCoreBasePermissionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   roles__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27804,7 +27806,7 @@ export type QueryCoreChangeCommentArgs = {
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27828,7 +27830,7 @@ export type QueryCoreChangeCommentArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -27916,7 +27918,7 @@ export type QueryCoreChangeThreadArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27940,7 +27942,7 @@ export type QueryCoreChangeThreadArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   resolved__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -27999,7 +28001,7 @@ export type QueryCoreCheckArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28035,7 +28037,7 @@ export type QueryCoreCheckArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28125,7 +28127,7 @@ export type QueryCoreCheckDefinitionArgs = {
   file_path__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28155,7 +28157,7 @@ export type QueryCoreCheckDefinitionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28351,7 +28353,7 @@ export type QueryCoreCommentArgs = {
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28375,7 +28377,7 @@ export type QueryCoreCommentArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -28423,7 +28425,7 @@ export type QueryCoreCredentialArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28453,7 +28455,7 @@ export type QueryCoreCredentialArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -28532,7 +28534,7 @@ export type QueryCoreCustomWebhookArgs = {
   headers__value__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28568,7 +28570,7 @@ export type QueryCoreCustomWebhookArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   shared_key__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28712,7 +28714,7 @@ export type QueryCoreDataCheckArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28748,7 +28750,7 @@ export type QueryCoreDataCheckArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28882,7 +28884,7 @@ export type QueryCoreDataValidatorArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -28906,7 +28908,7 @@ export type QueryCoreDataValidatorArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   proposed_change__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29000,7 +29002,7 @@ export type QueryCoreEnvKeyValueArgs = {
   key__source__id?: InputMaybe<Scalars['ID']['input']>;
   key__value?: InputMaybe<Scalars['String']['input']>;
   key__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29030,7 +29032,7 @@ export type QueryCoreEnvKeyValueArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -29101,7 +29103,7 @@ export type QueryCoreFileCheckArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29137,7 +29139,7 @@ export type QueryCoreFileCheckArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29229,7 +29231,7 @@ export type QueryCoreFileObjectArgs = {
   file_type__value?: InputMaybe<Scalars['String']['input']>;
   file_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29253,7 +29255,7 @@ export type QueryCoreFileObjectArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   storage_id__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29353,7 +29355,7 @@ export type QueryCoreFileThreadArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   line_number__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   line_number__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   line_number__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29383,7 +29385,7 @@ export type QueryCoreFileThreadArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29530,7 +29532,7 @@ export type QueryCoreGeneratorActionArgs = {
   generator__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29560,7 +29562,7 @@ export type QueryCoreGeneratorActionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -29658,7 +29660,7 @@ export type QueryCoreGeneratorAwareGroupArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   members__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   members__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29677,7 +29679,7 @@ export type QueryCoreGeneratorAwareGroupArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parent__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parent__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29750,7 +29752,7 @@ export type QueryCoreGeneratorCheckArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29786,7 +29788,7 @@ export type QueryCoreGeneratorCheckArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29927,7 +29929,7 @@ export type QueryCoreGeneratorDefinitionArgs = {
   instances__status__source__id?: InputMaybe<Scalars['ID']['input']>;
   instances__status__value?: InputMaybe<Scalars['String']['input']>;
   instances__status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -29957,7 +29959,7 @@ export type QueryCoreGeneratorDefinitionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30176,7 +30178,7 @@ export type QueryCoreGeneratorGroupArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   members__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   members__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30195,7 +30197,7 @@ export type QueryCoreGeneratorGroupArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parent__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parent__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30298,7 +30300,7 @@ export type QueryCoreGeneratorInstanceArgs = {
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30330,7 +30332,7 @@ export type QueryCoreGeneratorInstanceArgs = {
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   object__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   object__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30488,7 +30490,7 @@ export type QueryCoreGeneratorValidatorArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30512,7 +30514,7 @@ export type QueryCoreGeneratorValidatorArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   proposed_change__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30612,7 +30614,7 @@ export type QueryCoreGenericAccountArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30642,7 +30644,7 @@ export type QueryCoreGenericAccountArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   password__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30841,7 +30843,7 @@ export type QueryCoreGenericRepositoryArgs = {
   internal_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   internal_status__value?: InputMaybe<Scalars['String']['input']>;
   internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   location__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   location__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30877,7 +30879,7 @@ export type QueryCoreGenericRepositoryArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   operational_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   operational_status__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   operational_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -31048,7 +31050,7 @@ export type QueryCoreGlobalPermissionArgs = {
   identifier__value?: InputMaybe<Scalars['String']['input']>;
   identifier__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31072,7 +31074,7 @@ export type QueryCoreGlobalPermissionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   roles__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31136,7 +31138,7 @@ export type QueryCoreGraphQlQueryArgs = {
   height__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31172,7 +31174,7 @@ export type QueryCoreGraphQlQueryArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   operations__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   operations__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   operations__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -31343,7 +31345,7 @@ export type QueryCoreGraphQlQueryGroupArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   members__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   members__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31362,7 +31364,7 @@ export type QueryCoreGraphQlQueryGroupArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parameters__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31505,7 +31507,7 @@ export type QueryCoreGroupArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   members__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   members__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31524,7 +31526,7 @@ export type QueryCoreGroupArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parent__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parent__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -31599,7 +31601,7 @@ export type QueryCoreGroupActionArgs = {
   group__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_action__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   member_action__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   member_action__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -31635,7 +31637,7 @@ export type QueryCoreGroupActionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -31748,7 +31750,7 @@ export type QueryCoreGroupTriggerRuleArgs = {
   group__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31784,7 +31786,7 @@ export type QueryCoreGroupTriggerRuleArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -31847,7 +31849,7 @@ export type QueryCoreIpAddressPoolArgs = {
   ip_namespace__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   ip_namespace__name__value?: InputMaybe<Scalars['String']['input']>;
   ip_namespace__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31877,7 +31879,7 @@ export type QueryCoreIpAddressPoolArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   resources__broadcast_address__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31958,7 +31960,7 @@ export type QueryCoreIpPoolArgs = {
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31982,7 +31984,7 @@ export type QueryCoreIpPoolArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -32051,7 +32053,7 @@ export type QueryCoreIpPrefixPoolArgs = {
   ip_namespace__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   ip_namespace__name__value?: InputMaybe<Scalars['String']['input']>;
   ip_namespace__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32081,7 +32083,7 @@ export type QueryCoreIpPrefixPoolArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   resources__broadcast_address__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32178,7 +32180,7 @@ export type QueryCoreKeyValueArgs = {
   key__source__id?: InputMaybe<Scalars['ID']['input']>;
   key__value?: InputMaybe<Scalars['String']['input']>;
   key__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32208,7 +32210,7 @@ export type QueryCoreKeyValueArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -32328,7 +32330,7 @@ export type QueryCoreMenuArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32364,7 +32366,7 @@ export type QueryCoreMenuArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   order_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   order_weight__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32568,7 +32570,7 @@ export type QueryCoreMenuItemArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32604,7 +32606,7 @@ export type QueryCoreMenuItemArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   order_weight__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   order_weight__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32720,7 +32722,7 @@ export type QueryCoreNodeArgs = {
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32744,7 +32746,7 @@ export type QueryCoreNodeArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -32780,7 +32782,7 @@ export type QueryCoreNodeTriggerAttributeMatchArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32804,7 +32806,7 @@ export type QueryCoreNodeTriggerAttributeMatchArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -32883,7 +32885,7 @@ export type QueryCoreNodeTriggerMatchArgs = {
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -32907,7 +32909,7 @@ export type QueryCoreNodeTriggerMatchArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -32972,7 +32974,7 @@ export type QueryCoreNodeTriggerRelationshipMatchArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33002,7 +33004,7 @@ export type QueryCoreNodeTriggerRelationshipMatchArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   peer__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33112,7 +33114,7 @@ export type QueryCoreNodeTriggerRuleArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   matches__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   matches__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -33156,7 +33158,7 @@ export type QueryCoreNodeTriggerRuleArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -33198,7 +33200,7 @@ export type QueryCoreNumberPoolArgs = {
   end_range__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33240,7 +33242,7 @@ export type QueryCoreNumberPoolArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   pool_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33281,7 +33283,7 @@ export type QueryCoreObjectComponentTemplateArgs = {
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33305,7 +33307,7 @@ export type QueryCoreObjectComponentTemplateArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -33365,7 +33367,7 @@ export type QueryCoreObjectPermissionArgs = {
   identifier__value?: InputMaybe<Scalars['String']['input']>;
   identifier__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33401,7 +33403,7 @@ export type QueryCoreObjectPermissionArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   roles__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33441,7 +33443,7 @@ export type QueryCoreObjectTemplateArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33465,7 +33467,7 @@ export type QueryCoreObjectTemplateArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -33553,7 +33555,7 @@ export type QueryCoreObjectThreadArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33583,7 +33585,7 @@ export type QueryCoreObjectThreadArgs = {
   object_path__source__id?: InputMaybe<Scalars['ID']['input']>;
   object_path__value?: InputMaybe<Scalars['String']['input']>;
   object_path__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   resolved__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33631,7 +33633,7 @@ export type QueryCorePasswordCredentialArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33661,7 +33663,7 @@ export type QueryCorePasswordCredentialArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   password__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33703,7 +33705,7 @@ export type QueryCoreProfileArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33727,7 +33729,7 @@ export type QueryCoreProfileArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33831,7 +33833,7 @@ export type QueryCoreProposedChangeArgs = {
   is_draft__source__id?: InputMaybe<Scalars['ID']['input']>;
   is_draft__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_draft__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -33861,7 +33863,7 @@ export type QueryCoreProposedChangeArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   rejected_by__account_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -34189,7 +34191,7 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   internal_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   internal_status__value?: InputMaybe<Scalars['String']['input']>;
   internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   location__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   location__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34225,7 +34227,7 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   operational_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   operational_status__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   operational_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34547,7 +34549,7 @@ export type QueryCoreRepositoryArgs = {
   internal_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   internal_status__value?: InputMaybe<Scalars['String']['input']>;
   internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   location__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   location__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34583,7 +34585,7 @@ export type QueryCoreRepositoryArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   operational_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   operational_status__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   operational_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34779,7 +34781,7 @@ export type QueryCoreRepositoryGroupArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   members__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   members__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -34798,7 +34800,7 @@ export type QueryCoreRepositoryGroupArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parent__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parent__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34939,7 +34941,7 @@ export type QueryCoreRepositoryValidatorArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -34963,7 +34965,7 @@ export type QueryCoreRepositoryValidatorArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   proposed_change__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35086,7 +35088,7 @@ export type QueryCoreResourcePoolArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35116,7 +35118,7 @@ export type QueryCoreResourcePoolArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -35181,7 +35183,7 @@ export type QueryCoreSchemaCheckArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35217,7 +35219,7 @@ export type QueryCoreSchemaCheckArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35351,7 +35353,7 @@ export type QueryCoreSchemaValidatorArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35375,7 +35377,7 @@ export type QueryCoreSchemaValidatorArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   proposed_change__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35480,7 +35482,7 @@ export type QueryCoreStandardCheckArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35516,7 +35518,7 @@ export type QueryCoreStandardCheckArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35631,7 +35633,7 @@ export type QueryCoreStandardGroupArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   members__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   members__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35650,7 +35652,7 @@ export type QueryCoreStandardGroupArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   parent__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parent__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35743,7 +35745,7 @@ export type QueryCoreStandardWebhookArgs = {
   headers__value__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35779,7 +35781,7 @@ export type QueryCoreStandardWebhookArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   shared_key__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35839,7 +35841,7 @@ export type QueryCoreStaticKeyValueArgs = {
   key__source__id?: InputMaybe<Scalars['ID']['input']>;
   key__value?: InputMaybe<Scalars['String']['input']>;
   key__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35869,7 +35871,7 @@ export type QueryCoreStaticKeyValueArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -35901,7 +35903,7 @@ export type QueryCoreTaskTargetArgs = {
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -35925,7 +35927,7 @@ export type QueryCoreTaskTargetArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -36007,7 +36009,7 @@ export type QueryCoreThreadArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36031,7 +36033,7 @@ export type QueryCoreThreadArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   resolved__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36066,7 +36068,7 @@ export type QueryCoreThreadCommentArgs = {
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36090,7 +36092,7 @@ export type QueryCoreThreadCommentArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -36203,7 +36205,7 @@ export type QueryCoreTransformJinja2Args = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36233,7 +36235,7 @@ export type QueryCoreTransformJinja2Args = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   query__depth__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36458,7 +36460,7 @@ export type QueryCoreTransformPythonArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36488,7 +36490,7 @@ export type QueryCoreTransformPythonArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   query__depth__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36689,7 +36691,7 @@ export type QueryCoreTransformationArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36719,7 +36721,7 @@ export type QueryCoreTransformationArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   query__depth__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36888,7 +36890,7 @@ export type QueryCoreTriggerRuleArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -36918,7 +36920,7 @@ export type QueryCoreTriggerRuleArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -37045,7 +37047,7 @@ export type QueryCoreUserValidatorArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37069,7 +37071,7 @@ export type QueryCoreUserValidatorArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   proposed_change__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37248,7 +37250,7 @@ export type QueryCoreValidatorArgs = {
   label__source__id?: InputMaybe<Scalars['ID']['input']>;
   label__value?: InputMaybe<Scalars['String']['input']>;
   label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37272,7 +37274,7 @@ export type QueryCoreValidatorArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   proposed_change__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37403,7 +37405,7 @@ export type QueryCoreWebhookArgs = {
   headers__value__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37439,7 +37441,7 @@ export type QueryCoreWebhookArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -37483,7 +37485,7 @@ export type QueryCoreWeightedPoolResourceArgs = {
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37507,7 +37509,7 @@ export type QueryCoreWeightedPoolResourceArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
@@ -37759,7 +37761,7 @@ export type QueryIpamNamespaceArgs = {
   ip_prefixes__utilization__source__id?: InputMaybe<Scalars['ID']['input']>;
   ip_prefixes__utilization__value?: InputMaybe<Scalars['BigInt']['input']>;
   ip_prefixes__utilization__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37789,7 +37791,7 @@ export type QueryIpamNamespaceArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   profiles__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37830,7 +37832,7 @@ export type QueryLineageOwnerArgs = {
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   node_metadata__created_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37841,7 +37843,7 @@ export type QueryLineageOwnerArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -37854,7 +37856,7 @@ export type QueryLineageSourceArgs = {
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   node_metadata__created_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37865,7 +37867,7 @@ export type QueryLineageSourceArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -37909,7 +37911,7 @@ export type QueryProfileBuiltinIpAddressArgs = {
   ip_namespace__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   ip_namespace__name__value?: InputMaybe<Scalars['String']['input']>;
   ip_namespace__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37933,7 +37935,7 @@ export type QueryProfileBuiltinIpAddressArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -38017,7 +38019,7 @@ export type QueryProfileBuiltinIpPrefixArgs = {
   is_pool__source__id?: InputMaybe<Scalars['ID']['input']>;
   is_pool__value?: InputMaybe<Scalars['Boolean']['input']>;
   is_pool__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -38047,7 +38049,7 @@ export type QueryProfileBuiltinIpPrefixArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   prefix__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -38156,7 +38158,7 @@ export type QueryProfileBuiltinTagArgs = {
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -38180,7 +38182,7 @@ export type QueryProfileBuiltinTagArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
@@ -38313,7 +38315,7 @@ export type QueryProfileIpamNamespaceArgs = {
   ip_prefixes__utilization__source__id?: InputMaybe<Scalars['ID']['input']>;
   ip_prefixes__utilization__value?: InputMaybe<Scalars['BigInt']['input']>;
   ip_prefixes__utilization__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  limit?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -38337,7 +38339,7 @@ export type QueryProfileIpamNamespaceArgs = {
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  offset?: InputMaybe<Scalars['NonNegativeInt']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   profile_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;

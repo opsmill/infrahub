@@ -3,7 +3,7 @@ import { graphql, type VariablesOf } from "gql.tada";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const GET_VALIDATOR_DETAILS = graphql(`
-  query GET_VALIDATOR_DETAILS($ids: [ID!], $checksOffset: NonNegativeInt, $checksLimit: NonNegativeInt) {
+  query GET_VALIDATOR_DETAILS($ids: [ID!], $checksOffset: Int, $checksLimit: Int) {
     CoreValidator(ids: $ids) {
       edges {
         node {

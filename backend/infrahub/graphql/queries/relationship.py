@@ -6,8 +6,8 @@ from graphene import Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.query.relationship import RelationshipGetByIdentifierQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.scalars import NonNegativeInt
 from infrahub.graphql.types import RelationshipNode
-from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo

@@ -9,7 +9,7 @@ from prefect.client.schemas.objects import StateType
 from infrahub.core.constants import TaskConclusion
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.queries.task_actions import TaskActionGenerator
-from infrahub.graphql.types.scalars import NonNegativeInt
+from infrahub.graphql.scalars import NonNegativeInt
 from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.flow_run.constants import CONCLUSION_STATE_MAPPING, LOG_LEVEL_MAPPING
 from infrahub.task_manager.flow_run.models import (

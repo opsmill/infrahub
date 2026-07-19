@@ -12,7 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import IPParentPrefixLookupQuery
 from infrahub.core.query.node import NodeGetListByAttributeValueQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.types.scalars import NonNegativeInt
+from infrahub.graphql.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo

@@ -9,8 +9,8 @@ const GET_IPAM_TREE_NODES = graphql(`
     $parentIds: [ID!]
     $search: String
     $ipNamespaceIds: [ID!]
-    $limit: NonNegativeInt
-    $offset: NonNegativeInt
+    $limit: Int
+    $offset: Int
   ) {
     BuiltinIPPrefix(
       is_top_level__value: $isTopLevel
