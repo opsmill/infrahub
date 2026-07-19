@@ -1253,6 +1253,9 @@ python-version = "3.12"
 [tool.ty.src]
 exclude = [
     "python_sdk/**",
+    # Vendored agent-skill scripts (installed via skills-lock.json) are
+    # third-party content and must not be type-checked against the project.
+    ".agents/skills/**",
 ]
 
 [[tool.ty.overrides]]
