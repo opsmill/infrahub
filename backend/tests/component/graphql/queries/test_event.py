@@ -33,8 +33,8 @@ query(
     $branch: [String!],
     $account: [String!],
     $parent__ids: [String!],
-    $limit: Int,
-    $offset: Int
+    $limit: NonNegativeInt,
+    $offset: NonNegativeInt
     $level: Int
     $has_children: Boolean
     $event_type: [String!]

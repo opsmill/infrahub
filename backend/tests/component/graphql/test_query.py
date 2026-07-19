@@ -90,3 +90,132 @@ async def test_execute_missing_query(
         await execute_query(name="query02", db=db, branch=default_branch)
 
     assert "Unable to find the CoreGraphQLQuery" in str(exc.value)
+
+
+async def test_builtin_tag_rejects_negative_limit(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Reject a negative limit before the query is resolved."""
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="query { BuiltinTag(limit: -1) { count } }",
+        context_value=gql_params.context,
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert (
+        result.errors[0].message
+        == "Expected value of type 'NonNegativeInt', found -1; Value must be a non-negative integer"
+    )
+    assert result.errors[0].path is None
+
+
+async def test_builtin_tag_rejects_negative_offset(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Reject a negative offset before the query is resolved."""
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="query { BuiltinTag(offset: -1) { count } }",
+        context_value=gql_params.context,
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert (
+        result.errors[0].message
+        == "Expected value of type 'NonNegativeInt', found -1; Value must be a non-negative integer"
+    )
+    assert result.errors[0].path is None
+
+
+async def test_builtin_tag_rejects_non_integer_limit(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Reject a non-integer limit before the query is resolved."""
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source='query { BuiltinTag(limit: "") { count } }',
+        context_value=gql_params.context,
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert (
+        result.errors[0].message
+        == "Expected value of type 'NonNegativeInt', found \"\"; Value must be a non-negative integer"
+    )
+    assert result.errors[0].path is None
+
+
+async def test_builtin_tag_rejects_non_integer_offset(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Reject a non-integer offset before the query is resolved."""
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source='query { BuiltinTag(offset: "") { count } }',
+        context_value=gql_params.context,
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert (
+        result.errors[0].message
+        == "Expected value of type 'NonNegativeInt', found \"\"; Value must be a non-negative integer"
+    )
+    assert result.errors[0].path is None
+
+
+async def test_builtin_tag_accepts_valid_limit_with_query_variables(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Accept a valid limit literal when the query also declares variables."""
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="query ($name: String) { BuiltinTag(name__value: $name, limit: 50) { count } }",
+        context_value=gql_params.context,
+        variable_values={"name": "blue"},
+    )
+
+    assert result.errors is None
+    assert result.data == {"BuiltinTag": {"count": 0}}
+
+
+async def test_builtin_tag_rejects_negative_limit_with_query_variables(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Reject a negative limit even when the query also declares variables."""
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="query ($name: String) { BuiltinTag(name__value: $name, limit: -1) { count } }",
+        context_value=gql_params.context,
+        variable_values={"name": "blue"},
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert (
+        result.errors[0].message
+        == "Expected value of type 'NonNegativeInt', found -1; Value must be a non-negative integer"
+    )
+    assert result.errors[0].path is None

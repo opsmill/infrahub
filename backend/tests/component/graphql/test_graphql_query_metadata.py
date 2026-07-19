@@ -341,7 +341,7 @@ async def test_graphql_order_by_metadata_on_user_branch(
 
     # Test pagination with created_at ordering - retrieve in batches of 2
     query_paginated = """
-    query($offset: Int!, $limit: Int!) {
+    query($offset: NonNegativeInt!, $limit: NonNegativeInt!) {
         TestCriticality(order: {node_metadata: {created_at: ASC}}, offset: $offset, limit: $limit) {
             edges {
                 node_metadata { created_at }

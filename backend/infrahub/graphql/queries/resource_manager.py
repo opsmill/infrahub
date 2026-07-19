@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, Any, cast
 
-from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
+from graphene import BigInt, Field, Float, List, NonNull, ObjectType, String
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -18,6 +18,7 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.types.scalars import NonNegativeInt
 from infrahub.pools.number import NumberUtilizationGetter
 
 if TYPE_CHECKING:
@@ -346,8 +347,8 @@ InfrahubResourcePoolAllocated = Field(
     PoolAllocated,
     pool_id=String(required=True),
     resource_id=String(required=True),
-    limit=Int(required=False),
-    offset=Int(required=False),
+    limit=NonNegativeInt(required=False),
+    offset=NonNegativeInt(required=False),
     resolver=PoolAllocated.resolve,
     required=True,
 )

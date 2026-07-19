@@ -8,6 +8,7 @@ from infrahub.core.constants import INTERNAL_NAMESPACE
 from infrahub.core.query.relationship import RelationshipGetByIdentifierQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import RelationshipNode
+from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -78,8 +79,8 @@ Relationship = Field(
     Relationships,
     ids=List(NonNull(String), required=True),
     excluded_namespaces=List(String),
-    limit=Int(required=False),
-    offset=Int(required=False),
+    limit=NonNegativeInt(required=False),
+    offset=NonNegativeInt(required=False),
     resolver=Relationships.resolve,
     required=True,
 )
