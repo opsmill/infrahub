@@ -57,7 +57,7 @@ Infrahub can now **create account groups automatically from identity-provider cl
 
 Activate it by setting a claim filter:
 
-- `security.auto_create_groups_filter` (`INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER`) - a regular expression, or an ordered list of them, matched against each incoming group claim. The first match wins. A named capture group `(?P<name>...)` becomes the local group name (e.g. `^LDAP/group/(?P<name>.+)$` maps `LDAP/group/network-eng` to `network-eng`); with no capture the full claim is used. Non-matching claims are dropped, so unrelated IdP groups never appear in Infrahub. Setting this filter is what activates the feature; leaving it empty keeps auto-creation off.
+- `security.auto_create_groups_filter` (`INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER`) - a regular expression, or an ordered list of them, matched against each incoming group claim. The first match wins. A named capture group `(?P<name>...)` becomes the local group name (for example `^LDAP/group/(?P<name>.+)$` maps `LDAP/group/network-eng` to `network-eng`); with no capture the full claim is used. Non-matching claims are dropped, so unrelated IdP groups never appear in Infrahub. Setting this filter is what activates the feature; leaving it empty keeps auto-creation off.
 - `security.auto_create_groups_max_per_login` - caps the number of *new* groups created in a single login (default `50`). Reuse of existing groups is never capped. If the cap is hit, surplus claims are dropped, a warning event is emitted, and the login still completes.
 
 Auto-created groups start with no roles or permissions and run on every external login (OIDC, OAuth2, and native LDAP). If at least one claim matches, it takes precedence over the existing `security.sso_user_default_group` fallback; if none match, that fallback still applies.
@@ -85,7 +85,7 @@ This is a **breaking change** for consumers that previously read `extensions.cod
 Schema `order_by` entries add two capabilities, letting designers set smarter defaults without passing an ordering argument on every query or view:
 
 - Order by **object-level metadata**: `node_metadata__created_at` and `node_metadata__updated_at` sort by the timestamps Infrahub tracks on every node.
-- Add an **explicit direction**: any entry may end in `__asc` or `__desc` (e.g. `name__value__desc`, `node_metadata__created_at__desc`). Without a suffix, ascending is assumed, so existing `order_by` definitions keep their current behavior.
+- Add an **explicit direction**: any entry may end in `__asc` or `__desc` (for example `name__value__desc`, `node_metadata__created_at__desc`). Without a suffix, ascending is assumed, so existing `order_by` definitions keep their current behavior.
 
 The new grammar is honored consistently across top-level listings, relationship-peer listings, and hierarchy (`ancestors`/`descendants`) listings, and a node UUID tiebreaker is always appended so ordering - and pagination - is stable across all paths.
 
@@ -177,7 +177,7 @@ Recent releases across the Infrahub tooling during this cycle:
 
 [Infrahub Sync release notes →](https://docs.infrahub.app/sync/release-notes/infrahub-sync)
 
-### Infrahub AI Skills
+### Infrahub AI skills
 
 Infrahub AI Skills give an AI assistant built-in Infrahub expertise, so a team can build, query, and audit Infrahub from natural language. They are now ready for everyday use.
 
@@ -218,7 +218,7 @@ Read this section before upgrading.
 
 ### Structured GraphQL error codes
 
-GraphQL error responses now return a stable **string** code in `extensions.code` (e.g. `"NODE_NOT_FOUND"`, `"AUTHENTICATION_REQUIRED"`), a typed `extensions.data` payload, and a new integer `extensions.http_status`. Previously `extensions.code` was an **integer** mirroring the HTTP status (most visible on the `/graphql` authentication short-circuit path).
+GraphQL error responses now return a stable **string** code in `extensions.code` (for example `"NODE_NOT_FOUND"`, `"AUTHENTICATION_REQUIRED"`), a typed `extensions.data` payload, and a new integer `extensions.http_status`. Previously `extensions.code` was an **integer** mirroring the HTTP status (most visible on the `/graphql` authentication short-circuit path).
 
 ```json
 // Before
@@ -279,7 +279,7 @@ query {
 }
 ```
 
-### Single Sign-On account identity
+### Single sign-on account identity
 
 SSO accounts are now keyed on the provider-issued `sub` rather than the display name (see [Reworked SSO account identity](#reworked-sso-account-identity)). The transitional `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` setting (default enabled, deprecated) preserves the old display-name matching during the transition. Ensure all SSO users log in once after upgrading before you disable it, otherwise accounts that have not re-logged in will be treated as new and duplicated.
 
@@ -387,7 +387,7 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
 
 ### Changed
 
-- **Breaking:** GraphQL error responses now carry a stable string code in `extensions.code` (e.g. `"NODE_NOT_FOUND"`, `"AUTHENTICATION_REQUIRED"`) and a typed `extensions.data` payload, plus a new integer `extensions.http_status`. Previously `extensions.code` was an integer mirroring the HTTP status. Consumers reading the integer code (most commonly on the `/graphql` auth-short-circuit path) must migrate to switching on the string code; numeric checks now read `extensions.http_status`. REST `/api/...` responses are unchanged.
+- **Breaking:** GraphQL error responses now carry a stable string code in `extensions.code` (for example `"NODE_NOT_FOUND"`, `"AUTHENTICATION_REQUIRED"`) and a typed `extensions.data` payload, plus a new integer `extensions.http_status`. Previously `extensions.code` was an integer mirroring the HTTP status. Consumers reading the integer code (most commonly on the `/graphql` auth-short-circuit path) must migrate to switching on the string code; numeric checks now read `extensions.http_status`. REST `/api/...` responses are unchanged.
 - HFID attribute values are now indexed in Neo4j for faster lookup. A migration normalizes existing HFID values to consistent all-string format and adds database indexes. The HFID lookup query has been simplified to match directly on the stored value instead of reconstructing per-field filters.
 - Improve merge performance by moving the logic to the database level
 - Improved design of the account token list page

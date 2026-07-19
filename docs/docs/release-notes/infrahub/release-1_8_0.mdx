@@ -104,13 +104,13 @@ The diff data is now tied to the Proposed Change itself rather than solely to th
 
 This feature is a prerequisite for a future capability to automatically delete branches after merge, which will help prevent stale branches that can cause Git synchronization issues.
 
-### Read-only repository: Update to Latest button
+### Read-only repository: update to latest button
 
 Managing read-only Git repositories is now simpler. A new "Update to Latest" button fetches and imports the latest commit from the tracked branch directly from the UI. Previously, users had to manually copy and paste commit hashes from an external source to update what Infrahub was tracking. The existing reimport action has been renamed to "Reimport Current Commit" to clearly distinguish between re-processing the current commit and pulling the latest.
 
 Repositories now also support providing a Git Tag as the reference (ref) to track for a repository.
 
-### Infrahub Backup: Kubernetes support
+### Infrahub backup: Kubernetes support
 
 The `infrahub-backup` CLI tool now fully supports Kubernetes deployments for both backup and restore operations. The tool automatically detects whether Infrahub is running on Docker Compose or Kubernetes and adjusts its behavior accordingly.
 
@@ -140,7 +140,7 @@ The branch list page continues to evolve with richer information and better usab
 
 - **Created By** column shows who created each branch (available for branches created after 1.7)
 - **Proposed Changes** column links directly to associated proposed changes
-- **Status** column shows branch state with warning indicators (e.g., "Rebase needed")
+- **Status** column shows branch state with warning indicators (for example, "Rebase needed")
 - **Schema Changes** indicator shows whether the branch includes schema modifications
 - **Last Rebase** timestamp for sync tracking
 - **Merged badge** clearly identifies branches that have been merged
@@ -165,7 +165,7 @@ Infrahub v1.8.0 requires the usage of infrahub-sdk v1.19.0, please update the `i
 
 Notable SDK changes in this release:
 - Added support for the File Object feature
-- Fixed an issue where the SDK tracking feature would fail when deleting a parent node with component relationships (e.g., a device with interfaces). The SDK now correctly handles cascade deletions where component nodes are automatically removed when their parent is deleted, preventing "Unable to find the node" errors in Generator workflows.
+- Fixed an issue where the SDK tracking feature would fail when deleting a parent node with component relationships (for example, a device with interfaces). The SDK now correctly handles cascade deletions where component nodes are automatically removed when their parent is deleted, preventing "Unable to find the node" errors in Generator workflows.
 
 ## Migration of an Infrahub instance
 
@@ -246,7 +246,7 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
 - Added ability to view artifact changes from the branch details view
 - Added consistent focus outline color across all interactive elements for improved visual accessibility
 - Added counts to proposed change tabs
-- Added icons next to field names in the object details view to indicate field types (e.g., text, number, boolean) and relationship schemas
+- Added icons next to field names in the object details view to indicate field types (for example, text, number, boolean) and relationship schemas
 - Added status badges to file and artifact diffs showing the type of change (added, removed, updated)
 - Added tooltip over action buttons (download/copy) on artifact details view.
 

@@ -47,9 +47,13 @@ content_type
 convert_query_response
 coroutine
 coroutines
+cosign
+Cosign
 created_at
 created_by
 customizable
+cybersecurity
+CycloneDX
 Dagster
 datacenter
 dataset
@@ -68,6 +72,7 @@ display_labels
 Dockerfile
 Docusaurus
 dropdown
+DSSE
 edit_default_branch
 enablement
 end_user
@@ -89,6 +94,7 @@ Graphql
 GraphQL
 GraphQL's
 grpc
+Grype
 Gunicorn
 HAProxy
 hardcoding
@@ -123,6 +129,7 @@ JSONSchema
 Junos
 kbps
 Keycloak
+keyless
 kubectl
 kubelet
 Kubernetes
@@ -162,6 +169,7 @@ npm
 O'Brian
 OAuth
 Observium
+OIDC
 Okta
 Onboarding
 OpenAPI
@@ -213,13 +221,18 @@ Schema
 schema_mapping
 stdin
 schema's
+SBOM
+SBOMs
 scrollbar
 SDK
 SDKs
 serializable
+Sigstore
 Slurp'it
 snapshotting
+SPDX
 Streamlit
+Syft
 string_type
 subchart
 subcommand

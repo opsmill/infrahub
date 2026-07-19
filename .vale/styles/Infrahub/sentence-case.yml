@@ -26,6 +26,11 @@ exceptions:
   - GitHub
   - GitLab
   - IP Fabric
+  - Testcontainers
+  - Compose
+  - Marketplace
+  - Sync
+  - Community
 
   # Acronyms and abbreviations
   - API
@@ -33,6 +38,11 @@ exceptions:
   - REST
   - SDK
   - SSO
+  - LDAP
+  - LDAPS
+  - STARTTLS
+  - MCP
+  - AI
   - IPAM
   - IP
   - CI
@@ -57,6 +67,10 @@ exceptions:
   - RFC
   - SIEM
   - PRI
+  - SBOM
+  - SBOMs
+  - SPDX
+  - CycloneDX
 
   # Technical terms that should keep their case
   - Python
