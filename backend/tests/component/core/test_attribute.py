@@ -11,6 +11,7 @@ from infrahub.core.attribute import (
     DateTime,
     Dropdown,
     Integer,
+    IPAddress,
     IPHost,
     IPNetwork,
     ListAttribute,
@@ -102,6 +103,79 @@ async def test_validate_format_ipnetwork_and_iphost(
         IPNetwork(
             name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
         )
+
+
+async def test_validate_format_ipaddress(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # bare IPv4/IPv6 addresses are accepted
+    IPAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1")
+    IPAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::1")
+    IPAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::")
+
+    # prefix / CIDR notation is rejected, including the host prefixes /32 and /128
+    for bad in ("192.0.2.1/24", "192.0.2.1/32", "2001:db8::1/128", "192.0.2.0/255.255.255.0"):
+        with pytest.raises(ValidationError, match=rf"^{re.escape(bad)} is not a valid "):
+            IPAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=bad)
+
+    # non-addresses are rejected
+    for bad in ("999.0.0.1", "not-an-ip"):
+        with pytest.raises(ValidationError, match=rf"^{re.escape(bad)} is not a valid "):
+            IPAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=bad)
+
+
+async def test_validate_ipaddress_returns(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    test_ipv4 = IPAddress(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1"
+    )
+    test_ipv6 = IPAddress(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::"
+    )
+
+    assert test_ipv4.value == "192.0.2.1"
+    assert test_ipv4.version == 4
+    assert test_ipv4.ip_binary == "11000000000000000000001000000001"
+    assert len(test_ipv4.ip_binary) == 32
+    # no prefixlen is stored for a bare address
+    assert test_ipv4.to_db() == {
+        "binary_address": "11000000000000000000001000000001",
+        "is_default": False,
+        "value": "192.0.2.1",
+        "version": 4,
+    }
+
+    assert test_ipv6.value == "2001:db8::"
+    assert test_ipv6.version == 6
+    assert len(test_ipv6.ip_binary) == 128
+    assert test_ipv6.to_db() == {
+        "binary_address": f"0010000000000001000011011011100000000000000000000000000000000000000000000000000000000000{'0' * 40}",
+        "is_default": False,
+        "value": "2001:db8::",
+        "version": 6,
+    }
+
+
+async def test_ipaddress_normalizes_ipv6(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # a non-canonical IPv6 form is normalized to its compressed representation
+    attr = IPAddress(
+        name="test",
+        schema=schema,
+        branch=default_branch,
+        at=Timestamp(),
+        node=None,
+        data="2001:0db8:0000:0000:0000:0000:0000:0001",
+    )
+    assert attr.value == "2001:db8::1"
 
 
 async def test_validate_validate_url(

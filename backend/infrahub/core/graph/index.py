@@ -10,6 +10,9 @@ node_indexes: list[IndexItem] = [
     IndexItem(name="attr_uuid", label="Attribute", properties=["uuid"], type=IndexType.RANGE),
     IndexItem(name="attr_ipnet_bin", label="AttributeIPNetwork", properties=["binary_address"], type=IndexType.RANGE),
     IndexItem(name="attr_iphost_bin", label="AttributeIPHost", properties=["binary_address"], type=IndexType.RANGE),
+    IndexItem(
+        name="attr_ipaddress_bin", label="AttributeIPAddress", properties=["binary_address"], type=IndexType.RANGE
+    ),
     IndexItem(name="rel_uuid", label="Relationship", properties=["uuid"], type=IndexType.RANGE),
     IndexItem(name="rel_identifier", label="Relationship", properties=["name"], type=IndexType.RANGE),
     IndexItem(name="attr_value_indexed", label="AttributeValueIndexed", properties=["value"], type=IndexType.RANGE),

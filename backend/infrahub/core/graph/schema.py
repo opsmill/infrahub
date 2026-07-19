@@ -163,6 +163,13 @@ class GraphAttributeIPHostProperties(BaseModel):
     version: int = Field(..., description="Version of IP, either 4 or 6")
 
 
+class GraphAttributeIPAddressProperties(BaseModel):
+    value: str = Field(..., description="value of the attribute")
+    is_default: bool = Field(..., description="Flag to indicate if an attribute has the default value")
+    binary_address: str = Field(..., description="IP address represented in binary format")
+    version: int = Field(..., description="Version of IP, either 4 or 6")
+
+
 class GraphAttributeValueRelationships(BaseModel):
     HAS_VALUE: GraphRelationship = Field(
         GraphRelationship(peer="Attribute", direction=GraphRelDirection.INBOUND),
@@ -191,6 +198,12 @@ class GraphAttributeIPNetworkNode(GraphVertex):
 class GraphAttributeIPHostNode(GraphVertex):
     default_label: str = "AttributeIPHost"
     properties: GraphAttributeIPHostProperties
+    relationships: GraphAttributeValueRelationships
+
+
+class GraphAttributeIPAddressNode(GraphVertex):
+    default_label: str = "AttributeIPAddress"
+    properties: GraphAttributeIPAddressProperties
     relationships: GraphAttributeValueRelationships
 
 
@@ -244,6 +257,7 @@ def get_graph_schema() -> dict[str, dict[str, type[Any]]]:
         GraphAttributeValueIndexedNode,
         GraphAttributeIPNetworkNode,
         GraphAttributeIPHostNode,
+        GraphAttributeIPAddressNode,
         GraphBooleanNode,
     ]
     return {

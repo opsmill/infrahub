@@ -6,6 +6,7 @@ from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.graph.schema import (
+    GraphAttributeIPAddressNode,
     GraphAttributeIPHostNode,
     GraphAttributeIPNetworkNode,
     GraphAttributeValueIndexedNode,
@@ -72,6 +73,8 @@ class AttributeUpdateValueQuery(AttributeQuery):
             labels.append(GraphAttributeIPHostNode.get_default_label())
         if AttributeDBNodeType.IPNETWORK in node_type:
             labels.append(GraphAttributeIPNetworkNode.get_default_label())
+        if AttributeDBNodeType.IPADDRESS in node_type:
+            labels.append(GraphAttributeIPAddressNode.get_default_label())
 
         query = """
 MATCH (a:Attribute { uuid: $attr_uuid })

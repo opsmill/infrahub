@@ -379,9 +379,11 @@ class AttributeDBNodeType(Flag):
     INDEX_ONLY = auto()
     IPHOST_ONLY = auto()
     IPNETWORK_ONLY = auto()
+    IPADDRESS_ONLY = auto()
     INDEXED = DEFAULT | INDEX_ONLY
     IPHOST = DEFAULT | INDEX_ONLY | IPHOST_ONLY
     IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
+    IPADDRESS = DEFAULT | INDEX_ONLY | IPADDRESS_ONLY
 
 
 class MetadataOptions(Flag):

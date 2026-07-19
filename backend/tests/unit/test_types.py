@@ -19,7 +19,7 @@ def test_attribute_types_allowed_property_path(test_case: str) -> None:
     attribute_type = ATTRIBUTE_TYPES[test_case]
 
     graphql_query_type = getattr(types, attribute_type.graphql_query)
-    include_binary_address = test_case in {"IPHost", "IPNetwork"}
+    include_binary_address = test_case in {"IPHost", "IPNetwork", "IPAddress"}
     path_list = _get_path_field_list(
         include_binary_address=include_binary_address, fields=graphql_query_type._meta.fields
     )

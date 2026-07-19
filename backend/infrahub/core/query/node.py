@@ -177,6 +177,7 @@ class NodeCreateAllQuery(NodeQuery):
         attributes: list[AttributeCreateData] = []
         attributes_iphost: list[AttributeCreateData] = []
         attributes_ipnetwork: list[AttributeCreateData] = []
+        attributes_ipaddress: list[AttributeCreateData] = []
         attributes_indexed: list[AttributeCreateData] = []
 
         if self.node.has_display_label():
@@ -202,6 +203,8 @@ class NodeCreateAllQuery(NodeQuery):
                 attributes_iphost.append(attr_data)
             elif AttributeDBNodeType.IPNETWORK in node_type:
                 attributes_ipnetwork.append(attr_data)
+            elif AttributeDBNodeType.IPADDRESS in node_type:
+                attributes_ipaddress.append(attr_data)
             elif AttributeDBNodeType.INDEXED in node_type:
                 attributes_indexed.append(attr_data)
             else:
@@ -243,6 +246,7 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["attrs_indexed"] = [attr.model_dump() for attr in attributes_indexed]
         self.params["attrs_iphost"] = [attr.model_dump() for attr in attributes_iphost]
         self.params["attrs_ipnetwork"] = [attr.model_dump() for attr in attributes_ipnetwork]
+        self.params["attrs_ipaddress"] = [attr.model_dump() for attr in attributes_ipaddress]
         self.params["rels_bidir"] = [
             rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.BIDIR.value
         ]
@@ -311,6 +315,14 @@ class NodeCreateAllQuery(NodeQuery):
             "prefixlen": "attr.content.prefixlen",
         }
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
+
+        ipaddress_prop = {
+            "value": "attr.content.value",
+            "is_default": "attr.content.is_default",
+            "binary_address": "attr.content.binary_address",
+            "version": "attr.content.version",
+        }
+        ipaddress_prop_list = [f"{key}: {value}" for key, value in ipaddress_prop.items()]
 
         attrs_nonindexed_query = """
         WITH DISTINCT n
@@ -428,6 +440,35 @@ class NodeCreateAllQuery(NodeQuery):
         }
         """ % {
             "ipnetwork_prop": ", ".join(ipnetwork_prop_list),
+            "attr_edge": attr_edge_prop_str,
+            "attr_vertex": attr_vertex_prop_str,
+        }
+
+        attrs_ipaddress_query = """
+        WITH distinct n
+        UNWIND $attrs_ipaddress AS attr
+        CALL (n, attr) {
+            CREATE (a:Attribute %(attr_vertex)s)
+            CREATE (n)-[:HAS_ATTRIBUTE %(attr_edge)s]->(a)
+            MERGE (av:AttributeValue:AttributeValueIndexed:AttributeIPAddress { %(ipaddress_prop)s })
+            WITH attr, av, a
+            LIMIT 1
+            CREATE (a)-[:HAS_VALUE %(attr_edge)s]->(av)
+            MERGE (ip:Boolean { value: attr.is_protected })
+            WITH a, ip
+            LIMIT 1
+            CREATE (a)-[:IS_PROTECTED %(attr_edge)s]->(ip)
+            FOREACH ( prop IN attr.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_SOURCE %(attr_edge)s]->(peer)
+            )
+            FOREACH ( prop IN attr.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_OWNER %(attr_edge)s]->(peer)
+            )
+        }
+        """ % {
+            "ipaddress_prop": ", ".join(ipaddress_prop_list),
             "attr_edge": attr_edge_prop_str,
             "attr_vertex": attr_vertex_prop_str,
         }
@@ -561,6 +602,7 @@ class NodeCreateAllQuery(NodeQuery):
         {attrs_indexed_query if self.params["attrs_indexed"] else ""}
         {attrs_iphost_query if self.params["attrs_iphost"] else ""}
         {attrs_ipnetwork_query if self.params["attrs_ipnetwork"] else ""}
+        {attrs_ipaddress_query if self.params["attrs_ipaddress"] else ""}
         {rels_bidir_query if self.params["rels_bidir"] else ""}
         {rels_out_query if self.params["rels_out"] else ""}
         {rels_in_query if self.params["rels_in"] else ""}

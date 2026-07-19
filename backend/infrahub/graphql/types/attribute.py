@@ -128,6 +128,16 @@ class IPHostType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
+class IPAddressType(BaseAttribute):
+    value = Field(String)
+    version = Field(Int)
+
+    class Meta:
+        description = "Attribute of type IPAddress"
+        name = "IPAddress"
+        interfaces = {AttributeInterface}
+
+
 class IPNetworkType(BaseAttribute):
     value = Field(String)
     broadcast_address = Field(String)

@@ -17,7 +17,7 @@ from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import NodeNotFoundError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
 
@@ -328,6 +328,65 @@ async def test_iphost_attribute_value_is_normalized_after_save(db: InfrahubDatab
     reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
     assert reloaded is not None
     assert reloaded.address.value == "192.0.2.10/32"
+
+
+async def test_ipaddress_attribute_is_bare_after_save(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """An IPAddress attribute stores and returns a bare address, with no prefix appended."""
+    schema_root = SchemaRoot(
+        nodes=[
+            {
+                "name": "DnsRecord",
+                "namespace": "Test",
+                "attributes": [{"name": "address", "kind": "IPAddress"}],
+            }
+        ]
+    )
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    node_v4 = await Node.init(db=db, schema="TestDnsRecord", branch=default_branch)
+    await node_v4.new(db=db, address="192.0.2.10")
+    await node_v4.save(db=db)
+    # no /32 is appended, unlike IPHost
+    assert node_v4.address.value == "192.0.2.10"
+
+    node_v6 = await Node.init(db=db, schema="TestDnsRecord", branch=default_branch)
+    await node_v6.new(db=db, address="2001:0db8::0001")
+    await node_v6.save(db=db)
+    # the value is normalized to its compressed form, with no /128
+    assert node_v6.address.value == "2001:db8::1"
+
+    reloaded_v4 = await NodeManager.get_one(db=db, id=node_v4.id, branch=default_branch)
+    assert reloaded_v4 is not None
+    assert reloaded_v4.address.value == "192.0.2.10"
+
+    reloaded_v6 = await NodeManager.get_one(db=db, id=node_v6.id, branch=default_branch)
+    assert reloaded_v6 is not None
+    assert reloaded_v6.address.value == "2001:db8::1"
+
+    # equality filtering works against the bare stored value
+    schema = registry.schema.get(name="TestDnsRecord", branch=default_branch)
+    matched = await NodeManager.query(
+        db=db, schema=schema, branch=default_branch, filters={"address__value": "192.0.2.10"}
+    )
+    assert [n.id for n in matched] == [node_v4.id]
+
+
+async def test_ipaddress_attribute_rejects_prefix(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """An IPAddress attribute rejects a value carrying a prefix, including the host prefix."""
+    schema_root = SchemaRoot(
+        nodes=[
+            {
+                "name": "NtpServer",
+                "namespace": "Test",
+                "attributes": [{"name": "address", "kind": "IPAddress"}],
+            }
+        ]
+    )
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    node = await Node.init(db=db, schema="TestNtpServer", branch=default_branch)
+    with pytest.raises(ValidationError, match=r"^10\.0\.0\.1/24 is not a valid IPAddress at address$"):
+        await node.new(db=db, address="10.0.0.1/24")
 
 
 async def test_macaddress_attribute_value_is_normalized_after_save(
