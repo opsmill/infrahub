@@ -94,8 +94,6 @@ async def infrahub_branch_resolver(
 ) -> dict[str, Any]:
     if isinstance(limit, int) and limit < 1:
         raise ValidationError("limit must be >= 1")
-    if isinstance(offset, int) and offset < 0:
-        raise ValidationError("offset must be >= 0")
 
     node_ordering = standard_node_ordering_from_order_input(order)
 
