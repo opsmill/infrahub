@@ -51,6 +51,7 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
     case ATTRIBUTE_KIND.MAC_ADDRESS:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.IP_ADDRESS:
     case ATTRIBUTE_KIND.PASSWORD:
     case ATTRIBUTE_KIND.HASHED_PASSWORD:
     case ATTRIBUTE_KIND.URL:

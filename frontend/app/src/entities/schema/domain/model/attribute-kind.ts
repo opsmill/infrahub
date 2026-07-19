@@ -17,6 +17,7 @@ export const ATTRIBUTE_KIND = {
   BANDWIDTH: "Bandwidth",
   IP_HOST: "IPHost",
   IP_NETWORK: "IPNetwork",
+  IP_ADDRESS: "IPAddress",
   CHECKBOX: "Checkbox",
   LIST: "List",
   JSON: "JSON",
@@ -39,5 +40,6 @@ export const ATTRIBUTE_KINDS_FOR_LIST_VIEW: readonly AttributeKind[] = [
   ATTRIBUTE_KIND.BANDWIDTH,
   ATTRIBUTE_KIND.IP_HOST,
   ATTRIBUTE_KIND.IP_NETWORK,
+  ATTRIBUTE_KIND.IP_ADDRESS,
   ATTRIBUTE_KIND.DATETIME,
 ];
