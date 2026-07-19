@@ -53,6 +53,18 @@ Make `match` cover the whole stable message (anchor with `^...$` where practical
 
 Assert on the exact message with `==`, not substring checks with `in`. Vague checks hide regressions when error wording changes. The full-message-over-fragment preference applies to any exception assertion, not just GraphQL; with `pytest.raises` express it through an anchored `match` (above) rather than `==`.
 
+## Assert exact expectations
+
+Exact-match is not only for error messages. Assert the exact collection (full set/dict equality, not `in`/`issubset`), never mere non-emptiness (`!= frozenset()`, `len() > 0`), and a positive count where the number matters (so a run that silently measures zero fails). A denial test must also reload the target and assert nothing changed. Full guidance in `dev/guidelines/backend/testing.md` §"Assert exact expectations".
+
+## Don't test the framework
+
+Skip tests that only exercise library behavior: plain `Enum` value/round-trip checks, Pydantic field constraints (`ge`, `min_length`, …), `SettingsConfigDict`/env plumbing, or "a model has field X". Rule of thumb: if the test would still pass after deleting our implementation and reinstalling the library, it belongs to the library. See `dev/guidelines/backend/testing.md` §"What not to test".
+
+## Pick the cheapest test tier
+
+If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them.
+
 ## Test file placement
 
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
