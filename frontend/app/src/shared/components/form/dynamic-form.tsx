@@ -70,7 +70,8 @@ const DynamicForm = ({
 
 export const DynamicField = (props: DynamicFieldProps) => {
   // A unique attribute has no safe shared value in bulk update, so render it clear-only.
-  if (props.isBulkUpdate && props.unique) {
+  // Disabled fields fall through to the normal presentation, which suppresses the reset action.
+  if (props.isBulkUpdate && props.unique && !props.disabled) {
     return <BulkUpdateUniqueField {...props} />;
   }
 
