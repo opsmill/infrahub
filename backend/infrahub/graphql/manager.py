@@ -22,6 +22,7 @@ from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttrib
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
 from infrahub.graphql.types.metadata import OrderInput
+from infrahub.graphql.types.scalars import NonNegativeInt
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .constants import NODE_METADATA_TYPE, RELATIONSHIP_METADATA_TYPE
@@ -1027,7 +1028,7 @@ class GraphQLSchemaManager:
             dict: A Dictionary containing all the filters with their name as the key and their Type as value
 
         """
-        filters: dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int(), "order": OrderInput()}
+        filters: dict[str, Any] = {"offset": NonNegativeInt(), "limit": NonNegativeInt(), "order": OrderInput()}
         default_filters: list[str] = list(filters.keys())
 
         filters["ids"] = graphene.List(graphene.ID)

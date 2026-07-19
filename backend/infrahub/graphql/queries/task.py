@@ -9,6 +9,7 @@ from prefect.client.schemas.objects import StateType
 from infrahub.core.constants import TaskConclusion
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.queries.task_actions import TaskActionGenerator
+from infrahub.graphql.types.scalars import NonNegativeInt
 from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.flow_run.constants import CONCLUSION_STATE_MAPPING, LOG_LEVEL_MAPPING
 from infrahub.task_manager.flow_run.models import (
@@ -177,16 +178,16 @@ class Tasks(ObjectType):
 
 Task = Field(
     Tasks,
-    limit=Int(required=False),
-    offset=Int(required=False),
+    limit=NonNegativeInt(required=False),
+    offset=NonNegativeInt(required=False),
     related_node__ids=List(String),
     branch=String(required=False),
     state=List(TaskState),
     workflow=List(String),
     ids=List(String),
     q=String(required=False),
-    log_limit=Int(required=False),
-    log_offset=Int(required=False),
+    log_limit=NonNegativeInt(required=False),
+    log_offset=NonNegativeInt(required=False),
     resolver=Tasks.resolve,
     required=True,
 )

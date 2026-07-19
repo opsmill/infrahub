@@ -8,6 +8,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import InternalAccountToken
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -63,8 +64,8 @@ async def resolve_account_tokens(
 
 AccountToken = Field(
     AccountTokenEdges,
-    limit=Int(required=False),
-    offset=Int(required=False),
+    limit=NonNegativeInt(required=False),
+    offset=NonNegativeInt(required=False),
     resolver=resolve_account_tokens,
     required=True,
 )

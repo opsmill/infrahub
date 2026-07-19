@@ -21,6 +21,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import BranchNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -759,8 +760,8 @@ DiffTreeQuery = Field(
     root_node_uuids=Argument(List(String), deprecation_reason="replaced by filters"),
     include_parents=Boolean(),
     filters=DiffTreeQueryFilters(),
-    limit=Int(),
-    offset=Int(),
+    limit=NonNegativeInt(),
+    offset=NonNegativeInt(),
     proposed_change_id=String(),
     resolver=DiffTreeResolver().resolve,
     required=False,

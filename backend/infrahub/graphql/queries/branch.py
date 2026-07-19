@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import ID, Argument, Boolean, DateTime, Field, Int, List, NonNull, String
+from graphene import ID, Argument, Boolean, DateTime, Field, List, NonNull, String
 
 from infrahub.constants.enums import OrderByField, OrderDirection
 from infrahub.core.branch.enums import BranchStatus
@@ -14,6 +14,7 @@ from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
 from infrahub.graphql.types.enums import InfrahubBranchStatus
 from infrahub.graphql.types.metadata import MetadataOrderInput
+from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -150,8 +151,8 @@ async def infrahub_branch_resolver(
 
 InfrahubBranchQueryList = Field(
     InfrahubBranchType,
-    offset=Int(),
-    limit=Int(),
+    offset=NonNegativeInt(),
+    limit=NonNegativeInt(),
     name__value=String(),
     ids=List(ID),
     partial_match=Boolean(default_value=False),
