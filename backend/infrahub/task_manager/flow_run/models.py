@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Any
 from uuid import UUID
 
 from prefect.client.schemas.objects import FlowRun, StateType
@@ -52,6 +53,12 @@ class FlowProgress(BaseModel):
     data: dict[UUID, float] = Field(default_factory=dict)
 
 
+class FlowHttpCaptures(BaseModel):
+    """The most recent `http` capture (request/response/error) per flow run."""
+
+    data: dict[UUID, dict[str, Any]] = Field(default_factory=dict)
+
+
 class FlowRunQueryCriteria(BaseModel):
     """Transport-agnostic description of which flow runs to select."""
 
@@ -75,6 +82,7 @@ class FlowRunFetchOptions(BaseModel):
     include_progress: bool = False
     include_related_nodes: bool = False
     include_workflow: bool = False
+    include_http: bool = False
     log_limit: int | None = None
     log_offset: int | None = None
 
@@ -88,6 +96,7 @@ class EnrichedFlowRun(BaseModel):
     workflow_name: str | None = None
     progress: float | None = None
     logs: list[PrefectLog] = Field(default_factory=list)
+    http: dict[str, Any] | None = None
 
 
 class FlowRunQueryResult(BaseModel):

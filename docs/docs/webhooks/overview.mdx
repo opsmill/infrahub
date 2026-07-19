@@ -311,7 +311,7 @@ Each webhook delivery runs as a task. Open a webhook and select a delivery from 
 
 | Action | When it is available | What it does |
 |--------|----------------------|--------------|
-| Retry | The delivery has finished | Re-sends the original payload as a new delivery and leaves the original record unchanged. Useful when a delivery failed because the target was temporarily unavailable or misconfigured. |
-| Cancel | The delivery has not finished | Stops the delivery, including one waiting to be retried, so no further attempts are made. A request already in flight to the target cannot be recalled. |
+| Retry | The delivery has finished, or is being cancelled | Re-sends the original payload as a new delivery and leaves the original record unchanged. Useful when a delivery failed because the target was temporarily unavailable or misconfigured. |
+| Cancel | The delivery is still running or waiting to retry | Stops the delivery, including one waiting to be retried, so no further attempts are made. A request already in flight to the target cannot be recalled. |
 
 The Retry and Cancel actions appear only when they apply to the delivery's current state.

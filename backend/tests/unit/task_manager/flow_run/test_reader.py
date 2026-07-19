@@ -1,4 +1,4 @@
-from datetime import UTC
+from datetime import UTC, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -7,7 +7,13 @@ from prefect.client.schemas.objects import Artifact, Flow, FlowRun, Log
 from prefect.client.schemas.sorting import FlowRunSort
 from prefect.types import DateTime
 
-from infrahub.task_manager.flow_run.reader import NB_LOGS_LIMIT, PREFECT_MAX_LOGS_PER_CALL, FlowRunReader
+from infrahub.task_manager.flow_run.constants import WEBHOOK_HTTP_ARTIFACT_KEY
+from infrahub.task_manager.flow_run.reader import (
+    NB_LOGS_LIMIT,
+    PREFECT_MAX_ARTIFACTS_PER_CALL,
+    PREFECT_MAX_LOGS_PER_CALL,
+    FlowRunReader,
+)
 
 
 class FakeReaderClient:
@@ -42,9 +48,15 @@ class FakeReaderClient:
         """Assert read_logs was invoked once per (offset, limit) page, in order."""
         assert self._log_fetches == pages
 
-    async def read_artifacts(self, artifact_filter: ArtifactFilter, flow_run_filter: FlowRunFilter) -> list[Artifact]:
+    async def read_artifacts(
+        self,
+        artifact_filter: ArtifactFilter,
+        flow_run_filter: FlowRunFilter,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[Artifact]:
         self.read_artifacts_calls.append(flow_run_filter)
-        return self._artifacts
+        return self._artifacts[offset : offset + limit] if limit is not None else self._artifacts[offset:]
 
     async def read_flows(self, flow_filter: FlowFilter | None = None) -> list[Flow]:
         self.read_flows_calls.append(flow_filter)
@@ -57,6 +69,17 @@ def make_log(flow_run_id: UUID | None, message: str = "log line") -> Log:
 
 def make_artifact(flow_run_id: UUID, data: object) -> Artifact:
     return Artifact(type="progress", flow_run_id=flow_run_id, data=data)
+
+
+def make_http_artifact(flow_run_id: UUID, data: object, created: DateTime | None = None) -> Artifact:
+    return Artifact(key=WEBHOOK_HTTP_ARTIFACT_KEY, type="result", flow_run_id=flow_run_id, data=data, created=created)
+
+
+SAMPLE_CAPTURE = {
+    "request": {"url": "http://target/hook", "headers": {"webhook-signature": "***"}},
+    "response": {"status_code": 200, "body": "{}", "latency_ms": 4.0},
+    "error": None,
+}
 
 
 class TestReadLogs:
@@ -140,6 +163,50 @@ class TestReadProgress:
 
         assert result.data == {}
         assert client.read_artifacts_calls == []
+
+
+class TestReadHttp:
+    async def test_maps_flow_run_to_capture(self) -> None:
+        flow_id = uuid4()
+        client = FakeReaderClient(artifacts=[make_http_artifact(flow_id, SAMPLE_CAPTURE)])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=[flow_id])
+
+        assert result.data == {flow_id: SAMPLE_CAPTURE}
+
+    async def test_ignores_non_dict_data(self) -> None:
+        flow_id = uuid4()
+        client = FakeReaderClient(artifacts=[make_http_artifact(flow_id, "not-a-capture")])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=[flow_id])
+
+        assert result.data == {}
+
+    async def test_keeps_latest_capture_on_duplicate(self) -> None:
+        flow_id = uuid4()
+        older = make_http_artifact(flow_id, {"attempt": 1}, created=DateTime.now(tz=UTC))
+        newer = make_http_artifact(flow_id, {"attempt": 2}, created=DateTime.now(tz=UTC) + timedelta(seconds=120))
+        client = FakeReaderClient(artifacts=[newer, older])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=[flow_id])
+
+        assert result.data == {flow_id: {"attempt": 2}}
+
+    async def test_no_flow_ids_returns_empty_without_remote_call(self) -> None:
+        client = FakeReaderClient(artifacts=[make_http_artifact(uuid4(), SAMPLE_CAPTURE)])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=[])
+
+        assert result.data == {}
+        assert client.read_artifacts_calls == []
+
+    async def test_paginates_beyond_a_single_page(self) -> None:
+        flow_ids = [uuid4() for _ in range(PREFECT_MAX_ARTIFACTS_PER_CALL + 5)]
+        client = FakeReaderClient(artifacts=[make_http_artifact(fid, {"run": str(fid)}) for fid in flow_ids])
+
+        result = await FlowRunReader(client=client).read_http(flow_ids=flow_ids)
+
+        assert len(result.data) == PREFECT_MAX_ARTIFACTS_PER_CALL + 5
 
 
 class TestReadFlows:
