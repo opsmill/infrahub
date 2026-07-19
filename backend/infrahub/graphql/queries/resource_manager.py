@@ -18,7 +18,7 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.types.scalars import NonNegativeInt
+from infrahub.graphql.scalars import NonNegativeInt
 from infrahub.pools.number import NumberUtilizationGetter
 
 if TYPE_CHECKING:

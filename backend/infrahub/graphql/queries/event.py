@@ -8,8 +8,8 @@ from infrahub.core.constants import GlobalPermissions
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
 from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.scalars import NonNegativeInt
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
-from infrahub.graphql.types.scalars import NonNegativeInt
 from infrahub.permissions import define_global_permission_from_branch
 from infrahub.task_manager.event.models import InfrahubEventFilter
 from infrahub.task_manager.event.query import PrefectEvent

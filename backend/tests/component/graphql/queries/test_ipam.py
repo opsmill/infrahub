@@ -580,7 +580,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         query = """
-        query($prefix: ID!, $limit: NonNegativeInt!, $kinds: [String!]) {
+        query($prefix: ID!, $limit: Int!, $kinds: [String!]) {
             BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, kinds: $kinds, limit: $limit) {
                 edges {
                     node {
@@ -742,7 +742,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
         query = """
-        query($prefix: ID!, $limit: NonNegativeInt!, $offset: NonNegativeInt!) {
+        query($prefix: ID!, $limit: Int!, $offset: Int!) {
             BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, limit: $limit, offset: $offset) {
                 edges {
                     node {
@@ -1051,7 +1051,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
         query = """
-        query($prefix: ID!, $limit: NonNegativeInt!, $offset: NonNegativeInt!) {
+        query($prefix: ID!, $limit: Int!, $offset: Int!) {
             BuiltinIPPrefix(parent__ids: [$prefix], include_available: true, limit: $limit, offset: $offset) {
                 edges {
                     node {

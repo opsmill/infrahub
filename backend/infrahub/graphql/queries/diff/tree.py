@@ -21,7 +21,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import BranchNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.types.scalars import NonNegativeInt
+from infrahub.graphql.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from datetime import datetime

@@ -11,10 +11,10 @@ from infrahub.core.node.standard import StandardNodeOrdering, StandardNodeQueryF
 from infrahub.core.registry import registry
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.scalars import NonNegativeInt
 from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
 from infrahub.graphql.types.enums import InfrahubBranchStatus
 from infrahub.graphql.types.metadata import MetadataOrderInput
-from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from datetime import datetime

@@ -1,7 +1,7 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const GET_VALIDATOR_DETAILS = graphql(`
-  query GET_VALIDATOR_DETAILS($ids: [ID!], $checksOffset: NonNegativeInt, $checksLimit: NonNegativeInt) {
+  query GET_VALIDATOR_DETAILS($ids: [ID!], $checksOffset: Int, $checksLimit: Int) {
     CoreValidator(ids: $ids) {
       edges {
         node {
