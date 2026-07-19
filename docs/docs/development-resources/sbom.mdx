@@ -40,7 +40,7 @@ Use the exact image reference you deploy. The attestation is attached to the ima
 
 Use `cosign verify-attestation` to confirm the signature is valid **and** return the SBOM in a single step. Because signing is keyless, you must specify the signing identity and the OIDC issuer.
 
-The `jq` selector `(.payload // .dsseEnvelope.payload)` below is format-agnostic: it reads the `payload` field from cosign's legacy output and falls back to `dsseEnvelope.payload` for the newer DSSE bundle format that cosign v3 emits.
+The `jq` selector `(.payload // .dsseEnvelope.payload)` below is format-agnostic: it reads the `payload` field from the legacy cosign output and falls back to `dsseEnvelope.payload` for the newer DSSE bundle format that cosign v3 emits.
 
 ### SPDX
 
