@@ -125,11 +125,11 @@ address objects; IPHost/IPNetwork unchanged.
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T036 [P] Add user-facing documentation for the `IPAddress` attribute kind in `docs/` (schema attribute-kinds reference / relevant topic), noting the difference from IPHost/IPNetwork.
+- [x] T036 [P] Add user-facing documentation for the `IPAddress` attribute kind in `docs/` (schema attribute-kinds reference / relevant topic), noting the difference from IPHost/IPNetwork.
 - [ ] T037 [P] Update backend knowledge docs if the attribute/graph-storage docs enumerate kinds (`dev/knowledge/backend/`), reflecting the new `AttributeIPAddress` node type.
-- [ ] T038 Regenerate all generated files and verify committed: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`, `uv run invoke schema.generate-jsonschema`, `uv run invoke docs.generate`; `git diff --exit-code` clean.
-- [ ] T039 Run `uv run invoke format lint` (ruff+mypy), `cd frontend/app && pnpm biome:fix && pnpm test`, then `/pre-ci`.
-- [ ] T040 End-to-end verification per [quickstart.md](./quickstart.md): run a local Infrahub instance on this branch with the SDK submodule pointed at the local SDK branch; execute Scenarios 1–6 (bare store/read, prefix rejection, UI, HFID round-trip, SDK round-trip + IPHost/IPNetwork no-regression, filtering).
+- [x] T038 Regenerate all generated files and verify committed: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`, `uv run invoke schema.generate-jsonschema`, `uv run invoke docs.generate`; `git diff --exit-code` clean.
+- [x] T039 Run `uv run invoke format lint` (ruff+mypy), `cd frontend/app && pnpm biome:fix && pnpm test`, then `/pre-ci`.
+- [x] T040 End-to-end verification per [quickstart.md](./quickstart.md): run a local Infrahub instance on this branch with the SDK submodule pointed at the local SDK branch; execute Scenarios 1–6 (bare store/read, prefix rejection, UI, HFID round-trip, SDK round-trip + IPHost/IPNetwork no-regression, filtering).
 - [ ] T041 Open the SDK PR against the SDK repo (`infrahub-develop`); once merged upstream, bump the `python_sdk` submodule pointer in the Infrahub PR.
 
 ---
