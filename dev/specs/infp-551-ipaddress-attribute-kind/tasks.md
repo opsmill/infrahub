@@ -130,7 +130,7 @@ address objects; IPHost/IPNetwork unchanged.
 - [x] T038 Regenerate all generated files and verify committed: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`, `uv run invoke schema.generate-jsonschema`, `uv run invoke docs.generate`; `git diff --exit-code` clean.
 - [x] T039 Run `uv run invoke format lint` (ruff+mypy), `cd frontend/app && pnpm biome:fix && pnpm test`, then `/pre-ci`.
 - [x] T040 End-to-end verification per [quickstart.md](./quickstart.md): run a local Infrahub instance on this branch with the SDK submodule pointed at the local SDK branch; execute Scenarios 1–6 (bare store/read, prefix rejection, UI, HFID round-trip, SDK round-trip + IPHost/IPNetwork no-regression, filtering).
-- [ ] T041 Open the SDK PR against the SDK repo (`infrahub-develop`); once merged upstream, bump the `python_sdk` submodule pointer in the Infrahub PR.
+- [x] T041 Open the SDK PR against the SDK repo (`infrahub-develop`); once merged upstream, bump the `python_sdk` submodule pointer in the Infrahub PR.
 
 ---
 
