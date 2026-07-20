@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.regeneration.members import run_generator
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.git.utils import fetch_proposed_change_generator_definition_targets
-from infrahub.proposed_change.tasks import _run_generator
 
 from ..models import LoadedDefinition
 from .base import DefinitionSelectorBase
@@ -57,7 +57,7 @@ class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition
         return [relationship.peer.id for relationship in group.members.peers]
 
     def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
-        return _run_generator(
+        return run_generator(
             instance_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_instances=impacted
         )
 

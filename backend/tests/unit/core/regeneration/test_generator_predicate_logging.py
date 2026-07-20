@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffSummary
 
+from infrahub.core.regeneration.predicates import definition_changed, query_changed, transform_changed
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus.types import ProposedChangeRepository
-from infrahub.proposed_change.tasks import _definition_changed, _query_changed, _transform_changed
 
 QUERY_ID = "11111111-1111-1111-1111-111111111111"
 DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
@@ -69,7 +69,7 @@ def _node_diff(*, node_id: str, kind: str, element_names: list[str] | None = Non
 
 def test_query_changed_reason_uses_generator_nouns() -> None:
     """A firing query predicate names the query and uses the generator-correct ``instances`` noun."""
-    outcome = _query_changed(
+    outcome = query_changed(
         definition=_build_definition(),
         diff_summary=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery")],
     )
@@ -83,7 +83,7 @@ def test_query_changed_reason_uses_generator_nouns() -> None:
 
 def test_definition_changed_reason_uses_generator_nouns() -> None:
     """A firing definition predicate names the changed fields and uses the ``instances`` noun."""
-    outcome = _definition_changed(
+    outcome = definition_changed(
         definition=_build_definition(),
         diff_summary=[_node_diff(node_id=DEFINITION_ID, kind="CoreGeneratorDefinition", element_names=["targets"])],
     )
@@ -97,7 +97,7 @@ def test_definition_changed_reason_uses_generator_nouns() -> None:
 
 def test_transform_changed_reason_uses_generator_source_noun() -> None:
     """The precise-closure path names the intersecting file and uses the ``generator source`` noun."""
-    outcome = _transform_changed(
+    outcome = transform_changed(
         definition=_build_definition(dependencies=["generators/device/device.py"], dependencies_complete=True),
         repo_diff=_build_repo_diff(files_changed=["generators/device/device.py"]),
     )
@@ -111,7 +111,7 @@ def test_transform_changed_reason_uses_generator_source_noun() -> None:
 
 def test_transform_changed_reason_explains_the_legacy_fallback_for_generators() -> None:
     """A pre-feature generator (``dependencies=null``) explains the self-heal-on-re-import path."""
-    outcome = _transform_changed(
+    outcome = transform_changed(
         definition=_build_definition(dependencies=None, dependencies_complete=None),
         repo_diff=_build_repo_diff(files_changed=["any/path.txt"]),
     )
@@ -126,7 +126,7 @@ def test_transform_changed_reason_explains_the_legacy_fallback_for_generators() 
 
 def test_transform_changed_reason_explains_the_incomplete_closure_fallback_for_generators() -> None:
     """An incomplete closure (``dependencies_complete=False``) names the cause as the safety fallback."""
-    outcome = _transform_changed(
+    outcome = transform_changed(
         definition=_build_definition(dependencies=["generators/device/device.py"], dependencies_complete=False),
         repo_diff=_build_repo_diff(files_changed=["unrelated/file.md"]),
     )
@@ -146,10 +146,10 @@ def test_non_triggered_generator_predicates_carry_no_reason() -> None:
     """
     definition = _build_definition(dependencies=["generators/device/device.py"], dependencies_complete=True)
 
-    assert _query_changed(definition=definition, diff_summary=[]).reason is None
-    assert _definition_changed(definition=definition, diff_summary=[]).reason is None
+    assert query_changed(definition=definition, diff_summary=[]).reason is None
+    assert definition_changed(definition=definition, diff_summary=[]).reason is None
     assert (
-        _transform_changed(
+        transform_changed(
             definition=definition, repo_diff=_build_repo_diff(files_changed=["transforms/other/main.py"])
         ).reason
         is None
