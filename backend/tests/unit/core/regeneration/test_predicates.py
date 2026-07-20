@@ -1,13 +1,23 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 
 import pytest
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement
 
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.regeneration.predicates import definition_changed, query_changed, transform_changed
-from infrahub.message_bus.types import ProposedChangeArtifactDefinition, ProposedChangeRepository
+from infrahub.core.regeneration.predicates import (
+    definition_changed,
+    query_changed,
+    repo_diff_or_none,
+    transform_changed,
+)
+from infrahub.message_bus.types import (
+    ProposedChangeArtifactDefinition,
+    ProposedChangeBranchDiff,
+    ProposedChangeRepository,
+)
 
 QUERY_ID = "11111111-1111-1111-1111-111111111111"
 DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
@@ -336,3 +346,20 @@ def test_transform_changed(case: TransformChangedCase) -> None:
         files_removed=case.files_removed,
     )
     assert transform_changed(definition=definition, repo_diff=repo_diff).matched is case.expected
+
+
+def test_repo_diff_or_none_returns_matching_repository() -> None:
+    repo_diff = _build_repo_diff()
+    branch_diff = ProposedChangeBranchDiff(repositories=[repo_diff], pipeline_id=uuid.uuid4())
+    assert repo_diff_or_none(branch_diff, repo_diff.repository_id) is repo_diff
+
+
+def test_repo_diff_or_none_returns_none_for_absent_repository() -> None:
+    """A definition may reference a repository with no entry in the branch diff.
+
+    The lookup must degrade to ``None`` so the caller can skip the file-diff
+    predicate, rather than letting the missing-repository exception escape and
+    abort the regeneration task.
+    """
+    branch_diff = ProposedChangeBranchDiff(repositories=[_build_repo_diff()], pipeline_id=uuid.uuid4())
+    assert repo_diff_or_none(branch_diff, "00000000-0000-0000-0000-000000000000") is None

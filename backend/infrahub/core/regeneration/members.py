@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub_sdk.exceptions import NodeNotFoundError
+
 if TYPE_CHECKING:
     import logging
 
@@ -20,13 +22,17 @@ def map_subscriber_ids_by_member(
     """
     subscriber_by_member: dict[str, str] = {}
     for subscriber in existing_subscribers:
-        object_id = subscriber.object.id
-        if object_id is None:
+        try:
+            # The member id lives on the object peer; subscriber.object.id is None for some kinds.
+            member_id = subscriber.object.peer.id
+        except (ValueError, NodeNotFoundError):
             log.warning(
                 f"Skipping orphan subscriber {subscriber.id} for definition {definition_name}: object peer unresolvable"
             )
             continue
-        subscriber_by_member[object_id] = subscriber.id
+        if member_id is None:
+            continue
+        subscriber_by_member[member_id] = subscriber.id
     return subscriber_by_member
 
 

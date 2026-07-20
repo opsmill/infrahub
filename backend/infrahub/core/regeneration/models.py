@@ -39,9 +39,7 @@ class RegenerationDefinition(Protocol):
 
     Both the artifact-definition and generator-definition pipeline models satisfy this
     structurally, so the same predicates evaluate either kind without branching on type.
-    ``source_noun`` / ``instance_noun`` carry the kind-correct wording into the reason
-    strings (``transform`` / ``artifacts`` versus ``generator source`` / ``instances``).
-    Declare only what the predicates read.
+    ``source_noun`` / ``instance_noun`` supply the kind-correct wording for the reason strings.
     """
 
     definition_id: str
