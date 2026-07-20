@@ -271,6 +271,16 @@ To branch on or read from a typed object, use `isinstance` so the type checker c
 
 When a JSON string feeds a hash, fingerprint, or cache key, its output must be deterministic. Do **not** pass `default=str` to `json.dumps` there: it silently serializes unexpected types via `str()`, which can embed run-specific data (memory addresses) and break determinism. Serialize an explicit, canonical shape (sorted keys, known field types) and let unknown types raise instead of being coerced.
 
+### When a wrong-type bug slips through
+
+`mypy` and `ty` both gate CI, but modules opt out of checks — mypy via per-module `disable_error_code` in `pyproject.toml`, ty via directory `[[tool.ty.overrides]]` (`invalid-argument-type` is currently ignored tree-wide). These suppressions hide real bugs.
+
+So when a bug is caused by a **wrong type being passed** (e.g. a class where a `str` was expected), the checker should have caught it — treat it as a gap to close, not just a runtime fix:
+
+1. Find why it was missed — usually `arg-type` / `invalid-argument-type` is suppressed for that module.
+2. Re-enable the rule for that module and fix the whole typing chain it surfaces. Grandfather unrelated pre-existing violations with a scoped `# type: ignore[code]  # reason`, not by leaving the rule off.
+3. Fix the source. Never widen a parameter's type to silence the checker when the real contract is narrower — that entrenches the defect. mypy enforces argument types by default (modules opt out), so fix there; re-enabling ty's `invalid-argument-type` is a deliberate directory-wide effort, not a per-file exception.
+
 ## Python Version Compatibility
 
 The `python_testcontainers` package supports Python 3.10+, while the main backend requires Python 3.12+. When writing code that may be shared or used in `python_testcontainers`, be mindful of version-specific features.
