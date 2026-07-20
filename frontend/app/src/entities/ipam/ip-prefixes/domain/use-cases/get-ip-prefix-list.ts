@@ -1,7 +1,7 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/has-incompatible-filters-for-ip-availability";
+import { shouldExcludeIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/should-exclude-ip-availability";
 import { getIpPrefixListFromApi } from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
@@ -31,7 +31,7 @@ export const getIpPrefixList: GetIpPrefixList = async ({
   const attributesVisible = getPrefixAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisibleInListView(schema.relationships ?? []);
 
-  const excludeIpAvailability = hasIncompatibleFiltersForIpAvailability(filters);
+  const excludeIpAvailability = shouldExcludeIpAvailability(filters, sort);
   const schemaKind = schema.kind as string;
 
   const { data } = await getIpPrefixListFromApi({

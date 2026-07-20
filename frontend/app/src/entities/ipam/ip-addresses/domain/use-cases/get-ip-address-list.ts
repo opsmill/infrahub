@@ -9,7 +9,7 @@ import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-relationships-visible-in-list-view";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/has-incompatible-filters-for-ip-availability";
+import { shouldExcludeIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/should-exclude-ip-availability";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
@@ -39,7 +39,7 @@ export const getIpAddressList: GetIpAddressList = async ({
     schema.relationships ?? []
   );
 
-  const excludeIpAvailability = hasIncompatibleFiltersForIpAvailability(filters);
+  const excludeIpAvailability = shouldExcludeIpAvailability(filters, sort);
   const schemaKind = schema.kind as string;
 
   const getIpAddressListFromApi = excludeIpAvailability
