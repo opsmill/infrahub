@@ -189,22 +189,12 @@ and the generated sidebar — see `docs/plugins/release-notes-data.js` and
 `node scripts/backfill-release-frontmatter.mjs --check` (run from `docs/`)
 verifies that no release file is missing a required field.
 
-<<<<<<< HEAD
-For example, if releasing 1.7.2, insert:
-
-```typescript
-            'release-notes/infrahub/release-1_7_2',
-```
-
-before the existing first entry.
-=======
 ## Step 6: Verify Sidebar Generation
 
 The release-notes sidebar is generated automatically from the files in
 `docs/docs/release-notes/infrahub/` by `docs/sidebar-releases.ts` — no manual
 `docs/sidebars.ts` edit is needed. The new release appears in its "X.Y release"
 category once the file exists.
->>>>>>> origin/stable
 
 ## Step 7: Commit, Tag, and Push
 
@@ -223,7 +213,7 @@ reads — there is no version file to bump.
    already committed it in Step 3):
 
    ```bash
-   git add CHANGELOG.md docs/docs/release-notes/infrahub/release-<major>_<minor>_<patch>.mdx docs/sidebars.ts
+   git add CHANGELOG.md docs/docs/release-notes/infrahub/release-<major>_<minor>_<patch>.mdx
    git commit -m "chore: release <new_version>"
    ```
 
@@ -245,13 +235,13 @@ reads — there is no version file to bump.
 Review all modified files:
 
 1. `CHANGELOG.md` - new release section added, fragments removed
-2. `docs/docs/release-notes/infrahub/release-<version>.mdx` - new file created
-3. `docs/sidebars.ts` - new entry added at top of releases list
-4. **No `pyproject.toml` changes**: `git diff HEAD~1 -- pyproject.toml python_testcontainers/pyproject.toml`
+2. `docs/docs/release-notes/infrahub/release-<version>.mdx` - new file created (sidebar entry
+   appears automatically via `docs/sidebar-releases.ts` — no `docs/sidebars.ts` edit)
+3. **No `pyproject.toml` changes**: `git diff HEAD~1 -- pyproject.toml python_testcontainers/pyproject.toml`
    MUST be empty
-5. `docker-compose.yml` - all infrahub services pin `<new_version>` via the workflow's bot commit
+4. `docker-compose.yml` - all infrahub services pin `<new_version>` via the workflow's bot commit
    (`uv run invoke release.validate-docker-compose --version <new_version>` passes)
-6. The annotated tag `infrahub-v<new_version>` exists and points at the release commit
+5. The annotated tag `infrahub-v<new_version>` exists and points at the release commit
 
 ## Step 9: Summary and Next Steps
 
