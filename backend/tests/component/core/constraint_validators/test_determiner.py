@@ -190,8 +190,8 @@ class TestConstraintDeterminer:
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])
 
-        assert len(constraints) >= len(constraint_info_set)
-        assert constraint_info_set <= set(constraints)
+        assert len(constraints) == len(constraint_info_set)
+        assert constraint_info_set == set(constraints)
 
     async def test_node_property_constraints_included(
         self,
