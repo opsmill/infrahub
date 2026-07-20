@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from infrahub.core import registry
@@ -403,6 +405,27 @@ class TestConstraintDeterminer:
         constraints = await determiner.get_constraints(node_diffs=node_diffs)
 
         assert set(constraints) == expected
+
+    async def test_unparseable_uniqueness_constraint_element_is_skipped_and_logged(
+        self,
+        car_person_schema: SchemaBranch,
+        default_branch: Branch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        person_schema = schema_branch.get(name="TestPerson", duplicate=False)
+        person_schema.uniqueness_constraints = [["does_not_exist__value"]]
+        determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
+        # `height` is not a unique attribute, so evaluating uniqueness must fall through to parsing
+        # the (unparseable) constraint group rather than short-circuiting on a unique attribute.
+        node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_names={"height"})
+
+        with caplog.at_level(logging.WARNING):
+            constraints = await determiner.get_constraints(node_diffs=[node_diff])
+
+        assert "Cannot parse TestPerson.uniqueness_constraints element 'does_not_exist__value'" in caplog.text
+        # the unparseable element is skipped in isolation, so no uniqueness check is emitted for the kind
+        assert node_uniqueness_constraint("TestPerson") not in set(constraints)
 
     async def test_hierarchy_constraint_scoped_to_changed_relationship(
         self,

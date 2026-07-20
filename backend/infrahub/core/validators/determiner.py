@@ -136,6 +136,7 @@ class ConstraintValidatorDeterminer:
                 try:
                     schema_path = schema.parse_schema_path(path=constraint_path, schema=self.schema_branch)
                 except AttributePathParsingError:
+                    LOG.warning(f"Cannot parse {schema.kind}.uniqueness_constraints element '{constraint_path}'")
                     continue
                 if schema_path.relationship_schema is not None:
                     # check if the relationship changed
