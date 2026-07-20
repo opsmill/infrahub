@@ -31,7 +31,7 @@ jobs:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv

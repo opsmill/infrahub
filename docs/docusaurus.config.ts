@@ -110,6 +110,7 @@ const config: Config = {
         },
       },
     ],
+    './plugins/release-notes-data',
   ],
   themeConfig: {
     announcementBar: {
