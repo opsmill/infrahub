@@ -15,8 +15,6 @@ from infrahub.log import get_logger
 from .write_blocker import MergeProtectionState
 
 if TYPE_CHECKING:
-    from infrahub_sdk.diff import NodeDiff
-
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -109,12 +107,6 @@ class BranchMergeOrchestrator:
             changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=self.source_branch, db=self.db)
             node_events = changelog_collector.collect_changelogs()
 
-            serialized_diff_summary = (
-                self._serialize_diff_summary(branch_diff=branch_diff)
-                if config.SETTINGS.main.selective_execution_after_merge
-                else None
-            )
-
             if await self.schema_analyzer.has_schema_changes():
                 self.log.info("Applying schema migrations after merge")
                 # Schema nodes were already written by the graph merge; load that post-merge schema
@@ -176,9 +168,7 @@ class BranchMergeOrchestrator:
         await self.merge_write_blocker.delete()
 
         # Persisted only past the point of no return, so a rolled-back merge leaves no entry behind.
-        merge_diff_cache_key = await self._write_diff_summary_cache(
-            diff_id=branch_diff.uuid, diff_summary=serialized_diff_summary
-        )
+        merge_diff_cache_key = await self._cache_diff_summary(branch_diff=branch_diff)
 
         await self.post_merge_dispatcher.run_follow_ups(
             branch=self.source_branch,
@@ -197,19 +187,23 @@ class BranchMergeOrchestrator:
             schema_hash=schema_updated_hash,
         )
 
-    def _serialize_diff_summary(self, branch_diff: EnrichedDiffRoot) -> list[NodeDiff] | None:
+    async def _cache_diff_summary(self, branch_diff: EnrichedDiffRoot) -> str | None:
+        """Serialize the merge diff and persist its summary to the cache, returning the cache key.
+
+        Returns None when selective execution is disabled, or when serialization or the cache write fails.
+        """
+        if not config.SETTINGS.main.selective_execution_after_merge:
+            return None
         try:
-            return self.diff_serializer.serialize(root=branch_diff, target_branch_name=self.destination_branch.name)
+            diff_summary = self.diff_serializer.serialize(
+                root=branch_diff, target_branch_name=self.destination_branch.name
+            )
         except Exception:
             self.log.exception("Failed to serialize merge diff summary; falling back to full regeneration")
             return None
-
-    async def _write_diff_summary_cache(self, diff_id: str, diff_summary: list[NodeDiff] | None) -> str | None:
-        if diff_summary is None:
-            return None
         try:
-            await self.diff_summary_cache.set(diff_id=diff_id, diff_summary=diff_summary)
-            return diff_id
+            await self.diff_summary_cache.set(diff_id=branch_diff.uuid, diff_summary=diff_summary)
+            return branch_diff.uuid
         except Exception:
             self.log.exception("Failed to cache merge diff summary; falling back to full regeneration")
             return None
