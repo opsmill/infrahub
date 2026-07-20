@@ -129,7 +129,23 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         CALL (active_node, rel) {
             WITH active_node, rel
             WHERE $set_metadata
+            SET rel.previous_updated_at = CASE
+                    WHEN rel.updated_at IS NULL OR rel.updated_at <> $current_time THEN rel.updated_at
+                    ELSE rel.previous_updated_at
+                END,
+                rel.previous_updated_by = CASE
+                    WHEN rel.updated_at IS NULL OR rel.updated_at <> $current_time THEN rel.updated_by
+                    ELSE rel.previous_updated_by
+                END
             SET rel.updated_at = $current_time, rel.updated_by = $user_id
+            SET active_node.previous_updated_at = CASE
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                    ELSE active_node.previous_updated_at
+                END,
+                active_node.previous_updated_by = CASE
+                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                    ELSE active_node.previous_updated_by
+                END
             SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
         }
 
@@ -166,6 +182,14 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         CALL (peer) {
             WITH peer
             WHERE $set_metadata AND peer:Node
+            SET peer.previous_updated_at = CASE
+                    WHEN peer.updated_at IS NULL OR peer.updated_at <> $current_time THEN peer.updated_at
+                    ELSE peer.previous_updated_at
+                END,
+                peer.previous_updated_by = CASE
+                    WHEN peer.updated_at IS NULL OR peer.updated_at <> $current_time THEN peer.updated_by
+                    ELSE peer.previous_updated_by
+                END
             SET peer.updated_at = $current_time, peer.updated_by = $user_id
         }
 
