@@ -16,7 +16,7 @@ export const DurationDisplay = (props: DateDisplayProps) => {
 
   const tooltip = (
     <div className="flex items-center">
-      {formatDate(date ?? new Date(), "datetime")}
+      {formatDate(date, "datetime")}
 
       <Icon icon="mdi:chevron-right" className="mx-2" />
 

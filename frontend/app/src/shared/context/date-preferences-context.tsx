@@ -33,7 +33,8 @@ function formatWithLocale(date: DateInput, variant: DateVariant, timezone: strin
 
 export interface UseFormatDateResult {
   formatDate: (date: DateInput, variant?: DateVariant) => string;
-  pattern: string | null;
+  /** Preferred zone, exposed for the rare caller (e.g. an explicit-pattern escape hatch)
+   * that formats a date itself and still needs to honour the user's timezone. */
   timezone: string | null;
 }
 
@@ -62,12 +63,14 @@ export function useFormatDate(): UseFormatDateResult {
     return formatWithPattern(date, { pattern, timezone });
   };
 
-  return { formatDate: boundFormat, pattern, timezone };
+  return { formatDate: boundFormat, timezone };
 }
 
 // Drops everything from the first time token onward, e.g. "yyyy-MM-dd HH:mm" → "yyyy-MM-dd".
-function dateOnlyPattern(pattern: string): string {
+// Exported for direct testing of the fragile quoted-token / day-period presets.
+export function dateOnlyPattern(pattern: string): string {
   const timeTokenIndex = pattern.search(/[HhmsaXxOz]/);
   const dateSlice = timeTokenIndex === -1 ? pattern : pattern.slice(0, timeTokenIndex);
-  return dateSlice.replace(/['T\s\-/.,:]+$/, "").trim();
+  // The trailing character class already strips whitespace, so no separate trim is needed.
+  return dateSlice.replace(/['T\s\-/.,:]+$/, "");
 }

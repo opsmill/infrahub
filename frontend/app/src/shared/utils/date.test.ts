@@ -84,6 +84,10 @@ describe("formatRelativeTimeFromNow", () => {
     const twoDaysAgo = new Date("2026-06-09T14:30:00Z");
     expect(formatRelativeTimeFromNow(twoDaysAgo)).toBe("2 days ago");
   });
+
+  test("degrades instead of throwing on an invalid date", () => {
+    expect(formatRelativeTimeFromNow("not-a-date")).toBe("not-a-date");
+  });
 });
 
 describe("isInPreviousYear", () => {

@@ -4,6 +4,7 @@ import { renderHook } from "vitest-browser-react";
 
 import {
   DatePreferencesContext,
+  dateOnlyPattern,
   type ResolvedDatePreferences,
   useFormatDate,
 } from "@/shared/context/date-preferences-context";
@@ -34,7 +35,6 @@ describe("useFormatDate", () => {
     });
     // UTC+2 in June → 16:30.
     expect(result.current.formatDate(FIXED_INSTANT)).toBe("2026-06-11 16:30");
-    expect(result.current.pattern).toBe("yyyy-MM-dd HH:mm");
     expect(result.current.timezone).toBe("Europe/Paris");
   });
 
@@ -79,8 +79,25 @@ describe("useFormatDate", () => {
 
   test("no provider mounted → browser-locale fallback, never crashes", async () => {
     const { result } = await renderHook(() => useFormatDate(), { wrapper: wrapperFor(null) });
-    expect(result.current.pattern).toBeNull();
     expect(result.current.timezone).toBeNull();
     expect(result.current.formatDate(FIXED_INSTANT)).toBeTruthy();
+  });
+});
+
+describe("dateOnlyPattern", () => {
+  test("strips the time portion from a space-separated pattern", () => {
+    expect(dateOnlyPattern("yyyy-MM-dd HH:mm")).toBe("yyyy-MM-dd");
+  });
+
+  test("handles the ISO_8601 preset's quoted 'T' separator", () => {
+    expect(dateOnlyPattern("yyyy-MM-dd'T'HH:mm:ssXXX")).toBe("yyyy-MM-dd");
+  });
+
+  test("handles the US_12H preset's day-period token", () => {
+    expect(dateOnlyPattern("MM/dd/yyyy hh:mm a")).toBe("MM/dd/yyyy");
+  });
+
+  test("returns a date-only pattern unchanged", () => {
+    expect(dateOnlyPattern("yyyy-MM-dd")).toBe("yyyy-MM-dd");
   });
 });
