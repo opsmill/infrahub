@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "setup": "git submodule update --init --recursive && pnpm install",
     "submodule:update": "git submodule update --remote ../../frontend/packages/schema-visualizer && pnpm install",
