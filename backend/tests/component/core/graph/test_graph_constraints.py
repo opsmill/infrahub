@@ -645,6 +645,34 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
         ConstraintInfo(item_name="node_attribute_uuid_exist", item_label="Attribute", property="uuid"),
         ConstraintInfo(item_name="node_attribute_uuid_type", item_label="Attribute", property="uuid"),
         ConstraintInfo(
+            item_name="node_attributeipaddress_binary_address_exist",
+            item_label="AttributeIPAddress",
+            property="binary_address",
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipaddress_binary_address_type",
+            item_label="AttributeIPAddress",
+            property="binary_address",
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipaddress_is_default_exist", item_label="AttributeIPAddress", property="is_default"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipaddress_is_default_type", item_label="AttributeIPAddress", property="is_default"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipaddress_value_exist", item_label="AttributeIPAddress", property="value"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipaddress_value_type", item_label="AttributeIPAddress", property="value"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipaddress_version_exist", item_label="AttributeIPAddress", property="version"
+        ),
+        ConstraintInfo(
+            item_name="node_attributeipaddress_version_type", item_label="AttributeIPAddress", property="version"
+        ),
+        ConstraintInfo(
             item_name="node_attributeiphost_binary_address_exist",
             item_label="AttributeIPHost",
             property="binary_address",
@@ -821,6 +849,10 @@ async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, defaul
         ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="is_default"),
         ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="binary_address"),
         ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="version"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPAddress", property="value"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPAddress", property="is_default"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPAddress", property="binary_address"),
+        ConstraintInfo(item_name="n_a", item_label="AttributeIPAddress", property="version"),
         ConstraintInfo(item_name="n_a", item_label="Boolean", property="value"),
     ]
 
