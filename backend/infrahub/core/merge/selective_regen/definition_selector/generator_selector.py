@@ -58,7 +58,7 @@ class GeneratorSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition
 
     def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
         return _run_generator(
-            instance_id=subscriber_id, managed_branch=regenerate_all_members, impacted_instances=impacted
+            instance_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_instances=impacted
         )
 
     def _build_request(

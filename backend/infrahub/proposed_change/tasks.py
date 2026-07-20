@@ -957,7 +957,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         artifact_id = artifacts_by_member.get(member.id)
         if _should_render_artifact(
             artifact_id=artifact_id,
-            managed_branch=managed_branch,
+            regenerate_all_members=managed_branch,
             impacted_artifacts=impacted_artifacts,
         ):
             log.info(f"Trigger Artifact processing for {member.display_label}")
@@ -1034,19 +1034,19 @@ def _map_subscriber_ids_by_member(
 
 def _should_render_artifact(
     artifact_id: str | None,
-    managed_branch: bool,
+    regenerate_all_members: bool,
     impacted_artifacts: list[str],
 ) -> bool:
     """Returns a boolean to indicate if an artifact should be generated or not.
 
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
-        * The source branch is synced with git and has file modifications (managed_branch)
+        * regenerate_all_members is set, forcing every member to be regenerated regardless of impact
         * The artifact_id exists in the impacted_artifacts list
     Will return false if:
         * The artifact_id exists and is not in the impacted list.
     """
-    if not artifact_id or managed_branch:
+    if not artifact_id or regenerate_all_members:
         return True
 
     return artifact_id in impacted_artifacts
@@ -1298,7 +1298,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
         generator_instance = instance_by_member.get(member.id)
         if _run_generator(
             instance_id=generator_instance,
-            managed_branch=managed_branch,
+            regenerate_all_members=managed_branch,
             impacted_instances=impacted_instances,
         ):
             requested_instances += 1
@@ -1340,18 +1340,18 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     )
 
 
-def _run_generator(instance_id: str | None, managed_branch: bool, impacted_instances: list[str]) -> bool:
+def _run_generator(instance_id: str | None, regenerate_all_members: bool, impacted_instances: list[str]) -> bool:
     """Returns a boolean to indicate if a generator instance needs to be executed.
 
     Will return true if:
         * The instance_id wasn't set which could be that it's a new object that doesn't have a previous generator instance
-        * The source branch is set to sync with Git which would indicate that it could contain updates in git to the generator
+        * regenerate_all_members is set, forcing every instance to be executed regardless of impact
         * The instance_id exists in the impacted_instances list
     Will return false if:
-        * The source branch is a not one that syncs with git and the instance_id exists and is not in the impacted list.
+        * regenerate_all_members is not set and the instance_id exists and is not in the impacted list.
 
     """
-    if not instance_id or managed_branch:
+    if not instance_id or regenerate_all_members:
         return True
     return instance_id in impacted_instances
 
