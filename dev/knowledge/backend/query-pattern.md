@@ -80,6 +80,12 @@ print(query.get_query(var=True, inline=True))  # With variables substituted
 await query.execute(db=db)  # Execute when ready
 ```
 
+## Reads must not write
+
+Neo4j routing is selected by the **database session**, not by `QueryType`: `db.start_session(read_only=True)` opens a session with `READ_ACCESS` (which a clustered deployment can route to any replica), while a normal session uses `WRITE_ACCESS` (the primary). `QueryType.READ` / `QueryType.WRITE` drives Query execution behavior and metrics, not server selection.
+
+Because a read-shaped operation may run inside a read-only session, it must never write. This is a separate invariant that holds at every layer: a method named `get_*` (or any read-shaped accessor) must not create or mutate as a side effect — e.g. a `get_global()` that lazily materializes a missing row. Return a "not set" sentinel or `None`, and let the dedicated write path (a mutation, a `Repository.save`) be the only thing that creates.
+
 ## Core Patterns
 
 ### Query Naming
@@ -108,6 +114,8 @@ self.add_to_query(f"MATCH (n {{ uuid: '{user_provided_id}' }})")
 ### Return Labels
 
 The RETURN clause is automatically generated from `return_labels`. Call `update_return_labels()` to specify what to return.
+
+**Never assign a shared module-level list to `return_labels`.** `update_return_labels()` *appends* to `self.return_labels`, so assigning a module-level constant (`self.return_labels = _RETURN_LABELS`) makes every instance mutate the same list and leak labels across queries. Assign a copy: `self.return_labels = list(_RETURN_LABELS)`.
 
 **Important:** Only return the specific properties you need, not entire nodes or relationships. This reduces data transfer and memory usage.
 
@@ -139,6 +147,8 @@ class MyQuery(Query):
 ### Pagination
 
 Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor parameters. To write pagination directly in your query, set `insert_limit = False`:
+
+> **List reads default to a page limit (e.g. `Branch.get_list` defaults to `limit=1000`).** Any check that must reason over *all* matching rows — "is any branch merging?", "are there duplicates?" — must not rely on an unbounded read of a default page. Narrow the query with a filter (a status/kind predicate) or paginate explicitly; otherwise the check silently ignores everything past the first page once the table grows.
 
 ```python
 class MyQuery(Query):

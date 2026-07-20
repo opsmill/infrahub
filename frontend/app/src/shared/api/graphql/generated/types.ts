@@ -17930,6 +17930,20 @@ export type GroupEvent = EventNodeInterface & {
   related_nodes: Array<RelatedNode>;
 };
 
+export type HttpRequest = {
+  __typename: 'HttpRequest';
+  /** Request headers as sent, with secret values masked */
+  headers: Scalars['GenericScalar']['output'];
+  url: Scalars['String']['output'];
+};
+
+export type HttpResponse = {
+  __typename: 'HttpResponse';
+  body: Maybe<Scalars['String']['output']>;
+  latency_ms: Maybe<Scalars['Float']['output']>;
+  status_code: Maybe<Scalars['Int']['output']>;
+};
+
 export type IpAddressGetNextAvailable = {
   __typename: 'IPAddressGetNextAvailable';
   address: Scalars['String']['output'];
@@ -18244,7 +18258,7 @@ export type InfrahubRelationshipMetadata = {
  *
  * scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
  *                no account argument, so there is no path to write another user's preferences).
- * scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
+ * scope=GLOBAL → the organisation-wide row (owner_id = a fixed sentinel), gated on
  *                manage_global_preferences (super admins bypass) checked BEFORE any read.
  *
  * The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
@@ -18256,6 +18270,20 @@ export type InfrahubSetPreferences = {
   date_format: Maybe<DateFormat>;
   ok: Maybe<Scalars['Boolean']['output']>;
   timezone: Maybe<Scalars['String']['output']>;
+};
+
+/** Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request. */
+export type InfrahubTaskCancel = {
+  __typename: 'InfrahubTaskCancel';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
+};
+
+/** Retry a settled delivery by replaying its frozen payload as a new, independent delivery. */
+export type InfrahubTaskRetry = {
+  __typename: 'InfrahubTaskRetry';
+  ok: Maybe<Scalars['Boolean']['output']>;
+  task: Maybe<TaskInfo>;
 };
 
 /** Token for User Account */
@@ -19879,7 +19907,7 @@ export type Mutation = {
    *
    * scope=USER   → the calling account's OWN Preference row (owner_id = account_session.account_id;
    *                no account argument, so there is no path to write another user's preferences).
-   * scope=GLOBAL → the organisation-wide row (owner_id = the Root id), gated on
+   * scope=GLOBAL → the organisation-wide row (owner_id = a fixed sentinel), gated on
    *                manage_global_preferences (super admins bypass) checked BEFORE any read.
    *
    * The _UNSET sentinel leaves an omitted field unchanged while an explicit `null` resets it. The row
@@ -19887,6 +19915,10 @@ export type Mutation = {
    * Preference row.
    */
   InfrahubSetPreferences: Maybe<InfrahubSetPreferences>;
+  /** Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request. */
+  InfrahubTaskCancel: Maybe<InfrahubTaskCancel>;
+  /** Retry a settled delivery by replaying its frozen payload as a new, independent delivery. */
+  InfrahubTaskRetry: Maybe<InfrahubTaskRetry>;
   InfrahubUpdateComputedAttribute: Maybe<UpdateComputedAttribute>;
   InfrahubUpdateDisplayLabel: Maybe<UpdateDisplayLabel>;
   InfrahubUpdateHFID: Maybe<UpdateHfid>;
@@ -21572,6 +21604,16 @@ export type MutationInfrahubSetPreferencesArgs = {
   date_format?: InputMaybe<DateFormat>;
   scope: PreferenceWriteScope;
   timezone?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationInfrahubTaskCancelArgs = {
+  data: TaskActionInput;
+};
+
+
+export type MutationInfrahubTaskRetryArgs = {
+  data: TaskActionInput;
 };
 
 
@@ -24403,7 +24445,7 @@ export const PreferenceSource = {
 } as const;
 
 export type PreferenceSource = typeof PreferenceSource[keyof typeof PreferenceSource];
-/** The writable axes of the preferences store: USER writes the caller's own preferences, GLOBAL writes the organisation-wide ones (gated on manage_global_preferences). EFFECTIVE is intentionally absent — the resolved view is read-only. */
+/** Which set of preferences to write: USER for the current user's own preferences, GLOBAL for the organisation-wide defaults. */
 export const PreferenceWriteScope = {
   GLOBAL: 'GLOBAL',
   USER: 'USER'
@@ -38647,6 +38689,31 @@ export type SubscriptionQueryArgs = {
   params?: InputMaybe<Scalars['GenericScalar']['input']>;
 };
 
+export type TaskAction = {
+  __typename: 'TaskAction';
+  action: TaskActionType;
+  available: Scalars['Boolean']['output'];
+  unavailability_reason: Maybe<Scalars['String']['output']>;
+};
+
+export type TaskActionInput = {
+  id: Scalars['String']['input'];
+};
+
+/** Recovery actions a task run can expose. */
+export const TaskActionType = {
+  CANCEL: 'CANCEL',
+  RETRY: 'RETRY'
+} as const;
+
+export type TaskActionType = typeof TaskActionType[keyof typeof TaskActionType];
+export type TaskError = {
+  __typename: 'TaskError';
+  message: Scalars['String']['output'];
+  remediation: Scalars['String']['output'];
+  status_class: Scalars['String']['output'];
+};
+
 export type TaskInfo = {
   __typename: 'TaskInfo';
   id: Maybe<Scalars['String']['output']>;
@@ -38672,11 +38739,39 @@ export type TaskLogNodes = {
   node: Maybe<TaskLog>;
 };
 
-export type TaskNode = {
+export type TaskNode = TaskNodeInterface & {
   __typename: 'TaskNode';
+  available_actions: Array<TaskAction>;
   branch: Maybe<Scalars['String']['output']>;
   conclusion: Scalars['String']['output'];
   created_at: Scalars['String']['output'];
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
+  id: Scalars['String']['output'];
+  logs: Maybe<TaskLogEdge>;
+  parameters: Maybe<Scalars['GenericScalar']['output']>;
+  progress: Maybe<Scalars['Float']['output']>;
+  /** @deprecated This field is deprecated and it will be removed in a future release, use related_nodes instead */
+  related_node: Maybe<Scalars['String']['output']>;
+  /** @deprecated This field is deprecated and it will be removed in a future release, use related_nodes instead */
+  related_node_kind: Maybe<Scalars['String']['output']>;
+  related_nodes: Maybe<Array<Maybe<TaskRelatedNode>>>;
+  start_time: Maybe<Scalars['String']['output']>;
+  state: Maybe<StateType>;
+  tags: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  title: Scalars['String']['output'];
+  updated_at: Scalars['String']['output'];
+  workflow: Maybe<Scalars['String']['output']>;
+};
+
+/** Fields shared by every task run; concrete types are discriminated by the run's workflow name. */
+export type TaskNodeInterface = {
+  available_actions: Array<TaskAction>;
+  branch: Maybe<Scalars['String']['output']>;
+  conclusion: Scalars['String']['output'];
+  created_at: Scalars['String']['output'];
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
   id: Scalars['String']['output'];
   logs: Maybe<TaskLogEdge>;
   parameters: Maybe<Scalars['GenericScalar']['output']>;
@@ -38696,7 +38791,7 @@ export type TaskNode = {
 
 export type TaskNodes = {
   __typename: 'TaskNodes';
-  node: Maybe<TaskNode>;
+  node: Maybe<TaskNodeInterface>;
 };
 
 export type TaskRelatedNode = {
@@ -38766,4 +38861,31 @@ export type ValidateRepositoryConnectivity = {
 export type ValueType = {
   __typename: 'ValueType';
   value: Scalars['String']['output'];
+};
+
+export type WebhookDeliveryTask = TaskNodeInterface & {
+  __typename: 'WebhookDeliveryTask';
+  available_actions: Array<TaskAction>;
+  branch: Maybe<Scalars['String']['output']>;
+  conclusion: Scalars['String']['output'];
+  created_at: Scalars['String']['output'];
+  /** Classified failure reason with a remediation hint; null unless the task failed with one */
+  error: Maybe<TaskError>;
+  http_request: Maybe<HttpRequest>;
+  http_response: Maybe<HttpResponse>;
+  id: Scalars['String']['output'];
+  logs: Maybe<TaskLogEdge>;
+  parameters: Maybe<Scalars['GenericScalar']['output']>;
+  progress: Maybe<Scalars['Float']['output']>;
+  /** @deprecated This field is deprecated and it will be removed in a future release, use related_nodes instead */
+  related_node: Maybe<Scalars['String']['output']>;
+  /** @deprecated This field is deprecated and it will be removed in a future release, use related_nodes instead */
+  related_node_kind: Maybe<Scalars['String']['output']>;
+  related_nodes: Maybe<Array<Maybe<TaskRelatedNode>>>;
+  start_time: Maybe<Scalars['String']['output']>;
+  state: Maybe<StateType>;
+  tags: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  title: Scalars['String']['output'];
+  updated_at: Scalars['String']['output'];
+  workflow: Maybe<Scalars['String']['output']>;
 };

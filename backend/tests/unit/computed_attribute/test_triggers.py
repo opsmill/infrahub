@@ -4,8 +4,18 @@ import json
 
 from jinja2 import ChainableUndefined, Environment
 
-from infrahub.computed_attribute.triggers import TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA
+from infrahub.computed_attribute.triggers import (
+    TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA,
+    TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_CREATED,
+    TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_DELETED,
+    TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_UPDATED,
+)
+from infrahub.core.constants import InfrahubKind
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
+from infrahub.events.node_action import NodeCreatedEvent, NodeDeletedEvent, NodeUpdatedEvent
+from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.trigger.models import ExecuteWorkflow
+from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM_LIFECYCLE
 
 
 def _changed_elements_templates() -> list[str]:
@@ -52,3 +62,54 @@ def test_template_renders_null_when_change_set_absent() -> None:
 
     for template in _changed_elements_templates():
         assert json.loads(_render(template, payload)) is None
+
+
+def _lifecycle_match() -> dict:
+    return {
+        "infrahub.node.kind": InfrahubKind.TRANSFORMPYTHON,
+        NODE_ORIGIN_LABEL: NodeMutationOrigin.LIVE.value,
+    }
+
+
+def test_created_trigger_shape() -> None:
+    trigger = TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_CREATED.trigger
+    assert trigger.events == {NodeCreatedEvent.event_name}
+    assert trigger.match == _lifecycle_match()
+    assert trigger.match_related == {}
+
+
+def test_updated_trigger_shape() -> None:
+    trigger = TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_UPDATED.trigger
+    assert trigger.events == {NodeUpdatedEvent.event_name}
+    assert trigger.match == _lifecycle_match()
+    assert trigger.match_related == {
+        "prefect.resource.role": ["infrahub.node.attribute_update"],
+        "infrahub.field.name": ["fingerprint"],
+    }
+
+
+def test_deleted_trigger_shape() -> None:
+    trigger = TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_DELETED.trigger
+    assert trigger.events == {NodeDeletedEvent.event_name}
+    assert trigger.match == _lifecycle_match()
+    assert trigger.match_related == {}
+
+
+def test_lifecycle_triggers_run_the_lifecycle_flow() -> None:
+    for definition in (
+        TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_CREATED,
+        TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_UPDATED,
+        TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_TRANSFORM_DELETED,
+    ):
+        assert len(definition.actions) == 1
+        action = definition.actions[0]
+        assert isinstance(action, ExecuteWorkflow)
+        assert action.workflow == COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM_LIFECYCLE
+
+
+def test_lifecycle_triggers_registered_and_commit_trigger_gone() -> None:
+    names = {definition.name for definition in builtin_triggers}
+    assert "computed-attribute-python-transform-created" in names
+    assert "computed-attribute-python-transform-updated" in names
+    assert "computed-attribute-python-transform-deleted" in names
+    assert "computed-attribute-python-setup-on-commit" not in names

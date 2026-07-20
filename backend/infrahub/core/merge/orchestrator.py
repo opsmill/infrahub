@@ -12,6 +12,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 
+from .rollback_handler import PreMergeState
 from .write_blocker import MergeProtectionState
 
 if TYPE_CHECKING:
@@ -72,18 +73,28 @@ class BranchMergeOrchestrator:
         if protection is not None and protection.branch != self.source_branch.name:
             raise ValidationError("Cannot merge a branch while a merge is in progress.")
 
-        merge_at = Timestamp()
-        pre_merge_schema = registry.schema.get_schema_branch(name=self.destination_branch.name).duplicate()
-        pre_merge_branched_from = self.source_branch.branched_from
+        # Publish the shared write-protection key before any graph write
+        await self.merge_write_blocker.set(branch=self.source_branch.name, state=MergeProtectionState.MERGING)
+
+        # The merge timestamp is stamped after the write-protection key is set so that a write
+        # slipping in ahead of the block is stamped before merge_at and stays out of the rollback
+        # range. Nothing has been written yet, so a failure here only needs to lift the protection.
+        try:
+            merge_at = Timestamp()
+            pre_merge_state = PreMergeState(
+                destination_schema=registry.schema.get_schema_branch(name=self.destination_branch.name).duplicate(),
+                destination_schema_changed_at=self.destination_branch.schema_changed_at,
+                destination_schema_hash=self.destination_branch.schema_hash,
+                source_branched_from=self.source_branch.branched_from,
+            )
+        except BaseException:
+            await self.merge_write_blocker.delete()
+            raise
+
         schema_diff: SchemaDiff | None = None
         schema_updated_hash: str | None = None
 
         try:
-            # Publish the shared write-protection key before any graph write so every worker rejects
-            # writes to the source and default branch. It is a cache write, not a graph write, so it
-            # is set before (outside) the graph lock.
-            await self.merge_write_blocker.set(branch=self.source_branch.name, state=MergeProtectionState.MERGING)
-
             async with lock.registry.global_graph_lock():
                 # Record when the merge started so a recovery can roll back from this point.
                 self.source_branch.status = BranchStatus.MERGING
@@ -108,12 +119,12 @@ class BranchMergeOrchestrator:
                     db=self.db, branch=self.destination_branch
                 )
                 # Scope for the post-merge derived-value refresh: what the merge changed on the destination.
-                schema_diff = pre_merge_schema.diff(other=candidate_schema)
+                schema_diff = pre_merge_state.destination_schema.diff(other=candidate_schema)
                 schema_updated_hash = candidate_schema.get_hash()
                 migrations = await self.schema_analyzer.calculate_migrations(target_schema=candidate_schema)
                 await self.schema_update_coordinator.execute(
                     branch=self.destination_branch,
-                    origin_schema=pre_merge_schema,
+                    origin_schema=pre_merge_state.destination_schema,
                     candidate_schema=candidate_schema,
                     at=merge_at,
                     context=context,
@@ -135,10 +146,8 @@ class BranchMergeOrchestrator:
         except BaseException as exc:
             self.log.error("Merge failed, beginning rollback", extra={"error": str(exc)})
             await self.rollback_handler.rollback(
-                branch=self.source_branch,
-                at=merge_at,
-                pre_merge_schema=pre_merge_schema,
-                pre_merge_branched_from=pre_merge_branched_from,
+                merge_started_at=merge_at,
+                pre_merge_state=pre_merge_state,
                 user_id=user_id,
             )
             raise

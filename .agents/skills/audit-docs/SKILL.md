@@ -1,12 +1,7 @@
 ---
 name: audit-docs
 description: >-
-  Audits documentation completeness for a feature branch, subject, or set of existing docs — maps
-  changes across Infrahub's documentation layers, reports gaps, and optionally applies the fixes.
-  TRIGGER when: the user wants to audit or check documentation coverage, find doc gaps after a
-  feature branch, or verify docs are still current for a subject or specific files.
-  DO NOT TRIGGER when: authoring new documentation from scratch → use the add-docs flow; only
-  linting/formatting Markdown → run `uv run invoke docs.lint`.
+  Audits internal (dev/) and external (docs/) documentation completeness for a feature, subject, or set of existing docs, maps changes indicated by the user, across Infrahub's documentation layers, reports gaps, and optionally applies the fixes. TRIGGER when: the user wants to audit or check documentation coverage, find doc gaps after a feature branch, or verify docs are still current for a subject or specific files. DO NOT TRIGGER when: authoring new documentation from scratch → use the add-docs flow; only linting/formatting Markdown → run `uv run invoke docs.lint`.
 argument-hint: <commit-range, branch name, subject, or doc paths to audit>
 compatibility: Requires the Infrahub repository checked out. Commit-range and branch audits additionally require Git history.
 metadata:
@@ -32,7 +27,11 @@ Audit documentation completeness — after a feature branch, for a subject, or a
 
 Treat `$ARGUMENTS` as what to audit. It will be one of:
 
-- A **commit range or branch name** — audit all changes in that range. Run `git log <range> --oneline --stat` to understand every change.
+- A **commit range or branch name** — audit all changes in that range. Run `git log <range> --oneline --stat` to understand every change. The input in order of importance is:
+  - PR description (if the branch corresponds to a PR or if a PR is provided)
+  - Pull Request review comments, resolved and unresolved. Usually this is GOLD information to be included in the internal docs (if the branch corresponds to a PR or if a PR is provided)
+  - Any changelog fragment and spec link. If missing, flag it as a gap.
+  - The source code diffs themselves.
 - A **subject** (e.g. "webhooks", "computed attributes", "IPAM") — audit documentation for that topic across the codebase, regardless of branch. Use Grep/Glob to find all related code and docs, then assess coverage against `dev/knowledge/`, `docs/docs/`, `dev/specs/`, `backend/AGENTS.md`, `frontend/app/AGENTS.md`, and the code itself.
 - A **set of doc paths** (e.g. `docs/docs/guides/installation.mdx dev/knowledge/backend/templates.md`) — audit only those files. Read each one, identify the feature/topic it covers, then search the codebase for the corresponding implementation to confirm the doc is current and complete, and check whether the code has drifted from what the doc describes.
 

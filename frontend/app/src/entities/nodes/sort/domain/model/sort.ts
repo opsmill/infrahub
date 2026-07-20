@@ -9,9 +9,11 @@ export interface Sort {
   direction: SortDirection;
 }
 
-export interface SortableField {
-  field: SortField;
-  label: string;
-}
-
 export const SORT_DIRECTION = OrderDirection;
+
+export const NODE_METADATA_SORT_FIELDS = [
+  "node_metadata__created_at",
+  "node_metadata__updated_at",
+] as const satisfies SortField[];
+
+export type NodeMetadataSortField = (typeof NODE_METADATA_SORT_FIELDS)[number];

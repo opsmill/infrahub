@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
@@ -43,7 +43,7 @@ export function DeleteObjectsModal({ selectedRows, isOpen, onOpenChange }: Delet
   };
 
   return (
-    <ModalDelete
+    <ModalDanger
       title="Delete"
       description={
         <>
@@ -53,7 +53,7 @@ export function DeleteObjectsModal({ selectedRows, isOpen, onOpenChange }: Delet
       }
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      onDelete={handleRemoveObjects}
+      onConfirm={handleRemoveObjects}
       isLoading={isPending}
     />
   );

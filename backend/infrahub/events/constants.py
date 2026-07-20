@@ -6,11 +6,15 @@ NODE_ORIGIN_LABEL = f"{EVENT_NAMESPACE}.node.origin"
 
 
 class NodeMutationOrigin(StrEnum):
-    """How a node mutation event was produced: a live edit, or a replay by a merge or rebase."""
+    """How a node mutation event was produced.
+
+    A live edit, a replay by a merge or rebase, or a derived-value recompute write.
+    """
 
     LIVE = "live"
     MERGE = "merge"
     REBASE = "rebase"
+    RECOMPUTE = "recompute"
 
 
 class EventSortOrder(StrEnum):

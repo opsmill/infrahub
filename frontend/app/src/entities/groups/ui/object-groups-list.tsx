@@ -5,7 +5,7 @@ import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
@@ -113,10 +113,10 @@ function RemoveGroupButton({ objectId, group }: ObjectGroupItemProps) {
         </Button>
       </Tooltip>
 
-      <ModalDelete
+      <ModalDanger
         title="Leave Group"
         description={`Are you sure you want to leave group ${getNodeLabel(group)}?`}
-        onDelete={handleRemoveGroup}
+        onConfirm={handleRemoveGroup}
         isOpen={showDeleteModal}
         onOpenChange={setShowDeleteModal}
         isLoading={isPending}

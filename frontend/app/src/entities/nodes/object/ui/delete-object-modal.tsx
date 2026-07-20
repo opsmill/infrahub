@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
+import { ModalDanger } from "@/shared/components/modals/modal-danger";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
@@ -25,7 +25,7 @@ export function DeleteObjectModal({
   const { mutate, isPending } = useDeleteObjectMutation();
 
   return (
-    <ModalDelete
+    <ModalDanger
       title="Delete"
       description={
         <>
@@ -34,7 +34,7 @@ export function DeleteObjectModal({
       }
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      onDelete={() =>
+      onConfirm={() =>
         mutate(
           { objectKind, objectId },
           {

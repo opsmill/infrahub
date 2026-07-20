@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 class GraphMerger:
-    """Apply (or roll back) the graph merge of a source branch into its destination."""
+    """Apply the graph merge of a source branch into its destination."""
 
     def __init__(
         self,
@@ -127,6 +127,3 @@ class GraphMerger:
         )
         if result.violations:
             raise MergeConstraintsViolatedError(violations=result.violations, schema_conflicts=result.schema_conflicts)
-
-    async def rollback(self, at: Timestamp) -> None:
-        await self.diff_merger.rollback(at=at)

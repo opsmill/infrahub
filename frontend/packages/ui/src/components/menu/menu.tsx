@@ -14,7 +14,7 @@ import {
   SubmenuTrigger as AriaSubmenuTrigger,
   Collection,
 } from "react-aria-components";
-import { type VariantProps, cn, tv } from "tailwind-variants";
+import { cn, tv, type VariantProps } from "tailwind-variants";
 
 import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 import { Tooltip, type TooltipProps } from "../tooltip/tooltip";
@@ -44,9 +44,16 @@ type MenuVariants = VariantProps<typeof menuItemStyles>;
 
 const MenuVariantContext = React.createContext<MenuVariants["variant"]>("action");
 
-export interface MenuProps<T> extends AriaMenuProps<T>, MenuVariants {}
+export interface MenuProps<T> extends AriaMenuProps<T>, MenuVariants {
+  emptyMessage?: React.ReactNode;
+}
 
-export const Menu = <T extends object>({ className, variant, ...props }: MenuProps<T>) => {
+export const Menu = <T extends object>({
+  className,
+  variant,
+  emptyMessage,
+  ...props
+}: MenuProps<T>) => {
   const resolvedVariant = variant ?? React.use(MenuVariantContext);
 
   return (
@@ -59,6 +66,11 @@ export const Menu = <T extends object>({ className, variant, ...props }: MenuPro
             "*:[[role='group']:not(:last-child)]:mb-2",
           ),
         )}
+        renderEmptyState={
+          emptyMessage === undefined
+            ? undefined
+            : () => <div className="px-2 py-1 text-sm text-neutral-600">{emptyMessage}</div>
+        }
         {...props}
       />
     </MenuVariantContext.Provider>

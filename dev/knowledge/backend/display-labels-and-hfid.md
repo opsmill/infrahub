@@ -1,6 +1,6 @@
 # Display Labels and Human-Friendly IDs
 
-> Part of: `dev/knowledge/backend/` | Related: [mutations.md](mutations.md), [architecture.md](architecture.md)
+> Part of: `dev/knowledge/backend/` | Related: [mutations.md](mutations.md), [architecture.md](architecture.md), [merge-recompute.md](merge-recompute.md)
 
 Display labels and HFIDs are computed node properties. Display labels use Jinja2 templates; HFIDs use schema path lists.
 ## Schema Definition
@@ -128,11 +128,12 @@ When a schema is updated to add or change a `display_label`, the async Prefect w
 SchemaUpdatedEvent
   -> display_labels_setup_jinja2 (gathers triggers, detects new/changed templates)
   -> trigger_update_display_labels (iterates all nodes of the kind)
-  -> process_display_label (queries node via GraphQL, renders template)
-  -> display_label_jinja2_update_value (compares rendered vs stored, writes if different)
+  -> process_display_label (queries nodes via GraphQL, renders the template, bulk-writes changed values)
 ```
 
 The trigger definitions and gathering logic live in `backend/infrahub/display_labels/`.
+
+A branch merge or rebase refreshes display labels and human-friendly ids through the coalesced recompute rather than this per-node chain. See [merge-recompute.md](merge-recompute.md).
 
 ### Manual Override
 

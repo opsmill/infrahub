@@ -493,6 +493,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
+        { type: 'doc', id: 'development-resources/sbom', label: 'Software Bill of Materials (SBOM)' },
         { type: 'doc', id: 'development-resources/testcontainers', label: 'Integration testing with Testcontainers' },
         {
           type: 'category',
@@ -666,6 +667,8 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 { type: 'doc', id: 'release-notes/infrahub/docs-restructure', label: 'Documentation restructure' },
+                'release-notes/infrahub/release-1_10_5',
+                'release-notes/infrahub/release-1_10_4',
                 'release-notes/infrahub/release-1_10_3',
                 'release-notes/infrahub/release-1_10_2',
                 'release-notes/infrahub/release-1_10_1',

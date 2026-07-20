@@ -131,9 +131,11 @@ async def test_get_proposed_change_schema_integrity_constraints(
         schema=schema, diff_summary=branch_diff_01_summary
     )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
-    # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 249
-    assert len(non_generate_profile_constraints) == 151
+    assert len(constraints) == 12
+    assert len(non_generate_profile_constraints) == 12
+    # node-level property constraints must be scoped to the kinds present in the diff
+    node_constraint_kinds = {c.path.schema_kind for c in constraints if c.path.path_type is SchemaPathType.NODE}
+    assert node_constraint_kinds == {"TestPerson"}
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -223,46 +225,6 @@ async def test_get_proposed_change_schema_integrity_constraints(
             "property_name": "unique",
             "schema_id": None,
             "schema_kind": "TestPerson",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.parent.update",
-        "path": {
-            "field_name": "parent",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "parent",
-            "schema_id": None,
-            "schema_kind": "CoreStandardGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.children.update",
-        "path": {
-            "field_name": "children",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "children",
-            "schema_id": None,
-            "schema_kind": "CoreStandardGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.parent.update",
-        "path": {
-            "field_name": "parent",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "parent",
-            "schema_id": None,
-            "schema_kind": "CoreGraphQLQueryGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.children.update",
-        "path": {
-            "field_name": "children",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "children",
-            "schema_id": None,
-            "schema_kind": "CoreGraphQLQueryGroup",
         },
     } in dumped_constraints
 

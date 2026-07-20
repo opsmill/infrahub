@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess  # noqa: S404
 import sys
+from collections.abc import AsyncGenerator
 from itertools import islice
 from pathlib import Path
 from typing import Any, Generator
@@ -13,6 +14,7 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.hydration.v1.hydration_handler import _GraphHydrator
+from prefect.client.orchestration import PrefectClient, get_client
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -71,6 +73,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
 from tests.conftest import TestHelper
 from tests.helpers.constants import (
+    PREFECT_EVENTS_PROACTIVE_GRANULARITY,
     PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS,
     PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
 )
@@ -137,11 +140,18 @@ def prefect_test_fixture() -> Generator[None, None, None]:
         )
 
     os.environ["PREFECT_FLOWS_HEARTBEAT_FREQUENCY"] = PREFECT_FLOW_HEARTBEAT_FREQUENCY_SECONDS
+    os.environ["PREFECT_SERVER_EVENTS_PROACTIVE_GRANULARITY"] = PREFECT_EVENTS_PROACTIVE_GRANULARITY
     os.environ.update(PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS)
 
     with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
         with prefect_test_harness(server_startup_timeout=60):
             yield
+
+
+@pytest.fixture
+async def prefect_client(prefect_test_fixture: None) -> AsyncGenerator[PrefectClient, None]:
+    async with get_client(sync_client=False) as client:
+        yield client
 
 
 @pytest.fixture

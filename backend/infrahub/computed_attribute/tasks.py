@@ -8,7 +8,10 @@ from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
+from infrahub import lock
+from infrahub.core.constants import ComputedAttributeKind, InfrahubKind, MutationAction
+from infrahub.core.recompute.bulk_write import AttributeValueWrite
+from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events import BranchDeletedEvent
@@ -43,14 +46,39 @@ from .scoping import (
     PythonTransformDependencyDeriver,
     RecomputeScoper,
 )
+from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.analyzer import GraphQLQueryReport
 
 
 def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
     return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
+
+
+async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase) -> None:
+    """Reconcile the node-input (data-path) automations against the current schema.
+
+    One gather builds both trigger lists and they are applied under a single trigger-registry
+    lock, so a concurrent reconcile cannot delete an automation another run just created.
+    """
+    log = get_run_logger()
+    async with lock.registry.get(
+        name="configure-action-rules-computed-attr-python", namespace="trigger-rules", local=False
+    ):
+        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
+        async with get_prefect_client(sync_client=False) as prefect_client:
+            await setup_triggers(
+                client=prefect_client, triggers=triggers_python, trigger_type=TriggerType.COMPUTED_ATTR_PYTHON
+            )
+            await setup_triggers(
+                client=prefect_client,
+                triggers=triggers_python_query,
+                trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
+            )
+    log.debug("Reconciled Python computed-attribute node-input automations")
 
 
 UPDATE_ATTRIBUTE = """
@@ -249,47 +277,6 @@ async def trigger_update_python_computed_attributes(
 
 
 @flow(
-    name="computed-attribute-jinja2-update-value",
-    flow_run_name="Update value for computed attribute {node_kind}:{attribute_name}",
-)
-async def computed_attribute_jinja2_update_value(
-    branch_name: str,
-    obj: ComputedAttrJinja2GraphQLResponse,
-    node_kind: str,
-    attribute_name: str,
-    template: InfrahubJinja2Template,
-    context: EventContext,
-) -> None:
-    log = get_run_logger()
-    client = get_client()
-
-    await add_tags(branches=[branch_name], nodes=[obj.node_id], db_change=True)
-
-    value = await template.render(variables=obj.variables)
-    if value == obj.computed_attribute_value:
-        log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
-        return
-
-    try:
-        await client.execute_graphql(
-            query=UPDATE_ATTRIBUTE,
-            variables={
-                "id": obj.node_id,
-                "kind": node_kind,
-                "attribute": attribute_name,
-                "value": value,
-                "context_account_id": context.account_id,
-            },
-            branch_name=branch_name,
-        )
-        log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
-    except URLNotFoundError:
-        log.warning(
-            f"Update of computed attribute {node_kind}.{attribute_name} failed for branch {branch_name} (not found)"
-        )
-
-
-@flow(
     name="computed_attribute_process_jinja2",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
@@ -302,6 +289,7 @@ async def process_jinja2(
     object_id: str | None = None,
     updated_fields: list[str] | None = None,
     object_ids: list[str] | None = None,
+    recompute_depth: int = 0,
 ) -> None:
     """Recompute a single Jinja2 computed attribute in response to a node mutation.
 
@@ -330,6 +318,7 @@ async def process_jinja2(
         for resolved in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
         if resolved.target.kind == computed_attribute_kind and resolved.target.attribute.name == computed_attribute_name
     ]
+    writes: list[AttributeValueWrite] = []
     for resolved in resolved_targets:
         found: list[ComputedAttrJinja2GraphQLResponse] = []
         template_string = "n/a"
@@ -359,19 +348,19 @@ async def process_jinja2(
         if not found:
             log.debug("No nodes found that requires updates")
 
-        batch = await client.create_batch()
         for node in found:
-            batch.add(
-                task=computed_attribute_jinja2_update_value,
-                branch_name=branch_name,
-                obj=node,
-                node_kind=node_schema.kind,
-                attribute_name=attribute.name,
-                template=jinja_template,
-                context=context,
-            )
+            value = await jinja_template.render(variables=node.variables)
+            if value != node.computed_attribute_value:
+                writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
-        _ = [response async for _, response in batch.execute()]
+    dispatcher = await build_bulk_recompute_dispatcher(schema_branch=schema_branch)
+    await dispatcher.dispatch(
+        writes=writes,
+        branch_name=branch_name,
+        context=context,
+        coalesced=object_ids is not None,
+        recompute_depth=recompute_depth,
+    )
 
 
 @flow(
@@ -535,7 +524,7 @@ async def computed_attribute_setup_python(
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
-        triggers_python, triggers_python_query = await gather_trigger_computed_attribute_python(db=db)
+        triggers_python, _ = await gather_trigger_computed_attribute_python(db=db)
 
         # The read set of each transform is derived from its GraphQL query here, where the
         # database session is available, so that the scoping decision itself stays pure.
@@ -594,22 +583,43 @@ async def computed_attribute_setup_python(
                 },
             )
 
-        async with get_prefect_client(sync_client=False) as prefect_client:
-            await setup_triggers(
-                client=prefect_client,
-                triggers=triggers_python,
-                trigger_type=TriggerType.COMPUTED_ATTR_PYTHON,
-            )
-            log.info(f"{len(triggers_python)} Computed Attribute for Python automation configuration completed")
+        await _reconcile_python_computed_attribute_automations(db=db)
 
-            await setup_triggers(
-                client=prefect_client,
-                triggers=triggers_python_query,
-                trigger_type=TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
-            )
-            log.info(
-                f"{len(triggers_python_query)} Computed Attribute for Python Query automation configuration completed"
-            )
+
+@flow(
+    name="computed-attribute-process-transform-lifecycle",
+    flow_run_name="Process computed attributes for transform {transform_id} lifecycle ({action})",
+)
+async def process_transform_lifecycle(
+    branch_name: str,
+    transform_id: str,
+    action: str,
+    context: EventContext,
+    event_name: str | None = None,  # noqa: ARG001  passed by the trigger, kept for the flow contract
+) -> None:
+    """React to a Python transform's own lifecycle event.
+
+    A create or fingerprint change recomputes the attributes it feeds; every event also
+    reconciles the node-input automations, so a delete drops the gone transform's automation.
+    """
+    log = get_run_logger()
+    await add_tags(branches=[branch_name], nodes=[transform_id])
+
+    database = await get_database()
+    async with database.start_session() as db:
+        try:
+            if action in {MutationAction.CREATED.value, MutationAction.UPDATED.value}:
+                # The transform -> attribute wiring lives in the schema, which a worker other than
+                # the importer may not have caught up on yet; wait so the map is not read empty.
+                component = await get_component()
+                await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
+
+                submitter = TransformRecomputeSubmitter(client=get_client(), workflow=get_workflow())
+                await submitter.submit(branch_name=branch_name, transform_id=transform_id, context=context)
+        finally:
+            # Reconcile on every event, even when the recompute leg above failed, so a transform-only
+            # import builds the node-input automations and a delete drops the removed transform's one.
+            await _reconcile_python_computed_attribute_automations(db=db)
 
 
 @flow(
