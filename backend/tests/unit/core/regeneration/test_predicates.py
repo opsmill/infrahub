@@ -6,8 +6,8 @@ import pytest
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.regeneration.predicates import definition_changed, query_changed, transform_changed
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition, ProposedChangeRepository
-from infrahub.proposed_change.tasks import _definition_changed, _query_changed, _transform_changed
 
 QUERY_ID = "11111111-1111-1111-1111-111111111111"
 DEFINITION_ID = "22222222-2222-2222-2222-222222222222"
@@ -149,7 +149,7 @@ def test_query_changed(case: QueryChangedCase) -> None:
     nothing to regenerate against.
     """
     definition = _build_definition()
-    assert _query_changed(definition=definition, diff_summary=case.diff).matched is case.expected
+    assert query_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -222,7 +222,7 @@ def test_definition_changed(case: DefinitionChangedCase) -> None:
     definition list is sourced from the source branch's current state.
     """
     definition = _build_definition()
-    assert _definition_changed(definition=definition, diff_summary=case.diff).matched is case.expected
+    assert definition_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -335,4 +335,4 @@ def test_transform_changed(case: TransformChangedCase) -> None:
         files_changed=case.files_changed,
         files_removed=case.files_removed,
     )
-    assert _transform_changed(definition=definition, repo_diff=repo_diff).matched is case.expected
+    assert transform_changed(definition=definition, repo_diff=repo_diff).matched is case.expected

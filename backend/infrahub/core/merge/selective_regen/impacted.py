@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.proposed_change.tasks import ImpactScope, get_field_level_impacted_subscribers
+from infrahub.core.regeneration.impact import get_field_level_impacted_subscribers
+from infrahub.core.regeneration.models import ImpactScope
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-    from infrahub.proposed_change.tasks import ImpactedSubscribers
+    from infrahub.core.regeneration.models import ImpactedSubscribers
 
 
 class ImpactedSubscriberResolver:

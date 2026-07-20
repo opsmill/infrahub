@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from infrahub.proposed_change.tasks import _map_subscriber_ids_by_member
+from infrahub.core.regeneration.members import map_subscriber_ids_by_member
 
 from ..models import DefinitionModel
 
@@ -115,7 +115,7 @@ class DefinitionSelectorBase[DefinitionT: DefinitionModel, RequestT](ABC):
             include=["object"],
             branch=target_branch,
         )
-        return _map_subscriber_ids_by_member(
+        return map_subscriber_ids_by_member(
             existing_subscribers=existing, definition_name=definition.definition_name, log=self.log
         )
 

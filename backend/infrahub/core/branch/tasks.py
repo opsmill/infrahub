@@ -20,6 +20,8 @@ from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.diff.summary_cache import DiffSummaryCache
+from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
@@ -29,8 +31,9 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
     MergeRecomputeCoordinator,
 )
-from infrahub.core.merge.regeneration_dispatcher import submit_full_regeneration
+from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
+from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
@@ -72,7 +75,6 @@ from infrahub.workflows.utils import add_tags
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
-    from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
     from infrahub.database import InfrahubDatabase
 
 
@@ -478,13 +480,6 @@ async def _get_diff_root(
 async def _build_post_merge_regeneration_dispatcher(
     log: Logger | LoggerAdapter[Logger],
 ) -> PostMergeRegenerationDispatcher:
-    # Imported lazily: the selection module depends on the proposed-change tasks, which import this
-    # module, so a top-level import would be circular.
-    from infrahub.core.diff.summary_cache import DiffSummaryCache
-    from infrahub.core.diff.summary_serializer import DiffSummarySerializer
-    from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
-    from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
-
     return PostMergeRegenerationDispatcher(
         workflow=get_workflow(),
         selector=build_merge_selective_regeneration(client=get_client(), log=log),
