@@ -116,7 +116,7 @@ RELEVANT_CHANGE_CASES = [
 def test_relevant_node_changes(case: RelevantChangeCase) -> None:
     result = _relevant_node_changes(
         diff_summary=case.diff_summary,
-        source_branch=case.source_branch,
+        query_branch=case.source_branch,
         readable_fields_by_kind=case.readable_fields_by_kind,
     )
     assert set(result) == case.expected_ids

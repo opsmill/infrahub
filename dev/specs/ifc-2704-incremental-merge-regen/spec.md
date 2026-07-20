@@ -251,3 +251,12 @@ selective path.
   proposed-change regeneration-trigger work (IFC-2738 / PR #9700). It implements the product
   intent captured in INFP-607 and follows the over-execution-over-under-execution invariant
   from INFP-409.
+
+### Revision: Implementation Sync 2026-07-16
+
+- Reason: recorded the validation status of the success criteria. SC-001, SC-004, and SC-005 are
+  validated on the representative dataset (`perf-validation.md` retest: flag off reproduces the
+  blanket baseline, selective scales with the affected set, a net-zero change dispatches nothing),
+  and SC-003 (no under-execution) held across the executed scenarios. SC-002 (no multi-minute
+  unresponsive window at scale) is not yet validated — deferred pending the profiling-harness
+  scale dataset.

@@ -33,6 +33,7 @@ from ..factories import (
     EnrichedRelationshipGroupFactory,
     EnrichedRootFactory,
 )
+
 from ..get_one_node import get_one_diff_node
 from .base import DiffRepositoryTestBase
 

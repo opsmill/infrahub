@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector
 from infrahub.core.diff.model.path import BranchTrackingId
@@ -19,7 +19,10 @@ if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
+    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
+    from infrahub.core.diff.summary_cache import DiffSummaryCache
+    from infrahub.core.diff.summary_serializer import DiffSummarySerializer
     from infrahub.core.models import SchemaDiff
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
@@ -50,6 +53,8 @@ class BranchMergeOrchestrator:
         merge_write_blocker: MergeWriteBlocker,
         ipam_diff_parser: IpamDiffParser,
         diff_repository: DiffRepository,
+        diff_serializer: DiffSummarySerializer,
+        diff_summary_cache: DiffSummaryCache,
         logger: InfrahubLogger | None = None,
     ) -> None:
         self.db = db
@@ -64,6 +69,8 @@ class BranchMergeOrchestrator:
         self.merge_write_blocker = merge_write_blocker
         self.ipam_diff_parser = ipam_diff_parser
         self.diff_repository = diff_repository
+        self.diff_serializer = diff_serializer
+        self.diff_summary_cache = diff_summary_cache
         self.log = logger or get_logger()
 
     async def merge(self, *, context: InfrahubContext, proposed_change_id: str | None = None) -> None:
@@ -169,11 +176,15 @@ class BranchMergeOrchestrator:
         # Lift the write protection now that the merge has fully succeeded.
         await self.merge_write_blocker.delete()
 
+        # Persisted only past the point of no return, so a rolled-back merge leaves no entry behind.
+        merge_diff_cache_key = await self._cache_diff_summary(branch_diff=branch_diff)
+
         await self.post_merge_dispatcher.run_follow_ups(
             branch=self.source_branch,
             context=context,
             proposed_change_id=proposed_change_id,
             ipam_node_details=ipam_node_details,
+            merge_diff_cache_key=merge_diff_cache_key,
         )
 
         await self.post_merge_dispatcher.dispatch_events(
@@ -184,3 +195,24 @@ class BranchMergeOrchestrator:
             schema_diff=schema_diff,
             schema_hash=schema_updated_hash,
         )
+
+    async def _cache_diff_summary(self, branch_diff: EnrichedDiffRoot) -> str | None:
+        """Serialize the merge diff and persist its summary to the cache, returning the cache key.
+
+        Returns None when selective execution is disabled, or when serialization or the cache write fails.
+        """
+        if not config.SETTINGS.main.selective_execution_after_merge:
+            return None
+        try:
+            diff_summary = self.diff_serializer.serialize(
+                root=branch_diff, target_branch_name=self.destination_branch.name
+            )
+        except Exception:
+            self.log.exception("Failed to serialize merge diff summary; falling back to full regeneration")
+            return None
+        try:
+            await self.diff_summary_cache.set(diff_id=branch_diff.uuid, diff_summary=diff_summary)
+            return branch_diff.uuid
+        except Exception:
+            self.log.exception("Failed to cache merge diff summary; falling back to full regeneration")
+            return None
