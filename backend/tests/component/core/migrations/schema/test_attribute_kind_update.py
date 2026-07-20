@@ -17,7 +17,11 @@ from infrahub.core.query.rollback import RollbackQuery, RollbackScope
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.component.core.migrations.schema.metadata_helpers import VertexMetadata, branch_edge_fingerprint
+from tests.component.core.migrations.schema.metadata_helpers import (
+    VertexMetadata,
+    branch_edge_fingerprint,
+    branch_metadata_fingerprint,
+)
 from tests.db_snapshot import DbSnapshotter
 from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
@@ -203,6 +207,7 @@ class _AttributeKindUpdate:
     node_before: VertexMetadata
     attr_before: VertexMetadata
     pre_migration_fingerprint: list[tuple]
+    pre_migration_metadata: list[tuple]
 
 
 async def _run_kind_update_migration(db: InfrahubDatabase, branch: Branch, node_uuid: str) -> _AttributeKindUpdate:
@@ -213,6 +218,7 @@ async def _run_kind_update_migration(db: InfrahubDatabase, branch: Branch, node_
     """
     node_before, attr_before = await _get_car_and_description_metadata(db=db, node_uuid=node_uuid)
     pre_migration_fingerprint = await branch_edge_fingerprint(db=db, branch_name=branch.name)
+    pre_migration_metadata = await branch_metadata_fingerprint(db=db, branch_name=branch.name)
 
     user_id = "migration_user"
     migration_time = Timestamp()
@@ -242,6 +248,7 @@ async def _run_kind_update_migration(db: InfrahubDatabase, branch: Branch, node_
         node_before=node_before,
         attr_before=attr_before,
         pre_migration_fingerprint=pre_migration_fingerprint,
+        pre_migration_metadata=pre_migration_metadata,
     )
 
 
@@ -333,6 +340,7 @@ class TestAttributeKindUpdateMetadata:
 
         # The branch edges are restored exactly to their pre-migration state.
         assert await branch_edge_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_fingerprint
+        assert await branch_metadata_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_metadata
 
         # The vertex metadata is restored to its pre-migration values and the snapshot is cleared.
         node_after, attr_after = await _get_car_and_description_metadata(db=db, node_uuid=update.node_id)
@@ -349,6 +357,7 @@ class TestAttributeKindUpdateMetadata:
         await _run_rollback()
         await verify_graph(db=db)
         assert await branch_edge_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_fingerprint
+        assert await branch_metadata_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_metadata
         node_again, attr_again = await _get_car_and_description_metadata(db=db, node_uuid=update.node_id)
         assert node_again == node_after
         assert attr_again == attr_after

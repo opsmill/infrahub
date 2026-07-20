@@ -25,6 +25,7 @@ from infrahub.database import InfrahubDatabase
 from tests.component.core.migrations.schema.metadata_helpers import (
     VertexMetadata,
     branch_edge_fingerprint,
+    branch_metadata_fingerprint,
     get_node_vertex_metadata,
 )
 from tests.component.core.migrations.schema.test_node_kind_update import validate_node_relationships
@@ -268,6 +269,7 @@ class _NodeRemoval:
     user_id: str
     node_before: VertexMetadata
     pre_migration_fingerprint: list[tuple]
+    pre_migration_metadata: list[tuple]
 
 
 async def _run_node_remove_migration(db: InfrahubDatabase, branch: Branch, node_uuid: str) -> _NodeRemoval:
@@ -278,6 +280,7 @@ async def _run_node_remove_migration(db: InfrahubDatabase, branch: Branch, node_
     """
     node_before = await get_node_vertex_metadata(db=db, node_uuid=node_uuid)
     pre_migration_fingerprint = await branch_edge_fingerprint(db=db, branch_name=branch.name)
+    pre_migration_metadata = await branch_metadata_fingerprint(db=db, branch_name=branch.name)
 
     user_id = "migration_user"
     migration_time = Timestamp()
@@ -300,6 +303,7 @@ async def _run_node_remove_migration(db: InfrahubDatabase, branch: Branch, node_
         user_id=user_id,
         node_before=node_before,
         pre_migration_fingerprint=pre_migration_fingerprint,
+        pre_migration_metadata=pre_migration_metadata,
     )
 
 
@@ -412,6 +416,9 @@ class TestNodeRemoveMetadata:
         assert (
             await branch_edge_fingerprint(db=db, branch_name=removal.branch.name) == removal.pre_migration_fingerprint
         )
+        assert (
+            await branch_metadata_fingerprint(db=db, branch_name=removal.branch.name) == removal.pre_migration_metadata
+        )
 
         # The node vertex metadata is restored to its pre-migration values and the snapshot is cleared.
         node_after = await get_node_vertex_metadata(db=db, node_uuid=removal.node_id)
@@ -425,6 +432,9 @@ class TestNodeRemoveMetadata:
         await verify_graph(db=db)
         assert (
             await branch_edge_fingerprint(db=db, branch_name=removal.branch.name) == removal.pre_migration_fingerprint
+        )
+        assert (
+            await branch_metadata_fingerprint(db=db, branch_name=removal.branch.name) == removal.pre_migration_metadata
         )
         node_again = await get_node_vertex_metadata(db=db, node_uuid=removal.node_id)
         assert node_again == node_after

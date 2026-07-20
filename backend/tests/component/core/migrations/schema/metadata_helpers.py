@@ -51,16 +51,11 @@ async def get_node_vertex_metadata(db: InfrahubDatabase, node_uuid: str) -> Vert
 async def get_attribute_vertex_metadata(
     db: InfrahubDatabase, node_uuid: str, attribute_name: str, edge_from: str
 ) -> VertexMetadata:
-    """Return the vertex metadata for the attribute whose HAS_ATTRIBUTE edge opened at ``edge_from``.
-
-    Filtering on the edge's ``from`` time uniquely selects a freshly-(re)created attribute even when an
-    earlier same-named attribute still exists on the node (e.g. a remove-then-add, or a rename). Pass the
-    migration timestamp (``Timestamp.to_string()``).
-    """
+    """Return the vertex metadata for the attribute whose HAS_ATTRIBUTE edge opened at ``edge_from``."""
     results = await db.execute_query(
         query=(
-            "MATCH (n:Node {uuid: $node_uuid})-[e:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name}) "
-            "WHERE e.from = $edge_from "
+            'MATCH (n:Node {uuid: $node_uuid})-[e:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: $attribute_name}) '
+            "WHERE e.from = $edge_from AND e.to IS NULL "
             "RETURN a.updated_at AS updated_at, a.updated_by AS updated_by, "
             "a.previous_updated_at AS previous_updated_at, a.previous_updated_by AS previous_updated_by"
         ),
@@ -75,6 +70,35 @@ async def get_attribute_vertex_metadata(
         updated_by=row["updated_by"],
         previous_updated_at=row["previous_updated_at"],
         previous_updated_by=row["previous_updated_by"],
+    )
+
+
+async def branch_metadata_fingerprint(db: InfrahubDatabase, branch_name: str) -> list[tuple]:
+    """Snapshot the user-timestamp metadata of every Node/Attribute/Relationship vertex on a branch.
+
+    The vertex-metadata analogue of ``branch_edge_fingerprint``: two snapshots compare equal only when
+    every vertex's ``updated_at``/``updated_by`` and ``previous_updated_at``/``previous_updated_by`` are
+    identical, so an empty diff between a pre-change and a post-rollback snapshot proves the rollback
+    restored the metadata that a schema migration or merge bumped (and cleared the snapshot).
+    """
+    results = await db.execute_query(
+        query=(
+            "MATCH (v)-[{branch: $branch}]-() "
+            "WHERE v:Node OR v:Attribute OR v:Relationship "
+            "RETURN DISTINCT elementId(v) AS id, v.updated_at AS updated_at, v.updated_by AS updated_by, "
+            "v.previous_updated_at AS previous_updated_at, v.previous_updated_by AS previous_updated_by"
+        ),
+        params={"branch": branch_name},
+    )
+    return sorted(
+        (
+            row["id"],
+            row["updated_at"] or "",
+            row["updated_by"] or "",
+            row["previous_updated_at"] or "",
+            row["previous_updated_by"] or "",
+        )
+        for row in results
     )
 
 

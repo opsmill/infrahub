@@ -23,6 +23,7 @@ from infrahub.database import InfrahubDatabase
 from tests.component.core.migrations.schema.metadata_helpers import (
     VertexMetadata,
     branch_edge_fingerprint,
+    branch_metadata_fingerprint,
     get_node_vertex_metadata,
 )
 from tests.constants import TestKind
@@ -299,6 +300,7 @@ class _NodeKindUpdate:
     car_created_at: Timestamp
     node_before: VertexMetadata
     pre_migration_fingerprint: list[tuple]
+    pre_migration_metadata: list[tuple]
 
 
 async def _run_node_kind_update_migration(db: InfrahubDatabase, branch: Branch, node_uuid: str) -> _NodeKindUpdate:
@@ -319,6 +321,7 @@ async def _run_node_kind_update_migration(db: InfrahubDatabase, branch: Branch, 
 
     node_before = await get_node_vertex_metadata(db=db, node_uuid=node_uuid)
     pre_migration_fingerprint = await branch_edge_fingerprint(db=db, branch_name=branch.name)
+    pre_migration_metadata = await branch_metadata_fingerprint(db=db, branch_name=branch.name)
 
     user_id = "migration_user"
     migration_time = Timestamp()
@@ -351,6 +354,7 @@ async def _run_node_kind_update_migration(db: InfrahubDatabase, branch: Branch, 
         car_created_at=car_created_at,
         node_before=node_before,
         pre_migration_fingerprint=pre_migration_fingerprint,
+        pre_migration_metadata=pre_migration_metadata,
     )
 
 
@@ -484,6 +488,7 @@ class TestNodeKindUpdateMetadata:
 
         # The branch edges are restored exactly to their pre-migration state.
         assert await branch_edge_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_fingerprint
+        assert await branch_metadata_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_metadata
 
         # The rollback deletes the new Test2NewCar vertex and reopens the original, restoring its metadata.
         node_after = await get_node_vertex_metadata(db=db, node_uuid=update.node_id)
@@ -496,6 +501,7 @@ class TestNodeKindUpdateMetadata:
         await _run_rollback()
         await verify_graph(db=db)
         assert await branch_edge_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_fingerprint
+        assert await branch_metadata_fingerprint(db=db, branch_name=update.branch.name) == update.pre_migration_metadata
         node_again = await get_node_vertex_metadata(db=db, node_uuid=update.node_id)
         assert node_again == node_after
 
