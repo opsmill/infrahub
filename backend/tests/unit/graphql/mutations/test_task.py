@@ -11,7 +11,12 @@ from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.task import DeliveryActionAuthorizer, DeliveryRun, resolve_delivery_branch_name
-from infrahub.graphql.queries.task_actions import RETRY_UNAVAILABLE_REASON, TaskActionGenerator, TaskActionType
+from infrahub.graphql.queries.task_actions import (
+    CANCEL_IN_PROGRESS_REASON,
+    RETRY_UNAVAILABLE_REASON,
+    TaskActionGenerator,
+    TaskActionType,
+)
 from infrahub.permissions.manager import PermissionManager
 from infrahub.permissions.resolver import PermissionResolver
 from infrahub.permissions.types import AssignedPermissions
@@ -155,3 +160,11 @@ def test_authorize_rejects_an_unavailable_action_before_checking_permissions() -
 
     with pytest.raises(ValidationError, match=rf"^Retry is unavailable: {RETRY_UNAVAILABLE_REASON}\.$"):
         authorizer.authorize(delivery=delivery, action=TaskActionType.RETRY)
+
+
+def test_authorize_rejects_cancelling_a_delivery_already_being_cancelled() -> None:
+    delivery = build_delivery(branch_name=DEFAULT_BRANCH, state_type=StateType.CANCELLING)
+    authorizer = build_authorizer(branch_name=DEFAULT_BRANCH, granted=[])
+
+    with pytest.raises(ValidationError, match=rf"^Cancel is unavailable: {CANCEL_IN_PROGRESS_REASON}\.$"):
+        authorizer.authorize(delivery=delivery, action=TaskActionType.CANCEL)

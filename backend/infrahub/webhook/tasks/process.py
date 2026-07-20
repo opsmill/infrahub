@@ -5,6 +5,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+import httpx
 import ujson
 from infrahub_sdk import InfrahubClient  # noqa: TC002  needed for prefect flow
 from infrahub_sdk.protocols import CoreTransformPython, CoreWebhook
@@ -17,10 +18,12 @@ from prefect.states import Cancelled, Failed
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus.types import KVTTL
+from infrahub.task_manager.flow_run.constants import WEBHOOK_HTTP_ARTIFACT_KEY, WEBHOOK_HTTP_ARTIFACT_TYPE
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
+from ..capture import CapturedHttp, build_http_capture
 from ..classifier import EXPECTED_DELIVERY_ERRORS, WebhookDeliveryError, WebhookFailureClassifier
 from ..constants import (
     CACHE_KEY_PREFIX,
@@ -68,6 +71,26 @@ async def _cancellation_requested() -> bool:
         return await PrefectClientAdapter(client).cancellation_requested(flow_run_id=UUID(flow_run.id))
 
 
+async def _record_http_capture(capture: CapturedHttp) -> None:
+    """Record the delivery capture as an artifact on this run.
+
+    Best-effort telemetry: a write failure is logged and swallowed, never raised, so it cannot turn a
+    successful delivery into a failure or mask a classified one.
+    """
+    if flow_run.id is None:
+        return
+    try:
+        async with get_prefect_client(sync_client=False) as client:
+            await PrefectClientAdapter(client).create_artifact(
+                key=WEBHOOK_HTTP_ARTIFACT_KEY,
+                artifact_type=WEBHOOK_HTTP_ARTIFACT_TYPE,
+                data=capture.to_artifact_data(),
+                flow_run_id=UUID(flow_run.id),
+            )
+    except Exception as exc:
+        get_run_logger().warning(f"Could not record the delivery capture: {exc}")
+
+
 async def webhook_post(
     webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int | None
 ) -> Response:
@@ -85,23 +108,51 @@ async def webhook_post(
     """
     http_service = get_http()
     log = get_run_logger()
+    url = ""
+    redacted_headers: dict[str, Any] = {}
+    latency_ms: float | None = None
     try:
         webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
+        url = webhook.url
         headers = webhook.build_headers(payload=payload)
+        redacted_headers = webhook.redact_headers(headers)
         log.info(
             get_webhook_log_formatter().outgoing_request(
                 webhook_name=webhook_name,
-                url=webhook.url,
-                headers=webhook.redact_headers(headers),
+                url=url,
+                headers=redacted_headers,
                 payload=payload,
                 attempt=attempt,
             )
         )
         log.debug(get_webhook_log_formatter().full_payload(webhook_name=webhook_name, payload=payload, attempt=attempt))
+        started = time.monotonic()
         response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
+        latency_ms = (time.monotonic() - started) * 1_000
         response.raise_for_status()
     except EXPECTED_DELIVERY_ERRORS as cause:
-        raise WebhookDeliveryError(WebhookFailureClassifier().classify(cause=cause)) from None
+        failure = WebhookFailureClassifier().classify(cause=cause)
+        failed_response = cause.response if isinstance(cause, httpx.HTTPStatusError) else None
+        await _record_http_capture(
+            build_http_capture(
+                url=url,
+                redacted_headers=redacted_headers,
+                status_code=failed_response.status_code if failed_response is not None else None,
+                body=failed_response.text if failed_response is not None else None,
+                latency_ms=latency_ms,
+                failure=failure,
+            )
+        )
+        raise WebhookDeliveryError(failure) from None
+    await _record_http_capture(
+        build_http_capture(
+            url=url,
+            redacted_headers=redacted_headers,
+            status_code=response.status_code,
+            body=response.text,
+            latency_ms=latency_ms,
+        )
+    )
     return response
 
 

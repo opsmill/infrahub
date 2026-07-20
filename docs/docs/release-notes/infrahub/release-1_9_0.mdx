@@ -194,7 +194,7 @@ Jinja2-based computed attributes that depend on attributes or relationships on t
 Concretely:
 
 - Updating an attribute used by a local computed attribute recomputes it inline; the mutation response contains the new value.
-- Changing a relationship used by a local computed attribute (e.g. re-assigning a `Device` to a different `Site`) recomputes inline against the new peer's attributes.
+- Changing a relationship used by a local computed attribute (for example re-assigning a `Device` to a different `Site`) recomputes inline against the new peer's attributes.
 - Bulk-updating thousands of nodes no longer spawns thousands of per-node background tasks for local changes.
 - Each local-change mutation emits **one** consolidated event/webhook containing both the original change and the updated computed attribute, instead of two separate events.
 - **Remote** changes (peer-node updates that affect computed attributes on other nodes) continue to use the existing background-task path - no behavioural change there. Python Transform-based computed attributes are also unchanged.

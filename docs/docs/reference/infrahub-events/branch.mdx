@@ -20,7 +20,7 @@ title: Branch events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | How this event was produced: live (the default), or replayed by a merge or rebase. |
+| **meta.origin** | How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write. |
 | **branch_name** | The name of the branch |
 | **branch_id** | The ID of the branch |
 | **sync_with_git** | Indicates if the branch was extended to Git |
@@ -43,7 +43,7 @@ title: Branch events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | How this event was produced: live (the default), or replayed by a merge or rebase. |
+| **meta.origin** | How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write. |
 | **branch_name** | The name of the branch |
 | **branch_id** | The ID of the mutated node |
 | **sync_with_git** | Indicates if the branch was extended to Git |
@@ -67,7 +67,7 @@ title: Branch events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | How this event was produced: live (the default), or replayed by a merge or rebase. |
+| **meta.origin** | How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write. |
 | **branch_name** | The name of the branch |
 | **branch_id** | The ID of the branch |
 | **proposed_change_id** | The ID of the proposed change that merged this branch if applicable |
@@ -90,7 +90,7 @@ title: Branch events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | How this event was produced: live (the default), or replayed by a merge or rebase. |
+| **meta.origin** | How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write. |
 | **branch_id** | The ID of the branch |
 | **branch_name** | The name of the branch |
 
@@ -112,6 +112,6 @@ title: Branch events
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **meta.origin** | How this event was produced: live (the default), or replayed by a merge or rebase. |
+| **meta.origin** | How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write. |
 | **branch_id** | The ID of the branch |
 | **branch_name** | The name of the branch |

@@ -1,8 +1,10 @@
+from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
 from prefect.client.schemas.filters import (
     ArtifactFilter,
+    ArtifactFilterKey,
     ArtifactFilterType,
     FlowFilter,
     FlowFilterId,
@@ -17,13 +19,15 @@ from prefect.client.schemas.sorting import FlowRunSort
 
 from infrahub.log import get_logger
 
-from .models import FlowLogs, FlowProgress
+from .constants import WEBHOOK_HTTP_ARTIFACT_KEY
+from .models import FlowHttpCaptures, FlowLogs, FlowProgress
 from .prefect_client import ReaderPrefectClient
 
 log = get_logger()
 
 NB_LOGS_LIMIT = 10_000
 PREFECT_MAX_LOGS_PER_CALL = 200
+PREFECT_MAX_ARTIFACTS_PER_CALL = 200
 
 
 class FlowRunReaderProtocol(Protocol):
@@ -38,6 +42,8 @@ class FlowRunReaderProtocol(Protocol):
     async def read_logs(self, flow_ids: list[UUID], log_limit: int | None, log_offset: int | None) -> FlowLogs: ...
 
     async def read_progress(self, flow_ids: list[UUID]) -> FlowProgress: ...
+
+    async def read_http(self, flow_ids: list[UUID]) -> FlowHttpCaptures: ...
 
     async def read_flows(self, ids: list[UUID] | None = None, names: list[str] | None = None) -> list[Flow]: ...
 
@@ -128,6 +134,37 @@ class FlowRunReader:
                 flow_progress.data[artifact.flow_run_id] = artifact.data
 
         return flow_progress
+
+    async def read_http(self, flow_ids: list[UUID]) -> FlowHttpCaptures:
+        captures = FlowHttpCaptures()
+
+        if not flow_ids:
+            return captures
+
+        # One artifact per attempt, so page through all matches and keep the most recent per run,
+        # or a busy run's last attempt could fall past a single page.
+        newest: dict[UUID, datetime] = {}
+        offset = 0
+        while True:
+            artifacts = await self.client.read_artifacts(
+                artifact_filter=ArtifactFilter(key=ArtifactFilterKey(any_=[WEBHOOK_HTTP_ARTIFACT_KEY])),
+                flow_run_filter=FlowRunFilter(id=FlowRunFilterId(any_=flow_ids)),
+                limit=PREFECT_MAX_ARTIFACTS_PER_CALL,
+                offset=offset,
+            )
+            for artifact in artifacts:
+                if not artifact.flow_run_id or not isinstance(artifact.data, dict):
+                    continue
+                created = artifact.created or datetime.min.replace(tzinfo=UTC)
+                if artifact.flow_run_id in newest and created < newest[artifact.flow_run_id]:
+                    continue
+                captures.data[artifact.flow_run_id] = artifact.data
+                newest[artifact.flow_run_id] = created
+            if len(artifacts) < PREFECT_MAX_ARTIFACTS_PER_CALL:
+                break
+            offset += len(artifacts)
+
+        return captures
 
     async def read_flows(self, ids: list[UUID] | None = None, names: list[str] | None = None) -> list[Flow]:
         if names is None and ids is None:

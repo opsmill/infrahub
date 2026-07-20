@@ -293,11 +293,42 @@ The path-based tab routing migration left `Pill`, `TASK_TAB`, and `DIFF_TABS` or
 
 Add `pnpm knip` to your verification commands any time a PR deletes a component, switches a switch-on-QSP to nested routes, or otherwise removes the last importer of a helper. Fix in the same PR — orphaned exports compound and become harder to delete with confidence as time passes.
 
+## An authenticated-query provider must gate its own fetch on auth
+
+A context provider whose data comes from an **authenticated** query (`DatePreferencesProvider`, …)
+must not fire that query for a logged-out user. Gate the fetch on `isAuthenticated` by **not mounting
+the query-calling component** until authenticated:
+
+```tsx
+export function DatePreferencesProvider({ children }) {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return children;              // logged out → no query, browser fallback
+  return <AuthenticatedDatePreferences>{children}</AuthenticatedDatePreferences>;
+}
+```
+
+Why this matters, and why **`RequireAuth` is not the gate**: `RequireAuth` renders its children when
+`isAuthenticated || config.main.allow_anonymous_access`, so with anonymous access enabled the whole
+authenticated route tree — and any provider mounted in it — renders for **logged-out** users. An
+ungated authenticated query then 401s, Apollo's `errorLink` calls `redirectToLogin`, and the user is
+bounced to `/login`. Because it depends on timing/anonymous-access it surfaces as a **flaky E2E
+failure** (auth-setup timeout, or "not logged in" specs), not an obvious error.
+
+Prefer the mount gate above over react-query `enabled: isAuthenticated` — it keeps the query hook
+itself auth-agnostic (the "authenticated" concern is a distinct component that simply doesn't exist
+when logged out). Do **not** rely on placement under `RequireAuth`; do **not** read the auth token
+from a `domain/` use-case (that breaks the FSD layer rule — auth state stays in `ui/`).
+
+This came from PR #9930: `DatePreferencesProvider` first mounted at the app root, then under
+`RequireAuth` — both fired the query for logged-out users and broke E2E. The fix was to gate the
+mount on `isAuthenticated`.
+
 ## Anti-patterns observed in past PRs
 
 | Anti-pattern | Replacement |
 |---|---|
 | `?tab=foo` URL state for tab navigation | Nested child routes + `LinkTab` + `<Outlet />` |
+| Authenticated-query provider that fetches for logged-out users (relies on `RequireAuth` or mounts unconditionally) | Gate the fetch on `isAuthenticated` — don't mount the query-calling component when logged out |
 | Tab bar without `<nav aria-label="Tabs">` | Always wrap; E2E selectors and screen readers depend on it |
 | Children re-calling the same parent query | `<Outlet context>` + typed hook with runtime guard |
 | `useParams() as { foo: string }` for guaranteed params | `useRequiredParams("foo")` |

@@ -6,6 +6,7 @@ import pytest
 from prefect.client.schemas.objects import StateType
 
 from infrahub.graphql.queries.task_actions import (
+    CANCEL_IN_PROGRESS_REASON,
     CANCEL_UNAVAILABLE_REASON,
     RETRY_UNAVAILABLE_REASON,
     AvailableAction,
@@ -30,6 +31,9 @@ RETRY_BLOCKED = AvailableAction(
 CANCEL_AVAILABLE = AvailableAction(action=TaskActionType.CANCEL, available=True)
 CANCEL_BLOCKED = AvailableAction(
     action=TaskActionType.CANCEL, available=False, unavailability_reason=CANCEL_UNAVAILABLE_REASON
+)
+CANCEL_IN_PROGRESS = AvailableAction(
+    action=TaskActionType.CANCEL, available=False, unavailability_reason=CANCEL_IN_PROGRESS_REASON
 )
 
 
@@ -63,6 +67,12 @@ CASES = [
         workflow_name=WEBHOOK_SEND.name,
         state_type=StateType.SCHEDULED,
         expected=[RETRY_BLOCKED, CANCEL_AVAILABLE],
+    ),
+    AvailableActionsCase(
+        name="cancelling_allows_retry_blocks_cancel",
+        workflow_name=WEBHOOK_SEND.name,
+        state_type=StateType.CANCELLING,
+        expected=[RETRY_AVAILABLE, CANCEL_IN_PROGRESS],
     ),
     AvailableActionsCase(
         name="non_webhook_run_has_no_actions",

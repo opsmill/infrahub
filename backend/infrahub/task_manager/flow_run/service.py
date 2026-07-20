@@ -9,6 +9,7 @@ from .enrichment import RelatedNodeEnricher, RelatedNodeEnricherProtocol
 from .filters import FlowRunFilterBuilder
 from .models import (
     EnrichedFlowRun,
+    FlowHttpCaptures,
     FlowLogs,
     FlowProgress,
     FlowRunFetchOptions,
@@ -68,6 +69,10 @@ class PrefectTaskService:
         if options.include_progress:
             progress = await self.reader.read_progress(flow_ids=flow_ids)
 
+        http_captures = FlowHttpCaptures()
+        if options.include_http:
+            http_captures = await self.reader.read_http(flow_ids=flow_ids)
+
         related_nodes = RelatedNodesInfo()
         if options.include_related_nodes:
             related_nodes = await self.enricher.enrich(flows=flows)
@@ -85,6 +90,7 @@ class PrefectTaskService:
                 workflow_name=workflow_names.get(flow.flow_id),
                 progress=progress.data.get(flow.id),
                 logs=list(logs.logs.get(flow.id, [])),
+                http=http_captures.data.get(flow.id),
             )
             for flow in flows
         ]

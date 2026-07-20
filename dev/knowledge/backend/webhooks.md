@@ -213,12 +213,18 @@ A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskAc
 
 | Action | Available when | Effect |
 |--------|----------------|--------|
-| `RETRY` | The delivery has settled (a terminal state) | Submits `WEBHOOK_SEND` again with the original run's frozen parameters, as a new independent run. The original run is left unchanged as a record. |
-| `CANCEL` | The delivery has not settled | Requests the `CANCELLING` state without forcing it. A running delivery is torn down by its worker. A delivery waiting between attempts keeps its in-process wait, which nothing interrupts, so each attempt re-checks for a recorded cancellation before sending and stops the sequence once one is present. An in-flight HTTP request is not recalled, but no further attempts run. |
+| `RETRY` | The delivery has settled, or is being cancelled (`CANCELLING`) | Submits `WEBHOOK_SEND` again with the original run's frozen parameters, as a new independent run. The original run is left unchanged as a record. |
+| `CANCEL` | The delivery has not settled and is not already `CANCELLING` | Requests the `CANCELLING` state without forcing it. A running delivery is torn down by its worker. A delivery waiting between attempts keeps its in-process wait, which nothing interrupts, so each attempt re-checks for a recorded cancellation before sending and stops the sequence once one is present. An in-flight HTTP request is not recalled, but no further attempts run. |
 
 The `available_actions` field on the task query reports each action with whether it currently applies and, when it does not, the reason. Selecting `available_actions` forces resolution of the run's workflow name, since the field is derived from it.
 
 `InfrahubTaskRetry` and `InfrahubTaskCancel` carry out the actions. Each loads the delivery through a query-only Prefect client (`DeliveryReader`), then authorizes it (`DeliveryActionAuthorizer`): the action must apply to the run's current state, and the caller must hold the `UPDATE` permission on the webhook's node kind. Loading is kept separate from authorization so the read uses the narrowest client capability it needs.
+
+### Delivery capture
+
+Each send attempt records what it exchanged as a single Prefect artifact on the run (key `WEBHOOK_HTTP_ARTIFACT_KEY`, `infrahub-webhook-http`), written on both success and failure through `PrefectClientAdapter.create_artifact` behind the `FlowRunArtifactWriting` protocol. The payload is a `CapturedHttp` (`backend/infrahub/webhook/capture.py`): the request (URL and redacted headers), the response (status, body, latency) when the target answered, and the classified error (class, message, remediation) when the attempt failed. `capture.py` builds the model with no I/O; headers are redacted before the artifact is built using the same rules as logs: environment-sourced and recognized credential headers are masked, while other static header values, the URL, and response body are retained as captured (see [Log redaction](#log-redaction)).
+
+The task query reads it back with `read_http`, which filters by key and keeps the most recent artifact per run, so the surfaced capture reflects the last attempt. The serializer projects it onto the `WebhookDeliveryTask` fields `http_request`, `http_response`, and `error`, gated on the GraphQL selection (`include_http`); the payload continues to come from the run parameters. The key and type are owned by `task_manager/flow_run/constants.py`, the layer that reads and writes the artifact, so `webhook` depends on it in the same direction as the client adapter.
 
 ### Delivery logging
 

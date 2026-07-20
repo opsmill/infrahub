@@ -18,8 +18,8 @@ The Marketplace hosts two types of content:
 
 Every item in the Marketplace is identified by a `namespace/name` reference, similar to Docker Hub image names or npm package scopes.
 
-- `opsmill/dcim` — the `dcim` schema published by the `opsmill` namespace
-- `opsmill/starter-pack` — the `starter-pack` collection published by `opsmill`
+- `infrahub/dcim` — the `dcim` schema published by the `infrahub` namespace
+- `infrahub/base-schemas` — the `base-schemas` collection published by `infrahub`
 
 Namespaces are tied to the account of the schema's author on the Marketplace.
 
@@ -43,7 +43,7 @@ The Marketplace is an external catalog — it stores schema definitions, not you
 ### Find the schema
 
 Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) and identify the schema or collection you want.
-Each item has an identifier in `namespace/name` format — for example, `opsmill/dcim`.
+Each item has an identifier in `namespace/name` format — for example, `infrahub/dcim`.
 Note this identifier; you will use it in the next step.
 
 ### Fetch the schema
@@ -51,13 +51,13 @@ Note this identifier; you will use it in the next step.
 Run `infrahubctl marketplace get` with the identifier:
 
 ```shell
-infrahubctl marketplace get opsmill/dcim
+infrahubctl marketplace get infrahub/dcim
 ```
 
 The command downloads the schema YAML to `./schemas/` by default:
 
 ```text
-Downloaded schema opsmill/dcim (version 1.4.2) → schemas/dcim.yml
+Downloaded schema infrahub/dcim (version 1.4.2) → schemas/dcim.yml
 ```
 
 #### Pin to a specific version
@@ -65,7 +65,7 @@ Downloaded schema opsmill/dcim (version 1.4.2) → schemas/dcim.yml
 Pin to a published version with `--version`:
 
 ```shell
-infrahubctl marketplace get opsmill/dcim --version 1.2.0
+infrahubctl marketplace get infrahub/dcim --version 1.2.0
 ```
 
 #### Save to a custom directory
@@ -73,7 +73,7 @@ infrahubctl marketplace get opsmill/dcim --version 1.2.0
 Use `--output-dir` to change where files are saved:
 
 ```shell
-infrahubctl marketplace get opsmill/dcim --output-dir ./infra/schemas
+infrahubctl marketplace get infrahub/dcim --output-dir ./infra/schemas
 ```
 
 #### Inspect before loading
@@ -81,7 +81,7 @@ infrahubctl marketplace get opsmill/dcim --output-dir ./infra/schemas
 Use `--stdout` to print the schema YAML to stdout without writing to disk:
 
 ```shell
-infrahubctl marketplace get opsmill/dcim --stdout
+infrahubctl marketplace get infrahub/dcim --stdout
 ```
 
 This is useful for reviewing the schema or piping it into another tool before committing to disk.
@@ -93,7 +93,7 @@ The `get` command detects whether an identifier is a schema or a collection auto
 To force collection download when a name exists as both, add `--collection`:
 
 ```shell
-infrahubctl marketplace get opsmill/starter-pack --collection
+infrahubctl marketplace get infrahub/base-schemas --collection
 ```
 
 A collection download writes one file per schema in the bundle.
