@@ -26,7 +26,7 @@ class TestMigration040:
         new_schema_branch = previous_schema_branch.duplicate()
         new_schema_branch.set(name="TestCar", schema=new_car_schema)
 
-        # reproduces the error state by running the same migration concurrently so that the attribute is duplicated
+        # add the "smell" attribute once through the normal migration
         migration_errors = await schema_apply_migrations(
             message=SchemaApplyMigrationData(
                 branch=branch,
@@ -37,18 +37,45 @@ class TestMigration040:
                         path=SchemaPath(schema_kind="TestCar", path_type=SchemaPathType.ATTRIBUTE, field_name="smell"),
                         migration_name="node.attribute.add",
                     )
-                ]
-                * 3,
+                ],
                 at=Timestamp(),
             )
         )
         assert not migration_errors
+
+        # Fabricate the error state a concurrent migration race used to produce: for every node that just
+        # gained the attribute, copy the HAS_ATTRIBUTE path and the attribute's HAS_VALUE/IS_PROTECTED paths
+        # onto a second Attribute vertex (fresh uuid) pointing at the same value vertices. Deterministic,
+        # unlike racing the migration against itself, which does not reliably duplicate under CI load.
+        await self._duplicate_attribute(db=db, branch=branch, attr_name="smell")
 
         # validate the error state
         errors = await validate_no_duplicate_attributes(db=db, branch=branch)
         assert errors
 
         registry.schema.set(name="TestCar", branch=branch.name, schema=new_car_schema)
+
+    async def _duplicate_attribute(self, db: InfrahubDatabase, branch: Branch, attr_name: str) -> None:
+        query = """
+        MATCH (n:Node)-[hae:HAS_ATTRIBUTE {branch: $branch_name, status: "active"}]->(a:Attribute {name: $attr_name})
+        WHERE hae.to IS NULL
+        CALL (n, hae, a) {
+            CREATE (dup:Attribute)
+            SET dup = properties(a)
+            CREATE (n)-[new_hae:HAS_ATTRIBUTE]->(dup)
+            SET new_hae = properties(hae)
+            SET dup.uuid = randomUUID()
+            RETURN dup
+        }
+        WITH dup, a
+        MATCH (a)-[e {branch: $branch_name, status: "active"}]->(peer)
+        WHERE e.to IS NULL
+        CALL (dup, e, peer) {
+            CREATE (dup)-[new_e:$(type(e))]->(peer)
+            SET new_e = properties(e)
+        }
+        """
+        await db.execute_query(query=query, params={"branch_name": branch.name, "attr_name": attr_name})
 
     async def test_clean_duplicated_attributes(
         self,
