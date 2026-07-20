@@ -6,8 +6,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.combiner import DiffCombiner
 from infrahub.core.diff.conflict_transferer import DiffConflictTransferer
 from infrahub.core.diff.model.path import ConflictSelection
-
-from .factories import (
+from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedConflictFactory,
     EnrichedNodeFactory,

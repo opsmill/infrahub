@@ -293,7 +293,7 @@ def test_run_generator_never_under_runs(case: RunGeneratorCase) -> None:
     assert (
         _run_generator(
             instance_id=case.instance_id,
-            managed_branch=case.managed_branch,
+            regenerate_all_members=case.managed_branch,
             impacted_instances=case.impacted_instances,
         )
         is case.expected

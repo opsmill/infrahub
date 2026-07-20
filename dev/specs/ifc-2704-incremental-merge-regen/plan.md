@@ -116,10 +116,13 @@ docker-compose.yml                 # D9: regenerated (release.gen-config-env)
 docs/docs/reference/configuration.mdx  # D9: regenerated (docs.generate)
 
 backend/tests/
-├── unit/core/merge/              # converter, cache round-trip, limit-trap filter, selection gates on a merge summary
-├── functional/                   # selective merge dispatch end-to-end (inline async tasks)
-└── integration_docker/           # full-stack: single-kind change, new target, conflict-to-base, repo-code change, fallbacks, baseline count
+├── unit/core/merge/              # dispatcher branch matrix, gate, selector, cache round-trip, summary converter
+├── component/                    # real-graph selection driving the dispatcher via a recording workflow backend
+└── api/                          # real regenerated-output assertions (T039, T044)
 ```
+
+The planned `integration_docker/` full live-stack matrix is not used for this path; see the
+implementation-sync revision below.
 
 **Structure Decision**: Single backend project. The merge-specific new code lives under
 `backend/infrahub/core/merge/` (converter + cache in `diff_summary.py`, selection in
@@ -213,3 +216,14 @@ The Spec Kit block in `CLAUDE.md` will be updated (via the `after_plan`
 Re-evaluated after design: no new violations. The design introduces no new schema, no new
 dependency, and no new query on the hot path; it adds two typed module files and one message
 field, and extracts one shared helper serving two callers. **PASS.**
+
+### Revision: Implementation Sync 2026-07-16
+
+- Reason: reconciled the testing strategy to the tiers that shipped. Selective-dispatch
+  selection is covered at the unit tier (dispatcher branch matrix, gate, selector) and by a
+  real-graph selection test at the component tier driving the dispatcher through a recording
+  workflow backend. The planned `integration_docker/` full live-stack matrix is not used for this
+  path: the testcontainer harness cannot execute the render flow's worker→server callback, so
+  real regenerated-output assertions move to the API tier (tasks T039, T044). The representative
+  perf A/B (SC-001/SC-004/SC-005) is recorded in `perf-validation.md`; the scale run (SC-002)
+  remains deferred pending the profiling-harness dataset (tasks T040, T045).

@@ -320,6 +320,20 @@ on generator-produced data mutations:
 **Alternatives rejected**: concurrent full-artifact fallback (races generator mutation — the
 E4 hole); assuming event machinery covers it without running the spike (risks under-execution).
 
+**Spike outcome (2026-07-13) — events do NOT cover it; the sequenced fallback is required.**
+The builtin trigger catalogue (`backend/infrahub/trigger/catalogue.py`) registers no trigger that
+regenerates artifacts in response to node-data mutations; `TRIGGER_BRANCH_MERGED` is the only
+merge-driven entry and it fans out to the post-merge follow-up we are replacing. Enumerating every
+submitter of `TRIGGER_/REQUEST_ARTIFACT_DEFINITION_GENERATE` and `..._GENERATOR_DEFINITION_RUN`
+(`core/branch/tasks.py`, `graphql/mutations/{artifact_definition,generator}.py`, `api/artifact.py`,
+`generators/tasks.py`, `git/tasks.py`) shows every driver is either the merge follow-up itself, an
+explicit GraphQL/REST call, or the proposed-change pipeline. None fire on a plain data change. So a
+generator that mutates default-branch data in a direct-merge follow-up leaves dependent artifacts
+stale unless the follow-up regenerates them. **Decision for T035**: on a direct (non-PC) merge that
+dispatches ≥1 generator, submit full artifact regeneration **sequenced after** generator
+completion (awaited), never concurrent. This is Phase 7 work and does not affect the US1 selective
+path.
+
 ## Decision 8 — Repo merge ordering / double-trigger (resolves Open Question 2)
 
 **Finding**: `run_follow_ups` merges repositories and re-imports code on the default branch
@@ -334,16 +348,19 @@ default-branch re-import).
 
 ## Decision 9 — Config gate
 
-**Decision**: Add `selective_execution_after_merge: bool = True` to `MainSettings`
+**Decision**: Add `selective_execution_after_merge` to `MainSettings`
 (`backend/infrahub/config.py:183`, mirroring `delete_branch_after_merge` at `:215`). Env var
 `INFRAHUB_SELECTIVE_EXECUTION_AFTER_MERGE`. Read via `config.SETTINGS.main.selective_execution_after_merge`
 inside `post_process_branch_merge`. When `False`, the current blanket path runs unchanged
 (baseline for scale tests, reversible rollout).
 
-**Default rationale**: The fallbacks (Decision 6/7) preserve no-under-execution even when
-enabled, and the originating bug is severe; shipping disabled would leave it unfixed. Default-
-True is safe as a mechanism (the `None` key and every fallback route to byte-for-byte current
-behavior) and is acceptable now that E1–E3 are closed.
+**Default rationale**: The default-True rationale holds only once Decision 6/7's fallbacks exist —
+they are what make the selective path safe on direct merges and code-only merges. While US2/US3
+and the direct-merge cascade (T035) are unbuilt, the selective path can under-execute on those
+paths, so the setting ships **`default=False`** on this increment (selective execution is
+opt-in). Flip the default to `True` once US3 + the cascade land and the no-under-execution matrix
+is validated; the mechanism is otherwise safe (the `None` key and every fallback route to
+byte-for-byte current behavior).
 
 **Observability (resolves E8)**: every merge follow-up MUST log/emit a metric recording whether
 it took the **selective** or a **fallback** path, and the dispatched generator/artifact counts.
@@ -374,9 +391,9 @@ committed or CI fails.
 
 ## Open items carried to tasks
 
-- **Blocking spike (D7/E4)**: determine whether the event-driven machinery covers
-  generator→artifact staleness on direct merges. Outcome decides whether the fallback is
-  dropped or must await generator completion. Resolve before finalizing direct-merge dispatch.
+- **Blocking spike (D7/E4)**: RESOLVED 2026-07-13 — the event machinery does **not** cover
+  generator→artifact staleness on direct merges (see Decision 7 spike outcome). The T035 fallback
+  is required and must await generator completion (sequenced). No further investigation needed.
 - **Verification (D6/E6)**: confirm a source-branch code change produces a `CoreRepository`
   node with a triggering `commit` element in `branch_diff.nodes` at capture; else escalate the
   null-fingerprint case to repository-wide full regeneration.

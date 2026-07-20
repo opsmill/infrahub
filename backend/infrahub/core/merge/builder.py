@@ -7,6 +7,8 @@ from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.diff.summary_cache import DiffSummaryCache
+from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.registry import registry
 from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
 from infrahub.dependencies.registry import get_component_registry
@@ -42,7 +44,9 @@ async def build_branch_merge_orchestrator(
     component_registry = get_component_registry()
     workflow = get_workflow()
     event_service = await get_event_service()
-    merge_write_blocker = MergeWriteBlocker(cache=await get_cache())
+    cache = await get_cache()
+    merge_write_blocker = MergeWriteBlocker(cache=cache)
+    diff_summary_serializer = DiffSummarySerializer()
 
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
@@ -106,5 +110,9 @@ async def build_branch_merge_orchestrator(
         merge_write_blocker=merge_write_blocker,
         ipam_diff_parser=ipam_diff_parser,
         diff_repository=diff_repository,
+        diff_serializer=diff_summary_serializer,
+        diff_summary_cache=DiffSummaryCache(
+            cache=cache, serializer=diff_summary_serializer, key_namespace="branch_merge"
+        ),
         logger=logger,
     )

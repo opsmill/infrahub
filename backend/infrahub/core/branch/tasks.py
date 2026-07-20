@@ -29,6 +29,7 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
     MergeRecomputeCoordinator,
 )
+from infrahub.core.merge.regeneration_dispatcher import submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -48,17 +49,21 @@ from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
-from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
-from infrahub.workers.dependencies import get_cache, get_component, get_database, get_event_service, get_workflow
+from infrahub.workers.dependencies import (
+    get_cache,
+    get_client,
+    get_component,
+    get_database,
+    get_event_service,
+    get_workflow,
+)
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     GIT_REPOSITORIES_DELETE_BRANCH,
     IPAM_RECONCILIATION,
-    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
-    TRIGGER_GENERATOR_DEFINITION_RUN,
 )
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
@@ -66,6 +71,7 @@ from infrahub.workflows.utils import add_tags
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
+    from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
     from infrahub.database import InfrahubDatabase
 
 
@@ -462,11 +468,36 @@ async def _get_diff_root(
     return default_branch_diff
 
 
+async def _build_post_merge_regeneration_dispatcher(
+    log: Logger | LoggerAdapter[Logger],
+) -> PostMergeRegenerationDispatcher:
+    # Imported lazily: the selection module depends on the proposed-change tasks, which import this
+    # module, so a top-level import would be circular.
+    from infrahub.core.diff.summary_cache import DiffSummaryCache
+    from infrahub.core.diff.summary_serializer import DiffSummarySerializer
+    from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
+    from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
+
+    return PostMergeRegenerationDispatcher(
+        workflow=get_workflow(),
+        selector=build_merge_selective_regeneration(client=get_client(), log=log),
+        summary_cache=DiffSummaryCache(
+            cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
+        ),
+        log=log,
+    )
+
+
 @flow(
     name="branch-merge-post-process",
     flow_run_name="Run additional tasks after merging {source_branch} in {target_branch}",
 )
-async def post_process_branch_merge(source_branch: str, target_branch: str, context: InfrahubContext) -> None:
+async def post_process_branch_merge(
+    source_branch: str,
+    target_branch: str,
+    context: InfrahubContext,
+    merge_diff_cache_key: str | None = None,
+) -> None:
     database = await get_database()
     async with database.start_session() as db:
         await add_tags(branches=[source_branch])
@@ -477,17 +508,15 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
-        await get_workflow().submit_workflow(
-            workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
-            context=context,
-            parameters={"branch": target_branch},
-        )
-
-        await get_workflow().submit_workflow(
-            workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
-            context=context,
-            parameters={"branch": target_branch, "source": GeneratorDefinitionRunSource.MERGE},
-        )
+        if config.SETTINGS.main.selective_execution_after_merge:
+            dispatcher = await _build_post_merge_regeneration_dispatcher(log=log)
+            await dispatcher.dispatch(
+                context=context,
+                target_branch=target_branch,
+                merge_diff_cache_key=merge_diff_cache_key,
+            )
+        else:
+            await submit_full_regeneration(workflow=get_workflow(), context=context, target_branch=target_branch)
 
         if not config.SETTINGS.main.diff_update_after_merge:
             return

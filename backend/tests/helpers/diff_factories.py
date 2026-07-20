@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, ClassVar
 from uuid import uuid4
 
 from polyfactory.factories import DataclassFactory
@@ -51,7 +51,7 @@ class EnrichedRelationshipGroupFactory(DataclassFactory[EnrichedDiffRelationship
     num_updated = 0
     num_removed = 0
     num_conflicts = 0
-    nodes = set()
+    nodes: ClassVar[set] = set()
     contains_conflict = False
 
 

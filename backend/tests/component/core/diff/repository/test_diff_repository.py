@@ -23,8 +23,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ResourceNotFoundError
-
-from ..factories import (
+from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedConflictFactory,
     EnrichedNodeFactory,
@@ -33,6 +32,7 @@ from ..factories import (
     EnrichedRelationshipGroupFactory,
     EnrichedRootFactory,
 )
+
 from ..get_one_node import get_one_diff_node
 from .base import DiffRepositoryTestBase
 
