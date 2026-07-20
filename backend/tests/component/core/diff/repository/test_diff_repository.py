@@ -23,8 +23,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ResourceMultipleFoundError, ResourceNotFoundError
-
-from ..factories import (
+from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedConflictFactory,
     EnrichedNodeFactory,

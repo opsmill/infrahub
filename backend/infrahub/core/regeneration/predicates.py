@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.exceptions import NodeNotFoundError
-
 from infrahub.core.constants import DiffAction
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 
 from .models import PredicateOutcome
