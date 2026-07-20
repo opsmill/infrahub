@@ -26,6 +26,10 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         default_factory=list,
         description="List of targets to limit the scope of the generation, if populated only the included artifacts will be regenerated",
     )
+    members: list[str] = Field(
+        default_factory=list,
+        description="Member node ids to generate artifacts for; when populated, only these members are processed.",
+    )
 
 
 class RequestArtifactGenerate(BaseModel):

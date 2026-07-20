@@ -70,6 +70,7 @@ class PostMergeDispatcher:
         context: InfrahubContext,
         proposed_change_id: str | None,
         ipam_node_details: list[IpamNodeDetails] | None,
+        merge_diff_cache_key: str | None = None,
     ) -> None:
         # The repository merge issues a GraphQL write to the default branch, so it must run after the
         # write block is lifted; while protected it would be rejected as a write to the merging branch.
@@ -108,7 +109,11 @@ class PostMergeDispatcher:
         await self._submit_workflow(
             context=low_context,
             workflow_definition=BRANCH_MERGE_POST_PROCESS,
-            parameters={"source_branch": branch.name, "target_branch": self.default_branch.name},
+            parameters={
+                "source_branch": branch.name,
+                "target_branch": self.default_branch.name,
+                "merge_diff_cache_key": merge_diff_cache_key,
+            },
         )
 
     async def dispatch_events(
