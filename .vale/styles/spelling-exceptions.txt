@@ -20,6 +20,7 @@ autoscaling
 backend
 backends
 backfilled
+backfills
 bcrypt
 Biome
 bool
@@ -265,6 +266,7 @@ updated_at
 updated_by
 upsert
 upserting
+upserts
 Upserting
 URIs
 userinfo
@@ -306,6 +308,7 @@ QRadar
 rsyslog
 sourcetype
 Splunk
+Starlette
 stderr
 stdin
 stdout
