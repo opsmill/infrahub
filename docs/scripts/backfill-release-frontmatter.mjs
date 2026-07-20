@@ -33,8 +33,11 @@ const parseDate = (body) => {
   return `${d[3]}-${String(month).padStart(2, "0")}-${String(d[2]).padStart(2, "0")}`;
 };
 
+// Keep `_` — stripping it mangles the snake_case identifiers that changelog
+// entries quote in backticks (`order_weight` → "orderweight"), which both reads
+// wrong in the feed and trips Vale's spelling check.
 const stripMd = (s) =>
-  s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[*_`#]/g, "").replace(/\s+/g, " ").trim();
+  s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[*`#]/g, "").replace(/\s+/g, " ").trim();
 
 const firstSentences = (text, max = 220) => {
   const out = [];
