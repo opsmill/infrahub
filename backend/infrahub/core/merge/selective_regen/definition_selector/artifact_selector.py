@@ -3,14 +3,11 @@ from __future__ import annotations
 from infrahub_sdk.protocols import CoreArtifactDefinition
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.regeneration.definitions import GATHER_ARTIFACT_DEFINITIONS, parse_artifact_definitions
+from infrahub.core.regeneration.members import should_render_artifact
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.utils import fetch_artifact_definition_targets
 from infrahub.message_bus.types import ProposedChangeArtifactDefinition
-from infrahub.proposed_change.tasks import (
-    GATHER_ARTIFACT_DEFINITIONS,
-    _parse_artifact_definitions,
-    _should_render_artifact,
-)
 
 from ..models import LoadedDefinition
 from .base import DefinitionSelectorBase
@@ -42,7 +39,7 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
                 continue
             loaded.extend(
                 LoadedDefinition(definition=definition, group_id=target_node["id"])
-                for definition in _parse_artifact_definitions(definitions=[edge])
+                for definition in parse_artifact_definitions(definitions=[edge])
             )
         return loaded
 
@@ -56,7 +53,7 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
         return [relationship.peer.id for relationship in group.members.peers]
 
     def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
-        return _should_render_artifact(
+        return should_render_artifact(
             artifact_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_artifacts=impacted
         )
 
