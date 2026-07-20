@@ -20,7 +20,7 @@ export const DurationDisplay = (props: DateDisplayProps) => {
 
       <Icon icon="mdi:chevron-right" className="mx-2" />
 
-      {formatDate(endDate ?? new Date(), "datetime")}
+      {endDate ? formatDate(endDate, "datetime") : "—"}
     </div>
   );
 

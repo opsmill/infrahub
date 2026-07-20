@@ -5,7 +5,7 @@ import { DatePreferencesContext } from "@/shared/context/date-preferences-contex
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
-import { patternForKey } from "@/entities/preferences/domain/rules/date-format";
+import { dateFormatPattern } from "@/entities/preferences/domain/rules/date-format";
 import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
 import { useGetEffectivePreferences } from "@/entities/preferences/ui/queries/get-effective-preferences.query";
 
@@ -72,7 +72,7 @@ describe("DatePreferencesProvider", () => {
 
     await expect
       .element(component.getByTestId("pattern"))
-      .toHaveTextContent(patternForKey("EU_DATETIME"));
+      .toHaveTextContent(dateFormatPattern("EU_DATETIME"));
     await expect.element(component.getByTestId("timezone")).toHaveTextContent("Europe/Paris");
   });
 
@@ -84,7 +84,7 @@ describe("DatePreferencesProvider", () => {
 
     await expect
       .element(component.getByTestId("pattern"))
-      .toHaveTextContent(patternForKey("ISO_DATETIME"));
+      .toHaveTextContent(dateFormatPattern("ISO_DATETIME"));
     await expect.element(component.getByTestId("timezone")).toHaveTextContent("Asia/Tokyo");
   });
 
