@@ -38,7 +38,13 @@ from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
+from .metrics import (
+    CONNECTION_POOL_USAGE,
+    QUERY_AVAILABLE_AFTER_METRICS,
+    QUERY_AVAILABLE_AFTER_TRACKED_QUERIES,
+    QUERY_EXECUTION_METRICS,
+    TRANSACTION_RETRIES,
+)
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -402,8 +408,14 @@ class InfrahubDatabase:
                             message=f"Query '{name}' exceeded its execution time budget of {timeout_seconds}s"
                         ) from exc
                     raise
+                metadata = response._metadata or {}
+                available_after_ms = metadata.get("t_first", metadata.get("result_available_after"))
+                if available_after_ms is not None and name in QUERY_AVAILABLE_AFTER_TRACKED_QUERIES:
+                    QUERY_AVAILABLE_AFTER_METRICS.labels(
+                        type=labels["type"], runtime=labels["runtime"], query=name
+                    ).observe(available_after_ms / 1000)
                 span.set_attribute("rows", len(results))
-                return results, response._metadata or {}
+                return results, metadata
 
     async def run_query(
         self,
