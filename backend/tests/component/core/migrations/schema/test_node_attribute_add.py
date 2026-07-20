@@ -37,8 +37,14 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
+from tests.component.core.migrations.schema.metadata_helpers import (
+    VertexMetadata,
+    branch_edge_fingerprint,
+    get_attribute_vertex_metadata,
+    get_node_vertex_metadata,
+)
 from tests.db_snapshot import DbSnapshotter
-from tests.helpers.db_validation import VertexMetadata, branch_edge_fingerprint, verify_graph
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
@@ -231,49 +237,6 @@ SETUP_USER_ID = "setup_user"
 MIGRATION_USER_ID = "migration_user"
 
 
-async def _get_car_metadata(db: InfrahubDatabase, node_uuid: str) -> VertexMetadata:
-    """Return the vertex metadata stored on a TestCar node."""
-    query = """
-        MATCH (n:TestCar {uuid: $node_uuid})
-        RETURN n.updated_at AS updated_at, n.updated_by AS updated_by,
-            n.previous_updated_at AS previous_updated_at, n.previous_updated_by AS previous_updated_by
-    """
-    results = await db.execute_query(query=query, params={"node_uuid": node_uuid})
-    row = results[0]
-    return VertexMetadata(
-        updated_at=row["updated_at"],
-        updated_by=row["updated_by"],
-        previous_updated_at=row["previous_updated_at"],
-        previous_updated_by=row["previous_updated_by"],
-    )
-
-
-async def _get_added_color_metadata(db: InfrahubDatabase, node_uuid: str, migration_time: Timestamp) -> VertexMetadata:
-    """Return the vertex metadata of the freshly-added ``color`` attribute.
-
-    The added attribute is matched through the HAS_ATTRIBUTE edge opened at the migration timestamp,
-    which distinguishes it from the earlier removed ``color`` attribute on the same node.
-    """
-    query = """
-        MATCH (n:TestCar {uuid: $node_uuid})-[e:HAS_ATTRIBUTE]->(a:Attribute {name: "color"})
-        WHERE e.from = $migration_time
-        RETURN a.updated_at AS updated_at, a.updated_by AS updated_by,
-            a.previous_updated_at AS previous_updated_at, a.previous_updated_by AS previous_updated_by
-    """
-    results = await db.execute_query(
-        query=query,
-        params={"node_uuid": node_uuid, "migration_time": migration_time.to_string()},
-    )
-    assert len(results) == 1, "Expected exactly one freshly-added color attribute"
-    row = results[0]
-    return VertexMetadata(
-        updated_at=row["updated_at"],
-        updated_by=row["updated_by"],
-        previous_updated_at=row["previous_updated_at"],
-        previous_updated_by=row["previous_updated_by"],
-    )
-
-
 @dataclass
 class _AttributeAdd:
     """State captured around a single ``color`` attribute-add migration on one branch."""
@@ -307,7 +270,7 @@ async def _run_attribute_add_migration(db: InfrahubDatabase, branch: Branch, nod
         migration_input=MigrationInput(db=db, at=Timestamp(), user_id=SETUP_USER_ID), branch=branch
     )
 
-    node_before = await _get_car_metadata(db=db, node_uuid=node_uuid)
+    node_before = await get_node_vertex_metadata(db=db, node_uuid=node_uuid)
     pre_migration_fingerprint = await branch_edge_fingerprint(db=db, branch_name=branch.name)
 
     user_id = MIGRATION_USER_ID
@@ -363,9 +326,9 @@ async def _assert_migration_metadata(db: InfrahubDatabase, context: _AttributeAd
     assert added_attr._get_updated_at() == context.migration_time
     assert added_attr._get_updated_by() == context.user_id
 
-    node_after = await _get_car_metadata(db=db, node_uuid=context.node_id)
-    attr_after = await _get_added_color_metadata(
-        db=db, node_uuid=context.node_id, migration_time=context.migration_time
+    node_after = await get_node_vertex_metadata(db=db, node_uuid=context.node_id)
+    attr_after = await get_attribute_vertex_metadata(
+        db=db, node_uuid=context.node_id, attribute_name="color", edge_from=context.migration_time.to_string()
     )
     if context.branch.is_default or context.branch.is_global:
         # The pre-existing node is bumped and its prior values snapshotted so a rollback can restore them.
@@ -434,7 +397,7 @@ class TestNodeAttributeAddMetadata:
         )
 
         # The node metadata is restored to its pre-add values and the snapshot is cleared.
-        node_after = await _get_car_metadata(db=db, node_uuid=context.node_id)
+        node_after = await get_node_vertex_metadata(db=db, node_uuid=context.node_id)
         assert node_after.updated_at == context.node_before.updated_at
         assert node_after.updated_by == context.node_before.updated_by
         assert node_after.previous_updated_at is None
@@ -446,7 +409,7 @@ class TestNodeAttributeAddMetadata:
         assert (
             await branch_edge_fingerprint(db=db, branch_name=context.branch.name) == context.pre_migration_fingerprint
         )
-        node_again = await _get_car_metadata(db=db, node_uuid=context.node_id)
+        node_again = await get_node_vertex_metadata(db=db, node_uuid=context.node_id)
         assert node_again == node_after
 
 

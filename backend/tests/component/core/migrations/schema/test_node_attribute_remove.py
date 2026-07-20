@@ -23,8 +23,9 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
+from tests.component.core.migrations.schema.metadata_helpers import VertexMetadata, branch_edge_fingerprint
 from tests.db_snapshot import DbSnapshotter
-from tests.helpers.db_validation import VertexMetadata, branch_edge_fingerprint, verify_graph
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 
 
