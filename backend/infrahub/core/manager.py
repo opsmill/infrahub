@@ -1057,9 +1057,7 @@ class NodeManager:
 
         if not result:
             if raise_on_error:
-                # `kind` is a protocol class, a kind string, or None because callers look nodes up
-                # in all three ways; derive the name from it directly, since resolving it through the
-                # schema could raise on the not-found path we are already handling.
+                # Avoid resolving kind via the schema here: it can raise on the not-found path.
                 node_kind = kind.__name__ if isinstance(kind, type) else (kind or "Node")
                 raise NodeNotFoundError(branch_name=branch.name, node_type=node_kind, identifier=id)
             return None
