@@ -11,16 +11,50 @@ export interface FormatDateOptions {
   timezone?: string | null;
 }
 
-/** Pure date-fns formatter; `TZDate` shifts the wall clock to `timezone` when given. */
-export function formatDate(date: DateInput, { pattern, timezone }: FormatDateOptions): string {
-  if (timezone) {
-    return format(new TZDate(new Date(date), timezone), pattern);
+// Returns `timezone` only if this runtime recognizes it, else undefined (→ browser local zone).
+// A zone valid on the preference setter's machine may be absent on the viewer's browser;
+// `@date-fns/tz` builds a `TZDate` for an unknown zone without complaint and only throws lazily
+// on use, so we validate up front with `Intl`, which rejects an unknown zone synchronously.
+function supportedTimezone(timezone?: string | null): string | undefined {
+  if (!timezone) {
+    return;
   }
-  return format(new Date(date), pattern);
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    return timezone;
+  } catch {
+    return;
+  }
+}
+
+/**
+ * Pure date-fns formatter; `TZDate` shifts the wall clock to `timezone` when given.
+ * Never throws: an unknown zone falls back to the browser's local zone, and an invalid date
+ * or pattern degrades to a readable fallback rather than crashing the render subtree (leaf
+ * date renderers have no error boundary).
+ */
+export function formatWithPattern(
+  date: DateInput,
+  { pattern, timezone }: FormatDateOptions
+): string {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(date);
+  }
+  const zone = supportedTimezone(timezone);
+  try {
+    return format(zone ? new TZDate(parsed, zone) : parsed, pattern);
+  } catch {
+    return parsed.toISOString();
+  }
 }
 
 export function formatRelativeTimeFromNow(date: DateInput) {
-  return formatDistance(date, new Date(), { addSuffix: true });
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(date);
+  }
+  return formatDistance(parsed, new Date(), { addSuffix: true });
 }
 
 export function isInPreviousYear(date: DateInput) {

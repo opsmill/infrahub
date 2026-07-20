@@ -114,7 +114,7 @@ export const getDisplayValue = (
   if (attribute?.kind === "DateTime" && row[attribute?.name]?.value) {
     // A datetime *data* attribute: show the user's full preferred format+timezone inline (not the
     // relative/compact default, which suits activity/metadata timestamps).
-    return <DateDisplay date={row[attribute?.name]?.value} variant="datetime" />;
+    return <DateDisplay date={row[attribute?.name]?.value} fullTimestamp />;
   }
 
   const textValue = getTextValue(row[attribute?.name]);

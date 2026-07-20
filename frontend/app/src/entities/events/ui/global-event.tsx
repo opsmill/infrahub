@@ -72,7 +72,7 @@ export const Event = (props: EventType) => {
       )}
     >
       <div className="flex items-center whitespace-nowrap font-medium text-gray-500 text-xs">
-        <DateDisplay date={props.occurred_at} variant="datetime" />
+        <DateDisplay date={props.occurred_at} fullTimestamp />
       </div>
 
       <div className="item-center col-span-5 flex gap-4 overflow-hidden">

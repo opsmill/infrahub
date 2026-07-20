@@ -1,6 +1,6 @@
 import React from "react";
 
-import { type DateInput, formatDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
+import { type DateInput, formatRelativeTimeFromNow, formatWithPattern } from "@/shared/utils/date";
 
 // Resolved date preferences a renderer needs. null = no preference → browser default. Lives in
 // `shared` (no `entities` dependency); filled by the entities-layer date-preferences-provider.
@@ -16,10 +16,17 @@ export type DateVariant = "datetime" | "date" | "relative";
 
 function formatWithLocale(date: DateInput, variant: DateVariant, timezone: string | null): string {
   const d = new Date(date);
+  if (Number.isNaN(d.getTime())) {
+    return String(date);
+  }
   const options: Intl.DateTimeFormatOptions =
     variant === "date" ? { dateStyle: "medium" } : { dateStyle: "medium", timeStyle: "short" };
   if (timezone) {
-    options.timeZone = timezone;
+    try {
+      return d.toLocaleString(undefined, { ...options, timeZone: timezone });
+    } catch {
+      // Unknown timezone on this browser → render in the browser's local zone.
+    }
   }
   return d.toLocaleString(undefined, options);
 }
@@ -48,11 +55,11 @@ export function useFormatDate(): UseFormatDateResult {
     if (variant === "date") {
       const datePattern = dateOnlyPattern(pattern);
       return datePattern
-        ? formatDate(date, { pattern: datePattern, timezone })
+        ? formatWithPattern(date, { pattern: datePattern, timezone })
         : formatWithLocale(date, "date", timezone);
     }
 
-    return formatDate(date, { pattern, timezone });
+    return formatWithPattern(date, { pattern, timezone });
   };
 
   return { formatDate: boundFormat, pattern, timezone };

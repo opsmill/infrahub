@@ -1,19 +1,20 @@
 import { Tooltip } from "@infrahub/ui";
-import { differenceInDays, format, formatDistanceToNow } from "date-fns";
+import { differenceInDays } from "date-fns";
 import type React from "react";
 
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { classNames } from "@/shared/utils/common";
+import { formatWithPattern } from "@/shared/utils/date";
 
 type DateDisplayProps = {
   date?: number | string | Date | null;
   hideDefault?: boolean;
   className?: string;
   containerClassName?: string;
-  /** Explicit date-fns pattern escape hatch: rendered inline verbatim, bypassing preferences. */
+  /** Explicit date-fns pattern escape hatch: overrides the pattern but still renders in the preferred timezone. */
   dateFormat?: string;
-  /** `"datetime"` forces the full preferred datetime inline; omitted keeps the compact heuristic. */
-  variant?: "datetime";
+  /** Forces the full preferred datetime inline; omitted keeps the compact "x ago" / date heuristic. */
+  fullTimestamp?: boolean;
 };
 
 export const DateDisplay = ({
@@ -22,9 +23,9 @@ export const DateDisplay = ({
   className,
   containerClassName,
   dateFormat,
-  variant,
+  fullTimestamp,
 }: DateDisplayProps) => {
-  const { formatDate } = useFormatDate();
+  const { formatDate, timezone } = useFormatDate();
 
   if (!date && hideDefault) {
     return null;
@@ -41,12 +42,12 @@ export const DateDisplay = ({
     </span>
   );
 
-  if (variant === "datetime") {
-    return wrap(formatDate(dateData, "datetime"));
+  if (fullTimestamp) {
+    return wrap(tooltipMessage);
   }
 
   if (dateFormat) {
-    return wrap(format(dateData, dateFormat));
+    return wrap(formatWithPattern(dateData, { pattern: dateFormat, timezone }));
   }
 
   // > 7 days old → preferred date; recent → "x ago".
@@ -54,5 +55,5 @@ export const DateDisplay = ({
     return wrap(formatDate(dateData, "date"));
   }
 
-  return wrap(formatDistanceToNow(dateData, { addSuffix: true }));
+  return wrap(formatDate(dateData, "relative"));
 };

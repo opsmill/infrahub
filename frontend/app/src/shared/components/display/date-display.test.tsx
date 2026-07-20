@@ -60,10 +60,8 @@ describe("DateDisplay", () => {
     await expect.element(component.getByText(/Jan.*2026|2026.*Jan|1\/15\/2026/)).toBeVisible();
   });
 
-  test('variant="datetime" renders the preferred pattern + timezone inline', async () => {
-    const component = await render(
-      withPrefs(<DateDisplay date={FIXED_INSTANT} variant="datetime" />)
-    );
+  test("fullTimestamp renders the preferred pattern + timezone inline", async () => {
+    const component = await render(withPrefs(<DateDisplay date={FIXED_INSTANT} fullTimestamp />));
     // Europe/Paris (UTC+2 in June) → 16:30.
     await expect.element(component.getByText("2026-06-11 16:30")).toBeVisible();
   });
@@ -73,6 +71,17 @@ describe("DateDisplay", () => {
       withPrefs(<DateDisplay date={FIXED_INSTANT} dateFormat="yyyy" />)
     );
     await expect.element(component.getByText("2026")).toBeVisible();
+  });
+
+  test("dateFormat escape hatch still renders in the preferred timezone", async () => {
+    // 23:30 UTC is the next calendar day in Paris (UTC+2 in June): the custom pattern overrides
+    // the format but must not silently drop the preferred zone, or inline and tooltip would show
+    // different clock times for the same instant.
+    const lateUtc = new Date("2026-06-11T23:30:00Z");
+    const component = await render(
+      withPrefs(<DateDisplay date={lateUtc} dateFormat="yyyy-MM-dd HH:mm" />)
+    );
+    await expect.element(component.getByText("2026-06-12 01:30")).toBeVisible();
   });
 
   test("tooltip shows the preferred full datetime + timezone", async () => {
@@ -92,7 +101,7 @@ describe("DateDisplay", () => {
 
   test("no provider mounted: renders with browser-locale fallback (no crash)", async () => {
     const component = await render(
-      withPrefs(<DateDisplay date={FIXED_INSTANT} variant="datetime" />, null)
+      withPrefs(<DateDisplay date={FIXED_INSTANT} fullTimestamp />, null)
     );
     // The compact/relative heuristic is bypassed; some non-empty datetime string renders.
     await expect.element(component.getByText(/2026/)).toBeVisible();
