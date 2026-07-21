@@ -86,7 +86,10 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
         memory_total=results[0]["memory_total"]["value"],
         memory_available=results[0]["memory_available"]["value"],
         processor_available=results[0]["processor_available"]["value"],
-        processor_assigned=await get_processor_assigned(db=db),
+        # The assigned read is a separate source from the JMX figures above; a failure
+        # to reach it must null only this field rather than the whole system-info block,
+        # so it degrades independently even when it raises outside its own catch.
+        processor_assigned=await safe_metric(get_processor_assigned(db=db)),
     )
 
 
