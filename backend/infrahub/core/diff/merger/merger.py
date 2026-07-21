@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.bulk_merge import (
     BulkMergeAttributePropertyEdgesQuery,
@@ -122,11 +121,6 @@ class DiffMerger:
                     node_uuids=batch_uuids,
                 )
                 await metadata_query.execute(db=self.db)
-
-        branched_from = at.subtract(microseconds=1)
-        self.source_branch.branched_from = branched_from.to_string()
-        await self.source_branch.save(db=self.db)
-        registry.branch[self.source_branch.name] = self.source_branch
 
         log.info("Graph merge complete")
 

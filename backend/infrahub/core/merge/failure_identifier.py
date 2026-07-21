@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
 from typing import TYPE_CHECKING
 
 from infrahub import config
@@ -24,22 +22,6 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
-class RecoveryOutcome(Enum):
-    NOTHING_TO_RECOVER = "nothing_to_recover"
-    DECLINED = "declined"
-    RECOVERED = "recovered"
-    ORPHANED_CLEARED = "orphaned_cleared"
-    FAILED = "failed"
-
-
-@dataclass(frozen=True)
-class RecoveryReport:
-    outcome: RecoveryOutcome
-    branch: str | None
-    proposed_change: str | None
-    merge_started_at: str | None
-
-
 class MergeFailureIdentifier:
     """Act on a merge whose worker died mid-flight.
 
@@ -55,43 +37,42 @@ class MergeFailureIdentifier:
         cache: InfrahubCache,
         component: InfrahubComponent,
         merge_write_blocker: MergeWriteBlocker,
+        default_branch: Branch,
         grace_period_seconds: int,
     ) -> None:
         self.db = db
         self.cache = cache
         self.component = component
         self.merge_write_blocker = merge_write_blocker
+        self.default_branch = default_branch
         self.grace_period_seconds = grace_period_seconds
 
-    def should_mark_as_failed_merge(
-        self,
-        *,
-        status: BranchStatus,
-        lock_holder_worker_id: str | None,
-        active_worker_ids: set[str],
-        merge_started_at: Timestamp | None,
-        now: Timestamp,
-    ) -> bool:
-        """Decide whether a branch represents a dead merge that must be flagged ``MERGE_FAILED``.
+    async def should_mark_as_failed_merge(self, *, branch: Branch, now: Timestamp) -> bool:
+        """Decide whether a branch stuck in ``MERGING`` is a dead merge whose worker died mid-flight.
 
         A merge has failed when all of the following hold:
           - the branch is still ``MERGING`` (it never reached ``MERGED`` or rolled back to ``OPEN``),
-          - the global merge lock is *held* (``lock_holder_worker_id is not None``) — a dead worker
-            cannot release it, so a genuine failure leaves it held; an absent lock is ambiguous (a
-            cache flush during a live merge would look the same) and is deliberately not auto-flagged,
+          - the global merge lock is *held* — a dead worker cannot release it, so a genuine failure
+            leaves it held; an absent lock is ambiguous (a cache flush during a live merge would look
+            the same) and is deliberately not flagged,
           - the lock holder is not among the live workers (the holder died), and
           - the merge has been running longer than the grace period, which absorbs a transient
             worker-heartbeat write blip so a healthy merge is never mis-flagged.
         """
-        if status != BranchStatus.MERGING:
+        if branch.status != BranchStatus.MERGING:
             return False
+        lock_holder_worker_id = await self.merge_lock_holder()
         if lock_holder_worker_id is None:
             return False
-        if lock_holder_worker_id in active_worker_ids:
+        if lock_holder_worker_id in await self._active_worker_ids():
             return False
-        if merge_started_at is None:
+        if branch.merge_started_at is None:
             return False
-        return merge_started_at.add(seconds=self.grace_period_seconds) < now
+        return Timestamp(branch.merge_started_at).add(seconds=self.grace_period_seconds) < now
+
+    async def merge_lock_holder(self) -> str | None:
+        """Return the worker id currently holding the global merge lock, or ``None`` if it is unheld."""
+        return await get_merge_lock_holder_worker_id(cache=self.cache)
 
     async def scan(self) -> str | None:
         """Detect a dead merge and reconcile the protection key.
@@ -110,21 +91,9 @@ class MergeFailureIdentifier:
         if not merging:
             return None
 
-        # The liveness signal is the worker holding the global merge lock: a dead holder means a
-        # crashed merge.
-        lock_holder_worker_id = await get_merge_lock_holder_worker_id(cache=self.cache)
-        active_worker_ids = await self._active_worker_ids()
         now = Timestamp()
-
         for branch in merging:
-            merge_started_at = Timestamp(branch.merge_started_at) if branch.merge_started_at else None
-            if not self.should_mark_as_failed_merge(
-                status=branch.status,
-                lock_holder_worker_id=lock_holder_worker_id,
-                active_worker_ids=active_worker_ids,
-                merge_started_at=merge_started_at,
-                now=now,
-            ):
+            if not await self.should_mark_as_failed_merge(branch=branch, now=now):
                 continue
 
             branch.status = BranchStatus.MERGE_FAILED
@@ -175,17 +144,19 @@ class MergeFailureIdentifier:
             await self.merge_write_blocker.set(branch=protected.name, state=expected_state)
 
     async def _active_worker_ids(self) -> set[str]:
-        workers = await self.component.list_workers(branch=registry.default_branch, schema_hash=False)
+        workers = await self.component.list_workers(branch=self.default_branch.name, schema_hash=False)
         return {worker.id for worker in workers if worker.active}
 
 
 async def scan_for_failed_merges(db: InfrahubDatabase, service: InfrahubServices) -> str | None:
-    """Build a ``MergeFailureRecovery`` from the running service and run one detection scan."""
-    recovery = MergeFailureIdentifier(
+    """Build the identifier from the running service and run one detection scan."""
+    default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    identifier = MergeFailureIdentifier(
         db=db,
         cache=service.cache,
         component=service.component,
         merge_write_blocker=MergeWriteBlocker(cache=service.cache),
+        default_branch=default_branch,
         grace_period_seconds=config.SETTINGS.main.merge_failure_grace_period_seconds,
     )
-    return await recovery.scan()
+    return await identifier.scan()
