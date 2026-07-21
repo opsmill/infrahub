@@ -8,6 +8,7 @@ from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.types import BranchType, InfrahubBranch
@@ -883,6 +884,45 @@ class TestBranchQuery(TestInfrahubApp):
         assert result.data
         branch_names = [edge["node"]["name"]["value"] for edge in result.data["InfrahubBranch"]["edges"]]
         assert "status-test-branch" not in branch_names
+
+    async def test_merge_failed_status_is_visible(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+    ) -> None:
+        """A branch left in MERGE_FAILED reports that state through normal branch inspection."""
+        branch = Branch(
+            name="merge-failed-branch",
+            status=BranchStatus.MERGE_FAILED,
+            branched_from=Timestamp().to_string(),
+        )
+        await branch.save(db=db)
+
+        query = """
+        query {
+            InfrahubBranch {
+                edges {
+                    node { name { value } status { value } }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is None
+        assert result.data
+        statuses = {
+            edge["node"]["name"]["value"]: edge["node"]["status"]["value"]
+            for edge in result.data["InfrahubBranch"]["edges"]
+        }
+        assert statuses["merge-failed-branch"] == "MERGE_FAILED"
 
     async def test_filter_by_created_at_range(
         self,
