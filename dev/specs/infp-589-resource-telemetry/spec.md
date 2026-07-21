@@ -66,20 +66,20 @@ When one component or one metric cannot be determined (a source is unreachable, 
 
 ### Functional Requirements
 
-- **FR-001**: The telemetry snapshot MUST include a resource-allocation section reporting, for the database, the API server, and the worker fleet, the logical processor cores available, the logical processor cores assigned, the memory available, and the memory used.
-- **FR-002**: Core counts MUST be expressed as logical processor units — the unit in which compute is provisioned and licensed — consistently across all three components, so the figures are directly comparable to each other and to a tier definition. Physical-core counts MUST NOT be used.
+- **FR-001**: The telemetry snapshot MUST report, for the database, the API server, and the worker fleet, the logical processor cores available, the logical processor cores assigned, the total memory, and the available (free) memory — extending the existing database and worker sections in place and adding a dedicated section for the API server (no standalone "resources" block). Memory usage is derived as total − available (as the database already does).
+- **FR-002**: Core counts MUST be expressed as logical processor units — the unit in which compute is provisioned and licensed — consistently across all three components, so the figures are directly comparable to each other and to a tier definition. Physical-core counts MUST NOT be used. The new fields MUST reuse the existing system-information field names (`processor_*` / `memory_*`) so every component is represented identically.
 - **FR-003**: For each component, the "assigned" cores and memory MUST report the enforced allocation limit when one is configured, and MUST report no value (null) when no limit is configured. The system MUST NOT substitute the "available" amount for a missing limit.
 - **FR-004**: The worker section MUST report the number of active workers and the aggregate (sum) of their resources across the fleet, rather than a per-worker breakdown.
-- **FR-005**: Each component MUST attempt to determine its own resources, retrying a bounded number of times, before reporting; if determination still fails it MUST report no value for the affected fields. The worker aggregate MUST sum whatever workers reported (an undercount is acceptable) while the worker count MUST continue to reflect all active workers, so an undercount is detectable.
+- **FR-005**: Each component MUST attempt to determine its own resources, retrying a bounded number of times, before reporting; if determination still fails it MUST report no value for the affected fields **and MUST log a warning that identifies the component and the failing source, so the gap can be traced back**. The worker aggregate MUST sum whatever workers reported (an undercount is acceptable) while the worker count MUST continue to reflect all active workers, so an undercount is detectable.
 - **FR-006**: Each resource metric MUST be collected independently, so the failure of any one metric yields no value for only that field and never omits other fields or prevents the snapshot from being produced and stored.
 - **FR-007**: The resource-allocation metrics MUST be present in the locally stored snapshot regardless of whether the deployment has opted out of remote telemetry transmission.
 - **FR-008**: All payload changes MUST be additive — no existing field renamed, removed, or retyped. The payload version identifier MUST be incremented only after the receiving service confirms it tolerates the new fields; until then the new fields ship additively under the existing version, so existing ingestion is never broken.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Resource-Allocation Report**: the new section of a telemetry snapshot that carries the compute allocated to Infrahub, broken down by component.
-- **Component Resource Reading**: for one component (database, API server, or worker fleet), the four figures — cores available, cores assigned, memory available, memory used — each of which may be a measured number or "no value" when it cannot be determined or does not apply.
-- **Worker Fleet Aggregate**: the count of active workers plus the summed resource readings across the fleet.
+- **Component resource figures**: for one component (database, API server, or worker fleet), the four figures — cores available, cores assigned, total memory, available (free) memory — each of which may be a measured number or "no value" when it cannot be determined or does not apply. Memory usage is derived as total − available.
+- **Placement**: database figures extend the database's existing system-information; worker-fleet figures extend the existing worker section; the API server gains a new dedicated section. No standalone "resources" section is introduced.
+- **Worker-fleet aggregate**: the summed resource readings across the task-worker fleet (deduplicated by host). The worker count is the existing active/total worker count, not a new field.
 
 ## Success Criteria *(mandatory)*
 
@@ -100,8 +100,8 @@ When one component or one metric cannot be determined (a source is unreachable, 
 - **Worker signal**: the worker aggregate is assembled from the same active-worker liveness signal telemetry already relies on to count workers.
 - **Retries**: a small, bounded number of retries is sufficient for a component to read its own resources; beyond that, an undercount is preferred over blocking or failing the snapshot.
 - **Receiving service** (cross-team dependency): the telemetry-receiving service will be updated to tolerate the new section and the payload-version increment. Until then, additive-only fields and the version bump keep existing ingestion working.
-- **No new third-party dependency** is required; existing platform capabilities are sufficient to read the metrics.
-- **Net-new vs the existing payload**: the current payload already reports database cores-available, database memory, and the worker count. This feature's net-new contribution is the API-server and worker CPU/RAM figures and the forward-compatible `assigned` fields; the database row reuses numbers already collected.
+- **No new third-party dependency** is required — but not by falling back to raw syscalls: host cores and memory are read through `psutil`, which is already a direct dependency and gives a cleaner, cross-platform interface. Only the container CPU/memory *limit* (which `psutil` does not expose) is read from the standard library (`/sys/fs/cgroup`), along with the host id. Nothing is added to the dependency set.
+- **Net-new vs the existing payload**: the payload already reports database cores-available + memory and the worker count. This feature extends those sections in place — adding only the database's "assigned" figure and the worker fleet's CPU/RAM — and adds one new section for the API server. No parallel or duplicate section is introduced.
 
 ## Out of Scope
 
