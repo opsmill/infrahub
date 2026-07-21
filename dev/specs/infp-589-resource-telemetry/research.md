@@ -1,0 +1,74 @@
+# Research: Licensing Resource-Allocation Telemetry
+
+Phase 0 decisions. Each resolves an unknown surfaced while planning against the existing telemetry code, the heartbeat service, and the deployment topology. No `NEEDS CLARIFICATION` markers remain.
+
+## D1 — No new dependency
+
+- **Decision**: Read host CPU/RAM via `psutil` and the enforced limit via stdlib `/sys/fs/cgroup` file reads. Add nothing to `pyproject.toml`.
+- **Rationale**: `psutil==6.1.0` is already a direct dependency. cgroup quota/usage is not exposed by psutil and must be read from the pseudo-filesystem regardless — that read is stdlib. Honors Principle VII and the Ask-First "new dependency" gate (not crossed).
+- **Alternatives**: adding a cgroup helper library — rejected (a few lines of file parsing do not justify a dependency + review gate).
+
+## D2 — Logical cores, never physical
+
+- **Decision**: All core counts are logical CPUs (vCPUs). Server/workers use `os.cpu_count()` (equivalently `psutil.cpu_count(logical=True)`); the database uses the JMX `AvailableProcessors` already collected.
+- **Rationale**: (a) the enforced limit lives in cgroup, which is denominated in logical CPU-time only; a physical `available` would be un-comparable to a logical `assigned`; (b) the database figure already shipped is logical (`Runtime.availableProcessors()`); (c) tiers, cloud vCPUs, and container limits are all logical. `psutil.cpu_count(logical=False)` also returns `None` under most containers.
+- **Alternatives**: physical cores — rejected on all three counts above.
+
+## D3 — `cores_assigned` = the configured limit, `null` when not enforced (live read, no fallback)
+
+`assigned` means *configured* (confirmed by the backend owner). Infrahub does not enforce any core limit today — neither the database nor the workers — so **every `assigned` field is `null` today** and only becomes a real number once enforcement is added. Two rules:
+
+1. `assigned` is **never** back-filled from `available` (FR-003). An unenforced component genuinely has no assignment; fabricating one erases the over-provisioning signal the audit needs. Until enforcement, `assigned == available` *in meaning* (both reflect the same unbounded infra) — so we report the measured `available` and a `null` `assigned`, not the same number duplicated into a field that implies a limit that isn't there.
+2. Each `assigned` field is a **live read that returns `null` today** and lights up automatically once the corresponding limit is configured — carrying a comment documenting the intended source. Not a dead stub, not a fabricated value.
+
+- **Database** — source is the Neo4j setting `server.cypher.parallel.worker_limit`, read over Bolt: `SHOW SETTINGS YIELD name, value WHERE name = 'server.cypher.parallel.worker_limit'`. It defaults to `0` (auto = use all cores), which maps to `null` (not enforced). This is the confirmed intended knob — "we do not enforce this value today (and we should)". When a tier sets it to a positive value, the read returns that number with no code change. (Supersedes the earlier `server.threads.worker_count` candidate, which is HTTP-only and does not influence Bolt/query execution.)
+- **Server / workers (per-worker CPU cap)** — source is the container cgroup CPU quota (v2 `cpu.max`, v1 `cpu.cfs_quota_us`/`cpu.cfs_period_us`), read locally by each process. `max` / `-1` (unlimited) → `null`. The sized docker/helm configs set the replica count, not `limits.cpus`, so this is `null` until a CPU limit is configured. Fractional quotas (e.g. `--cpus=1.5`) round **up** to the next whole core (integer field; conservative for an audit).
+- **Number of workers** — Pete's "number of workers configured" is the active worker count (`workers.count`), which telemetry already reports; it is distinct from the per-worker CPU cap above and is a real value today.
+
+## D4 — RAM: `available` = capacity, `used` = consumption
+
+- **Decision**: `ram_available` = the memory capacity the component sees (cgroup `memory.max` when limited, else host total / JMX `TotalMemorySize`); `ram_used` = current consumption (cgroup `memory.current`, else host used, else JMX `TotalMemorySize − FreeMemorySize`). Bytes, matching the existing database memory fields.
+- **Rationale**: Pete's metric list gives RAM as *available/used*, not *available/assigned*. There is no `ram_assigned` field, so the FR-003 no-fallback rule is scoped to `cores_assigned` specifically. `ram_available` is always a well-defined capacity in both the limited and unlimited cases (the effective ceiling the component can consume), so reporting it is not a "fallback for a missing assignment".
+- **Spec note**: FR-003 reads "cores and memory" for the no-fallback null; in implementation the null-when-unlimited rule applies to `cores_assigned`. RAM has no assigned field. Flagged to the user; spec wording to be tightened if they agree.
+- **Alternatives**: add a 5th field `ram_assigned` for symmetry — rejected (YAGNI; not requested; Principle VII).
+
+## D5 — cgroup v2 primary, v1 fallback, `null` otherwise
+
+- **Decision**: Read cgroup v2 first (`/sys/fs/cgroup/cpu.max`, `memory.max`, `memory.current`); fall back to v1 (`/sys/fs/cgroup/cpu/cpu.cfs_quota_us` + `cpu.cfs_period_us`, `/sys/fs/cgroup/memory/memory.limit_in_bytes` + `memory.usage_in_bytes`); return `null` for the affected field where neither is readable (non-Linux dev, unusual mounts).
+- **Rationale**: production runs containers (v2 on current hosts, v1 still common); developer machines are macOS (neither) and correctly report `null` for `assigned`. v1 `memory.limit_in_bytes` reports a sentinel near `INT64_MAX` when unlimited — treat values at/above a high threshold as unlimited → `null`.
+
+## D6 — Self-report through the existing heartbeat channel
+
+- **Decision**: Each process writes its own reading to a new cache key `workers:resources:{component}:worker:{WORKER_IDENTITY}` alongside the existing `workers:active:` key, at heartbeat time, with the same short TTL. The value is the JSON of a per-process reading including a **host identifier**. The gatherer reads these keys during the existing `workers:*` scan.
+- **Rationale**: reuses the mechanism telemetry already uses to know which workers are alive; no new transport, no new schedule. Reading own resources is local and cheap. A component that fails to read retries a small bounded number of times (FR-005) and, failing that, writes `null` for the unknown fields.
+- **Alternatives**: a dedicated resources query flow — rejected (duplicates the heartbeat's liveness scan; more moving parts).
+
+## D7 — Host identifier for dedup
+
+- **Decision**: Host identifier = `socket.gethostname()`. Under Docker/Kubernetes this is the container ID (per container, shared by all processes inside it).
+- **Rationale**: enables D8. Stdlib, no privilege needed.
+
+## D8 — Aggregate over distinct hosts, not processes
+
+- **Decision**: For the `server` (api_server) and `workers` (git_agent) rows, group active processes' readings by host identifier, take one reading per host (readings within a host are identical), and **sum across distinct hosts**.
+- **Rationale**: `api_server` runs several gunicorn processes in one container sharing one cgroup; `git_agent` runs one process per container (`replicas: N`). Dedup-by-host counts each container's cores exactly once for both. See Complexity Tracking in the plan.
+- **`workers.count`**: the number of active `git_agent` worker **processes** (preserves the existing per-process liveness semantics; equals container count in the default one-process-per-container topology).
+
+## D9 — Aggregation null-vs-zero and undercount rules
+
+- **Decision**:
+  - Zero active workers → `count = 0`, aggregate fields `0` (measured-empty).
+  - Active workers exist but **no** host reported a given field → that aggregate field is `null` (unknown).
+  - Some hosts reported, some did not → **sum the reporters** (undercount tolerated per FR-005); `count` still reflects all active workers, so the discrepancy is detectable.
+  - For a field where any *contributing* host is `null` because it is genuinely unlimited (e.g. one worker host has no cgroup CPU quota) → the aggregate for that field is `null`: a fleet containing an unlimited node has no finite assignment.
+- **Rationale**: keeps `null` = "unknown/unbounded" and `0` = "measured empty" consistent with `safe_metric`, and makes undercount observable rather than silent.
+
+## D10 — Payload version bump + receiving-service coordination
+
+- **Decision**: Increment `TELEMETRY_VERSION` (`payload_format`, currently `"20260628"`) to the change date. All new fields are additive; no existing field is renamed or removed.
+- **Rationale**: FR-008. The receiving cloud processor + data mart must tolerate the new block and the new version — a cross-team dependency tracked outside this branch. Additive-only + version bump lets older ingestion ignore what it does not recognise rather than break.
+
+## D11 — Reuse `safe_metric` for independent degradation
+
+- **Decision**: Wrap each component's resource assembly (database row, server aggregate, workers aggregate) in the existing `safe_metric` helper so one failing source yields `null` for that block/field only and never blocks the snapshot (FR-006).
+- **Rationale**: single degradation boundary already established in the parent telemetry work; no new error-handling pattern.
