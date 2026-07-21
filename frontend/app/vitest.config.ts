@@ -15,6 +15,7 @@ export default mergeConfig(
     //   initial scan cannot see and CI's cold cache discovers mid-run.
     optimizeDeps: {
       include: [
+        "@date-fns/tz",
         "react-aria-components",
         "lucide-react",
         "tailwind-variants",

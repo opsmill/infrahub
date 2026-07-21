@@ -9,6 +9,7 @@ from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreMenuItem
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
@@ -224,6 +225,49 @@ async def test_get_one_by_id_or_default_filter(
     )
     assert isinstance(node2, Node)
     assert node2.id == criticality_low.id
+
+
+async def test_get_one_missing_class_kind_reports_str_node_type(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    # Passing a schema/protocol class as ``kind`` must surface the kind name as a string on the
+    # raised error; leaving it as the class object broke error serialization downstream.
+    missing_id = str(UUIDT())
+
+    with pytest.raises(
+        NodeNotFoundError, match=rf"Unable to find the node {missing_id} / CoreMenuItem in the database\."
+    ) as exc_info:
+        await NodeManager.get_one(db=db, id=missing_id, kind=CoreMenuItem, raise_on_error=True)
+
+    assert exc_info.value.node_type == "CoreMenuItem"
+    assert isinstance(exc_info.value.node_type, str)
+
+
+async def test_get_one_by_id_or_default_filter_missing_class_kind_reports_str_node_type(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    missing_id = str(UUIDT())
+
+    with pytest.raises(
+        NodeNotFoundError, match=rf"Unable to find the node {missing_id} / CoreMenuItem in the database\."
+    ) as exc_info:
+        await NodeManager.get_one_by_id_or_default_filter(db=db, id=missing_id, kind=CoreMenuItem)
+
+    assert exc_info.value.node_type == "CoreMenuItem"
+    assert isinstance(exc_info.value.node_type, str)
+
+
+async def test_get_one_missing_without_kind_reports_str_node_type(db: InfrahubDatabase, default_branch: Branch) -> None:
+    # With no kind supplied, node_type falls back to a plain string, never None.
+    missing_id = str(UUIDT())
+
+    with pytest.raises(
+        NodeNotFoundError, match=rf"Unable to find the node {missing_id} / Node in the database\."
+    ) as exc_info:
+        await NodeManager.get_one(db=db, id=missing_id, raise_on_error=True)
+
+    assert exc_info.value.node_type == "Node"
+    assert isinstance(exc_info.value.node_type, str)
 
 
 async def test_get_one_by_hfid(
