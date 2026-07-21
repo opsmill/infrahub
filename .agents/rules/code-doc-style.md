@@ -2,11 +2,15 @@
 paths:
   - "backend/**/*.py"
   - "python_testcontainers/**/*.py"
+  - "frontend/app/src/**/*.ts"
+  - "frontend/app/src/**/*.tsx"
 ---
 
 # Code documentation style
 
-Applies to docstrings, comments, and any inline documentation in Python source files.
+Applies to docstrings, comments, and any inline documentation in source files — Python and TypeScript alike.
+
+Never leave comments that narrate what the change is doing or restate the code below them ("// fetch the user", "# loop over the results"). Reviewers repeatedly have to ask for these to be removed.
 
 ## No references to other code
 
