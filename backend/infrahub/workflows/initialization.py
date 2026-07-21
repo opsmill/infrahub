@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 from urllib.parse import quote, urlencode
 
 from prefect import flow, task
@@ -19,6 +21,26 @@ from infrahub.trigger.setup import setup_triggers
 
 from .catalogue import WORKER_POOLS, get_workflows
 from .models import TASK_RESULT_STORAGE_NAME
+
+
+async def wait_for_task_manager(max_wait_seconds: int = 120) -> None:
+    """Block until the task manager (Prefect) API is reachable.
+
+    The API server's dependency on the task manager is relaxed to ``service_started`` so the schema
+    load can overlap the (slow) task manager boot. Registering deployments and triggers still needs a
+    reachable API, so callers wait here first.
+
+    Raises:
+        RuntimeError: When the task manager is not reachable within ``max_wait_seconds`` seconds.
+
+    """
+    async with get_client(sync_client=False) as client:
+        for _ in range(max(1, max_wait_seconds * 2)):
+            with contextlib.suppress(Exception):  # any connection error means the API is not up yet
+                if await client.api_healthcheck() is None:
+                    return
+            await asyncio.sleep(0.5)
+    raise RuntimeError(f"Task manager (Prefect) did not become reachable within {max_wait_seconds}s")
 
 
 def build_cache_connection_string(cache: CacheSettings) -> str:

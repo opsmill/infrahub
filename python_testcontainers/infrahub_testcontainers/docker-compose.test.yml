@@ -230,8 +230,11 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
+      # Relaxed to service_started (not service_healthy): the task manager (Prefect) is the slowest
+      # dependency to become healthy, and the server no longer needs it up before booting — schema
+      # load overlaps the task manager boot and the workflow setup waits for its API when needed.
       task-manager:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - "storage_data:/opt/infrahub/storage"
     tty: true

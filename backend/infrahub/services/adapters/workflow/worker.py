@@ -8,7 +8,11 @@ from prefect.deployments import run_deployment
 
 from infrahub import config, lock
 from infrahub.workers.utils import inject_context_parameter
-from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
+from infrahub.workflows.initialization import (
+    setup_task_manager,
+    setup_task_manager_identifiers,
+    wait_for_task_manager,
+)
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
@@ -34,6 +38,9 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         # display-label/HFID triggers were never registered. Both setup flows are idempotent
         # (force_update=True), so re-running them on a normal restart is safe.
         if is_initial_setup or component_is_primary_server:
+            # The task manager may still be booting (its startup dependency is relaxed so schema load
+            # can overlap it); wait for its API before registering deployments and triggers.
+            await wait_for_task_manager()
             await WorkflowWorkerExecution._setup_task_manager()
             await setup_task_manager_identifiers()
 
