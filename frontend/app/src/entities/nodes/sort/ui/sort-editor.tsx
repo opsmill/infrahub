@@ -118,12 +118,14 @@ interface SortFieldSelectProps {
  * attribute sub-property (e.g. IP prefixes sort on `prefix__version`) while the picker only exposes
  * `__value` fields. Renders as "Prefix › version", matching the peer-attribute label style.
  */
-function describeUnlistedSortField(field: SortField, schema: ModelSchema): string {
+export function describeUnlistedSortField(field: SortField, schema: ModelSchema): string {
   const [attributeName = field, ...propertySegments] = field.split("__");
   const attributeLabel =
     schema.attributes?.find((attribute) => attribute.name === attributeName)?.label ??
     attributeName;
-  const property = propertySegments.map((segment) => segment.replace(/_/g, " ")).join(" · ");
+  const property = propertySegments
+    .map((segment) => segment.replace("_", " "))
+    .join(PEER_LABEL_SEPARATOR);
   return property ? `${attributeLabel}${PEER_LABEL_SEPARATOR}${property}` : attributeLabel;
 }
 
@@ -134,11 +136,13 @@ function SortFieldSelect({ schema, value, onChange }: SortFieldSelectProps) {
   const fieldsUsedByOtherRows = new Set(
     appliedSort.filter((entry) => entry.field !== value).map((entry) => entry.field)
   );
-  const fields = sortableFields.filter((field) => !fieldsUsedByOtherRows.has(field.field));
+  const unusedSortableFields = sortableFields.filter(
+    (field) => !fieldsUsedByOtherRows.has(field.field)
+  );
 
   // Without an item matching the selected key the trigger renders blank, so surface an unlisted
   // sort field (e.g. a sub-property default order) as a disabled, read-only item.
-  const unlistedFieldLabel = fields.some((field) => field.field === value)
+  const unlistedFieldLabel = unusedSortableFields.some((field) => field.field === value)
     ? null
     : describeUnlistedSortField(value, schema);
 
@@ -155,12 +159,12 @@ function SortFieldSelect({ schema, value, onChange }: SortFieldSelectProps) {
         <Autocomplete>
           <ListBox selectionMode="single" className="max-h-72">
             {unlistedFieldLabel && (
-              <SelectItem id={value} textValue={unlistedFieldLabel} isDisabled>
+              <SelectItem id={value} isDisabled>
                 {unlistedFieldLabel}
               </SelectItem>
             )}
-            {fields.map(({ field, label }) => (
-              <SelectItem key={field} id={field} textValue={label}>
+            {unusedSortableFields.map(({ field, label }) => (
+              <SelectItem key={field} id={field}>
                 {label}
               </SelectItem>
             ))}

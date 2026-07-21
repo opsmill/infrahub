@@ -18,7 +18,7 @@ export const NODE_METADATA_SORT_OPTIONS: SortableField[] = [
 ] satisfies { field: NodeMetadataSortField; label: string }[];
 
 // "Peer › Attribute" separator. En-spaces (U+2002) around the chevron keep it from looking cramped.
-export const PEER_LABEL_SEPARATOR = " › ";
+export const PEER_LABEL_SEPARATOR = " › ";
 
 export const DIRECTION_OPTIONS: { id: SortDirection; label: string }[] = [
   { id: "ASC", label: "Ascending" },

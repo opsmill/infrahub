@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, test } from "vitest";
 
+import type { SortField } from "@/entities/nodes/sort/domain/model/sort";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+
 import { render } from "../../../../../tests/components/render";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
-import { SortEditor } from "./sort-editor";
+import { describeUnlistedSortField, SortEditor } from "./sort-editor";
 import { PEER_LABEL_SEPARATOR } from "./sort-options";
 
 const schemaWithDefaultSort = generateNodeSchema({
@@ -261,5 +264,177 @@ describe("SortEditor", () => {
     // THEN
     await expect.element(component.getByText("Default order · applied now")).toBeVisible();
     await expect.element(component.getByRole("button", { name: "Name Sort field" })).toBeVisible();
+  });
+});
+
+describe("describeUnlistedSortField", () => {
+  // --- Resolving the attribute label ---
+
+  test("labels a sub-property sort using the attribute's schema label", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "prefix", label: "Prefix", kind: "IPNetwork" })],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("prefix__version", schema);
+
+    // THEN
+    expect(label).toBe(`Prefix${PEER_LABEL_SEPARATOR}version`);
+  });
+
+  test("selects the attribute matching the field's attribute name among several", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [
+        generateAttributeSchema({ name: "prefix", label: "Prefix", kind: "IPNetwork" }),
+        generateAttributeSchema({ name: "gateway", label: "Gateway", kind: "IPHost" }),
+      ],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("gateway__version", schema);
+
+    // THEN
+    expect(label).toBe(`Gateway${PEER_LABEL_SEPARATOR}version`);
+  });
+
+  test("falls back to the raw attribute name when no attribute matches the field", () => {
+    // GIVEN
+    const schema = generateNodeSchema({ attributes: [] });
+
+    // WHEN
+    const label = describeUnlistedSortField("prefix__version", schema);
+
+    // THEN
+    expect(label).toBe(`prefix${PEER_LABEL_SEPARATOR}version`);
+  });
+
+  test("falls back to the attribute name when the matching attribute has a null label", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "prefix", label: null, kind: "IPNetwork" })],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("prefix__version", schema);
+
+    // THEN
+    expect(label).toBe(`prefix${PEER_LABEL_SEPARATOR}version`);
+  });
+
+  test("keeps an empty-string label instead of the name (nullish coalescing, not falsiness)", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "prefix", label: "", kind: "IPNetwork" })],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("prefix__version", schema);
+
+    // THEN
+    expect(label).toBe(`${PEER_LABEL_SEPARATOR}version`);
+  });
+
+  test("keeps underscores in the attribute name when falling back (only property is humanized)", () => {
+    // GIVEN
+    const schema = generateNodeSchema({ attributes: [] });
+
+    // WHEN
+    const label = describeUnlistedSortField("binary_address__version", schema);
+
+    // THEN
+    expect(label).toBe(`binary_address${PEER_LABEL_SEPARATOR}version`);
+  });
+
+  test("falls back to the attribute name when the schema has no attributes array", () => {
+    // GIVEN
+    const schema = { ...generateNodeSchema(), attributes: undefined } as unknown as ModelSchema;
+
+    // WHEN
+    const label = describeUnlistedSortField("prefix__version", schema);
+
+    // THEN
+    expect(label).toBe(`prefix${PEER_LABEL_SEPARATOR}version`);
+  });
+
+  // --- Humanizing the property segments ---
+
+  test("replaces underscores within a property segment with spaces", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "mac", label: "Mac", kind: "MacAddress" })],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("mac__dot_notation", schema);
+
+    // THEN
+    expect(label).toBe(`Mac${PEER_LABEL_SEPARATOR}dot notation`);
+  });
+
+  test("replaces every underscore in a segment, not just the first", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "mac", label: "Mac", kind: "MacAddress" })],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("mac__a_b_c" as SortField, schema);
+
+    // THEN
+    expect(label).toBe(`Mac${PEER_LABEL_SEPARATOR}a b c`);
+  });
+
+  test("joins multiple property segments with a middle dot", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "prefix", label: "Prefix", kind: "IPNetwork" })],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("prefix__a__b" as SortField, schema);
+
+    // THEN
+    expect(label).toBe(`Prefix${PEER_LABEL_SEPARATOR}a · b`);
+  });
+
+  test("humanizes each segment before joining several multi-word segments", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "prefix", label: "Prefix", kind: "IPNetwork" })],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("prefix__foo_bar__baz_qux" as SortField, schema);
+
+    // THEN
+    expect(label).toBe(`Prefix${PEER_LABEL_SEPARATOR}foo bar · baz qux`);
+  });
+
+  // --- Degenerate field shapes ---
+
+  test("returns only the attribute label when the field has a trailing empty property", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [generateAttributeSchema({ name: "prefix", label: "Prefix", kind: "IPNetwork" })],
+    });
+
+    // WHEN
+    const label = describeUnlistedSortField("prefix__" as SortField, schema);
+
+    // THEN
+    expect(label).toBe("Prefix");
+  });
+
+  test("handles a leading separator that yields an empty attribute name", () => {
+    // GIVEN
+    const schema = generateNodeSchema({ attributes: [] });
+
+    // WHEN
+    const label = describeUnlistedSortField("__version" as SortField, schema);
+
+    // THEN
+    expect(label).toBe(`${PEER_LABEL_SEPARATOR}version`);
   });
 });
