@@ -396,7 +396,7 @@ describe("describeUnlistedSortField", () => {
     const label = describeUnlistedSortField("prefix__a__b" as SortField, schema);
 
     // THEN
-    expect(label).toBe(`Prefix${PEER_LABEL_SEPARATOR}a · b`);
+    expect(label).toBe("Prefix › a › b");
   });
 
   test("humanizes each segment before joining several multi-word segments", () => {
@@ -409,7 +409,7 @@ describe("describeUnlistedSortField", () => {
     const label = describeUnlistedSortField("prefix__foo_bar__baz_qux" as SortField, schema);
 
     // THEN
-    expect(label).toBe(`Prefix${PEER_LABEL_SEPARATOR}foo bar · baz qux`);
+    expect(label).toBe("Prefix › foo bar › baz qux");
   });
 
   // --- Degenerate field shapes ---

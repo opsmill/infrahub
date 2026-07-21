@@ -119,12 +119,13 @@ interface SortFieldSelectProps {
  * `__value` fields. Renders as "Prefix › version", matching the peer-attribute label style.
  */
 export function describeUnlistedSortField(field: SortField, schema: ModelSchema): string {
-  const [attributeName = field, ...propertySegments] = field.split("__");
+  const [attributeName, ...propertySegments] = field.split("__");
   const attributeLabel =
     schema.attributes?.find((attribute) => attribute.name === attributeName)?.label ??
-    attributeName;
+    attributeName ??
+    field;
   const property = propertySegments
-    .map((segment) => segment.replace("_", " "))
+    .map((segment) => segment.replaceAll("_", " "))
     .join(PEER_LABEL_SEPARATOR);
   return property ? `${attributeLabel}${PEER_LABEL_SEPARATOR}${property}` : attributeLabel;
 }

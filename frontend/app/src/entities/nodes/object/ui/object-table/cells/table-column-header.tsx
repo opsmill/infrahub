@@ -226,9 +226,15 @@ function ColumnHeaderMenu({
           <Row className="ml-auto">
             {activeSort &&
               (activeSort.direction === SORT_DIRECTION.DESC ? (
-                <ArrowDownIcon className="size-4 text-indigo-700" />
+                <>
+                  <ArrowDownIcon className="size-4 text-indigo-700" />
+                  <span className="sr-only">sorted descending</span>
+                </>
               ) : (
-                <ArrowUpIcon className="size-4 text-indigo-700" />
+                <>
+                  <ArrowUpIcon className="size-4 text-indigo-700" />
+                  <span className="sr-only">sorted ascending</span>
+                </>
               ))}
             {currentColumnFilters && <ListFilterIcon className="size-4 text-indigo-700" />}
           </Row>
