@@ -24,12 +24,13 @@ class ContainerService:
     port: int
 
 
+# Core services queried for their mapped ports on every stack. The metrics services
+# (cadvisor, scraper) live behind the compose "metrics" profile and are only started for
+# performance runs; the perf framework looks their ports up directly when it needs them.
 INFRAHUB_SERVICES: dict[str, ContainerService] = {
     "server": ContainerService(container="infrahub-server-lb", port=8000),
     "task-manager": ContainerService(container="task-manager", port=4200),
     "database": ContainerService(container="database", port=7687),
-    "scraper": ContainerService(container="scraper", port=8428),
-    "cadvisor": ContainerService(container="cadvisor", port=8080),
 }
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {

@@ -279,6 +279,7 @@ services:
     tty: true
 
   cadvisor:
+    profiles: ["metrics"]
     image: "${CADVISOR_DOCKER_IMAGE:-gcr.io/cadvisor/cadvisor:v0.51.0}"
     command:
       - -disable_root_cgroup_stats=true
@@ -296,6 +297,7 @@ services:
       - "${INFRAHUB_TESTING_CADVISOR_PORT:-0}:8080"
 
   scraper:
+    profiles: ["metrics"]
     image: "${SCRAPER_DOCKER_IMAGE:-victoriametrics/victoria-metrics:v1.110.0}"
     volumes:
       - vmdata:/victoria-metrics-data

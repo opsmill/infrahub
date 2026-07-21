@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 import pytest
@@ -118,6 +119,15 @@ def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> 
 def pytest_configure(config: pytest.Config) -> None:
     if config.getoption("infrahub_performance_use_backup") and config.getoption("infrahub_performance_create_backup"):
         raise pytest.UsageError("--performance-use-backup and --performance-create-backup are mutually exclusive")
+
+    if config.getoption("infrahub_performance_report"):
+        # The metrics stack (cadvisor + scraper) sits behind the compose "metrics" profile so
+        # functional runs skip it. Performance runs read metrics from the scraper, so activate
+        # the profile for the compose subprocesses (docker compose reads COMPOSE_PROFILES).
+        active = [p for p in os.environ.get("COMPOSE_PROFILES", "").split(",") if p]
+        if "metrics" not in active:
+            active.append("metrics")
+        os.environ["COMPOSE_PROFILES"] = ",".join(active)
 
     config.addinivalue_line("markers", "performance_create_backup: Create a backup of the database")
     config.addinivalue_line("markers", "performance_load_backup: Load the backup of the database")
