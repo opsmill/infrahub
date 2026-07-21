@@ -720,6 +720,9 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
       PYTEST_XDIST_WORKER_COUNT: 1
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      # Seed each test stack's database from the committed snapshot instead of running
+      # first-time initialization (~9s less fixture-blocking boot per stack).
+      INFRAHUB_TESTING_DB_SNAPSHOT: ${{ github.workspace }}/backend/tests/fixtures/db_snapshots/core_bootstrap.json.gz
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
@@ -1356,6 +1359,9 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       PYTEST_XDIST_WORKER_COUNT: 1
+      # Seed each test stack's database from the committed snapshot instead of running
+      # first-time initialization (~9s less fixture-blocking boot per stack).
+      INFRAHUB_TESTING_DB_SNAPSHOT: ${{ github.workspace }}/backend/tests/fixtures/db_snapshots/core_bootstrap.json.gz
     steps:
       - name: Check out repository code
         uses: actions/checkout@v7
