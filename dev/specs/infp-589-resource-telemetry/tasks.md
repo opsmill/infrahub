@@ -76,8 +76,8 @@ Single backend project. Source under `backend/infrahub/`, tests under `backend/t
 
 **Independent Test**: Force a single source to raise and confirm only that field is null, the rest intact, snapshot produced; drop one worker's resource key and confirm undercount with `count` unchanged.
 
-- [ ] T014 [P] [US3] Component test in `backend/tests/component/telemetry/test_resources.py`: (a) force the `server.cypher.parallel.worker_limit` read to raise → `system_info.processor_assigned is None`, snapshot still produced; (b) one active git_agent worker with no `workers:resources` key → the `workers` resource fields sum the reporters (undercount) while `workers.total` still counts it; (c) one worker host unbounded → `workers.processor_assigned is None`; (d) assert a warning is logged (with component + source context, via `caplog`) when a self-read fails after its bounded retries (FR-005)
-- [ ] T015 [US3] Harden `backend/infrahub/telemetry/tasks.py` and `resources.py` so every block/field is independently `safe_metric`-wrapped and the aggregation applies the D9 null-vs-zero/undercount rules exactly; confirm no single failure can raise out of `gather()`
+- [x] T014 [P] [US3] Component test in `backend/tests/component/telemetry/test_resources.py`: (a) force the `server.cypher.parallel.worker_limit` read to raise → `system_info.processor_assigned is None`, snapshot still produced; (b) one active git_agent worker with no `workers:resources` key → the `workers` resource fields sum the reporters (undercount) while `workers.total` still counts it; (c) one worker host unbounded → `workers.processor_assigned is None`; (d) assert a warning is logged (with component + source context, via `caplog`) when a self-read fails after its bounded retries (FR-005)
+- [x] T015 [US3] Harden `backend/infrahub/telemetry/tasks.py` and `resources.py` so every block/field is independently `safe_metric`-wrapped and the aggregation applies the D9 null-vs-zero/undercount rules exactly; confirm no single failure can raise out of `gather()`
 
 **Checkpoint**: The resource fields degrade gracefully and never block a snapshot.
 
