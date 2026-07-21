@@ -207,14 +207,9 @@ class MergeFailureRecoverer:
     async def _clear_orphaned_or_nothing(self) -> RecoveryReport:
         """Clear a stale write-protection cache key when no merge still owns it.
 
-        Reached when no branch needs recovering. A cache key naming a branch that is still ``MERGING``
-        is left in place — that is a healthy in-progress merge, or an ambiguous absent-lock merge that
-        was not auto-recovered. A key is stale and safe to drop when its branch was removed out-of-band,
-        when it is malformed with no identifiable branch, or when the branch is already ``OPEN`` — the
-        latter happens when a prior recovery reopened the branch but the key delete then failed, so a
-        re-run finishes the cleanup instead of leaving writes blocked until the watcher reconciles.
-        Transient cache errors are allowed to propagate so the key is never dropped on an
-        unreadable-but-present value.
+        A key naming a branch still ``MERGING`` is left in place. A key is stale and dropped when its
+        branch was removed out-of-band, is malformed with no identifiable branch, or is already
+        ``OPEN``. A cache read error propagates rather than dropping a key whose value could not be read.
         """
         try:
             protection = await self.merge_write_blocker.get()
