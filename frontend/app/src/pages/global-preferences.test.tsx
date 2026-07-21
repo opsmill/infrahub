@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { hasGlobalPermission } from "@/entities/permission/domain/use-cases/has-global-permission";
 
-import { render } from "../../../tests/components/render";
-import { Component } from "./global-preferences-page";
+import { render } from "../../tests/components/render";
+import { Component } from "./global-preferences";
 
 vi.mock("@/entities/permission/domain/use-cases/has-global-permission");
 vi.mock("@/entities/preferences/ui/global-preferences-editor", () => ({
@@ -41,5 +41,17 @@ describe("GlobalPreferencesPage", () => {
     await vi.waitFor(() => {
       expect(hasGlobalPermission).toHaveBeenCalledWith(MANAGE_GLOBAL_PREFERENCES);
     });
+  });
+
+  test("renders as a standalone page without the profile tab bar", async () => {
+    vi.mocked(hasGlobalPermission).mockResolvedValue(true);
+
+    const component = await render(<Component />);
+
+    await expect
+      .element(component.getByRole("heading", { name: "Global preferences" }))
+      .toBeVisible();
+    expect(component.getByRole("link", { name: "Tokens" }).elements()).toHaveLength(0);
+    expect(component.getByRole("link", { name: "Password" }).elements()).toHaveLength(0);
   });
 });

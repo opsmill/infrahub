@@ -184,13 +184,17 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: "global-preferences",
-                    lazy: () => import("@/pages/profile/global-preferences-page"),
+                    element: <Navigate to="/global-preferences" replace />,
                   },
                   {
                     path: "*",
                     element: <Navigate to="/profile" replace />,
                   },
                 ],
+              },
+              {
+                path: "/global-preferences",
+                lazy: () => import("@/pages/global-preferences"),
               },
               {
                 path: "/proposed-changes",
