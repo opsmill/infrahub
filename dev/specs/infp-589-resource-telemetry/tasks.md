@@ -85,10 +85,10 @@ Single backend project. Source under `backend/infrahub/`, tests under `backend/t
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T016 [P] Regression test in `backend/tests/component/telemetry/test_resources.py`: adding the `workers:resources:*` heartbeat key leaves `workers.total` and `workers.active` unchanged versus a baseline without it (critique E1)
-- [ ] T017 [P] Add a Towncrier changelog fragment `changelog/+resource-telemetry.added.md` describing the new per-component `resources` block (Constitution: user-facing telemetry change)
-- [ ] T018 [P] Update the telemetry FAQ in `docs/docs/faq/faq.mdx` to mention the per-component cores/RAM (`resources`) block
-- [ ] T019 Run the quickstart validation (`uv run invoke backend.test-unit`; component tests via testcontainers) and `uv run invoke format` + `uv run invoke lint`; fix any failures
+- [x] T016 [P] Regression test in `backend/tests/component/telemetry/test_resources.py`: adding the `workers:resources:*` heartbeat key leaves `workers.total` and `workers.active` unchanged versus a baseline without it (critique E1)
+- [x] T017 [P] Add a Towncrier changelog fragment `changelog/+resource-telemetry.added.md` describing the new per-component `resources` block (Constitution: user-facing telemetry change)
+- [x] T018 [P] Update the telemetry FAQ in `docs/docs/faq/faq.mdx` to mention the per-component cores/RAM (`resources`) block
+- [x] T019 Run the quickstart validation (`uv run invoke backend.test-unit`; component tests via testcontainers) and `uv run invoke format` + `uv run invoke lint`; fix any failures
 
 ---
 

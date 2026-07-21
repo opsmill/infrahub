@@ -408,6 +408,48 @@ async def test_worker_processor_assigned_is_null_when_a_host_is_unbounded(resour
     assert data.workers.processor_available == 6
 
 
+async def test_resources_key_does_not_change_worker_counts(resource_environment: MemoryCache) -> None:
+    """Writing a per-process resource key for an existing identity leaves the census untouched.
+
+    A running deployment writes both an active heartbeat and a resource reading for the
+    same worker identity on every beat. The resource key must not be mistaken for a new
+    worker: the count reflects distinct identities, and reusing an identity for its
+    resource reading adds none. Baseline the count from active heartbeats alone, then add
+    the resource keys for those same identities and confirm total and active are unchanged.
+    """
+    cache = resource_environment
+
+    # Three worker identities announce themselves via active heartbeats only, exactly as
+    # they did before per-process resource reporting existed.
+    _seed_active(cache, "git_agent", "w1")
+    _seed_active(cache, "git_agent", "w2")
+    _seed_active(cache, "api_server", "w3")
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    baseline = await gatherer.gather()
+    assert baseline.workers.total == 3
+    assert baseline.workers.active == 3
+
+    # Each of those same identities now also writes its resource reading. The identity is
+    # reused, so no new worker should appear in the census.
+    reading = WorkerResourceReading(
+        host="host-1",
+        processor_available=4,
+        processor_assigned=None,
+        memory_total=8_000_000_000,
+        memory_available=6_000_000_000,
+    )
+    _seed_reading(cache, "git_agent", "w1", reading)
+    _seed_reading(cache, "git_agent", "w2", reading)
+    _seed_reading(cache, "api_server", "w3", reading)
+
+    after = await gatherer.gather()
+
+    # The resource keys must not perturb the worker count versus the baseline.
+    assert after.workers.total == baseline.workers.total == 3
+    assert after.workers.active == baseline.workers.active == 3
+
+
 async def test_self_read_failure_after_retries_logs_and_writes_null(
     db: InfrahubDatabase,
     caplog: pytest.LogCaptureFixture,
