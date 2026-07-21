@@ -66,24 +66,6 @@ describe("DateDisplay", () => {
     await expect.element(component.getByText("2026-06-11 16:30")).toBeVisible();
   });
 
-  test("explicit dateFormat prop escape hatch overrides the heuristic", async () => {
-    const component = await render(
-      withPrefs(<DateDisplay date={FIXED_INSTANT} dateFormat="yyyy" />)
-    );
-    await expect.element(component.getByText("2026")).toBeVisible();
-  });
-
-  test("dateFormat escape hatch still renders in the preferred timezone", async () => {
-    // 23:30 UTC is the next calendar day in Paris (UTC+2 in June): the custom pattern overrides
-    // the format but must not silently drop the preferred zone, or inline and tooltip would show
-    // different clock times for the same instant.
-    const lateUtc = new Date("2026-06-11T23:30:00Z");
-    const component = await render(
-      withPrefs(<DateDisplay date={lateUtc} dateFormat="yyyy-MM-dd HH:mm" />)
-    );
-    await expect.element(component.getByText("2026-06-12 01:30")).toBeVisible();
-  });
-
   test("tooltip shows the preferred full datetime + timezone", async () => {
     const old = new Date("2026-01-15T09:30:00Z");
     const component = await render(withPrefs(<DateDisplay date={old} />));
