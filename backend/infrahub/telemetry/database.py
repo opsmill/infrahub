@@ -39,36 +39,44 @@ async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerD
     return data
 
 
+def _worker_limit_from_value(value: object) -> int | None:
+    """Interpret a raw ``worker_limit`` setting value as a configured core cap.
+
+    ``0`` (auto) is not an enforced limit and maps to ``None``; a positive integer
+    is the configured cap. An absent, non-numeric, or non-positive value is also
+    reported as no configured limit.
+    """
+    if not isinstance(value, (str, int)):
+        return None
+    try:
+        limit = int(value)
+    except ValueError:
+        return None
+    return limit if limit > 0 else None
+
+
 async def get_processor_assigned(db: InfrahubDatabase) -> int | None:
     """Read the configured Cypher-parallelism core cap, or ``None`` when unbounded.
 
-    The setting defaults to ``0`` (auto), which is not an enforced limit and maps
-    to ``None``; a positive value is the configured cap. A missing setting, an
-    unparseable value, or a database that does not expose the command all degrade
-    to ``None`` — the same reading a deployment with no configured limit yields.
+    A missing setting or a non-positive/unparseable value maps to ``None`` — the
+    same reading a deployment with no configured limit yields. A failure to run the
+    query is left to raise so the caller's degradation boundary logs it, rather than
+    being swallowed silently here.
     """
     query = """
     SHOW SETTINGS YIELD name, value
     WHERE name = $setting_name
     RETURN value AS value
     """
-    try:
-        results = await db.execute_query(
-            query=query,
-            params={"setting_name": DB_WORKER_LIMIT_SETTING},
-            name="get_processor_assigned",
-            type=QueryType.READ,
-        )
-    except Neo4jError:
-        return None
-
+    results = await db.execute_query(
+        query=query,
+        params={"setting_name": DB_WORKER_LIMIT_SETTING},
+        name="get_processor_assigned",
+        type=QueryType.READ,
+    )
     if not results:
         return None
-    try:
-        limit = int(results[0]["value"])
-    except (TypeError, ValueError):
-        return None
-    return limit if limit > 0 else None
+    return _worker_limit_from_value(results[0]["value"])
 
 
 async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoData:
