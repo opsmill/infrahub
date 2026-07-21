@@ -19,13 +19,13 @@ import json
 import pathlib
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.query import QueryType
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from infrahub.database import InfrahubDatabase
 
@@ -267,7 +267,7 @@ def deterministic_generation() -> Iterator[None]:
         def new(cls, *args: Any, **kwargs: Any) -> uuid_module.UUID:  # noqa: ARG003
             return uuid_module.UUID(str(cls()))
 
-    original_base_init = timestamp_module.Timestamp.__bases__[0].__init__
+    original_base_init = cast("Callable[..., None]", timestamp_module.Timestamp.__bases__[0].__init__)
 
     def _fixed_init(self: Any, value: Any = None) -> None:
         original_base_init(self, value if value is not None else DETERMINISTIC_TIMESTAMP)
@@ -278,7 +278,7 @@ def deterministic_generation() -> Iterator[None]:
 
     for module in uuidt_modules:
         if hasattr(module, "UUIDT"):
-            module.UUIDT = _DeterministicUUIDT  # type: ignore[assignment,misc]
+            module.UUIDT = _DeterministicUUIDT  # type: ignore[assignment,attr-defined,misc]
     helpers.bcrypt.gensalt = lambda *_args, **_kwargs: DETERMINISTIC_BCRYPT_SALT  # type: ignore[assignment]
     timestamp_module.Timestamp.__bases__[0].__init__ = _fixed_init  # type: ignore[assignment]
     try:
@@ -286,7 +286,7 @@ def deterministic_generation() -> Iterator[None]:
     finally:
         for module, value in saved_uuidt.items():
             if value is not None:
-                module.UUIDT = value  # type: ignore[assignment,misc]
+                module.UUIDT = value  # type: ignore[assignment,attr-defined,misc]
         helpers.bcrypt.gensalt = saved_gensalt  # type: ignore[assignment]
         timestamp_module.Timestamp.__bases__[0].__init__ = saved_ts_init  # type: ignore[assignment]
         for key, value in saved_initial.items():
