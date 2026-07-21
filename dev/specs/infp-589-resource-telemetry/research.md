@@ -10,11 +10,11 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 
 ## D2 — Logical cores, never physical
 
-- **Decision**: All core counts are logical CPUs (vCPUs). Server/workers use `os.cpu_count()` (equivalently `psutil.cpu_count(logical=True)`); the database uses the JMX `AvailableProcessors` already collected.
+- **Decision**: All core counts are logical CPUs (vCPUs). Server/workers use `psutil.cpu_count(logical=True)` (already a dependency; a cleaner interface than, and equivalent to, `os.cpu_count()`); the database uses the JMX `AvailableProcessors` already collected.
 - **Rationale**: (a) the enforced limit lives in cgroup, which is denominated in logical CPU-time only; a physical `available` would be un-comparable to a logical `assigned`; (b) the database figure already shipped is logical (`Runtime.availableProcessors()`); (c) tiers, cloud vCPUs, and container limits are all logical. `psutil.cpu_count(logical=False)` also returns `None` under most containers.
 - **Alternatives**: physical cores — rejected on all three counts above.
 
-## D3 — `cores_assigned` = the configured limit, `null` when not enforced (live read, no fallback)
+## D3 — `processor_assigned` = the configured limit, `null` when not enforced (live read, no fallback)
 
 `assigned` means *configured* (confirmed by the backend owner). Infrahub does not enforce any core limit today — neither the database nor the workers — so **every `assigned` field is `null` today** and only becomes a real number once enforcement is added. Two rules:
 
@@ -23,14 +23,13 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 
 - **Database** — source is the Neo4j setting `server.cypher.parallel.worker_limit`, read over Bolt: `SHOW SETTINGS YIELD name, value WHERE name = 'server.cypher.parallel.worker_limit'`. It defaults to `0` (auto = use all cores), which maps to `null` (not enforced). This is the confirmed intended knob — "we do not enforce this value today (and we should)". When a tier sets it to a positive value, the read returns that number with no code change. (Supersedes the earlier `server.threads.worker_count` candidate, which is HTTP-only and does not influence Bolt/query execution.)
 - **Server / workers (per-worker CPU cap)** — source is the container cgroup CPU quota (v2 `cpu.max`, v1 `cpu.cfs_quota_us`/`cpu.cfs_period_us`), read locally by each process. `max` / `-1` (unlimited) → `null`. The sized docker/helm configs set the replica count, not `limits.cpus`, so this is `null` until a CPU limit is configured. Fractional quotas (e.g. `--cpus=1.5`) round **up** to the next whole core (integer field; conservative for an audit).
-- **Number of workers** — Pete's "number of workers configured" is the active worker count (`workers.count`), which telemetry already reports; it is distinct from the per-worker CPU cap above and is a real value today.
+- **Number of workers** — Pete's "number of workers configured" is the existing `workers.total`/`active` count, which telemetry already reports; it is distinct from the per-worker CPU cap above and is a real value today (no new field needed — see D14).
 
-## D4 — RAM: `available` = capacity, `used` = consumption
+## D4 — Memory: reuse the DB representation (`memory_total` + `memory_available`)
 
-- **Decision**: `ram_available` = the memory capacity the component sees (cgroup `memory.max` when limited, else host total / JMX `TotalMemorySize`); `ram_used` = current consumption (cgroup `memory.current`, else host used, else JMX `TotalMemorySize − FreeMemorySize`). Bytes, matching the existing database memory fields.
-- **Rationale**: Pete's metric list gives RAM as *available/used*, not *available/assigned*. There is no `ram_assigned` field, so the FR-003 no-fallback rule is scoped to `cores_assigned` specifically. `ram_available` is always a well-defined capacity in both the limited and unlimited cases (the effective ceiling the component can consume), so reporting it is not a "fallback for a missing assignment".
-- **Spec note**: FR-003 reads "cores and memory" for the no-fallback null; in implementation the null-when-unlimited rule applies to `cores_assigned`. RAM has no assigned field. Flagged to the user; spec wording to be tightened if they agree.
-- **Alternatives**: add a 5th field `ram_assigned` for symmetry — rejected (YAGNI; not requested; Principle VII).
+- **Decision**: memory is reported as `memory_total` (capacity — cgroup `memory.max` when limited, else `psutil.virtual_memory().total`) and `memory_available` (free — `memory.max − memory.current` when limited, else `psutil.virtual_memory().available`), in bytes — the exact fields and semantics the database `system_info` already uses. Usage is derived by the consumer as `memory_total − memory_available`; there is no `*_used` field.
+- **Rationale**: adopting the existing `memory_*` names/semantics for the new components makes DB, server, and workers byte-for-byte comparable (the naming decision, D14), and matches how the DB JMX (`TotalMemorySize` / `FreeMemorySize`) already reports. Pete's "RAM used" is preserved as a derived value, consistent with the DB.
+- **No `memory_assigned`**: memory has no enforced-limit field — the container memory limit surfaces as `memory_total` capacity. Only `processor_assigned` carries the FR-003 no-fallback-null rule.
 
 ## D5 — cgroup v2 primary, v1 fallback, `null` otherwise
 
@@ -52,7 +51,7 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 
 - **Decision**: For the `server` (api_server) and `workers` (git_agent) rows, group active processes' readings by host identifier, take one reading per host (readings within a host are identical), and **sum across distinct hosts**.
 - **Rationale**: `api_server` runs several gunicorn processes in one container sharing one cgroup; `git_agent` runs one process per container (`replicas: N`). Dedup-by-host counts each container's cores exactly once for both. See Complexity Tracking in the plan.
-- **`workers.count`**: the number of active `git_agent` worker **processes** (preserves the existing per-process liveness semantics; equals container count in the default one-process-per-container topology).
+- **Worker count**: unchanged — the existing `workers.total`/`active` (all worker processes by identity). The new `workers` resource fields are the git_agent fleet aggregate; no separate count field is added (D14).
 
 ## D9 — Aggregation null-vs-zero and undercount rules
 
@@ -72,13 +71,20 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 
 - **Decision**: Wrap each component's resource assembly (database row, server aggregate, workers aggregate) in the existing `safe_metric` helper so one failing source yields `null` for that block/field only and never blocks the snapshot (FR-006).
 - **Rationale**: single degradation boundary already established in the parent telemetry work; no new error-handling pattern.
+- **Component self-read logging**: the per-process self-read (at heartbeat time) is a path *separate* from `safe_metric` — it is not wrapped by it. When its bounded retries are exhausted, it MUST log a warning carrying the component type, the worker identity, and the failing source before writing `null` (FR-005). Without this, a worker that silently stops reporting resources shows only as an aggregate undercount with no way to trace which worker or why; the log closes that gap. Warning level (a tolerated degradation, consistent with the existing `safe_metric` warning), structured context, no sensitive data (cores/RAM/host/worker-id only).
 
 ## D12 — Read static resource facts once per process
 
-- **Decision**: `host`, `cores_available`, `cores_assigned`, and `ram_available` are constant for a process's lifetime; read them once (at process start / first heartbeat) and cache them. Only `ram_used` is re-read on each heartbeat.
-- **Rationale**: avoids re-reading `/sys/fs/cgroup` and `os.cpu_count()` on every heartbeat (~15 s), keeps the liveness loop cheap, and bounds the FR-005 read-retries to process start rather than every cycle.
+- **Decision**: `host`, `processor_available`, `processor_assigned`, and `memory_total` are constant for a process's lifetime; read them once (at process start / first heartbeat) and cache them. Only `memory_available` (free, which changes with usage) is re-read on each heartbeat.
+- **Rationale**: avoids re-reading `/sys/fs/cgroup` and `psutil.cpu_count()` on every heartbeat (~15 s), keeps the liveness loop cheap, and bounds the FR-005 read-retries to process start rather than every cycle.
 
 ## D13 — Additive-only is the invariant; the version bump is gated
 
 - **Decision**: The payload change is additive-only (no existing field renamed/removed/retyped). The `payload_format` identifier is **not** incremented until the receiving service confirms it tolerates the new `resources` block; until then the fields ship under the existing version.
 - **Rationale**: a version-strict receiver could break on an unexpected version string — the exact regression to avoid. Additive-under-existing-version guarantees current ingestion is untouched, and the bump becomes a coordinated follow-up rather than a unilateral producer change.
+
+## D14 — Extend existing payload sections in place; one new `server` block
+
+- **Decision**: Do not add a parallel `resources` block. Extend the database's existing `system_info` with `processor_assigned`; extend the existing `workers` block with `processor_available`/`processor_assigned`/`memory_total`/`memory_available` (git_agent fleet aggregate); add a single new `server` block for the api_server (which has no existing representation), with the same four fields. All new fields **reuse the existing `system_info` names** (`processor_*`/`memory_*`), so every component is represented identically. The worker count stays the existing `workers.total`/`active`.
+- **Rationale**: a parallel block duplicated DB cores/RAM (already in `system_info`) and the worker count — a confusing second API surface. Extending in place, with the existing field names, keeps each component's resources attached to that component, adds nothing redundant, and keeps DB/server/workers directly comparable. Pete's ask is DB + workers; `server` is an explicitly-chosen future-proofing addition.
+- **Accepted trade-off**: `workers.total`/`active` count all worker processes (api_server + git_agent) while the new `workers` resource fields cover the git_agent fleet only (api_server resources live in `server`). Documented in the contract. (Naming is *not* a trade-off — the new fields reuse the legacy `processor_*`/`memory_*` names, so the payload is uniform.)

@@ -1,76 +1,79 @@
 # Data Model: Licensing Resource-Allocation Telemetry
 
-All types are Pydantic `BaseModel` (Principle III), placed in `backend/infrahub/telemetry/models.py`. Every figure is `int | None`: `None` = source failed / not applicable / unbounded; a number = measured.
+All types are Pydantic `BaseModel` (Principle III) in `backend/infrahub/telemetry/models.py`. Every new figure is `int | None`: `None` = source failed / not applicable / unbounded; a number = measured. The design **extends existing payload sections in place** and reuses the existing `system_info` field naming (`processor_*` / `memory_*`) for every component, so DB, server, and worker resources are byte-for-byte comparable.
 
-## New models
+## Field naming (uniform, matches the existing `system_info`)
 
-### `TelemetryComponentResources`
+Every component reports the same four fields:
 
-One component's resource reading.
+| Field | Meaning |
+|-------|---------|
+| `processor_available` | Logical CPUs detected/visible (vCPUs). |
+| `processor_assigned` | Configured/enforced CPU limit; `None` when unbounded. |
+| `memory_total` | Memory capacity in bytes (cgroup limit when set, else host total). |
+| `memory_available` | Free memory in bytes. Usage is derived as `memory_total − memory_available` — the same representation the database already uses (no separate `*_used` field). |
 
-| Field | Type | Meaning |
-|-------|------|---------|
-| `cores_available` | `int \| None` | Logical CPUs detected/visible to the component. |
-| `cores_assigned` | `int \| None` | Enforced cgroup CPU quota (logical cores, rounded up). `None` when unbounded. |
-| `ram_available` | `int \| None` | Memory capacity in bytes (cgroup limit when set, else host/JMX total). |
-| `ram_used` | `int \| None` | Memory currently consumed, in bytes. |
+## Changes to existing models
 
-Defaults: all `None`. A `default()` classmethod returns an all-`None` instance (matches the `TelemetryAccountData.default()` convention) for use when a whole block degrades.
+### `TelemetryDatabaseSystemInfoData` (extend)
 
-### `TelemetryWorkerResources`
+Already carries `memory_total`, `memory_available`, `processor_available`. Add one field:
 
-The worker fleet aggregate — `TelemetryComponentResources` plus a count.
+| Field | Type | Source |
+|-------|------|--------|
+| `processor_assigned` | `int \| None` (default `None`) | `server.cypher.parallel.worker_limit` via `SHOW SETTINGS`; `0`/auto → `None`. |
 
-| Field | Type | Meaning |
-|-------|------|---------|
-| `count` | `int` | Number of active `git_agent` worker processes. Always known from the heartbeat scan; default `0`. |
-| `cores_available` … `ram_used` | `int \| None` | Fleet aggregate — sum over **distinct hosts** (see rules below). |
+The DB gains **only** `processor_assigned` — everything else it already has. Zero duplication.
 
-### `TelemetryResourcesData`
+### `TelemetryWorkerData` (extend)
 
-The payload block.
+Already carries `total`, `active` (the worker count — kept as-is). Add the task-worker (git_agent) fleet resources, all `int | None` default `None`:
 
-| Field | Type |
-|-------|------|
-| `database` | `TelemetryComponentResources` |
-| `server` | `TelemetryComponentResources` |
-| `workers` | `TelemetryWorkerResources` |
+`processor_available`, `processor_assigned`, `memory_total`, `memory_available` — the fleet aggregate summed over distinct git_agent hosts.
 
-### `TelemetryData` (existing) — additive change
+**Scope note**: `total`/`active` retain their existing meaning (all worker processes, api_server + git_agent, by identity). The new resource fields are the **git_agent (task-worker) fleet** specifically; api_server resources live in the new `server` block. This asymmetry is documented in the contract.
 
-Add one field; nothing else changes (FR-008):
+## New model
+
+### `TelemetryServerData` (new)
+
+The api_server has no existing representation, so a new block is added (not a duplicate). Same four fields, all `int | None` default `None`: `processor_available`, `processor_assigned`, `memory_total`, `memory_available`.
+
+### `TelemetryData` (extend)
+
+Add one field; nothing existing is renamed, removed, or retyped (FR-008):
 
 ```
-resources: TelemetryResourcesData = Field(default_factory=...)
+server: TelemetryServerData = Field(default_factory=TelemetryServerData)
 ```
 
-No existing field or model is renamed, removed, or retyped — including the `database` block and its `system_info`, which stay exactly as-is. `resources.database` reuses the same JMX numbers in parallel (intentional, minor redundancy), so existing consumers of `database`/`system_info` are unaffected. The only value that changes for existing consumers is `payload_format` (the version bump) — see the contract's compatibility note; keep it additive-only and coordinate the bump with the receiving service.
+`workers` and `database` keep their positions and simply carry additional optional fields. There is **no** parallel `resources` block.
 
 ## Per-process reading (transits the cache, not part of the payload)
 
-Written by each process into `workers:resources:{component}:worker:{WORKER_IDENTITY}` at heartbeat time. Shape:
+Written by each process into `workers:resources:{component}:worker:{WORKER_IDENTITY}` at heartbeat time:
 
 | Field | Type | Source |
 |-------|------|--------|
 | `host` | `str` | `socket.gethostname()` (container id). Dedup key. |
-| `cores_available` | `int \| None` | `os.cpu_count()`. |
-| `cores_assigned` | `int \| None` | cgroup CPU quota (D3/D5). |
-| `ram_available` | `int \| None` | cgroup `memory.max` if set, else `psutil.virtual_memory().total`. |
-| `ram_used` | `int \| None` | cgroup `memory.current` if readable, else `psutil.virtual_memory().used`. |
+| `processor_available` | `int \| None` | `psutil.cpu_count(logical=True)` (logical CPUs). |
+| `processor_assigned` | `int \| None` | cgroup CPU quota (D3/D5); `None` if unbounded. |
+| `memory_total` | `int \| None` | cgroup `memory.max` if set, else `psutil.virtual_memory().total`. |
+| `memory_available` | `int \| None` | (`memory.max − memory.current`) if cgroup-limited, else `psutil.virtual_memory().available`. |
 
-This is an internal transport shape (a small typed model in `resources.py`), deliberately **not** the payload model — the payload carries the aggregate, never the per-process rows (FR-004: no per-worker breakdown). The `host` identifier exists only to deduplicate the aggregate and is never emitted in the payload.
+Internal transport shape (a small typed model in `resources.py`), **not** a payload model — the payload carries only the per-component aggregate, never per-process rows (FR-004). The `host` identifier is dedup-only and never emitted.
 
-Static fields (`host`, `cores_available`, `cores_assigned`, `ram_available`) are read once per process and cached; only `ram_used` is refreshed on each heartbeat (D12).
+Static fields (`host`, `processor_available`, `processor_assigned`, `memory_total`) are read once per process and cached; only `memory_available` (free, which changes with usage) is refreshed on each heartbeat (D12).
 
 ## Field derivation per component
 
-| Component | cores_available | cores_assigned | ram_available | ram_used |
-|-----------|-----------------|----------------|---------------|----------|
-| **database** | JMX `AvailableProcessors` (existing) | `server.cypher.parallel.worker_limit` via `SHOW SETTINGS`; `0`/auto → `None` | JMX `TotalMemorySize` | `TotalMemorySize − FreeMemorySize` |
-| **server** | dedup-sum of api_server host readings | dedup-sum of cgroup quota; `None` if any host unbounded | dedup-sum | dedup-sum |
-| **workers** | dedup-sum of git_agent host readings | dedup-sum of cgroup quota; `None` if any host unbounded | dedup-sum | dedup-sum |
+| Component → payload location | processor_available | processor_assigned | memory_total | memory_available |
+|------------------------------|---------------------|--------------------|--------------|------------------|
+| **database** → `database.system_info` | existing JMX | **NEW** (`worker_limit`, `0`→`None`) | existing JMX | existing JMX |
+| **server** → new `server` block | dedup-sum api_server hosts | dedup-sum; `None` if any host unbounded | dedup-sum | dedup-sum |
+| **workers** → `workers` block (new fields) | dedup-sum git_agent hosts | dedup-sum; `None` if any host unbounded | dedup-sum | dedup-sum |
 
-Every `cores_assigned` source is a **live read that returns `None` today** (nothing is enforced yet) and self-populates once a limit is configured — see D3. The reader carries a comment documenting the intended knob (the Neo4j parallel-worker setting for the database; the container CPU quota for server/workers). `assigned` is never derived from `available`. `workers.count` is Pete's "number of workers configured" and is a real value today, separate from the per-worker CPU cap.
+Every `processor_assigned` is a **live read that returns `None` today** (nothing enforced yet) and self-populates once a limit is configured — see D3. `processor_assigned` is never derived from `processor_available`.
 
 ## Aggregation rules (server + workers) — D8/D9
 
@@ -78,16 +81,13 @@ Given the active processes of a component type, each with a reading `{host, …}
 
 1. **Group by `host`**; keep one reading per host (intra-host readings are identical).
 2. For each field, **sum across distinct hosts**.
-3. **`count`** (workers only) = number of active `git_agent` **processes** (not hosts).
-4. **Null-vs-zero**:
-   - no active processes → `count = 0`, all aggregate fields `0`;
-   - active processes exist but no host reported field *f* → aggregate *f* = `None`;
-   - a contributing host has field *f* = `None` because it is genuinely unbounded (unlimited cgroup) → aggregate *f* = `None` (a fleet with an unbounded node has no finite total);
-   - some hosts reported, some did not → sum the reporters (**undercount**), `count` unchanged so the gap is detectable.
+3. **Null-vs-undercount**:
+   - no host reported field *f* → aggregate *f* = `None`;
+   - a contributing host has *f* = `None` because it is genuinely unbounded → aggregate *f* = `None`;
+   - some hosts reported, some did not → sum the reporters (**undercount**). `workers.total`/`active` (unchanged) still reflect all workers, so the gap is detectable.
 
 ## Validation rules
 
 - Byte and core counts are non-negative when present.
-- `count >= 0`.
-- No field is required beyond `count` (default `0`); every other field defaults to `None`, so partial degradation never fails model construction.
-- The block is always present on `TelemetryData`, even if every field is `None` (FR-006, FR-007).
+- All new fields default to `None`, so partial degradation never fails model construction.
+- The `server` block and the new `workers` / `system_info` fields are always present on a produced snapshot, even if every value is `None` (FR-006, FR-007).

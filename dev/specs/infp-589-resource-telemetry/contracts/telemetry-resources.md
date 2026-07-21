@@ -1,60 +1,59 @@
-# Contract: `resources` block in the telemetry payload
+# Contract: resource fields in the telemetry payload
 
 **Consumer**: the telemetry-receiving cloud processor + data mart (cross-team).
 **Producer**: Infrahub `send_telemetry_push` flow.
-**Change type**: additive. `payload_format` is bumped from `20260628` to the release date.
+**Change type**: **additive, in place** — no new top-level `resources` block. DB resources extend `database.system_info`, worker resources extend `workers`, and a single new `server` block is added for the api_server. No existing field is renamed, removed, or retyped.
 
-The receiving service MUST tolerate this before deployments on the new release start transmitting. Existing fields are unchanged; a consumer pinned to the old shape can ignore `resources` without breaking.
+**Naming**: every component uses the **same field names as the existing `system_info`** — `processor_available`, `processor_assigned`, `memory_total`, `memory_available` — so DB, server, and worker figures are directly comparable. Memory usage is derived as `memory_total − memory_available` (the representation the DB already uses; there is no `*_used` field).
 
-## Location
+**Version**: `payload_format` is **not** incremented this phase; the new fields ship additively under the existing version (`20260628`). The bump is a gated follow-up once the receiving service confirms tolerance (research D13). A consumer pinned to the old shape keeps working.
 
-`resources` is a new top-level key inside `data` (sibling of `workers`, `branches`, `database`, `activity_24h`, …).
-
-## Shape
+## Shape (only the additions shown; everything else unchanged)
 
 ```jsonc
 {
-  "payload_format": "<release-date>",        // bumped
+  "payload_format": "20260628",              // UNCHANGED this phase
   "data": {
-    // ... all existing fields, unchanged ...
-    "resources": {
-      "database": {
-        "cores_available": 32,               // logical CPUs, int | null
-        "cores_assigned": null,              // null today (see note)
-        "ram_available": 67435982848,        // bytes, int | null
-        "ram_used": 20401094656              // bytes, int | null
-      },
-      "server": {
-        "cores_available": 8,
-        "cores_assigned": 4,                 // cgroup quota; null if unlimited
-        "ram_available": 8589934592,
-        "ram_used": 3221225472
-      },
-      "workers": {
-        "count": 2,                          // active worker processes, int (never null)
-        "cores_available": 8,                // fleet aggregate over distinct hosts
-        "cores_assigned": 4,
-        "ram_available": 8589934592,
-        "ram_used": 2147483648
+    "database": {
+      // ... existing database fields ...
+      "system_info": {
+        "processor_available": 32,           // existing — DB cores available (logical)
+        "processor_assigned": null,          // NEW — worker_limit; null today
+        "memory_total": 67435982848,         // existing — bytes
+        "memory_available": 47034888192      // existing — free bytes
       }
+    },
+    "workers": {
+      "total": 2,                            // existing — all worker processes
+      "active": 2,                           // existing
+      "processor_available": 8,              // NEW — git_agent fleet, sum over hosts
+      "processor_assigned": null,            // NEW — cgroup quota; null if unbounded
+      "memory_total": 8589934592,            // NEW — bytes
+      "memory_available": 6442450944         // NEW — free bytes
+    },
+    "server": {                              // NEW block (api_server)
+      "processor_available": 8,
+      "processor_assigned": null,
+      "memory_total": 8589934592,
+      "memory_available": 5368709120
     }
+    // ... all other existing fields unchanged ...
   }
 }
 ```
 
 ## Field semantics
 
-- **Units**: cores are logical CPUs (vCPUs); memory is bytes. Consistent across all three components and with the existing `database.system_info` fields.
-- **`null`** on any figure means "not measured / not applicable / unbounded" — NOT zero. A consumer MUST treat `null` distinctly from `0`.
-  - `cores_assigned = null` ⇒ no enforced/configured CPU limit (unlimited).
-  - a `0` core/byte figure ⇒ genuinely measured as empty (e.g. `workers.count = 0`).
-- **All `cores_assigned` fields are `null` in this release** because Infrahub does not enforce core limits yet. They are live reads that self-populate once a limit is configured: the database reads the Neo4j `server.cypher.parallel.worker_limit` setting (`0`/auto → `null` today); server and workers read their container CPU quota (unlimited → `null`). A consumer should expect `null` here today and real integers once enforcement ships — no payload-shape change at that point.
-- **`workers.count`** is the number of active worker processes and is always an integer. It MAY exceed the number of hosts that contributed to the aggregate (undercount signal): if `count` > contributing hosts, some workers did not report resources this cycle.
-- **Aggregates** (`server`, `workers`) are summed over **distinct hosts**, so multiple processes in one container are counted once.
-- The per-process **host identifier** used for that deduplication is internal to the producer and is **never** emitted in the payload — only the aggregate is sent.
+- **Units**: `processor_*` are logical CPUs (vCPUs); `memory_*` are bytes. **Usage** = `memory_total − memory_available`, uniformly across all three components.
+- **`null`** means "not measured / not applicable / unbounded" — NOT zero. Treat `null` distinctly from `0`.
+  - `processor_assigned = null` ⇒ no enforced/configured CPU limit (unlimited).
+- **All `processor_assigned` fields are `null` in this release** — Infrahub does not enforce core limits yet. They are live reads that self-populate once a limit is configured: the DB reads `server.cypher.parallel.worker_limit` (`0`/auto → `null`); server and workers read their container CPU quota (unlimited → `null`). No payload-shape change when they light up.
+- **`workers.total` / `active`** keep their existing meaning: all worker processes (api_server + git_agent). The new `workers.processor_*` / `memory_*` are the **git_agent (task-worker) fleet** aggregate; api_server resources are in the `server` block. So `workers.total` and the `workers` resource fields are scoped differently by design.
+- **Aggregates** (`workers.*`, `server.*`) are summed over **distinct hosts**, so multiple processes in one container are counted once. The per-process host identifier used for that dedup is internal and never emitted.
+- **Undercount signal**: if fewer hosts contributed than there are active workers, the git_agent resource fields undercount; `workers.total`/`active` (unchanged) expose the discrepancy.
 
 ## Backward/forward compatibility
 
-- Additive only: no existing key renamed or removed (FR-008, SC-005).
-- A field may be `null` in any snapshot; the consumer MUST accept `null` for every figure except `workers.count`.
-- The block is present even when the deployment opted out of remote transmission — but in that case it is only in the locally stored snapshot and never reaches the consumer.
+- Additive only: no existing key renamed or removed (FR-008, SC-005). Same `payload_format`.
+- Every new figure may be `null` in any snapshot; the consumer MUST accept `null` for all of them.
+- The additions are present even when the deployment opted out of remote transmission — but then only in the locally stored snapshot, never transmitted.
