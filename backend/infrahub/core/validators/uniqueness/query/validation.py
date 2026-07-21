@@ -7,12 +7,12 @@ from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttr
 from infrahub.core.query import Query, QueryType
 from infrahub.types import is_large_attribute_type
 
-from .model import QueryAttributePathValued, QueryRelationshipPathValued
+from ..model import QueryAttributePathValued, QueryRelationshipPathValued
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
-    from .model import NodeUniquenessQueryRequest, NodeUniquenessQueryRequestValued
+    from ..model import NodeUniquenessQueryRequest, NodeUniquenessQueryRequestValued
 
 
 class NodeUniqueAttributeConstraintQuery(Query):
@@ -350,7 +350,7 @@ CALL (node) {
         params: dict[str, str | int | float | bool] = {}
         rel_attr_query = ""
         rel_attr_match = ""
-        if rel_path.attribute_name and rel_path.attribute_value:
+        if rel_path.attribute_name is not None and rel_path.attribute_value is not None:
             attr_name_var = f"attr_name_{index}"
             attr_value_var = f"attr_value_{index}"
 
