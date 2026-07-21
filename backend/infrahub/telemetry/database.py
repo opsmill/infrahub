@@ -14,6 +14,11 @@ from .models import TelemetryDatabaseData, TelemetryDatabaseServerData, Telemetr
 from .queries import CountNodesByKindsQuery
 from .utils import safe_metric
 
+# Neo4j setting capping Cypher query parallelism. It defaults to 0 (auto = use
+# every available core), which is not an enforced limit and is reported as an
+# absent assignment; a positive value is the configured cap.
+DB_WORKER_LIMIT_SETTING = "server.cypher.parallel.worker_limit"
+
 
 async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerData]:
     data: list[TelemetryDatabaseServerData] = []
@@ -34,6 +39,38 @@ async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerD
     return data
 
 
+async def get_processor_assigned(db: InfrahubDatabase) -> int | None:
+    """Read the configured Cypher-parallelism core cap, or ``None`` when unbounded.
+
+    The setting defaults to ``0`` (auto), which is not an enforced limit and maps
+    to ``None``; a positive value is the configured cap. A missing setting, an
+    unparseable value, or a database that does not expose the command all degrade
+    to ``None`` — the same reading a deployment with no configured limit yields.
+    """
+    query = """
+    SHOW SETTINGS YIELD name, value
+    WHERE name = $setting_name
+    RETURN value AS value
+    """
+    try:
+        results = await db.execute_query(
+            query=query,
+            params={"setting_name": DB_WORKER_LIMIT_SETTING},
+            name="get_processor_assigned",
+            type=QueryType.READ,
+        )
+    except Neo4jError:
+        return None
+
+    if not results:
+        return None
+    try:
+        limit = int(results[0]["value"])
+    except (TypeError, ValueError):
+        return None
+    return limit if limit > 0 else None
+
+
 async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoData:
     query = """
     CALL dbms.queryJmx("java.lang:type=OperatingSystem")
@@ -49,6 +86,7 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
         memory_total=results[0]["memory_total"]["value"],
         memory_available=results[0]["memory_available"]["value"],
         processor_available=results[0]["processor_available"]["value"],
+        processor_assigned=await get_processor_assigned(db=db),
     )
 
 

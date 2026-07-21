@@ -30,9 +30,11 @@ from .models import (
     TelemetryBranchData,
     TelemetryData,
     TelemetrySchemaData,
+    TelemetryServerData,
     TelemetryWorkerData,
 )
 from .repository import TelemetrySnapshotRepository
+from .resources import ResourceAggregate, WorkerResourceReading, aggregate
 from .snapshot import TelemetrySnapshot
 from .task_manager import gather_activity_24h, gather_prefect_information
 from .utils import determine_infrahub_type, safe_metric
@@ -125,6 +127,29 @@ class DefaultActiveBranchCounter:
         return await count_active_branches(db=self.db)
 
 
+async def aggregate_component_resources(
+    readings_by_host: dict[str, WorkerResourceReading],
+) -> ResourceAggregate:
+    """Collapse one component's per-host readings into a single fleet aggregate."""
+    return aggregate(readings_by_host.values())
+
+
+def _resource_fields(resources: ResourceAggregate | None) -> dict[str, int | None]:
+    """Return the four resource figures as keyword arguments.
+
+    A ``None`` aggregate (its source failed) yields no keys, leaving every
+    resource field at its ``None`` default.
+    """
+    if resources is None:
+        return {}
+    return {
+        "processor_available": resources.processor_available,
+        "processor_assigned": resources.processor_assigned,
+        "memory_total": resources.memory_total,
+        "memory_available": resources.memory_available,
+    }
+
+
 class AnonymousTelemetryGatherer:
     """Assemble the full telemetry payload from its injected metric sources."""
 
@@ -149,6 +174,17 @@ class AnonymousTelemetryGatherer:
         default_branch = registry.get_branch_from_registry()
         workers = await self.component.list_workers(branch=default_branch.name, schema_hash=False)
 
+        # git_agent runs one process per container and api_server several gunicorn
+        # processes in one; grouping the readings by host lets each fleet be summed
+        # over distinct containers, counting a shared container once.
+        resources_by_component = await safe_metric(self.component.read_worker_resources()) or {}
+        workers_resources = await safe_metric(
+            aggregate_component_resources(resources_by_component.get("git_agent", {}))
+        )
+        server_resources = await safe_metric(
+            aggregate_component_resources(resources_by_component.get("api_server", {}))
+        )
+
         accounts = await safe_metric(self.account_gatherer.gather())
         activity_24h = await safe_metric(self.activity_gatherer.gather())
 
@@ -162,7 +198,9 @@ class AnonymousTelemetryGatherer:
             workers=TelemetryWorkerData(
                 total=len(workers),
                 active=len([w for w in workers if w.active]),
+                **_resource_fields(workers_resources),
             ),
+            server=TelemetryServerData(**_resource_fields(server_resources)),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
                 active=await safe_metric(self.active_branch_counter.gather()),
