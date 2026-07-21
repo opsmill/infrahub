@@ -9,9 +9,11 @@ from prefect.deployments import run_deployment
 from infrahub import config, lock
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import (
+    mark_task_manager_setup_completed,
     setup_task_manager,
     setup_task_manager_identifiers,
     wait_for_task_manager,
+    wait_for_task_manager_setup,
 )
 from infrahub.workflows.models import WorkflowInfo
 
@@ -43,6 +45,13 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
             await wait_for_task_manager()
             await WorkflowWorkerExecution._setup_task_manager()
             await setup_task_manager_identifiers()
+            await mark_task_manager_setup_completed()
+        else:
+            # Only one worker performs the registration, but every worker starts serving (and can
+            # receive a request that dispatches a workflow run) the moment its own startup
+            # completes. Block here until the registration is marked complete so no worker accepts
+            # traffic against a task manager that is missing the deployments and triggers.
+            await wait_for_task_manager_setup()
 
     @staticmethod
     async def _setup_task_manager() -> None:
