@@ -23,7 +23,7 @@ description: "Task list for peer-derived parent/children relationship labels"
 
 **Purpose**: De-risk the discriminator before wiring nine sites to it (critique finding E3).
 
-- [ ] T001 Verify that `relationshipSchema.hierarchical` is truthy on **both** the serialized `parent` and `children` auto-relationships. Inspect the generated type `frontend/app/src/shared/api/rest/types.generated.ts` (RelationshipSchema.hierarchical) and a real/loaded schema (e.g. via the running app or a fixture in `frontend/app/tests/fake/schema.ts`). If only one relationship carries it, record in `specs/003-parent-children-labels/research.md` that the discriminator must also match relationship `kind`/`name` for the other, and adjust T003 accordingly.
+- [X] T001 Verify that `relationshipSchema.hierarchical` is truthy on **both** the serialized `parent` and `children` auto-relationships. Inspect the generated type `frontend/app/src/shared/api/rest/types.generated.ts` (RelationshipSchema.hierarchical) and a real/loaded schema (e.g. via the running app or a fixture in `frontend/app/tests/fake/schema.ts`). If only one relationship carries it, record in `specs/003-parent-children-labels/research.md` that the discriminator must also match relationship `kind`/`name` for the other, and adjust T003 accordingly.
 
 ---
 
@@ -33,8 +33,8 @@ description: "Task list for peer-derived parent/children relationship labels"
 
 **⚠️ CRITICAL**: No call-site task (Phase 3) can begin until T003 is complete.
 
-- [ ] T002 [P] Write the failing Vitest unit test in `frontend/app/src/entities/schema/domain/rules/get-relationship-display-label.test.ts` covering contract cases C1–C4 (see `specs/003-parent-children-labels/contracts/get-relationship-display-label.md`): (C1) hierarchical + peer label → peer label; (C2) hierarchical + missing peer/label → `label ?? name`; (C3) non-hierarchical incl. a rel named `parent` → unchanged; (C4) children (cardinality "many") + hierarchical → peer label verbatim (no pluralization). Use `generateRelationshipSchema`/`generateNodeSchema` from `frontend/app/tests/fake/schema.ts`; pass the peer schema as an argument (no store mock). Confirm it FAILS before T003.
-- [ ] T003 Implement the pure rule `getRelationshipDisplayLabel(relationshipSchema, peerSchema?)` in `frontend/app/src/entities/schema/domain/rules/get-relationship-display-label.ts` per data-model.md: return `peerSchema.label` when `relationshipSchema.hierarchical` is truthy and `peerSchema?.label` present, else `relationshipSchema.label ?? relationshipSchema.name`. No store access, no side effects. Make T002 pass.
+- [X] T002 [P] Write the failing Vitest unit test in `frontend/app/src/entities/schema/domain/rules/get-relationship-display-label.test.ts` covering contract cases C1–C4 (see `specs/003-parent-children-labels/contracts/get-relationship-display-label.md`): (C1) hierarchical + peer label → peer label; (C2) hierarchical + missing peer/label → `label ?? name`; (C3) non-hierarchical incl. a rel named `parent` → unchanged; (C4) children (cardinality "many") + hierarchical → peer label verbatim (no pluralization). Use `generateRelationshipSchema`/`generateNodeSchema` from `frontend/app/tests/fake/schema.ts`; pass the peer schema as an argument (no store mock). Confirm it FAILS before T003.
+- [X] T003 Implement the pure rule `getRelationshipDisplayLabel(relationshipSchema, peerSchema?)` in `frontend/app/src/entities/schema/domain/rules/get-relationship-display-label.ts` per data-model.md: return `peerSchema.label` when `relationshipSchema.hierarchical` is truthy and `peerSchema?.label` present, else `relationshipSchema.label ?? relationshipSchema.name`. No store access, no side effects. Make T002 pass.
 
 **Checkpoint**: Rule exists, unit-tested, and importable.
 
