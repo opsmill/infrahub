@@ -1,14 +1,9 @@
 import { Checkbox, LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
-<<<<<<< HEAD
-import { useAuth } from "@/entities/authentication/ui/auth-provider";
-=======
 import type { overrideQueryParams } from "@/shared/api/rest/fetch";
-import { Checkbox } from "@/shared/components/aria/checkbox";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
->>>>>>> origin/stable
+import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
