@@ -8,7 +8,7 @@ import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_receiv
 
 # What are webhooks?
 
-Webhooks are HTTP callbacks that deliver data to external systems in real-time when an [event](../events/event-system) occurs within Infrahub. They allow you to:
+Webhooks push data to external systems each time a matching [event](../events/event-system) occurs in Infrahub. Use them to:
 
 - Notify external systems about changes in your infrastructure (for example new configuration generated)
 - Trigger automated workflows in CI/CD pipelines
@@ -16,15 +16,15 @@ Webhooks are HTTP callbacks that deliver data to external systems in real-time w
 - Build custom integrations with your existing toolchain
 
 :::info
-The **Webhook System** also powers the [Activity Log](../deploy-manage/run-observe/activity-log).
+The [Activity Log](../deploy-manage/run-observe/activity-log) is built on the same webhook system.
 :::
 
 ## Configuring webhooks
 
-Infrahub supports two different types of webhooks:
+Infrahub supports two types of webhooks:
 
 - `Standard Webhook` sends event information to an external endpoint. See [Create a webhook](./create.mdx) for setup.
-- `Custom Webhook` allows the ability to tie events to a [Transformation](../transformations/overview) to configure the payload being sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation.mdx) for the full walkthrough.
+- `Custom Webhook` connects events to a [Transformation](../transformations/overview) so you can shape the payload sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation.mdx) for the full walkthrough.
 
 :::note
 
@@ -41,7 +41,7 @@ Webhooks can be configured to trigger on specific event types, such as:
 - `infrahub.branch.merged`
 - `infrahub.node.updated`
 
-This allows you to tailor webhooks for specific use cases.
+Tailor a webhook to a specific use case by choosing the events it triggers on.
 
 ### Configuring branch types
 
@@ -268,7 +268,7 @@ Custom headers are defined as reusable **key-value pair** entities that can be s
 1. Create a key-value pair via the UI or GraphQL API, specifying a **name** (human-friendly identifier), a **key** (the HTTP header field name), and a **value**.
 2. Associate the key-value pair with one or more webhooks using the **headers** relationship on the webhook.
 
-A single key-value pair can be linked to multiple webhooks (many-to-many relationship). When the key-value pair is updated, all linked webhooks automatically pick up the new value on their next trigger.
+A single key-value pair can be linked to multiple webhooks (many-to-many relationship). When the key-value pair is updated, all linked webhooks use the new value on their next trigger.
 
 ### Header merge behavior
 
@@ -314,4 +314,10 @@ Each webhook delivery runs as a task. Open a webhook and select a delivery from 
 | Retry | The delivery has finished, or is being cancelled | Re-sends the original payload as a new delivery and leaves the original record unchanged. Useful when a delivery failed because the target was temporarily unavailable or misconfigured. |
 | Cancel | The delivery is still running or waiting to retry | Stops the delivery, including one waiting to be retried, so no further attempts are made. A request already in flight to the target cannot be recalled. |
 
-The Retry and Cancel actions appear only when they apply to the delivery's current state.
+The Retry and Cancel actions appear only when they apply to the delivery's current state. Retrying creates a new delivery with the same settings and leaves the original unchanged; the new delivery re-computes its signature and runs against the current webhook configuration. Retry is available on any finished delivery, including one that already succeeded, so you can re-deliver an event on demand.
+
+## Writing a reliable receiver
+
+- **Return a `2xx` status quickly.** The response acknowledges receipt; an endpoint slower than the delivery timeout is treated as a failed attempt.
+- **Make the receiver idempotent.** Transient failures — connection errors, timeouts, and `5xx` responses — are retried automatically, and a delivery can also be retried manually, so the same event can arrive more than once. Use the `webhook-id` header to detect duplicates.
+- **Verify the signature before trusting a payload.** When a shared key is configured, check the `webhook-signature` header against it — see [Shared key for security](#shared-key-for-security).
