@@ -6,7 +6,7 @@
 
 ## Scope
 
-Verify that a webhook delivery is a first-class, inspectable, and recoverable object in the Tasks tab: the delivered payload, request, and response are captured (with secrets masked), failures show a short classified reason with a remediation hint instead of a stacktrace, and an operator can retry or cancel a delivery through the generic task actions. Out of scope: the automated test suite and internal orchestration wiring.
+Verify that a webhook delivery is a recoverable object surfaced in the Tasks tab: the delivered payload and request are recorded in the delivery logs (with secrets masked) and exposed as structured request/response on the GraphQL API, failures show a short classified reason with a remediation hint instead of a stacktrace, and an operator can retry or cancel a delivery through the generic task actions. Out of scope: the automated test suite and internal orchestration wiring.
 
 ## Prerequisites
 
@@ -31,15 +31,27 @@ export WEBHOOK_TOKEN="Bearer test-secret"
 
 ### 1. Inspect what a delivery sent and received (US1)
 
-**What this verifies**: The payload, request, and response are captured and shown, with secrets masked.
+**What this verifies**: The delivered payload and request are recorded with secrets masked; the structured request/response are exposed on the GraphQL API.
 
 **Steps**:
 
-- [ ] Open a delivery and confirm **payload**, **request** (URL + headers), and **response** (status, body, latency) are shown.
-- [ ] Confirm masking: the ENV-sourced header, `webhook-signature`, and `Authorization`/`Cookie`/`X-API-Key` show `***`; `Accept`, `Content-Type`, `webhook-id`, `webhook-timestamp`, and non-credential static headers show verbatim.
-- [ ] Point the webhook at an error endpoint, trigger again, reopen: request/response are still present and reflect the **last attempt**.
+- [ ] Open a delivery → its **logs** show the target URL, the request headers, the payload, and the delivery outcome (HTTP status and latency). The structured request/response are not rendered on the page; they are on the API (next step).
+- [ ] Confirm masking in the logged headers: the ENV-sourced header, `webhook-signature`, and `Authorization`/`Cookie`/`X-API-Key` show `***`; `Accept`, `Content-Type`, `webhook-id`, `webhook-timestamp`, and non-credential static headers show verbatim.
+- [ ] Query the delivery and confirm the structured request/response reflect the **last attempt** (the response body is API-only):
 
-**Expected result**: No raw secret appears anywhere in the view; captured fields reflect the settling attempt.
+  ```graphql
+  query { InfrahubTask(ids: ["<run-id>"]) { edges { node {
+    ... on WebhookDeliveryTask {
+      http_request { url headers }
+      http_response { status_code body latency_ms }
+      error { status_class message remediation }
+    }
+  } } } }
+  ```
+
+- [ ] Point the webhook at an error endpoint, trigger again: the logs and the API fields are still present and reflect the last attempt.
+
+**Expected result**: No raw secret appears in the logs or the API response; captured fields reflect the settling attempt.
 
 ### 2. Understand why a delivery failed (US2)
 
@@ -64,7 +76,7 @@ export WEBHOOK_TOKEN="Bearer test-secret"
 **Steps**:
 
 - [ ] Fail a delivery against a **down** endpoint, bring it up, click **Retry** and confirm → a **new** row appears, carries the same payload, re-signs, and succeeds; the original row is unchanged.
-- [ ] Retry a **succeeded** delivery → the confirmation calls out re-delivering an already-processed event; on confirm a new delivery is produced.
+- [ ] Retry a **succeeded** delivery → the retry confirmation appears ("This creates a new task with the same settings…"); on confirm, a new delivery is produced. (The dialog does not currently single out re-delivering an already-processed event.)
 - [ ] On an in-progress / awaiting-retry delivery, confirm Retry is disabled with a reason.
 - [ ] Optional GraphQL: `mutation { InfrahubTaskRetry(data: {id: "<run-id>"}) { ok task { id } } }`.
 
