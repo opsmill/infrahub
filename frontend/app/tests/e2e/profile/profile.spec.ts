@@ -97,12 +97,24 @@ test.describe("/profile", () => {
       });
     });
 
-    test("should not see the global preferences menu item", async ({ page }) => {
-      await page.goto("/");
-      await page.getByTestId("authenticated-menu-trigger").click();
+    test("should not access global preferences", async ({ page }) => {
+      await test.step("hide the menu item", async () => {
+        await page.goto("/");
+        await page.getByTestId("authenticated-menu-trigger").click();
 
-      await expect(page.getByRole("menuitem", { name: "Account settings" })).toBeVisible();
-      await expect(page.getByRole("menuitem", { name: "Global preferences" })).toBeHidden();
+        await expect(page.getByRole("menuitem", { name: "Account settings" })).toBeVisible();
+        await expect(page.getByRole("menuitem", { name: "Global preferences" })).toBeHidden();
+      });
+
+      await test.step("show the unauthorized screen on direct navigation", async () => {
+        await page.goto("/global-preferences");
+
+        // The custom message sits inside the unauthorized screen's collapsed accordion.
+        await page.getByText("You can't access this view").click();
+        await expect(
+          page.getByText("You don't have permission to edit global preferences")
+        ).toBeVisible();
+      });
     });
   });
 });

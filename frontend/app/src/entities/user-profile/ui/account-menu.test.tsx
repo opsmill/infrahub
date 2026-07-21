@@ -65,22 +65,14 @@ describe("AccountMenu", () => {
     const component = await renderAccountMenu();
     await component.getByTestId("authenticated-menu-trigger").click();
 
+    await vi.waitFor(() => {
+      expect(hasGlobalPermission).toHaveBeenCalledWith(MANAGE_GLOBAL_PREFERENCES);
+    });
     await expect
       .element(component.getByRole("menuitem", { name: "Account settings" }))
       .toBeVisible();
     expect(component.getByRole("menuitem", { name: "Global preferences" }).elements()).toHaveLength(
       0
     );
-  });
-
-  test("checks the manage global preferences permission", async () => {
-    vi.mocked(hasGlobalPermission).mockResolvedValue(true);
-
-    const component = await renderAccountMenu();
-    await expect.element(component.getByTestId("authenticated-menu-trigger")).toBeVisible();
-
-    await vi.waitFor(() => {
-      expect(hasGlobalPermission).toHaveBeenCalledWith(MANAGE_GLOBAL_PREFERENCES);
-    });
   });
 });

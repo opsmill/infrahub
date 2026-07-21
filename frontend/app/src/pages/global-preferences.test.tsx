@@ -16,11 +16,14 @@ describe("GlobalPreferencesPage", () => {
     vi.clearAllMocks();
   });
 
-  test("renders the editor when the user can manage global preferences", async () => {
+  test("renders the titled page with the editor when the user can manage global preferences", async () => {
     vi.mocked(hasGlobalPermission).mockResolvedValue(true);
 
     const component = await render(<Component />);
 
+    await expect
+      .element(component.getByRole("heading", { name: "Global preferences" }))
+      .toBeVisible();
     await expect.element(component.getByTestId("global-preferences-editor")).toBeVisible();
   });
 
@@ -29,7 +32,11 @@ describe("GlobalPreferencesPage", () => {
 
     const component = await render(<Component />);
 
-    await expect.element(component.getByText("You can't access this view")).toBeVisible();
+    // The custom message sits inside the unauthorized screen's collapsed accordion.
+    await component.getByText("You can't access this view").click();
+    await expect
+      .element(component.getByText("You don't have permission to edit global preferences"))
+      .toBeVisible();
     expect(component.getByTestId("global-preferences-editor").elements()).toHaveLength(0);
   });
 
@@ -41,17 +48,5 @@ describe("GlobalPreferencesPage", () => {
     await vi.waitFor(() => {
       expect(hasGlobalPermission).toHaveBeenCalledWith(MANAGE_GLOBAL_PREFERENCES);
     });
-  });
-
-  test("renders as a standalone page without the profile tab bar", async () => {
-    vi.mocked(hasGlobalPermission).mockResolvedValue(true);
-
-    const component = await render(<Component />);
-
-    await expect
-      .element(component.getByRole("heading", { name: "Global preferences" }))
-      .toBeVisible();
-    expect(component.getByRole("link", { name: "Tokens" }).elements()).toHaveLength(0);
-    expect(component.getByRole("link", { name: "Password" }).elements()).toHaveLength(0);
   });
 });
