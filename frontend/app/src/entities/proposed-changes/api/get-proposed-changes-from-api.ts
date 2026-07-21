@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { EnumType, jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
@@ -45,6 +45,9 @@ export const getProposedChangesFromApi = async ({
         __args: {
           limit,
           offset,
+          order: {
+            by: [{ field: "node_metadata__created_at", direction: new EnumType("DESC") }],
+          },
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
         count: true,

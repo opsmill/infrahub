@@ -94,11 +94,7 @@ const ProposedChangesData = ({
 
       <ProposedChangesChecks validations={validations} />
 
-      <DateDisplay
-        date={updatedAt}
-        containerClassName={"col-span-2 text-right justify-end"}
-        dateFormat="d MMM yyyy HH:mm"
-      />
+      <DateDisplay date={updatedAt} containerClassName={"col-span-2 text-right justify-end"} />
     </div>
   );
 };

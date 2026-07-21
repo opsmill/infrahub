@@ -82,7 +82,13 @@ async def build_branch_merge_orchestrator(
         db=db, schema_manager=registry.schema, workflow=workflow, logger=logger
     )
     rollback_handler = MergeRollbackHandler(
-        db=db, graph_merger=graph_merger, merge_write_blocker=merge_write_blocker, logger=logger
+        db=db,
+        source_branch=source_branch,
+        destination_branch=destination_branch,
+        diff_merger=diff_merger,
+        merge_write_blocker=merge_write_blocker,
+        schema_manager=registry.schema,
+        logger=logger,
     )
     post_merge_dispatcher = PostMergeDispatcher(
         repository_merge_dispatcher=repository_merge_dispatcher,

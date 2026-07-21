@@ -5,13 +5,15 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.computed_attribute.tasks import computed_attribute_setup_python
-from infrahub.core.constants import InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
-from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.events.schema_action import ChangedElementsPayload
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
-from tests.component.computed_attribute._base import ScopedRecomputeCase, ScopedRecomputeTestBase
+from tests.component.computed_attribute._base import (
+    CAR_PERSON_PYTHON_SCHEMA,
+    ScopedRecomputeCase,
+    ScopedRecomputeTestBase,
+)
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -21,56 +23,6 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from tests.adapters.workflow import WorkflowRecorder
-
-
-CAR_PERSON_PYTHON_SCHEMA = SchemaRoot(
-    nodes=[
-        NodeSchema(
-            name="Car",
-            namespace="Test",
-            attributes=[
-                AttributeSchema(name="name", kind="Text", unique=True),
-                AttributeSchema(name="nbr_seats", kind="Number", optional=True),
-                AttributeSchema(
-                    name="computed_desc_python",
-                    kind="Text",
-                    read_only=True,
-                    optional=True,
-                    computed_attribute=ComputedAttribute(
-                        kind=ComputedAttributeKind.TRANSFORM_PYTHON,
-                        transform="transform01",
-                    ),
-                ),
-                AttributeSchema(
-                    name="computed_desc_python_opaque",
-                    kind="Text",
-                    read_only=True,
-                    optional=True,
-                    computed_attribute=ComputedAttribute(
-                        kind=ComputedAttributeKind.TRANSFORM_PYTHON,
-                        transform="transform_opaque",
-                    ),
-                ),
-            ],
-            relationships=[
-                RelationshipSchema(
-                    name="owner",
-                    peer="TestPerson",
-                    optional=False,
-                    cardinality=RelationshipCardinality.ONE,
-                ),
-            ],
-        ),
-        NodeSchema(
-            name="Person",
-            namespace="Test",
-            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-            relationships=[
-                RelationshipSchema(name="cars", peer="TestCar", cardinality=RelationshipCardinality.MANY),
-            ],
-        ),
-    ]
-)
 
 
 # ``computed_desc_python`` reads only TestCar.name via transform01.

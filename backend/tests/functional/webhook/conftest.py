@@ -4,10 +4,22 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
+from prefect.client.schemas.filters import FlowFilter, FlowFilterName
+from prefect.client.schemas.objects import State, StateType
+from prefect.client.schemas.sorting import FlowRunSort
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.node import Node
-from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_INVALIDATE_HEADERS, WEBHOOK_PROCESS, WORKER_POOLS
+from infrahub.events.models import EventBranchContext, EventContext
+from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
+from infrahub.webhook.tasks import process
+from infrahub.workflows.catalogue import (
+    WEBHOOK_CONFIGURE,
+    WEBHOOK_INVALIDATE_HEADERS,
+    WEBHOOK_PROCESS,
+    WEBHOOK_SEND,
+    WORKER_POOLS,
+)
 from infrahub.workflows.initialization import setup_worker_pools
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -17,28 +29,29 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
+    from prefect.client.schemas.objects import FlowRun
 
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.task_manager.flow_run.prefect_client import FlowRunQuerying
 
 
 BRANCH_CREATED_PAYLOAD: dict[str, Any] = {
-    "context": {
-        "event": {
-            "id": "24790022-2bc8-42ab-a447-bf3e84675901",
-            "name": "infrahub.branch.created",
-            "ancestors": [],
-            "parent_id": None,
-        },
-        "branch": {"id": "182853ef-58a3-b3cc-3e80-c5161f4171c1", "name": "-global-"},
-        "account": {
-            "auth_type": "api",
-            "account_id": "182853f2-3a43-c7f9-3e84-c5152eff4b17",
-            "session_id": None,
-            "authenticated": None,
-        },
-    }
+    "context": EventContext(
+        branch=EventBranchContext(name=GLOBAL_BRANCH_NAME, id="182853ef-58a3-b3cc-3e80-c5161f4171c1"),
+        account_id="182853f2-3a43-c7f9-3e84-c5152eff4b17",
+    ).to_event()
 }
+
+
+@pytest.fixture
+def immediate_webhook_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run the webhook send retries without their production back-off.
+
+    A failing delivery exhausts its retries promptly instead of sleeping through the real
+    schedule, keeping retry-path tests within the suite timeout.
+    """
+    monkeypatch.setattr(process, "webhook_send", process.webhook_send.with_options(retry_delay_seconds=0))
 
 
 @pytest.fixture(scope="class")
@@ -89,9 +102,34 @@ async def prefect_client(prefect_test_fixture: None) -> AsyncGenerator[PrefectCl
 
 
 @pytest.fixture(scope="class")
+def flow_run_querier(prefect_client: PrefectClient) -> FlowRunQuerying:
+    """A read-only view of the Prefect client, exposing only flow-run querying to tests."""
+    return PrefectClientAdapter(prefect_client)
+
+
+async def read_send_runs(querier: FlowRunQuerying) -> list[FlowRun]:
+    # The session-scoped Prefect server accumulates webhook-send runs across the suite, and an
+    # unfiltered read is capped at the server's default page size. Sorting newest-first keeps a run
+    # a test just created within the returned page.
+    return await querier.read_flow_runs(
+        flow_filter=FlowFilter(name=FlowFilterName(any_=["webhook-send"])),
+        sort=FlowRunSort.EXPECTED_START_TIME_DESC,
+    )
+
+
+def only_new_run(runs: list[FlowRun], seen: set[str]) -> FlowRun:
+    # Other tests in the session leave their own webhook-send runs in the shared Prefect server, so a
+    # test must identify the delivery it just created rather than assume a clean slate.
+    new = [run for run in runs if str(run.id) not in seen]
+    assert len(new) == 1, f"expected exactly one new delivery, found {len(new)}"
+    return new[0]
+
+
+@pytest.fixture(scope="class")
 async def webhook_deployment(db: InfrahubDatabase, prefect_client: PrefectClient) -> None:
     await setup_worker_pools(client=prefect_client)
     await WEBHOOK_PROCESS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
+    await WEBHOOK_SEND.save(client=prefect_client, work_pool=WORKER_POOLS[0])
     await WEBHOOK_CONFIGURE.save(client=prefect_client, work_pool=WORKER_POOLS[0])
     await WEBHOOK_INVALIDATE_HEADERS.save(client=prefect_client, work_pool=WORKER_POOLS[0])
 
@@ -110,6 +148,49 @@ async def webhook1(db: InfrahubDatabase, initial_dataset: None, client: Infrahub
     )
     await webhook.save(db=db)
     return webhook
+
+
+async def _create_send_run(
+    prefect_client: PrefectClient, webhook: Node, state: State, branch_name: str = "main"
+) -> FlowRun:
+    return await prefect_client.create_flow_run(
+        flow=process.webhook_send,
+        parameters={
+            "webhook_id": webhook.id,
+            "webhook_kind": InfrahubKind.STANDARDWEBHOOK,
+            "webhook_name": "Webhook1",
+            "payload": BRANCH_CREATED_PAYLOAD,
+            "branch_name": branch_name,
+        },
+        state=state,
+    )
+
+
+@pytest.fixture
+async def scheduled_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A webhook-send delivery parked in a non-terminal state with no infrastructure.
+
+    Stands in for a delivery still in progress or awaiting a retry, so action gating and
+    cancellation can be exercised without a worker driving the delivery to a terminal state.
+    """
+    return await _create_send_run(prefect_client, webhook1, State(type=StateType.SCHEDULED))
+
+
+@pytest.fixture
+async def settled_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A webhook-send delivery in a terminal state, eligible for retry."""
+    return await _create_send_run(prefect_client, webhook1, State(type=StateType.COMPLETED))
+
+
+OPERATOR_BRANCH = "webhook-operator-branch"
+
+
+@pytest.fixture
+async def settled_branch_send_run(prefect_client: PrefectClient, webhook1: Node) -> FlowRun:
+    """A settled webhook-send delivery initiated from a non-default branch."""
+    return await _create_send_run(
+        prefect_client, webhook1, State(type=StateType.COMPLETED), branch_name=OPERATOR_BRANCH
+    )
 
 
 @pytest.fixture(scope="class")

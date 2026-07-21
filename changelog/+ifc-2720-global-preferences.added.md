@@ -1,0 +1,1 @@
+Added a **Global preferences** tab (`/profile/global-preferences`) to account settings, visible only to users holding the `manage_global_preferences` permission, where administrators set the organisation-wide default date format and timezone that apply to every user without a personal override.

@@ -43,6 +43,6 @@ Where IDs *do* belong:
 
 ## What good documentation looks like
 
-- Explains *why* the code exists when the why is non-obvious (a constraint, an invariant, a workaround for a specific upstream bug).
+- Comment the *why*, never the *what*: a constraint, an invariant, a workaround, a deliberate deviation from the obvious approach. Never paraphrase the line below it or restate the type signature.
 - Documents the contract of a public function (inputs, outputs, errors raised) when it crosses a module boundary.
-- Stays silent by default. A comment that restates the code is worse than no comment — it adds noise and rots the moment the code changes.
+- Stays silent by default. If code needs a comment to explain *what* it does, rename or extract until it doesn't. A comment that restates the code is worse than none — noise that rots the moment the code changes.

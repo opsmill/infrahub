@@ -146,6 +146,66 @@ async def test_has_conflicting_changes_no_false_positive(
     assert not repository.has_conflicting_changes(target_branch="main", source_branch="change1")
 
 
+async def test_init_repoints_origin_after_location_change(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reinitializing a repository after its location changed must re-point the cached clone's origin.
+
+    When the location is updated to a remote that has advanced, opening the existing clone and fetching
+    must surface the new remote's commit, not the commit baked in at the original clone location.
+    """
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+
+    # Remote A: the original location, main at commit 1.
+    source_a = tmp_path / "source-a"
+    source_a.mkdir()
+    repo_a = Repo.init(source_a, initial_branch="main")
+    with repo_a.config_writer() as cfg:
+        cfg.set_value("user", "name", "Test")
+        cfg.set_value("user", "email", "test@test.local")
+    (source_a / "data.txt").write_text("v1\n", encoding="utf-8")
+    repo_a.index.add(["data.txt"])
+    commit_a = repo_a.index.commit("commit 1").hexsha
+
+    repo_id = str(UUIDT.new())
+    client = InfrahubClient(config=Config(requester=dummy_async_request))
+    repository = await InfrahubRepository.new(
+        id=repo_id,
+        name="relocating-repo",
+        location=str(source_a),
+        default_branch_name="main",
+        client=client,
+    )
+    assert repository.get_branches_from_remote()["main"].commit == commit_a
+
+    # Remote B: the new location, a clone of A that has advanced with commit 2.
+    source_b = tmp_path / "source-b"
+    repo_b = repo_a.clone(str(source_b))
+    with repo_b.config_writer() as cfg:
+        cfg.set_value("user", "name", "Test")
+        cfg.set_value("user", "email", "test@test.local")
+    (source_b / "data.txt").write_text("v2\n", encoding="utf-8")
+    repo_b.index.add(["data.txt"])
+    commit_b = repo_b.index.commit("commit 2").hexsha
+
+    # Re-open the existing clone with the new location, as the periodic sync does after a location change.
+    # init must re-point origin and fetch on its own -- no explicit fetch here.
+    relocated = await InfrahubRepository.init(
+        id=repo_id,
+        name="relocating-repo",
+        location=str(source_b),
+        default_branch_name="main",
+        client=client,
+    )
+
+    assert relocated.get_git_repo_main().remotes.origin.url == str(source_b)
+    assert relocated.get_branches_from_remote()["main"].commit == commit_b
+
+
 def test_check_connectivity_ignores_cwd_git_pointer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Git operations must not be affected by a broken .git worktree pointer in the process current working directory."""
     source_dir = tmp_path / "source-repo"

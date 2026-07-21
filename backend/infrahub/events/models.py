@@ -12,7 +12,7 @@ from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.worker import WORKER_IDENTITY
 
-from .constants import EVENT_NAMESPACE
+from .constants import EVENT_NAMESPACE, NodeMutationOrigin
 
 
 class EventNode(BaseModel):
@@ -75,6 +75,10 @@ class EventMeta(BaseModel):
 
     parent: UUID | None = Field(default=None, description="The UUID of the parent event if applicable")
     ancestors: list[ParentEvent] = Field(default_factory=list, description="Any event used to trigger this event")
+    origin: NodeMutationOrigin = Field(
+        default=NodeMutationOrigin.LIVE,
+        description="How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write.",
+    )
     _created_with_context: bool = PrivateAttr(default=False)
 
     def get_branch_id(self) -> str:

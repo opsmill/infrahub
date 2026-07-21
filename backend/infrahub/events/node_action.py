@@ -10,7 +10,7 @@ from infrahub.core.changelog.models import (
 from infrahub.core.constants import DiffAction, InfrahubKind, MutationAction
 from infrahub.log import get_logger
 
-from .constants import EVENT_NAMESPACE
+from .constants import EVENT_NAMESPACE, NODE_ORIGIN_LABEL
 from .limits import get_prefect_max_related_resources
 from .models import InfrahubEvent
 
@@ -151,6 +151,7 @@ class NodeMutatedEvent(InfrahubEvent):
             "infrahub.node.action": self.action.value,
             "infrahub.node.root_id": self.changelog.root_node_id,
             "infrahub.branch.name": self.meta.context.branch.name,
+            NODE_ORIGIN_LABEL: self.meta.origin.value,
         }
 
 

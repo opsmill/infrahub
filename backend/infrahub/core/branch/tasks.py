@@ -23,6 +23,12 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.merge_locker import MergeLocker
+from infrahub.core.merge.recompute_coalescing import (
+    CoalescedRecomputeBuilder,
+    CoalescedRecomputeSubmitter,
+    MergeChange,
+    MergeRecomputeCoordinator,
+)
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
@@ -38,6 +44,7 @@ from infrahub.events.branch_action import (
     BranchMigratedEvent,
     BranchRebasedEvent,
 )
+from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
@@ -191,7 +198,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        pre_rebase_schema = schema_analyzer.destination_schema.duplicate()
+        # Use the branch-creation (common-ancestor) schema as the migration baseline: it still contains
+        # any element removed on either side, so remove migrations can resolve what to close.
+        pre_rebase_schema = (await schema_analyzer.get_common_ancestor_schema()).duplicate()
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
@@ -261,23 +270,47 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         meta=EventMeta(branch=user_branch, context=event_context),
     )
     events: list[InfrahubEvent] = [rebase_event]
+    changes: list[MergeChange] = []
     changelog_collector = DiffChangelogCollector(
         diff=default_branch_diff, branch=user_branch, db=db, migration_tracker=MigrationTracker(migrations=migrations)
     )
     for action, node_changelog in changelog_collector.collect_changelogs():
-        node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
-        mutate_event = node_event_class(
+        mutation_action = MutationAction.from_diff_action(diff_action=action)
+        meta = EventMeta.from_parent(parent=rebase_event, branch=user_branch)
+        meta.origin = NodeMutationOrigin.REBASE
+        mutate_event = get_node_event(mutation_action)(
             kind=node_changelog.node_kind,
             node_id=node_changelog.node_id,
             changelog=node_changelog,
             fields=node_changelog.updated_fields,
-            meta=EventMeta.from_parent(parent=rebase_event, branch=user_branch),
+            meta=meta,
         )
         events.append(mutate_event)
+        changes.append(
+            MergeChange(
+                node_id=node_changelog.node_id,
+                kind=node_changelog.node_kind,
+                action=mutation_action.value,
+                changed_fields=frozenset(node_changelog.updated_fields),
+            )
+        )
 
     event_service = await get_event_service()
     for event in events:
         await event_service.send(event)
+
+    try:
+        schema_name = (
+            user_branch.name if user_branch.name in registry.get_altered_schema_branches() else registry.default_branch
+        )
+        schema_branch = registry.schema.get_schema_branch(name=schema_name)
+        coordinator = MergeRecomputeCoordinator(
+            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+        )
+        await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
+    except Exception:
+        log.exception("Failed to submit the coalesced post-rebase recompute")
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")

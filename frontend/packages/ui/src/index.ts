@@ -72,6 +72,7 @@ export {
   SelectList,
   type SelectListProps,
   SelectTrigger,
+  type SelectTriggerProps,
 } from "./components/select/select";
 export { Sheet, type SheetProps } from "./components/sheet/sheet";
 export {

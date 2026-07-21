@@ -1,0 +1,353 @@
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+import type { EffectivePreferences } from "@/entities/preferences/domain/model/preference";
+import { getEffectivePreferences } from "@/entities/preferences/domain/use-cases/get-effective-preferences";
+import { upsertUserPreferences } from "@/entities/preferences/domain/use-cases/upsert-user-preferences";
+
+import { render } from "../../../../tests/components/render";
+import { initPointerTracking } from "../../../../tests/components/utils";
+import { UserPreferencesCard } from "./user-preferences-card";
+
+vi.mock("@/entities/preferences/domain/use-cases/get-effective-preferences");
+vi.mock("@/entities/preferences/domain/use-cases/upsert-user-preferences");
+
+const baseEffective: EffectivePreferences = {
+  dateFormat: { value: "EU_DATETIME", source: "GLOBAL" },
+  timezone: { value: "Europe/Paris", source: "GLOBAL" },
+};
+
+describe("UserPreferencesCard", () => {
+  beforeEach(() => {
+    // Freeze the clock: preset labels embed a live date example.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-30T14:30:00"));
+    vi.clearAllMocks();
+    vi.mocked(getEffectivePreferences).mockResolvedValue(baseEffective);
+    vi.mocked(upsertUserPreferences).mockResolvedValue();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("renders preset selects, not free-text inputs", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
+    expect(component.getByRole("textbox").elements()).toHaveLength(0);
+  });
+
+  test("uses the preferences card title", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByText("Preferences")).toBeVisible();
+  });
+
+  test("lays the fields out as detail rows with a visible label and an accessible control", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
+
+    const terms = Array.from(component.container.querySelectorAll("dt")).map((dt) =>
+      dt.textContent?.trim()
+    );
+    expect(terms).toContain("Date format");
+    expect(terms).toContain("Timezone");
+    expect(component.container.querySelectorAll("dt").length).toBeGreaterThanOrEqual(2);
+    expect(component.container.querySelectorAll("dt iconify-icon").length).toBeGreaterThanOrEqual(
+      2
+    );
+  });
+
+  test("shows the 'Automatic (inherited)' placeholder when the user has no override", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect
+      .element(component.getByRole("button", { name: /date format/i }))
+      .toHaveTextContent("Automatic (inherited)");
+    await expect
+      .element(component.getByRole("button", { name: /timezone/i }))
+      .toHaveTextContent("Automatic (inherited)");
+  });
+
+  test("date-format options are labelled by the pattern itself", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    // exact: true — otherwise "yyyy-MM-dd HH:mm" also matches the "yyyy-MM-dd HH:mm:ss" preset.
+    await expect
+      .element(component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }))
+      .toBeVisible();
+    await expect.element(component.getByRole("option", { name: "dd/MM/yyyy HH:mm" })).toBeVisible();
+  });
+
+  test("shows a live example next to the date-format control that updates on selection", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "yyyy-MM-dd HH:mm", exact: true }).click();
+    await expect.element(component.getByText("Example: 2026-06-30 14:30")).toBeVisible();
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+    await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
+  });
+
+  test("renders the live example inline, on the same row as the date-format control", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+
+    const combobox = component.getByRole("button", { name: /date format/i }).element();
+    const example = component.getByText("Example: 30/06/2026 14:30").element();
+
+    const row = combobox.closest("div.flex.items-center") as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(row.contains(example)).toBe(true);
+
+    const children = Array.from(row.children);
+    const controlIndex = children.findIndex((child) => child.contains(combobox));
+    const exampleIndex = children.findIndex((child) => child.contains(example));
+    expect(controlIndex).toBeGreaterThanOrEqual(0);
+    expect(exampleIndex).toBeGreaterThan(controlIndex);
+  });
+
+  test("hides the example again when the override is cleared by re-selecting it", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+    await expect.element(component.getByText("Example: 30/06/2026 14:30")).toBeVisible();
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+    expect(component.getByText(/^Example:/i).elements()).toHaveLength(0);
+  });
+
+  test("pre-fills the form from the caller's own override", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: { value: "EU_DATETIME", source: "USER" },
+      timezone: { value: "UTC", source: "USER" },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect
+      .element(component.getByRole("button", { name: /timezone/i }))
+      .toHaveTextContent("UTC");
+    await expect
+      .element(component.getByRole("button", { name: /date format/i }))
+      .toHaveTextContent("dd/MM/yyyy HH:mm");
+  });
+
+  test("does not render the below-input source/inheritance sentence", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+
+    expect(component.getByText(/inherited from organisation defaults/i).elements()).toHaveLength(0);
+    expect(component.getByText(/browser default:/i).elements()).toHaveLength(0);
+  });
+
+  test("provides one accessible, focusable (i) source tooltip trigger per field", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    expect(triggers.elements()).toHaveLength(2);
+    for (const trigger of triggers.elements()) {
+      expect(trigger.tagName).toBe("BUTTON");
+    }
+  });
+
+  test("the (i) tooltip resolves to the organisation default when no override is set", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: /from the organisation default: 30\/06\/2026 14:30 \(dd\/MM\/yyyy HH:mm\)/i,
+        })
+      )
+      .toBeVisible();
+  });
+
+  test("the (i) tooltip reflects the user's own preference when an override is set", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: { value: "EU_DATETIME", source: "USER" },
+      timezone: { value: "UTC", source: "USER" },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /date format/i })).toBeVisible();
+
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.first().hover();
+
+    await expect
+      .element(component.getByRole("tooltip", { name: "Your preference." }))
+      .toBeVisible();
+  });
+
+  test("the (i) tooltip falls back to the browser source when neither user nor global is set", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: { value: null, source: "DEFAULT" },
+      timezone: { value: null, source: "DEFAULT" },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: /timezone/i })).toBeVisible();
+
+    const expectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // The timezone field is the second info trigger.
+    const triggers = component.getByRole("button", { name: "Where this value comes from" });
+    await initPointerTracking(component.locator);
+    await triggers.nth(1).hover();
+
+    await expect
+      .element(component.getByRole("tooltip", { name: `From your browser: ${expectedTimezone}.` }))
+      .toBeVisible();
+  });
+
+  test("disables Save while the form is pristine", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    // Select by the stable preset label, not a date-dependent example.
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
+  test("saving triggers the upsert with the selected values", async () => {
+    const component = await render(<UserPreferencesCard />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+    await component.getByRole("button", { name: "Save" }).click();
+
+    await vi.waitFor(() => {
+      expect(upsertUserPreferences).toHaveBeenCalledWith({
+        dateFormat: "EU_DATETIME",
+        timezone: null,
+      });
+    });
+  });
+
+  test("re-selecting the current value clears the override with an explicit-null upsert", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: { value: "EU_DATETIME", source: "USER" },
+      timezone: { value: "UTC", source: "USER" },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect
+      .element(component.getByRole("button", { name: /date format/i }))
+      .toHaveTextContent("dd/MM/yyyy HH:mm");
+
+    // Re-selecting the currently-selected value clears the override (maps to null).
+    await component.getByRole("button", { name: /date format/i }).click();
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+    await component.getByRole("button", { name: "Save" }).click();
+
+    await vi.waitFor(() => {
+      expect(vi.mocked(upsertUserPreferences).mock.calls[0]?.[0]).toEqual({
+        dateFormat: null,
+        timezone: "UTC",
+      });
+    });
+  });
+
+  test("no longer renders a separate 'reset to global' button", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: { value: "EU_DATETIME", source: "USER" },
+      timezone: { value: "Europe/Paris", source: "GLOBAL" },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
+    expect(component.getByRole("button", { name: /reset to global/i }).elements()).toHaveLength(0);
+  });
+
+  test("still renders and saves the form when the effective query resolves with no global values", async () => {
+    vi.mocked(getEffectivePreferences).mockResolvedValue({
+      ...baseEffective,
+      dateFormat: { value: null, source: "DEFAULT" },
+      timezone: { value: null, source: "DEFAULT" },
+    });
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect.element(component.getByRole("button", { name: "Save" })).toBeVisible();
+    expect(
+      component.getByText(/something went wrong when fetching your preferences/i).elements()
+    ).toHaveLength(0);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+    await component.getByRole("button", { name: "Save" }).click();
+
+    await vi.waitFor(() => {
+      expect(upsertUserPreferences).toHaveBeenCalledWith({
+        dateFormat: "EU_DATETIME",
+        timezone: null,
+      });
+    });
+  });
+
+  test("shows an error screen when the effective-preferences query fails", async () => {
+    vi.mocked(getEffectivePreferences).mockRejectedValue(new Error("network down"));
+
+    const component = await render(<UserPreferencesCard />);
+
+    await expect
+      .element(component.getByText(/something went wrong when fetching your preferences/i))
+      .toBeVisible();
+  });
+
+  test("toasts the error when the save fails", async () => {
+    vi.mocked(upsertUserPreferences).mockRejectedValue(new Error("save failed"));
+
+    const component = await render(<UserPreferencesCard />);
+
+    await component.getByRole("button", { name: /date format/i }).click();
+
+    await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
+    await component.getByRole("button", { name: "Save" }).click();
+
+    await expect.element(component.getByText("save failed")).toBeVisible();
+  });
+});

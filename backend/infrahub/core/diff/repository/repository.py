@@ -12,7 +12,7 @@ from infrahub.core.diff.query.summary_counts_enricher import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import ResourceNotFoundError
+from infrahub.exceptions import ResourceMultipleFoundError, ResourceNotFoundError
 from infrahub.log import get_logger
 
 from ..model.field_specifiers_map import NodeFieldSpecifierMap
@@ -246,7 +246,7 @@ class DiffRepository:
         if len(enriched_diffs) == 0:
             raise ResourceNotFoundError(f"Cannot find diff for {error_str}")
         if len(enriched_diffs) > 1:
-            raise ResourceNotFoundError(f"Multiple diffs for {error_str}")
+            raise ResourceMultipleFoundError(f"Multiple diffs for {error_str}")
         return enriched_diffs[0]
 
     def _get_node_create_request_batch(

@@ -4,6 +4,11 @@ import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 
 export const DEFAULT_BRANCH_NAME = "main";
 
+// Explains the sync_with_git flag: it controls the Infrahub -> Git direction only,
+// and is not an indicator of whether a branch originated from Git.
+export const SYNC_WITH_GIT_DESCRIPTION =
+  "Whether branches created in Infrahub are also created in connected read/write Git repositories and merged back to Git when a proposed change is merged. This does not indicate whether the branch originated from Git.";
+
 // Base fields present in both list and detail views
 interface BranchBase {
   id: string;

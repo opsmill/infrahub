@@ -334,29 +334,11 @@ COMPUTED_ATTRIBUTE_PROCESS_JINJA2 = WorkflowDefinition(
     default_priority=WorkflowPriority.LOW,
 )
 
-COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
-    name="computed-attribute-jinja2-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.computed_attribute.tasks",
-    function="computed_attribute_jinja2_update_value",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-    default_priority=WorkflowPriority.LOW,
-)
-
 DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
     name="display-label-process-jinja2",
     type=WorkflowType.CORE,
     module="infrahub.display_labels.tasks",
     function="process_display_label",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-    default_priority=WorkflowPriority.LOW,
-)
-
-DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
-    name="display-label-jinja2-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.display_labels.tasks",
-    function="display_label_jinja2_update_value",
     tags=[WorkflowTag.DATABASE_CHANGE],
     default_priority=WorkflowPriority.LOW,
 )
@@ -378,15 +360,6 @@ HFID_SETUP = WorkflowDefinition(
     default_priority=WorkflowPriority.LOW,
 )
 
-
-HFID_UPDATE_VALUE = WorkflowDefinition(
-    name="hfid-update-value",
-    type=WorkflowType.CORE,
-    module="infrahub.hfid.tasks",
-    function="hfid_update_value",
-    tags=[WorkflowTag.DATABASE_CHANGE],
-    default_priority=WorkflowPriority.LOW,
-)
 
 TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
     name="trigger-update-display-labels",
@@ -439,6 +412,13 @@ COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
     function="process_transform",
     tags=[WorkflowTag.DATABASE_CHANGE],
     default_priority=WorkflowPriority.LOW,
+)
+
+COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM_LIFECYCLE = WorkflowDefinition(
+    name="computed-attribute-process-transform-lifecycle",
+    type=WorkflowType.CORE,
+    module="infrahub.computed_attribute.tasks",
+    function="process_transform_lifecycle",
 )
 
 DISPLAY_LABELS_SETUP_JINJA2 = WorkflowDefinition(
@@ -539,9 +519,16 @@ REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
 
 WEBHOOK_PROCESS = WorkflowDefinition(
     name="webhook-process",
-    type=WorkflowType.USER,
+    type=WorkflowType.INTERNAL,
     module="infrahub.webhook.tasks.process",
     function="webhook_process",
+)
+
+WEBHOOK_SEND = WorkflowDefinition(
+    name="webhook-send",
+    type=WorkflowType.CORE,
+    module="infrahub.webhook.tasks.process",
+    function="webhook_send",
 )
 
 WEBHOOK_INVALIDATE_HEADERS = WorkflowDefinition(
@@ -705,9 +692,9 @@ WORKFLOWS = [
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     CLEAN_UP_DEADLOCKS,
-    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM_LIFECYCLE,
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     CONFIGURE_ACTION_RULES,
@@ -716,7 +703,6 @@ WORKFLOWS = [
     DIFF_UPDATE,
     DISPLAY_LABELS_PROCESS_JINJA2,
     DISPLAY_LABELS_SETUP_JINJA2,
-    DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
@@ -736,7 +722,6 @@ WORKFLOWS = [
     GRAPHQL_QUERY_GROUP_UPDATE,
     HFID_PROCESS,
     HFID_SETUP,
-    HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
     MERGE_WATCHER,
     PROFILE_REFRESH,
@@ -776,6 +761,7 @@ WORKFLOWS = [
     WEBHOOK_CONFIGURE,
     WEBHOOK_INVALIDATE_HEADERS,
     WEBHOOK_PROCESS,
+    WEBHOOK_SEND,
 ]
 
 

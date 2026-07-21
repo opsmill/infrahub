@@ -128,7 +128,7 @@ async def test_source_branch_migration(
     await verify_graph(db=db)
 
     # Rollback reverts both the data changes and the migration.
-    await merger.rollback(at=merge_at)
+    await merger.rollback(merge_started_at=merge_at)
 
     # After rollback, schema on default_branch reverts to TestCar.
     rolled_back_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)

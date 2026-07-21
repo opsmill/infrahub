@@ -62,7 +62,7 @@ const buttonVariants = tv({
       ],
     },
     size: {
-      xxs: "h-6",
+      xxs: "h-6 text-xs",
       xs: "h-7",
       sm: "h-8",
       md: "h-9",

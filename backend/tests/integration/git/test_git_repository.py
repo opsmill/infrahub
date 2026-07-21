@@ -315,6 +315,57 @@ class TestInfrahubClient:
         with pytest.raises(NodeNotFoundError):
             await client.get(kind=CoreTransformJinja2, id=obj.id)
 
+    async def test_import_deletes_check_definition_pinned_by_validator(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99: Node
+    ) -> None:
+        """Removing a check definition still referenced by a user validator must not abort the import.
+
+        A check evaluated by a proposed change is pinned by a CoreUserValidator through the
+        mandatory check_definition relationship. When the check is dropped from the repository
+        config, the import deletes it; the repository ownership cascade removes the pinning
+        validator too, so the delete succeeds and the import completes instead of aborting.
+        """
+        commit = repo.get_commit_value(branch_name="main")
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        assert config_file
+
+        # A check definition present in the graph but not in the repository config, so the
+        # reconcile treats it as removed and deletes it.
+        check = await Node.init(schema=InfrahubKind.CHECKDEFINITION, db=db)
+        await check.new(
+            db=db,
+            name="pinned_check",
+            query=str(query_99.id),
+            file_path="check.py",
+            class_name="MyCheck",
+            repository=str(repo.id),
+        )
+        await check.save(db=db)
+
+        # A historical proposed change and the user validator that evaluated the check. The
+        # validator pins the check through the mandatory check_definition relationship.
+        proposed_change = await Node.init(schema=InfrahubKind.PROPOSEDCHANGE, db=db)
+        await proposed_change.new(db=db, name="pinning-change", source_branch="feature", destination_branch="main")
+        await proposed_change.save(db=db)
+
+        validator = await Node.init(schema=InfrahubKind.USERVALIDATOR, db=db)
+        await validator.new(
+            db=db, proposed_change=proposed_change.id, check_definition=check.id, repository=str(repo.id)
+        )
+        await validator.save(db=db)
+
+        # Drop every check definition from the config so the pinned check is the only entry the
+        # reconcile deletes.
+        config_file.check_definitions = []
+
+        # The import completes; the delete cascades to the pinning validator.
+        await repo.import_python_check_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
+
+        with pytest.raises(NodeNotFoundError):
+            await client.get(kind=CoreCheckDefinition, id=check.id)
+        with pytest.raises(NodeNotFoundError):
+            await client.get(kind=InfrahubKind.USERVALIDATOR, id=validator.id)
+
 
 class TestGetMissingFile(TestInfrahubApp):
     async def test_get_missing_file(

@@ -11,6 +11,32 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.10.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.5) - 2026-07-15
+
+### Fixed
+
+- Fix a race condition for recalculating a diff following a rebase. After a branch is rebased, an asynchronous job is queued to recalculate the diff for that branch. If a user tried to update the diff for that branch or merge the branch before the recalculation completed then they would receive an error like `ResourceNotFoundError: Multiple diffs for branch ... with tracking_id ...`. The diff update logic is now updated to handle post-rebase recalculation correctly if it is reached before the recalculation job. ([#9898](https://github.com/opsmill/infrahub/issues/9898))
+- Removing a node from the schema on a branch and merging that branch no longer fails with a `SchemaNotFoundError`. Schema elements without a persisted id (such as the virtual `profiles` relationship) are now compared by value instead of being reported as spurious additions in the schema diff. ([#9899](https://github.com/opsmill/infrahub/issues/9899))
+- Fresh installations now persist the deprecated-model markers, so the core-schema diff computed by `infrahub upgrade` starts out empty instead of always reporting `LineageSource` and `LineageOwner` as changed on an up-to-date installation.
+- Merging a rebased branch now computes schema migrations against the rebase point, so schema changes the rebase already incorporated from the destination branch are no longer counted a second time.
+- Schema errors raised during background operations (such as `SchemaNotFoundError`) now surface the actual error instead of an unrelated serialization `TypeError`.
+
+## [Infrahub - v1.10.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.4) - 2026-07-13
+
+### Added
+
+- `INFRAHUB_DB_ADDRESS` now accepts a comma-separated list of cluster members.
+
+### Fixed
+
+- The `INFRAHUB_DB_DATABASE` name validation now matches Neo4j's naming rules: names may contain dashes, must be 3-63 characters long, and may no longer end with a dot. Database names that contain dashes or dots are now correctly quoted when the database is created, so they no longer fail with a Cypher syntax error.
+- Changing a Git repository's location now re-points the server-side clone and fetches from the new remote, instead of staying stuck on the previous commit. ([#9811](https://github.com/opsmill/infrahub/issues/9811))
+- The `configure-action-rules` background flow no longer crashes when a trigger rule references a group or Generator that does not resolve on the branch being read (a required relationship left dangling by a deleted, orphaned, or branch-missing peer). The offending rule is now skipped with a warning that names it, and the remaining trigger rules are reconciled normally instead of the whole flow aborting. ([#9829](https://github.com/opsmill/infrahub/issues/9829))
+- Outbound webhook payloads now include the `account_id` of the account that triggered the event again, instead of always sending `null`. ([#9881](https://github.com/opsmill/infrahub/issues/9881))
+- Changing the `identifier` of a relationship in a schema is now rejected with a "not supported" validation error instead of being silently incorrectly applied.
+- Deleting a node with cascade now checks mandatory relationships across the full set of cascaded objects. Previously a node pulled into the delete by a cascade could be removed even while a mandatory relationship from an object outside the delete set still referenced it, leaving a dangling mandatory relationship. Such deletes are now correctly blocked with a validation error.
+- Fixed a bug where some human-friendly ID (HFID) values were stored with non-string elements (such as numbers) instead of all strings. Fresh upgrades now normalize all values, and instances that already upgraded are repaired automatically on their next upgrade.
+
 ## [Infrahub - v1.10.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.10.3) - 2026-07-07
 
 ### Added

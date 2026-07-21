@@ -10,8 +10,8 @@ from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.permissions import define_global_permission_from_branch
-from infrahub.task_manager.event import PrefectEvent
-from infrahub.task_manager.models import InfrahubEventFilter
+from infrahub.task_manager.event.models import InfrahubEventFilter
+from infrahub.task_manager.event.query import PrefectEvent
 
 if TYPE_CHECKING:
     from datetime import datetime

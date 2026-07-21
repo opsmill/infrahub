@@ -1381,10 +1381,15 @@ class RelationshipDeleteAllQuery(Query):
 
         for arrow_left, arrow_right in (("<-", "-"), ("-", "->")):
             for edge_type in edge_types:
+                # Resolve the latest edge to each peer and close it
                 sub_query = """
                     CALL (rl) {
                         MATCH (rl)%(arrow_left)s[active_edge:%(edge_type)s]%(arrow_right)s(n)
-                        WHERE %(active_rel_filter)s AND active_edge.status ="active"
+                        WHERE %(active_rel_filter)s
+                        WITH rl, active_edge, n
+                        ORDER BY %(id_func)s(rl), %(id_func)s(n), active_edge.from DESC
+                        WITH rl, n, head(collect(active_edge)) AS active_edge
+                        WHERE active_edge.status = "active"
                         CREATE (rl)%(arrow_left)s[deleted_edge:%(edge_type)s $rel_prop]%(arrow_right)s(n)
                         SET deleted_edge.hierarchy = active_edge.hierarchy
                         WITH active_edge, n
@@ -1396,6 +1401,7 @@ class RelationshipDeleteAllQuery(Query):
                     "arrow_right": arrow_right,
                     "active_rel_filter": active_rel_filter,
                     "edge_type": edge_type,
+                    "id_func": db.get_id_function_name(),
                 }
 
                 self.add_to_query(sub_query)

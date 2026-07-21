@@ -19,6 +19,19 @@ cd frontend/app && pnpm biome:fix  # Format and lint
 cd frontend/app && pnpm codegen    # Generate GraphQL types
 ```
 
+## Before pushing (run the full CI gate locally)
+
+`pnpm biome:fix` alone is **not** the CI gate. The `frontend-lint` job runs three checks and
+`frontend-tests` runs the browser test suite. Run all of them before pushing — they each fail CI
+independently:
+
+```bash
+cd frontend/app && pnpm exec biome ci .   # format + lint (same as CI)
+cd frontend/app && pnpm knip              # unused exports/files/deps
+cd frontend/app && pnpm exec betterer ci  # TypeScript-regression gate (NOT plain tsc)
+cd frontend/app && pnpm test              # vitest (browser mode)
+```
+
 ## See Also
 
 ### Guidelines (How to write code)

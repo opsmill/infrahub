@@ -1,4 +1,3 @@
-import contextlib
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipKind, SchemaPathType
@@ -6,7 +5,7 @@ from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import AttributeSchema, MainSchemaTypes
+from infrahub.core.schema import AttributePathParsingError, AttributeSchema, MainSchemaTypes
 from infrahub.core.schema.attribute_parameters import AttributeParameters
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -53,10 +52,14 @@ class ConstraintValidatorDeterminer:
         if not node_diffs:
             return constraints
 
-        constraints.extend(await self._get_all_property_constraints())
+        constraints.extend(await self._get_property_constraints_for_impacted_kinds())
 
         for kind in self._node_kinds:
-            schema = self.schema_branch.get(name=kind, duplicate=False)
+            schema = self._get_schema_or_none(kind=kind)
+            if schema is None:
+                # a branch can hold data changes for a kind whose schema it also deletes
+                LOG.info("Skipping constraints for kind absent from the schema", kind=kind)
+                continue
             constraints.extend(await self._get_constraints_for_one_schema(schema))
 
         if not filter_invalid:
@@ -81,18 +84,110 @@ class ConstraintValidatorDeterminer:
         constraints.extend(await self._get_relationship_constraints_for_one_schema(schema=schema))
         return constraints
 
-    async def _get_all_property_constraints(self) -> list[SchemaUpdateConstraintInfo]:
+    def _get_schema_or_none(self, kind: str) -> MainSchemaTypes | None:
+        try:
+            return self.schema_branch.get(name=kind, duplicate=False)
+        except SchemaNotFoundError:
+            return None
+
+    def _get_impacted_kinds(self) -> set[str]:
+        """Kinds with node-level property constraints that could be violated by the data diff.
+
+        Includes the kinds present in the diff and the generics they inherit from, since a
+        generic-level uniqueness check spans every implementing node.
+        """
+        kinds: set[str] = set()
+        for kind in self._node_kinds:
+            schema = self._get_schema_or_none(kind=kind)
+            if schema is None:
+                continue
+            kinds.add(kind)
+            kinds.update(getattr(schema, "inherit_from", None) or [])
+        return kinds
+
+    def _field_in_diff(self, schema: MainSchemaTypes, field_name: str, is_relationship: bool) -> bool:
+        """Return True if `field_name` changed on `schema` or on a diffed kind that inherits it.
+
+        An inherited field keeps its name on the implementing kind, so a generic-level constraint
+        is implicated when an implementation's copy of the field is what changed in the diff.
+        """
+        kinds = {schema.kind}
+        for kind in self._node_kinds:
+            implementing_schema = self._get_schema_or_none(kind=kind)
+            if implementing_schema is not None and schema.kind in (
+                getattr(implementing_schema, "inherit_from", None) or []
+            ):
+                kinds.add(kind)
+        check = self._has_relationship_diff if is_relationship else self._has_attribute_diff
+        return any(check(kind=kind, name=field_name) for kind in kinds)
+
+    def _diff_triggers_uniqueness(self, schema: MainSchemaTypes) -> bool:
+        """Return True when a diffed field participates in `schema`'s uniqueness.
+
+        Uniqueness spans single unique attributes and multi-field constraint groups. A group
+        element such as "owner__name" reads an attribute of a related peer, so a data change on
+        the peer kind can create a violation without any change to the constrained kind itself.
+        """
+        for attribute_schema in schema.unique_attributes:
+            if self._field_in_diff(schema=schema, field_name=attribute_schema.name, is_relationship=False):
+                return True
+        for constraint_group in schema.uniqueness_constraints or []:
+            for constraint_path in constraint_group:
+                try:
+                    schema_path = schema.parse_schema_path(path=constraint_path, schema=self.schema_branch)
+                except AttributePathParsingError:
+                    LOG.warning(f"Cannot parse {schema.kind}.uniqueness_constraints element '{constraint_path}'")
+                    continue
+                if schema_path.relationship_schema is not None:
+                    # check if the relationship changed
+                    if self._field_in_diff(
+                        schema=schema, field_name=schema_path.relationship_schema.name, is_relationship=True
+                    ):
+                        return True
+                    # check if an attribute on the peer changed
+                    if (
+                        schema_path.attribute_schema is not None
+                        and schema_path.related_schema is not None
+                        and self._field_in_diff(
+                            schema=schema_path.related_schema,
+                            field_name=schema_path.attribute_schema.name,
+                            is_relationship=False,
+                        )
+                    ):
+                        return True
+                elif schema_path.attribute_schema is not None and self._field_in_diff(
+                    schema=schema, field_name=schema_path.attribute_schema.name, is_relationship=False
+                ):
+                    return True
+        return False
+
+    def _node_property_triggered_by_diff(self, schema: MainSchemaTypes, prop_name: str) -> bool:
+        """Return True if the diff touches a field guarded by the node-level property `prop_name`.
+
+        A node-level constraint may be defined on a kind without every data change to that kind
+        being able to violate it; emit only when a participating field is in the diff. Unknown
+        properties default to emitting so a newly-added node-level constraint is never missed.
+        """
+        if prop_name == "uniqueness_constraints":
+            return self._diff_triggers_uniqueness(schema=schema)
+        if prop_name in ("parent", "children"):
+            return self._has_relationship_diff(kind=schema.kind, name=prop_name)
+        return True
+
+    async def _get_property_constraints_for_impacted_kinds(self) -> list[SchemaUpdateConstraintInfo]:
+        impacted_kinds = self._get_impacted_kinds()
+        schemas: list[MainSchemaTypes] = []
+        for kind in impacted_kinds:
+            schema = self._get_schema_or_none(kind=kind)
+            if schema is not None:
+                schemas.append(schema)
+        for schema in self.schema_branch.get_all(duplicate=False).values():
+            if schema.kind in impacted_kinds:
+                continue
+            if self._diff_triggers_uniqueness(schema=schema):
+                schemas.append(schema)
+
         constraints: list[SchemaUpdateConstraintInfo] = []
-        schemas = list(self.schema_branch.get_all(duplicate=False).values())
-        # added here to check their uniqueness constraints
-        with contextlib.suppress(SchemaNotFoundError):
-            schemas.append(self.schema_branch.get_node(name="SchemaNode", duplicate=False))
-        with contextlib.suppress(SchemaNotFoundError):
-            schemas.append(self.schema_branch.get_node(name="SchemaGeneric", duplicate=False))
-        with contextlib.suppress(SchemaNotFoundError):
-            schemas.append(self.schema_branch.get_node(name="SchemaAttribute", duplicate=False))
-        with contextlib.suppress(SchemaNotFoundError):
-            schemas.append(self.schema_branch.get_node(name="SchemaRelationship", duplicate=False))
         for schema in schemas:
             constraints.extend(await self._get_property_constraints_for_one_schema(schema=schema))
         return constraints
@@ -127,11 +222,21 @@ class ConstraintValidatorDeterminer:
             )
             constraint_name = f"node.{prop_name}.update"
 
+            checker = CONSTRAINT_VALIDATOR_MAP.get(constraint_name)
+            if checker is not None and not checker.triggered_by_data_change:
+                # a data change cannot violate a constraint whose checker only compares the
+                # candidate schema against the current one; that case belongs to the schema diff
+                continue
+
             do_constraint_validation = prop_field_update == UpdateSupport.VALIDATE_CONSTRAINT.value or (
-                prop_field_update == UpdateSupport.MIGRATION_REQUIRED.value
-                and CONSTRAINT_VALIDATOR_MAP.get(constraint_name)
+                prop_field_update == UpdateSupport.MIGRATION_REQUIRED.value and checker
             )
             if not do_constraint_validation:
+                continue
+
+            if not self._node_property_triggered_by_diff(schema=schema, prop_name=prop_name):
+                # the node-level constraint is defined on this kind, but no field it guards is in
+                # the diff, so a data change cannot violate it
                 continue
 
             constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
@@ -193,9 +298,14 @@ class ConstraintValidatorDeterminer:
                 path_type = SchemaPathType.RELATIONSHIP
                 constraint_name = f"relationship.{prop_name}.update"
 
+            checker = CONSTRAINT_VALIDATOR_MAP.get(constraint_name)
+            if checker is not None and not checker.triggered_by_data_change:
+                # a data change cannot violate a constraint whose checker only compares the
+                # candidate schema against the current one; that case belongs to the schema diff
+                continue
+
             do_constraint_validation = prop_field_update == UpdateSupport.VALIDATE_CONSTRAINT.value or (
-                prop_field_update == UpdateSupport.MIGRATION_REQUIRED.value
-                and CONSTRAINT_VALIDATOR_MAP.get(constraint_name)
+                prop_field_update == UpdateSupport.MIGRATION_REQUIRED.value and checker
             )
             if not do_constraint_validation:
                 continue

@@ -15,6 +15,7 @@ export default mergeConfig(
     //   initial scan cannot see and CI's cold cache discovers mid-run.
     optimizeDeps: {
       include: [
+        "@date-fns/tz",
         "react-aria-components",
         "lucide-react",
         "tailwind-variants",
@@ -29,6 +30,16 @@ export default mergeConfig(
         "react-dom/client",
         "react-error-boundary",
         "react-scan",
+        "@headlessui/react",
+        "@dagrejs/dagre",
+        "dagre",
+        "@radix-ui/react-progress",
+        "html-to-image",
+        "react-paginate",
+        "react-diff-view",
+        "recharts",
+        "sha1",
+        "unidiff",
       ],
     },
     test: {

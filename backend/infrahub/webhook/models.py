@@ -191,17 +191,23 @@ class EventContext(BaseModel):
     def from_event(cls, event_id: str, event_type: str, event_occured_at: str, event_payload: dict[str, Any]) -> Self:
         """Extract the context from the raw event we are getting from Prefect."""
         infrahub_context: dict[str, Any] = event_payload.get("context", {})
-        account_info: dict[str, Any] = infrahub_context.get("account", {})
         branch_info: dict[str, Any] = infrahub_context.get("branch", {})
 
         return cls(
             id=event_id,
             # We use `GLOBAL_BRANCH_NAME` constant instead of `registry.get_global_branch().name` to the flow from depending on the registry
             branch=branch_info.get("name") if branch_info and branch_info.get("name") != GLOBAL_BRANCH_NAME else None,
-            account_id=account_info.get("account_id"),
+            account_id=infrahub_context.get("account_id"),
             occured_at=event_occured_at,
             event=event_type,
         )
+
+
+MASKED_HEADER_VALUE = "***"
+WEBHOOK_SIGNATURE_HEADER = "webhook-signature"
+SENSITIVE_HEADER_NAMES = frozenset(
+    name.lower() for name in ("Authorization", "Proxy-Authorization", "Cookie", "Set-Cookie", "X-API-Key")
+)
 
 
 class HeaderKind(StrEnum):
@@ -246,15 +252,26 @@ class Webhook(BaseModel):
     event_type: str = Field(...)
     validate_certificates: bool | None = Field(...)
     custom_headers: list[WebhookHeader] = Field(default_factory=list)
-    _payload: Any = None
-    _headers: dict[str, Any] | None = None
     shared_key: str | None = Field(default=None, description="Shared key for signing the webhook requests")
 
-    async def _prepare_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:  # noqa: ARG002
-        self._payload = {"data": data, **context.model_dump()}
+    async def compute_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> Any:  # noqa: ARG002
+        """Build and return the payload to deliver."""
+        return {"data": data, **context.model_dump()}
 
-    def _assign_headers(self, uuid: UUID | None = None, at: Timestamp | None = None) -> None:
-        self._headers = {
+    def build_headers(self, payload: Any, uuid: UUID | None = None, at: Timestamp | None = None) -> dict[str, Any]:
+        """Build the request headers, resolving each configured custom header.
+
+        A header whose value cannot be resolved (for example an environment-sourced header whose
+        variable is unset) fails the delivery rather than being silently dropped, so the
+        misconfiguration surfaces as a clear configuration error instead of sending a partial or
+        unauthenticated request.
+
+        Raises:
+            WebhookHeaderResolutionError: When a configured header cannot be resolved; the message
+                names the webhook and the header so the operator knows what to reconfigure.
+
+        """
+        headers: dict[str, Any] = {
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
@@ -269,19 +286,36 @@ class Webhook(BaseModel):
                 )
             seen_keys.add(header.key)
             try:
-                self._headers[header.key] = header.resolve()
+                headers[header.key] = header.resolve()
             except WebhookHeaderResolutionError as exc:
-                logger.warning("Webhook '%s': %s, skipping header '%s'", self.name, exc, header.key)
+                raise WebhookHeaderResolutionError(
+                    f"Webhook '{self.name}': could not resolve header '{header.key}': {exc}"
+                ) from exc
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
             timestamp = str(at.to_timestamp()) if at else str(Timestamp().to_timestamp())
-            payload = json.dumps(self._payload or {}, separators=(",", ":"))
-            unsigned_data = f"{message_id}.{timestamp}.{payload}".encode()
+            signed_payload = json.dumps(payload or {}, separators=(",", ":"))
+            unsigned_data = f"{message_id}.{timestamp}.{signed_payload}".encode()
             signature = self._sign(data=unsigned_data)
-            self._headers["webhook-id"] = message_id
-            self._headers["webhook-timestamp"] = timestamp
-            self._headers["webhook-signature"] = f"v1,{base64.b64encode(signature).decode('utf-8')}"
+            headers["webhook-id"] = message_id
+            headers["webhook-timestamp"] = timestamp
+            headers[WEBHOOK_SIGNATURE_HEADER] = f"v1,{base64.b64encode(signature).decode('utf-8')}"
+
+        return headers
+
+    def redact_headers(self, headers: dict[str, Any]) -> dict[str, Any]:
+        """Return a copy of the headers with secret-bearing values masked for logging.
+
+        Environment-sourced values, the request signature, and any well-known credential-bearing
+        header are masked, while standard and statically configured headers are kept verbatim so
+        the log stays useful without exposing credentials. Matching is case-insensitive because
+        HTTP header names are, so a secret cannot slip through under a different casing.
+        """
+        sensitive = {header.key.lower() for header in self.custom_headers if header.kind is HeaderKind.ENVIRONMENT}
+        sensitive.add(WEBHOOK_SIGNATURE_HEADER.lower())
+        sensitive |= SENSITIVE_HEADER_NAMES
+        return {key: (MASKED_HEADER_VALUE if key.lower() in sensitive else value) for key, value in headers.items()}
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -300,20 +334,17 @@ class Webhook(BaseModel):
             return self.shared_key
         raise ValueError("Shared key is not set for the webhook")
 
-    async def prepare(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:
-        await self._prepare_payload(data=data, context=context, client=client)
-        self._assign_headers()
-
-    async def send(
-        self, data: dict[str, Any], context: EventContext, http_service: InfrahubHTTP, client: InfrahubClient
+    async def send_payload(
+        self, payload: Any, http_service: InfrahubHTTP, headers: dict[str, Any] | None = None
     ) -> Response:
-        await self.prepare(data=data, context=context, client=client)
-        return await http_service.post(
-            url=self.url, json=self.get_payload(), headers=self._headers, verify=self.validate_certificates
-        )
+        """POST the payload to the webhook endpoint, building the headers when not supplied.
 
-    def get_payload(self) -> dict[str, Any]:
-        return self._payload
+        A caller that needs to inspect or log the exact headers builds them once and passes them
+        in, so the request that is sent matches the one that was logged.
+        """
+        if headers is None:
+            headers = self.build_headers(payload=payload)
+        return await http_service.post(url=self.url, json=payload, headers=headers, verify=self.validate_certificates)
 
     def to_cache(self) -> dict[str, Any]:
         return self.model_dump()
@@ -364,7 +395,8 @@ class TransformWebhook(Webhook):
     transform_timeout: int = Field(...)
     convert_query_response: bool = Field(...)
 
-    async def _prepare_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> None:
+    async def compute_payload(self, data: dict[str, Any], context: EventContext, client: InfrahubClient) -> Any:
+        """Build and return the payload by running the configured Python transform once."""
         repo: InfrahubReadOnlyRepository | InfrahubRepository
         if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
             repo = await InfrahubReadOnlyRepository.init(
@@ -376,7 +408,7 @@ class TransformWebhook(Webhook):
         branch = context.branch or repo.default_branch
         commit = repo.get_commit_value(branch_name=branch)
 
-        self._payload = await repo.execute_python_transform.with_options(timeout_seconds=self.transform_timeout)(
+        return await repo.execute_python_transform.with_options(timeout_seconds=self.transform_timeout)(
             branch_name=branch,
             commit=commit,
             location=f"{self.transform_file}::{self.transform_class}",

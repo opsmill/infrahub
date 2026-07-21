@@ -1,5 +1,9 @@
 ---
 title: Release 1.9.0
+release_date: 2026-04-24
+release_type: minor
+breaking: true
+description: "Two headline additions: an interactive schema visualizer that turns your schema into a navigable graph, and syslog log forwarding for Enterprise — streaming activity, login/logout, and permission-denied events to SIEM systems such as Splunk, Datadog, and ELK over TCP or UDP with optional TLS. Jinja2 computed attributes now recalculate inline on local changes instead of spawning a background task per node, and new Jinja2 filters let artifacts inline and parse content from other artifacts and file objects."
 ---
 <table>
   <tbody>
@@ -194,7 +198,7 @@ Jinja2-based computed attributes that depend on attributes or relationships on t
 Concretely:
 
 - Updating an attribute used by a local computed attribute recomputes it inline; the mutation response contains the new value.
-- Changing a relationship used by a local computed attribute (e.g. re-assigning a `Device` to a different `Site`) recomputes inline against the new peer's attributes.
+- Changing a relationship used by a local computed attribute (for example re-assigning a `Device` to a different `Site`) recomputes inline against the new peer's attributes.
 - Bulk-updating thousands of nodes no longer spawns thousands of per-node background tasks for local changes.
 - Each local-change mutation emits **one** consolidated event/webhook containing both the original change and the updated computed attribute, instead of two separate events.
 - **Remote** changes (peer-node updates that affect computed attributes on other nodes) continue to use the existing background-task path - no behavioural change there. Python Transform-based computed attributes are also unchanged.

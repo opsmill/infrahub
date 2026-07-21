@@ -1,1 +1,0 @@
-The `INFRAHUB_DB_DATABASE` name validation now matches Neo4j's naming rules: names may contain dashes, must be 3-63 characters long, and may no longer end with a dot. Database names that contain dashes or dots are now correctly quoted when the database is created, so they no longer fail with a Cypher syntax error.
