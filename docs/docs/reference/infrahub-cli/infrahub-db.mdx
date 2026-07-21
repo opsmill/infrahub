@@ -21,6 +21,8 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `showmigration`: Show detailed information about a specific...
 * `check-inheritance`: Check the database for any vertices with...
 * `reset-deployment-id`: Reset the internal deployment_id on the...
+* `snapshot-dump`: Bootstrap an empty database...
+* `snapshot-restore`: Restore a portable graph snapshot into an...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `update-core-schema`: Reload the internal core schema definition...
 * `constraint`: Manage Database Constraints.
@@ -129,6 +131,48 @@ $ infrahub db reset-deployment-id [OPTIONS] [CONFIG_FILE]
 
 * `--deployment-id TEXT`: Set an explicit UUID instead of generating a random one.
 * `-y, --yes`: Skip the confirmation prompt.
+* `--help`: Show this message and exit.
+
+## `infrahub db snapshot-dump`
+
+Bootstrap an empty database deterministically and write a portable snapshot of the initialized graph.
+
+The target database MUST be empty. Generation is deterministic (fixed uuids/timestamps/secrets),
+so the snapshot is byte-stable across regenerations and a CI job can validate its freshness with a
+plain diff. Restore it later with ``snapshot-restore`` to skip first-time initialization.
+
+**Usage**:
+
+```console
+$ infrahub db snapshot-dump [OPTIONS] OUTPUT
+```
+
+**Arguments**:
+
+* `OUTPUT`: Path to write the snapshot to (.json.gz).  [required]
+
+**Options**:
+
+* `--config-file TEXT`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+* `--help`: Show this message and exit.
+
+## `infrahub db snapshot-restore`
+
+Restore a portable graph snapshot into an empty database, as a fast alternative to first-time init.
+
+**Usage**:
+
+```console
+$ infrahub db snapshot-restore [OPTIONS] SNAPSHOT_PATH
+```
+
+**Arguments**:
+
+* `SNAPSHOT_PATH`: Path to a snapshot (.json.gz) to restore.  [required]
+
+**Options**:
+
+* `--config-file TEXT`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-duplicate-schema-fields`
