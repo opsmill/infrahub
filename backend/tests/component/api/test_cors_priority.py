@@ -6,10 +6,24 @@ from starlette.middleware.cors import CORSMiddleware
 
 from infrahub.api.admission.controller import AdmissionController
 from infrahub.api.admission.middleware import AdmissionMiddleware
+from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.slot_pool import PrioritySlotPool
 from infrahub.config import default_cors_allow_headers, default_cors_allow_methods
 
 _ORIGIN = "https://frontend.example"
+
+
+class _FakeLoadSignal:
+    """Unstressed stand-in; the unconditional backstop sheds before the gate is consulted."""
+
+    def stress_ratio_min(self) -> float:
+        return 1.0
+
+    def stress_ratio_avg(self) -> float:
+        return 1.0
+
+    def sample_count(self) -> int:
+        return 0
 
 
 def _shed_everything_controller() -> AdmissionController:
@@ -19,7 +33,10 @@ def _shed_everything_controller() -> AdmissionController:
         target=0.005,
         interval=0.1,
         high_target_multiplier=4.0,
-        backstop_max_waiters=0,
+        backstop_max_waiters=dict.fromkeys(Priority, 0),
+        stress_signal=_FakeLoadSignal(),
+        stress_thresholds=dict.fromkeys(Priority, 1.0),
+        stress_min_samples=0,
         retry_after=1,
     )
 

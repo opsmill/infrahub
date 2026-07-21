@@ -55,6 +55,13 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_API_BACKPRESSURE_BACKSTOP_MAX_WAITERS` | Per-class hard cap on queued waiters before requests are rejected. | integer | 1000 |
 | `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_SECONDS` | Value returned in the Retry-After header when a request is shed. | integer | 1 |
 | `INFRAHUB_API_BACKPRESSURE_MAX_CONCURRENCY_FACTOR` | Scales the derived maximum admission concurrency. | number | 1.0 |
+| `INFRAHUB_API_BACKPRESSURE_STRESS_WINDOW_SECONDS` | Rolling window, in seconds, over which the database-stress signal is measured. | number | 30.0 |
+| `INFRAHUB_API_BACKPRESSURE_STRESS_MIN_SAMPLES` | Reference-query samples required in the window before the stress signal gates shedding. | integer | 50 |
+| `INFRAHUB_API_BACKPRESSURE_SHED_LOW_STRESS_RATIO` | Database-stress ratio at or above which low-priority requests become eligible for shedding. | number | 5.0 |
+| `INFRAHUB_API_BACKPRESSURE_SHED_MEDIUM_STRESS_RATIO` | Database-stress ratio at or above which medium-priority requests become eligible for shedding. | number | 20.0 |
+| `INFRAHUB_API_BACKPRESSURE_SHED_HIGH_STRESS_RATIO` | Database-stress ratio at or above which high-priority requests become eligible for shedding. | number | 100.0 |
+| `INFRAHUB_API_BACKPRESSURE_BACKSTOP_LOW_MULTIPLIER` | Scales the base backstop waiter cap for the low-priority class. | number | 0.5 |
+| `INFRAHUB_API_BACKPRESSURE_BACKSTOP_HIGH_MULTIPLIER` | Scales the base backstop waiter cap for the high-priority class. | number | 4.0 |
 
 ## Git
 

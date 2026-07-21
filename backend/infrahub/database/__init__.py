@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import random
+import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
@@ -38,11 +39,14 @@ from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
+from .load_signal import reference_query_load_tracker
 from .metrics import (
     CONNECTION_POOL_USAGE,
     QUERY_AVAILABLE_AFTER_METRICS,
     QUERY_AVAILABLE_AFTER_TRACKED_QUERIES,
+    QUERY_CONSUMED_AFTER_METRICS,
     QUERY_EXECUTION_METRICS,
+    REFERENCE_QUERY_NAME,
     TRANSACTION_RETRIES,
 )
 
@@ -392,6 +396,7 @@ class InfrahubDatabase:
                 )
 
             with QUERY_EXECUTION_METRICS.labels(**labels).time():
+                execution_start = time.monotonic()
                 try:
                     response = await self.run_query(
                         query=query, params=params, name=name, timeout_seconds=timeout_seconds
@@ -408,12 +413,22 @@ class InfrahubDatabase:
                             message=f"Query '{name}' exceeded its execution time budget of {timeout_seconds}s"
                         ) from exc
                     raise
+                # Time the query ourselves (submission through row drain). Only READ executions of
+                # the reference query feed the database-stress signal, so a write sharing the name
+                # cannot pollute the floor or the window.
+                if name == REFERENCE_QUERY_NAME and type == QueryType.READ:
+                    reference_query_load_tracker.record(time.monotonic() - execution_start)
                 metadata = response._metadata or {}
                 available_after_ms = metadata.get("t_first", metadata.get("result_available_after"))
                 if available_after_ms is not None and name in QUERY_AVAILABLE_AFTER_TRACKED_QUERIES:
+                    consumed_after_ms = metadata.get("t_last", metadata.get("result_consumed_after"))
                     QUERY_AVAILABLE_AFTER_METRICS.labels(
                         type=labels["type"], runtime=labels["runtime"], query=name
                     ).observe(available_after_ms / 1000)
+                    if consumed_after_ms is not None:
+                        QUERY_CONSUMED_AFTER_METRICS.labels(
+                            type=labels["type"], runtime=labels["runtime"], query=name
+                        ).observe(consumed_after_ms / 1000)
                 span.set_attribute("rows", len(results))
                 return results, metadata
 

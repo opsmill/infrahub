@@ -566,6 +566,41 @@ class ApiSettings(BaseSettings):
     backpressure_max_concurrency_factor: float = Field(
         default=1.0, gt=0, description="Scales the derived maximum admission concurrency."
     )
+    backpressure_stress_window_seconds: float = Field(
+        default=20.0,
+        gt=0,
+        description="Rolling window, in seconds, over which the database-stress signal is measured.",
+    )
+    backpressure_stress_min_samples: int = Field(
+        default=5,
+        ge=1,
+        description="Reference-query samples required in the window before the stress signal gates shedding.",
+    )
+    backpressure_shed_low_stress_ratio: float = Field(
+        default=5.0,
+        ge=1,
+        description="Database-stress ratio at or above which low-priority requests become eligible for shedding.",
+    )
+    backpressure_shed_medium_stress_ratio: float = Field(
+        default=20.0,
+        ge=1,
+        description="Database-stress ratio at or above which medium-priority requests become eligible for shedding.",
+    )
+    backpressure_shed_high_stress_ratio: float = Field(
+        default=100.0,
+        ge=1,
+        description="Database-stress ratio at or above which high-priority requests become eligible for shedding.",
+    )
+    backpressure_backstop_low_multiplier: float = Field(
+        default=0.5,
+        gt=0,
+        description="Scales the base backstop waiter cap for the low-priority class.",
+    )
+    backpressure_backstop_high_multiplier: float = Field(
+        default=4.0,
+        gt=0,
+        description="Scales the base backstop waiter cap for the high-priority class.",
+    )
 
 
 class GitSettings(BaseSettings):

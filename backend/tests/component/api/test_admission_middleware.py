@@ -23,6 +23,38 @@ HIGH_REQUESTS = 15
 _PRIORITY_LABELS = ("high", "medium", "low")
 _REASON_LABELS = ("codel", "backstop")
 
+# Realistic per-class thresholds; the quiet signal below never reaches them, so these tests
+# exercise CoDel/backstop shedding in isolation. The stress trigger and its tiering are covered
+# by the dedicated controller unit test.
+_THRESHOLDS = {Priority.HIGH: 100.0, Priority.MEDIUM: 10.0, Priority.LOW: 5.0}
+
+
+class _FakeLoadSignal:
+    """Hand-set database-stress signal for driving the admission decision deterministically."""
+
+    def __init__(self, *, ratio: float, samples: int) -> None:
+        self._ratio = ratio
+        self._samples = samples
+
+    def stress_ratio_min(self) -> float:
+        return self._ratio
+
+    def stress_ratio_avg(self) -> float:
+        return self._ratio
+
+    def sample_count(self) -> int:
+        return self._samples
+
+
+# A ratio of 1.0 (database at its best) is below every threshold, so the stress trigger stays
+# quiet and never sheds — leaving CoDel and the backstop as the only shed mechanisms here.
+_UNSTRESSED = _FakeLoadSignal(ratio=1.0, samples=1_000_000)
+
+
+def _backstop(value: int) -> dict[Priority, int]:
+    """A uniform per-class backstop cap."""
+    return dict.fromkeys(Priority, value)
+
 
 def _rejected_total() -> float:
     """Sum ``rejected_total`` across every priority class and shed reason."""
@@ -83,7 +115,10 @@ def _build_app() -> FastAPI:
         interval=0.02,
         # A large HIGH target keeps the interactive stream admitted while LOW is shed.
         high_target_multiplier=20.0,
-        backstop_max_waiters=1000,
+        backstop_max_waiters=_backstop(1000),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=1,
     )
     app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
@@ -140,7 +175,10 @@ async def test_all_admitted_when_capacity_available(priority: str) -> None:
         target=0.005,
         interval=0.1,
         high_target_multiplier=4.0,
-        backstop_max_waiters=1000,
+        backstop_max_waiters=_backstop(1000),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=1,
     )
     app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
@@ -172,7 +210,10 @@ async def test_shed_backstop_returns_rest_envelope() -> None:
         target=0.005,
         interval=0.1,
         high_target_multiplier=4.0,
-        backstop_max_waiters=0,
+        backstop_max_waiters=_backstop(0),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=7,
     )
     app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
@@ -221,7 +262,10 @@ async def test_shed_codel_returns_429() -> None:
         target=0.005,
         interval=1.0,
         high_target_multiplier=4.0,
-        backstop_max_waiters=1000,
+        backstop_max_waiters=_backstop(1000),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=3,
         clock=_StepClock(step=1.0),
     )
@@ -293,7 +337,10 @@ async def test_capacity_and_burst() -> None:
         target=0.005,
         interval=interval,
         high_target_multiplier=4.0,
-        backstop_max_waiters=1000,
+        backstop_max_waiters=_backstop(1000),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=1,
     )
     # The gauge is set at server wiring time, not by constructing a controller; set it the same
@@ -341,7 +388,10 @@ def _admit_app() -> FastAPI:
         target=0.005,
         interval=0.1,
         high_target_multiplier=4.0,
-        backstop_max_waiters=1000,
+        backstop_max_waiters=_backstop(1000),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=1,
     )
     app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
@@ -361,7 +411,10 @@ def _backstop_app() -> FastAPI:
         target=0.005,
         interval=0.1,
         high_target_multiplier=4.0,
-        backstop_max_waiters=0,
+        backstop_max_waiters=_backstop(0),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=1,
     )
     app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
@@ -421,7 +474,10 @@ async def test_metrics() -> None:
         target=0.005,
         interval=1.0,
         high_target_multiplier=4.0,
-        backstop_max_waiters=1000,
+        backstop_max_waiters=_backstop(1000),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=1,
         clock=_StepClock(step=1.0),
     )
@@ -493,7 +549,10 @@ def _shed_everything_controller() -> AdmissionController:
         target=0.005,
         interval=0.1,
         high_target_multiplier=4.0,
-        backstop_max_waiters=0,
+        backstop_max_waiters=_backstop(0),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=1,
     )
 
@@ -571,7 +630,10 @@ async def test_handler_exception_releases_slot() -> None:
         target=0.005,
         interval=0.1,
         high_target_multiplier=4.0,
-        backstop_max_waiters=1000,
+        backstop_max_waiters=_backstop(1000),
+        stress_signal=_UNSTRESSED,
+        stress_thresholds=_THRESHOLDS,
+        stress_min_samples=0,
         retry_after=1,
     )
     app.add_middleware(AdmissionMiddleware, controller=controller, enabled=True)
