@@ -81,7 +81,11 @@ for (const file of fs.readdirSync(DIR).sort()) {
   const full = path.join(DIR, file);
   const src = fs.readFileSync(full, "utf8");
   const fm = src.match(/^---\n([\s\S]*?)\n---\n/);
-  if (!fm) { console.warn(`SKIP (no frontmatter): ${file}`); continue; }
+  if (!fm) {
+    if (CHECK) { console.error(`MISSING frontmatter: ${file} → no frontmatter block`); missing++; }
+    else console.warn(`SKIP (no frontmatter): ${file}`);
+    continue;
+  }
 
   const has = (k) => new RegExp(`^${k}:`, "m").test(fm[1]);
   const body = src.slice(fm[0].length);
@@ -97,8 +101,9 @@ for (const file of fs.readdirSync(DIR).sort()) {
   }
   if (!has("release_type")) additions.push(`release_type: ${type}`);
   if (!has("description")) {
-    const desc = draftDescription(body, type).replace(/"/g, "'");
-    additions.push(`description: "${desc}"`);
+    // Serialize via JSON.stringify so backslashes/quotes in the drafted text
+    // stay valid YAML (a plain quoted interpolation would only escape `"`).
+    additions.push(`description: ${JSON.stringify(draftDescription(body, type))}`);
   }
 
   if (additions.length === 0) continue;
