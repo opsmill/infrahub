@@ -73,7 +73,7 @@ When one component or one metric cannot be determined (a source is unreachable, 
 - **FR-005**: Each component MUST attempt to determine its own resources, retrying a bounded number of times, before reporting; if determination still fails it MUST report no value for the affected fields. The worker aggregate MUST sum whatever workers reported (an undercount is acceptable) while the worker count MUST continue to reflect all active workers, so an undercount is detectable.
 - **FR-006**: Each resource metric MUST be collected independently, so the failure of any one metric yields no value for only that field and never omits other fields or prevents the snapshot from being produced and stored.
 - **FR-007**: The resource-allocation metrics MUST be present in the locally stored snapshot regardless of whether the deployment has opted out of remote telemetry transmission.
-- **FR-008**: The telemetry payload version MUST be incremented, and every new field MUST be additive, leaving all existing fields unchanged.
+- **FR-008**: All payload changes MUST be additive — no existing field renamed, removed, or retyped. The payload version identifier MUST be incremented only after the receiving service confirms it tolerates the new fields; until then the new fields ship additively under the existing version, so existing ingestion is never broken.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -85,8 +85,8 @@ When one component or one metric cannot be determined (a source is unreachable, 
 
 ### Measurable Outcomes
 
-- **SC-001**: For 100% of deployments running the release, a single telemetry snapshot contains the allocated cores and memory for the database, the API server, and the workers, enabling a tier comparison with no customer contact.
-- **SC-002**: A reviewer can determine whether a deployment's allocated database cores exceed its contracted tier from one snapshot, in zero customer round-trips.
+- **SC-001**: For 100% of deployments running the release, a single telemetry snapshot contains the CPU cores available to (and, once enforced, assigned to) the database, the API server, and the workers, plus their memory — enabling a tier comparison with no customer contact.
+- **SC-002**: A reviewer can determine whether the database cores available to a deployment exceed its contracted tier from one snapshot, in zero customer round-trips.
 - **SC-003**: The metrics are available for offline / air-gapped deployments (approximately 75% of the customer base) from the locally retained snapshot, requiring no network transmission.
 - **SC-004**: A failure in any single resource source reduces a snapshot's resource coverage by at most one field, and never prevents the snapshot from being produced or stored.
 - **SC-005**: The change removes or alters no field already present in the telemetry payload; every field previously emitted is still emitted unchanged.
@@ -101,6 +101,7 @@ When one component or one metric cannot be determined (a source is unreachable, 
 - **Retries**: a small, bounded number of retries is sufficient for a component to read its own resources; beyond that, an undercount is preferred over blocking or failing the snapshot.
 - **Receiving service** (cross-team dependency): the telemetry-receiving service will be updated to tolerate the new section and the payload-version increment. Until then, additive-only fields and the version bump keep existing ingestion working.
 - **No new third-party dependency** is required; existing platform capabilities are sufficient to read the metrics.
+- **Net-new vs the existing payload**: the current payload already reports database cores-available, database memory, and the worker count. This feature's net-new contribution is the API-server and worker CPU/RAM figures and the forward-compatible `assigned` fields; the database row reuses numbers already collected.
 
 ## Out of Scope
 

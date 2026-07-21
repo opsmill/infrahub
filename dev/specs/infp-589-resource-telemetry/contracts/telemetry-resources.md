@@ -51,6 +51,7 @@ The receiving service MUST tolerate this before deployments on the new release s
 - **All `cores_assigned` fields are `null` in this release** because Infrahub does not enforce core limits yet. They are live reads that self-populate once a limit is configured: the database reads the Neo4j `server.cypher.parallel.worker_limit` setting (`0`/auto → `null` today); server and workers read their container CPU quota (unlimited → `null`). A consumer should expect `null` here today and real integers once enforcement ships — no payload-shape change at that point.
 - **`workers.count`** is the number of active worker processes and is always an integer. It MAY exceed the number of hosts that contributed to the aggregate (undercount signal): if `count` > contributing hosts, some workers did not report resources this cycle.
 - **Aggregates** (`server`, `workers`) are summed over **distinct hosts**, so multiple processes in one container are counted once.
+- The per-process **host identifier** used for that deduplication is internal to the producer and is **never** emitted in the payload — only the aggregate is sent.
 
 ## Backward/forward compatibility
 
