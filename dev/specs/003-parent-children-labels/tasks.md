@@ -57,7 +57,7 @@ description: "Task list for peer-derived parent/children relationship labels"
 - [X] T010 [P] [US1] Route the sort-picker item label through the rule in `frontend/app/src/entities/nodes/sort/ui/add-sort/add-sort-picker.tsx` (line ~56). Reuse the already-resolved `peerSchema` (line ~50).
 - [X] T011 [P] [US1] Route the sortable-field label through the rule in `frontend/app/src/entities/nodes/sort/ui/hooks/use-sortable-fields.ts` (line ~54). Reuse the already-resolved `peerSchema` (lines ~46-51). Leave the attribute path (line ~39) untouched.
 - [X] T012 [P] [US1] Route the filter-form heading through the rule in `frontend/app/src/entities/nodes/object/ui/filters/relationship-filter-form.tsx` (line ~82). Add `useSchema(relationshipSchema.peer)`.
-- [ ] T013 [US1] Add a Playwright E2E in `frontend/app/tests/e2e/objects/hierarchical-relationship-label.spec.ts` that navigates to a hierarchical object with **distinct** parent/children peers (Location `Region`→`Site`) and asserts the parent field / children tab render the peer label, not "Parent"/"Children". (Depends on T004, T007 at minimum.)
+- [X] T013 [US1] Add a Playwright E2E in `frontend/app/tests/e2e/objects/hierarchical-relationship-label.spec.ts` that navigates to a hierarchical object with **distinct** parent/children peers (Location `Region`→`Site`) and asserts the parent field / children tab render the peer label, not "Parent"/"Children". (Depends on T004, T007 at minimum.)
 
 **Checkpoint**: All five surfaces show the peer label consistently; MVP complete.
 
