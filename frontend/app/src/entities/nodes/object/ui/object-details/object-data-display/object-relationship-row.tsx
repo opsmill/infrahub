@@ -17,6 +17,8 @@ import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
+import { getRelationshipDisplayLabel } from "@/entities/schema/domain/rules/get-relationship-display-label";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface ObjectRelationshipRowProps {
   relationshipSchema: RelationshipSchema;
@@ -71,6 +73,7 @@ function RelationshipOneRow({
 }: RelationshipOneRowProps) {
   const relatedNode = relationshipData.node;
   const relationshipProperties = relationshipData.properties;
+  const { schema: peerSchema } = useSchema(relationshipSchema.peer);
 
   return (
     <ObjectDataRow
@@ -96,7 +99,9 @@ function RelationshipOneRow({
                 header={
                   onClickMetadata && (
                     <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
-                      <div className="font-semibold">{relationshipSchema.label}</div>
+                      <div className="font-semibold">
+                        {getRelationshipDisplayLabel(relationshipSchema, peerSchema)}
+                      </div>
 
                       <Tooltip message={permission.update.message ?? undefined}>
                         <Button

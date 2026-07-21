@@ -1,6 +1,4 @@
-import type { RelationshipSchema } from "@/shared/api/rest/types.generated";
-
-import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 /**
  * Resolve the label to display for a relationship.

@@ -32,6 +32,7 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { getRelationshipDisplayLabel } from "@/entities/schema/domain/rules/get-relationship-display-label";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -154,7 +155,7 @@ function SortableRelationshipColumnHeader({
     setCustomSort([sort]);
   };
 
-  const label = relationshipSchema.label ?? relationshipSchema.name;
+  const label = getRelationshipDisplayLabel(relationshipSchema, peerSchema);
 
   return (
     <ColumnHeaderMenu
