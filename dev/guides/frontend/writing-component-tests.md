@@ -173,6 +173,33 @@ test("adds item when pressing enter", async () => {
 });
 ```
 
+### Tooltip hover tests: park the pointer afterwards
+
+In browser mode the pointer position persists across tests in the same file.
+A test that ends with the pointer on a tooltip trigger leaves that tooltip
+open; after a layout shift in a later render, the stale overlay can cover a
+target and make its `hover()` fail actionability checks (symptom: a
+`TimeoutError` that only reproduces in full-file runs, never solo).
+
+After asserting a tooltip, park the pointer away from the trigger with
+`initPointerTracking(component.locator)` (from `tests/components/utils.ts`)
+so the tooltip closes before the next test renders. Example:
+`src/entities/preferences/ui/user-preferences-card.test.tsx`.
+
+### Asserting unauthorized messages
+
+`UnauthorizedScreen` renders the custom `unauthorizedMessage` (passed via
+`RequireGlobalPermission`) inside a collapsed `Accordion` — the message is
+not in the DOM until the accordion is expanded. Click the accordion title
+first:
+
+```tsx
+await component.getByText("You can't access this view").click();
+await expect
+  .element(component.getByText("You don't have permission to edit global preferences"))
+  .toBeVisible();
+```
+
 ## When to Mock
 
 Mock external dependencies that have side effects:
