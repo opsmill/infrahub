@@ -4,7 +4,7 @@ test.describe("/ipam - IP Prefix List Filtering", () => {
   test("should filter IP prefixes by search text and column filtering", async ({ page }) => {
     await page.goto("/ipam");
     await page.getByTestId("identifier-cell").getByRole("link", { name: "10.0.0.0/8" }).click();
-    await page.getByRole("link", { name: "Children" }).click();
+    await page.getByTestId("main-panel").getByRole("link", { name: "IP Prefix" }).click();
 
     await test.step("verify initial sub prefix list", async () => {
       await expect(
