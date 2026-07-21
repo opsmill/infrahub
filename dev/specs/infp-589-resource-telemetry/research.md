@@ -53,14 +53,14 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 - **Rationale**: `api_server` runs several gunicorn processes in one container sharing one cgroup; `git_agent` runs one process per container (`replicas: N`). Dedup-by-host counts each container's cores exactly once for both. See Complexity Tracking in the plan.
 - **Worker count**: unchanged — the existing `workers.total`/`active` (all worker processes by identity). The new `workers` resource fields are the git_agent fleet aggregate; no separate count field is added (D14).
 
-## D9 — Aggregation null-vs-zero and undercount rules
+## D9 — Aggregation null and undercount rules
 
 - **Decision**:
-  - Zero active workers → `count = 0`, aggregate fields `0` (measured-empty).
-  - Active workers exist but **no** host reported a given field → that aggregate field is `null` (unknown).
-  - Some hosts reported, some did not → **sum the reporters** (undercount tolerated per FR-005); `count` still reflects all active workers, so the discrepancy is detectable.
-  - For a field where any *contributing* host is `null` because it is genuinely unlimited (e.g. one worker host has no cgroup CPU quota) → the aggregate for that field is `null`: a fleet containing an unlimited node has no finite assignment.
-- **Rationale**: keeps `null` = "unknown/unbounded" and `0` = "measured empty" consistent with `safe_metric`, and makes undercount observable rather than silent.
+  - No host reported a given field → that aggregate field is `null` (unknown). The aggregate has no worker count of its own to tell a genuinely empty fleet from one where nothing reported, so both collapse to `null`; in practice at least one worker always runs (telemetry itself runs in one).
+  - A host whose self-read failed writes a reading with every figure `null`; such a reading is **dropped** before summing, so it undercounts like a non-reporting host rather than nulling the whole field.
+  - Some hosts reported, some did not → **sum the reporters** (undercount tolerated per FR-005); the separately-tracked worker count still reflects all active workers, so the discrepancy is detectable.
+  - For a field where any *contributing* host is `null` because it is genuinely unbounded (e.g. one worker host has no cgroup CPU quota) → the aggregate for that field is `null`: a fleet containing an unbounded node has no finite total.
+- **Rationale**: keeps `null` meaning "unknown / unbounded" throughout (no separate measured-empty `0` the consumer would have to distinguish), and makes an undercount observable via the worker count rather than silently nulling the fleet.
 
 ## D10 — Payload version bump + receiving-service coordination
 

@@ -57,7 +57,7 @@ When one component or one metric cannot be determined (a source is unreachable, 
 ### Edge Cases
 
 - **No allocation limit configured**: when a component runs with no enforced compute limit, its "assigned" figures report no value (null) rather than being back-filled with the "available" amount, so an unlimited deployment is distinguishable from a limited one.
-- **No active workers**: when no workers are heartbeating, the worker count is zero and the aggregated worker resources are zero (measured-empty), not unknown.
+- **No active workers**: when no workers are heartbeating, the worker count is zero and the aggregated worker resources are no value (the aggregate cannot tell a genuinely empty fleet from one where nothing reported; in practice at least one worker always runs).
 - **Database unreachable**: the database resource figures degrade to no value while the rest of the snapshot is still produced.
 - **Consumer on an older payload version**: the receiving service must tolerate the new section; the version increment and additive-only fields let older ingestion ignore what it does not recognise rather than break.
 - **Partial worker reporting**: some workers report and some do not — the aggregate reflects only reporters, the count reflects all active workers.

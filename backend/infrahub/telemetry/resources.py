@@ -80,7 +80,7 @@ class _StaticResources:
 def _read_text_file(path: Path) -> str | None:
     try:
         return path.read_text().strip()
-    except OSError:
+    except (OSError, ValueError):
         return None
 
 
@@ -221,16 +221,34 @@ def _sum_over_hosts(values: list[int | None]) -> int | None:
     return sum(value for value in values if value is not None)
 
 
+def _is_failed_reading(reading: WorkerResourceReading) -> bool:
+    """A reading carrying a host but no figure at all is a failed self-read.
+
+    A healthy host always reports its logical CPU count and memory capacity; only a
+    read that failed after its retries carries every figure as ``None``. Such a
+    reading is not a real contribution and must not null the fleet.
+    """
+    return (
+        reading.processor_available is None
+        and reading.processor_assigned is None
+        and reading.memory_total is None
+        and reading.memory_available is None
+    )
+
+
 def aggregate(readings: Iterable[WorkerResourceReading]) -> ResourceAggregate:
     """Collapse per-process readings into one figure per field for a component.
 
     Readings are deduplicated by host (processes on one host report identical
-    values) and each field is then summed across the distinct hosts. Hosts that
-    never reported are simply absent, so the sum undercounts them — a gap the
-    separately-tracked worker count exposes.
+    values) and each field is then summed across the distinct hosts. A host whose
+    read failed (every figure ``None``) is skipped, and a host that never reported
+    is simply absent, so both undercount the sum — a gap the separately-tracked
+    worker count exposes — rather than nulling the whole fleet.
     """
     by_host: dict[str, WorkerResourceReading] = {}
     for reading in readings:
+        if _is_failed_reading(reading):
+            continue
         by_host.setdefault(reading.host, reading)
 
     deduped = list(by_host.values())
