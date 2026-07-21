@@ -72,3 +72,13 @@ Phase 0 decisions. Each resolves an unknown surfaced while planning against the 
 
 - **Decision**: Wrap each component's resource assembly (database row, server aggregate, workers aggregate) in the existing `safe_metric` helper so one failing source yields `null` for that block/field only and never blocks the snapshot (FR-006).
 - **Rationale**: single degradation boundary already established in the parent telemetry work; no new error-handling pattern.
+
+## D12 — Read static resource facts once per process
+
+- **Decision**: `host`, `cores_available`, `cores_assigned`, and `ram_available` are constant for a process's lifetime; read them once (at process start / first heartbeat) and cache them. Only `ram_used` is re-read on each heartbeat.
+- **Rationale**: avoids re-reading `/sys/fs/cgroup` and `os.cpu_count()` on every heartbeat (~15 s), keeps the liveness loop cheap, and bounds the FR-005 read-retries to process start rather than every cycle.
+
+## D13 — Additive-only is the invariant; the version bump is gated
+
+- **Decision**: The payload change is additive-only (no existing field renamed/removed/retyped). The `payload_format` identifier is **not** incremented until the receiving service confirms it tolerates the new `resources` block; until then the fields ship under the existing version.
+- **Rationale**: a version-strict receiver could break on an unexpected version string — the exact regression to avoid. Additive-under-existing-version guarantees current ingestion is untouched, and the bump becomes a coordinated follow-up rather than a unilateral producer change.

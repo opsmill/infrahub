@@ -84,7 +84,9 @@ backend/tests/unit/telemetry/
 └── test_aggregation.py  # NEW: host-dedup sum, undercount, null-vs-zero rules
 
 backend/tests/component/telemetry/
-└── test_resources.py    # NEW: end-to-end gather with synthesized worker heartbeats
+└── test_resources.py    # NEW: end-to-end gather with synthesized worker heartbeats;
+                         #   + regression: the new resources heartbeat key must NOT change
+                         #     the existing workers.total / workers.active counts
 ```
 
 **Structure Decision**: Single backend project. All changes are confined to `backend/infrahub/telemetry/` (a new `resources.py` reader, three new Pydantic models, gather wiring, a version bump) and one existing collaborator, `backend/infrahub/services/component.py` (heartbeat self-report + `WorkerInfo` extension). No new top-level package, no cross-cutting refactor. This honors Principle VII and the backend-component-design rule (the reader is a small, injectable unit; the gatherer already follows the DI/builder pattern established in the parent telemetry work).

@@ -58,7 +58,9 @@ Written by each process into `workers:resources:{component}:worker:{WORKER_IDENT
 | `ram_available` | `int \| None` | cgroup `memory.max` if set, else `psutil.virtual_memory().total`. |
 | `ram_used` | `int \| None` | cgroup `memory.current` if readable, else `psutil.virtual_memory().used`. |
 
-This is an internal transport shape (a small typed model in `resources.py`), deliberately **not** the payload model — the payload carries the aggregate, never the per-process rows (FR-004: no per-worker breakdown).
+This is an internal transport shape (a small typed model in `resources.py`), deliberately **not** the payload model — the payload carries the aggregate, never the per-process rows (FR-004: no per-worker breakdown). The `host` identifier exists only to deduplicate the aggregate and is never emitted in the payload.
+
+Static fields (`host`, `cores_available`, `cores_assigned`, `ram_available`) are read once per process and cached; only `ram_used` is refreshed on each heartbeat (D12).
 
 ## Field derivation per component
 
