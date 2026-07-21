@@ -16,6 +16,8 @@ from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 
+from .conftest import find_logged_event
+
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
@@ -75,11 +77,13 @@ class TestFailureDetection:
         component: InfrahubComponent,
         merging_branch_for_10m: Branch,
         default_branch: Branch,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         await cache.set(MERGE_LOCK_KEY, _lock_token(DEAD_WORKER))
         recovery = self._identifier(db, cache, component, default_branch)
 
-        flagged = await recovery.scan()
+        with caplog.at_level("WARNING", logger="infrahub"):
+            flagged = await recovery.scan()
 
         assert flagged == merging_branch_for_10m.name
         reloaded = await Branch.get_by_name(db=db, name=merging_branch_for_10m.name)
@@ -87,6 +91,11 @@ class TestFailureDetection:
         assert await MergeWriteBlocker(cache=cache).get() == MergeProtection(
             branch=merging_branch_for_10m.name, state=MergeProtectionState.MERGE_FAILED
         )
+        # Detection emits a structured entry an operator can locate by branch, carrying the dead worker.
+        logged = find_logged_event(caplog, event="merge.failure.detected", branch=merging_branch_for_10m.name)
+        assert logged is not None
+        assert logged["worker_id"] == DEAD_WORKER
+        assert logged["merge_started_at"] == merging_branch_for_10m.merge_started_at
 
     async def test_active_holder_is_not_flagged(
         self,

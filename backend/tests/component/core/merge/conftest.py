@@ -9,6 +9,8 @@ from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 
 if TYPE_CHECKING:
+    import pytest
+
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.services.component import InfrahubComponent
@@ -17,6 +19,20 @@ if TYPE_CHECKING:
 # Recovery finds the durably flagged branch directly, so the liveness grace period is irrelevant to
 # most tests; those that exercise the MERGING liveness gate override it per-call.
 GRACE_PERIOD_SECONDS = 180
+
+
+def find_logged_event(caplog: pytest.LogCaptureFixture, *, event: str, branch: str) -> dict | None:
+    """Return the structured payload of a captured log entry with the given event name and branch.
+
+    Structured logs are captured as the event dict on the record, so the returned mapping carries the
+    event's bound fields (worker id, timestamps, ...) for the caller to assert on. Returns ``None`` when
+    no matching entry was captured.
+    """
+    for record in caplog.records:
+        message = record.msg
+        if isinstance(message, dict) and message.get("event") == event and message.get("branch") == branch:
+            return message
+    return None
 
 
 class FailAtBranchResetRecoverer(MergeFailureRecoverer):

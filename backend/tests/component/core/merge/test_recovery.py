@@ -27,6 +27,7 @@ from .conftest import (
     FailAtLockReleaseRecoverer,
     build_identifier,
     build_recovery,
+    find_logged_event,
 )
 
 if TYPE_CHECKING:
@@ -256,6 +257,7 @@ class TestRecovery:
         register_core_models_schema: SchemaBranch,
         cache: MemoryCache,
         component: InfrahubComponent,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         branch = Branch(
             name="recovery-failed-step",
@@ -275,7 +277,8 @@ class TestRecovery:
             cache=cache,
         )
 
-        report = await recovery.recover()
+        with caplog.at_level("ERROR", logger="infrahub"):
+            report = await recovery.recover()
 
         assert report.outcome == RecoveryOutcome.FAILED
         assert report.branch == branch.name
@@ -283,6 +286,8 @@ class TestRecovery:
         reloaded = await Branch.get_by_name(db=db, name=branch.name)
         assert reloaded.status == BranchStatus.MERGE_FAILED
         assert await blocker.get() == MergeProtection(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+        # The failure is observable: a locatable entry records which branch's recovery failed.
+        assert find_logged_event(caplog, event="merge.recovery.failed", branch=branch.name) is not None
 
     async def test_lock_release_failure_holds_protection_and_lock(
         self,
@@ -403,6 +408,7 @@ class TestRecovery:
         register_core_models_schema: SchemaBranch,
         cache: MemoryCache,
         component: InfrahubComponent,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         branch = Branch(
             name="recovery-named-target",
@@ -415,13 +421,17 @@ class TestRecovery:
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
         recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
-        report = await recovery.recover(branch_name=branch.name)
+        with caplog.at_level("INFO", logger="infrahub"):
+            report = await recovery.recover(branch_name=branch.name)
 
         assert report.outcome == RecoveryOutcome.RECOVERED
         assert report.branch == branch.name
         reloaded = await Branch.get_by_name(db=db, name=branch.name)
         assert reloaded.status == BranchStatus.OPEN
         assert await blocker.get() is None
+        # A completed recovery brackets its work with locatable start and completion entries.
+        assert find_logged_event(caplog, event="merge.recovery.started", branch=branch.name) is not None
+        assert find_logged_event(caplog, event="merge.recovery.completed", branch=branch.name) is not None
 
     async def test_named_branch_that_is_not_recoverable_leaves_other_markers(
         self,

@@ -100,10 +100,13 @@ class MergeFailureIdentifier:
             await branch.save(db=self.db)
             registry.branch[branch.name] = branch
             await self.merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
+
+            worker_id = await self.merge_lock_holder()
             log.warning(
-                "Detected a failed merge; holding write protection until recovery",
+                "merge.failure.detected",
                 branch=branch.name,
                 merge_started_at=branch.merge_started_at,
+                worker_id=worker_id,
             )
             return branch.name
 
