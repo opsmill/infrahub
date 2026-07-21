@@ -11,8 +11,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
-from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer, RecoveryOutcome
+from infrahub.core.merge.failure_recoverer import RecoveryOutcome
 from infrahub.core.merge.merge_locker import MERGE_LOCK_KEY
 from infrahub.core.merge.write_blocker import MergeProtection, MergeProtectionState, MergeWriteBlocker
 from infrahub.core.node import Node
@@ -23,39 +22,22 @@ from infrahub.worker import WORKER_IDENTITY
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 
+from .conftest import (
+    FailAtBranchResetRecoverer,
+    FailAtLockReleaseRecoverer,
+    build_identifier,
+    build_recovery,
+)
+
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 DEAD_WORKER = "dead-worker"
-GRACE_PERIOD_SECONDS = 180
 
 
 def _lock_token(worker_id: str) -> str:
     return f"{Timestamp().to_string()}::{worker_id}"
-
-
-class _FailAtBranchResetRecoverer(MergeFailureRecoverer):
-    """Real recoverer that raises while resetting the branch, after the graph rollback has run.
-
-    Reproduces a recovery interrupted before the branch is reopened and the protection lifted, so the
-    branch stays flagged and protected for a re-run.
-    """
-
-    async def _reset_branch(self, branch: Branch) -> None:
-        raise RuntimeError("branch reset failed")
-
-
-class _FailAtLockReleaseRecoverer(MergeFailureRecoverer):
-    """Real recoverer whose merge-lock release fails, before the branch is reopened.
-
-    Reproduces a cache backend that cannot drop the stale lock key. The failure must not be swallowed:
-    a held lock blocks every future merge, so recovery must report failure and leave the branch flagged,
-    the protection held and the lock in place for a re-run.
-    """
-
-    async def _release_merge_lock(self) -> None:
-        raise RuntimeError("lock release failed")
 
 
 class TestRecovery:
@@ -74,45 +56,6 @@ class TestRecovery:
         await component.refresh_heartbeat()
         return component
 
-    def _build_identifier(
-        self,
-        db: InfrahubDatabase,
-        cache: MemoryCache,
-        component: InfrahubComponent,
-        default_branch: Branch,
-        grace_period_seconds: int = GRACE_PERIOD_SECONDS,
-    ) -> MergeFailureIdentifier:
-        return MergeFailureIdentifier(
-            db=db,
-            cache=cache,
-            component=component,
-            merge_write_blocker=MergeWriteBlocker(cache=cache),
-            default_branch=default_branch,
-            grace_period_seconds=grace_period_seconds,
-        )
-
-    def _build_recovery(
-        self,
-        db: InfrahubDatabase,
-        cache: MemoryCache,
-        component: InfrahubComponent,
-        default_branch: Branch,
-        grace_period_seconds: int = GRACE_PERIOD_SECONDS,
-    ) -> MergeFailureRecoverer:
-        return MergeFailureRecoverer(
-            db=db,
-            merge_write_blocker=MergeWriteBlocker(cache=cache),
-            identifier=self._build_identifier(
-                db=db,
-                cache=cache,
-                component=component,
-                default_branch=default_branch,
-                grace_period_seconds=grace_period_seconds,
-            ),
-            default_branch=default_branch,
-            cache=cache,
-        )
-
     async def test_no_failure_reports_nothing_to_recover(
         self,
         db: InfrahubDatabase,
@@ -120,7 +63,7 @@ class TestRecovery:
         cache: MemoryCache,
         component: InfrahubComponent,
     ) -> None:
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
 
         report = await recovery.recover()
 
@@ -138,7 +81,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch="branch-removed-out-of-band", state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         report = await recovery.recover()
 
         assert report.outcome == RecoveryOutcome.ORPHANED_CLEARED
@@ -164,7 +107,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         report = await recovery.recover()
 
         assert report.outcome == RecoveryOutcome.ORPHANED_CLEARED
@@ -192,7 +135,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
 
-        recovery = self._build_recovery(
+        recovery = build_recovery(
             db=db, cache=cache, component=component, default_branch=default_branch, grace_period_seconds=0
         )
         report = await recovery.recover()
@@ -224,7 +167,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
 
         # Preview reports the branch as recoverable and makes no changes.
         preview = await recovery.preview()
@@ -265,7 +208,7 @@ class TestRecovery:
         with pytest.raises(MergeRecoveryRequiredError, match=re.escape(MERGE_RECOVERY_REQUIRED_MESSAGE)):
             await checker.check_merging_status(branch=branch)
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         report = await recovery.recover()
         assert report.outcome == RecoveryOutcome.RECOVERED
 
@@ -295,7 +238,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
 
-        recovery = self._build_recovery(
+        recovery = build_recovery(
             db=db, cache=cache, component=component, default_branch=default_branch, grace_period_seconds=0
         )
         report = await recovery.preview()
@@ -324,10 +267,10 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = _FailAtBranchResetRecoverer(
+        recovery = FailAtBranchResetRecoverer(
             db=db,
             merge_write_blocker=blocker,
-            identifier=self._build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
+            identifier=build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
             default_branch=default_branch,
             cache=cache,
         )
@@ -361,10 +304,10 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = _FailAtLockReleaseRecoverer(
+        recovery = FailAtLockReleaseRecoverer(
             db=db,
             merge_write_blocker=blocker,
-            identifier=self._build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
+            identifier=build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
             default_branch=default_branch,
             cache=cache,
         )
@@ -399,7 +342,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGING)
 
-        recovery = self._build_recovery(
+        recovery = build_recovery(
             db=db, cache=cache, component=component, default_branch=default_branch, grace_period_seconds=0
         )
 
@@ -445,7 +388,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         report = await recovery.recover()
 
         assert report.outcome == RecoveryOutcome.RECOVERED
@@ -471,7 +414,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         report = await recovery.recover(branch_name=branch.name)
 
         assert report.outcome == RecoveryOutcome.RECOVERED
@@ -506,7 +449,7 @@ class TestRecovery:
         blocker = MergeWriteBlocker(cache=cache)
         await blocker.set(branch=failed_branch.name, state=MergeProtectionState.MERGE_FAILED)
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         report = await recovery.recover(branch_name=healthy_branch.name)
 
         assert report.outcome == RecoveryOutcome.NOTHING_TO_RECOVER

@@ -14,8 +14,7 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
-from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer, RecoveryOutcome
+from infrahub.core.merge.failure_recoverer import RecoveryOutcome
 from infrahub.core.merge.write_blocker import MergeProtectionState, MergeWriteBlocker
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
@@ -25,12 +24,11 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.db_validation import count_branch_edges_at, get_node_metadata, verify_graph
 
+from .conftest import FailAtBranchResetRecoverer, build_identifier, build_recovery
+
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-# Recovery finds the durably flagged branch directly, so the liveness grace period is irrelevant here.
-GRACE_PERIOD_SECONDS = 180
 
 
 async def _branch_edge_fingerprint(db: InfrahubDatabase, branch_name: str) -> list[tuple]:
@@ -64,17 +62,6 @@ async def _branch_edge_fingerprint(db: InfrahubDatabase, branch_name: str) -> li
         )
         for row in result
     )
-
-
-class _FailAtBranchResetRecoverer(MergeFailureRecoverer):
-    """Real recoverer that raises while resetting the branch, after the graph rollback has run.
-
-    Reproduces a recovery interrupted after the rollback lands but before the branch is reopened, so
-    the branch stays flagged and protected for a re-run.
-    """
-
-    async def _reset_branch(self, branch: Branch) -> None:
-        raise RuntimeError("branch reset failed")
 
 
 class _MidMergeFailingDiffMerger(DiffMerger):
@@ -155,29 +142,6 @@ class TestRecoveryRollback:
             original_branched_from=original_branched_from,
         )
 
-    def _build_identifier(
-        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, default_branch: Branch
-    ) -> MergeFailureIdentifier:
-        return MergeFailureIdentifier(
-            db=db,
-            cache=cache,
-            component=component,
-            merge_write_blocker=MergeWriteBlocker(cache=cache),
-            default_branch=default_branch,
-            grace_period_seconds=GRACE_PERIOD_SECONDS,
-        )
-
-    def _build_recovery(
-        self, db: InfrahubDatabase, cache: MemoryCache, component: InfrahubComponent, default_branch: Branch
-    ) -> MergeFailureRecoverer:
-        return MergeFailureRecoverer(
-            db=db,
-            merge_write_blocker=MergeWriteBlocker(cache=cache),
-            identifier=self._build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
-            default_branch=default_branch,
-            cache=cache,
-        )
-
     async def _flag_merge_failed(
         self,
         db: InfrahubDatabase,
@@ -236,7 +200,7 @@ class TestRecoveryRollback:
             cache=cache,
         )
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         report = await recovery.recover()
 
         assert report.outcome == RecoveryOutcome.RECOVERED
@@ -302,10 +266,10 @@ class TestRecoveryRollback:
         )
 
         # First run: the rollback lands, then the branch reset fails, so the branch stays flagged.
-        failing = _FailAtBranchResetRecoverer(
+        failing = FailAtBranchResetRecoverer(
             db=db,
             merge_write_blocker=blocker,
-            identifier=self._build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
+            identifier=build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
             default_branch=default_branch,
             cache=cache,
         )
@@ -319,7 +283,7 @@ class TestRecoveryRollback:
         assert await blocker.get() is not None
 
         # A full re-run re-detects the branch; the second rollback is a safe no-op and it finishes.
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         second = await recovery.recover()
 
         assert second.outcome == RecoveryOutcome.RECOVERED
@@ -376,7 +340,7 @@ class TestRecoveryRollback:
             cache=cache,
         )
 
-        recovery = self._build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
+        recovery = build_recovery(db=db, cache=cache, component=component, default_branch=default_branch)
         report = await recovery.recover()
 
         assert report.outcome == RecoveryOutcome.RECOVERED
