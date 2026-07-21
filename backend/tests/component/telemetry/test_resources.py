@@ -18,9 +18,10 @@ from infrahub.core import registry
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.telemetry.constants import TELEMETRY_VERSION
+from infrahub.telemetry.constants import TELEMETRY_VERSION, RemoteSendStatus
+from infrahub.telemetry.repository import TelemetrySnapshotRepository
 from infrahub.telemetry.resources import WorkerResourceReading
-from infrahub.telemetry.tasks import build_anonymous_telemetry_gatherer
+from infrahub.telemetry.tasks import build_anonymous_telemetry_gatherer, send_telemetry_push
 from infrahub.workers.dependencies import (
     build_component,
     clear_singletons,
@@ -190,3 +191,85 @@ async def test_payload_additions_are_backward_compatible(resource_environment: M
     # Stable identifiers are untouched by the additions.
     assert dumped["infrahub_version"] == __version__
     assert dumped["deployment_id"] == "test-deployment"
+
+
+async def test_optout_snapshot_carries_resources_without_transmission(
+    db: InfrahubDatabase,
+    resource_environment: MemoryCache,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Opted out: the resource figures reach the local snapshot and nothing is transmitted.
+
+    The whole payload, resource fields included, is assembled before the store and
+    opt-out branch, so with remote transmission disabled the flow persists the
+    snapshot and marks it skipped rather than posting it. The git_agent, api_server,
+    and database figures must all survive into that stored payload.
+    """
+    cache = resource_environment
+    monkeypatch.setattr(config.SETTINGS.main, "telemetry_optout", True)
+
+    # Two git_agent hosts sum; one api_server host is counted once across its processes.
+    _seed_active(cache, "git_agent", "w1")
+    _seed_reading(
+        cache,
+        "git_agent",
+        "w1",
+        WorkerResourceReading(
+            host="git-host-1",
+            processor_available=4,
+            processor_assigned=None,
+            memory_total=8_000_000_000,
+            memory_available=6_000_000_000,
+        ),
+    )
+    _seed_active(cache, "git_agent", "w2")
+    _seed_reading(
+        cache,
+        "git_agent",
+        "w2",
+        WorkerResourceReading(
+            host="git-host-2",
+            processor_available=2,
+            processor_assigned=None,
+            memory_total=4_000_000_000,
+            memory_available=1_000_000_000,
+        ),
+    )
+    api_reading = WorkerResourceReading(
+        host="api-host",
+        processor_available=8,
+        processor_assigned=None,
+        memory_total=16_000_000_000,
+        memory_available=10_000_000_000,
+    )
+    _seed_reading(cache, "api_server", "w1", api_reading)
+    _seed_reading(cache, "api_server", "w2", api_reading)
+
+    # Identify this run's snapshot by set difference so leftover snapshots don't confuse the read-back.
+    repository = TelemetrySnapshotRepository(db=db)
+    before = {str(snapshot.uuid) for snapshot in await repository.get_list()}
+
+    await send_telemetry_push()
+
+    added = [snapshot for snapshot in await repository.get_list() if str(snapshot.uuid) not in before]
+    assert len(added) == 1
+    stored = added[0]
+
+    # Opted out: stored locally, marked skipped, never posted.
+    assert stored.remote_send_status == RemoteSendStatus.SKIPPED
+
+    payload = stored.data
+    # git_agent fleet summed across its two distinct hosts.
+    assert payload["workers"]["processor_available"] == 6
+    assert payload["workers"]["processor_assigned"] is None
+    assert payload["workers"]["memory_total"] == 12_000_000_000
+    assert payload["workers"]["memory_available"] == 7_000_000_000
+
+    # api_server host counted once, not per gunicorn process.
+    assert payload["server"]["processor_available"] == 8
+    assert payload["server"]["processor_assigned"] is None
+    assert payload["server"]["memory_total"] == 16_000_000_000
+    assert payload["server"]["memory_available"] == 10_000_000_000
+
+    # The database reports cores/memory but enforces no Cypher-parallelism cap.
+    assert payload["database"]["system_info"]["processor_assigned"] is None
