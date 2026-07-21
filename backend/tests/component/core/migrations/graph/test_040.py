@@ -43,10 +43,6 @@ class TestMigration040:
         )
         assert not migration_errors
 
-        # Fabricate the error state a concurrent migration race used to produce: for every node that just
-        # gained the attribute, copy the HAS_ATTRIBUTE path and the attribute's HAS_VALUE/IS_PROTECTED paths
-        # onto a second Attribute vertex (fresh uuid) pointing at the same value vertices. Deterministic,
-        # unlike racing the migration against itself, which does not reliably duplicate under CI load.
         await self._duplicate_attribute(db=db, branch=branch, attr_name="smell")
 
         # validate the error state
