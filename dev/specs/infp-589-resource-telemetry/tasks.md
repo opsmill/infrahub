@@ -63,8 +63,8 @@ Single backend project. Source under `backend/infrahub/`, tests under `backend/t
 
 **Independent Test**: Set `telemetry_optout = true`, run the flow, confirm the locally stored snapshot contains the new resource fields and nothing is transmitted.
 
-- [ ] T012 [P] [US2] Component test in `backend/tests/component/telemetry/test_resources.py`: with `telemetry_optout = true`, run `send_telemetry_push`, assert the stored snapshot carries the new resource fields (`workers.processor_*`/`memory_*`, the `server` block, `system_info.processor_assigned`) and `remote_send_status == SKIPPED` (no POST)
-- [ ] T013 [US2] Verify in `backend/infrahub/telemetry/tasks.py` that the resource fields are assembled during `gather()` (before the storage + opt-out branch) so they are always in the local snapshot; adjust ordering only if the test in T012 shows a gap
+- [x] T012 [P] [US2] Component test in `backend/tests/component/telemetry/test_resources.py`: with `telemetry_optout = true`, run `send_telemetry_push`, assert the stored snapshot carries the new resource fields (`workers.processor_*`/`memory_*`, the `server` block, `system_info.processor_assigned`) and `remote_send_status == SKIPPED` (no POST)
+- [x] T013 [US2] Verify in `backend/infrahub/telemetry/tasks.py` that the resource fields are assembled during `gather()` (before the storage + opt-out branch) so they are always in the local snapshot; adjust ordering only if the test in T012 shows a gap
 
 **Checkpoint**: Air-gapped deployments carry the metrics locally with no transmission.
 
