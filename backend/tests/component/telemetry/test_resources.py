@@ -7,6 +7,7 @@ once regardless of how many gunicorn processes report it, and the additions stay
 backward compatible with the existing payload.
 """
 
+import logging
 from collections.abc import AsyncGenerator
 from typing import Generator
 
@@ -18,10 +19,13 @@ from infrahub.core import registry
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.services.component import InfrahubComponent
+from infrahub.telemetry import database as telemetry_database
 from infrahub.telemetry.constants import TELEMETRY_VERSION, RemoteSendStatus
 from infrahub.telemetry.repository import TelemetrySnapshotRepository
-from infrahub.telemetry.resources import WorkerResourceReading
+from infrahub.telemetry.resources import ProcessResources, WorkerResourceReading
 from infrahub.telemetry.tasks import build_anonymous_telemetry_gatherer, send_telemetry_push
+from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
     build_component,
     clear_singletons,
@@ -29,6 +33,21 @@ from infrahub.workers.dependencies import (
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+
+
+class _AlwaysFailingProcessResources(ProcessResources):
+    """A resource reader whose self-read always fails, to drive the retry-then-null path.
+
+    The production reader is built to degrade unreadable sources to null rather than
+    raise, so it cannot be deterministically forced into the transient failure the
+    retry loop guards against (a control-group file rotated mid-read, a psutil
+    hiccup). This adapter stands in for that failure by raising on every attempt, so
+    the bounded retries are exhausted and the warning-then-null branch runs.
+    """
+
+    def read(self) -> WorkerResourceReading:
+        raise OSError("resource read unavailable")
+
 
 # The full set of `data` fields the payload emitted before resource telemetry; the
 # only additive top-level change is the `server` block.
@@ -273,3 +292,163 @@ async def test_optout_snapshot_carries_resources_without_transmission(
 
     # The database reports cores/memory but enforces no Cypher-parallelism cap.
     assert payload["database"]["system_info"]["processor_assigned"] is None
+
+
+async def test_database_processor_assigned_read_failure_nulls_only_that_field(
+    resource_environment: MemoryCache,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failing assigned read nulls only that field; the rest of the snapshot survives.
+
+    Feeding an unserializable value as the setting name makes the real Cypher settings
+    read fail at the database driver, so the assigned read raises for real rather than
+    returning the natural auto-is-null. Only ``processor_assigned`` degrades; the
+    JMX-derived figures and the whole snapshot are still produced.
+    """
+    monkeypatch.setattr(telemetry_database, "DB_WORKER_LIMIT_SETTING", object())
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
+        data = await gatherer.gather()
+
+    # The read genuinely raised and was caught (not merely the auto-is-null default).
+    assert any("Telemetry metric collection failed" in record.getMessage() for record in caplog.records)
+
+    # Only the assigned field is null; the independent JMX figures are intact.
+    assert data.database.system_info is not None
+    assert data.database.system_info.processor_assigned is None
+    assert data.database.system_info.processor_available > 0
+    assert data.database.system_info.memory_total > 0
+
+    # The snapshot is still fully assembled.
+    assert data.execution_time is not None
+    assert data.deployment_id == "test-deployment"
+
+
+async def test_worker_undercount_when_a_worker_does_not_report(resource_environment: MemoryCache) -> None:
+    """A worker that never reported its resources is still counted; the aggregate undercounts.
+
+    One git_agent worker reports a reading and a second is active but wrote no resource
+    key. The worker count reflects both, while the resource sum covers only the
+    reporter, so the shortfall is detectable against the count.
+    """
+    cache = resource_environment
+
+    _seed_active(cache, "git_agent", "w1")
+    _seed_reading(
+        cache,
+        "git_agent",
+        "w1",
+        WorkerResourceReading(
+            host="git-host-1",
+            processor_available=4,
+            processor_assigned=None,
+            memory_total=8_000_000_000,
+            memory_available=6_000_000_000,
+        ),
+    )
+    # A second active worker that never wrote a resources key.
+    _seed_active(cache, "git_agent", "w2")
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
+
+    # Both workers are counted...
+    assert data.workers.total == 2
+    assert data.workers.active == 2
+    # ...but the resource aggregate reflects only the one host that reported.
+    assert data.workers.processor_available == 4
+    assert data.workers.memory_total == 8_000_000_000
+    assert data.workers.memory_available == 6_000_000_000
+
+
+async def test_worker_processor_assigned_is_null_when_a_host_is_unbounded(resource_environment: MemoryCache) -> None:
+    """One unbounded host nulls the fleet's assigned cores while available still sums.
+
+    A fleet that contains a node with no enforced quota has no finite assignment, so
+    the summed assignment is null even though another host reports a bound; the
+    independent available figure still sums across both hosts.
+    """
+    cache = resource_environment
+
+    _seed_active(cache, "git_agent", "w1")
+    _seed_reading(
+        cache,
+        "git_agent",
+        "w1",
+        WorkerResourceReading(
+            host="git-host-1",
+            processor_available=4,
+            processor_assigned=4,
+            memory_total=8_000_000_000,
+            memory_available=6_000_000_000,
+        ),
+    )
+    _seed_active(cache, "git_agent", "w2")
+    _seed_reading(
+        cache,
+        "git_agent",
+        "w2",
+        WorkerResourceReading(
+            host="git-host-2",
+            processor_available=2,
+            processor_assigned=None,
+            memory_total=4_000_000_000,
+            memory_available=1_000_000_000,
+        ),
+    )
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
+
+    # The unbounded host nulls the fleet assignment...
+    assert data.workers.processor_assigned is None
+    # ...while the available cores still sum across both hosts.
+    assert data.workers.processor_available == 6
+
+
+async def test_self_read_failure_after_retries_logs_and_writes_null(
+    db: InfrahubDatabase,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An exhausted self-read logs a warning with component + source, then writes a null reading.
+
+    A reader that raises on every attempt exhausts the bounded retries; the heartbeat
+    must leave a traceable warning carrying the component and the failing source, then
+    write a null-valued reading so a worker that stops reporting leaves a trace rather
+    than only an aggregate undercount.
+    """
+    cache = MemoryCache()
+    component = InfrahubComponent(
+        cache=cache,
+        db=db,
+        message_bus=BusSimulator(),
+        component_type=ComponentType.GIT_AGENT,
+        process_resources=_AlwaysFailingProcessResources(),
+    )
+
+    with caplog.at_level(logging.WARNING, logger="infrahub"):
+        await component.refresh_heartbeat()
+
+    warnings = [
+        record
+        for record in caplog.records
+        if "Unable to read process resource allocation for telemetry" in record.getMessage()
+    ]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    # The warning identifies the component and the failing source so the gap is traceable.
+    assert "GIT_AGENT" in message
+    assert WORKER_IDENTITY in message
+    assert "resource read unavailable" in message
+
+    # After exhausted retries the heartbeat still writes a reading, with null figures.
+    stored = cache.storage[f"workers:resources:git_agent:worker:{WORKER_IDENTITY}"]
+    reading = WorkerResourceReading.model_validate_json(stored)
+    assert reading.processor_available is None
+    assert reading.processor_assigned is None
+    assert reading.memory_total is None
+    assert reading.memory_available is None
+    # The dedup key is still populated so the reading is attributable to a host.
+    assert reading.host
