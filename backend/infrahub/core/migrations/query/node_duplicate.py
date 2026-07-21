@@ -158,7 +158,6 @@ class NodeDuplicateQuery(Query):
 
         self.add_to_query(self.render_match())
 
-        # ruff: noqa: E501
         query = """
         CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
@@ -169,7 +168,9 @@ class NodeDuplicateQuery(Query):
         }
         WITH active_node
         WHERE is_active = TRUE
-        CREATE (new_node:Node:%(labels)s { uuid: active_node.uuid, kind: $new_node.kind, namespace: $new_node.namespace, branch_support: $new_node.branch_support })
+        CREATE (new_node:Node:%(labels)s {
+            uuid: active_node.uuid, kind: $new_node.kind, namespace: $new_node.namespace, branch_support: $new_node.branch_support
+        })
         WITH active_node, new_node
         // Set metadata on new Node vertex
         CALL (active_node, new_node) {
@@ -178,7 +179,16 @@ class NodeDuplicateQuery(Query):
             WITH active_node, new_node
             // set updated_by/at if we're on the default/global branch
             WHERE $set_metadata
+            SET active_node.previous_updated_at = CASE
+                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
+                ELSE active_node.previous_updated_at
+            END,
+            active_node.previous_updated_by = CASE
+                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
+                ELSE active_node.previous_updated_by
+            END
             SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            // new_node is created here, so it has no prior metadata to snapshot for rollback
             SET new_node.updated_at = $current_time, new_node.updated_by = $user_id
         }
 
