@@ -51,15 +51,6 @@ test.describe("/profile", () => {
         await expect(page.getByRole("link", { name: "Tokens" })).toBeHidden();
       });
     });
-
-    test("should redirect the legacy profile URL to the global preferences page", async ({
-      page,
-    }) => {
-      await page.goto("/profile/global-preferences");
-
-      await expect(page).toHaveURL(/\/global-preferences/);
-      await expect(page).not.toHaveURL(/\/profile/);
-    });
   });
 
   test.describe("when logged in as read-write account", () => {
