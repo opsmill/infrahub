@@ -112,7 +112,7 @@ export const getDisplayValue = (
   }
 
   if (attribute?.kind === "DateTime" && row[attribute?.name]?.value) {
-    return <DateDisplay date={row[attribute?.name]?.value} />;
+    return <DateDisplay date={row[attribute?.name]?.value} fullTimestamp />;
   }
 
   const textValue = getTextValue(row[attribute?.name]);

@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
-import { format } from "date-fns";
 
+import { DateDisplay } from "@/shared/components/display/date-display";
 import { Link } from "@/shared/components/ui/link";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
@@ -72,12 +72,7 @@ export const Event = (props: EventType) => {
       )}
     >
       <div className="flex items-center whitespace-nowrap font-medium text-gray-500 text-xs">
-        <Tooltip
-          message={format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}
-          nonInteractiveTrigger
-        >
-          <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
-        </Tooltip>
+        <DateDisplay date={props.occurred_at} fullTimestamp />
       </div>
 
       <div className="item-center col-span-5 flex gap-4 overflow-hidden">
