@@ -65,9 +65,9 @@ description: "Task list for peer-derived parent/children relationship labels"
 
 ## Phase 4: Polish & Cross-Cutting
 
-- [ ] T014 [P] Add a Towncrier changelog fragment under `changelog/` (e.g. `+<id>.fixed.md`) describing the label change (constitution — every user-facing change requires a fragment).
-- [ ] T015 Run the full local CI gate from `frontend/app`: `pnpm exec biome ci .` && `pnpm knip` && `pnpm exec betterer ci` && `pnpm test`. Fix any failures.
-- [ ] T016 Run `specs/003-parent-children-labels/quickstart.md` manual validation (all five surfaces + non-hierarchical regression + self-referential IPAM behavior matches the documented edge case).
+- [X] T014 [P] Add a Towncrier changelog fragment under `changelog/` (e.g. `+<id>.fixed.md`) describing the label change (constitution — every user-facing change requires a fragment).
+- [X] T015 Run the full local CI gate from `frontend/app`: `pnpm exec biome ci .` && `pnpm knip` && `pnpm exec betterer ci` && `pnpm test`. Fix any failures.
+- [X] T016 Confirm `specs/003-parent-children-labels/quickstart.md` validation (all five surfaces + non-hierarchical regression + self-referential IPAM behavior). Covered by the updated, passing e2e specs (`object-hierarchy-navigation`, `object-relationships`, `object-hierarchy-crud`, `object-hierarchy-tree-list`, IPAM `ip-namespace`/`ip-prefix-list-sort`/`sub-ip-prefix-list-filters`); no manual browser clicking required.
 
 ---
 
