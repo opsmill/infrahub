@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 
+import { QSP } from "@/shared/config/qsp";
 import { store } from "@/shared/stores";
 
-import { IP_PREFIX_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
@@ -11,7 +12,7 @@ import {
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 
-import { generateNodeSchema } from "../../../tests/fake/schema";
+import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 
 const ipPrefixSchema = generateNodeSchema({
   kind: "BuiltinIPPrefix",
@@ -32,11 +33,11 @@ describe("getObjectDetailsUrl", () => {
     store.set(nodeSchemasAtom, [ipPrefixSchema]);
 
     const url = getObjectDetailsUrl("BuiltinIPPrefix", "prefix-1", [
-      { name: IPAM_QSP.NAMESPACE, value: "namespace-1" },
+      { name: QSP.IPAM_NAMESPACE, value: "namespace-1" },
     ]);
 
     expect(url).toContain("/ipam/BuiltinIPPrefix/prefix-1");
-    expect(url).toContain(`${IPAM_QSP.NAMESPACE}=namespace-1`);
+    expect(url).toContain(`${QSP.IPAM_NAMESPACE}=namespace-1`);
   });
 
   it("does not add a namespace param to an IP prefix link when none is provided", () => {

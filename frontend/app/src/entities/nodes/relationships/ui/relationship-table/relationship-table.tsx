@@ -1,8 +1,9 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
+import { QSP } from "@/shared/config/qsp";
 
-import { IP_NAMESPACE_GENERIC, IPAM_QSP } from "@/entities/ipam/constants";
+import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
@@ -15,8 +16,8 @@ import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queri
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";
 import { ToolbarDissociateAction } from "@/entities/nodes/relationships/ui/relationship-table/toolbar-dissociate-action";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export interface RelationshipTableProps extends UseObjectRelationshipsParams {}
 
@@ -58,7 +59,7 @@ export function RelationshipTable({
   // falling back to the default one.
   const identifierOverrideParams =
     parentSchema && isOfKind(IP_NAMESPACE_GENERIC, parentSchema)
-      ? [{ name: IPAM_QSP.NAMESPACE, value: parentId }]
+      ? [{ name: QSP.IPAM_NAMESPACE, value: parentId }]
       : undefined;
 
   const columns = [
