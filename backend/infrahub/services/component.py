@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import socket
 from typing import TYPE_CHECKING, Any
 
 from attr import Factory, dataclass
@@ -24,10 +23,15 @@ PRIMARY_API_SERVER = "workers:primary:api_server"
 WORKER_MATCH = re.compile(r":worker:([^:]+)")
 RESOURCE_COMPONENT_MATCH = re.compile(r"workers:resources:([^:]+):worker:")
 
-# The per-process resource read can transiently fail (a control-group file being
-# rotated, psutil hiccup); a few immediate retries cover that before the reading
+# The per-process resource read can transiently fail (a psutil hiccup, a momentary
+# hostname-lookup failure); a few immediate retries cover that before the reading
 # is written as null and the failure logged for traceability.
 RESOURCE_READ_MAX_ATTEMPTS = 3
+
+# Host stand-in written when the resource read fails outright; such a reading
+# carries no figures and is dropped from the aggregate, so the value is never
+# summed and only needs to be non-raising.
+_UNKNOWN_HOST = "unknown"
 
 log = get_logger()
 
@@ -156,7 +160,7 @@ class InfrahubComponent:
             worker_id=WORKER_IDENTITY,
             error=str(last_error),
         )
-        return WorkerResourceReading(host=socket.gethostname())
+        return WorkerResourceReading(host=_UNKNOWN_HOST)
 
     async def read_worker_resources(self) -> dict[str, dict[str, WorkerResourceReading]]:
         """Return the latest worker resource readings grouped by component and host.
