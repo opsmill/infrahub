@@ -210,31 +210,6 @@ def read_snapshot_file(path: str) -> GraphSnapshot:
     return GraphSnapshot.from_dict(json.loads(payload))
 
 
-async def restore_snapshot_over_bolt(uri: str, username: str, password: str, snapshot_path: str) -> None:
-    """Restore a snapshot file into a database reachable over Bolt.
-
-    Used to seed a running test stack's database from the host before its server boots, so the
-    server finds an initialized database and skips first-time initialization.
-    """
-    from neo4j import AsyncGraphDatabase
-
-    from infrahub import config
-    from infrahub.database import InfrahubDatabase
-
-    # Ensure settings are loaded (the caller may be a bare test host that never loaded config);
-    # the database name is read from settings while queries run on the explicit driver below.
-    config.SETTINGS.initialize_and_exit()
-
-    snapshot = read_snapshot_file(snapshot_path)
-    driver = AsyncGraphDatabase.driver(uri, auth=(username, password))
-    try:
-        database = InfrahubDatabase(driver=driver)
-        async with database.start_session() as db:
-            await restore_graph(db=db, snapshot=snapshot)
-    finally:
-        await driver.close()
-
-
 @contextmanager
 def deterministic_generation() -> Iterator[None]:
     """Patch the volatile inputs of a bootstrap (uuids, time, password salt) so the resulting graph is reproducible.

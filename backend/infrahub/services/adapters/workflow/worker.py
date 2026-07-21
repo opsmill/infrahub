@@ -28,11 +28,14 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
 
     @staticmethod
     async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
-        if is_initial_setup:
+        # The primary server ensures the task-manager deployments and triggers exist on every boot,
+        # not only on first-time initialization: a database restored from a snapshot has no
+        # first-time init (Root already exists) but still starts against a fresh task manager whose
+        # display-label/HFID triggers were never registered. Both setup flows are idempotent
+        # (force_update=True), so re-running them on a normal restart is safe.
+        if is_initial_setup or component_is_primary_server:
             await WorkflowWorkerExecution._setup_task_manager()
             await setup_task_manager_identifiers()
-        elif component_is_primary_server:
-            await WorkflowWorkerExecution._setup_task_manager()
 
     @staticmethod
     async def _setup_task_manager() -> None:

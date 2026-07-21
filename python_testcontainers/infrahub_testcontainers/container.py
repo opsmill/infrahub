@@ -6,7 +6,6 @@ import shutil
 import time
 import urllib.request
 import uuid
-from collections.abc import Callable  # noqa: TC003
 from dataclasses import dataclass, field
 from functools import cached_property
 from http import HTTPStatus
@@ -68,6 +67,9 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_SCHEMA_STRICT_MODE": "true",
     "INFRAHUB_TESTING_TASKMGR_API_WORKERS": "1",
     "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "0",
+    # Snapshot seeding (opt-in): off by default so the stack boots normally and runs first-time init.
+    "INFRAHUB_TESTING_DB_SNAPSHOT_ENABLED": "false",
+    "INFRAHUB_TESTING_DB_NEO4J_PLUGINS": "",
 }
 
 
@@ -83,6 +85,7 @@ class InfrahubDockerCompose(DockerCompose):
         directory: Path | None = None,
         version: str | None = None,
         deployment_type: str | None = None,
+        snapshot_path: Path | None = None,
     ) -> Self:
         if not directory:
             directory = Path.cwd()
@@ -100,7 +103,17 @@ class InfrahubDockerCompose(DockerCompose):
             deployment_type=deployment_type,
         )
         compose.create_docker_file(directory=directory)
-        compose.create_env_file(directory=directory, version=version)
+
+        # When a snapshot is provided, seed the database from it (skip first-time init): copy the
+        # artifact where the database mounts it and enable apoc + the one-shot seeding step.
+        extra_env: dict[str, str] = {}
+        if snapshot_path:
+            shutil.copy(snapshot_path, directory / "snapshot.json.gz")
+            extra_env = {
+                "INFRAHUB_TESTING_DB_SNAPSHOT_ENABLED": "true",
+                "INFRAHUB_TESTING_DB_NEO4J_PLUGINS": '["apoc"]',
+            }
+        compose.create_env_file(directory=directory, version=version, extra_env=extra_env)
 
         return compose
 
@@ -138,16 +151,23 @@ class InfrahubDockerCompose(DockerCompose):
         test_compose_file = directory / "docker-compose.yml"
         test_compose_file.write_bytes(compose_file.read_bytes())
 
-        for file in ["haproxy.cfg", "prometheus.yml"]:
+        for file in ["haproxy.cfg", "prometheus.yml", "snapshot_loader.cypher"]:
             config_file = current_directory / file
 
             test_config_file = directory / file
             test_config_file.write_bytes(config_file.read_bytes())
 
+        # The database always bind-mounts ./snapshot.json.gz; create an empty placeholder so the
+        # mount resolves even when seeding is disabled (the real artifact is copied in by init()).
+        placeholder = directory / "snapshot.json.gz"
+        if not placeholder.exists():
+            placeholder.write_bytes(b"")
+
         return test_compose_file
 
-    def create_env_file(self, directory: Path, version: str) -> Path:
+    def create_env_file(self, directory: Path, version: str, extra_env: dict[str, str] | None = None) -> Path:
         env_file = directory / ".env"
+        extra_env = extra_env or {}
 
         PROJECT_ENV_VARIABLES.update({"INFRAHUB_TESTING_IMAGE_VERSION": version})
         if os.environ.get("INFRAHUB_TESTING_ENTERPRISE"):
@@ -177,7 +197,9 @@ class InfrahubDockerCompose(DockerCompose):
 
         with env_file.open(mode="w", encoding="utf-8") as file:
             for key, value in PROJECT_ENV_VARIABLES.items():
-                env_var_value = os.environ.get(key, value)
+                # extra_env wins over the process environment (it carries the snapshot toggle the
+                # caller just enabled), which in turn overrides the built-in default.
+                env_var_value = extra_env.get(key, os.environ.get(key, value))
                 file.write(f"{key}={env_var_value}\n")
                 self.env_vars[key] = env_var_value
 
@@ -239,21 +261,6 @@ class InfrahubDockerCompose(DockerCompose):
             with urllib.request.urlopen(probe, timeout=30 + delay):  # noqa: S310 (fixed localhost URL)
                 pass
             consecutive_delayed = consecutive_delayed + 1 if time.monotonic() - start >= delay else 0
-
-    def start_with_snapshot(self, restore_callback: Callable[[InfrahubDockerCompose], None]) -> None:
-        """Start the stack with a pre-seeded database instead of running first-time initialization.
-
-        Brings up only the database service first (waiting for it to be healthy), invokes
-        ``restore_callback`` to load a snapshot into it, then brings up the remaining services. The
-        booting server finds an already-initialized database and skips first-time initialization.
-
-        ``restore_callback`` receives this compose object (e.g. to read the mapped database port via
-        ``get_services_port()``). The restore itself lives in the caller so this package stays
-        independent of the Infrahub backend.
-        """
-        self.start_container("database")
-        restore_callback(self)
-        self.start()
 
     def start_container(self, service_name: str | list[str]) -> None:
         """

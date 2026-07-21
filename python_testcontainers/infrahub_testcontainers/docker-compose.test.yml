@@ -52,6 +52,10 @@ services:
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/admin
+      # apoc is loaded only when seeding from a snapshot (empty = no plugins); apoc.load.json needs
+      # file import enabled, which neo4j tolerates even when the plugin is absent.
+      NEO4J_PLUGINS: ${INFRAHUB_TESTING_DB_NEO4J_PLUGINS:-}
+      NEO4J_apoc_import_file_enabled: "true"
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_dbms_security_auth__minimum__password__length: 4
       NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
@@ -61,6 +65,9 @@ services:
     volumes:
       - "database_data:/data"
       - "database_logs:/logs"
+      # Not read-only: the neo4j entrypoint chowns its import dir at startup, which a read-only
+      # bind mount rejects (only the throwaway per-run copy is affected, never the committed file).
+      - "./snapshot.json.gz:/var/lib/neo4j/import/core_bootstrap.json.gz"
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: wget -O /dev/null http://localhost:7474 || exit 1
@@ -71,6 +78,26 @@ services:
       - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
       - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
       - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
+
+  # One-shot: seed the database from the committed snapshot before the server boots (opt-in). When
+  # disabled it exits immediately, leaving the database empty for normal first-time initialization.
+  db-seed:
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.10.1-community}
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      INFRAHUB_TESTING_DB_SNAPSHOT_ENABLED: ${INFRAHUB_TESTING_DB_SNAPSHOT_ENABLED:-false}
+    volumes:
+      - "./snapshot_loader.cypher:/snapshot_loader.cypher:ro"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        if [ "$${INFRAHUB_TESTING_DB_SNAPSHOT_ENABLED}" = "true" ]; then
+        cypher-shell -a bolt://database:7687 -u neo4j -p admin --format plain -f /snapshot_loader.cypher;
+        else echo "snapshot seeding disabled; leaving database empty"; fi
+    restart: "no"
 
   task-manager:
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
@@ -197,6 +224,8 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      db-seed:
+        condition: service_completed_successfully
       message-queue:
         condition: service_healthy
       cache:
