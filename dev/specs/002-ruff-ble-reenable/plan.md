@@ -115,6 +115,8 @@ utilities/infrahub_load_tester.py               # 8 sites
 
 Justification-comment style (from repo guideline `dev/guidelines/backend/python.md` §Exception Handling): comment states *why the broad catch is required at this boundary* (keep-alive loop, best-effort cleanup, per-item migration continuation, auth degradation), placed on or immediately above the `except` line; suppression is always `# noqa: BLE001` (line-targeted, rule-targeted).
 
+**PR narrative** (critique finding P1/X2 — carry into the implementation report and PR description): lead with "BLE001 enforcement is now on; 78 sites resolved — 8 narrowed (all in tests/tooling, none in production runtime), 70 kept intentionally broad with per-site justification + `noqa`; zero production behavior change; 5 latent defects discovered during analysis are documented for follow-up, deliberately not fixed here." The 70/78 suppression ratio is the evidence the conservative treatment policy was followed — most sites are genuine defensive boundaries where the house guideline itself prescribes a documented broad catch.
+
 ## Complexity Tracking
 
 > No constitution violations — table intentionally empty.

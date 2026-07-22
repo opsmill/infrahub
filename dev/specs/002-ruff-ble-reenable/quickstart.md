@@ -74,6 +74,13 @@ git diff <base>..HEAD -- backend/infrahub/core/migrations/ \
 ## 6. Tests for touched modules (SC-005)
 
 ```bash
+# the two behavior-relevant tooling narrowings (tasks/release.py → InvalidVersion)
+uv run python -c "from packaging.version import Version; Version('1.2.3-foo')"
+# expected: raises packaging.version.InvalidVersion (proves the narrowed type
+# is exactly what non-standard versions raise)
+uv run invoke --list > /dev/null && echo "invoke imports OK"
+# expected: "invoke imports OK" (proves tasks/release.py still imports)
+
 # cheap tier — full backend unit suite
 uv run invoke backend.test-unit
 # expected: passes (same result as base branch)
@@ -95,3 +102,7 @@ uv run pytest backend/tests/component/core/schema/schema_branch/test_process_ide
 | `noqa: BLE001` count | equals data-model.md SUPPRESS count, each justified |
 | Migration/auth diffs | annotation-only |
 | Unit tests | green |
+
+**Rollback**: single-commit revert, or re-add `"BLE"` to the `[tool.ruff.lint]` ignore list — the code fixes remain valid either way (narrowed handlers and justified suppressions are correct with or without the rule active).
+
+**CI-only verification (accepted)**: the two `tests/integration/git/conftest.py` narrowings (`httpx.HTTPError`) are exercised only by CI's integration tier; if CI shows the poll loops now failing on something httpx-shaped that isn't `HTTPError`, fall back to the documented SUPPRESS treatment for those two sites (data-model.md Batch D).
