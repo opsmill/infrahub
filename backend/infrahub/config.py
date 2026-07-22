@@ -367,7 +367,7 @@ class DatabaseSettings(BaseSettings):
         ),
     )
     max_connection_pool_size: int = Field(
-        default=100,
+        default=50,
         ge=1,
         description="Maximum number of connections the driver keeps in its pool per remote address.",
     )
@@ -564,7 +564,7 @@ class ApiSettings(BaseSettings):
         default=1, ge=0, description="Value returned in the Retry-After header when a request is shed."
     )
     backpressure_max_concurrency_factor: float = Field(
-        default=1.0, gt=0, description="Scales the derived maximum admission concurrency."
+        default=0.5, gt=0, description="Scales the derived maximum admission concurrency."
     )
     backpressure_stress_window_seconds: float = Field(
         default=20.0,
@@ -577,12 +577,12 @@ class ApiSettings(BaseSettings):
         description="Reference-query samples required in the window before the stress signal gates shedding.",
     )
     backpressure_shed_low_stress_ratio: float = Field(
-        default=5.0,
+        default=10.0,
         ge=1,
         description="Database-stress ratio at or above which low-priority requests become eligible for shedding.",
     )
     backpressure_shed_medium_stress_ratio: float = Field(
-        default=20.0,
+        default=25.0,
         ge=1,
         description="Database-stress ratio at or above which medium-priority requests become eligible for shedding.",
     )

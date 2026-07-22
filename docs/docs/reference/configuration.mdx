@@ -54,11 +54,11 @@ Here are a few common methods of setting configuration:
 | `INFRAHUB_API_BACKPRESSURE_HIGH_TARGET_MULTIPLIER` | Multiplier applied to the CoDel target for the high-priority class. | number | 4.0 |
 | `INFRAHUB_API_BACKPRESSURE_BACKSTOP_MAX_WAITERS` | Per-class hard cap on queued waiters before requests are rejected. | integer | 1000 |
 | `INFRAHUB_API_BACKPRESSURE_RETRY_AFTER_SECONDS` | Value returned in the Retry-After header when a request is shed. | integer | 1 |
-| `INFRAHUB_API_BACKPRESSURE_MAX_CONCURRENCY_FACTOR` | Scales the derived maximum admission concurrency. | number | 1.0 |
+| `INFRAHUB_API_BACKPRESSURE_MAX_CONCURRENCY_FACTOR` | Scales the derived maximum admission concurrency. | number | 0.5 |
 | `INFRAHUB_API_BACKPRESSURE_STRESS_WINDOW_SECONDS` | Rolling window, in seconds, over which the database-stress signal is measured. | number | 20.0 |
 | `INFRAHUB_API_BACKPRESSURE_STRESS_MIN_SAMPLES` | Reference-query samples required in the window before the stress signal gates shedding. | integer | 5 |
-| `INFRAHUB_API_BACKPRESSURE_SHED_LOW_STRESS_RATIO` | Database-stress ratio at or above which low-priority requests become eligible for shedding. | number | 5.0 |
-| `INFRAHUB_API_BACKPRESSURE_SHED_MEDIUM_STRESS_RATIO` | Database-stress ratio at or above which medium-priority requests become eligible for shedding. | number | 20.0 |
+| `INFRAHUB_API_BACKPRESSURE_SHED_LOW_STRESS_RATIO` | Database-stress ratio at or above which low-priority requests become eligible for shedding. | number | 10.0 |
+| `INFRAHUB_API_BACKPRESSURE_SHED_MEDIUM_STRESS_RATIO` | Database-stress ratio at or above which medium-priority requests become eligible for shedding. | number | 25.0 |
 | `INFRAHUB_API_BACKPRESSURE_SHED_HIGH_STRESS_RATIO` | Database-stress ratio at or above which high-priority requests become eligible for shedding. | number | 100.0 |
 | `INFRAHUB_API_BACKPRESSURE_BACKSTOP_LOW_MULTIPLIER` | Scales the base backstop waiter cap for the low-priority class. | number | 0.5 |
 | `INFRAHUB_API_BACKPRESSURE_BACKSTOP_HIGH_MULTIPLIER` | Scales the base backstop waiter cap for the high-priority class. | number | 4.0 |
@@ -122,7 +122,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES_DELAY` | Delay to add when max_concurrent_queries is reached. | number | 0.01 |
 | `INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for each point-to-point path-traversal query. Point-to-point traversal runs many small queries one depth at a time, so a single query that exceeds this budget marks a doomed search: it is aborted and the shallower paths found so far are returned with a truncation depth, rather than the whole request failing. | number | 30 |
 | `INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT` | Server-side transaction timeout in seconds for reachable-nodes queries; the query is aborted once it is exceeded. | number | 75 |
-| `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE` | Maximum number of connections the driver keeps in its pool per remote address. | integer | 100 |
+| `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE` | Maximum number of connections the driver keeps in its pool per remote address. | integer | 50 |
 
 ## Broker
 
