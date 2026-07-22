@@ -29,11 +29,12 @@ No new data is created or persisted. This feature reads existing schema types al
 - **Location**: `frontend/app/src/entities/schema/domain/rules/get-relationship-display-label.ts`
 - **Signature**: `(relationshipSchema: RelationshipSchema, peerSchema?: ModelSchema | null) => string`
 - **Behavior**:
-  1. If `relationshipSchema.hierarchical` is truthy **and** `peerSchema?.label` is present → return `peerSchema.label`.
+  1. If `relationshipSchema.hierarchical` is truthy **and** `peerSchema?.label` is present **and** `peerSchema` is a concrete node (not a generic, via `isGenericSchema`) → return `peerSchema.label`.
   2. Otherwise → return `relationshipSchema.label ?? relationshipSchema.name`.
 - **Purity**: no store access, no side effects; peer schema is supplied by the caller.
 - **Invariants**:
   - Non-hierarchical relationships are behaviorally identical to the inline `label ?? name` expression it replaces (guarantees SC-002).
+  - When the peer is a generic, the generic "Parent"/"Children" label is kept (a generic's label is too broad to identify the related kind).
   - Never returns empty/undefined — `name` is always a string fallback.
 
 ## State / lifecycle

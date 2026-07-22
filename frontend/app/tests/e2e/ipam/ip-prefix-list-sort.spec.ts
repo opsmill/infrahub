@@ -52,7 +52,7 @@ test.describe("/ipam - IP Prefix List Sorting", () => {
     await test.step("open a prefix's children where available IPs are interleaved", async () => {
       await page.goto("/ipam");
       await page.getByTestId("identifier-cell").getByRole("link", { name: "10.0.0.0/8" }).click();
-      await page.getByTestId("main-panel").getByRole("link", { name: "IP Prefix" }).click();
+      await page.getByRole("link", { name: "Children" }).click();
 
       await expect(childPrefix).toBeVisible();
       await expect(availableRows.first()).toBeVisible();

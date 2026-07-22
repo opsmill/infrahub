@@ -18,10 +18,11 @@ function getRelationshipDisplayLabel(
 
 | # | Given | Then |
 |---|-------|------|
-| C1 | `relationshipSchema.hierarchical` truthy **and** `peerSchema.label` present | returns `peerSchema.label` |
+| C1 | `relationshipSchema.hierarchical` truthy **and** `peerSchema` is a concrete node with a label | returns `peerSchema.label` |
 | C2 | `relationshipSchema.hierarchical` truthy **and** `peerSchema` missing or `peerSchema.label` empty | returns `relationshipSchema.label ?? relationshipSchema.name` |
 | C3 | `relationshipSchema.hierarchical` falsy (any non-hierarchical relationship, including one named `parent`/`children`) | returns `relationshipSchema.label ?? relationshipSchema.name` — identical to prior inline behavior |
-| C4 | children relationship (`cardinality: "many"`) with hierarchical + peer label | returns `peerSchema.label` verbatim (no pluralization) |
+| C4 | children relationship (`cardinality: "many"`) with hierarchical + concrete-node peer label | returns `peerSchema.label` verbatim (no pluralization) |
+| C5 | `relationshipSchema.hierarchical` truthy **and** `peerSchema` is a **generic** (`isGenericSchema`) | returns `relationshipSchema.label ?? relationshipSchema.name` — a generic's label is too broad; keep "Parent"/"Children" |
 
 ## Consumers (call sites that MUST route through this function)
 

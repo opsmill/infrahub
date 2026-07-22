@@ -67,3 +67,12 @@ Environment for E2E: live local Infrahub stack (frontend :8080, API :8000, demo 
 1. **Open a PR** for `parent-children-labels-ifc-2930` → base branch (nothing pushed yet). CI will re-run the same gate.
 2. Optionally address the deferred low/medium items — most valuable: a component regression test for the hierarchical column header (the review-fix path), and e2e assertions for the sort-picker / filter-heading surfaces.
 3. Run `/speckit.opsmill.extract` if you want to capture any durable knowledge from this feature (not run automatically).
+
+## Addendum — generic-peer refinement (2026-07-22)
+
+Post-review, a behavior refinement was requested: **when the hierarchical peer resolves to a generic, keep "Parent"/"Children"** rather than showing the (too-broad) generic label. Only concrete node peers get the swap.
+
+- Rule updated to guard on `!isGenericSchema(peerSchema)` (`177cbc47`); unit test gains case **C5** (generic peer → keep "Parent"/"Children"). Vitest now 1052/1052.
+- Empirically reconciled against the live app (`f289fdea`): **IPAM** prefixes resolve their peer to the generic `BuiltinIPPrefix`, so IPAM parent/children now correctly read **"Parent"/"Children"** — the 4 IPAM e2e assertions were reverted from "IP Prefix" back to "Children". **Location** peers (`LocationContinent`, `LocationSite`) are concrete nodes, so they keep **"Continent"/"Site"** — Location specs unchanged.
+- Final label behavior: **concrete-node peer → peer label** (Location: "Continent"/"Site"); **generic peer → "Parent"/"Children"** (IPAM prefixes). Full gate re-verified green (biome, betterer 201, vitest 1052/1052, 28 e2e passing).
+- Spec/contract/data-model docs updated to match (the earlier "show the generic's label" decision is reversed).

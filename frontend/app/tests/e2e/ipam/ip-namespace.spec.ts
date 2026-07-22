@@ -154,7 +154,7 @@ test.describe("/ipam - IP Namespace", () => {
       await expect(page.getByRole("option")).toHaveCount(2);
       await page.getByPlaceholder("Search...").press("Escape");
 
-      await page.getByTestId("main-panel").getByRole("link", { name: "IP Prefix" }).click();
+      await page.getByRole("link", { name: "Children" }).click();
       await expect(page.getByRole("link", { name: "11.0.0.0/16" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/10");
@@ -213,7 +213,7 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("delete child prefix", async () => {
-      await page.getByTestId("main-panel").getByRole("link", { name: "IP Prefix" }).click();
+      await page.getByRole("link", { name: "Children" }).click();
       await page.getByTestId("actions-cell-11.0.0.0/16").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByTestId("modal-delete")).toContainText(

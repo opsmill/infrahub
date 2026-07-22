@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { getRelationshipDisplayLabel } from "@/entities/schema/domain/rules/get-relationship-display-label";
 
-import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
+import {
+  generateGenericSchema,
+  generateNodeSchema,
+  generateRelationshipSchema,
+} from "../../../../../tests/fake/schema";
 
 describe("getRelationshipDisplayLabel", () => {
   it("returns the peer label when the relationship is hierarchical and the peer has a label (C1)", () => {
@@ -87,5 +91,22 @@ describe("getRelationshipDisplayLabel", () => {
 
     // THEN
     expect(result).toBe("Site");
+  });
+
+  it("keeps the generic Parent/Children label when the hierarchical peer resolves to a generic (C5)", () => {
+    // GIVEN
+    const relationshipSchema = generateRelationshipSchema({
+      name: "parent",
+      label: "Parent",
+      cardinality: "one",
+      hierarchical: "LocationGeneric",
+    });
+    const peerSchema = generateGenericSchema({ kind: "LocationGeneric", label: "Location" });
+
+    // WHEN
+    const result = getRelationshipDisplayLabel(relationshipSchema, peerSchema);
+
+    // THEN
+    expect(result).toBe("Parent");
   });
 });

@@ -29,19 +29,19 @@ A user browsing a hierarchical object wants to know *what kind* of object its pa
 
 ### Edge Cases
 
-- **Peer is the hierarchy generic, not a concrete kind**: the peer resolves to the generic (e.g. "Location") rather than a specific kind. The generic's label is shown, even though it may be broader than ideal. Accepted for v1.
+- **Peer is a generic, not a concrete node kind**: the peer resolves to a generic (e.g. the hierarchy generic "Location", or IPAM's `BuiltinIPPrefix`) rather than a concrete node. A generic's label is too broad to be helpful, so the substitution is **not** applied — the generic "Parent"/"Children" label is kept.
 - **Peer kind has no label**: fall back to "Parent"/"Children".
 - **Peer kind cannot be resolved** (missing from the loaded schema): fall back to "Parent"/"Children".
 - **Children is a many-relationship labeled with a singular peer label** (e.g. a list titled "Region"): accepted verbatim; no pluralization in v1.
 - **A non-hierarchical relationship coincidentally named `parent`/`children`**: must not be affected by the substitution.
-- **Self-referential hierarchy** (parent and children share the same peer kind, e.g. IPAM prefixes where a prefix's parent and children are both prefixes): both the parent and the children label render identically (e.g. "Prefix"/"Prefix"), so the parent↔child *direction* is no longer conveyed by the label text. In the detail view direction is still implied by placement (parent is a field, children is a tab); in flat surfaces (sort picker, filters) the two entries read the same. Accepted for v1 — see Assumptions.
+- **Self-referential hierarchy with a concrete peer** (parent and children share the same concrete peer kind): both labels would render identically, so the parent↔child *direction* would no longer be conveyed by the label text. Note that IPAM prefixes — the canonical self-referential hierarchy — resolve their peer to a **generic** (`BuiltinIPPrefix`), so per the generic rule above they keep "Parent"/"Children" and the collision does not arise. A concrete self-referential hierarchy would still collide; accepted for v1 (direction is still implied by placement — parent is a field, children is a tab).
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST display the peer kind's label in place of the generic "Parent"/"Children" label for the auto-generated hierarchical parent and children relationships when the peer kind has a label.
-- **FR-002**: The system MUST fall back to the existing "Parent"/"Children" label when the peer kind has no label or cannot be resolved.
+- **FR-001**: The system MUST display the peer kind's label in place of the generic "Parent"/"Children" label for the auto-generated hierarchical parent and children relationships when the peer is a **concrete node kind** with a label.
+- **FR-002**: The system MUST fall back to the existing "Parent"/"Children" label when the peer kind has no label, cannot be resolved, **or is a generic** (a generic's label is too broad to identify the related kind).
 - **FR-003**: The system MUST apply the peer label verbatim for both parent and children relationships, without pluralization.
 - **FR-004**: The system MUST NOT alter the label of any non-hierarchical relationship, including one whose name coincides with `parent` or `children`.
 - **FR-005**: The substitution MUST appear consistently across every surface where the parent/children relationship label is shown: the object detail row, the relationship tabs, table column headers, filters, and the sort picker.
