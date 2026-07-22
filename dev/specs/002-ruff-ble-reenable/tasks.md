@@ -91,10 +91,10 @@
 
 **Purpose**: Auditability proofs and existing-suite regression evidence (spec SC-003/004/005).
 
-- [ ] T019 [P] Suppression audit (quickstart.md §4): `grep -rn "noqa: BLE001" --include="*.py" . --exclude-dir=python_sdk --exclude-dir=.venv` — count must equal the SUPPRESS total from data-model.md (70, plus any T001 additions); each hit sits on an `except Exception`/`except BaseException` line with a justification comment on or immediately above it; `uv run ruff check --select=E722 .` → 0 bare excepts
-- [ ] T020 [P] Run `uv run invoke backend.test-unit` — must pass with unchanged results (spec SC-005); if any failure, it must be traceable to something other than this change (compare against base) before proceeding
-- [ ] T021 Re-verify hard-constraint diffs end-state (spec SC-007): `git diff <base-of-branch>..HEAD -- backend/infrahub/core/migrations/ backend/infrahub/api/auth.py backend/infrahub/api/oauth2.py backend/infrahub/api/oidc.py backend/infrahub/auth/` contains only comment/`noqa` additions; record the diff summary in the implementation report
-- [ ] T022 Run the complete quickstart.md top-to-bottom as a final pass and record each command's outcome (this is the evidence table for the implementation report; include the T014 component-test outcome or its CI-deferral note)
+- [X] T019 [P] Suppression audit (quickstart.md §4): `grep -rn "noqa: BLE001" --include="*.py" . --exclude-dir=python_sdk --exclude-dir=.venv` — count must equal the SUPPRESS total from data-model.md (70, plus any T001 additions); each hit sits on an `except Exception`/`except BaseException` line with a justification comment on or immediately above it; `uv run ruff check --select=E722 .` → 0 bare excepts
+- [X] T020 [P] Run `uv run invoke backend.test-unit` — must pass with unchanged results (spec SC-005); if any failure, it must be traceable to something other than this change (compare against base) before proceeding
+- [X] T021 Re-verify hard-constraint diffs end-state (spec SC-007): `git diff <base-of-branch>..HEAD -- backend/infrahub/core/migrations/ backend/infrahub/api/auth.py backend/infrahub/api/oauth2.py backend/infrahub/api/oidc.py backend/infrahub/auth/` contains only comment/`noqa` additions; record the diff summary in the implementation report
+- [X] T022 Run the complete quickstart.md top-to-bottom as a final pass and record each command's outcome (this is the evidence table for the implementation report; include the T014 component-test outcome or its CI-deferral note)
 
 ---
 
