@@ -26,15 +26,6 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 - `changelog/` – Towncrier changelog fragments
 - `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
 
-## Branching
-
-- Feature branches start from `develop`; bug fixes target the branch where the buggy code lives —
-  `stable` when the feature is released, `develop` when it only exists there.
-- Before cutting a branch for a ticket, verify the code the ticket references actually exists on
-  the chosen base (`git ls-tree <base> -- <path>`): follow-up tickets often reference modules that
-  are only on `develop`.
-- Full strategy (release branches, naming, submodules): `dev/guidelines/git-workflow.md`.
-
 ## Commands
 
 ### Setup
@@ -54,16 +45,9 @@ cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
 uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
 ```
 
-Backend component tests (`backend/tests/component/`) start their backing services (Neo4j, ...)
-through testcontainers by default (`INFRAHUB_USE_TEST_CONTAINERS`, default `true`), which needs a
-running Docker daemon. testcontainers looks for `/var/run/docker.sock`; if your daemon only exposes
-a user socket (e.g. Docker Desktop without the "default socket" option), point `DOCKER_HOST` at it.
-Alternatively, set `INFRAHUB_USE_TEST_CONTAINERS=false` to run against an already-running database
-configured through the normal settings.
-
-```bash
-DOCKER_HOST=unix://$HOME/.docker/run/docker.sock uv run pytest backend/tests/component/... -q
-```
+Component tests (`backend/tests/component/`) start their backing services via testcontainers, so
+they need a running Docker daemon (set `INFRAHUB_USE_TEST_CONTAINERS=false` to reuse an
+already-running database instead).
 
 #### Debugging e2e tests with `--pdb`
 
