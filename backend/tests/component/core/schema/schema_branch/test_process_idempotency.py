@@ -7,6 +7,7 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Sch
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import SchemaNotFoundError
 
 LOCATION_GENERIC = GenericSchema(
     name="Location",
@@ -155,13 +156,13 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
         try:
             obj_before = before.get(name=name, duplicate=False)
             dump_before = obj_before.model_dump()
-        except Exception:
+        except SchemaNotFoundError:
             lines.append(f"{name}: only in 'after'")
             continue
         try:
             obj_after = after.get(name=name, duplicate=False)
             dump_after = obj_after.model_dump()
-        except Exception:
+        except SchemaNotFoundError:
             lines.append(f"{name}: only in 'before'")
             continue
         if obj_before.get_hash() == obj_after.get_hash():
