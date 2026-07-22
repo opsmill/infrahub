@@ -2,8 +2,13 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, NodeSchema, SchemaRoot
 from infrahub.core.schema.basenode_schema import SchemaAttributePath
 from infrahub.core.validators.uniqueness.query import (
@@ -40,6 +45,27 @@ async def _update_car(db: InfrahubDatabase, branch: Branch, car_id: str, **attri
     for name, value in attribute_values.items():
         car.get_attribute(name).value = value
     await car.save(db=db)
+
+
+async def _migrate_car_kind_on_branch(db: InfrahubDatabase, default_branch: Branch, branch: Branch) -> MainSchemaTypes:
+    """Migrate the whole TestCar kind to Test2NewCar on the branch and return the new schema.
+
+    The migration results in multiple Node vertices with the same UUID, a case that can be difficult
+    to handle correctly.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    new_car_schema = schema_branch.get_node(name="TestCar")
+    new_car_schema.name = "NewCar"
+    new_car_schema.namespace = "Test2"
+    registry.schema.set(name="Test2NewCar", schema=new_car_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="TestCar"),
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
+    assert not execution_result.errors
+    return new_car_schema
 
 
 class TestTargetedUniquenessQuery:
@@ -387,6 +413,58 @@ class TestTargetedUniquenessQuery:
         assert set(by_changed) == {car_accord_main.id, car_prius_main.id}
         assert by_changed[car_accord_main.id].partner_uuids == (car_prius_main.id,)
         assert by_changed[car_prius_main.id].partner_uuids == (car_accord_main.id,)
+
+    async def test_same_uuid_duplicate_from_kind_migration(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main: Node,
+        car_prius_main: Node,
+        car_camry_main: Node,
+        default_branch: Branch,
+    ) -> None:
+        # accord, prius, and camry all share nbr_seats=5
+        migration_branch = await create_branch(db=db, branch_name="kind-migration-branch")
+        new_car_schema = await _migrate_car_kind_on_branch(
+            db=db, default_branch=default_branch, branch=migration_branch
+        )
+
+        # the branch accord moves to 9 after the migration; still 5 on default branch
+        migrated_accord = await NodeManager.get_one(db=db, branch=migration_branch, id=car_accord_main.id)
+        migrated_accord.get_attribute("nbr_seats").value = 9
+        await migrated_accord.save(db=db)
+
+        elements = [_attr_element(new_car_schema, "nbr_seats")]
+
+        # updated value on branch is accepted as unique following the migration
+        violations = await _run_query(db, migration_branch, "Test2NewCar", elements, [car_accord_main.id])
+
+        assert violations == []
+
+        # camry and prius (both nbr_seats=5) collide. accord does not.
+        violations = await _run_query(db, migration_branch, "Test2NewCar", elements, [car_camry_main.id])
+
+        assert len(violations) == 1
+        assert violations[0].changed_uuid == car_camry_main.id
+        assert violations[0].partner_uuids == (car_prius_main.id,)
+        assert violations[0].element_values == (5,)
+
+        # the stale prius object is then updated on the DEFAULT branch after the migration; the
+        # attribute vertices are shared, so the new value must be visible through prius's live
+        # vertex on the migration branch and now collide with the branch-updated accord (9)
+        await _update_car(db, default_branch, car_prius_main.id, nbr_seats=9)
+
+        violations = await _run_query(db, migration_branch, "Test2NewCar", elements, [car_accord_main.id])
+
+        assert len(violations) == 1
+        assert violations[0].changed_uuid == car_accord_main.id
+        assert violations[0].partner_uuids == (car_prius_main.id,)
+        assert violations[0].element_values == (9,)
+
+        # and camry (still 5) has lost its only partner: prius's superseded value-5 edge on the
+        # default branch must not still count for it
+        violations = await _run_query(db, migration_branch, "Test2NewCar", elements, [car_camry_main.id])
+
+        assert violations == []
 
     async def test_peer_attribute_element_rejected(
         self,
