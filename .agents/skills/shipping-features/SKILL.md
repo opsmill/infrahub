@@ -149,6 +149,12 @@ Also run `capturing-knowledge`, `harvesting-review` (when present), and `speckit
 for process/tooling gaps. Doc changes join **this** PR unless the user asks otherwise. **Checkpoint**
 only if a step proposes changes → propose Jira *Done*.
 
+**`harvesting-review` triggers on evidence, not lane.** The lane decides whether the *rest* of
+Extract runs; the harvest decision is made from the PR itself: if the PR accumulated substantive
+review feedback (human review comments, or bot findings that led to fixes), propose running
+`harvesting-review` at the delivery checkpoint — even on the bug/`S`/chore lanes where Extract is
+otherwise skipped. A review-heavy PR on a small lane is exactly where lessons die in threads.
+
 ## Manifest & resume
 
 `ship.md` lives in the feature dir (`specs/<feature>/`, located via `.specify/feature.json`) and is a
