@@ -17,6 +17,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.failure_recoverer import RecoveryOutcome
 from infrahub.core.merge.write_blocker import MergeProtectionState, MergeWriteBlocker
 from infrahub.core.node import Node
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.services.component import InfrahubComponent
@@ -272,6 +273,7 @@ class TestRecoveryRollback:
             identifier=build_identifier(db=db, cache=cache, component=component, default_branch=default_branch),
             default_branch=default_branch,
             cache=cache,
+            rollbacker=GraphRollbacker(db=db),
         )
         first = await failing.recover()
 
@@ -320,6 +322,7 @@ class TestRecoveryRollback:
             destination_branch=default_branch,
             diff_repository=diff_repository,
             exclusion_plan_builder=MergeExclusionPlanBuilder(),
+            rollbacker=GraphRollbacker(db=db),
         )
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 

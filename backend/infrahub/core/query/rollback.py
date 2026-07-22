@@ -3,7 +3,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -27,121 +26,174 @@ class RollbackScope(Enum):
     AT_TIMESTAMP = "at_timestamp"
     SINCE_TIMESTAMP = "since_timestamp"
 
+    @property
+    def operator(self) -> str:
+        return "=" if self is RollbackScope.AT_TIMESTAMP else ">="
 
-class RollbackQuery(Query):
-    """Rollback database changes made on a branch at (or since) a timestamp.
 
-    This query reverses database changes by:
-    1. Resetting `to` times (and `to_user_id`) back to NULL for edges that were closed
-       in the rollback window.
-    2. Deleting edges that were created in the rollback window.
-    3. Deleting any vertices that become orphaned after the edge deletions.
-    4. (Optional) Restoring the `previous_updated_at`/`previous_updated_by` snapshots on the
-       vertices the rolled-back writes had bumped: the vertices connected to a reverted edge,
-       plus the Node vertices owning any such Attribute/Relationship vertex (a value change
-       reverts edges on the field vertex only, while the merge metadata bump also stamps the
-       owning Node). Only vertices whose `updated_at` falls inside the rollback window are
-       restored, so vertices the window never bumped keep their metadata. Restoring is only
-       allowed when the target branch is the default or global branch — vertex metadata
-       properties are maintained solely for those branches, so there is nothing to restore
-       anywhere else.
+class RollbackReopenEdgesQuery(Query):
+    """Reopen every edge that was closed in the rollback window.
 
-    Reverting updated_at/by metadata counts on the previous_updated_at/by being set on the
-    vertex. Does not recalculate updated_at/by metadata.
+    Resets `to`/`to_user_id` back to NULL and returns the element ids of the vertices on either
+    end of every reopened edge, so the caller can restore vertex metadata afterwards.
 
-    Edge phases are written as one subquery per edge type because relationship indexes are
-    per-type; a label-less relationship match cannot use them.
-
-    All write subqueries use `CALL { ... } IN TRANSACTIONS` so the query stays a non-writer
-    at the outer level. This both batches the writes and keeps each `CALL IN TRANSACTIONS`
-    legal regardless of how many earlier subqueries also wrote.
+    All edge types are covered in a single label-less pass.
     """
 
-    name = "rollback"
+    name = "rollback_reopen_edges"
     type = QueryType.WRITE
-    insert_return = False
+    raise_error_if_empty = False
 
     def __init__(
         self,
         at: Timestamp,
         target_branch: Branch,
         scope: RollbackScope,
-        restore_metadata: bool,
         **kwargs: Any,
     ) -> None:
-        if restore_metadata and not (target_branch.is_default or target_branch.is_global):
-            raise ValueError("restore_metadata is only allowed when the target branch is the default or global branch")
         super().__init__(**kwargs)
         self.rollback_at = at
         self.target_branch = target_branch
         self.scope = scope
-        self.restore_metadata = restore_metadata
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "at": self.rollback_at.to_string(),
             "target_branch": self.target_branch.name,
         }
-
-        op = "=" if self.scope is RollbackScope.AT_TIMESTAMP else ">="
-
-        phases: list[str] = ["WITH [] AS vertex_ids"]
-
-        reopen_template = """
-// ---------------------------
-// Reset 'to' times: restore %(edge_type)s edges that were closed in the rollback window
-// ---------------------------
-OPTIONAL MATCH (reopen_src)-[reopen_edge:%(edge_type)s {branch: $target_branch}]->(reopen_dst)
-WHERE reopen_edge.to %(op)s $at
-CALL (reopen_edge) {
-    SET reopen_edge.to = NULL, reopen_edge.to_user_id = NULL
+        query = """
+MATCH (src)-[edge {branch: $target_branch}]->(dst)
+WHERE edge.to %(op)s $at
+CALL (edge) {
+    SET edge.to = NULL, edge.to_user_id = NULL
 } IN TRANSACTIONS OF 500 ROWS
-WITH vertex_ids, collect(DISTINCT elementId(reopen_src)) + collect(DISTINCT elementId(reopen_dst)) AS touched_ids
-WITH vertex_ids + touched_ids AS vertex_ids"""
-        phases.extend(reopen_template % {"edge_type": edge_type.value, "op": op} for edge_type in DatabaseEdgeType)
+UNWIND [elementId(src), elementId(dst)] AS vertex_id
+WITH DISTINCT vertex_id
+""" % {"op": self.scope.operator}
+        self.add_to_query(query=query)
+        self.return_labels = ["vertex_id"]
 
-        delete_template = """
-// ---------------------------
-// Delete 'from' times: remove %(edge_type)s edges that were created in the rollback window
-// ---------------------------
-OPTIONAL MATCH (delete_src)-[delete_edge:%(edge_type)s {branch: $target_branch}]->(delete_dst)
-WHERE delete_edge.from %(op)s $at
-CALL (delete_edge) {
-    DELETE delete_edge
+    def get_touched_vertex_ids(self) -> list[str]:
+        return [result.get_as_type("vertex_id", str) for result in self.get_results()]
+
+
+class RollbackDeleteEdgesQuery(Query):
+    """Delete every edge that was created in the rollback window.
+
+    Returns the element ids of the vertices on either end of every deleted edge: they are both
+    the orphan candidates for the vertex cleanup and the targets of the vertex metadata restore.
+
+    All edge types are covered in a single label-less pass.
+    """
+
+    name = "rollback_delete_edges"
+    type = QueryType.WRITE
+    raise_error_if_empty = False
+
+    def __init__(
+        self,
+        at: Timestamp,
+        target_branch: Branch,
+        scope: RollbackScope,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.rollback_at = at
+        self.target_branch = target_branch
+        self.scope = scope
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "at": self.rollback_at.to_string(),
+            "target_branch": self.target_branch.name,
+        }
+        query = """
+MATCH (src)-[edge {branch: $target_branch}]->(dst)
+WHERE edge.from %(op)s $at
+CALL (edge) {
+    DELETE edge
 } IN TRANSACTIONS OF 500 ROWS
-WITH vertex_ids, collect(DISTINCT elementId(delete_src)) + collect(DISTINCT elementId(delete_dst)) AS touched_ids
-WITH vertex_ids + touched_ids AS vertex_ids"""
-        phases.extend(delete_template % {"edge_type": edge_type.value, "op": op} for edge_type in DatabaseEdgeType)
+UNWIND [elementId(src), elementId(dst)] AS vertex_id
+WITH DISTINCT vertex_id
+""" % {"op": self.scope.operator}
+        self.add_to_query(query=query)
+        self.return_labels = ["vertex_id"]
 
-        phases.append(
-            """
-// ---------------------------
-// Deduplicate the collected vertex ids (the NULL padding keeps a row alive when nothing matched;
-// collect() drops it again)
-// ---------------------------
-UNWIND vertex_ids + [NULL] AS vertex_id
-WITH collect(DISTINCT vertex_id) AS vertex_ids
+    def get_touched_vertex_ids(self) -> list[str]:
+        return [result.get_as_type("vertex_id", str) for result in self.get_results()]
 
-// ---------------------------
-// Delete any vertices that are now orphaned (have no remaining connections)
-// ---------------------------
-OPTIONAL MATCH (orphan)
-WHERE elementId(orphan) IN vertex_ids
+
+class RollbackDeleteOrphanedVerticesQuery(Query):
+    """Delete the given vertices if the edge deletions left them with no remaining connections.
+
+    Scoping the check to the given vertex ids is a safety boundary, not just an optimization:
+    a whole-graph orphan sweep would also delete vertices orphaned by something other than the
+    rollback — pre-existing debris, or a vertex a concurrent writer has created but not yet
+    connected.
+    """
+
+    name = "rollback_delete_orphaned_vertices"
+    type = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
+
+    def __init__(self, vertex_ids: list[str], **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.vertex_ids = vertex_ids
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {"vertex_ids": self.vertex_ids}
+        query = """
+UNWIND $vertex_ids AS vertex_id
+MATCH (orphan)
+WHERE elementId(orphan) = vertex_id
 AND NOT exists((orphan)--())
 CALL (orphan) {
     DELETE orphan
-} IN TRANSACTIONS OF 500 ROWS"""
-        )
+} IN TRANSACTIONS OF 500 ROWS
+"""
+        self.add_to_query(query=query)
 
-        if self.restore_metadata:
-            metadata_template = """
-// ---------------------------
-// Restore the updated_at/by snapshots on the vertices the rolled-back writes had bumped
-// ---------------------------
-WITH DISTINCT vertex_ids
-OPTIONAL MATCH (touched)
-WHERE elementId(touched) IN vertex_ids
-WITH DISTINCT touched
+
+class RollbackRestoreMetadataQuery(Query):
+    """Restore the updated_at/updated_by snapshots on vertices bumped in the rollback window.
+
+    Covers the given vertices plus the Node vertices owning any of them that is an
+    Attribute/Relationship vertex (a value change reverts edges on the field vertex only, while
+    the merge metadata bump also stamps the owning Node). Only vertices whose `updated_at` falls
+    inside the rollback window are restored, so vertices the window never bumped keep their
+    metadata.
+
+    Counts on `previous_updated_at`/`previous_updated_by` being set on the vertex. Does not
+    recalculate updated_at/updated_by metadata.
+    """
+
+    name = "rollback_restore_metadata"
+    type = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
+
+    def __init__(
+        self,
+        vertex_ids: list[str],
+        at: Timestamp,
+        scope: RollbackScope,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.vertex_ids = vertex_ids
+        self.rollback_at = at
+        self.scope = scope
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "at": self.rollback_at.to_string(),
+            "vertex_ids": self.vertex_ids,
+        }
+        query = """
+UNWIND $vertex_ids AS vertex_id
+MATCH (touched)
+WHERE elementId(touched) = vertex_id
 OPTIONAL MATCH (touched:Attribute|Relationship)-[:HAS_ATTRIBUTE|IS_RELATED]-(owner:Node)
 WHERE touched.updated_at %(op)s $at
 OR owner.updated_at %(op)s $at
@@ -153,7 +205,6 @@ CALL (restore_vertex) {
     SET restore_vertex.updated_at = restore_vertex.previous_updated_at,
         restore_vertex.updated_by = restore_vertex.previous_updated_by
     SET restore_vertex.previous_updated_at = NULL, restore_vertex.previous_updated_by = NULL
-} IN TRANSACTIONS OF 500 ROWS"""
-            phases.append(metadata_template % {"op": op})
-
-        self.add_to_query(query="\n".join(phases))
+} IN TRANSACTIONS OF 500 ROWS
+""" % {"op": self.scope.operator}
+        self.add_to_query(query=query)

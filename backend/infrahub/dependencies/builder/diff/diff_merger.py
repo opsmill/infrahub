@@ -1,6 +1,7 @@
 from infrahub.core import registry
 from infrahub.core.diff.merger.exclusion_plan import MergeExclusionPlanBuilder
 from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
 
 from .repository import DiffRepositoryDependency
@@ -15,4 +16,5 @@ class DiffMergerDependency(DependencyBuilder[DiffMerger]):
             destination_branch=registry.get_branch_from_registry(),
             diff_repository=DiffRepositoryDependency.build(context=context),
             exclusion_plan_builder=MergeExclusionPlanBuilder(),
+            rollbacker=GraphRollbacker(db=context.db),
         )

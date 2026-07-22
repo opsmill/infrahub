@@ -9,7 +9,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.rollback import RollbackQuery, RollbackScope
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -34,7 +35,7 @@ async def assert_no_changes_at_or_after(db: InfrahubDatabase, branch: Branch, at
     assert illegal_edge_ids == [], f"Edges updated after {at_or_after} on branch {branch.name}: {illegal_edge_ids}"
 
 
-def test_restore_metadata_rejected_on_non_default_branch() -> None:
+async def test_restore_metadata_rejected_on_non_default_branch(db: InfrahubDatabase) -> None:
     """A metadata restore is rejected outside the default and global branches.
 
     The updated_at/by metadata properties exist only on those branches, so requesting a restore
@@ -44,9 +45,9 @@ def test_restore_metadata_rejected_on_non_default_branch() -> None:
         ValueError,
         match=r"^restore_metadata is only allowed when the target branch is the default or global branch$",
     ):
-        RollbackQuery(
-            at=Timestamp(),
+        await GraphRollbacker(db=db).rollback(
             target_branch=Branch(name="not-default"),
+            at=Timestamp(),
             scope=RollbackScope.SINCE_TIMESTAMP,
             restore_metadata=True,
         )
@@ -115,14 +116,12 @@ async def test_rollback_at_timestamp_only_reverses_that_timestamp(
     edges_before = await _count_branch_edges_at(db=db, branch=default_branch, at=at_rolled_back)
     assert edges_before > 0, "Saving a node should create at least one edge stamped with `at`"
 
-    rollback_query = await RollbackQuery.init(
-        db=db,
+    await GraphRollbacker(db=db).rollback(
         target_branch=default_branch,
         at=at_rolled_back,
         scope=RollbackScope.AT_TIMESTAMP,
         restore_metadata=False,
     )
-    await rollback_query.execute(db=db)
 
     loaded_kept = await NodeManager.get_one(db=db, id=kept.id, branch=default_branch)
     assert loaded_kept is not None, "Node created at an earlier timestamp must survive rollback"
@@ -337,27 +336,23 @@ class TestRollbackSinceTimestamp:
         default_branch: Branch,
         dataset: TwoBranchDataset,
     ) -> None:
-        rollback_query = await RollbackQuery.init(
-            db=db,
+        await GraphRollbacker(db=db).rollback(
             target_branch=default_branch,
             at=dataset.window_start,
             scope=RollbackScope.SINCE_TIMESTAMP,
             restore_metadata=True,
         )
-        await rollback_query.execute(db=db)
 
         await self._assert_default_branch_rolled_back(db=db, default_branch=default_branch, dataset=dataset)
         await self._assert_user_branch_changes_intact(db=db, dataset=dataset)
 
         # Idempotent: a second run finds nothing in the window and leaves the restored state alone.
-        rerun_query = await RollbackQuery.init(
-            db=db,
+        await GraphRollbacker(db=db).rollback(
             target_branch=default_branch,
             at=dataset.window_start,
             scope=RollbackScope.SINCE_TIMESTAMP,
             restore_metadata=True,
         )
-        await rerun_query.execute(db=db)
 
         await self._assert_default_branch_rolled_back(db=db, default_branch=default_branch, dataset=dataset)
         await self._assert_user_branch_changes_intact(db=db, dataset=dataset)
@@ -368,27 +363,23 @@ class TestRollbackSinceTimestamp:
         default_branch: Branch,
         dataset: TwoBranchDataset,
     ) -> None:
-        rollback_query = await RollbackQuery.init(
-            db=db,
+        await GraphRollbacker(db=db).rollback(
             target_branch=dataset.branch2,
             at=dataset.window_start,
             scope=RollbackScope.SINCE_TIMESTAMP,
             restore_metadata=False,
         )
-        await rollback_query.execute(db=db)
 
         await self._assert_user_branch_rolled_back(db=db, dataset=dataset)
         await self._assert_default_branch_changes_intact(db=db, default_branch=default_branch, dataset=dataset)
 
         # Idempotent: a second run finds nothing in the window and leaves the restored state alone.
-        rerun_query = await RollbackQuery.init(
-            db=db,
+        await GraphRollbacker(db=db).rollback(
             target_branch=dataset.branch2,
             at=dataset.window_start,
             scope=RollbackScope.SINCE_TIMESTAMP,
             restore_metadata=False,
         )
-        await rerun_query.execute(db=db)
 
         await self._assert_user_branch_rolled_back(db=db, dataset=dataset)
         await self._assert_default_branch_changes_intact(db=db, default_branch=default_branch, dataset=dataset)

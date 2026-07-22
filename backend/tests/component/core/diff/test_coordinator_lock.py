@@ -17,6 +17,7 @@ from infrahub.core.merge.constraints import MergeConstraintValidator
 from infrahub.core.merge.graph_merger import GraphMerger
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.node import Node
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, get_db
@@ -193,6 +194,7 @@ class TestDiffCoordinatorLocks:
                 destination_branch=default_branch,
                 diff_repository=diff_repository,
                 exclusion_plan_builder=MergeExclusionPlanBuilder(),
+                rollbacker=GraphRollbacker(db=db),
             ),
             diff_repository=diff_repository,
             source_branch=diff_branch,
@@ -245,6 +247,7 @@ class TestDiffCoordinatorLocks:
                 destination_branch=default_branch,
                 diff_repository=diff_repository_2,
                 exclusion_plan_builder=MergeExclusionPlanBuilder(),
+                rollbacker=GraphRollbacker(db=db2),
             ),
             diff_repository=diff_repository_2,
             source_branch=diff_branch,
