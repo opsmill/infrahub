@@ -10,6 +10,8 @@
 
 **Input**: PRD "Priority-aware API backpressure (server-side)" from IFC-2886
 
+> **Amendment (post-implementation)**: the middle priority tier was renamed `normal` → `medium` during implementation. This spec predates the rename and calls it `normal` throughout — read `normal` as `medium`. The database-stress signal (which augments CoDel with a reference-query load measurement) was also added after this spec. Both are documented in [dev/knowledge/backend/api-backpressure.md](../../knowledge/backend/api-backpressure.md).
+
 ## Overview
 
 When an Infrahub instance runs heavy background work (generators, artifacts, diffs, repository syncs, computed attributes) while a human uses the frontend, both compete for the same finite uvicorn worker pool and the same Neo4j connection pool. Background tasks call back into the same API servers over HTTP via the SDK, and today the API has no prioritization and no origin awareness — frontend and background requests are indistinguishable. Under heavy background load the API can no longer serve the frontend and the application appears unresponsive or hangs.

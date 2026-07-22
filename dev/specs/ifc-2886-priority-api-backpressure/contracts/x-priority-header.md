@@ -4,6 +4,8 @@
 
 This is a **transport-layer contract**. It adds one request header and one possible response outcome. It does **not** change any REST/GraphQL request body, GraphQL schema, or existing 2xx/4xx/5xx semantics of the handlers themselves.
 
+> **Naming note**: the middle tier was renamed `normal` → `medium` after this contract was written. The shipped header values are `high` / `medium` / `low`; read `normal` as `medium` below.
+
 ## Request: `X-Priority` (new, optional)
 
 | Property | Value |

@@ -10,6 +10,7 @@ FastAPI backend with GraphQL API, Neo4j database, and async-first architecture.
 
 - `infrahub/` – Main application
   - `api/` – REST endpoints
+    - `api/admission/` – Priority-aware API backpressure (load shedding) — see [dev/knowledge/backend/api-backpressure.md](../dev/knowledge/backend/api-backpressure.md)
   - `auth/` – Authentication (password, SSO, LDAP) and auto-create groups (`auth/auth_groups/`)
   - `graphql/` – GraphQL schema, mutations, resolvers
   - `core/` – Domain logic (nodes, schemas, branches, diff)
@@ -94,6 +95,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
+- `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
