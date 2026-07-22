@@ -1,5 +1,6 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
+import type { overrideQueryParams } from "@/shared/api/rest/fetch";
 import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { sortByOrderWeight } from "@/shared/utils/common";
@@ -37,7 +38,8 @@ import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schem
 const columnHelper = createColumnHelper<NodeObject>();
 
 export function getObjectIdentifierColumns(
-  schema: ModelSchema
+  schema: ModelSchema,
+  identifierOverrideParams?: overrideQueryParams[]
 ): Array<ColumnDef<NodeObject, string>> {
   return [
     columnHelper.accessor((node) => getNodeLabel(node), {
@@ -62,6 +64,7 @@ export function getObjectIdentifierColumns(
             label={label}
             isSelected={row.getIsSelected()}
             onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
+            overrideParams={identifierOverrideParams}
           />
         );
       },
@@ -148,10 +151,11 @@ export function getObjectFieldsColumns(
 
 export const getObjectTableColumns = (
   schema: ModelSchema,
-  headerProps?: Partial<TableColumnHeaderProps>
+  headerProps?: Partial<TableColumnHeaderProps>,
+  identifierOverrideParams?: overrideQueryParams[]
 ): Array<ColumnDef<NodeObject>> => {
   return [
-    ...getObjectIdentifierColumns(schema),
+    ...getObjectIdentifierColumns(schema, identifierOverrideParams),
     ...getObjectGenericColumns(schema),
     ...getObjectFieldsColumns(schema, headerProps),
   ] as Array<ColumnDef<NodeObject>>;
