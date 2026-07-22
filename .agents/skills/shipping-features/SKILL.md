@@ -106,9 +106,12 @@ never auto-transition. If Jira is absent, record status in the `ship.md` index o
 ### Stage 1 — Intake
 Restate the ask in one sentence; classify (checkpoint). If no ticket and the project tracks work,
 offer `creating-issues` / `/create-issue`; harden a fuzzy idea with `grilling-ideas` / `creating-prd`.
-Cut the branch via `/speckit-git-feature` (validates Jira/JPD ref) or `git checkout -b`. Open the
-`ship.md` index (feature id, issue, branch). **Gate:** issue with clear scope, on a named branch.
-**Checkpoint:** scope accepted → propose Jira *In design*.
+**Pick the base branch deliberately:** before cutting, verify the code the ticket references
+actually exists on the intended base (`git ls-tree <base> -- <path>`) — follow-up tickets often
+reference modules that only exist on the integration branch (e.g. `develop`), not the default
+branch. Then cut via `/speckit-git-feature` (validates Jira/JPD ref) or `git checkout -b`. Open the
+`ship.md` index (feature id, issue, branch). **Gate:** issue with clear scope, on a named branch
+whose base contains the referenced code. **Checkpoint:** scope accepted → propose Jira *In design*.
 
 ### Stage 2 — Prep
 - **S (or opt-in):** `/speckit-opsmill-prep` hands-off → one checkpoint on the resulting `tasks.md`.
@@ -133,6 +136,10 @@ has no unaddressed high-severity findings. **Checkpoint:** findings & fixes acce
    **Checkpoint:** user picks single / accepts split. Never force a split.
 3. **Open** the PR with `pr` → `/git-pr` → `gh pr create`. Record PR URL in `ship.md`; propose Jira
    *In review*. Then `/pr-monitor` (or `gh run watch`) follows CI; red loops back to the Stage 3 fix pass.
+4. **Review feedback:** when processing review comments, fetch **all** unresolved threads — every
+   author, review bots included — never only the reviewer the user named; assess each (fix, or
+   answer on the thread with evidence). **Re-fetch the threads after every push**: bots re-review
+   the new diff and their newest findings are otherwise invisible.
 Optional `/qa` and spec-&-code review where the project defines them.
 
 ### Stage 5 — Extract *(manual)*

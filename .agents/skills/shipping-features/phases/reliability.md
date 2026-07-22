@@ -56,5 +56,11 @@ skeptic breaks that correlated error).
 - **One synthesizer per divergence.** Never feed N parallel framings into N downstream agents.
 - **A skeptic must try to fail the claim.** Prompt it to refute, defaulting to "not proven" when
   uncertain — a verifier that rubber-stamps is worse than none (false confidence).
+- **Give the skeptic explicit lenses, even at `S`.** A single refute-the-claim prompt anchors on
+  spec conformance and misses orthogonal defects. Always name at least: (1) spec/bug correctness,
+  (2) interaction with existing concurrent paths (locks, transactions, in-flight writers touching
+  the same data), (3) compliance with the repo's own guidelines (`dev/guidelines/` or equivalent),
+  (4) query/IO efficiency (N+1s, per-item loops that should be set-based). One agent, four lenses —
+  this is not parallelism.
 - **Don't stack to look thorough.** Three layers on a no-risk phase is wasted tokens and slower
   checkpoints. Match the layers to the flags in `ship.md`.
