@@ -8,6 +8,10 @@ Guidelines for creating changelog entries using Towncrier.
 
 Every issue fix or new feature should include a changelog entry. The message should be short, user-facing, and describe what was fixed or implemented without technical implementation details.
 
+**Exception — unreleased features need no fragment.** A fix or follow-up to a feature that has not
+shipped in any release is not user-observable: the feature's own `added` fragment already covers
+everything a user will ever see, and a `fixed` entry for something never released is noise.
+
 ### Command
 
 Always create fragments with `towncrier create`. **Do not hand-write the file** — the command derives the location from the Towncrier config and places the fragment correctly no matter which directory you run it from.

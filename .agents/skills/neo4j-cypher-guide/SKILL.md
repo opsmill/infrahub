@@ -220,6 +220,17 @@ WHERE n:Label1&Label2  // AND
 WHERE n:!Archived      // NOT
 ```
 
+### Dynamic Labels and Types
+
+Labels and relationship types accept parameters (Neo4j 5.26+) — do not interpolate them into the
+query string with `%`/f-strings, and do not claim labels "can't be parameterized":
+
+```cypher
+MATCH (n:$($label))                    // dynamic node label
+CREATE (n:$($label) {name: $name})
+MATCH (a)-[r:$($rel_type)]->(b)        // dynamic relationship type
+```
+
 ### Type Predicates
 
 ```cypher
