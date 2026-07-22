@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from itertools import chain
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
@@ -19,13 +17,24 @@ from .model import (
     QueryAttributePath,
     QueryRelationshipAttributePath,
 )
-from .query import NodeUniqueAttributeConstraintQuery
+from .query import NodeUniqueAttributeConstraintQuery, TargetedUniquenessValidationQuery
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from infrahub.core.branch import Branch
     from infrahub.core.query import QueryResult
+    from infrahub.core.schema.basenode_schema import SchemaAttributePath
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
     from ..model import SchemaConstraintValidatorRequest
+    from .query import TargetedUniquenessViolation
+
+
+def _chunked(items: list[str], size: int) -> Iterator[list[str]]:
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
 
 
 def get_attribute_path_from_string(
@@ -46,11 +55,14 @@ def get_attribute_path_from_string(
 
 class UniquenessChecker(ConstraintCheckerInterface):
     def __init__(
-        self, db: InfrahubDatabase, branch: Branch | str | None = None, max_concurrent_execution: int = 5
+        self,
+        db: InfrahubDatabase,
+        max_concurrent_execution: int = 5,
+        query_batch_size: int = 500,
     ) -> None:
         self.db = db
-        self.branch = branch
         self.semaphore = asyncio.Semaphore(max_concurrent_execution)
+        self.query_batch_size = query_batch_size
 
     @property
     def name(self) -> str:
@@ -59,19 +71,140 @@ class UniquenessChecker(ConstraintCheckerInterface):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name == self.name
 
-    async def get_branch(self) -> Branch:
-        if not isinstance(self.branch, Branch):
-            self.branch = await registry.get_branch(db=self.db, branch=self.branch)
-        return self.branch
-
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
-        schema_objects = [request.node_schema]
-        non_unique_nodes_lists = await asyncio.gather(*[self.check_one_schema(schema) for schema in schema_objects])
+        if request.node_uuids is None:
+            non_unique_nodes = await self.check_one_schema(
+                schema=request.node_schema, branch=request.branch, schema_branch=request.schema_branch
+            )
+            grouped_data_paths = GroupedDataPaths()
+            for non_unique_node in non_unique_nodes:
+                self.generate_data_paths(non_unique_node, grouped_data_paths)
+            return [grouped_data_paths]
+
+        return [
+            await self._check_targeted(
+                schema=request.node_schema,
+                node_uuids=request.node_uuids,
+                branch=request.branch,
+                schema_branch=request.schema_branch,
+            )
+        ]
+
+    async def _check_targeted(
+        self,
+        schema: MainSchemaTypes,
+        node_uuids: list[str],
+        branch: Branch,
+        schema_branch: SchemaBranch,
+    ) -> GroupedDataPaths:
+        """Validate uniqueness for only the changed nodes, one batched query per constraint group.
+
+        Each query resolves the changed nodes' current constraint values and probes the whole
+        population for other nodes sharing the full value tuple, so a collision with an untouched
+        peer still surfaces. Only the changed nodes are queried, so the work is bounded by the size
+        of the change rather than the kind's population, and the changed set is paged so a very
+        large change does not travel in a single query.
+
+        All queries run in one read-only session so reads route to a replica and the session is
+        opened once for the whole change rather than per query.
+        """
+        constraint_paths = schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
 
         grouped_data_paths = GroupedDataPaths()
-        for non_unique_node in chain(*non_unique_nodes_lists):
-            self.generate_data_paths(non_unique_node, grouped_data_paths)
-        return [grouped_data_paths]
+        if not constraint_paths:
+            return grouped_data_paths
+
+        seen_data_paths: set[DataPath] = set()
+        async with self.db.start_session(read_only=True) as session_db:
+            for constraint_path in constraint_paths:
+                constraint_elements = constraint_path.attributes_paths
+                for window in _chunked(node_uuids, self.query_batch_size):
+                    data_paths = await self._query_group_violations(
+                        session_db=session_db,
+                        schema=schema,
+                        branch=branch,
+                        constraint_elements=constraint_elements,
+                        node_uuids=window,
+                    )
+                    for data_path in data_paths:
+                        if data_path in seen_data_paths:
+                            continue
+                        seen_data_paths.add(data_path)
+                        grouped_data_paths.add_data_path(
+                            data_path, grouping_key=f"{schema.kind}/{data_path.field_name}/{data_path.value}"
+                        )
+        return grouped_data_paths
+
+    async def _query_group_violations(
+        self,
+        session_db: InfrahubDatabase,
+        schema: MainSchemaTypes,
+        branch: Branch,
+        constraint_elements: list[SchemaAttributePath],
+        node_uuids: list[str],
+    ) -> list[DataPath]:
+        """Run one constraint group's targeted query for a window of changed nodes and expand it."""
+        query = await TargetedUniquenessValidationQuery.init(
+            db=session_db,
+            branch=branch,
+            kind=schema.kind,
+            constraint_elements=constraint_elements,
+            node_uuids=node_uuids,
+        )
+        await query.execute(db=session_db)
+
+        data_paths: list[DataPath] = []
+        for violation in query.get_data():
+            data_paths.extend(
+                self._violation_to_data_paths(
+                    schema=schema,
+                    constraint_elements=constraint_elements,
+                    violation=violation,
+                    branch_name=branch.name,
+                )
+            )
+        return data_paths
+
+    def _violation_to_data_paths(
+        self,
+        schema: MainSchemaTypes,
+        constraint_elements: list[SchemaAttributePath],
+        violation: TargetedUniquenessViolation,
+        branch_name: str,
+    ) -> list[DataPath]:
+        """Expand one violation into a data path per involved node and constraint element.
+
+        The changed node and every partner share the full value tuple, so each element's value is
+        emitted for the changed node and all its partners. A relationship element carries the shared
+        peer's id; an attribute element carries the shared attribute value.
+        """
+        involved_node_ids = [violation.changed_uuid, *violation.partner_uuids]
+        data_paths: list[DataPath] = []
+        for element, value in zip(constraint_elements, violation.element_values, strict=True):
+            if element.relationship_schema is not None:
+                field_name: str | None = element.relationship_schema.name
+                property_name = "id"
+                path_type = PathType.RELATIONSHIP_ONE
+                peer_id: str | None = value
+            else:
+                field_name = element.active_attribute_schema.name
+                property_name = "value"
+                path_type = PathType.ATTRIBUTE
+                peer_id = None
+            for node_id in involved_node_ids:
+                data_paths.append(
+                    DataPath(
+                        branch=branch_name,
+                        path_type=path_type,
+                        node_id=node_id,
+                        kind=schema.kind,
+                        field_name=field_name,
+                        property_name=property_name,
+                        value=value,
+                        peer_id=peer_id,
+                    )
+                )
+        return data_paths
 
     async def build_query_request(self, schema: MainSchemaTypes) -> NodeUniquenessQueryRequest:
         unique_attr_paths = {
@@ -112,28 +245,30 @@ class UniquenessChecker(ConstraintCheckerInterface):
     async def check_one_schema(
         self,
         schema: MainSchemaTypes,
+        branch: Branch,
+        schema_branch: SchemaBranch,
     ) -> list[NonUniqueNode]:
         query_request = await self.build_query_request(schema)
 
         if not query_request:
             return []
 
-        query = await NodeUniqueAttributeConstraintQuery.init(
-            db=self.db, branch=await self.get_branch(), query_request=query_request
-        )
+        query = await NodeUniqueAttributeConstraintQuery.init(db=self.db, branch=branch, query_request=query_request)
         async with self.semaphore:
             async with self.db.start_session(read_only=True) as db:
                 query_results = await query.execute(db=db)
 
-        return await self._parse_results(schema=schema, query_results=query_results.results)
+        return await self._parse_results(
+            schema=schema, query_results=query_results.results, schema_branch=schema_branch
+        )
 
-    async def _parse_results(self, schema: MainSchemaTypes, query_results: list[QueryResult]) -> list[NonUniqueNode]:
+    async def _parse_results(
+        self, schema: MainSchemaTypes, query_results: list[QueryResult], schema_branch: SchemaBranch
+    ) -> list[NonUniqueNode]:
         relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}
         all_non_unique_nodes: list[NonUniqueNode] = []
         results_index = UniquenessQueryResultsIndex(query_results=query_results)
 
-        branch = await self.get_branch()
-        schema_branch = self.db.schema.get_schema_branch(name=branch.name)
         uniqueness_constraint_paths = schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
         for uniqueness_constraint_path in uniqueness_constraint_paths:
             non_unique_nodes_by_id: dict[str, NonUniqueNode] = {}
