@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import SYSTEM_USER_ID
-from infrahub.core.query.preference import PreferenceGetAllQuery, PreferenceGetByOwnerQuery
+from infrahub.core.query.preference import (
+    PreferenceDeleteByOwnerQuery,
+    PreferenceGetAllQuery,
+    PreferenceGetByOwnerQuery,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.preferences.models import Preference
@@ -55,8 +59,5 @@ class PreferenceRepository:
 
     async def delete_for_owner(self, owner_id: str) -> None:
         """Delete every Preference row owned by `owner_id`; a no-op when there is none."""
-        query = await PreferenceGetByOwnerQuery.init(db=self.db, owner_ids={owner_id})
+        query = await PreferenceDeleteByOwnerQuery.init(db=self.db, owner_id=owner_id)
         await query.execute(db=self.db)
-
-        for preference in query.get_preferences():
-            await preference.delete(db=self.db)

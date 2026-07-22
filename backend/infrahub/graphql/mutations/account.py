@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, ObjectType, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
+from neo4j.exceptions import DriverError, Neo4jError
+from redis.exceptions import RedisError
 from typing_extensions import Self
 
 from infrahub import lock
@@ -18,7 +20,7 @@ from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError, ValidationError
+from infrahub.exceptions import DatabaseError, NodeNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.mutations.main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
 from infrahub.log import get_logger
@@ -231,14 +233,15 @@ class InfrahubAccountMutation(InfrahubMutationMixin, Mutation):
         # Accounts are branch-agnostic, so the deletion is effective everywhere at once; drop the
         # account's Preference row (a StandardNode keyed by owner_id, which cannot cascade via the
         # schema) instead of leaving it behind as unreachable dead data (IFC-2867). The per-owner
-        # preference lock serialises this with InfrahubSetPreferences' read-modify-write, so an
-        # in-flight upsert cannot resurrect the row mid-delete. Best-effort: the account is already
-        # deleted, so a cleanup failure must not fail the mutation — the orphaned row is benign
-        # (account ids are UUIDs and never reused, so it stays unreachable).
+        # preference lock is required because InfrahubSetPreferences upserts under it as a
+        # read-then-save: without the lock this delete can run between that read and save, and the
+        # save re-creates the row for the just-deleted account — a permanent orphan. Best-effort:
+        # the account is already deleted, so a cleanup failure must not fail the mutation — the
+        # orphaned row is benign (account ids are UUIDs and never reused, so it stays unreachable).
         try:
             async with lock.registry.get(name=obj.id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
                 await PreferenceRepository(db=graphql_context.db).delete_for_owner(owner_id=obj.id)
-        except Exception as exc:
+        except (DatabaseError, DriverError, Neo4jError, RedisError) as exc:
             log.warning(f"Failed to delete the Preference row of deleted account {obj.id}: {exc}")
 
         return result
