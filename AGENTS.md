@@ -28,11 +28,12 @@ Style: be direct and substantive. No filler, preamble, or pleasantries. Challeng
 
 ## Branching
 
-- Feature and bugfix branches start from `develop` (the integration branch); `stable` is the
-  release branch. PRs for new work target `develop` unless they fix a released version.
+- Feature branches start from `develop`; bug fixes target the branch where the buggy code lives —
+  `stable` when the feature is released, `develop` when it only exists there.
 - Before cutting a branch for a ticket, verify the code the ticket references actually exists on
   the chosen base (`git ls-tree <base> -- <path>`): follow-up tickets often reference modules that
   are only on `develop`.
+- Full strategy (release branches, naming, submodules): `dev/guidelines/git-workflow.md`.
 
 ## Commands
 
@@ -53,9 +54,12 @@ cd frontend/app && pnpm test:e2e      # Frontend E2E tests (legacy TS suite)
 uv run pytest -c tests/e2e/pytest.ini tests/e2e  # E2E tests (pytest, testcontainers)
 ```
 
-Backend component tests (`backend/tests/component/`) and the testcontainers-based suites need a
+Backend component tests (`backend/tests/component/`) start their backing services (Neo4j, ...)
+through testcontainers by default (`INFRAHUB_USE_TEST_CONTAINERS`, default `true`), which needs a
 running Docker daemon. testcontainers looks for `/var/run/docker.sock`; if your daemon only exposes
-a user socket (e.g. Docker Desktop without the "default socket" option), point `DOCKER_HOST` at it:
+a user socket (e.g. Docker Desktop without the "default socket" option), point `DOCKER_HOST` at it.
+Alternatively, set `INFRAHUB_USE_TEST_CONTAINERS=false` to run against an already-running database
+configured through the normal settings.
 
 ```bash
 DOCKER_HOST=unix://$HOME/.docker/run/docker.sock uv run pytest backend/tests/component/... -q

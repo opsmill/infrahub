@@ -8,6 +8,11 @@ Git workflow and commit conventions for the project.
 
 - **Main branches:** `stable` (production), `develop` (development), `release-*` (releases)
 - **Feature branches:** Create from `develop`, merge back via PR
+- **Bug fixes:** target the branch where the buggy code lives — `stable` when the feature is
+  released, `develop` when it only exists there
+- **Verify the base before cutting:** check that the code the ticket references actually exists on
+  the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
+  are only on `develop`
 - **Branch naming:** `<initials>-<short-description>` (e.g., `jd-add-breadcrumbs`)
 
 ## Versioning
