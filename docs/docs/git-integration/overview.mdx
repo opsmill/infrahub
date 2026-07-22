@@ -43,7 +43,7 @@ When you create a Repository connection, Infrahub:
 4. Runs background synchronization tasks every few seconds to detect changes
 5. Parses the `.infrahub.yml` file to determine which resources to import
 
-The bidirectional nature means that when you merge a Proposed Change between two Infrahub branches that are both linked to Git branches, Infrahub creates a merge commit and automatically pushes it back to the external repository. You do not merge the change in Git yourself — once the commit appears on the remote's default branch, delete your feature branch. Git-side merging is your responsibility only for a Read-only Repository, which Infrahub never writes to.
+The bidirectional nature means that when you merge a Proposed Change between two Infrahub branches that are both linked to Git branches, Infrahub creates a merge commit and automatically pushes it back to the external repository.
 
 ### Read-only Repository: controlled unidirectional flow
 
