@@ -68,8 +68,8 @@ Key requirements:
 - Names must be **lowercase with dashes** (e.g., `my-workflow`, not `my_workflow`)
 - Use `flow_run_name` for human-readable run names (see naming guidelines below)
 - Accept `context: InfrahubContext` parameter (injected automatically)
-- Use `get_run_logger()` for logging
-- Use dependency injection for services (`get_database()`, etc.)
+- Use `get_run_logger()` for logging — the stdlib default logger never surfaces in Prefect's UI/logs
+- Keep the flow body a thin composition root: resolve singletons (`get_database()`, `get_workflow()`, …) at the top of the flow only, build a component with those dependencies injected, and delegate to it. Business logic lives in the component, not the flow function — see `.agents/rules/backend-component-design.md`
 
 **`flow_run_name` guidelines:**
 
@@ -265,7 +265,8 @@ Before submitting your workflow:
 - [ ] Correct `WorkflowType` selected (CORE/USER/INTERNAL)
 - [ ] `DATABASE_CHANGE` tag added if workflow modifies database
 - [ ] Uses `get_run_logger()` for logging
-- [ ] Uses dependency injection for services
+- [ ] Flow body is a thin composition root — singletons resolved at the flow entry, logic in a dependency-injected component
+- [ ] Any other code that needs the workflow's name imports its `WorkflowDefinition` from `catalogue.py` instead of re-typing the string
 - [ ] Tests cover workflow execution (using local execution mode)
 - [ ] Code passes `uv run invoke lint`
 
