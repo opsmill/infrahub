@@ -17,10 +17,10 @@ class Preference(StandardNode):
     client's built-in default).
 
     `owner_id` is a plain string, not a graph relationship: a StandardNode cannot declare a schema
-    relationship with `on_delete: cascade` (that is a schema-Node feature), so deleting an account
-    leaves its Preference row behind as unreachable dead data. Account ids are UUIDs and never reused,
-    so such a row is permanently unreachable and benign. Cleanup is out of scope for V1 and tracked in
-    Jira (IFC-2867).
+    relationship with `on_delete: cascade` (that is a schema-Node feature), so the schema cannot
+    cascade a Preference row when its account is deleted. Instead the account-delete mutation drops
+    the row explicitly (IFC-2867). A row orphaned by a deletion that bypasses the mutation stays
+    benign: account ids are UUIDs and never reused, so it is permanently unreachable.
     """
 
     owner_id: str
