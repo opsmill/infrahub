@@ -1,4 +1,5 @@
 import { Autocomplete, Menu, MenuItem, Popover, SubmenuTrigger } from "@infrahub/ui";
+import { CalendarClockIcon } from "lucide-react";
 import React from "react";
 import { useFilter } from "react-aria-components";
 
@@ -12,73 +13,32 @@ import {
   buildRelationshipSortField,
 } from "@/entities/nodes/sort/domain/rules/sort-field";
 import { useSortableFields } from "@/entities/nodes/sort/ui/hooks/use-sortable-fields";
-import {
-  DIRECTION_OPTIONS,
-  NODE_METADATA_SORT_OPTIONS,
-} from "@/entities/nodes/sort/ui/sort-options";
+import { NODE_METADATA_SORT_OPTIONS } from "@/entities/nodes/sort/ui/sort-options";
+import { SortableAttributeMenuItem } from "@/entities/nodes/sort/ui/sortable-attribute-menu-item";
+import { SortableFieldMenuItem } from "@/entities/nodes/sort/ui/sortable-field-menu-item";
 import type {
   AttributeSchema,
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-
-interface SortableFieldMenuItemProps {
-  field: SortField;
-  children: string;
-  onSelect: (sort: Sort) => void;
-}
-
-function SortableFieldMenuItem({ field, children, onSelect }: SortableFieldMenuItemProps) {
-  return (
-    <SubmenuTrigger>
-      <MenuItem>{children}</MenuItem>
-
-      <Popover>
-        <Menu
-          variant="picker"
-          aria-label={`Sort direction for ${children}`}
-          items={DIRECTION_OPTIONS}
-        >
-          {(option) => (
-            <MenuItem onAction={() => onSelect({ field, direction: option.id })}>
-              {option.label}
-            </MenuItem>
-          )}
-        </Menu>
-      </Popover>
-    </SubmenuTrigger>
-  );
-}
-
-interface SortableAttributeMenuItemProps {
-  attribute: AttributeSchema;
-  onSelect: (sort: Sort) => void;
-}
-
-function SortableAttributeMenuItem({ attribute, onSelect }: SortableAttributeMenuItemProps) {
-  return (
-    <SortableFieldMenuItem field={buildAttributeSortField(attribute.name)} onSelect={onSelect}>
-      {attribute.label ?? attribute.name}
-    </SortableFieldMenuItem>
-  );
-}
 
 interface SortableRelationshipMenuItemProps {
   relationship: RelationshipSchema;
-  activeFields: ReadonlySet<SortField>;
+  activeFields?: ReadonlySet<SortField>;
   onSelect: (sort: Sort) => void;
 }
 
 function getAvailablePeerAttributes(
   peerSchema: ModelSchema,
   relationship: RelationshipSchema,
-  activeFields: ReadonlySet<SortField>
+  activeFields?: ReadonlySet<SortField>
 ): AttributeSchema[] {
   return (peerSchema.attributes ?? []).filter(isSortableAttribute).filter((attribute) => {
     const attributeField = buildAttributeSortField(attribute.name);
     const relationshipField = buildRelationshipSortField(relationship.name, attributeField);
-    return !activeFields.has(relationshipField);
+    return !activeFields?.has(relationshipField);
   });
 }
 
@@ -97,7 +57,10 @@ function GroupedSortableRelationshipMenuItem({
 
   return (
     <SubmenuTrigger>
-      <MenuItem>{relationshipLabel}</MenuItem>
+      <MenuItem textValue={relationshipLabel}>
+        <FieldSchemaIcon fieldSchema={relationship} />
+        <span>{relationshipLabel}</span>
+      </MenuItem>
 
       <Popover>
         <Menu aria-label={`Sort by ${relationshipLabel}`}>
@@ -121,19 +84,23 @@ function GroupedSortableRelationshipMenuItem({
 
 interface FieldItemsProps {
   schema: ModelSchema;
-  activeFields: ReadonlySet<SortField>;
+  activeFields?: ReadonlySet<SortField>;
   onSelect: (sort: Sort) => void;
 }
 
 // Flat list of every available field, shown while searching.
 function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
   const sortableFields = useSortableFields(schema);
-  const availableFields = sortableFields.filter(({ field }) => !activeFields.has(field));
+  const availableFields = sortableFields.filter(({ field }) => !activeFields?.has(field));
 
-  return availableFields.map(({ field, label }) => (
-    <SortableFieldMenuItem key={field} field={field} onSelect={onSelect}>
-      {label}
-    </SortableFieldMenuItem>
+  return availableFields.map(({ field, label, fieldSchema }) => (
+    <SortableFieldMenuItem
+      key={field}
+      field={field}
+      icon={fieldSchema ? <FieldSchemaIcon fieldSchema={fieldSchema} /> : <CalendarClockIcon />}
+      label={label}
+      onSelect={onSelect}
+    />
   ));
 }
 
@@ -141,11 +108,13 @@ function FlatFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
 function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) {
   const sortableAttributes = sortByOrderWeight(schema.attributes ?? [])
     .filter(isSortableAttribute)
-    .filter((attribute) => !activeFields.has(buildAttributeSortField(attribute.name)));
+    .filter((attribute) => !activeFields?.has(buildAttributeSortField(attribute.name)));
   const sortableRelationships = sortByOrderWeight(schema.relationships ?? []).filter(
     isSortableRelationship
   );
-  const metadataFields = NODE_METADATA_SORT_OPTIONS.filter(({ field }) => !activeFields.has(field));
+  const metadataFields = NODE_METADATA_SORT_OPTIONS.filter(
+    ({ field }) => !activeFields?.has(field)
+  );
 
   return (
     <>
@@ -163,15 +132,17 @@ function GroupedFieldItems({ schema, activeFields, onSelect }: FieldItemsProps) 
       ))}
 
       {metadataFields.map((metadata) => (
-        <SortableFieldMenuItem key={metadata.field} field={metadata.field} onSelect={onSelect}>
-          {metadata.label}
-        </SortableFieldMenuItem>
+        <SortableFieldMenuItem
+          key={metadata.field}
+          field={metadata.field}
+          icon={<CalendarClockIcon />}
+          label={metadata.label}
+          onSelect={onSelect}
+        />
       ))}
     </>
   );
 }
-
-const NO_ACTIVE_FIELDS: ReadonlySet<SortField> = new Set();
 
 export interface AddSortPickerProps {
   schema: ModelSchema;
@@ -179,11 +150,7 @@ export interface AddSortPickerProps {
   onSelect: (sort: Sort) => void;
 }
 
-export function AddSortPicker({
-  schema,
-  activeFields = NO_ACTIVE_FIELDS,
-  onSelect,
-}: AddSortPickerProps) {
+export function AddSortPicker({ schema, activeFields, onSelect }: AddSortPickerProps) {
   const { contains } = useFilter({ sensitivity: "base" });
   const [search, setSearch] = React.useState("");
   const isSearching = search.trim() !== "";

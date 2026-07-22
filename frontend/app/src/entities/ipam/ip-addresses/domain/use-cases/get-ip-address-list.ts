@@ -9,14 +9,16 @@ import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/domain/rules/get-ip-address-relationships-visible-in-list-view";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/has-incompatible-filters-for-ip-availability";
+import { shouldExcludeIpAvailability } from "@/entities/ipam/ip-availability/domain/rules/should-exclude-ip-availability";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GetIpAddressListParams extends ContextParams, PaginationParams {
   schema: ModelSchema;
   filters?: Array<Filter>;
+  sort?: Sort[] | null;
 }
 
 export type GetIpAddressList = (
@@ -30,13 +32,14 @@ export const getIpAddressList: GetIpAddressList = async ({
   branchName,
   atDate,
   filters = [],
+  sort,
 }) => {
   const attributesVisible = getIpAddressAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getIpAddressRelationshipsVisibleInListView(
     schema.relationships ?? []
   );
 
-  const excludeIpAvailability = hasIncompatibleFiltersForIpAvailability(filters);
+  const excludeIpAvailability = shouldExcludeIpAvailability(filters, sort);
   const schemaKind = schema.kind as string;
 
   const getIpAddressListFromApi = excludeIpAvailability
@@ -49,6 +52,7 @@ export const getIpAddressList: GetIpAddressList = async ({
     limit,
     offset,
     filters,
+    sort,
     objectKind: schemaKind,
     attributes: attributesVisible,
     relationships: relationshipsVisible,

@@ -5,6 +5,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
+  addOrderByToRequest,
   addRelationshipsToRequest,
   dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
@@ -16,10 +17,12 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 export interface GetIpPrefixListFromApiParams extends ContextParams, PaginationParams {
   filters: Array<Filter>;
+  sort?: Sort[] | null;
   objectKind: string;
   attributes: Array<AttributeSchema>;
   relationships: Array<RelationshipSchema>;
@@ -32,6 +35,7 @@ export async function getIpPrefixListFromApi({
   branchName,
   atDate,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -45,6 +49,7 @@ export async function getIpPrefixListFromApi({
     limit,
     offset,
     filters,
+    sort,
     objectKind,
     attributes,
     relationships,
@@ -62,6 +67,7 @@ export async function getIpPrefixListFromApi({
 
 export interface BuildGetIpPrefixListQueryParams extends PaginationParams {
   filters?: Array<Filter>;
+  sort?: Sort[] | null;
   objectKind: string;
   attributes: Array<AttributeSchema>;
   relationships: Array<RelationshipSchema>;
@@ -84,6 +90,7 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
   limit,
   offset,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -98,6 +105,7 @@ export function buildGetIpPrefixListWithoutAvailabilityQuery({
           limit,
           offset,
           ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
+          ...(sort?.length ? addOrderByToRequest(sort) : {}),
         },
         edges: {
           node: {
@@ -118,6 +126,7 @@ export function buildGetIpPrefixListWithAvailabilityQuery({
   limit,
   offset,
   filters,
+  sort,
   objectKind,
   attributes,
   relationships,
@@ -132,6 +141,7 @@ export function buildGetIpPrefixListWithAvailabilityQuery({
           [AVAILABLE_IP_FILTER_NAME]: true,
           ...(objectKind !== IP_PREFIX_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
+          ...(sort?.length ? addOrderByToRequest(sort) : {}),
         },
         edges: {
           node: {
