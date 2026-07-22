@@ -114,7 +114,7 @@ source.
 
 - **Orphan rows.** A `StandardNode` cannot declare an `on_delete: cascade` schema relationship, so
   the schema cannot cascade a `Preference` row when its account is deleted. Instead the account-delete
-  mutation drops the row explicitly, best-effort and under the per-owner preference lock (IFC-2867).
+  mutation drops the row explicitly, best-effort and under the per-owner preference lock.
   A deletion path that bypasses the mutation still leaves the row behind; that orphan is benign:
   account ids are UUIDs and are never reused, so it is permanently unreachable.
 - **`Optional[X]` on the model.** Persisted nullable fields use `Optional[X]` rather than `X | None`

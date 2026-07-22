@@ -236,10 +236,8 @@ class InfrahubAccountMutation(InfrahubMutationMixin, Mutation):
 
         result = await super().mutate_delete(info=info, data=data, branch=branch)
 
-        # Drop the account's Preference row (no schema cascade for StandardNodes — see the
-        # Preference docstring, IFC-2867). The lock serialises with InfrahubSetPreferences'
-        # read-then-save so an in-flight upsert cannot re-create the row. Best-effort: the account
-        # is already deleted, so a cleanup failure only logs (the orphaned row is benign).
+        # Best-effort Preference cleanup: the shared per-owner lock keeps an in-flight preference
+        # upsert from re-creating the row, and a failure only logs (the orphaned row is benign).
         try:
             async with lock.registry.get(name=obj.id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
                 await PreferenceRepository(db=graphql_context.db).delete_for_owner(owner_id=obj.id)

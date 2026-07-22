@@ -83,7 +83,6 @@ class PreferenceGetByOwnerQuery(PreferenceReadQuery):
         # Cypher parameters cannot bind a set, so pass the ids as a list.
         self.params["owner_ids"] = list(self.owner_ids)
 
-        # The label is the Preference StandardNode type name (Cypher labels can't be parameterised).
         query = """
         MATCH (n:Preference)
         WHERE n.owner_id IN $owner_ids
@@ -106,7 +105,6 @@ class PreferenceDeleteByOwnerQuery(StandardNodeQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["owner_id"] = self.owner_id
 
-        # The label is the Preference StandardNode type name (Cypher labels can't be parameterised).
         query = """
         MATCH (n:Preference { owner_id: $owner_id })
         DETACH DELETE n
@@ -120,7 +118,6 @@ class PreferenceGetAllQuery(PreferenceReadQuery):
     name = "preference_get_all"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        # The label is the Preference StandardNode type name (Cypher labels can't be parameterised).
         query = """
         MATCH (n:Preference)
         """
