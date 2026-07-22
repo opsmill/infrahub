@@ -34,14 +34,14 @@ LOAD_CONTRACT_CASES = [
         accepted=True,
     ),
     LoadContractCase(
-        name="forbidden-field-on-extension-rejected",
-        payload={"version": "1.0", "extensions": {"nodes": [{"kind": "BuiltinTag", "namespace": "Forbidden"}]}},
-        accepted=False,
+        name="non-write-field-on-extension-tolerated",
+        payload={"version": "1.0", "extensions": {"nodes": [{"kind": "BuiltinTag", "namespace": "Dropped"}]}},
+        accepted=True,
     ),
     LoadContractCase(
-        name="unknown-field-on-node-rejected",
+        name="unknown-field-on-node-tolerated",
         payload={"version": "1.0", "nodes": [{"namespace": "Test", "name": "Widget", "not_a_field": 1}]},
-        accepted=False,
+        accepted=True,
     ),
     LoadContractCase(
         name="out-of-range-attribute-name-rejected",

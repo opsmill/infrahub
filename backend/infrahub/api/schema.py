@@ -19,7 +19,6 @@ from pydantic import (
     create_model,
     model_validator,
 )
-from pydantic import ValidationError as PydanticValidationError
 from starlette.responses import JSONResponse
 
 from infrahub import lock
@@ -118,28 +117,6 @@ class SchemaReadAPI(BaseModel):
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
-def _format_schema_errors(errors: list[Any]) -> list[str]:
-    """Render internal-schema validation errors as field-level messages.
-
-    The dotted path indexes list elements with ``[i]`` (``nodes[0].relationships[0].cardinality``)
-    and appends the offending scalar value so the message names both the field and what was received.
-    """
-    messages: list[str] = []
-    for error in errors:
-        parts: list[str] = []
-        for element in error["loc"]:
-            if isinstance(element, int) and parts:
-                parts[-1] = f"{parts[-1]}[{element}]"
-            else:
-                parts.append(str(element))
-        message = f"{'.'.join(parts)}: {error['msg']}"
-        received = error.get("input")
-        if isinstance(received, (str, int, float, bool)) or received is None:
-            message += f" (received: {received!r})"
-        messages.append(message)
-    return messages
-
-
 class SchemaLoadAPI(InfrahubSchemaWrite):
     version: str
     _internal_schema: SchemaRoot = PrivateAttr()
@@ -147,24 +124,12 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
     @model_validator(mode="before")
     @classmethod
     def validate_write_contract(cls, data: Any) -> Any:
-        # A submitted schema may legitimately carry read-only/internal fields — a schema read back
-        # from Infrahub, or a full internal dump. The internal schema accepts those but still
-        # rejects fields that are unknown or invalid for their context (a typo, or a node-only
-        # field on an extension), drawing the tolerate/reject line a uniform extra="forbid" cannot.
+        # A submitted schema may carry fields that are not part of the write contract: read-only or
+        # internal fields (a schema read back from Infrahub, or a full internal dump), or unknown
+        # fields from an older or hand-edited payload. All of them are dropped silently by the
+        # projection below rather than rejected, so an otherwise-valid schema still loads. What
+        # remains is the user-facing write contract, validated for out-of-range constrained values.
         if isinstance(data, dict):
-            try:
-                SchemaRoot.model_validate(data)
-            except PydanticValidationError as exc:
-                # Only reject genuinely unknown/forbidden fields here. Constraint and enum
-                # violations, reserved keywords, and other invariants are surfaced with their
-                # original messages by the write-contract check below or by build_internal_schema.
-                unknown = [error for error in exc.errors() if error["type"] == "extra_forbidden"]
-                if unknown:
-                    raise ValueError("; ".join(_format_schema_errors(unknown))) from exc
-
-            # Drop the read-only/internal fields so the strict write models accept the payload; the
-            # unknown-field check above has already run, so nothing is hidden. What remains is the
-            # user-facing write contract, validated for out-of-range constrained values.
             data = project_to_write_contract(data)
             result = validate_write_schema(schema=data)
             if not result.valid:

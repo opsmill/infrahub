@@ -498,10 +498,9 @@ def _sdk_base_node_family(base_node_schema: "SchemaNode", minimum: "Visibility",
 
     Every node model exposes the derived ``kind`` (from namespace+name) on both write and read so
     attribute access works when reading a locally-authored schema. It only *serializes* on read:
-    on write it is a plain property (not part of the payload), so ``kind`` never round-trips into
-    the write contract where ``extra="forbid"`` would reject it. The read variant additionally
-    carries the server-computed ``hash`` field. All propagate to node/generic/profile/template via
-    this base.
+    on write it is a plain property, so ``kind`` never round-trips into the write payload. The read
+    variant additionally carries the server-computed ``hash`` field. All propagate to
+    node/generic/profile/template via this base.
     """
     from infrahub.core.constants import UpdateSupport, Visibility
     from infrahub.core.schema.definitions.internal import SchemaAttribute
@@ -957,13 +956,13 @@ def _generate_schemas_sdk(context: Context) -> None:
     variants = {
         "write": (
             Visibility.WRITE,
-            'extra="forbid", use_enum_values=True',
+            'extra="ignore", use_enum_values=True',
             "Write",
             True,
             _sdk_extension_families,
             False,
         ),
-        "read": (Visibility.READ, "use_enum_values=True", "Read", False, _sdk_profile_template_families, True),
+        "read": (Visibility.READ, 'extra="ignore", use_enum_values=True', "Read", False, _sdk_profile_template_families, True),
     }
     for variant, (
         minimum,
