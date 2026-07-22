@@ -1,0 +1,1 @@
+Corrected the return-type annotations of the internal Git `InfrahubRepository.merge()` and `rebase()` methods to match their real contract — a commit hash string on success and `False` on a no-op — so static type checking of their callers is no longer defeated by a `bool` annotation. No runtime behavior change.

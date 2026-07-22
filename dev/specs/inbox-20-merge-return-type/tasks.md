@@ -35,7 +35,7 @@ so callers and the type checker are no longer misled — with runtime behavior u
 
 ## Phase 4: Polish & Cross-Cutting
 
-- [ ] T006 [P] Add a changelog fragment under `changelog/` (follow the existing fragment convention — e.g. `changelog/+<slug>.fixed.md`) describing the internal type-correctness fix to `merge()`/`rebase()` return annotations. The fragment body MUST NOT reference the tracking ticket key.
+- [X] T006 [P] Add a changelog fragment under `changelog/` (follow the existing fragment convention — e.g. `changelog/+<slug>.fixed.md`) describing the internal type-correctness fix to `merge()`/`rebase()` return annotations. The fragment body MUST NOT reference the tracking ticket key.
 - [ ] T007 Run `/pre-ci` (format + lint + backend unit tests) and confirm the full locally-executable gate is green before the PR is opened.
 
 ## Dependencies
