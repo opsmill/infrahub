@@ -3787,7 +3787,6 @@
             },
             "AttributeParametersWrite": {
                 "properties": {},
-                "additionalProperties": false,
                 "type": "object",
                 "title": "AttributeParametersWrite"
             },
@@ -3998,7 +3997,6 @@
                         "description": "Jinja2 template used to compute the value, required when kind is Jinja2."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "kind",
@@ -4041,7 +4039,6 @@
                         "description": "Python transform name or ID, required when kind is TransformPython."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "kind",
@@ -4073,7 +4070,6 @@
                         "description": "Defines how the value of the attribute is computed."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "kind"
@@ -4227,7 +4223,6 @@
                         "description": "Human friendly representation of the choice."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name"
@@ -4820,7 +4815,6 @@
                         "description": "Extra parameters specific to this kind of attribute"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name",
@@ -5117,7 +5111,6 @@
                         "description": "Nodes inheriting from this Generic schema must belong to one of the listed namespaces"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name",
@@ -5450,7 +5443,6 @@
                         "description": "Regular expression that each list item value must match if defined"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "title": "ListAttributeParametersWrite"
             },
@@ -5957,7 +5949,6 @@
                         "description": "Extra parameters specific to this kind of attribute"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name",
@@ -6262,7 +6253,6 @@
                         "description": "Relationships to add to the existing node."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "kind"
@@ -6575,7 +6565,6 @@
                         "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name",
@@ -6666,7 +6655,6 @@
                         "description": "List of values or range of values not allowed for the attribute, format is: '100,150-200,280,300-400'"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "title": "NumberAttributeParametersWrite"
             },
@@ -7173,7 +7161,6 @@
                         "description": "Extra parameters specific to this kind of attribute"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name",
@@ -7684,7 +7671,6 @@
                         "description": "Extra parameters specific to this kind of attribute"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name",
@@ -7749,7 +7735,6 @@
                         "description": "The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "title": "NumberPoolParametersWrite"
             },
@@ -8262,7 +8247,6 @@
                         "default": "default"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name",
@@ -8467,7 +8451,6 @@
                         "description": "Nodes to extend with additional attributes and relationships."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "title": "SchemaExtensionWrite"
             },
@@ -8502,7 +8485,6 @@
                         ]
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "version"
@@ -8855,7 +8837,6 @@
                         "description": "Set a maximum number of characters allowed."
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "title": "TextAttributeParametersWrite"
             },
@@ -9368,7 +9349,6 @@
                         "description": "Extra parameters specific to this kind of attribute"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "name",
