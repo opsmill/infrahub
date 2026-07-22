@@ -93,15 +93,19 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     );
   }
 
+  // UNCHANGED nodes are kept: the backend returns them (include_parents) so the tree
+  // can nest changed nodes under their unchanged parents as hierarchy context
   const nodes =
     data.pages
       .flatMap((page) => page?.nodes)
       .flatMap((node) => {
-        if (!node || node.status === "UNCHANGED") return [];
+        if (!node) return [];
         // Manually filter conflicts items since it's not available yet in the backend filters
         if (qspStatus === DIFF_STATUS.CONFLICT && !node.contains_conflict) return [];
         return node as unknown as DiffNodeType;
       }) ?? [];
+
+  const changedNodes = nodes.filter((node) => node.status !== "UNCHANGED");
 
   return (
     <div className="flex h-[calc(100vh-14rem)] flex-col overflow-hidden">
@@ -128,8 +132,8 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
         </nav>
 
         <main className="col-start-2 col-end-5 space-y-4 overflow-auto bg-stone-100 p-4">
-          {nodes.length ? (
-            nodes.map((node) => (
+          {changedNodes.length ? (
+            changedNodes.map((node) => (
               <DiffNode
                 key={node.uuid}
                 node={node}

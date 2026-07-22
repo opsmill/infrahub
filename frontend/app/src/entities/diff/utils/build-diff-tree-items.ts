@@ -45,30 +45,43 @@ export function buildDiffTreeItems(nodes: Array<DiffNode>): Array<DiffTreeItem> 
     return acc;
   }, []);
 
-  return nodesWithParent.reduce<DiffTreeItem[]>((acc, node) => {
-    const parentTreeItem = findTreeItemById(baseTreeItems, node.parent!.uuid);
-    if (!parentTreeItem) return acc;
-
-    const newDiffTreeItem = createNodeTreeItemFromDiffNode(node);
-    const relationshipName = node.parent!.relationship_name as string;
-    const relationshipTreeItem = parentTreeItem.children.find(
-      (rel) => !rel.isNode && rel.label === relationshipName
+  // Attach nodes in as many passes as needed: a node can only be attached once its
+  // parent is in the tree, and parents may appear after their children in the input
+  let pendingNodes = nodesWithParent;
+  while (pendingNodes.length) {
+    const remainingNodes = pendingNodes.filter(
+      (node) => !attachNodeToParent(baseTreeItems, node)
     );
+    if (remainingNodes.length === pendingNodes.length) break;
+    pendingNodes = remainingNodes;
+  }
 
-    if (!relationshipTreeItem) {
-      // Create new relationship group if it doesn't exist
-      const newRelationshipTreeItem = createGroupTreeItemFromDiffNode(node);
-      newRelationshipTreeItem.id = `${node.parent!.uuid}-${relationshipName}`;
-      newRelationshipTreeItem.label = relationshipName;
-      newRelationshipTreeItem.children.push(newDiffTreeItem);
-      parentTreeItem.children.push(newRelationshipTreeItem);
-      return acc;
-    }
+  return baseTreeItems;
+}
 
-    // Add to existing relationship group
-    relationshipTreeItem.children.push(newDiffTreeItem);
-    return acc;
-  }, baseTreeItems);
+function attachNodeToParent(treeItems: DiffTreeItem[], node: DiffNode): boolean {
+  const parentTreeItem = findTreeItemById(treeItems, node.parent!.uuid);
+  if (!parentTreeItem) return false;
+
+  const newDiffTreeItem = createNodeTreeItemFromDiffNode(node);
+  const relationshipName = node.parent!.relationship_name as string;
+  const relationshipTreeItem = parentTreeItem.children.find(
+    (rel) => !rel.isNode && rel.label === relationshipName
+  );
+
+  if (!relationshipTreeItem) {
+    // Create new relationship group if it doesn't exist
+    const newRelationshipTreeItem = createGroupTreeItemFromDiffNode(node);
+    newRelationshipTreeItem.id = `${node.parent!.uuid}-${relationshipName}`;
+    newRelationshipTreeItem.label = relationshipName;
+    newRelationshipTreeItem.children.push(newDiffTreeItem);
+    parentTreeItem.children.push(newRelationshipTreeItem);
+    return true;
+  }
+
+  // Add to existing relationship group
+  relationshipTreeItem.children.push(newDiffTreeItem);
+  return true;
 }
 
 function findTreeItemById(treeItems: DiffTreeItem[], id: string): DiffTreeItem | undefined {
