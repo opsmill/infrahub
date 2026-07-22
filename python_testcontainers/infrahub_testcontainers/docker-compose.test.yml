@@ -250,7 +250,7 @@ services:
     tty: true
 
   cadvisor:
-    image: "${CADVISOR_DOCKER_IMAGE:-gcr.io/cadvisor/cadvisor:v0.51.0}"
+    image: "${CADVISOR_DOCKER_IMAGE:-ghcr.io/google/cadvisor:v0.60.5}"
     command:
       - -disable_root_cgroup_stats=true
       - -docker_only=true
